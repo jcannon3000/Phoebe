@@ -9,7 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
 import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { openExternal } from "@/lib/openExternal";
-import type { MyActivePrayerFor } from "@/components/pray-for-them";
+import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
@@ -101,7 +101,7 @@ interface PrayerRequest {
 }
 
 interface PrayerSlide {
-  kind: "intercession" | "request" | "prayer-for" | "prayer-for-expired" | "ask-request" | "pray-for-suggest" | "circle-intention" | "pause";
+  kind: "intercession" | "request" | "prayer-for" | "prayer-from" | "prayer-for-expired" | "ask-request" | "pray-for-suggest" | "circle-intention" | "pause";
   text: string;
   attribution: string;
   fullText?: string | null;
@@ -144,6 +144,13 @@ interface PrayerSlide {
   recipientName?: string;
   recipientAvatarUrl?: string | null;
   dayLabel?: string;
+  // prayer-from specific — someone is praying FOR the viewer (the inverse
+  // of prayer-for). The author fields below carry the pray-er's name +
+  // avatar; `fullText` carries the prayer body; `prayerFromId` is the
+  // /api/prayers-for/for-me row id so the slide can mark it acknowledged
+  // / focused when opened from a push tap.
+  prayerFromId?: number;
+  prayingSinceLabel?: string;
   // request specific — the author's name + avatar, rendered above
   // the "Prayer Request" eyebrow so the slide feels like it's from a
   // specific person rather than a disembodied body of text.
@@ -674,6 +681,91 @@ function SlideContent({
         )}
 
         <AmenButton key={slideKey} slideKey={slideKey} onAdvance={onAdvance} />
+      </div>
+    );
+  }
+
+  // ── "Someone is praying for you" slide ──────────────────────────────────
+  // Mirror of the prayer-for slide but flipped: avatar + name are the
+  // pray-er, not the recipient. No Amen — the viewer is the one being
+  // held, so we just offer a "Continue →" advance (same pattern as the
+  // pause slide). Built for the queue=prayers-for-me deck the push tap
+  // opens; multiple slides flow naturally if more than one person is
+  // currently praying.
+  if (slide.kind === "prayer-from") {
+    return (
+      <div className="w-full flex flex-col items-center text-center gap-5">
+        <p
+          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+          style={{ color: "rgba(143,175,150,0.45)" }}
+        >
+          Praying for you
+        </p>
+        {slide.authorAvatarUrl ? (
+          <img
+            src={slide.authorAvatarUrl}
+            alt={slide.authorName ?? "Prayer author"}
+            className="w-16 h-16 rounded-full object-cover prayer-avatar-pulse"
+          />
+        ) : (
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold prayer-avatar-pulse"
+            style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+          >
+            {(slide.authorName ?? "")
+              .split(" ")
+              .slice(0, 2)
+              .map(w => w[0]?.toUpperCase() ?? "")
+              .join("")}
+          </div>
+        )}
+        <p
+          className="text-[22px] leading-[1.4] font-medium"
+          style={{ color: "#E8E4D8", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          {slide.authorName}
+        </p>
+
+        {slide.fullText && (
+          <div
+            className="w-full rounded-2xl px-6 py-5 text-left mt-1"
+            style={{
+              background: "rgba(46,107,64,0.12)",
+              border: "1px solid rgba(46,107,64,0.15)",
+            }}
+          >
+            {(() => {
+              const fit = fitPrayerText(slide.fullText);
+              return (
+                <p
+                  className="italic whitespace-pre-wrap"
+                  style={{
+                    color: "#C8D4C0",
+                    fontFamily: "Georgia, 'Times New Roman', serif",
+                    fontSize: `${fit.size}px`,
+                    lineHeight: fit.leading,
+                  }}
+                >
+                  {slide.fullText}
+                </p>
+              );
+            })()}
+          </div>
+        )}
+
+        {slide.prayingSinceLabel && (
+          <p className="text-[10px] uppercase tracking-[0.14em]" style={{ color: "rgba(143,175,150,0.35)" }}>
+            {slide.prayingSinceLabel}
+          </p>
+        )}
+
+        <button
+          onClick={onAdvance}
+          className="mt-2 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+        >
+          Continue →
+        </button>
       </div>
     );
   }
@@ -1763,7 +1855,22 @@ export default function PrayerModePage() {
     // Plays the new intercessions on the viewer's subscribed feeds
     // since their previous digest.
     if (v === "feed-digest") return "feed-digest";
+    // "{Name} is praying for you" push tap — plays every active prayer
+    // someone is currently offering for the viewer, with the tapped one
+    // first (via ?focus=<prayerForId>). Before this, the push went to a
+    // single-prayer modal on /prayer-list, which surfaced only the one
+    // prayer the notification pointed at; if multiple people had started
+    // prayers in close succession the rest were buried in the list.
+    if (v === "prayers-for-me") return "prayers-for-me";
     return null;
+  })();
+  // Focused row id (any queue, but currently only used by
+  // queue=prayers-for-me to lead with the prayer the user just tapped).
+  const focusId = (() => {
+    if (typeof window === "undefined") return null;
+    const v = new URLSearchParams(window.location.search).get("focus");
+    const n = v ? parseInt(v, 10) : NaN;
+    return Number.isFinite(n) ? n : null;
   })();
   const finishHref = returnToHref ?? "/dashboard";
 
@@ -1863,6 +1970,18 @@ export default function PrayerModePage() {
     staleTime: 60_000,
   });
   const feedDigestData = feedDigestQuery.data;
+
+  // Prayers OTHERS are offering for the viewer — only fetched when
+  // opened via queue=prayers-for-me (from the "{Name} is praying for
+  // you" push). Same shape as the for-me list on /prayer-list, used
+  // here to build one slide per active prayer.
+  const prayersForMeQuery = useQuery<PrayerForMe[]>({
+    queryKey: ["/api/prayers-for/for-me"],
+    queryFn: () => apiRequest("GET", "/api/prayers-for/for-me"),
+    enabled: !!user && queueMode === "prayers-for-me",
+    staleTime: 60_000,
+  });
+  const prayersForMeData = prayersForMeQuery.data ?? [];
 
   const myPrayersForQuery = useQuery<MyActivePrayerFor[]>({
     queryKey: ["/api/prayers-for/mine"],
@@ -2101,7 +2220,43 @@ export default function PrayerModePage() {
   const momentsById = new Map((momentsData?.moments ?? []).map(m => [m.id, m]));
   const requestsById = new Map(prayerRequests.map(r => [r.id, r]));
 
-  const slides: PrayerSlide[] = queueMode === "feed-digest"
+  const slides: PrayerSlide[] = queueMode === "prayers-for-me"
+    ? (() => {
+        // Build one slide per active "someone is praying for me" entry,
+        // newest first (the API already sorts startedAt DESC). If the
+        // push tap provided ?focus=<prayerForId>, move that one to the
+        // head of the deck so the tapped prayer reads first.
+        const built: PrayerSlide[] = prayersForMeData.map((p): PrayerSlide => {
+          const then = new Date(p.startedAt);
+          const days = Number.isFinite(then.getTime())
+            ? Math.floor((Date.now() - then.getTime()) / 86400000)
+            : 0;
+          const sinceLabel =
+            days <= 0 ? "Since today"
+            : days === 1 ? "Since yesterday"
+            : days < 7 ? `Since ${then.toLocaleDateString(undefined, { weekday: "long" })}`
+            : `${days} days`;
+          return {
+            kind: "prayer-from",
+            text: p.prayerName,
+            attribution: "",
+            fullText: p.prayerText,
+            prayerFromId: p.id,
+            authorName: p.prayerName,
+            authorAvatarUrl: p.prayerAvatarUrl,
+            prayingSinceLabel: sinceLabel,
+          };
+        });
+        if (focusId != null) {
+          const i = built.findIndex(s => s.prayerFromId === focusId);
+          if (i > 0) {
+            const [hit] = built.splice(i, 1);
+            if (hit) built.unshift(hit);
+          }
+        }
+        return built;
+      })()
+    : queueMode === "feed-digest"
     ? (feedDigestData?.entries ?? []).map((e): PrayerSlide => ({
         // The Tuesday digest's new intercessions, played as a focused
         // walk. Built as plain intercession slides so the Take-action
@@ -2459,8 +2614,10 @@ export default function PrayerModePage() {
   // slideshow's gentle ending. queue=new is a focused "respond to the
   // N waiting requests" deck — the home card counts exactly those
   // requests, so the deck ends on the last one and goes straight to
-  // the closing summary, with no trailing nudge or breath.
-  if (queueMode !== "new") {
+  // the closing summary, with no trailing nudge or breath. Same shape
+  // for queue=prayers-for-me (notification → see who's praying for you,
+  // not a moment to make a new ask).
+  if (queueMode !== "new" && queueMode !== "prayers-for-me") {
     if (!hasActiveOwnRequest) {
       slides.push({
         kind: "ask-request",
@@ -2501,7 +2658,12 @@ export default function PrayerModePage() {
     momentsQuery.isSuccess &&
     prayerRequestsQuery.isSuccess &&
     myPrayersForQuery.isSuccess &&
-    circleIntentionsQuery.isSuccess;
+    circleIntentionsQuery.isSuccess &&
+    // queue=prayers-for-me needs its own list to be in hand before we
+    // decide the slide deck — otherwise the slideshow renders an empty
+    // deck and immediately drops to the closing slide even though the
+    // user has active prayers waiting.
+    (queueMode !== "prayers-for-me" || prayersForMeQuery.isSuccess);
 
   // Today key in local time — used to scope localStorage progress so
   // a session started yesterday doesn't bleed into today's resume.
@@ -2546,7 +2708,7 @@ export default function PrayerModePage() {
     // sent the user in to handle a specific queue, so resume-progress
     // and alreadyPrayedToday-skip don't apply (all queue slides are
     // un-prayed by construction; no localStorage to honor).
-    if (!seamlessFlow && !resetFlow && queueMode !== "new" && queueMode !== "parish-weekly" && queueMode !== "feed-digest") {
+    if (!seamlessFlow && !resetFlow && queueMode !== "new" && queueMode !== "parish-weekly" && queueMode !== "feed-digest" && queueMode !== "prayers-for-me") {
       try {
         const raw = localStorage.getItem(progressStorageKey);
         if (raw) {
@@ -3129,9 +3291,17 @@ export default function PrayerModePage() {
         ×
       </button>
 
-      {/* Content — anchored toward the top third of the viewport so short
+      {/* Content — anchored toward the top of the viewport so short
           slides (prayer requests, intercessions with no BCP block) don't
-          float down near the bottom of tall phone screens. */}
+          float down near the bottom of tall phone screens.
+          paddingTop is intentionally modest: the older 16dvh value
+          pushed the slide so far down that tall-content slides (long
+          intercession bodies + an action card) overflowed and the
+          Amen button collided with the absolute-positioned "Not
+          today" link below. paddingBottom is now large enough to
+          guarantee the in-flow Amen sits clearly ABOVE that link's
+          fixed position (env(safe) + 130px from the container's
+          bottom). */}
       <div
         className="flex flex-col items-center text-center px-6 w-full"
         style={{
@@ -3139,8 +3309,8 @@ export default function PrayerModePage() {
           margin: "0 auto",
           minHeight: "100dvh",
           justifyContent: "flex-start",
-          paddingTop: "clamp(64px, 16dvh, 180px)",
-          paddingBottom: 40,
+          paddingTop: "clamp(36px, 8dvh, 88px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 200px)",
         }}
       >
         {phase === "prayer" && slide && (
