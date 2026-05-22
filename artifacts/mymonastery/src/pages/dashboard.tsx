@@ -2653,7 +2653,7 @@ function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
             fontSize: 16,
           }}
         >
-          {feed.coverEmoji ?? "🌿"} {feed.title}
+          {feed.title} {feed.coverEmoji ?? "🌿"}
         </p>
 
         {prayedToday ? (
