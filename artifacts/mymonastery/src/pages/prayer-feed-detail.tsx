@@ -440,64 +440,115 @@ export default function PrayerFeedDetailPage() {
                   </span>
                 </div>
 
-                {/* Prayer body — large italic serif, same scale as
-                    prayer-mode's intercession slide. The intention/name
-                    is folded in as a small italic line below when it
-                    differs from the body. */}
-                {cur.intercessionFullText ? (
-                  <p
-                    className="text-[22px] leading-[1.5] font-medium italic"
-                    style={{
-                      color: "#E8E4D8",
-                      fontFamily: "Georgia, 'Times New Roman', serif",
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {cur.intercessionFullText}
-                  </p>
-                ) : (
-                  <p
-                    className="text-[22px] leading-[1.5] font-medium italic"
-                    style={{
-                      color: "#E8E4D8",
-                      fontFamily: "Georgia, 'Times New Roman', serif",
-                    }}
-                  >
-                    {cur.intention || cur.name}
-                  </p>
-                )}
-                {cur.intercessionFullText && (cur.intention || cur.name) && (
-                  <p
-                    className="text-sm italic"
-                    style={{ color: "#8FAF96", marginTop: "-4px" }}
-                  >
-                    {cur.intention || cur.name}
-                  </p>
-                )}
+                {/* Mirrors prayer-mode.tsx's intercession slide exactly:
+                    big italic serif TITLE = the intercession topic /
+                    name ("For the Safety of Whales"); the prayer body
+                    drops into a soft sage card below; the intention
+                    line is shown as a small italic subtitle only when
+                    it doesn't duplicate the title. Previously we put
+                    the body in the big-title slot and the topic became
+                    a small italic line — the opposite of the canonical
+                    slide. */}
+                {(() => {
+                  const title = cur.intercessionTopic || cur.name;
+                  const norm = (s: string | null | undefined) => (s ?? "").trim().toLowerCase();
+                  const intentionSub =
+                    cur.intention && norm(cur.intention) !== norm(title) ? cur.intention : null;
+                  return (
+                    <>
+                      <p
+                        className="text-[22px] leading-[1.5] font-medium italic"
+                        style={{
+                          color: "#E8E4D8",
+                          fontFamily: "Georgia, 'Times New Roman', serif",
+                        }}
+                      >
+                        {title}
+                      </p>
+                      {intentionSub && (
+                        <p
+                          className="text-sm italic"
+                          style={{ color: "#8FAF96", marginTop: "-4px" }}
+                        >
+                          {intentionSub}
+                        </p>
+                      )}
 
-                {/* Social signal — how many people in the wider feed
-                    community have prayed THIS intercession in the last
-                    7 days. Same copy as prayer-mode's "X people have
-                    prayed this this week" line. Hidden when nobody has
-                    prayed yet to avoid a deflating "0 people …" read. */}
-                {typeof cur.weekPrayCount === "number" && cur.weekPrayCount > 0 && (
-                  <p
-                    className="text-[12px] italic"
-                    style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
-                  >
-                    {cur.weekPrayCount === 1
-                      ? "1 person has prayed this this week."
-                      : `${cur.weekPrayCount} people have prayed this this week.`}
-                  </p>
-                )}
+                      {/* Social signal — how many people have prayed
+                          THIS intercession in the last 7 days. Same
+                          copy + position as the canonical slide:
+                          between the title block and the body card.
+                          Hidden when nobody has prayed yet to avoid
+                          a deflating "0 people…" read. */}
+                      {typeof cur.weekPrayCount === "number" && cur.weekPrayCount > 0 && (
+                        <p
+                          className="text-[12px] italic"
+                          style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
+                        >
+                          {cur.weekPrayCount === 1
+                            ? "1 person has prayed this this week."
+                            : `${cur.weekPrayCount} people have prayed this this week.`}
+                        </p>
+                      )}
 
-                {cur.learnMoreUrl && (
+                      {/* Prayer body card — soft sage background,
+                          italic serif body, full prayer text. Same
+                          card the canonical slide uses for custom-
+                          intercession fullText. */}
+                      {cur.intercessionFullText && (
+                        <div
+                          className="w-full rounded-2xl px-6 py-5 text-left mt-1"
+                          style={{
+                            background: "rgba(46,107,64,0.12)",
+                            border: "1px solid rgba(46,107,64,0.15)",
+                          }}
+                        >
+                          <p
+                            className="italic whitespace-pre-wrap"
+                            style={{
+                              color: "#C8D4C0",
+                              fontFamily: "Georgia, 'Times New Roman', serif",
+                              fontSize: 16,
+                              lineHeight: 1.7,
+                            }}
+                          >
+                            {cur.intercessionFullText}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+
+                {/* Optional outbound link. Two shapes, matching the
+                    canonical slide:
+                      • Action intercession → caption + Take action
+                        pill on the slide background, no card wrapper.
+                      • Learn-more intercession → naked pill below
+                        the body card. */}
+                {cur.learnMoreUrl && cur.intercessionSource === "action" ? (
+                  <div
+                    className="w-full mt-2 flex flex-col items-center text-center"
+                    style={{ gap: 12 }}
+                  >
+                    <p
+                      className="text-sm leading-relaxed"
+                      style={{
+                        color: "#C8D4C0",
+                        fontFamily: "'Space Grotesk', sans-serif",
+                      }}
+                    >
+                      You can take action by emailing the applicable representatives.
+                    </p>
+                    <ExternalLinkPill url={cur.learnMoreUrl} label="Take action →" size="medium" />
+                  </div>
+                ) : cur.learnMoreUrl ? (
                   <ExternalLinkPill
                     url={cur.learnMoreUrl}
-                    label={cur.intercessionSource === "action" ? "Take action →" : "Learn more →"}
+                    label="Learn more →"
                     size="medium"
                   />
-                )}
+                ) : null}
 
                 {/* Walk controls — Continue advances the deck; the last
                     slide finishes and closes. Back steps one slide. */}
