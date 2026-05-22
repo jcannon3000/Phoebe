@@ -4990,12 +4990,29 @@ export default function Dashboard() {
                   subscribed prayer feed. Beta-gated for now: this
                   surface stacks under PrayerOfficeCard and we want to
                   vet it with the smaller audience before opening it
-                  to everyone. */}
+                  to everyone. Section eyebrow matches the small-caps
+                  feast subtitle style at the top of the dashboard so
+                  the feed group reads as a named section, not a
+                  loose stack. */}
               {isBeta && subscribedFeeds.length > 0 && (
-                <div className="mt-3 flex flex-col gap-3">
-                  {subscribedFeeds.map((row) => (
-                    <FeedPrayerCard key={row.feed.id} feed={row} />
-                  ))}
+                <div className="mt-5">
+                  <p
+                    className="mb-2"
+                    style={{
+                      color: "rgba(143,175,150,0.5)",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      fontSize: 11,
+                      letterSpacing: "0.1em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Prayer for Justice Feeds
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    {subscribedFeeds.map((row) => (
+                      <FeedPrayerCard key={row.feed.id} feed={row} />
+                    ))}
+                  </div>
                 </div>
               )}
             </>
