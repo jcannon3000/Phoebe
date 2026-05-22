@@ -85,9 +85,25 @@ export default function OfficesPage() {
         >
           Daily Prayer
         </h1>
-        <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
+        <p className="text-sm mb-3" style={{ color: "#8FAF96" }}>
           The 1979 Book of Common Prayer, full and short forms.
         </p>
+
+        {/* Entry into a brief teaching slideshow on the Daily Office —
+            stabilitas, prayer-as-consent, what the Office is for. Sits
+            right under the page description so it reads as the natural
+            "wait, what is this?" follow-up for someone new. */}
+        <Link
+          href="/offices/how-to-pray"
+          className="inline-flex items-center self-start px-3 py-1.5 mb-6 rounded-full text-[12px] font-medium transition-opacity hover:opacity-85"
+          style={{
+            background: "rgba(46,107,64,0.18)",
+            border: "1px solid rgba(46,107,64,0.35)",
+            color: "#C8D4C0",
+          }}
+        >
+          📖 How to pray these →
+        </Link>
 
         <SectionLabel>In the morning</SectionLabel>
         <div className="space-y-4 mb-8">

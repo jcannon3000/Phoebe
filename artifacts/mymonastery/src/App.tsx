@@ -116,6 +116,7 @@ import TermsPage from "./pages/terms";
 import InvitationsPage from "./pages/invitations";
 import BcpPage from "./pages/bcp";
 import OfficesPage from "./pages/offices";
+import HowToPrayOfficesPage from "./pages/how-to-pray-offices";
 import ExamenPage from "./pages/examen";
 import BcpIntercessionsPage from "./pages/bcp-intercessions";
 import BcpDailyOfficePage from "./pages/bcp-daily-office";
@@ -420,6 +421,7 @@ function Router() {
       <Route path="/terms" component={TermsPage} />
       <Route path="/invitations" component={InvitationsPage} />
       <Route path="/offices" component={OfficesPage} />
+      <Route path="/offices/how-to-pray" component={HowToPrayOfficesPage} />
       <Route path="/examen" component={ExamenPage} />
       <Route path="/bcp" component={BcpPage} />
       <Route path="/bcp/intercessions" component={BcpIntercessionsPage} />
