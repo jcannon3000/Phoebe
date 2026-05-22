@@ -507,7 +507,8 @@ function SignupStep({
 }) {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [website, setWebsite] = useState(""); // honeypot
@@ -520,7 +521,8 @@ function SignupStep({
     setError("");
     setExistingAccount(false);
     if (website.trim().length > 0) { setError("Something went wrong. Please try again."); return; }
-    if (!name.trim()) { setError("Your name is required."); return; }
+    if (!firstName.trim()) { setError("Enter your first name."); return; }
+    if (!lastName.trim()) { setError("Enter your last name."); return; }
     if (!email.trim() || !email.includes("@")) { setError("Enter a valid email address."); return; }
     if (password.length < 6) { setError("Choose a password of at least 6 characters."); return; }
     setSubmitting(true);
@@ -529,7 +531,12 @@ function SignupStep({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: name.trim(),
+          // Server stores a single `name` column; the form collects
+          // first + last so the field reads more naturally on first
+          // sign-up. Joined here so /auth/register validation and the
+          // rest of the app (which assumes "First Last") keeps working
+          // unchanged.
+          name: `${firstName.trim()} ${lastName.trim()}`.trim(),
           email: email.trim(),
           password,
           officesOnly: true,
@@ -620,12 +627,20 @@ function SignupStep({
         </div>
 
         <form onSubmit={submit} className="flex flex-col gap-3">
-          <input
-            type="text" placeholder="Your name" value={name}
-            onChange={(e) => { setName(e.target.value); setError(""); }}
-            className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
-            style={inputStyle} autoComplete="name" disabled={submitting}
-          />
+          <div className="flex gap-2.5">
+            <input
+              type="text" placeholder="First name" value={firstName}
+              onChange={(e) => { setFirstName(e.target.value); setError(""); }}
+              className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
+              style={inputStyle} autoComplete="given-name" disabled={submitting}
+            />
+            <input
+              type="text" placeholder="Last name" value={lastName}
+              onChange={(e) => { setLastName(e.target.value); setError(""); }}
+              className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
+              style={inputStyle} autoComplete="family-name" disabled={submitting}
+            />
+          </div>
           <input
             type="email" placeholder="Email address" value={email}
             onChange={(e) => { setEmail(e.target.value); setError(""); }}
