@@ -527,10 +527,53 @@ router.get("/prayer-feeds/subscribed", requireAuth, async (req, res): Promise<vo
     .innerJoin(prayerFeedsTable, eq(prayerFeedsTable.id, prayerFeedSubscriptionsTable.feedId))
     .where(eq(prayerFeedSubscriptionsTable.userId, user.id));
 
+  const viewerEmail = await viewerEmailFor(user.id);
   const byFeed = await loadFeedIntercessions(
     subs.map((s) => s.feed.id),
-    await viewerEmailFor(user.id),
+    viewerEmail,
   );
+
+  // For each feed, look up the people who've prayed ANY of its
+  // intercessions in the last 7 days — drives the avatar stack on the
+  // dashboard's per-feed card. We join check-ins → moment_user_tokens
+  // for the email, then → users for name + avatar. Filtered to the
+  // viewer's subscribed feeds so we never expose other communities'
+  // rosters.
+  type WeekPrayer = { id: number; name: string; avatarUrl: string | null };
+  const weekPrayersByFeed = new Map<number, WeekPrayer[]>();
+  const feedIdsForRoster = subs.map((s) => s.feed.id);
+  if (feedIdsForRoster.length > 0) {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const rows = await db
+      .select({
+        feedId: sharedMomentsTable.prayerFeedId,
+        userId: usersTable.id,
+        name: usersTable.name,
+        avatarUrl: usersTable.avatarUrl,
+        email: usersTable.email,
+      })
+      .from(momentPostsTable)
+      .innerJoin(sharedMomentsTable, eq(sharedMomentsTable.id, momentPostsTable.momentId))
+      .innerJoin(momentUserTokensTable, eq(momentUserTokensTable.userToken, momentPostsTable.userToken))
+      .innerJoin(usersTable, sql`LOWER(${usersTable.email}) = LOWER(${momentUserTokensTable.email})`)
+      .where(and(
+        inArray(sharedMomentsTable.prayerFeedId, feedIdsForRoster),
+        eq(momentPostsTable.isCheckin, 1),
+        gte(momentPostsTable.createdAt, since),
+      ));
+    const viewerLc = (viewerEmail ?? "").toLowerCase();
+    for (const r of rows) {
+      if (r.feedId == null) continue;
+      // Drop the viewer themselves — the avatar stack is "OTHER people
+      // praying with you," same convention PrayerOfficeCard uses.
+      if (r.email.toLowerCase() === viewerLc) continue;
+      const list = weekPrayersByFeed.get(r.feedId) ?? [];
+      if (!list.find((p) => p.id === r.userId)) {
+        list.push({ id: r.userId, name: r.name, avatarUrl: r.avatarUrl });
+        weekPrayersByFeed.set(r.feedId, list);
+      }
+    }
+  }
 
   // Feeds are a flat ongoing list now — there is no per-day entry, so
   // the dashboard card previews the feed's newest intercession.
@@ -549,6 +592,7 @@ router.get("/prayer-feeds/subscribed", requireAuth, async (req, res): Promise<vo
           }
         : null,
       prayedToday: newest?.prayedToday ?? false,
+      weekPrayers: weekPrayersByFeed.get(feed.id) ?? [],
     };
   });
   res.json({ subscriptions: out });
@@ -1118,7 +1162,33 @@ router.get("/prayer-feeds/:slug/intercessions", async (req, res): Promise<void> 
     .from(sharedMomentsTable)
     .where(and(...conditions))
     .orderBy(desc(sharedMomentsTable.createdAt));
-  res.json({ intercessions: rows });
+
+  // Compute weekPrayCount per intercession in a single grouped query
+  // so the slideshow can show "N people have prayed this this week."
+  // Count distinct userToken values from moment_posts in the rolling
+  // 7-day window — matches the same heuristic prayer-mode uses
+  // (line ~2155 in prayer-mode.tsx, `prayedThisWeek`).
+  let countById = new Map<number, number>();
+  if (rows.length > 0) {
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const grouped = await db
+      .select({
+        momentId: momentPostsTable.momentId,
+        n: sql<number>`count(distinct ${momentPostsTable.userToken})::int`,
+      })
+      .from(momentPostsTable)
+      .where(and(
+        inArray(momentPostsTable.momentId, rows.map((r) => r.id)),
+        gte(momentPostsTable.createdAt, since),
+      ))
+      .groupBy(momentPostsTable.momentId);
+    countById = new Map(grouped.map((g) => [g.momentId, Number(g.n) || 0]));
+  }
+  const intercessions = rows.map((r) => ({
+    ...r,
+    weekPrayCount: countById.get(r.id) ?? 0,
+  }));
+  res.json({ intercessions });
 });
 
 const feedIntercessionSchema = z.object({

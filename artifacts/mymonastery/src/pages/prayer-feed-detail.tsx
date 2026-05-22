@@ -51,6 +51,11 @@ interface FeedIntercession {
   learnMoreUrl: string | null;
   state: string;
   createdAt: string;
+  // Distinct users who've posted/prayed against this intercession in
+  // the rolling 7-day window. Surfaced as "N people have prayed this
+  // this week" under the slide body. Optional — server is older or
+  // table is empty when 0.
+  weekPrayCount?: number;
 }
 
 export default function PrayerFeedDetailPage() {
@@ -416,6 +421,22 @@ export default function PrayerFeedDetailPage() {
                     style={{ color: "#8FAF96", marginTop: "-4px" }}
                   >
                     {cur.intention || cur.name}
+                  </p>
+                )}
+
+                {/* Social signal — how many people in the wider feed
+                    community have prayed THIS intercession in the last
+                    7 days. Same copy as prayer-mode's "X people have
+                    prayed this this week" line. Hidden when nobody has
+                    prayed yet to avoid a deflating "0 people …" read. */}
+                {typeof cur.weekPrayCount === "number" && cur.weekPrayCount > 0 && (
+                  <p
+                    className="text-[12px] italic"
+                    style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
+                  >
+                    {cur.weekPrayCount === 1
+                      ? "1 person has prayed this this week."
+                      : `${cur.weekPrayCount} people have prayed this this week.`}
                   </p>
                 )}
 

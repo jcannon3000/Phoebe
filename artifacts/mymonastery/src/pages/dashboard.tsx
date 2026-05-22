@@ -390,6 +390,10 @@ type SubscribedFeed = {
     prayCount: number;
   } | null;
   prayedToday: boolean;
+  // OTHER subscribers (not the viewer) who've prayed any of this feed's
+  // intercessions in the last 7 days. Server-truth — backs the avatar
+  // stack on FeedPrayerCard. Optional for older API builds.
+  weekPrayers?: Array<{ id: number; name: string; avatarUrl: string | null }>;
 };
 
 // ─── Reusable card sub-components ────────────────────────────────────────────
@@ -2600,6 +2604,155 @@ function PrayerOfficeCard() {
               </div>
             </Link>
           )}
+      </div>
+    </div>
+  );
+}
+
+// ── FeedPrayerCard — per-subscribed-feed home anchor (beta only) ──
+//
+// One card per feed the viewer subscribes to, rendered under
+// PrayerOfficeCard. Mirrors that card's visual rhythm:
+//   • Eyebrow: "Prayer feed"
+//   • Title:   the feed's title (with coverEmoji)
+//   • Body:    "N people have prayed this week" + a stacked avatar row
+//              of OTHER subscribers who've prayed in the rolling 7-day
+//              window (server filters out the viewer themselves).
+//   • CTA:     "Begin praying →" when the viewer hasn't prayed yet
+//              today, or a split "Prayer completed ✓ | Pray again →"
+//              once they have. Same conventions as PrayerOfficeCard's
+//              CTA so the two cards feel paired.
+//
+// `prayedToday` is server-truth, computed by /api/prayer-feeds/subscribed
+// from moment_posts check-ins against any of the feed's intercessions.
+// Tap routes to /prayer-feeds/{slug} where "Pray the full list" lives.
+function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
+  const { feed, prayedToday, weekPrayers } = row;
+  const otherPrayers = (weekPrayers ?? []).filter((p) => !!p.avatarUrl);
+  const countCopy = otherPrayers.length === 0
+    ? null
+    : otherPrayers.length === 1
+      ? "1 person has prayed this week"
+      : `${otherPrayers.length} people have prayed this week`;
+  const eyebrow = "Prayer feed";
+  return (
+    <div
+      className="relative flex rounded-xl overflow-hidden"
+      style={{
+        background: "rgba(46,107,64,0.08)",
+        border: "1px solid rgba(46,107,64,0.4)",
+      }}
+    >
+      <div className="flex-1 px-4 pt-[20px] pb-[20px]">
+        <div className="flex items-start justify-between gap-2">
+          <p
+            className="text-[11px] font-semibold uppercase tracking-widest"
+            style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
+          >
+            {eyebrow}
+          </p>
+        </div>
+        <div className="mt-[4px] flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p
+              className="text-2xl font-semibold"
+              style={{
+                color: "#F0EDE6",
+                fontFamily: "'Space Grotesk', sans-serif",
+                margin: 0,
+                lineHeight: 1.2,
+              }}
+            >
+              {feed.coverEmoji ?? "🌿"} {feed.title}
+            </p>
+            {countCopy && (
+              <p
+                className="text-[11px]"
+                style={{
+                  color: "rgba(143,175,150,0.7)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  margin: 0,
+                  marginTop: 10,
+                }}
+              >
+                {countCopy}
+              </p>
+            )}
+          </div>
+          {otherPrayers.length > 0 && (
+            <div className="flex items-center -space-x-2 shrink-0">
+              {otherPrayers.slice(0, 5).map((p) => (
+                <img
+                  key={p.id}
+                  src={p.avatarUrl as string}
+                  alt={p.name}
+                  title={p.name}
+                  className="w-6 h-6 rounded-full object-cover"
+                  style={{ border: "1.5px solid rgba(12,31,18,0.9)" }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+        {prayedToday ? (
+          // Same two-pill split PrayerOfficeCard uses once prayed:
+          // settled "completed" status on the left, "Pray again" on
+          // the right.
+          <div className="mt-[12px] flex items-stretch gap-2">
+            <div
+              aria-label={`${feed.title} prayed today`}
+              className="flex-1 rounded-xl text-center"
+              style={{
+                background: "rgba(46,107,64,0.10)",
+                color: "rgba(168,197,160,0.9)",
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: 13,
+                fontWeight: 500,
+                padding: "7px 12px",
+                border: "1px solid rgba(46,107,64,0.22)",
+              }}
+            >
+              Prayer completed <span aria-hidden>✓</span>
+            </div>
+            <Link href={`/prayer-feeds/${feed.slug}`} className="flex-1">
+              <div
+                role="button"
+                tabIndex={0}
+                className="rounded-xl text-center cursor-pointer"
+                style={{
+                  background: "rgba(46,107,64,0.22)",
+                  color: "#F0EDE6",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  padding: "7px 12px",
+                  border: "1px solid rgba(46,107,64,0.45)",
+                }}
+              >
+                Pray again <span aria-hidden>→</span>
+              </div>
+            </Link>
+          </div>
+        ) : (
+          <Link href={`/prayer-feeds/${feed.slug}`}>
+            <div
+              role="button"
+              tabIndex={0}
+              className="mt-[12px] w-full rounded-xl text-center cursor-pointer"
+              style={{
+                background: "rgba(46,107,64,0.22)",
+                color: "#F0EDE6",
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: 14,
+                fontWeight: 500,
+                padding: "7px 12px",
+                border: "1px solid rgba(46,107,64,0.45)",
+              }}
+            >
+              Begin praying <span aria-hidden>→</span>
+            </div>
+          </Link>
+        )}
       </div>
     </div>
   );
@@ -4866,6 +5019,19 @@ export default function Dashboard() {
               <div className="mt-3">
                 <PrayerOfficeCard />
               </div>
+
+              {/* Per-feed "begin praying" anchors — one card per
+                  subscribed prayer feed. Beta-gated for now: this
+                  surface stacks under PrayerOfficeCard and we want to
+                  vet it with the smaller audience before opening it
+                  to everyone. */}
+              {isBeta && subscribedFeeds.length > 0 && (
+                <div className="mt-3 flex flex-col gap-3">
+                  {subscribedFeeds.map((row) => (
+                    <FeedPrayerCard key={row.feed.id} feed={row} />
+                  ))}
+                </div>
+              )}
             </>
           )}
 
