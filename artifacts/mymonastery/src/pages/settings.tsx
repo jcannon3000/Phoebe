@@ -5,6 +5,7 @@ import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { LogOut, Camera, Pencil, Trash2, Download } from "lucide-react";
 
 
@@ -315,6 +316,141 @@ type MutedUser = { userId: number; name: string; email: string };
 // Each row is ~52px tall; show 3.5 rows = ~182px
 const PREVIEW_HEIGHT = 182;
 
+// ─── Offices-only extras ─────────────────────────────────────────────
+// Tier-specific settings card that only appears for users whose
+// account is `offices-only`. Surfaces:
+//   1. "Daily feed reminder" — a once-a-day reminder push toggle.
+//      Stored client-side (localStorage) for now; the server-side
+//      push delivery job that consumes it is a follow-up. Surfacing
+//      the toggle now means the preference is captured the moment a
+//      user is interested.
+//   2. "Hide offices on home" — collapses the PrayerOfficeCard on
+//      the offices-only home (parish-dashboard) so the screen leads
+//      with the user's feed instead. Pure-client preference; no
+//      server round trip needed.
+// Both toggles read/write localStorage on render so they always
+// reflect the current persisted state.
+const FEED_REMINDER_LS_KEY = "phoebe:offices-only:feed-reminder-enabled";
+const HIDE_OFFICES_LS_KEY = "phoebe:offices-only:hide-offices";
+
+function readLsBool(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeLsBool(key: string, value: boolean) {
+  try {
+    localStorage.setItem(key, value ? "1" : "0");
+  } catch {
+    /* private mode / quota — non-fatal */
+  }
+}
+
+function OfficesOnlyExtras() {
+  // Fetch the viewer's first subscribed feed so the reminder
+  // toggle's label can mention that feed by name ("Daily reminder
+  // for 🌿 Phoebe Climate") instead of a generic "your feed".
+  // Falls back to "your prayer feed" if the user isn't subscribed
+  // to anything yet — the toggle still works, the label is just
+  // less specific.
+  type SubscribedFeed = { feed: { slug: string; title: string; coverEmoji: string | null } };
+  const { data } = useQuery<{ subscriptions: SubscribedFeed[] }>({
+    queryKey: ["/api/prayer-feeds/subscribed"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed"),
+    staleTime: 60_000,
+  });
+  const firstFeed = data?.subscriptions?.[0]?.feed ?? null;
+  const feedLabel = firstFeed
+    ? `${firstFeed.coverEmoji ?? "🌿"} ${firstFeed.title}`
+    : "your prayer feed";
+
+  const [feedReminder, setFeedReminder] = useState<boolean>(() =>
+    readLsBool(FEED_REMINDER_LS_KEY),
+  );
+  const [hideOffices, setHideOffices] = useState<boolean>(() =>
+    readLsBool(HIDE_OFFICES_LS_KEY),
+  );
+
+  const toggleFeedReminder = () => {
+    const next = !feedReminder;
+    setFeedReminder(next);
+    writeLsBool(FEED_REMINDER_LS_KEY, next);
+  };
+  const toggleHideOffices = () => {
+    const next = !hideOffices;
+    setHideOffices(next);
+    writeLsBool(HIDE_OFFICES_LS_KEY, next);
+    // Other tabs / pages reading the same key won't update without a
+    // signal; the offices-only home re-reads the flag every render so
+    // a Settings → back trip is enough on the same tab. For a multi-
+    // tab scenario, a 'storage' event would fire automatically.
+  };
+
+  return (
+    <>
+      <SectionHeader label="Phoebe home" />
+
+      <SettingsCard>
+        <button
+          onClick={toggleFeedReminder}
+          className="w-full flex items-center justify-between"
+        >
+          <div className="text-left">
+            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
+              Daily reminder for {feedLabel}
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+              A gentle once-a-day nudge to pray your feed.
+            </p>
+          </div>
+          <div
+            className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${feedReminder ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
+          >
+            <div
+              className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${feedReminder ? "left-[21px]" : "left-[3px]"}`}
+              style={{ background: "#F0EDE6" }}
+            />
+          </div>
+        </button>
+      </SettingsCard>
+
+      <SettingsCard>
+        <button
+          onClick={toggleHideOffices}
+          className="w-full flex items-center justify-between"
+        >
+          <div className="text-left">
+            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
+              Hide the Daily Office on home
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
+              Collapses the Morning / Evening Prayer card so the home
+              leads with your feed.
+            </p>
+          </div>
+          <div
+            className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${hideOffices ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
+          >
+            <div
+              className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${hideOffices ? "left-[21px]" : "left-[3px]"}`}
+              style={{ background: "#F0EDE6" }}
+            />
+          </div>
+        </button>
+      </SettingsCard>
+
+      <div className="mb-8" />
+    </>
+  );
+}
+
+// Exported for parish-dashboard to read the same key without
+// hard-coding the string in two places.
+export const PHOEBE_HIDE_OFFICES_LS_KEY = HIDE_OFFICES_LS_KEY;
+
 function MutedPeople() {
   const { data, isLoading } = useQuery<{ muted: MutedUser[] }>({
     queryKey: ["/api/mutes"],
@@ -546,9 +682,7 @@ function PhoneSection() {
   }, [iosStage, user?.email]);
 
   function pickFromIosContacts() {
-    const isNative = !!(window as { PhoebeNative?: { isNative?: () => boolean } })
-      .PhoebeNative?.isNative?.();
-    if (!isNative) {
+    if (!isNativeShell()) {
       setIosStage("no-native");
       return;
     }
@@ -971,6 +1105,18 @@ export default function SettingsPage() {
 
         {/* ── Office reminders ── */}
         <OfficeReminderSettings />
+
+        {/* ── Offices-only extras ──
+            Two tier-specific toggles that only render for the
+            offices-only access tier:
+              • Daily feed reminder — opt-in once-a-day push
+                pointing at the user's subscribed prayer feed.
+              • Hide offices on home — collapses the Daily Office
+                card on the offices-only home so the screen reads
+                as "just my feed" for users who don't pray the
+                office. Both preferences are read by the offices-
+                only home (parish-dashboard) on next paint. */}
+        {user.accessTier === "offices-only" && <OfficesOnlyExtras />}
 
         {/* ── Weekly prayer-feed digest ── (beta-only for now) */}
         <WeeklyDigestSettings />

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { isNativeShell } from "@/lib/isNativeShell";
 
 /**
  * Daily-bell push permission for Android web users.
@@ -41,9 +42,7 @@ export function WebPushPermissionPrompt() {
     if (typeof window === "undefined") return;
 
     // Skip native Capacitor shell — that path uses APNs.
-    const isNative = !!(window as { PhoebeNative?: { isNative?: () => boolean } })
-      .PhoebeNative?.isNative?.();
-    if (isNative) return;
+    if (isNativeShell()) return;
 
     // Android-only. iOS Safari can technically do Web Push but ONLY
     // for installed PWAs (Add to Home Screen) — most users won't do

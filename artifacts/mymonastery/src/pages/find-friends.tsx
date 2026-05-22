@@ -25,6 +25,7 @@ import { Link, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { isNativeShell } from "@/lib/isNativeShell";
 
 type DeviceContact = {
   id: string;
@@ -62,11 +63,6 @@ async function sha256Hex(text: string): Promise<string> {
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
-}
-
-function isNative(): boolean {
-  return !!(window as { PhoebeNative?: { isNative?: () => boolean } })
-    .PhoebeNative?.isNative?.();
 }
 
 export default function FindFriendsPage() {
@@ -151,7 +147,7 @@ export default function FindFriendsPage() {
   }, [matchMutation]);
 
   function start() {
-    if (!isNative()) {
+    if (!isNativeShell()) {
       setStage("no-native");
       return;
     }

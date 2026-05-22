@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { isNativeShell } from "@/lib/isNativeShell";
 
 /**
  * One-time push-permission nudge for the native iOS shell.
@@ -29,9 +30,7 @@ export function PushPermissionPrompt() {
     if (!user) return;
 
     // Only native shell — web browsers don't need this.
-    const isNative = !!(window as { PhoebeNative?: { isNative?: () => boolean } })
-      .PhoebeNative?.isNative?.();
-    if (!isNative) return;
+    if (!isNativeShell()) return;
 
     // One-shot per device — key is device-scoped, not user-scoped, so
     // signing out and back in as the same user doesn't re-prompt.

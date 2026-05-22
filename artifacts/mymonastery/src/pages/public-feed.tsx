@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { triggerAmenFeedback, playOpeningSwell } from "@/lib/amenFeedback";
 
 // ── Public, no-login prayer-feed landing ─────────────────────────────────────
@@ -696,7 +697,7 @@ function SignupStep({
             both jarring and self-defeating. Detected via the same
             PhoebeNative.isNative() probe IOSAppDownloadPrompt /
             WebPushPermissionPrompt / DesktopAppPrompt use. */}
-        {!(typeof window !== "undefined" && (window as { PhoebeNative?: { isNative?: () => boolean } }).PhoebeNative?.isNative?.()) && (
+        {!isNativeShell() && (
         <a
           href="https://apps.apple.com/us/app/phoebe-prayer-together/id6763552921"
           target="_blank"

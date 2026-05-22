@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { isNativeShell } from "@/lib/isNativeShell";
 
 // Top-of-screen banner that runs once for desktop visitors after they
 // reach the home screen. Phoebe is built for the phone — push
@@ -24,9 +25,7 @@ function isDesktopWeb(): boolean {
   if (typeof window === "undefined" || typeof navigator === "undefined") return false;
 
   // Inside our Capacitor shell → user already has the app.
-  const isOurNativeShell = !!(window as { PhoebeNative?: { isNative?: () => boolean } })
-    .PhoebeNative?.isNative?.();
-  if (isOurNativeShell) return false;
+  if (isNativeShell()) return false;
 
   const ua = navigator.userAgent;
   // iPad-on-desktop-mode (Macintosh UA + multi-touch) reads as iOS — the

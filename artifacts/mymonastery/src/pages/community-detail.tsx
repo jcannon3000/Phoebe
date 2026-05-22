@@ -9,6 +9,7 @@ import { Layout } from "@/components/layout";
 import { ScrollStrip } from "@/components/ScrollStrip";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart, Search as SearchIcon, MessageSquareText, HandHeart } from "lucide-react";
 import { useCommunityAdminToggle, useBetaStatus } from "@/hooks/useDemo";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
@@ -1749,9 +1750,7 @@ export default function CommunityDetailPage() {
           // `capacitor://localhost` — useless when shared via SMS. Force
           // the public host so the link clicks into a real browser (or
           // back into the app via Universal Links → applinks:withphoebe.app).
-          const isNativeShell = !!(window as { PhoebeNative?: { isNative?: () => boolean } })
-            .PhoebeNative?.isNative?.();
-          const linkOrigin = isNativeShell ? "https://withphoebe.app" : window.location.origin;
+          const linkOrigin = isNativeShell() ? "https://withphoebe.app" : window.location.origin;
           const inviteUrl = group.inviteToken
             ? `${linkOrigin}/communities/join/${group.slug}/${group.inviteToken}`
             : "";
@@ -1816,9 +1815,7 @@ export default function CommunityDetailPage() {
                       // Share plugin opens the iOS share sheet.
                       window.dispatchEvent(new CustomEvent("phoebe:share", { detail: shareDetail }));
                       // Web fallback — try navigator.share, then sms:.
-                      const isNative = !!(window as { PhoebeNative?: { isNative?: () => boolean } })
-                        .PhoebeNative?.isNative?.();
-                      if (isNative) return;
+                      if (isNativeShell()) return;
                       const nav = navigator as Navigator & { share?: (data: ShareData) => Promise<void> };
                       if (typeof nav.share === "function") {
                         void nav.share(shareDetail).catch(() => {

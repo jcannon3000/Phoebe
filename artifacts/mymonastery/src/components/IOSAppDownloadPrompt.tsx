@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { isNativeShell } from "@/lib/isNativeShell";
 
 // Bottom-of-screen prompt nudging mobile-Safari visitors to download
 // the native Phoebe app from the App Store. Apple's Smart App Banner
@@ -43,9 +44,7 @@ function isIOSWeb(): boolean {
   // have the app. Chrome on iOS, Firefox on iOS, and in-app browsers
   // (FBAN/FBAV/Instagram) are all fine targets — the goal is "iOS,
   // not in our app".
-  const isOurNativeShell = !!(window as { PhoebeNative?: { isNative?: () => boolean } })
-    .PhoebeNative?.isNative?.();
-  if (isOurNativeShell) return false;
+  if (isNativeShell()) return false;
 
   return true;
 }

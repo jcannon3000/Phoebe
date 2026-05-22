@@ -16,6 +16,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
+import { isNativeShell } from "@/lib/isNativeShell";
 
 type Tab = "timeline" | "moments" | "settings";
 
@@ -227,9 +228,7 @@ export default function RitualDetail() {
   // Inside Capacitor `window.location.origin` is `capacitor://localhost`,
   // so a link copied from the iOS app would be unfollowable. Pin to the
   // public host on native; Universal Links carry the tap back into the app.
-  const isNativeShell = !!(window as { PhoebeNative?: { isNative?: () => boolean } })
-    .PhoebeNative?.isNative?.();
-  const linkOrigin = isNativeShell ? "https://withphoebe.app" : window.location.origin;
+  const linkOrigin = isNativeShell() ? "https://withphoebe.app" : window.location.origin;
   const joinLink = `${linkOrigin}/join/${(ritual as any)?.scheduleToken ?? ""}`;
 
   const handleAddEmailToQueue = () => {
