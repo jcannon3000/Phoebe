@@ -89,7 +89,16 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // Pilot-only for now: shows for beta users with pilot view on.
     ...(isBeta ? [{ emoji: "🕯️", label: "Ignatian Examen", path: "/examen" }] : []),
     { divider: true },
-    { emoji: "📮", label: "Letters",     path: "/letters",    badge: "beta" },
+    // Letters is an admin-driven surface — only community admins (or
+    // hidden admins) ever author rounds. Members in a community where
+    // an admin starts a round get their write-window push notification
+    // and can write from there directly; surfacing the menu entry to
+    // every signed-in user just exposed a feature they can't actually
+    // use until an admin opens a round. Gate on at least one
+    // community-admin role (same check the Admin Tools entry uses).
+    ...((groupsData?.groups ?? []).some(g => g.myRole === "admin" || g.myRole === "hidden_admin") ? [
+      { emoji: "📮", label: "Letters", path: "/letters", badge: "beta" },
+    ] : []),
     // "Manage Prayer Feeds" only renders for users who actually
     // admin a feed — single-feed admins land directly on that
     // feed's manage page; multi-feed admins land on the browse
