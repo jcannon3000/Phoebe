@@ -1605,6 +1605,16 @@ router.post(
       joinedAt: new Date(),
     });
     await reconcileAllPracticesForGroup(group.id);
+    // No need to flip users.officesOnly here — the derived access
+    // tier in parishGate.ts already promotes any user with a joined
+    // group_members row to "full" (hasCommunityMembership wins over
+    // the officesOnly flag). The client just needs to re-fetch
+    // /api/auth/me after a successful join to pick up the new tier;
+    // see community-join.tsx invalidating that cache in joinMutation
+    // onSuccess. We intentionally leave the column alone so that if
+    // the user later leaves the community, they revert to their
+    // original offices-only experience rather than landing on the
+    // parish-onboarding flow as an "unassigned" account.
 
     notifyAdminsOfNewMember(group.id, group.name, {
       name: user.name ?? user.email ?? "A new member",
@@ -1633,6 +1643,12 @@ router.post(
   // Practices attached to this group reflect the group roster — reconcile so
   // this newly-joined user appears as a member everywhere.
   await reconcileAllPracticesForGroup(group.id);
+  // Tier upgrade comment: same as the community-wide path above —
+  // we don't touch users.officesOnly here. The derived accessTier
+  // already returns "full" the moment a joined membership row
+  // exists for the user; the client invalidates /api/auth/me on
+  // join success so the limited UI flips to the full app
+  // immediately.
 
   // Notify community admins. Fire-and-forget so the user's response isn't
   // blocked on email delivery.

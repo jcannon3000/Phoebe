@@ -281,7 +281,15 @@ export default function CommunityJoinPage() {
   const [autoJoinStatus, setAutoJoinStatus] = useState<"idle" | "loading" | "success" | "already" | "error">("idle");
   const joinMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/groups/${slug}/join`, { token }),
-    onSuccess: (data: any) => {
+    onSuccess: async (data: any) => {
+      // Server cleared users.officesOnly when an offices-only signup
+      // accepts a community invite — they're now "full" tier.
+      // Invalidate the auth cache BEFORE we navigate into the
+      // community page, so the next render reads the upgraded
+      // accessTier instead of bouncing through ParishGate (which
+      // would still treat them as offices-only otherwise) and
+      // landing them back on /parish.
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       setAutoJoinStatus(data.alreadyJoined ? "already" : "success");
     },
     onError: () => setAutoJoinStatus("error"),

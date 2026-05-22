@@ -301,6 +301,21 @@ function ParishGate({ children }: { children: ReactNode }) {
         location === "/parish" ||
         location === "/parish/onboarding" ||
         location === "/parish/settings" ||
+        // /settings is the full settings page reached via the drawer
+        // on the offices-only Layout. We allow it here so the
+        // ParishGate doesn't bounce offices-only users back to
+        // /parish the moment they tap "Settings" in the menu. The
+        // page itself degrades gracefully for limited tiers (the
+        // queries it makes resolve to empty / no-op for offices-only).
+        location === "/settings" ||
+        // Community-join links — offices-only / parish-only users
+        // who receive a community invite from a friend or admin
+        // need to land on this page even though /communities itself
+        // is blocked for them. The page auto-joins them and
+        // invalidates /api/auth/me on success; once the joined
+        // group_members row exists, parishGate flips the derived
+        // accessTier to "full" and the gate stops applying.
+        location.startsWith("/communities/join/") ||
         location === "/parish/admin" ||
         location.startsWith("/parish/celebration") ||
         location.startsWith("/bcp") ||
