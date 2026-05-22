@@ -117,12 +117,11 @@ export default function PrayerFeedDetailPage() {
     setSlideshow({ deck, index: Math.max(0, Math.min(index, deck.length - 1)) });
   }
 
-  // ?play=1 — auto-launch "Pray the full list" the first time the
-  // page settles with intercessions loaded. Used by the dashboard's
-  // FeedPrayerCard "Begin praying" CTA so a tap goes straight into
-  // the slideshow rather than dumping the user onto the static
-  // listing page first. Mirrors PrayerOfficeCard, whose CTA navigates
-  // straight into /prayer-chooser without an intermediate detail page.
+  // Legacy ?play=1 — old dashboard CTA used to deep-link here and
+  // auto-launch the inline modal slideshow. The CTA now routes
+  // directly to /prayer-mode?queue=feed&slug={slug}, so on any
+  // stale tab still carrying ?play=1 we just forward to the new
+  // canonical URL instead of re-opening the legacy modal.
   const autoPlayRef = useRef(false);
   const wantsAutoPlay = (() => {
     if (typeof window === "undefined") return false;
@@ -131,18 +130,9 @@ export default function PrayerFeedDetailPage() {
   useEffect(() => {
     if (!wantsAutoPlay) return;
     if (autoPlayRef.current) return;
-    if (intercessions.length === 0) return;
     autoPlayRef.current = true;
-    openSlideshow(intercessions, 0);
-    // Strip the param so a back-out + re-entry doesn't re-trigger
-    // the slideshow against the user's expectation.
-    try {
-      const url = new URL(window.location.href);
-      url.searchParams.delete("play");
-      window.history.replaceState({}, "", url.toString());
-    } catch { /* non-fatal */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wantsAutoPlay, intercessions.length]);
+    setLocation(`/prayer-mode?queue=feed&slug=${slug}`);
+  }, [wantsAutoPlay, slug, setLocation]);
 
   // ── Render ─────────────────────────────────────────────────────────────
   if (authLoading || !user || feedQ.isLoading) {
@@ -258,9 +248,15 @@ export default function PrayerFeedDetailPage() {
                 {intercessions.length} ongoing{" "}
                 {intercessions.length === 1 ? "intercession" : "intercessions"} to carry in prayer.
               </p>
+              {/* "Pray the full list" routes to /prayer-mode's
+                  shared intercession-slideshow with queue=feed so the
+                  user gets the same template as the daily walk —
+                  community-intercession eyebrow, feed pill, big
+                  italic body, week-pray count, Take action / Learn
+                  more pill, Amen + Not today, closing summary. */}
               <button
                 type="button"
-                onClick={() => openSlideshow(intercessions, 0)}
+                onClick={() => setLocation(`/prayer-mode?queue=feed&slug=${slug}`)}
                 className="w-full text-sm font-semibold rounded-full py-2.5 transition-opacity hover:opacity-90"
                 style={{ background: "#2E6B40", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
               >

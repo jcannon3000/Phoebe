@@ -1862,7 +1862,20 @@ export default function PrayerModePage() {
     // prayer the notification pointed at; if multiple people had started
     // prayers in close succession the rest were buried in the list.
     if (v === "prayers-for-me") return "prayers-for-me";
+    // queue=feed + ?slug=… — walks every active intercession of a
+    // single feed using the canonical intercession-slide template.
+    // Opened from the dashboard FeedPrayerCard's "Begin praying" CTA
+    // and from /prayer-feeds/:slug's "Pray the full list" button so
+    // both surfaces share the same slideshow look as the daily walk.
+    if (v === "feed") return "feed";
     return null;
+  })();
+  // Feed slug for queue=feed. Drives which feed's intercessions we
+  // fetch + how we tag each slide's feed pill.
+  const feedSlug = (() => {
+    if (typeof window === "undefined") return null;
+    const v = new URLSearchParams(window.location.search).get("slug");
+    return v && v.length > 0 ? v : null;
   })();
   // Focused row id (any queue, but currently only used by
   // queue=prayers-for-me to lead with the prayer the user just tapped).
@@ -1970,6 +1983,34 @@ export default function PrayerModePage() {
     staleTime: 60_000,
   });
   const feedDigestData = feedDigestQuery.data;
+
+  // queue=feed — fetch the target feed + its intercessions. Both
+  // endpoints are existing (subscriber-side reads), so no server
+  // change needed; we just stitch them together into PrayerSlide[]
+  // below. Each intercession is rendered through the same code path
+  // as the daily-walk's community intercessions, so the slideshow
+  // looks identical to prayer-mode's normal intercession slide.
+  type FeedQSlide = {
+    id: number;
+    intercessionTopic: string | null;
+    intercessionFullText: string | null;
+    intercessionSource: string | null;
+    learnMoreUrl: string | null;
+    momentToken: string | null;
+    weekPrayCount: number | null;
+  };
+  const feedMetaQuery = useQuery<{ feed: { slug: string; title: string; coverEmoji: string | null } }>({
+    queryKey: [`/api/prayer-feeds/${feedSlug}`],
+    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${feedSlug}`),
+    enabled: !!user && queueMode === "feed" && !!feedSlug,
+    staleTime: 60_000,
+  });
+  const feedIntercessionsQuery = useQuery<{ intercessions: FeedQSlide[] }>({
+    queryKey: [`/api/prayer-feeds/${feedSlug}/intercessions`],
+    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${feedSlug}/intercessions`),
+    enabled: !!user && queueMode === "feed" && !!feedSlug,
+    staleTime: 30_000,
+  });
 
   // Prayers OTHERS are offering for the viewer — only fetched when
   // opened via queue=prayers-for-me (from the "{Name} is praying for
@@ -2274,6 +2315,28 @@ export default function PrayerModePage() {
         feedTag: e.feedTitle,
         learnMoreUrl: e.learnMoreUrl?.trim() || null,
       }))
+    : queueMode === "feed"
+    ? (feedIntercessionsQuery.data?.intercessions ?? []).map((e): PrayerSlide => {
+        // queue=feed — every active intercession of one feed.
+        // Built with the exact same intercession-slide shape as the
+        // default walk (text, fullText, feedTag, momentToken,
+        // weekPrayCount) so the slideshow visuals match — the user's
+        // direction was "just use the same template."
+        const title = e.intercessionTopic || "Intercession";
+        return {
+          kind: "intercession",
+          text: title,
+          intention: null,
+          fullText: e.intercessionFullText?.trim() || null,
+          source: e.intercessionSource ?? null,
+          attribution: "",
+          weekPrayCount: e.weekPrayCount ?? 0,
+          momentToken: e.momentToken,
+          myUserToken: null,
+          feedTag: feedMetaQuery.data?.feed.title ?? null,
+          learnMoreUrl: e.learnMoreUrl?.trim() || null,
+        };
+      })
     : queueMode === "parish-weekly"
     ? (parishWeeklyData?.unprayed ?? []).flatMap((e): PrayerSlide[] => {
         if (e.kind === "request") {
@@ -2617,7 +2680,7 @@ export default function PrayerModePage() {
   // the closing summary, with no trailing nudge or breath. Same shape
   // for queue=prayers-for-me (notification → see who's praying for you,
   // not a moment to make a new ask).
-  if (queueMode !== "new" && queueMode !== "prayers-for-me") {
+  if (queueMode !== "new" && queueMode !== "prayers-for-me" && queueMode !== "feed") {
     if (!hasActiveOwnRequest) {
       slides.push({
         kind: "ask-request",
@@ -2663,7 +2726,10 @@ export default function PrayerModePage() {
     // decide the slide deck — otherwise the slideshow renders an empty
     // deck and immediately drops to the closing slide even though the
     // user has active prayers waiting.
-    (queueMode !== "prayers-for-me" || prayersForMeQuery.isSuccess);
+    (queueMode !== "prayers-for-me" || prayersForMeQuery.isSuccess) &&
+    // Same shape for queue=feed — wait for the feed's intercessions
+    // before we decide the deck.
+    (queueMode !== "feed" || feedIntercessionsQuery.isSuccess);
 
   // Today key in local time — used to scope localStorage progress so
   // a session started yesterday doesn't bleed into today's resume.
@@ -2708,7 +2774,7 @@ export default function PrayerModePage() {
     // sent the user in to handle a specific queue, so resume-progress
     // and alreadyPrayedToday-skip don't apply (all queue slides are
     // un-prayed by construction; no localStorage to honor).
-    if (!seamlessFlow && !resetFlow && queueMode !== "new" && queueMode !== "parish-weekly" && queueMode !== "feed-digest" && queueMode !== "prayers-for-me") {
+    if (!seamlessFlow && !resetFlow && queueMode !== "new" && queueMode !== "parish-weekly" && queueMode !== "feed-digest" && queueMode !== "prayers-for-me" && queueMode !== "feed") {
       try {
         const raw = localStorage.getItem(progressStorageKey);
         if (raw) {

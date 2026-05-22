@@ -2684,7 +2684,7 @@ function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
           // the "Completed | View list" splits — once the user walks
           // through the count zeros and the card reverts to whichever
           // resting state matches prayedToday.
-          <Link href={`/prayer-feeds/${feed.slug}?play=1`} className="shrink-0">
+          <Link href={`/prayer-mode?queue=feed&slug=${feed.slug}`} className="shrink-0">
             <div
               role="button"
               tabIndex={0}
@@ -2747,7 +2747,7 @@ function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
             </Link>
           </div>
         ) : (
-          <Link href={`/prayer-feeds/${feed.slug}?play=1`} className="shrink-0">
+          <Link href={`/prayer-mode?queue=feed&slug=${feed.slug}`} className="shrink-0">
             <div
               role="button"
               tabIndex={0}
