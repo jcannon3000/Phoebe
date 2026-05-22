@@ -137,16 +137,20 @@ router.post("/prayer-streak/log", async (req: Request, res: Response): Promise<v
 });
 
 // GET /prayer-streak/community-prayed-week — returns garden members who
-// have prayed at least once in the last 7 days. Two signal sources are
-// UNIONed:
-//   1. users.prayer_streak_last_date — bumped when a user finishes a
-//      prayer-mode slideshow via POST /prayer-streak/log
-//   2. prayer_sessions rows with an office / devotion surface — bumped
-//      whenever a user completes (or even just opens past the slide
-//      threshold) Morning/Evening Prayer or one of the Devotions.
-// Without (2) anyone who only prays the Daily Office never appeared
-// on the home card's avatar stack because that path doesn't write
-// prayer_streak_last_date.
+// have prayed an OFFICE in the last 7 days. Specifically scoped to
+// prayer_sessions rows with an office / devotion surface so the home
+// card's "N people prayed with you this week" line tracks Daily Office
+// engagement only.
+//
+// An earlier version also UNIONed users.prayer_streak_last_date as a
+// second signal so prayer-mode slideshow users would show up. That
+// signal got dropped because it also fires when a user walks a
+// prayer-feed slideshow (e.g. Phoebe Climate). Praying the feed should
+// mark THAT feed's card complete on the dashboard (via the separate
+// /prayer-feeds/subscribed prayedToday flag) — but it shouldn't count
+// toward the office card's avatar stack, which is meant to read as
+// "your community is praying the offices with you," not "your
+// community is doing anything prayer-shaped."
 const OFFICE_SURFACES = [
   "morning-prayer",
   "evening-prayer",
@@ -164,28 +168,20 @@ router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Res
     if (gardenIds.length === 0) { res.json({ people: [] }); return; }
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const cutoffYmd = sevenDaysAgo.toISOString().slice(0, 10); // YYYY-MM-DD
 
-    // Signal A: garden members whose streak marker is within the window.
+    // Garden members with an office / devotion session in the rolling
+    // 7-day window. Only this signal — feed slideshows and prayer-mode
+    // walks deliberately don't count here (see endpoint header).
     const peopleRows = await db
       .select({
         id: usersTable.id,
         name: usersTable.name,
         avatarUrl: usersTable.avatarUrl,
-        prayerStreakLastDate: usersTable.prayerStreakLastDate,
       })
       .from(usersTable)
       .where(inArray(usersTable.id, gardenIds));
 
     const activeIds = new Set<number>();
-    for (const p of peopleRows) {
-      if (p.prayerStreakLastDate && p.prayerStreakLastDate >= cutoffYmd) {
-        activeIds.add(p.id);
-      }
-    }
-
-    // Signal B: garden members with an office / devotion session in the
-    // window. We pull DISTINCT user IDs from prayer_sessions.
     const officeRows = await db
       .selectDistinct({ userId: prayerSessionsTable.userId })
       .from(prayerSessionsTable)

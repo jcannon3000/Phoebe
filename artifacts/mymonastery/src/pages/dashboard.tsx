@@ -2706,9 +2706,10 @@ function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
           </Link>
         ) : prayedToday ? (
           // Two compact pills inline with the title: a settled
-          // "Prayer completed ✓" status + a tappable "View list →" that
-          // routes to the feed page (no auto-play, since the user has
-          // already walked today's list).
+          // "Prayer completed ✓" status + a tappable "Pray again →"
+          // that re-opens the feed's slideshow (same /prayer-mode
+          // queue the new-callout pill uses). Matches PrayerOfficeCard's
+          // post-prayer convention so the two cards feel paired.
           <div className="flex items-center gap-1.5 shrink-0">
             <div
               aria-label={`${feed.title} prayed today`}
@@ -2724,9 +2725,9 @@ function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
                 whiteSpace: "nowrap",
               }}
             >
-              Completed <span aria-hidden>✓</span>
+              Prayer completed <span aria-hidden>✓</span>
             </div>
-            <Link href={`/prayer-feeds/${feed.slug}`}>
+            <Link href={`/prayer-mode?queue=feed&slug=${feed.slug}`}>
               <div
                 role="button"
                 tabIndex={0}
@@ -2742,7 +2743,7 @@ function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
                   whiteSpace: "nowrap",
                 }}
               >
-                View list <span aria-hidden>→</span>
+                Pray again <span aria-hidden>→</span>
               </div>
             </Link>
           </div>
