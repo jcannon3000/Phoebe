@@ -62,28 +62,47 @@ export async function ensurePersistentToken(): Promise<void> {
 // On success, replaces our stored token (server rotates on every
 // exchange). On any failure, clears the stored value so we don't keep
 // replaying a known-bad token.
-export async function tryExchangePersistentToken(): Promise<boolean> {
-  const token = getPersistentToken();
-  if (!token) return false;
-  try {
-    const res = await fetch("/api/auth/exchange-token", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ token }),
-    });
-    if (!res.ok) {
-      clearPersistentToken();
+//
+// Concurrent-callers guard (`inFlight`): React Query / React 18 strict
+// mode / parallel component mounts can all fire /auth/me at the same
+// time. Without dedup each one's 401 would launch its own exchange,
+// and since the server rotates on success only the first wins —
+// every other in-flight exchange then sees its token revoked and
+// clears the local copy, logging the user out despite a successful
+// recovery. Sharing a single promise means concurrent callers all
+// resolve to the same outcome.
+let inFlight: Promise<boolean> | null = null;
+
+export function tryExchangePersistentToken(): Promise<boolean> {
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
+    const token = getPersistentToken();
+    if (!token) return false;
+    try {
+      const res = await fetch("/api/auth/exchange-token", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ token }),
+      });
+      if (!res.ok) {
+        clearPersistentToken();
+        return false;
+      }
+      const body = (await res.json()) as { token?: string };
+      if (typeof body.token === "string" && body.token.length >= 32) {
+        setPersistentToken(body.token);
+      } else {
+        clearPersistentToken();
+      }
+      return true;
+    } catch {
       return false;
+    } finally {
+      // Release the in-flight latch so a future 401 (e.g. the new
+      // session cookie expires later) can mint another exchange.
+      inFlight = null;
     }
-    const body = (await res.json()) as { token?: string };
-    if (typeof body.token === "string" && body.token.length >= 32) {
-      setPersistentToken(body.token);
-    } else {
-      clearPersistentToken();
-    }
-    return true;
-  } catch {
-    return false;
-  }
+  })();
+  return inFlight;
 }
