@@ -557,28 +557,35 @@ router.post(
     return;
   }
 
-  const [row] = await db
-    .select({ id: persistentAuthTokensTable.id, userId: persistentAuthTokensTable.userId, revokedAt: persistentAuthTokensTable.revokedAt })
-    .from(persistentAuthTokensTable)
-    .where(eq(persistentAuthTokensTable.token, token));
+  // Atomic claim: revoke the row in the same statement that checks it's
+  // still active. Two concurrent /exchange-token requests with the same
+  // token can otherwise both pass the "is it revoked?" read, both
+  // rotate, both mint replacement tokens, and double-revoke the
+  // original — wasting a second mint and leaving stale rows behind.
+  // RETURNING * tells us whether OUR statement was the one that
+  // flipped revokedAt; if not, somebody else won the race and we 401.
+  const [claimed] = await db
+    .update(persistentAuthTokensTable)
+    .set({ revokedAt: new Date(), lastUsedAt: new Date() })
+    .where(and(
+      eq(persistentAuthTokensTable.token, token),
+      isNull(persistentAuthTokensTable.revokedAt),
+    ))
+    .returning({
+      id: persistentAuthTokensTable.id,
+      userId: persistentAuthTokensTable.userId,
+    });
 
-  if (!row || row.revokedAt) {
+  if (!claimed) {
     res.status(401).json({ error: "invalid_or_revoked" });
     return;
   }
 
-  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, row.userId));
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, claimed.userId));
   if (!user) {
     res.status(401).json({ error: "user_missing" });
     return;
   }
-
-  // Rotate: revoke the value we just consumed and mint a fresh one so a
-  // value lifted from a backup / sniffed network capture can't be replayed.
-  await db
-    .update(persistentAuthTokensTable)
-    .set({ revokedAt: new Date(), lastUsedAt: new Date() })
-    .where(eq(persistentAuthTokensTable.id, row.id));
   let nextToken: string;
   try {
     nextToken = await mintPersistentToken(user.id);
@@ -649,8 +656,20 @@ router.post(
   if (!email || !email.includes("@")) {
     res.status(400).json({ error: "A valid email address is required." }); return;
   }
-  if (!name || name.trim().length < 1) {
+  // The client forms (Onboarding, public-prayer, public-feed,
+  // community-join, public-letters) join first + last with a space
+  // before posting. Reject anything that's empty after trimming AND
+  // collapse zero-width / control characters that a bot could use to
+  // submit a "visually empty" name. Also cap at 120 chars so a runaway
+  // paste can't bloat the row.
+  const trimmedName = typeof name === "string"
+    ? name.replace(/[​-‍﻿]/g, "").trim()
+    : "";
+  if (trimmedName.length < 1) {
     res.status(400).json({ error: "Your name is required." }); return;
+  }
+  if (trimmedName.length > 120) {
+    res.status(400).json({ error: "Please use a shorter name." }); return;
   }
   if (!password || password.length < 6) {
     res.status(400).json({ error: "Password must be at least 6 characters." }); return;
@@ -705,7 +724,7 @@ router.post(
   const passwordHash = await hashPassword(password);
   const [user] = await db
     .insert(usersTable)
-    .values({ email: normalizedEmail, name: name.trim(), passwordHash, officesOnly: officesOnly === true })
+    .values({ email: normalizedEmail, name: trimmedName, passwordHash, officesOnly: officesOnly === true })
     .returning();
 
   // If they were on the waitlist, drop their entry — they have an account
@@ -954,18 +973,31 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
   }
 
   const passwordHash = await hashPassword(password);
-  await db.update(usersTable)
-    .set({ passwordHash, resetToken: null, resetTokenExpiry: null } as Record<string, unknown>)
-    .where(eq(usersTable.id, user.id));
-
-  // A password change is a credential rotation — assume the old set of
-  // devices is no longer trusted and force every signed-in device to
-  // re-authenticate before their stored persistent token can refresh a
-  // session. The device that just reset the password will mint a fresh
-  // token via /auth/persistent-token after they sign back in.
-  await revokeAllPersistentTokensForUser(user.id).catch((err) => {
-    console.warn("[auth/reset-password] failed to revoke persistent tokens:", err);
-  });
+  // A password change is a credential rotation — the old set of
+  // devices must be fully evicted before we tell the user the reset
+  // succeeded, otherwise a stolen persistent token could still
+  // /exchange-token its way back into a session under the new
+  // password's account. Wrap both writes in a transaction so either
+  // both land or neither does; a failed revoke must NOT leave the
+  // password changed and the stolen tokens still valid.
+  try {
+    await db.transaction(async (tx) => {
+      await tx.update(usersTable)
+        .set({ passwordHash, resetToken: null, resetTokenExpiry: null } as Record<string, unknown>)
+        .where(eq(usersTable.id, user.id));
+      await tx
+        .update(persistentAuthTokensTable)
+        .set({ revokedAt: new Date() })
+        .where(and(
+          eq(persistentAuthTokensTable.userId, user.id),
+          isNull(persistentAuthTokensTable.revokedAt),
+        ));
+    });
+  } catch (err) {
+    console.error("[auth/reset-password] transaction failed:", err);
+    res.status(500).json({ error: "Couldn't reset your password. Please try again." });
+    return;
+  }
 
   res.json({ ok: true });
 });
