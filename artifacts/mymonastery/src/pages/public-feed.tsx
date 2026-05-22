@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
+import { triggerAmenFeedback, playOpeningSwell } from "@/lib/amenFeedback";
 
 // ── Public, no-login prayer-feed landing ─────────────────────────────────────
 //
@@ -243,7 +244,18 @@ function PrayingScreen({
   const isAction = item.intercessionSource === "action";
   const hasLink = !!item.learnMoreUrl;
 
+  // Sound + haptic — match the in-app prayer-mode walker. A gentle
+  // opening swell plays on each new slide (including the first, via
+  // the effect below) and a soft chime + haptic fires the moment the
+  // user taps Amen. The first user gesture (the tap itself) unlocks
+  // the AudioContext so iOS Safari's autoplay policy is satisfied
+  // even on the public, signed-out flow.
+  useEffect(() => {
+    playOpeningSwell(safeIdx % 3);
+  }, [safeIdx]);
+
   function advance() {
+    triggerAmenFeedback();
     if (safeIdx + 1 >= total) onFinish();
     else setIdx(safeIdx + 1);
   }
