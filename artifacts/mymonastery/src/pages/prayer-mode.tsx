@@ -1773,6 +1773,18 @@ export default function PrayerModePage() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  // Offices-only accounts have no access to /api/moments,
+  // /api/prayer-requests, /api/prayers-for, or /api/groups — the
+  // server middleware (OFFICES_ONLY_BLOCKED_PREFIXES) 403s those
+  // routes. Firing those queries unconditionally on prayer-mode
+  // mount caused a loading-screen-forever bug for offices-only
+  // users hitting the prayer-feed CTA: dataReady never flipped true
+  // (the 403s left isSuccess=false), so frozenSlides was never set,
+  // and the slideshow stayed parked behind the loading screen.
+  // queue=feed only needs feedIntercessionsQuery anyway; gate the
+  // four broad queries off for offices-only viewers and treat their
+  // "data" as empty in dataReady + closing-detection below.
+  const officesOnly = user?.accessTier === "offices-only";
 
   // Track time-spent for the community metrics' "Time praying" row.
   // Mounts a clock that pauses on background and commits a single
@@ -1890,14 +1902,14 @@ export default function PrayerModePage() {
   const momentsQuery = useQuery<{ moments: Moment[] }>({
     queryKey: ["/api/moments"],
     queryFn: () => apiRequest("GET", "/api/moments"),
-    enabled: !!user,
+    enabled: !!user && !officesOnly,
   });
   const momentsData = momentsQuery.data;
 
   const prayerRequestsQuery = useQuery<PrayerRequest[]>({
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
-    enabled: !!user,
+    enabled: !!user && !officesOnly,
   });
   const prayerRequests = prayerRequestsQuery.data ?? [];
 
@@ -2027,7 +2039,7 @@ export default function PrayerModePage() {
   const myPrayersForQuery = useQuery<MyActivePrayerFor[]>({
     queryKey: ["/api/prayers-for/mine"],
     queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
-    enabled: !!user,
+    enabled: !!user && !officesOnly,
   });
   const myPrayersFor = myPrayersForQuery.data ?? [];
 
@@ -2044,7 +2056,7 @@ export default function PrayerModePage() {
   const circleIntentionsQuery = useQuery<{ intentions: CircleIntention[] }>({
     queryKey: ["/api/groups/me/circle-intentions"],
     queryFn: () => apiRequest("GET", "/api/groups/me/circle-intentions"),
-    enabled: !!user,
+    enabled: !!user && !officesOnly,
   });
   const circleIntentionsData = circleIntentionsQuery.data;
 
@@ -2717,19 +2729,35 @@ export default function PrayerModePage() {
   // instant slideshow open. The snapshot below is captured once and
   // frozen for the session, so a slightly later refetch can't tear
   // slides out from under the user mid-prayer.
-  const dataReady =
-    momentsQuery.isSuccess &&
-    prayerRequestsQuery.isSuccess &&
-    myPrayersForQuery.isSuccess &&
-    circleIntentionsQuery.isSuccess &&
-    // queue=prayers-for-me needs its own list to be in hand before we
-    // decide the slide deck — otherwise the slideshow renders an empty
-    // deck and immediately drops to the closing slide even though the
-    // user has active prayers waiting.
-    (queueMode !== "prayers-for-me" || prayersForMeQuery.isSuccess) &&
-    // Same shape for queue=feed — wait for the feed's intercessions
-    // before we decide the deck.
-    (queueMode !== "feed" || feedIntercessionsQuery.isSuccess);
+  // Focused-queue dataReady is scoped to the queries that queue
+  // actually reads. We can't just AND all six together unconditionally:
+  // offices-only accounts 403 on /moments, /prayer-requests,
+  // /prayers-for/mine, and /groups/me/circle-intentions, so those four
+  // never reach isSuccess — and a queue=feed walker landing here from
+  // the dashboard FeedPrayerCard would hang on the loading screen
+  // forever even though all the data the feed queue NEEDS has long
+  // since arrived.
+  const dataReady = (() => {
+    if (queueMode === "feed") {
+      return feedIntercessionsQuery.isSuccess && feedMetaQuery.isSuccess;
+    }
+    if (queueMode === "prayers-for-me") {
+      return prayersForMeQuery.isSuccess;
+    }
+    if (queueMode === "feed-digest") {
+      return feedDigestQuery.isSuccess;
+    }
+    // Default / queue=new / queue=parish-weekly all build slides off
+    // the daily queries (intercessions, requests, prayers-for, circle
+    // intentions). Parish-weekly additionally needs its own list.
+    return (
+      momentsQuery.isSuccess &&
+      prayerRequestsQuery.isSuccess &&
+      myPrayersForQuery.isSuccess &&
+      circleIntentionsQuery.isSuccess &&
+      (queueMode !== "parish-weekly" || parishWeeklyQuery.isSuccess)
+    );
+  })();
 
   // Today key in local time — used to scope localStorage progress so
   // a session started yesterday doesn't bleed into today's resume.
@@ -2877,14 +2905,21 @@ export default function PrayerModePage() {
       setPhase("closing");
       return;
     }
-    if (displaySlides.length === 0 && momentsData && prayerRequests && myPrayersFor) {
+    // Offices-only viewers have momentsData permanently undefined
+    // (the underlying query is disabled to avoid a 403), so we
+    // can't gate on it for them — fall back to dataReady, which
+    // for queue=feed reflects feedIntercessionsQuery alone.
+    const queriesSettled = officesOnly
+      ? dataReady
+      : !!(momentsData && prayerRequests && myPrayersFor);
+    if (displaySlides.length === 0 && queriesSettled) {
       if (seamlessFlow) {
         setLocation(finishHref);
       } else {
         setPhase("closing");
       }
     }
-  }, [displaySlides.length, momentsData, prayerRequests, myPrayersFor, seamlessFlow, closingOnly, finishHref, setLocation]);
+  }, [displaySlides.length, momentsData, prayerRequests, myPrayersFor, officesOnly, dataReady, seamlessFlow, closingOnly, finishHref, setLocation]);
 
   // When the user lands on the closing slide, log the prayer-list streak.
   // The server is idempotent per TZ-local day — calling twice doesn't
