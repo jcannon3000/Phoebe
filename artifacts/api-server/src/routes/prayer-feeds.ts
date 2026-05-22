@@ -562,12 +562,19 @@ router.get("/prayer-feeds/subscribed", requireAuth, async (req, res): Promise<vo
         gte(momentPostsTable.createdAt, since),
       ));
     const viewerLc = (viewerEmail ?? "").toLowerCase();
+    // Cap per-feed entries. The dashboard renders 5 avatars; anything
+    // beyond ~12 is wasted bytes on a popular feed (climate has
+    // hundreds of subscribers who all pray weekly). Keep enough
+    // headroom that the count remains an accurate "9+" indicator
+    // even if a surface later wants to show more avatars.
+    const MAX_PER_FEED = 12;
     for (const r of rows) {
       if (r.feedId == null) continue;
       // Drop the viewer themselves — the avatar stack is "OTHER people
       // praying with you," same convention PrayerOfficeCard uses.
       if (r.email.toLowerCase() === viewerLc) continue;
       const list = weekPrayersByFeed.get(r.feedId) ?? [];
+      if (list.length >= MAX_PER_FEED) continue;
       if (!list.find((p) => p.id === r.userId)) {
         list.push({ id: r.userId, name: r.name, avatarUrl: r.avatarUrl });
         weekPrayersByFeed.set(r.feedId, list);
@@ -1172,6 +1179,13 @@ router.get("/prayer-feeds/:slug/intercessions", async (req, res): Promise<void> 
   // Count distinct userToken values from moment_posts in the rolling
   // 7-day window — matches the same heuristic prayer-mode uses
   // (line ~2155 in prayer-mode.tsx, `prayedThisWeek`).
+  //
+  // isCheckin = 1 is required so this count matches the weekPrayers
+  // avatar list in /prayer-feeds/subscribed (which already filters
+  // check-ins). Without this filter, reflection posts would inflate
+  // the slide's count over the dashboard's avatar count for the same
+  // window, and the user would see two different numbers for the
+  // same fact.
   let countById = new Map<number, number>();
   if (rows.length > 0) {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -1183,6 +1197,7 @@ router.get("/prayer-feeds/:slug/intercessions", async (req, res): Promise<void> 
       .from(momentPostsTable)
       .where(and(
         inArray(momentPostsTable.momentId, rows.map((r) => r.id)),
+        eq(momentPostsTable.isCheckin, 1),
         gte(momentPostsTable.createdAt, since),
       ))
       .groupBy(momentPostsTable.momentId);
