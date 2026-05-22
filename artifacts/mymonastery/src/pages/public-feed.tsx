@@ -44,6 +44,12 @@ interface Intercession {
   learnMoreUrl: string | null;
   name: string;
   createdAt: string;
+  // Distinct users (account holders) who have prayed this intercession
+  // in the rolling 7-day window. Returned by GET /api/prayer-feeds/
+  // :slug/intercessions. Anonymous public-feed Amens don't create
+  // server-side records, so this count is implicitly "people with
+  // accounts" — exactly the social-proof line we want on the slide.
+  weekPrayCount?: number | null;
 }
 
 type Phase = "hero" | "praying" | "signup" | "done";
@@ -327,6 +333,24 @@ function PrayingScreen({
               {title}
             </p>
 
+            {/* Prayer count — distinct account-holders who have prayed
+                this in the last 7 days. Matches the line on the in-app
+                intercession slide. Hidden when 0 to avoid a deflating
+                "0 people …" read. */}
+            {typeof item.weekPrayCount === "number" && item.weekPrayCount > 0 && (
+              <p
+                className="text-[12px] italic"
+                style={{
+                  color: "rgba(143,175,150,0.55)",
+                  marginTop: "-6px",
+                }}
+              >
+                {item.weekPrayCount === 1
+                  ? "1 person has prayed this this week."
+                  : `${item.weekPrayCount} people have prayed this this week.`}
+              </p>
+            )}
+
             {body && (
               <div
                 className="w-full rounded-2xl px-6 py-5 text-left mt-1"
@@ -578,7 +602,7 @@ function SignupStep({
             Keep praying with {feedTitle}.
           </h2>
           <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
-            A free Phoebe account follows this feed for you — and brings you the daily office morning and evening.
+            Create a Phoebe account to continue to pray with others for creation and environmental justice.
           </p>
         </div>
 
