@@ -4,8 +4,8 @@ import { Router, type IRouter } from "express";
 import passport from "passport";
 import { Strategy as GoogleStrategy, type Profile } from "passport-google-oauth20";
 import { google } from "googleapis";
-import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, waitlistTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, waitlistTable, persistentAuthTokensTable } from "@workspace/db";
+import { eq, and, sql, isNull } from "drizzle-orm";
 import { notifyAdminsOfNewMember } from "./groups";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { getUserAccessTier } from "../lib/parishGate";
@@ -401,6 +401,15 @@ router.patch("/auth/me/profile", async (req, res): Promise<void> => {
 });
 
 router.post("/auth/logout", async (req, res, next) => {
+  // Revoke the persistent token for this device, if the client sent one.
+  // Tokens are per-device, so other signed-in devices keep working.
+  const { persistentToken } = (req.body ?? {}) as { persistentToken?: string };
+  if (typeof persistentToken === "string" && persistentToken.length >= 32) {
+    await revokePersistentToken(persistentToken).catch((err) => {
+      console.warn("[auth/logout] failed to revoke persistent token:", err);
+    });
+  }
+
   // Best-effort Google token revocation before destroying the session.
   // Most users no longer have per-user Google tokens (scheduler account
   // handles calendar writes), but legacy rows may still hold them —
@@ -437,6 +446,55 @@ router.post("/auth/logout", async (req, res, next) => {
   });
 });
 
+// ─── Persistent auth tokens ──────────────────────────────────────────────────
+// Long-lived per-device tokens that outlast the session cookie. The client
+// stashes one in a durable store (Capacitor Preferences on iOS, mirrored
+// from localStorage with the `phoebe:persist:` prefix) right after a
+// successful login, and replays it on /auth/exchange-token if /auth/me
+// ever comes back 401 — typically after an iOS app upgrade purges the
+// WKWebView cookie jar, or NSHTTPCookieStorage drops a cookie that hadn't
+// been flushed to disk before the user force-quit the app. See the
+// rationale in lib/db/src/schema/persistent_auth_tokens.ts.
+//
+// Each call rotates the token (one-time-use) so a stolen value can't be
+// replayed forever. We don't expire tokens by time — the whole point is
+// to outlast cookies. Explicit logout revokes a single device's token;
+// password change / account delete revokes all tokens for the user.
+
+// Mint a fresh persistent token for a user. Caller is responsible for
+// shipping it back to the client (server should NEVER store it anywhere
+// outside this DB row).
+async function mintPersistentToken(userId: number): Promise<string> {
+  const token = randomBytes(32).toString("hex");
+  await db.insert(persistentAuthTokensTable).values({ userId, token });
+  return token;
+}
+
+// Revoke a single token (e.g. on logout from this device). Idempotent —
+// safe to call with a stale/unknown value.
+async function revokePersistentToken(token: string): Promise<void> {
+  await db
+    .update(persistentAuthTokensTable)
+    .set({ revokedAt: new Date() })
+    .where(and(
+      eq(persistentAuthTokensTable.token, token),
+      isNull(persistentAuthTokensTable.revokedAt),
+    ));
+}
+
+// Revoke EVERY token for a user. Call on password change / account delete /
+// "sign me out of all devices" so a compromised token can't keep a
+// foothold after the user has rotated their credentials.
+export async function revokeAllPersistentTokensForUser(userId: number): Promise<void> {
+  await db
+    .update(persistentAuthTokensTable)
+    .set({ revokedAt: new Date() })
+    .where(and(
+      eq(persistentAuthTokensTable.userId, userId),
+      isNull(persistentAuthTokensTable.revokedAt),
+    ));
+}
+
 // ─── Password helpers ─────────────────────────────────────────────────────────
 
 export async function hashPassword(password: string): Promise<string> {
@@ -452,6 +510,93 @@ async function verifyPassword(password: string, stored: string): Promise<boolean
   const storedBuf = Buffer.from(hashed, "hex");
   return buf.length === storedBuf.length && timingSafeEqual(buf, storedBuf);
 }
+
+// ─── POST /api/auth/persistent-token ─────────────────────────────────────────
+// Mints a new long-lived token for the authenticated user. The client
+// should call this right after every successful login (password, Google,
+// Apple, magic-link, registration) and stash the returned token in a
+// durable store. See the comment block above `mintPersistentToken` for the
+// full rationale.
+router.post("/auth/persistent-token", async (req, res): Promise<void> => {
+  if (!req.user) {
+    res.status(401).json({ error: "Not authenticated" });
+    return;
+  }
+  const userId = (req.user as { id: number }).id;
+  try {
+    const token = await mintPersistentToken(userId);
+    res.json({ token });
+  } catch (err) {
+    console.error("[auth/persistent-token] mint failed:", err);
+    res.status(500).json({ error: "Failed to mint token." });
+  }
+});
+
+// ─── POST /api/auth/exchange-token ───────────────────────────────────────────
+// Anonymous endpoint. Accepts a previously-minted persistent token and, if
+// it's still valid + non-revoked, logs the user in via Passport so the
+// browser picks up a fresh session cookie. Rotates the token on success
+// (one-time-use) and returns the replacement so the client can keep its
+// durable store in sync. A failed exchange returns 401 and the client
+// should clear its stored token to avoid replaying a known-bad value.
+router.post(
+  "/auth/exchange-token",
+  // Same conservative cap as password login — a leaked token is still a
+  // credential, and brute-forcing the 256-bit token space is impractical,
+  // but the rate limit makes that extra impossible.
+  rateLimit({
+    name: "auth_exchange_token",
+    max: 30,
+    windowMs: 15 * 60 * 1000,
+    message: "Too many session refresh attempts. Please try again in a few minutes.",
+  }),
+  async (req, res): Promise<void> => {
+  const { token } = req.body as { token?: string };
+  if (!token || typeof token !== "string" || token.length < 32) {
+    res.status(400).json({ error: "token is required" });
+    return;
+  }
+
+  const [row] = await db
+    .select({ id: persistentAuthTokensTable.id, userId: persistentAuthTokensTable.userId, revokedAt: persistentAuthTokensTable.revokedAt })
+    .from(persistentAuthTokensTable)
+    .where(eq(persistentAuthTokensTable.token, token));
+
+  if (!row || row.revokedAt) {
+    res.status(401).json({ error: "invalid_or_revoked" });
+    return;
+  }
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, row.userId));
+  if (!user) {
+    res.status(401).json({ error: "user_missing" });
+    return;
+  }
+
+  // Rotate: revoke the value we just consumed and mint a fresh one so a
+  // value lifted from a backup / sniffed network capture can't be replayed.
+  await db
+    .update(persistentAuthTokensTable)
+    .set({ revokedAt: new Date(), lastUsedAt: new Date() })
+    .where(eq(persistentAuthTokensTable.id, row.id));
+  let nextToken: string;
+  try {
+    nextToken = await mintPersistentToken(user.id);
+  } catch (err) {
+    console.error("[auth/exchange-token] mint replacement failed:", err);
+    res.status(500).json({ error: "internal_error" });
+    return;
+  }
+
+  req.login(user as Express.User, (err) => {
+    if (err) {
+      console.error("[auth/exchange-token] req.login failed:", err);
+      res.status(500).json({ error: "login_failed" });
+      return;
+    }
+    req.session.save(() => res.json({ ok: true, token: nextToken }));
+  });
+});
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
 // Account creation is invite-only right now. Two ways in:
@@ -812,6 +957,15 @@ router.post("/auth/reset-password", async (req, res): Promise<void> => {
   await db.update(usersTable)
     .set({ passwordHash, resetToken: null, resetTokenExpiry: null } as Record<string, unknown>)
     .where(eq(usersTable.id, user.id));
+
+  // A password change is a credential rotation — assume the old set of
+  // devices is no longer trusted and force every signed-in device to
+  // re-authenticate before their stored persistent token can refresh a
+  // session. The device that just reset the password will mint a fresh
+  // token via /auth/persistent-token after they sign back in.
+  await revokeAllPersistentTokensForUser(user.id).catch((err) => {
+    console.warn("[auth/reset-password] failed to revoke persistent tokens:", err);
+  });
 
   res.json({ ok: true });
 });
