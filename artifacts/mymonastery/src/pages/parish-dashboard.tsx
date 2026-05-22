@@ -22,6 +22,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { Layout } from "@/components/layout";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import {
   PrayerOfficeCard,
@@ -144,48 +145,14 @@ export default function ParishDashboard() {
   // "Prayer List"-style card stack at the bottom in place of the
   // full app's personal prayer-request section.
   if (user.accessTier === "offices-only") {
+    // Wrap in <Layout> so the offices-only home gets the SAME header,
+    // drawer, and chrome as the main dashboard — just with the
+    // Communities / Prayer List / People surfaces hidden by the
+    // tier-aware filter inside Layout itself. The render below is
+    // only the page content; Phoebe header + drawer come from Layout.
     return (
-      <div style={{ background: BG, minHeight: "100vh", color: WARM_TEXT }}>
-        <div
-          style={{
-            maxWidth: 600,
-            margin: "0 auto",
-            padding:
-              "calc(env(safe-area-inset-top) + 24px) 20px calc(env(safe-area-inset-bottom) + 32px)",
-          }}
-        >
-          {/* Brand + Menu row — same shape the full dashboard uses. */}
-          <div className="flex items-center justify-between mb-6">
-            <p
-              style={{
-                fontFamily: SPACE_GROTESK,
-                fontSize: 30,
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-                color: WARM_TEXT,
-                margin: 0,
-              }}
-            >
-              Phoebe
-            </p>
-            <Link href="/parish/settings">
-              <span
-                style={{
-                  fontFamily: SPACE_GROTESK,
-                  fontSize: 13,
-                  color: SAGE,
-                  padding: "6px 14px",
-                  borderRadius: 999,
-                  background: "rgba(200,212,192,0.08)",
-                  border: "1px solid rgba(200,212,192,0.18)",
-                  cursor: "pointer",
-                }}
-              >
-                Menu
-              </span>
-            </Link>
-          </div>
-
+      <Layout>
+        <div className="max-w-2xl mx-auto w-full">
           {/* Date + feast subtitle — same component the full
               dashboard uses. */}
           <h1
@@ -336,7 +303,7 @@ export default function ParishDashboard() {
             </Link>
           </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 

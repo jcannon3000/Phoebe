@@ -63,17 +63,28 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   // climate); subscribers get its daily intention through the prayer-
   // feed plumbing like any other feed. The drawer therefore renders the
   // same items for everyone.
+  // Offices-only tier: signed up via the public /pray or /feed/:slug
+  // flow, no community + no garden of personal prayer requests. The
+  // social surfaces (Prayer List, People, My Communities) are hidden
+  // from the drawer so a tap can't land them on a page they can't use.
+  // The full app's content gates already block the routes server-side;
+  // this is the visual mirror so the menu doesn't dangle dead links.
+  const officesOnly = user?.accessTier === "offices-only";
+
   const navItems: Array<{ emoji: string; label: string; path: string; badge?: string; count?: number } | { divider: true }> = [
     // Practices used to have its own top-level entry that deep-linked into
     // the dashboard's filter; removed — the dashboard itself is the home
     // surface, and the Practices pill there is the canonical way to narrow.
-    { emoji: "🙏🏽", label: "Prayer List", path: "/prayer-list" },
+    ...(officesOnly ? [] : [{ emoji: "🙏🏽", label: "Prayer List", path: "/prayer-list" }]),
     // Gatherings + Prayer Feeds tabs are intentionally kept off the
     // side menu — both pages still live at /gatherings and
     // /prayer-feeds for direct deep-link access, but day-to-day
     // discovery happens through the slideshow / community pages.
-    { emoji: "👥", label: "People",      path: "/people" },
-    { divider: true },
+    ...(officesOnly ? [] : [{ emoji: "👥", label: "People",      path: "/people" }]),
+    // Skip the leading divider for offices-only — both items above
+    // are filtered out, so a divider here would sit alone at the top
+    // of the menu separating nothing.
+    ...(officesOnly ? [] : [{ divider: true as const }]),
     // Liturgy section — book of common prayer reference content.
     // Daily Office (Morning + Evening Prayer Rite II) and the
     // Daily Devotions (BCP pp. 137 + 139, the abbreviated morning +
@@ -174,8 +185,10 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               {/* Pilot view / community admin toggles moved to Admin Tools page */}
             </div>
 
-            {/* ── My Communities ── */}
-            {(
+            {/* ── My Communities ── offices-only tier has no
+                communities by construction, so the section is hidden
+                entirely (rather than rendering with an empty state). */}
+            {!officesOnly && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
                 <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.4)" }}>
                   My Communities
@@ -340,6 +353,10 @@ export function Layout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { isBeta } = useBetaStatus();
+  // Offices-only tier: no personal prayer requests + no garden. The
+  // header "Prayer list" pill links into a surface they can't use, so
+  // we hide it for that tier. Drawer filtering happens above.
+  const officesOnly = user?.accessTier === "offices-only";
 
   // Personal streak = consecutive days I've finished a prayer-list slideshow.
   const { data: streakData } = useQuery<{ streak: number; lastPrayedDate: string | null }>({
@@ -373,20 +390,24 @@ export function Layout({ children }: { children: ReactNode }) {
             {/* Prayer list pill — sits to the left of Menu, same
                 height. Direct shortcut into the management view of
                 everything the viewer is carrying (their own
-                requests + their garden's). */}
-            <Link
-              href="/prayer-list"
-              className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
-              style={{
-                fontFamily: "'Space Grotesk', sans-serif",
-                letterSpacing: "-0.01em",
-                background: "rgba(200,212,192,0.08)",
-                color: "#C8D4C0",
-                border: "1px solid rgba(46,107,64,0.3)",
-              }}
-            >
-              Prayer list
-            </Link>
+                requests + their garden's). Hidden for the offices-only
+                tier — they have no personal prayer requests and no
+                garden, so the pill would land on an empty page. */}
+            {!officesOnly && (
+              <Link
+                href="/prayer-list"
+                className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  letterSpacing: "-0.01em",
+                  background: "rgba(200,212,192,0.08)",
+                  color: "#C8D4C0",
+                  border: "1px solid rgba(46,107,64,0.3)",
+                }}
+              >
+                Prayer list
+              </Link>
+            )}
             <button
               onClick={() => setDrawerOpen(true)}
               className="flex items-center justify-center transition-colors"
