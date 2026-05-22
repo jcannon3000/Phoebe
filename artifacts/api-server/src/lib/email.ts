@@ -47,6 +47,112 @@ export async function getGmailClient() {
   return google.gmail({ version: "v1", auth: oauth2Client });
 }
 
+// Shared extractor for Gmail / OAuth errors. Pulls the actionable bits
+// (HTTP status, Gmail reason code, OAuth error/description) into a flat
+// shape so the silent-fail send paths can log something useful in
+// Railway logs without recreating the same try/catch boilerplate in
+// every helper. See sendNewsletterEmailDiagnostic for the same shape
+// in a return-value form (used by the newsletter preview toast).
+export function parseGmailError(err: unknown): {
+  code: number | undefined;
+  reason: string | undefined;          // Gmail-side reason code (e.g. "quotaExceeded")
+  message: string | undefined;          // human-readable message
+  oauthError: string | undefined;       // OAuth error code (e.g. "invalid_grant")
+  oauthDescription: string | undefined; // OAuth error description (most actionable)
+  short: string;                        // one-line summary for log lines
+} {
+  const e = err as {
+    code?: number;
+    status?: number;
+    message?: string;
+    response?: {
+      status?: number;
+      data?: { error?: string; error_description?: string } | unknown;
+    };
+    errors?: Array<{ reason?: string; message?: string }>;
+  };
+  const code = e?.code ?? e?.status ?? e?.response?.status;
+  const reason = e?.errors?.[0]?.reason;
+  const data = e?.response?.data as { error?: string; error_description?: string } | undefined;
+  const oauthError = data?.error;
+  const oauthDescription = data?.error_description;
+  const message = oauthDescription || e?.errors?.[0]?.message || e?.message;
+  const parts: string[] = [];
+  if (code != null) parts.push(`code ${code}`);
+  if (reason) parts.push(reason);
+  else if (oauthError) parts.push(oauthError);
+  if (message && message !== oauthError) parts.push(message);
+  return {
+    code,
+    reason,
+    message,
+    oauthError,
+    oauthDescription,
+    short: parts.length > 0 ? parts.join(" · ") : "no further detail",
+  };
+}
+
+// Cheap health probe — verifies the Gmail OAuth chain is intact without
+// actually sending anything. Returns the connected mailbox's address on
+// success (sanity check that the refresh token belongs to the right
+// account), or the parsed error reason on failure. Used by the
+// /api/admin/email-health endpoint so an admin can diagnose "emails not
+// arriving" without grepping Railway logs.
+export async function checkEmailHealth(): Promise<
+  | { ok: true; profileEmail: string; refreshTokenSource: "INVITES_GOOGLE_REFRESH_TOKEN" | "SCHEDULER_GOOGLE_REFRESH_TOKEN" }
+  | { ok: false; stage: "refresh_token_missing" | "gmail_client" | "profile_fetch"; reason: string }
+> {
+  // Step 1: do we even have a refresh token?
+  const hasInvites = !!process.env["INVITES_GOOGLE_REFRESH_TOKEN"];
+  const hasScheduler = !!process.env["SCHEDULER_GOOGLE_REFRESH_TOKEN"];
+  if (!hasInvites && !hasScheduler) {
+    return {
+      ok: false,
+      stage: "refresh_token_missing",
+      reason:
+        "Neither INVITES_GOOGLE_REFRESH_TOKEN nor SCHEDULER_GOOGLE_REFRESH_TOKEN is set. Run /api/auth/scheduler/setup to mint a fresh token, then set it on Railway.",
+    };
+  }
+  const refreshTokenSource = hasInvites
+    ? "INVITES_GOOGLE_REFRESH_TOKEN"
+    : "SCHEDULER_GOOGLE_REFRESH_TOKEN";
+
+  // Step 2: can we build a Gmail client (i.e. is GOOGLE_CLIENT_ID /
+  // GOOGLE_CLIENT_SECRET / GOOGLE_REDIRECT_URI also present)?
+  let gmail: Awaited<ReturnType<typeof getGmailClient>>;
+  try {
+    gmail = await getGmailClient();
+  } catch (err) {
+    return {
+      ok: false,
+      stage: "gmail_client",
+      reason: parseGmailError(err).short,
+    };
+  }
+  if (!gmail) {
+    return {
+      ok: false,
+      stage: "gmail_client",
+      reason: "getGmailClient() returned null. Refresh token present but client construction failed.",
+    };
+  }
+
+  // Step 3: round-trip a `users.getProfile` call — cheapest endpoint
+  // that exercises the full auth chain. If the refresh token has been
+  // revoked, this is where the failure surfaces ("invalid_grant").
+  try {
+    const profile = await gmail.users.getProfile({ userId: "me" });
+    const profileEmail = profile.data.emailAddress ?? "(unknown)";
+    return { ok: true, profileEmail, refreshTokenSource };
+  } catch (err) {
+    return {
+      ok: false,
+      stage: "profile_fetch",
+      reason: parseGmailError(err).short,
+    };
+  }
+}
+
 export function encodeMimeMessage(options: {
   to: string;
   subject: string;
@@ -236,24 +342,8 @@ export async function sendNewsletterEmail(opts: {
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return true;
   } catch (err) {
-    // Log Google's full response so Railway logs carry the real reason
-    // (refresh-token revoked, daily-quota exceeded, bad recipient, etc).
-    // Mirrors the diagnostic shape we use for calendar.ts errors.
-    const e = err as {
-      code?: number;
-      status?: number;
-      message?: string;
-      response?: { status?: number; data?: unknown };
-      errors?: Array<{ reason?: string; message?: string }>;
-    };
-    console.error("[email] sendNewsletterEmail FAILED", {
-      to: opts.to,
-      subject: opts.subject,
-      code: e?.code ?? e?.status ?? e?.response?.status,
-      message: e?.message,
-      reason: e?.errors?.[0]?.reason,
-      data: e?.response?.data,
-    });
+    const parsed = parseGmailError(err);
+    console.error("[email] sendNewsletterEmail FAILED", { to: opts.to, subject: opts.subject, ...parsed });
     return false;
   }
 }
@@ -323,45 +413,10 @@ export async function sendNewsletterEmailDiagnostic(opts: {
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return { ok: true };
   } catch (err) {
-    const e = err as {
-      code?: number;
-      status?: number;
-      message?: string;
-      response?: {
-        status?: number;
-        data?: { error?: string; error_description?: string } | unknown;
-      };
-      errors?: Array<{ reason?: string; message?: string }>;
-    };
-    const code = e?.code ?? e?.status ?? e?.response?.status;
-    const reasonCode = e?.errors?.[0]?.reason;
-    // OAuth-style errors (refresh-token revoked, etc.) carry their
-    // human-readable detail on response.data.error_description, NOT
-    // on errors[0].message. Pull both — the description is usually
-    // the most actionable line for the toast (e.g. "Token has been
-    // expired or revoked.").
-    const data = e?.response?.data as { error?: string; error_description?: string } | undefined;
-    const oauthErr = data?.error;
-    const oauthDesc = data?.error_description;
-    const msg = oauthDesc || e?.errors?.[0]?.message || e?.message;
-    console.error("[email] sendNewsletterEmailDiagnostic FAILED", {
-      to: opts.to,
-      subject: opts.subject,
-      code,
-      reason: reasonCode,
-      message: e?.message,
-      data: e?.response?.data,
-    });
-    // Reader-friendly short message for the toast.
-    const parts: string[] = [];
-    if (code) parts.push(`code ${code}`);
-    if (reasonCode) parts.push(reasonCode);
-    else if (oauthErr) parts.push(oauthErr);
-    if (msg && msg !== oauthErr) parts.push(msg);
-    return {
-      ok: false,
-      reason: parts.length > 0 ? parts.join(" · ") : "Gmail send failed (no further detail)",
-    };
+    const parsed = parseGmailError(err);
+    console.error("[email] sendNewsletterEmailDiagnostic FAILED", { to: opts.to, subject: opts.subject, ...parsed });
+    // Toast copy = the same one-line summary the parser produces.
+    return { ok: false, reason: parsed.short || "Gmail send failed (no further detail)" };
   }
 }
 
@@ -423,7 +478,8 @@ export async function sendAnnouncementEmail(opts: {
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return true;
   } catch (err) {
-    console.error("Failed to send announcement email:", err);
+    const parsed = parseGmailError(err);
+    console.error("[email] sendAnnouncementEmail FAILED", { to: opts.to, ...parsed });
     return false;
   }
 }
@@ -497,7 +553,8 @@ export async function sendPasswordResetEmail(opts: {
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return true;
   } catch (err) {
-    console.error("Failed to send password reset email:", err);
+    const parsed = parseGmailError(err);
+    console.error("[email] sendPasswordResetEmail FAILED", { to: opts.to, ...parsed });
     return false;
   }
 }
@@ -597,7 +654,8 @@ export async function sendPrayerInviteEmail(opts: {
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return true;
   } catch (err) {
-    console.error("Failed to send prayer-invite email:", err);
+    const parsed = parseGmailError(err);
+    console.error("[email] sendPrayerInviteEmail FAILED", { to: opts.to, ...parsed });
     return false;
   }
 }
@@ -748,7 +806,8 @@ export async function sendWeeklyDigestEmail(opts: {
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return true;
   } catch (err) {
-    console.error("Failed to send weekly digest email:", err);
+    const parsed = parseGmailError(err);
+    console.error("[email] sendWeeklyDigestEmail FAILED", { to: opts.to, ...parsed });
     return false;
   }
 }
