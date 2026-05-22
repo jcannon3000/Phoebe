@@ -388,13 +388,14 @@ function PrayingScreen({
 
             {hasLink && (
               isAction ? (
+                // Action intercession — same content as before (caption
+                // + Take action pill) but rendered directly on the
+                // slide background, no card. Lets the prayer body and
+                // the call to act read as one continuous thought
+                // instead of two competing surfaces.
                 <div
-                  className="w-full rounded-2xl px-5 py-4 mt-1 flex flex-col items-center text-center"
-                  style={{
-                    background: "rgba(46,107,64,0.18)",
-                    border: "1px solid rgba(46,107,64,0.4)",
-                    gap: 12,
-                  }}
+                  className="w-full mt-2 flex flex-col items-center text-center"
+                  style={{ gap: 12 }}
                 >
                   <p
                     className="text-sm leading-relaxed"
