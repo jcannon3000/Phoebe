@@ -2,16 +2,16 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 
-// ── How to pray the Daily Office — six-slide teaching deck ───────────────────
+// ── How to pray the Daily Office — six-slide instructional manual ────────────
 //
-// A brief slideshow that frames the Daily Office not as a chore but as a
-// vow of stability — the practice the Church has used to weather every
-// turbulent century. Draws on Thomas Merton (the discipline of staying,
-// the road that is already there) and Thomas Keating (prayer as consent,
-// not as the achievement of a state), plus the Benedictine vow of
-// stabilitas. Reachable from /offices via the "How to pray these →"
-// link beneath the page subtitle; closes back to /offices so the user
-// can begin the morning or evening office immediately after reading.
+// A practical walk-through of the 1979 BCP Daily Office. The earlier
+// version of this deck leaned reflective (Merton, Keating, stabilitas);
+// rewritten as a manual that names the parts in order and tells the
+// reader what to do in each — Opening + Confession → Psalter →
+// Lessons + Canticles → Prayers — plus one closing slide on pace,
+// posture, and how to handle distraction. Reachable from /offices via
+// the "How to pray these →" link; closes back to /offices so the user
+// can begin morning or evening prayer right after.
 
 const BG = "#091A10";
 const WARM_TEXT = "#F0EDE6";
@@ -33,43 +33,40 @@ interface Slide {
 
 const SLIDES: Slide[] = [
   {
-    eyebrow: "THE DAILY OFFICE",
-    headline: "The Church's oldest daily prayer.",
+    eyebrow: "THE SHAPE OF THE OFFICE",
+    headline: "Four movements, twice a day.",
     body:
-      "For more than sixteen centuries, Christians have stopped twice a day to pray — morning and evening — in monasteries, in parishes, in kitchens. The Office has carried the faithful through plagues, exiles, and the long, ordinary middle. It still does.",
+      "Morning Prayer and Evening Prayer share the same shape. You open with a sentence of Scripture and a confession, pray the appointed psalms, hear two short readings, and end with the Creed, the Lord's Prayer, and the collects. Eight to twelve minutes, top to bottom. Phoebe puts the words in order — you walk through them.",
   },
   {
-    eyebrow: "STABILITAS",
-    headline: "A vow against the storm.",
+    eyebrow: "1 · OPENING + CONFESSION",
+    headline: "Begin in Scripture. Then confess.",
     body:
-      "Benedict's monks took a vow of stabilitas — the vow to return to the same place, the same prayer, the same hour. Thomas Merton called it the discipline of staying. The world will always pull you to keep moving; the Office is the practice of standing still.",
-    attribution: "— after Thomas Merton",
+      "An Opening Sentence — a single verse — sets the season (a verse for Advent is different from one for Easter). Then a general Confession said together, followed by the Absolution. You're not announcing your arrival to God; you're remembering you've already arrived.",
   },
   {
-    eyebrow: "ON FEELING NOTHING",
-    headline: "You don't pray to feel anything.",
+    eyebrow: "2 · THE INVITATORY + PSALTER",
+    headline: "Pray the Psalms.",
     body:
-      "Thomas Keating taught that prayer is consent to God's presence — not the achievement of a state. The Office removes the burden of having to feel like praying. You show up. The words are already there. The feeling, if it comes, comes later.",
-    attribution: "— after Thomas Keating",
+      "The Office begins its body with the Invitatory — usually the Venite (Psalm 95) or Christ our Passover — calling the assembly to worship. Then the Psalter: the psalms appointed for the day. The whole Psalter cycles through in about seven weeks. Read them aloud or silently. They are the Church's oldest prayer book.",
   },
   {
-    eyebrow: "WHEN YOU MISS A DAY",
-    headline: "The Office holds.",
+    eyebrow: "3 · LESSONS + CANTICLES",
+    headline: "Hear, then sing back.",
     body:
-      "You will miss days. Don't let the missing become the practice. “I have no idea where I am going. I do not see the road ahead of me.” The Office is the road that was already there. Return to it tomorrow.",
-    attribution: "— Thomas Merton, Thoughts in Solitude",
+      "Two short Scripture readings — one from the Old Testament, one from the New. Between and after them, you respond with a Canticle: the Te Deum, the Benedictus in the morning; the Magnificat or the Nunc dimittis in the evening. Read, then sing back. The Office is a conversation, not a monologue.",
   },
   {
-    eyebrow: "MORNING + EVENING",
-    headline: "One sets the day. The other returns it.",
+    eyebrow: "4 · THE PRAYERS",
+    headline: "Creed, Lord's Prayer, Collects.",
     body:
-      "Pray a morning office to begin. An evening office to give the day back. The space between is sanctified by the bookends — not by trying. Two anchors. Twice a day. Every day you can.",
+      "Say the Apostles' Creed (what the Church believes). The Lord's Prayer (what Christ taught us to say). The Suffrages, a short back-and-forth of call and response. Then the Collect of the Day, a collect for peace, and a collect for the morning or evening. End with intercessions for the world and a General Thanksgiving.",
   },
   {
-    eyebrow: "BEGIN",
-    headline: "Pray today.",
+    eyebrow: "HOW TO PRAY IT",
+    headline: "A few small disciplines.",
     body:
-      "The morning office takes about eight minutes. The evening, about the same. A daily reminder will keep the hour. You'll learn the rhythm by walking it.",
+      "Read at the pace you would speak to a friend — slow but not solemn. Sit, kneel, or stand; whichever helps you stay. When your mind wanders, don't restart — return to the next line. You don't have to feel anything for the Office to be working. Pray a Morning Office to begin the day, an Evening Office to give it back.",
     cta: { label: "Pray today →", href: "/offices" },
   },
 ];
