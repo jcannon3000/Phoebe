@@ -2627,8 +2627,7 @@ function PrayerOfficeCard() {
 // from moment_posts check-ins against any of the feed's intercessions.
 // Tap routes to /prayer-feeds/{slug} where "Pray the full list" lives.
 function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
-  const { feed, prayedToday, weekPrayers } = row;
-  const otherPrayers = (weekPrayers ?? []).filter((p) => !!p.avatarUrl);
+  const { feed, prayedToday } = row;
   return (
     <div
       className="relative flex rounded-xl overflow-hidden"
@@ -2639,89 +2638,81 @@ function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
         border: "1px solid rgba(46,107,64,0.4)",
       }}
     >
-      <div className="flex-1 px-4 pt-[20px] pb-[20px]">
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p
-              className="text-2xl font-semibold"
-              style={{
-                color: "#F0EDE6",
-                fontFamily: "'Space Grotesk', sans-serif",
-                margin: 0,
-                lineHeight: 1.2,
-              }}
-            >
-              {feed.coverEmoji ?? "🌿"} {feed.title}
-            </p>
-          </div>
-          {otherPrayers.length > 0 && (
-            <div className="flex items-center -space-x-2 shrink-0">
-              {otherPrayers.slice(0, 5).map((p) => (
-                <img
-                  key={p.id}
-                  src={p.avatarUrl as string}
-                  alt={p.name}
-                  title={p.name}
-                  className="w-6 h-6 rounded-full object-cover"
-                  style={{ border: "1.5px solid rgba(12,31,18,0.9)" }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+      <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
+        {/* Title sits on a single row with the CTA(s) to the right —
+            no avatars, no eyebrow, no subtitle. Smaller than the
+            PrayerOfficeCard title so the feed cards read as quieter
+            secondary anchors. */}
+        <p
+          className="font-semibold min-w-0 truncate"
+          style={{
+            color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', sans-serif",
+            margin: 0,
+            lineHeight: 1.2,
+            fontSize: 16,
+          }}
+        >
+          {feed.coverEmoji ?? "🌿"} {feed.title}
+        </p>
+
         {prayedToday ? (
-          // Same two-pill split PrayerOfficeCard uses once prayed:
-          // settled "completed" status on the left, "Pray again" on
-          // the right.
-          <div className="mt-[12px] flex items-stretch gap-2">
+          // Two compact pills inline with the title: a settled
+          // "Prayer completed ✓" status + a tappable "View list →" that
+          // routes to the feed page (no auto-play, since the user has
+          // already walked today's list).
+          <div className="flex items-center gap-1.5 shrink-0">
             <div
               aria-label={`${feed.title} prayed today`}
-              className="flex-1 rounded-xl text-center"
+              className="rounded-full text-center"
               style={{
                 background: "rgba(46,107,64,0.10)",
                 color: "rgba(168,197,160,0.9)",
                 fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 500,
-                padding: "7px 12px",
+                padding: "5px 10px",
                 border: "1px solid rgba(46,107,64,0.22)",
+                whiteSpace: "nowrap",
               }}
             >
-              Prayer completed <span aria-hidden>✓</span>
+              Completed <span aria-hidden>✓</span>
             </div>
-            <Link href={`/prayer-feeds/${feed.slug}?play=1`} className="flex-1">
+            <Link href={`/prayer-feeds/${feed.slug}`}>
               <div
                 role="button"
                 tabIndex={0}
-                className="rounded-xl text-center cursor-pointer"
+                className="rounded-full text-center cursor-pointer"
                 style={{
-                  background: "rgba(46,107,64,0.22)",
+                  background: "rgba(46,107,64,0.28)",
                   color: "#F0EDE6",
                   fontFamily: "'Space Grotesk', sans-serif",
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: 500,
-                  padding: "7px 12px",
+                  padding: "5px 10px",
                   border: "1px solid rgba(46,107,64,0.45)",
+                  whiteSpace: "nowrap",
                 }}
               >
-                Pray again <span aria-hidden>→</span>
+                View list <span aria-hidden>→</span>
               </div>
             </Link>
           </div>
         ) : (
-          <Link href={`/prayer-feeds/${feed.slug}?play=1`}>
+          <Link href={`/prayer-feeds/${feed.slug}?play=1`} className="shrink-0">
             <div
               role="button"
               tabIndex={0}
-              className="mt-[12px] w-full rounded-xl text-center cursor-pointer"
+              className="rounded-full text-center cursor-pointer"
               style={{
-                background: "rgba(46,107,64,0.22)",
+                background: "rgba(46,107,64,0.28)",
                 color: "#F0EDE6",
                 fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 500,
-                padding: "7px 12px",
+                padding: "6px 14px",
                 border: "1px solid rgba(46,107,64,0.45)",
+                whiteSpace: "nowrap",
               }}
             >
               Begin praying <span aria-hidden>→</span>
