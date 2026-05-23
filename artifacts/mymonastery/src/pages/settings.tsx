@@ -421,14 +421,14 @@ const PREVIEW_HEIGHT = 182;
 //      push delivery job that consumes it is a follow-up. Surfacing
 //      the toggle now means the preference is captured the moment a
 //      user is interested.
-//   2. "Hide offices on home" — collapses the PrayerOfficeCard on
-//      the offices-only home (parish-dashboard) so the screen leads
-//      with the user's feed instead. Pure-client preference; no
-//      server round trip needed.
-// Both toggles read/write localStorage on render so they always
-// reflect the current persisted state.
+// The old "Hide offices on home" toggle that used to live here is gone
+// — the server-backed "Home screen" picker (HomeScreenSettings) is now
+// the single control for what leads the home. Keeping both meant a
+// creation-feed sign-up saw the office hidden by feed_first_home while
+// this localStorage toggle still read "off," which was contradictory.
+// The toggle below read/writes localStorage on render so it always
+// reflects the current persisted state.
 const FEED_REMINDER_LS_KEY = "phoebe:offices-only:feed-reminder-enabled";
-const HIDE_OFFICES_LS_KEY = "phoebe:offices-only:hide-offices";
 
 function readLsBool(key: string): boolean {
   try {
@@ -467,23 +467,11 @@ function OfficesOnlyExtras() {
   const [feedReminder, setFeedReminder] = useState<boolean>(() =>
     readLsBool(FEED_REMINDER_LS_KEY),
   );
-  const [hideOffices, setHideOffices] = useState<boolean>(() =>
-    readLsBool(HIDE_OFFICES_LS_KEY),
-  );
 
   const toggleFeedReminder = () => {
     const next = !feedReminder;
     setFeedReminder(next);
     writeLsBool(FEED_REMINDER_LS_KEY, next);
-  };
-  const toggleHideOffices = () => {
-    const next = !hideOffices;
-    setHideOffices(next);
-    writeLsBool(HIDE_OFFICES_LS_KEY, next);
-    // Other tabs / pages reading the same key won't update without a
-    // signal; the offices-only home re-reads the flag every render so
-    // a Settings → back trip is enough on the same tab. For a multi-
-    // tab scenario, a 'storage' event would fire automatically.
   };
 
   return (
@@ -514,39 +502,10 @@ function OfficesOnlyExtras() {
         </button>
       </SettingsCard>
 
-      <SettingsCard>
-        <button
-          onClick={toggleHideOffices}
-          className="w-full flex items-center justify-between"
-        >
-          <div className="text-left">
-            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>
-              Hide the Daily Office on home
-            </p>
-            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
-              Collapses the Morning / Evening Prayer card so the home
-              leads with your feed.
-            </p>
-          </div>
-          <div
-            className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${hideOffices ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}
-          >
-            <div
-              className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${hideOffices ? "left-[21px]" : "left-[3px]"}`}
-              style={{ background: "#F0EDE6" }}
-            />
-          </div>
-        </button>
-      </SettingsCard>
-
       <div className="mb-8" />
     </>
   );
 }
-
-// Exported for parish-dashboard to read the same key without
-// hard-coding the string in two places.
-export const PHOEBE_HIDE_OFFICES_LS_KEY = HIDE_OFFICES_LS_KEY;
 
 function MutedPeople() {
   const { data, isLoading } = useQuery<{ muted: MutedUser[] }>({
@@ -1167,14 +1126,6 @@ export default function SettingsPage() {
         <SectionHeader label="Account" />
         <AccountSection />
 
-        {/* ── Phone number — used for contact discovery so people who
-              already have you in their address book can find you on
-              Phoebe. Verification (SMS) isn't live yet, so the form
-              warns the user to enter their own real number only. */}
-        <div className="mb-8">
-          <PhoneSection />
-        </div>
-
         {/* ── Presence ── */}
         <div className="mb-8">
           <SettingsCard>
@@ -1194,11 +1145,6 @@ export default function SettingsPage() {
             </button>
           </SettingsCard>
         </div>
-
-        {/* ── Device (Phoebe Mobile only) ──
-            Only rendered when running inside the Capacitor shell. Web users
-            don't have Face ID, so showing the toggle would confuse them. */}
-        <MobileDeviceSection />
 
         {/* ── Office reminders ── */}
         <OfficeReminderSettings />
