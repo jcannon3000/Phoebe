@@ -110,6 +110,21 @@ export default function AdminAppMetricsPage() {
     },
   });
 
+  // Delete a whole feed (cascades its intercessions + subscriptions +
+  // tokens). The audit is the only surface that lists draft / platform
+  // feeds, so it's the natural place to clean up stray ones. Keyed by
+  // slug so the card can show per-row pending state.
+  const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
+  const deleteFeed = useMutation({
+    mutationFn: (slug: string) => apiRequest("DELETE", `/api/prayer-feeds/${slug}`),
+    onSuccess: () => {
+      setDeletingSlug(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/feed-audit"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/mine"] });
+    },
+    onError: () => setDeletingSlug(null),
+  });
+
   if (!user) return null;
   if (!rawIsAdmin) {
     return (
@@ -269,6 +284,34 @@ export default function AdminAppMetricsPage() {
                       ✓ every token-holder is a subscriber or bound-group member
                     </p>
                   )}
+                  {/* Delete — cascades the feed's intercessions,
+                      subscriptions, and tokens. The confirm spells out
+                      exactly what's lost so a live feed with content
+                      isn't wiped on a misclick. */}
+                  <div className="mt-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const msg =
+                          `Delete "${f.title}" (${f.slug})?\n\n` +
+                          `${f.realSubscriptions} subscriber(s) and ${f.intercessionCount} intercession(s) ` +
+                          `will be permanently removed. This cannot be undone.`;
+                        if (typeof window !== "undefined" && !window.confirm(msg)) return;
+                        setDeletingSlug(f.slug);
+                        deleteFeed.mutate(f.slug);
+                      }}
+                      disabled={deletingSlug === f.slug}
+                      className="text-[11px] font-medium px-3 py-1.5 rounded-full transition-opacity hover:opacity-90 disabled:opacity-50"
+                      style={{
+                        background: "rgba(168,72,72,0.14)",
+                        border: "1px solid rgba(168,72,72,0.4)",
+                        color: "#E8B0B0",
+                        fontFamily: SPACE_GROTESK,
+                      }}
+                    >
+                      {deletingSlug === f.slug ? "Deleting…" : "Delete feed"}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
