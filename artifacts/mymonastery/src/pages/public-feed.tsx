@@ -661,7 +661,7 @@ function SignupStep({
         <div className="text-center mb-7">
           <div className="text-4xl mb-3">🌿</div>
           <h2 className="text-[26px] font-bold leading-snug mb-2" style={{ color: WARM_TEXT, letterSpacing: "-0.02em" }}>
-            Keep praying with {feedTitle}.
+            Keep praying for {feedTitle}.
           </h2>
           <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
             Create a Phoebe account to continue to pray with others for creation and environmental justice.
