@@ -577,11 +577,19 @@ router.get("/groups/:slug/prayer-feeds", requireBeta, async (req, res): Promise<
   res.json({ feeds });
 });
 
-// GET /api/prayer-feeds/mine — feeds the caller created
+// GET /api/prayer-feeds/mine — LIVE feeds the caller created.
+// Scoped to state = 'live' so abandoned drafts / archived feeds don't
+// inflate the "Manage Prayer Feeds" count (the symptom was "says 2
+// feeds but there's really 1" — the 2nd was a non-live draft). The
+// admin App-Metrics feed-audit still lists every feed regardless of
+// state for cleanup purposes.
 router.get("/prayer-feeds/mine", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
   const rows = await db.select().from(prayerFeedsTable)
-    .where(eq(prayerFeedsTable.creatorUserId, user.id))
+    .where(and(
+      eq(prayerFeedsTable.creatorUserId, user.id),
+      eq(prayerFeedsTable.state, "live"),
+    ))
     .orderBy(desc(prayerFeedsTable.createdAt));
   res.json({ feeds: rows });
 });

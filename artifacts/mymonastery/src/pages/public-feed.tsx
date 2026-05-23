@@ -44,6 +44,9 @@ interface Intercession {
   intercessionFullText: string | null;
   intercessionSource: string | null;
   learnMoreUrl: string | null;
+  // Auto-fetched title of the learnMoreUrl article — caption above the
+  // "Learn more →" pill. Null when the fetch found nothing.
+  learnMoreTitle?: string | null;
   name: string;
   createdAt: string;
   // Distinct users (account holders) who have prayed this intercession
@@ -415,6 +418,32 @@ function PrayingScreen({
                     }}
                   >
                     Take action →
+                  </button>
+                </div>
+              ) : item.learnMoreTitle ? (
+                // Learn more with an article title — caption above the
+                // pill, same style as the take-action copy.
+                <div
+                  className="w-full mt-2 flex flex-col items-center text-center"
+                  style={{ gap: 12 }}
+                >
+                  <p
+                    className="text-sm leading-relaxed"
+                    style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}
+                  >
+                    {item.learnMoreTitle}
+                  </p>
+                  <button
+                    onClick={() => openExternal(item.learnMoreUrl!)}
+                    className="text-[13px] font-semibold px-4 py-2.5 rounded-full"
+                    style={{
+                      background: "rgba(46,107,64,0.35)",
+                      color: WARM_TEXT,
+                      border: "1px solid rgba(46,107,64,0.55)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Learn more →
                   </button>
                 </div>
               ) : (
