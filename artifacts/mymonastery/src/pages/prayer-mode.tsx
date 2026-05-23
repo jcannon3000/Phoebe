@@ -1758,15 +1758,7 @@ function ClosingSlide({
         style={{ maxWidth: 380 }}
       >
         <p
-          className="text-base leading-relaxed"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          {officesOnly
-            ? "Make daily prayer a rhythm."
-            : "Make praying for your friends a daily habit."}
-        </p>
-        <p
-          className="text-[13px] leading-relaxed mt-2"
+          className="text-[13px] leading-relaxed"
           style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}
         >
           {officesOnly
