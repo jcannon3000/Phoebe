@@ -44,7 +44,15 @@ function formatDone(totalSeconds: number): string {
 
 type Phase = "picker" | "running" | "complete";
 
-export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ContemplationTimer({
+  open,
+  onClose,
+  // When set, the overlay skips the duration picker and begins a sit of
+  // this length immediately — used by the quick 5/10/20 buttons on the
+  // Contemplation page. Undefined → show the picker (the default, and
+  // what the pause-slide CTA + "Begin contemplation" button use).
+  startMinutes,
+}: { open: boolean; onClose: () => void; startMinutes?: number }) {
   const queryClient = useQueryClient();
   const [phase, setPhase] = useState<Phase>("picker");
   const [customMode, setCustomMode] = useState(false);
@@ -122,18 +130,26 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [phase]);
 
-  // ── Reset to the picker each time the overlay (re)opens.
+  // ── On (re)open: jump straight into a sit when startMinutes was
+  // supplied (the quick buttons), otherwise reset to the picker.
   useEffect(() => {
     if (open) {
-      setPhase("picker");
-      setCustomMode(false);
       recordedRef.current = false;
       finishedRef.current = false;
+      if (startMinutes && startMinutes > 0) {
+        begin(startMinutes);
+      } else {
+        setPhase("picker");
+        setCustomMode(false);
+      }
     } else {
       releaseWakeLock();
       cancelEndBell();
     }
-  }, [open]);
+    // begin is a stable hoisted fn; depending on it would re-run this
+    // every render. We only want the open→true transition.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, startMinutes]);
 
   // ── Countdown loop. Remaining is derived from an absolute end time so
   // a backgrounded tab resyncs correctly on return rather than drifting.
