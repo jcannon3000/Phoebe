@@ -170,6 +170,39 @@ export default function PersonProfile() {
     },
   });
 
+  // Fellow-relationship management. We read /api/fellows once and
+  // check if this person is in the set so we can render either an
+  // "Unfellow" affordance (if they are) or a quiet "Not a Fellow"
+  // status line (if they aren't). v1 doesn't surface a manual-add
+  // path here — Fellows are forged through the share-link Amen flow
+  // (/p/:token) and the picker is on the prayer-request compose,
+  // not on the person profile.
+  type FellowRow = { userId: number; name: string | null; email: string };
+  const { data: fellowsData } = useQuery<{ fellows: FellowRow[] }>({
+    queryKey: ["/api/fellows"],
+    queryFn: () => apiRequest("GET", "/api/fellows"),
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+  const personUserId = (person as { userId?: number } | null)?.userId ?? null;
+  const isFellow = !!fellowsData?.fellows.some(f => f.userId === personUserId);
+  const unfellowMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", `/api/fellows/${personUserId}`),
+    onSuccess: () => {
+      // Invalidate every surface that reads fellow membership so
+      // the change reflects immediately: the /api/fellows list (drives
+      // the People page section + this profile's settings popup),
+      // /api/people (the Fellow pill on the card), /api/prayer-requests
+      // (visibility now changes), and the auth-tier query (a viewer
+      // whose ONLY fellow was this person reverts to their pre-Fellow
+      // tier on the next /me read).
+      queryClient.invalidateQueries({ queryKey: ["/api/fellows"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/people"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+  });
+
 
   const sendWordMutation = useMutation({
     mutationFn: async ({ requestId, content }: { requestId: number; content: string }) => {
@@ -326,9 +359,40 @@ export default function PersonProfile() {
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowSettingsPopup(false)} />
                   <div
-                    className="absolute right-0 top-10 z-50 rounded-xl py-1 min-w-[170px]"
+                    className="absolute right-0 top-10 z-50 rounded-xl py-1 min-w-[200px]"
                     style={{ background: "#0D1F14", border: "1px solid rgba(46,107,64,0.25)", boxShadow: "0 8px 24px rgba(0,0,0,0.4)" }}
                   >
+                    {/* Fellow toggle — only renders the affordance
+                        when this person is actually a Fellow of the
+                        viewer. Unfellow tears down both directional
+                        rows of the pair server-side. We surface a
+                        small status line above the button so the
+                        user sees the relationship state at a glance
+                        before tapping. */}
+                    {isFellow && (
+                      <>
+                        <div
+                          className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-[0.14em] font-semibold"
+                          style={{ color: "rgba(143,175,150,0.55)" }}
+                        >
+                          Fellow
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (unfellowMutation.isPending) return;
+                            if (typeof window !== "undefined" && !window.confirm(`Stop being Fellows with ${firstName}? You'll no longer see their future prayer requests.`)) return;
+                            setShowSettingsPopup(false);
+                            unfellowMutation.mutate();
+                          }}
+                          disabled={unfellowMutation.isPending}
+                          className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5 disabled:opacity-40"
+                          style={{ color: "#C25C5C", borderBottom: "1px solid rgba(46,107,64,0.18)" }}
+                        >
+                          {unfellowMutation.isPending ? "Removing…" : `Unfellow ${firstName}`}
+                        </button>
+                      </>
+                    )}
+
                     {/* Mute toggle */}
                     {(person as any).isMuted ? (
                       <button
