@@ -1787,7 +1787,17 @@ export default function UserOnboarding() {
   // existing index-shift logic doesn't break, but we never read
   // them here.
   void frozenPrayerSlides;
-  const SLIDES = BASE_SLIDES;
+  // Offices-only signups (the Daily Office tier + public-feed sign-ups,
+  // which are also offices-only) get a one-slide onboarding: just the
+  // profile picture. The Daily Office intro / daily-habit / safe-space
+  // / first-prayer-request slides are the full-app tour and would feel
+  // like overhead for someone who came in to pray a single feed or the
+  // office. Preview mode (admin /beta deck preview) always shows the
+  // full deck so admins can review every slide.
+  const officesOnlyOnboarding = !isPreview && user?.accessTier === "offices-only";
+  const SLIDES = officesOnlyOnboarding
+    ? BASE_SLIDES.filter((s) => s.kind === "profile-picture")
+    : BASE_SLIDES;
 
   const completeOnboarding = useCallback(async () => {
     if (isPreview) {
@@ -1891,7 +1901,15 @@ export default function UserOnboarding() {
       case "welcome":
         return <WelcomeSlide />;
       case "profile-picture":
-        return <ProfilePictureSlide onNext={next} />;
+        // When the profile slide is the LAST slide (offices-only
+        // one-slide deck), advancing past it finishes onboarding
+        // rather than clamping in place — otherwise the user would
+        // be stuck with nowhere to go.
+        return (
+          <ProfilePictureSlide
+            onNext={safeIndex >= SLIDES.length - 1 ? completeOnboarding : next}
+          />
+        );
       case "info":
         return <InfoSlideView slide={slide} />;
       case "lets-pray":
