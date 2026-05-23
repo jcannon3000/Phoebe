@@ -56,6 +56,11 @@ interface MomentDetail {
     createdAt: string;
     momentToken: string;
     templateType: string | null;
+    // Set when this intercession belongs to a prayer feed (vs a
+    // community group). Subscription to a feed is feed-level, not
+    // per-prayer, so the per-moment Members roster is suppressed for
+    // feed-scoped intercessions.
+    prayerFeedId?: number | null;
     intercessionTopic: string | null;
     intercessionSource?: string | null;
     intercessionFullText?: string | null;
@@ -1934,10 +1939,13 @@ export default function MomentDetail() {
               {/* Members — creator can remove. Hidden entirely for
                   group-scoped practices: the roster is the community
                   membership, edited on the community page, not here.
-                  Showing (and letting the creator edit) a parallel
-                  list was confusing and let the two sources of truth
-                  drift apart. */}
-              {isCreator && !momentGroup && members.length > 1 && (
+                  Also hidden for FEED-scoped intercessions: a feed
+                  subscription is feed-level (managed on the feed page),
+                  not prayer-by-prayer, so a per-intercession roster
+                  with remove buttons is misleading — removing someone
+                  here wouldn't unsubscribe them, it'd just desync from
+                  the feed's subscriber list. */}
+              {isCreator && !momentGroup && !moment.prayerFeedId && members.length > 1 && (
                 <div className="rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                   <p className="text-sm font-medium text-foreground mb-3">Members</p>
                   <div className="space-y-2">
