@@ -93,11 +93,7 @@ function ensureVisibilityResume() {
   document.addEventListener("resume", tryResume);
 }
 
-// Exported for the contemplation timer, which strikes it once at the
-// start of a sit and once when the time is up — Insight-Timer-style
-// bookends of silence. (The Amen feedback that originally used it is
-// haptic-only now; the bell lives on here.)
-export function playChurchBell() {
+function playChurchBell() {
   try {
     type WindowWithWebkitAudio = Window &
       typeof globalThis & { webkitAudioContext?: typeof AudioContext };

@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
-import { playChurchBell } from "@/lib/amenFeedback";
+import { playOpeningSwell } from "@/lib/amenFeedback";
 
-// Silent contemplation timer — Insight-Timer-style. A bell opens the
-// sit, the screen counts down in stillness, a bell closes it. The
-// elapsed time is logged as a "contemplation" prayer_session so it
-// shows on the Contemplation page's stats.
+// Silent contemplation timer — Insight-Timer-style. The slideshow's
+// chapel-exhale swell opens the sit, the screen counts down in
+// stillness, and the same swell (a brighter octave) closes it — same
+// sound effect the prayer slideshow uses on every slide, per user
+// direction. The elapsed time is logged as a "contemplation"
+// prayer_session so it shows on the Contemplation page's stats.
 //
 // Launched two ways (both render this overlay): the "Begin
 // contemplation" CTA on the prayer-mode pause slide, and the
@@ -28,6 +30,18 @@ function mmss(totalSeconds: number): string {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
+// Precise, readable time-done for the closing screen — so an early end
+// reports exactly how long the user sat ("1 min 30 sec"), not a vague
+// "a moment." Whole-minute sits drop the seconds ("5 minutes").
+function formatDone(totalSeconds: number): string {
+  const s = Math.max(0, Math.round(totalSeconds));
+  if (s < 60) return `${s} second${s === 1 ? "" : "s"}`;
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  if (sec === 0) return `${m} minute${m === 1 ? "" : "s"}`;
+  return `${m} min ${sec} sec`;
+}
+
 type Phase = "picker" | "running" | "complete";
 
 export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -38,8 +52,10 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
   // Chosen length + the live remaining count (seconds).
   const [totalSeconds, setTotalSeconds] = useState(0);
   const [remaining, setRemaining] = useState(0);
-  // What the closing screen reports — the seconds actually sat.
+  // What the closing screen reports — the seconds actually sat, and
+  // whether the user ended before the bell (changes the closing copy).
   const [satSeconds, setSatSeconds] = useState(0);
+  const [endedEarly, setEndedEarly] = useState(false);
 
   const endAtRef = useRef<number>(0);
   const startedAtRef = useRef<Date | null>(null);
@@ -97,7 +113,7 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
     const tick = () => {
       const left = Math.max(0, (endAtRef.current - Date.now()) / 1000);
       setRemaining(left);
-      if (left <= 0) finish(totalSeconds);
+      if (left <= 0) finish(totalSeconds, false);
     };
     tick();
     const id = window.setInterval(tick, 250);
@@ -131,21 +147,28 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
     finishedRef.current = false;
     startedAtRef.current = new Date();
     endAtRef.current = Date.now() + total * 1000;
+    setEndedEarly(false);
     setPhase("running");
     void acquireWakeLock();
-    playChurchBell();
+    // Opening swell — the same chapel-exhale the prayer slideshow plays
+    // on every slide entry (octave 0, the base voicing).
+    playOpeningSwell(0);
   }
 
   // Both the natural finish and an early "End" land here. `seconds` is
   // the time actually sat (full length on a natural finish; elapsed on
-  // an early end).
-  function finish(seconds: number) {
+  // an early end). `early` flags the latter so the closing copy can
+  // acknowledge it.
+  function finish(seconds: number, early: boolean) {
     if (finishedRef.current) return;
     finishedRef.current = true;
     releaseWakeLock();
     setSatSeconds(Math.round(seconds));
+    setEndedEarly(early);
     recordSession(seconds);
-    playChurchBell();
+    // Closing swell — same slideshow sound, brighter (octave 2) so the
+    // ending reads as a resolution rather than a repeat of the opening.
+    playOpeningSwell(2);
     try {
       window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } }));
     } catch { /* non-fatal */ }
@@ -154,7 +177,7 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
 
   function endEarly() {
     const elapsed = totalSeconds - remaining;
-    finish(elapsed);
+    finish(elapsed, true);
   }
 
   function handleClose() {
@@ -314,12 +337,12 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
           {phase === "complete" && (
             <>
               <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: "rgba(143,175,150,0.55)" }}>
-                Contemplation complete
+                {endedEarly ? "Contemplation ended" : "Contemplation complete"}
               </p>
               <p className="text-[26px] leading-[1.3] font-medium italic mb-2" style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif" }}>
-                {satSeconds >= 60
-                  ? `${Math.round(satSeconds / 60)} ${Math.round(satSeconds / 60) === 1 ? "minute" : "minutes"} of stillness`
-                  : "A moment of stillness"}
+                {/* Always name the exact time sat — important on an early
+                    end so the user sees what they actually did. */}
+                {formatDone(satSeconds)} of stillness
               </p>
               <p className="text-[13px] mb-8" style={{ color: "rgba(143,175,150,0.65)", fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 300 }}>
                 Carry the quiet with you.
