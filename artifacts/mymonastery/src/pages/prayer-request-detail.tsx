@@ -40,6 +40,11 @@ type PrayerRequestDetail = {
   ownerName: string | null;
   ownerAvatarUrl: string | null;
   viewerIsOwner: boolean;
+  // Owner-only share token. Drives the "Share" button on the
+  // detail page — populated only when viewerIsOwner is true,
+  // otherwise null. /p/:token is the public-share URL fragment
+  // built from this.
+  shareToken: string | null;
   words: PrayerWord[];
   amens: PrayerAmen[];
   amenCountTotal: number;
@@ -498,6 +503,22 @@ export default function PrayerRequestDetailPage() {
               </div>
             )}
 
+            {/* Share button — opens a public /p/:token link for
+                the prayer request so the owner can paste it into a
+                text message or social DM. Tries the native share
+                sheet first (iOS / Android web share API); falls
+                back to copy-to-clipboard with a small "Link copied"
+                toast inside the button itself. Only renders when the
+                server actually returned a share_token for this row
+                (every new request mints one; legacy rows backfilled
+                in the migration). */}
+            {data.shareToken && (
+              <ShareLinkButton
+                shareToken={data.shareToken}
+                ownerName={data.ownerName ?? "Someone"}
+              />
+            )}
+
             {/* Avatar rail — every distinct pray-er, most recent first. */}
             {data.amens.length > 1 && (
               <div className="flex items-center justify-center -mt-1">
@@ -611,5 +632,70 @@ export default function PrayerRequestDetailPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// ── Share-link button (owner-only) ───────────────────────────────────
+//
+// Renders on the owner's view of a prayer request, beneath the amen
+// recap. Tries navigator.share first (the OS share sheet on iOS /
+// Android); falls back to copy-to-clipboard with a brief "Link
+// copied" affordance so the user gets feedback that the action
+// landed. The link uses window.location.origin so it'll work on
+// custom domains (withphoebe.app) as well as preview deploys.
+function ShareLinkButton({
+  shareToken,
+  ownerName,
+}: {
+  shareToken: string;
+  ownerName: string;
+}) {
+  const [justCopied, setJustCopied] = useState(false);
+  const url = `${window.location.origin}/p/${shareToken}`;
+  const shareText =
+    `${ownerName} is asking for prayer on Phoebe.` +
+    `\n\nTap to read and pray:`;
+
+  async function handleShare() {
+    // navigator.share gives us the native iOS share sheet (Messages,
+    // Mail, AirDrop, etc.). If the browser doesn't support it (most
+    // desktop browsers and some webviews), fall through to clipboard.
+    if (typeof navigator !== "undefined" && "share" in navigator) {
+      try {
+        await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({
+          title: "Prayer request",
+          text: shareText,
+          url,
+        });
+        return;
+      } catch {
+        // User cancelled or share failed — fall through to clipboard.
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setJustCopied(true);
+      window.setTimeout(() => setJustCopied(false), 1800);
+    } catch {
+      // Last-resort fallback — a transient prompt the user can copy
+      // manually. Edge case; modern WebViews all support clipboard.
+      window.prompt("Copy this link", url);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleShare}
+      className="mt-2 px-5 py-2 rounded-full text-[13px] font-medium transition-opacity hover:opacity-90"
+      style={{
+        background: "rgba(46,107,64,0.18)",
+        color: "#C8D4C0",
+        border: "1px solid rgba(46,107,64,0.4)",
+        fontFamily: "'Space Grotesk', sans-serif",
+      }}
+    >
+      {justCopied ? "Link copied ✓" : "Share this prayer →"}
+    </button>
   );
 }

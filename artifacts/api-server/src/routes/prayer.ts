@@ -186,6 +186,12 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     ownerName: owner?.name ?? null,
     ownerAvatarUrl: owner?.avatarUrl ?? null,
     viewerIsOwner,
+    // Owner-only share token. Surfaces the /p/:token public-share
+    // link on the detail page so the requester can hand it out.
+    // Only sent on the owner's view of the row; non-owners get
+    // null (the share button hides itself anyway since it's gated
+    // on viewerIsOwner client-side).
+    shareToken: viewerIsOwner ? r.shareToken ?? null : null,
     words: wordRows
       .map(w => ({
         id: w.id,

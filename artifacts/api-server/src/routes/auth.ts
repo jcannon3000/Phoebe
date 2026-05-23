@@ -5,7 +5,7 @@ import passport from "passport";
 import { Strategy as GoogleStrategy, type Profile } from "passport-google-oauth20";
 import { google } from "googleapis";
 import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, waitlistTable, persistentAuthTokensTable } from "@workspace/db";
-import { eq, and, sql, isNull } from "drizzle-orm";
+import { eq, and, sql, isNull, inArray } from "drizzle-orm";
 import { notifyAdminsOfNewMember } from "./groups";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { getUserAccessTier } from "../lib/parishGate";
@@ -626,7 +626,7 @@ router.post(
     message: "Too many signup attempts from your network. Please try again in an hour.",
   }),
   async (req, res): Promise<void> => {
-  const { email, name, password, groupSlug, groupInviteToken, website, officesOnly, subscribeToFeedSlug } = req.body as {
+  const { email, name, password, groupSlug, groupInviteToken, website, officesOnly, subscribeToFeedSlug, anonAmenSessionId } = req.body as {
     email?: string; name?: string; password?: string;
     groupSlug?: string; groupInviteToken?: string;
     // Honeypot: a hidden field no real browser user will ever fill in.
@@ -646,6 +646,13 @@ router.post(
     // honored for live + public feeds (server-verified); a stray slug
     // for a private/draft feed is silently ignored.
     subscribeToFeedSlug?: string;
+    // Set by the public /p/:token share-link signup flow. Tells the
+    // server to claim every anonymous_amens row keyed to this visitor's
+    // localStorage session and fan them out into real
+    // prayer_request_amens rows + Fellow pairs with each unique owner
+    // the visitor amened. Best-effort: a failure here doesn't unwind
+    // account creation, the user can still re-amen in-app afterwards.
+    anonAmenSessionId?: string;
   };
 
   // Honeypot trip — silently reject with a generic validation error.
@@ -816,6 +823,72 @@ router.post(
       }
     } catch (err) {
       console.error("[auth/register] auto-subscribe to feed failed:", err);
+    }
+  }
+
+  // Claim any anonymous Amens this visitor tapped from a /p/:token
+  // share link. We:
+  //   1. Find every unclaimed anonymous_amens row keyed to their
+  //      session_id (the localStorage hex).
+  //   2. INSERT a real prayer_request_amens row for each
+  //      (request, user) pair — ON CONFLICT DO NOTHING so re-runs
+  //      after a partial failure stay idempotent.
+  //   3. Stamp claimed_by_user_id + claimed_at on the anon row so
+  //      a re-run skips them and a future sweep can prune.
+  //   4. For each DISTINCT request owner the visitor amened (and not
+  //      themselves), insert a two-row Fellow pair (A→B, B→A) so the
+  //      connection works as a single-side query on either side.
+  if (typeof anonAmenSessionId === "string" && anonAmenSessionId.length >= 16) {
+    try {
+      const { anonymousAmensTable, prayerRequestAmensTable, prayerRequestsTable, fellowsTable } = await import("@workspace/db");
+      const rows = await db
+        .select({
+          id: anonymousAmensTable.id,
+          requestId: anonymousAmensTable.requestId,
+          ownerId: prayerRequestsTable.ownerId,
+        })
+        .from(anonymousAmensTable)
+        .innerJoin(prayerRequestsTable, eq(prayerRequestsTable.id, anonymousAmensTable.requestId))
+        .where(and(
+          eq(anonymousAmensTable.sessionId, anonAmenSessionId),
+          isNull(anonymousAmensTable.claimedAt),
+        ));
+
+      if (rows.length > 0) {
+        // Fan out into prayer_request_amens. ON CONFLICT lets the
+        // unique (request_id, user_id) constraint dedupe if the
+        // visitor somehow also amened in-app later under the same
+        // account — shouldn't happen on first signup, but the
+        // constraint keeps us safe.
+        await db
+          .insert(prayerRequestAmensTable)
+          .values(rows.map(r => ({ requestId: r.requestId, userId: user.id })))
+          .onConflictDoNothing();
+
+        // Mark every anon row as claimed.
+        const anonIds = rows.map(r => r.id);
+        await db
+          .update(anonymousAmensTable)
+          .set({ claimedByUserId: user.id, claimedAt: new Date() })
+          .where(inArray(anonymousAmensTable.id, anonIds));
+
+        // Two-row Fellow pairs for each unique owner. Skip self
+        // (an owner could share their own link to themselves while
+        // logged out — degenerate case, just ignore).
+        const distinctOwners = Array.from(new Set(rows.map(r => r.ownerId))).filter(oid => oid !== user.id);
+        if (distinctOwners.length > 0) {
+          const fellowRows = distinctOwners.flatMap(oid => [
+            { userId: user.id, fellowUserId: oid, source: "shared_prayer" },
+            { userId: oid, fellowUserId: user.id, source: "shared_prayer" },
+          ]);
+          await db
+            .insert(fellowsTable)
+            .values(fellowRows)
+            .onConflictDoNothing();
+        }
+      }
+    } catch (err) {
+      console.error("[auth/register] anon-amen claim failed:", err);
     }
   }
 
