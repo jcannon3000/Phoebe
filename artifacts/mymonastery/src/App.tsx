@@ -122,6 +122,7 @@ import BcpDailyOfficePage from "./pages/bcp-daily-office";
 import BcpDailyDevotionPage from "./pages/bcp-daily-devotion";
 import BcpPsalterPage from "./pages/bcp-psalter";
 import PublicPrayerPage from "./pages/public-prayer";
+import PublicPrayerRequestPage from "./pages/public-prayer-request";
 import PublicLettersPage from "./pages/public-letters";
 import PublicFeedPage from "./pages/public-feed";
 import CommunitiesPage from "./pages/communities";
@@ -316,6 +317,12 @@ function ParishGate({ children }: { children: ReactNode }) {
         // group_members row exists, parishGate flips the derived
         // accessTier to "full" and the gate stops applying.
         location.startsWith("/communities/join/") ||
+        // Public Prayer Request share links — /p/:token. An offices-
+        // only viewer landing on a friend's shared prayer request
+        // should be able to read it + tap Amen, which auto-Fellows
+        // them with the owner. Without this carve-out, ParishGate
+        // bounces them to /parish before the page renders.
+        location.startsWith("/p/") ||
         location === "/parish/admin" ||
         location.startsWith("/parish/celebration") ||
         location.startsWith("/bcp") ||
@@ -369,7 +376,10 @@ function Router() {
           older deep links still resolve. */}
       <Route path="/" component={WelcomePublicPage} />
       <Route path="/signin" component={Onboarding} />
-      <Route path="/onboarding" component={Onboarding} />
+      {/* /onboarding is the post-signup UserOnboarding slideshow,
+          mounted below. Don't claim it here for the signin form —
+          Wouter <Switch> is first-match-wins and a duplicate route
+          here would shadow the real slideshow. */}
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/prayer-chooser" component={PrayerChooserPage} />
@@ -453,6 +463,12 @@ function Router() {
           Devotion, pray the time-appropriate liturgy, then a sign-up
           invitation. The office/devotion APIs are already public. */}
       <Route path="/pray" component={PublicPrayerPage} />
+      {/* Public Prayer Request share — /p/:token. Anyone with the
+          link can read the request + tap Amen; the page shepherds
+          them through sign-up afterwards so they become Fellows
+          with the owner. Lives outside any tier gate (no auth
+          required to render). */}
+      <Route path="/p/:token" component={PublicPrayerRequestPage} />
       <Route path="/write" component={PublicLettersPage} />
       {/* /feed/:slug — public, no-login landing for a single prayer feed.
           Logged-in users are redirected by the page to /prayer-feeds/:slug. */}

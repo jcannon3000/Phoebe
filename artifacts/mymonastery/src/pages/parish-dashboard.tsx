@@ -81,6 +81,14 @@ export default function ParishDashboard() {
     if (!user) { setLocation("/"); return; }
     if (user.accessTier === "full") setLocation("/dashboard");
     if (user.accessTier === "unassigned") setLocation("/parish/onboarding");
+    // Walk every signed-in user through the user-onboarding slideshow
+    // (profile pic → Daily Office intro → daily-habit → safe-space →
+    // first request) the first time they land here. Same gate the full
+    // /dashboard uses, applied to offices-only + parish-only so the
+    // intro doesn't get skipped for non-beta tiers.
+    if (user.accessTier !== "unassigned" && !user.onboardingCompleted) {
+      setLocation("/onboarding");
+    }
   }, [user, authLoading, setLocation]);
 
   const todayQuery = useQuery<ParishToday>({

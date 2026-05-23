@@ -344,9 +344,191 @@ function GatheringsMock() {
   );
 }
 
+// ─── Daily Office + Prayer Rhythm mocks (mirror church-deck) ────────────────
+//
+// Copied verbatim from artifacts/mymonastery/src/pages/church-deck.tsx
+// so the onboarding slides about the offices match the about/marketing
+// slideshow visually one-for-one. Same MockPhone wrapper, same C
+// palette — both files share the design tokens.
+
+/* ── The Daily Office — Evening Prayer psalm slide ── */
+function DailyOfficeMock() {
+  const verses = [
+    { n: 121, line1: "I have done what is just and right;", line2: "do not deliver me to my oppressors." },
+    { n: 122, line1: "Be surety for your servant's good;", line2: "let not the proud oppress me." },
+    { n: 123, line1: "My eyes have failed from watching for your salvation", line2: "and for your righteous promise." },
+    { n: 124, line1: "Deal with your servant according to your loving-kindness", line2: "and teach me your statutes." },
+  ];
+  const serif = "Georgia, 'Times New Roman', serif";
+  return (
+    <MockPhone>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.55)" }}>← Back</p>
+        <div
+          className="px-3 py-1 rounded-full text-[10px] font-semibold"
+          style={{ background: "rgba(19,44,29,0.85)", border: "1px solid rgba(200,212,192,0.18)", color: C.text, fontFamily: C.font }}
+        >
+          Evening Prayer
+        </div>
+        <div className="w-[40px]" />
+      </div>
+      <p
+        className="text-[9px] uppercase tracking-[0.22em] font-semibold mb-3 text-center"
+        style={{ color: "rgba(143,175,150,0.6)", fontFamily: C.font }}
+      >
+        Psalm 119:121&ndash;144
+      </p>
+      <div className="mb-4">
+        {verses.map((v) => (
+          <div key={v.n} className="mb-2.5">
+            <div className="flex gap-2">
+              <span
+                className="text-[10px] leading-[1.55] shrink-0 pt-[1px]"
+                style={{ color: C.sage, fontFamily: serif, fontVariantNumeric: "tabular-nums" }}
+              >
+                {v.n}
+              </span>
+              <div className="flex-1">
+                <p className="text-[11px] leading-[1.55]" style={{ color: C.text, fontFamily: serif }}>
+                  {v.line1} <span style={{ color: C.sage }}>*</span>
+                </p>
+                <p className="text-[11px] leading-[1.55] pl-3" style={{ color: C.text, fontFamily: serif }}>
+                  {v.line2}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <p
+        className="text-[9px] uppercase tracking-[0.22em] font-semibold mb-3 text-center"
+        style={{ color: "rgba(143,175,150,0.5)", fontFamily: C.font }}
+      >
+        BCP p. 763
+      </p>
+      <div
+        className="flex items-center justify-between rounded-full px-3 py-2"
+        style={{ background: "rgba(19,44,29,0.92)", border: "1px solid rgba(200,212,192,0.15)" }}
+      >
+        <p className="text-[10px] font-semibold" style={{ color: "rgba(200,212,192,0.6)", fontFamily: C.font }}>Back</p>
+        <p className="text-[9px] uppercase tracking-[0.22em]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: C.font }}>8 · Psalm</p>
+        <div
+          className="px-2.5 py-1 rounded-full text-[10px] font-semibold"
+          style={{ background: "#2D5E3F", color: C.text, fontFamily: C.font }}
+        >
+          Next
+        </div>
+      </div>
+    </MockPhone>
+  );
+}
+
+/* ── Prayer Rhythm — daily-habit "past 7 days" mock ── */
+function PrayerRhythmMock() {
+  const morning = [true, true, true, true, true, true, true];
+  const evening = [true, true, true, true, true, false, true];
+  const dayLetters = ["T", "F", "S", "S", "M", "T", "W"];
+  return (
+    <MockPhone>
+      <div className="flex items-center justify-end mb-2">
+        <div
+          className="w-5 h-5 rounded-full flex items-center justify-center"
+          style={{ background: "rgba(200,212,192,0.08)" }}
+        >
+          <span className="text-[10px]" style={{ color: "rgba(200,212,192,0.5)" }}>×</span>
+        </div>
+      </div>
+      <p
+        className="text-[9px] uppercase tracking-[0.22em] font-semibold text-center mb-1"
+        style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
+      >
+        Today
+      </p>
+      <h2 className="text-[15px] font-semibold text-center mb-3" style={{ color: C.text, fontFamily: C.font }}>
+        Your prayer rhythm
+      </h2>
+      <div
+        className="rounded-xl px-3 py-2 mb-2 flex items-center gap-2"
+        style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)" }}
+      >
+        <span className="text-[14px]">🌅</span>
+        <p className="text-[12px] font-semibold flex-1" style={{ color: C.text, fontFamily: C.font }}>Morning</p>
+        <div
+          className="px-2 py-0.5 rounded-full text-[9px] font-semibold"
+          style={{ background: "rgba(46,107,64,0.5)", color: C.text, fontFamily: C.font }}
+        >
+          Completed ✓
+        </div>
+      </div>
+      <div
+        className="rounded-xl px-3 py-2 mb-3 flex items-center gap-2"
+        style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)" }}
+      >
+        <span className="text-[14px]">🌙</span>
+        <p className="text-[12px] font-semibold flex-1" style={{ color: C.text, fontFamily: C.font }}>Evening</p>
+        <div
+          className="px-2 py-0.5 rounded-full text-[9px] font-semibold"
+          style={{ background: "rgba(46,107,64,0.5)", color: C.text, fontFamily: C.font }}
+        >
+          Completed ✓
+        </div>
+      </div>
+      <p
+        className="text-[9px] uppercase tracking-[0.22em] font-semibold text-center mb-2"
+        style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
+      >
+        Past 7 Days
+      </p>
+      <div className="grid grid-cols-8 gap-1 mb-2 px-1">
+        <div />
+        {dayLetters.map((d, i) => (
+          <p key={i} className="text-[9px] text-center" style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}>
+            {d}
+          </p>
+        ))}
+        <span className="text-[12px] text-center">🌅</span>
+        {morning.map((done, i) => (
+          <div key={`m${i}`} className="flex items-center justify-center">
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{
+                background: done ? "#7FA98A" : "transparent",
+                border: done ? "none" : "1px solid rgba(127,169,138,0.3)",
+              }}
+            />
+          </div>
+        ))}
+        <span className="text-[12px] text-center">🌙</span>
+        {evening.map((done, i) => (
+          <div key={`e${i}`} className="flex items-center justify-center">
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{
+                background: done ? "#9AA8D4" : "transparent",
+                border: done ? "none" : "1px solid rgba(154,168,212,0.3)",
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      <p className="text-[10px] text-center mb-3" style={{ color: "rgba(200,212,192,0.55)", fontFamily: C.font }}>
+        7 days of prayer this week
+      </p>
+    </MockPhone>
+  );
+}
+
 // ─── Slide definitions ────────────────────────────────────────────────────────
 
-type MockKey = "community" | "prayer-requests" | "daily-push" | "bcp" | "lectio" | "gatherings";
+type MockKey =
+  | "community"
+  | "prayer-requests"
+  | "daily-push"
+  | "bcp"
+  | "lectio"
+  | "gatherings"
+  | "daily-office"
+  | "prayer-rhythm";
 
 type InfoSlide = {
   kind: "info";
@@ -405,13 +587,29 @@ type Slide =
   | { kind: "prayer"; payload: PrayerPayload; isFirstPrayer: boolean }
   | { kind: "prayer-request" };
 
-// The base deck (everything BEFORE we splice in the dynamic prayer
-// slides). The prayer slideshow is woven in at runtime once the
-// intercession + prayer-request fetches resolve — see UserOnboarding
-// below. Keeping the base deck static lets us preserve the existing
-// slide indexes / progress bar math when there's nothing to splice in.
+// The complete onboarding deck. Previously this was a "base deck"
+// that had a community-intercession + 2 prayer-request slides spliced
+// in at runtime from /api/moments + /api/prayer-requests; that
+// "praying for people in your group" beat was removed per user
+// direction. Now every user walks the same fixed deck: profile
+// picture → Daily Office intro (mirrors church-deck) → daily-habit
+// intro (mirrors church-deck) → safe-space → first prayer request.
 const BASE_SLIDES: Slide[] = [
   { kind: "profile-picture" },
+  // Daily Office — same copy + mock as the about/church-deck slide.
+  {
+    kind: "info",
+    title: "The Daily Office",
+    body: "Morning and Evening Prayer from the Book of Common Prayer — the psalms, the lessons, the canticles, and the collects, assembled for today and ready to pray. A daily reminder keeps the hour.",
+    mock: "daily-office",
+  },
+  // Daily habit — same copy + mock as the about/church-deck slide.
+  {
+    kind: "info",
+    title: "A daily habit, held together.",
+    body: "For seventeen centuries, Christians have steadied their days by stopping to pray — morning and evening, in monasteries, in parishes, in kitchens. The Office has carried the faithful through plagues, exiles, and the long, ordinary middle.\n\nPhoebe helps your community keep that rhythm — together. A bell in the morning, a bell in the evening, a quiet record of who showed up.",
+    mock: "prayer-rhythm",
+  },
   {
     kind: "info",
     title: "Phoebe is a safe space.",
@@ -430,6 +628,8 @@ const MOCK_COMPONENTS: Record<MockKey, () => React.ReactElement> = {
   "bcp": BCPPrayerModeMock,
   "lectio": LectioMock,
   "gatherings": GatheringsMock,
+  "daily-office": DailyOfficeMock,
+  "prayer-rhythm": PrayerRhythmMock,
 };
 
 // ─── Slide renderers ──────────────────────────────────────────────────────────
@@ -1578,21 +1778,16 @@ export default function UserOnboarding() {
     }
   }, [frozenPrayerSlides, momentsResp, requestsResp, computedPrayerSlides]);
 
-  // Splice the prayer slideshow between "Phoebe is a safe space" and
-  // the closing "Share your first prayer request" beat. Before the
-  // freeze captures, render the base deck unchanged so the user can
-  // start moving through profile-picture / safe-space without seeing
-  // SLIDES grow under them when the queries land.
-  const SLIDES = useMemo<Slide[]>(() => {
-    const slides = frozenPrayerSlides;
-    if (!slides || slides.length === 0) return BASE_SLIDES;
-    return [
-      ...BASE_SLIDES.slice(0, BASE_SLIDES.length - 1), // profile-picture + safe-space
-      { kind: "lets-pray" },
-      ...slides,
-      BASE_SLIDES[BASE_SLIDES.length - 1], // prayer-request (final)
-    ];
-  }, [frozenPrayerSlides]);
+  // The deck is now fixed (no runtime splicing). The "praying for
+  // people in your group" beat — community intercession + others'
+  // prayer requests — was removed per user direction; the only slides
+  // shown are profile-picture → daily-office → daily-habit →
+  // safe-space → first-prayer-request. frozenPrayerSlides / the
+  // moments + prayer-requests queries are kept above so the
+  // existing index-shift logic doesn't break, but we never read
+  // them here.
+  void frozenPrayerSlides;
+  const SLIDES = BASE_SLIDES;
 
   const completeOnboarding = useCallback(async () => {
     if (isPreview) {
