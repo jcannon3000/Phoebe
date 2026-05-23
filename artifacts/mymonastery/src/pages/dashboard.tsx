@@ -2645,6 +2645,7 @@ export function PrayerOfficeCard() {
 export type { SubscribedFeed };
 export function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
   const { feed, prayedToday, unprayedCount } = row;
+  const [, setLocation] = useLocation();
   const newCount = unprayedCount ?? 0;
   // "New prayers" trumps "Prayer completed" — even if the viewer has
   // walked today's deck, a fresh intercession added afterwards still
@@ -2652,9 +2653,31 @@ export function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
   // unprayed count is non-zero; the "View list" + "Completed" pills
   // otherwise behave as before.
   const showsNewCallout = newCount > 0;
+  const slidePath = `/prayer-mode?queue=feed&slug=${feed.slug}`;
+  const listPath = `/prayer-feeds/${feed.slug}`;
+  const cta = showsNewCallout
+    ? {
+        label: newCount === 1 ? "1 New Prayer" : `${newCount} New Prayers`,
+        href: slidePath,
+        emphasized: true,
+      }
+    : prayedToday
+    ? { label: "View list", href: listPath, emphasized: false }
+    : { label: "Begin praying", href: slidePath, emphasized: false };
   return (
+    // The whole card is tappable → opens the feed detail page. The CTA
+    // pill keeps its own (sometimes different — slideshow) destination
+    // and stops propagation so a tap on the pill doesn't also fire the
+    // card-level navigation. role/tabIndex/onKeyDown make the card
+    // surface keyboard-operable like a button.
     <div
-      className="relative flex rounded-xl overflow-hidden"
+      role="button"
+      tabIndex={0}
+      onClick={() => setLocation(listPath)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLocation(listPath); }
+      }}
+      className="relative flex rounded-xl overflow-hidden cursor-pointer"
       style={{
         // Slightly lighter than PrayerOfficeCard's 0.08 fill so the two
         // cards read as a paired set without looking like the same row.
@@ -2704,45 +2727,37 @@ export function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
                 not to re-pray. Links to the feed detail page where
                 "Pray the full list" lives if they want to re-walk.
               • default: "Begin praying →" linking into the slideshow.
-        */}
-        {(() => {
-          const slidePath = `/prayer-mode?queue=feed&slug=${feed.slug}`;
-          const listPath = `/prayer-feeds/${feed.slug}`;
-          const cta = showsNewCallout
-            ? {
-                label: newCount === 1 ? "1 New Prayer" : `${newCount} New Prayers`,
-                href: slidePath,
-                emphasized: true,
-              }
-            : prayedToday
-            ? { label: "View list", href: listPath, emphasized: false }
-            : { label: "Begin praying", href: slidePath, emphasized: false };
-          return (
-            <Link href={cta.href} className="shrink-0">
-              <div
-                role="button"
-                tabIndex={0}
-                className="rounded-full text-center cursor-pointer"
-                style={{
-                  background: cta.emphasized
-                    ? "rgba(46,107,64,0.32)"
-                    : "rgba(46,107,64,0.28)",
-                  color: "#F0EDE6",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  padding: "6px 14px",
-                  border: cta.emphasized
-                    ? "1px solid rgba(143,210,160,0.55)"
-                    : "1px solid rgba(46,107,64,0.45)",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {cta.label} <span aria-hidden>→</span>
-              </div>
-            </Link>
-          );
-        })()}
+            stopPropagation so the pill's destination wins over the
+            card's feed-detail navigation. */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={(e) => { e.stopPropagation(); setLocation(cta.href); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+              setLocation(cta.href);
+            }
+          }}
+          className="rounded-full text-center cursor-pointer shrink-0"
+          style={{
+            background: cta.emphasized
+              ? "rgba(46,107,64,0.32)"
+              : "rgba(46,107,64,0.28)",
+            color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 13,
+            fontWeight: 500,
+            padding: "6px 14px",
+            border: cta.emphasized
+              ? "1px solid rgba(143,210,160,0.55)"
+              : "1px solid rgba(46,107,64,0.45)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {cta.label} <span aria-hidden>→</span>
+        </div>
       </div>
     </div>
   );
