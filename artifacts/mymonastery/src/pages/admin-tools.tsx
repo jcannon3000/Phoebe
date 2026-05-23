@@ -184,8 +184,8 @@ export default function AdminToolsPage() {
               <>
                 <LinkRow
                   emoji="📊"
-                  label="User metrics"
-                  description="Every user's engagement at a glance"
+                  label="App Metrics"
+                  description="Today / This week / All time, across every user"
                   onClick={() => setLocation("/admin/users")}
                 />
                 <LinkRow
