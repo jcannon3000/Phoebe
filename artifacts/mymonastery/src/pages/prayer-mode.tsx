@@ -1106,6 +1106,10 @@ function SlideContent({
                   fontFamily: "'Space Grotesk', sans-serif",
                 }}
               >
+                {/* "Read Article:" label before the auto-fetched
+                    headline so the reader knows the line names a
+                    linked article, not part of the prayer. */}
+                <span style={{ color: "rgba(143,175,150,0.7)" }}>Read Article: </span>
                 {slide.learnMoreTitle}
               </p>
               <ExternalLinkPill url={slide.learnMoreUrl} label="Learn more →" />
