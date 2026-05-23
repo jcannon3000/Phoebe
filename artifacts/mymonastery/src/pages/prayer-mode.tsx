@@ -844,24 +844,6 @@ function SlideContent({
             🌿 {slide.feedTag}
           </span>
         )}
-        {/* "Read Article" reference sits directly above the title so
-            the reader sees the source framing the intercession before
-            the prayer itself. The tappable "Learn more →" pill stays
-            lower on the slide (below the body) as the action. Only
-            renders for non-action intercessions that carry an
-            auto-fetched article title. */}
-        {slide.kind === "intercession"
-          && slide.source !== "action"
-          && slide.learnMoreUrl
-          && slide.learnMoreTitle && (
-          <p
-            className="text-sm leading-relaxed text-center mt-1"
-            style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            <span style={{ color: "rgba(143,175,150,0.7)" }}>Read Article: </span>
-            &ldquo;{slide.learnMoreTitle}&rdquo;
-          </p>
-        )}
       </div>
 
       <p
@@ -1107,15 +1089,36 @@ function SlideContent({
             <ExternalLinkPill url={slide.learnMoreUrl} label="Take action →" />
           </div>
         ) : (
-          // Learn more — the article reference ("Read Article: …")
-          // now renders above the title near the top of the slide,
-          // so down here we show just the bare tappable pill as the
-          // action.
-          <ExternalLinkPill
-            url={slide.learnMoreUrl}
-            label="Learn more →"
-            className="mt-1"
-          />
+          // Learn more — when we have the auto-fetched article title,
+          // stack a small "Read Article" label ON TOP of the article
+          // title (quoted), then the tappable pill beneath. No title →
+          // bare pill (the fetch found nothing).
+          slide.learnMoreTitle ? (
+            <div
+              className="w-full mt-2 flex flex-col items-center text-center"
+              style={{ gap: 8 }}
+            >
+              <p
+                className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+                style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
+              >
+                Read Article
+              </p>
+              <p
+                className="text-sm leading-relaxed"
+                style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+              >
+                &ldquo;{slide.learnMoreTitle}&rdquo;
+              </p>
+              <ExternalLinkPill url={slide.learnMoreUrl} label="Learn more →" className="mt-1" />
+            </div>
+          ) : (
+            <ExternalLinkPill
+              url={slide.learnMoreUrl}
+              label="Learn more →"
+              className="mt-1"
+            />
+          )
         )
       )}
 
