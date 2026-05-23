@@ -49,6 +49,8 @@ type Moment = {
   // Optional outbound URL surfaced as a "Read more" link on the slide,
   // for background context (e.g. a Grist article about the issue).
   learnMoreUrl?: string | null;
+  // Auto-fetched title of that article — caption above the Learn more pill.
+  learnMoreTitle?: string | null;
   members: Array<{ name: string; email: string; avatarUrl?: string | null; prayedThisWeek?: boolean }>;
   todayPostCount: number;
   // Rolling 7-day distinct-prayers count (inclusive of today). Surfaced
@@ -126,6 +128,11 @@ interface PrayerSlide {
   // slide for background reading. Trusted because it's authored only by
   // beta admins via the climate admin form.
   learnMoreUrl?: string | null;
+  // intercession specific — auto-fetched title of the learnMoreUrl
+  // article. Rendered above the "Learn more →" pill (same style as the
+  // take-action caption) so the reader sees what they're about to open.
+  // Null when the fetch found nothing — pill renders bare.
+  learnMoreTitle?: string | null;
   // intercession specific — needed to fire a moment_posts check-in the
   // instant the viewer taps "Amen", so a community intercession amen
   // lands in both the intercession detail page and the streak count
@@ -1082,11 +1089,34 @@ function SlideContent({
             <ExternalLinkPill url={slide.learnMoreUrl} label="Take action →" />
           </div>
         ) : (
-          <ExternalLinkPill
-            url={slide.learnMoreUrl}
-            label="Learn more →"
-            className="mt-1"
-          />
+          // Learn more — when we have the auto-fetched article title,
+          // show it above the pill in the same caption style the
+          // take-action copy uses, so the reader knows what they're
+          // about to open. No title → bare pill (the fetch found
+          // nothing).
+          slide.learnMoreTitle ? (
+            <div
+              className="w-full mt-2 flex flex-col items-center text-center"
+              style={{ gap: 12 }}
+            >
+              <p
+                className="text-sm leading-relaxed"
+                style={{
+                  color: "#C8D4C0",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              >
+                {slide.learnMoreTitle}
+              </p>
+              <ExternalLinkPill url={slide.learnMoreUrl} label="Learn more →" />
+            </div>
+          ) : (
+            <ExternalLinkPill
+              url={slide.learnMoreUrl}
+              label="Learn more →"
+              className="mt-1"
+            />
+          )
         )
       )}
 
@@ -2034,6 +2064,7 @@ export default function PrayerModePage() {
     intercessionFullText: string | null;
     intercessionSource: string | null;
     learnMoreUrl: string | null;
+    learnMoreTitle: string | null;
     momentToken: string | null;
     weekPrayCount: number | null;
   };
@@ -2373,6 +2404,7 @@ export default function PrayerModePage() {
           myUserToken: null,
           feedTag: feedMetaQuery.data?.feed.title ?? null,
           learnMoreUrl: e.learnMoreUrl?.trim() || null,
+          learnMoreTitle: e.learnMoreTitle?.trim() || null,
         };
       })
     : queueMode === "parish-weekly"
@@ -2466,6 +2498,7 @@ export default function PrayerModePage() {
             communityFaces,
             feedTag,
             learnMoreUrl: (m as { learnMoreUrl?: string | null }).learnMoreUrl?.trim() || null,
+            learnMoreTitle: (m as { learnMoreTitle?: string | null }).learnMoreTitle?.trim() || null,
             groups,
           }];
         }
@@ -2606,6 +2639,7 @@ export default function PrayerModePage() {
         communityFaces,
         feedTag,
         learnMoreUrl: m.learnMoreUrl?.trim() || null,
+        learnMoreTitle: m.learnMoreTitle?.trim() || null,
         groups,
       };
     }),

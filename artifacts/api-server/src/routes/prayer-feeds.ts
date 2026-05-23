@@ -1387,6 +1387,27 @@ router.post("/prayer-feeds/:slug/intercessions", requireBeta, async (req, res): 
   await reconcileFeedPracticeMembers(moment.id);
 
   res.status(201).json({ intercession: moment });
+
+  // Auto-fetch the linked article's title AFTER responding so the
+  // admin's save isn't blocked on a (possibly slow) outbound fetch.
+  // Best-effort: a null result leaves learnMoreTitle null and the
+  // slide shows the bare pill. Fire-and-forget — the Express process
+  // stays alive between requests, so the update lands shortly after.
+  if (normalizedUrl) {
+    void (async () => {
+      try {
+        const { fetchArticleTitle } = await import("../lib/articleTitle");
+        const title = await fetchArticleTitle(normalizedUrl);
+        if (title) {
+          await db.update(sharedMomentsTable)
+            .set({ learnMoreTitle: title })
+            .where(eq(sharedMomentsTable.id, moment.id));
+        }
+      } catch (err) {
+        console.warn("[feed intercession] article-title fetch failed:", err);
+      }
+    })();
+  }
 });
 
 // GET /api/prayer-feeds/:slug/group-intercession-options — community
