@@ -2359,7 +2359,7 @@ function NewPrayerRequestsCard({
 // with a small "or pray full Morning/Evening Prayer →" link as
 // alternate. Time threshold is noon — same threshold the Daily
 // Office picker uses for "today's office."
-export function PrayerOfficeCard() {
+export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}) {
   const isMorning = new Date().getHours() < 12;
   const eyebrow = "Book of Common Prayer";
   // Office-streak pill above the CTA. Same data source as before,
@@ -2468,6 +2468,62 @@ export function PrayerOfficeCard() {
   // status pill + a "Pray again" action pill — so the win is visible
   // without losing the way back in.
   const ctaCopy = "Begin prayer";
+
+  // Compact one-line variant — used when feed-first home promotes a
+  // feed to the hero slot and the office becomes a secondary anchor.
+  // Mirrors FeedPrayerCard's single-row layout (title + one CTA pill,
+  // whole card taps through to /prayer-chooser) so the office reads
+  // as the same kind of quieter secondary card the feed is for most
+  // people. The full data (streak, community-prayed) is intentionally
+  // dropped here — it lives on the full card.
+  if (compact) {
+    const title = isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙";
+    return (
+      <Link href="/prayer-chooser" className="block">
+        <div
+          role="button"
+          tabIndex={0}
+          className="relative flex rounded-xl overflow-hidden cursor-pointer"
+          style={{
+            background: "rgba(46,107,64,0.14)",
+            border: "1px solid rgba(46,107,64,0.4)",
+          }}
+        >
+          <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
+            <p
+              className="font-semibold min-w-0 truncate"
+              style={{
+                color: "#F0EDE6",
+                fontFamily: "'Space Grotesk', sans-serif",
+                margin: 0,
+                lineHeight: 1.2,
+                fontSize: 16,
+              }}
+            >
+              {title}
+            </p>
+            <div
+              className="rounded-full text-center shrink-0"
+              style={{
+                background: prayedToday ? "rgba(46,107,64,0.10)" : "rgba(46,107,64,0.28)",
+                color: prayedToday ? "rgba(168,197,160,0.9)" : "#F0EDE6",
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: 13,
+                fontWeight: 500,
+                padding: "6px 14px",
+                border: prayedToday
+                  ? "1px solid rgba(46,107,64,0.22)"
+                  : "1px solid rgba(46,107,64,0.45)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {prayedToday ? <>Completed <span aria-hidden>✓</span></> : <>Begin prayer <span aria-hidden>→</span></>}
+            </div>
+          </div>
+        </div>
+      </Link>
+    );
+  }
 
   return (
     <div
@@ -5189,23 +5245,23 @@ export default function Dashboard() {
               )}
               {/* Primary anchor. Feed-first home (portal sign-ups,
                   toggle on) puts the featured feed's tall hero card
-                  here and HIDES the office card; otherwise the office
-                  card leads as usual. */}
+                  here; otherwise the office card leads as usual. */}
               <div className="mt-3">
                 {featuredFeed
                   ? <FeedHeroCard feed={featuredFeed} />
                   : <PrayerOfficeCard />}
               </div>
 
-              {/* Per-feed "begin praying" anchors — one card per
-                  subscribed prayer feed. Open to everyone. No section
-                  heading per user direction — the cards sit directly
-                  under the primary anchor as a quieter continuation.
-                  The featured feed is excluded here when feed-first is
-                  on so it isn't shown twice. The mb-2 gives a little
-                  breathing room before the next dashboard section. */}
-              {secondaryFeeds.length > 0 && (
+              {/* Secondary anchors. When feed-first promotes a feed to
+                  the hero, the office is NOT hidden — it drops to a
+                  compact one-line card here, the same quieter format
+                  the feed takes for most people. Followed by the
+                  per-feed "begin praying" cards (the featured feed
+                  excluded so it isn't doubled). mb-2 gives breathing
+                  room before the next dashboard section. */}
+              {(featuredFeed || secondaryFeeds.length > 0) && (
                 <div className="mt-3 mb-2 flex flex-col gap-3">
+                  {featuredFeed && <PrayerOfficeCard compact />}
                   {secondaryFeeds.map((row) => (
                     <FeedPrayerCard key={row.feed.id} feed={row} />
                   ))}

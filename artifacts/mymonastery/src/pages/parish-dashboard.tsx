@@ -208,12 +208,15 @@ export default function ParishDashboard() {
             {featuredFeed ? <FeedHeroCard feed={featuredFeed} /> : <PrayerOfficeCard />}
           </div>
 
-          {/* FeedPrayerCard stack — same component the full dashboard
-              renders. "Begin praying / X New Prayers / Completed |
-              View list" comes for free. The featured feed is excluded
-              here when feed-first is on so it isn't shown twice. */}
-          {secondaryFeeds.length > 0 && (
+          {/* Secondary anchors. When a feed is promoted to the hero, the
+              office is NOT hidden — it drops to a compact one-line card
+              here, the same quieter format the feed takes for everyone
+              else. Then the per-feed "begin praying" cards (featured
+              feed excluded so it isn't doubled). "Begin praying / X New
+              Prayers / Completed | View list" comes for free. */}
+          {(featuredFeed || secondaryFeeds.length > 0) && (
             <div className="mt-3 mb-2 flex flex-col gap-3">
+              {featuredFeed && <PrayerOfficeCard compact />}
               {secondaryFeeds.map((row) => (
                 <FeedPrayerCard key={row.feed.id} feed={row} />
               ))}
