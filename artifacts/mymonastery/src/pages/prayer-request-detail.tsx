@@ -297,36 +297,53 @@ export default function PrayerRequestDetailPage() {
         position: "relative",
       }}
     >
-      {/* Always-visible close — fixed position so it never scrolls
-          off, and high enough above any iOS notch / safe area that
-          the user can always reach it. Routes back to /dashboard. */}
-      <button
-        type="button"
-        onClick={() => setLocation("/dashboard")}
-        aria-label="Close"
+      {/* Always-visible close + share — fixed position so they never
+          scroll off, and high enough above any iOS notch / safe area
+          that the user can always reach them. Share sits to the left
+          of the close. The Share button only mounts when the request
+          actually has a share token (the same gate the inline button
+          used to use). */}
+      <div
         style={{
           position: "fixed",
           top: "calc(env(safe-area-inset-top, 0px) + 12px)",
           right: 16,
           zIndex: 100,
-          width: 36,
-          height: 36,
-          borderRadius: "50%",
-          background: "rgba(46,107,64,0.18)",
-          border: "1px solid rgba(46,107,64,0.35)",
-          color: "#C8D4C0",
-          fontSize: 18,
-          fontFamily: "'Space Grotesk', sans-serif",
-          cursor: "pointer",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          lineHeight: 1,
-          padding: 0,
+          gap: 8,
         }}
       >
-        ×
-      </button>
+        {data?.shareToken && (
+          <ShareLinkIconButton
+            shareToken={data.shareToken}
+            ownerName={data.ownerName ?? "Someone"}
+          />
+        )}
+        <button
+          type="button"
+          onClick={() => setLocation("/dashboard")}
+          aria-label="Close"
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: "50%",
+            background: "rgba(46,107,64,0.18)",
+            border: "1px solid rgba(46,107,64,0.35)",
+            color: "#C8D4C0",
+            fontSize: 18,
+            fontFamily: "'Space Grotesk', sans-serif",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            lineHeight: 1,
+            padding: 0,
+          }}
+        >
+          ×
+        </button>
+      </div>
       <div
         className="flex flex-col items-center text-center px-6 w-full"
         style={{
@@ -587,21 +604,10 @@ export default function PrayerRequestDetailPage() {
               </div>
             )}
 
-            {/* Share button — opens a public /p/:token link for
-                the prayer request so the owner can paste it into a
-                text message or social DM. Tries the native share
-                sheet first (iOS / Android web share API); falls
-                back to copy-to-clipboard with a small "Link copied"
-                toast inside the button itself. Only renders when the
-                server actually returned a share_token for this row
-                (every new request mints one; legacy rows backfilled
-                in the migration). */}
-            {data.shareToken && (
-              <ShareLinkButton
-                shareToken={data.shareToken}
-                ownerName={data.ownerName ?? "Someone"}
-              />
-            )}
+            {/* Share button now sits next to the close (×) in the
+                top-right fixed-position header — see
+                <ShareLinkIconButton /> above. The old inline pill is
+                gone. */}
 
             {/* Avatar rail — every distinct pray-er, most recent first. */}
             {data.amens.length > 1 && (
@@ -961,6 +967,93 @@ function RemoveSelfButton({
 // copied" affordance so the user gets feedback that the action
 // landed. The link uses window.location.origin so it'll work on
 // custom domains (withphoebe.app) as well as preview deploys.
+// Icon-only variant of <ShareLinkButton /> sized to sit alongside the
+// 36×36 close (×) chip in the page's fixed-position top-right header.
+// Same share/copy behavior; no "Share this prayer →" text — the action
+// is conveyed by the upload-arrow glyph. Briefly flips to a checkmark
+// on copy fallback so the user knows the link landed in the clipboard.
+function ShareLinkIconButton({
+  shareToken,
+  ownerName,
+}: {
+  shareToken: string;
+  ownerName: string;
+}) {
+  const [justCopied, setJustCopied] = useState(false);
+  const url = `${window.location.origin}/p/${shareToken}`;
+  const shareText =
+    `${ownerName} is asking for prayer on Phoebe.` +
+    `\n\nTap to read and pray:`;
+
+  async function handleShare() {
+    if (typeof navigator !== "undefined" && "share" in navigator) {
+      try {
+        await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({
+          title: "Prayer request",
+          text: shareText,
+          url,
+        });
+        return;
+      } catch { /* user cancelled — fall through to clipboard */ }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setJustCopied(true);
+      window.setTimeout(() => setJustCopied(false), 1800);
+    } catch {
+      window.prompt("Copy this link", url);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleShare}
+      aria-label="Share this prayer"
+      title={justCopied ? "Link copied" : "Share this prayer"}
+      style={{
+        width: 36,
+        height: 36,
+        borderRadius: "50%",
+        background: "rgba(46,107,64,0.18)",
+        border: "1px solid rgba(46,107,64,0.35)",
+        color: "#C8D4C0",
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 0,
+      }}
+    >
+      {justCopied ? (
+        // Tiny check mark — survives 1.8s, matches the existing pill's
+        // "Link copied ✓" feedback in one glyph.
+        <span style={{ fontSize: 16, lineHeight: 1, fontFamily: "'Space Grotesk', sans-serif" }}>✓</span>
+      ) : (
+        // iOS-style share: square-with-up-arrow, rendered as inline SVG
+        // so it picks up the chip's text color rather than needing a
+        // separate asset.
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path
+            d="M8 1.5v8.5M5.25 4.25 8 1.5l2.75 2.75"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M3.5 7.5v5a1.5 1.5 0 0 0 1.5 1.5h6a1.5 1.5 0 0 0 1.5-1.5v-5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 function ShareLinkButton({
   shareToken,
   ownerName,
