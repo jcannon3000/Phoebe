@@ -396,11 +396,9 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
 
   // One row per intercession on every subscribed feed, grouped
   // feed-first (the UI renders one card per feed with N intercessions
-  // inside). Feeds carry a rolling list of ongoing intercessions, but
-  // the "today" surface — the daily rhythm a subscriber prays through
-  // — is capped at FEED_DAILY_LIMIT entries per feed. Beyond that we
-  // bury the older ones; admins can still see / archive them via the
-  // feed-management page.
+  // inside). Feeds carry a rolling list of ongoing intercessions; the
+  // "today" surface is a daily rotating window of FEED_DAILY_LIMIT
+  // entries that cycles deck-style across the full active list.
   const byFeed = await loadFeedIntercessions(
     subs.map((s) => s.feedId),
     await viewerEmailFor(user.id),
@@ -419,10 +417,9 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
     prayedToday: boolean;
   };
   const entries: Row[] = [];
+  const todayKey = dayKey();
   for (const s of subs) {
-    // Take the FEED_DAILY_LIMIT newest. loadFeedIntercessions already
-    // sorts by createdAt desc, so .slice(0, N) is the newest-N.
-    (byFeed.get(s.feedId) ?? []).slice(0, FEED_DAILY_LIMIT).forEach((m, i) => {
+    rotateTodaySlice(byFeed.get(s.feedId) ?? [], todayKey).forEach((m, i) => {
       entries.push({
         id: m.id,
         feedId: s.feedId,
@@ -442,13 +439,49 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
   res.json({ entries });
 });
 
-// A feed's daily-surface cap. Subscribers pray through a rotating-but-
-// gentle daily set; surfacing every active intercession at once turned
-// "3 per day" into "everything ever programmed." Admins (via the feed-
-// management page) and the slideshow's "Pray the full list" tap still
-// walk every active intercession; this cap is purely a presentation
-// constraint on the daily/today surfaces.
+// A feed's daily-surface cap. Subscribers pray through a rotating set
+// of FEED_DAILY_LIMIT intercessions per day; the full active list
+// remains walkable via the feed-detail page and the slideshow's
+// "Pray the full list" tap. The /api/prayer-feeds/:slug/intercessions
+// endpoint that powers those isn't capped — only the daily summary
+// surfaces (the prayer-list FeedCard count + community detail) use
+// this window.
 const FEED_DAILY_LIMIT = 3;
+
+// Day index — number of whole days since the Unix epoch, in UTC.
+// Stable across requests within the same UTC day. Used as the
+// rotation cursor for "today's slice" of a feed's intercessions.
+// We use UTC rather than per-user-tz on purpose: every subscriber
+// of a given feed sees the SAME daily slice. (Different tz users
+// might cross over the slice boundary at slightly different
+// wall-clock times, but the "we're all praying the same three
+// today" property holds.)
+function dayKey(): number {
+  return Math.floor(Date.now() / 86_400_000);
+}
+
+// Deck-style daily rotation: given the feed's full ordered list of
+// active intercessions and a stable day index, return a sliding
+// window of FEED_DAILY_LIMIT items starting at offset = day % N and
+// wrapping around. Each day the window advances by one, so two of
+// today's three were on yesterday's card and one new one rotates
+// in — feels like a gentle deck shuffle rather than a hard 3-day
+// rebuild.
+//
+// When the feed has FEED_DAILY_LIMIT or fewer intercessions there's
+// nothing to rotate; return all of them.
+function rotateTodaySlice<T>(all: T[], today: number): T[] {
+  if (all.length === 0) return [];
+  if (all.length <= FEED_DAILY_LIMIT) return all;
+  const start = ((today % all.length) + all.length) % all.length;
+  // Build the window with wrap-around so the slice is always exactly
+  // FEED_DAILY_LIMIT long, even when (start + N) overflows the list.
+  const out: T[] = [];
+  for (let i = 0; i < FEED_DAILY_LIMIT; i++) {
+    out.push(all[(start + i) % all.length]);
+  }
+  return out;
+}
 
 // GET /api/groups/:slug/prayer-feeds — feeds bound to this group, each
 // with today's intercessions. Same merge semantics as /today above
@@ -495,21 +528,23 @@ router.get("/groups/:slug/prayer-feeds", requireBeta, async (req, res): Promise<
     todayEntries: Array<{ id: number; slot: number; title: string; isRecurring: boolean }>;
   };
 
-  // todayEntries is capped at FEED_DAILY_LIMIT (3) so the community
-  // detail page shows "3 intercessions today" max, matching the
-  // /prayer-feeds/today rule that subscribers see. The feed-detail
-  // page still surfaces every active intercession.
+  // todayEntries uses the same deck-style daily rotation as the
+  // personal /prayer-feeds/today surface — a sliding window of
+  // FEED_DAILY_LIMIT entries advancing by one each UTC day. Every
+  // subscriber of a given feed sees the SAME three today, and one
+  // new card rotates in tomorrow.
   const byFeed = await loadFeedIntercessions(
     bound.map((f) => f.feedId),
     await viewerEmailFor(user.id),
   );
+  const todayKey = dayKey();
   const feeds: FeedOut[] = bound.map((f) => ({
     feedId: f.feedId,
     feedSlug: f.feedSlug,
     feedTitle: f.feedTitle,
     feedCoverEmoji: f.feedCoverEmoji ?? null,
     subscriberCount: f.feedSubscriberCount ?? 0,
-    todayEntries: (byFeed.get(f.feedId) ?? []).slice(0, FEED_DAILY_LIMIT).map((m, i) => ({
+    todayEntries: rotateTodaySlice(byFeed.get(f.feedId) ?? [], todayKey).map((m, i) => ({
       id: m.id,
       slot: i,
       title: m.title,
