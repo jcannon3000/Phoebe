@@ -1445,7 +1445,12 @@ export default function PrayerListPage() {
                 req={r}
                 viewerAvatarUrl={user.avatarUrl ?? null}
                 viewerName={user.name ?? null}
-                onOpen={() => setDetail({ kind: "request", id: r.id })}
+                // Tapping a request card now opens the full detail
+                // SLIDE (/prayer-requests/:id) rather than the in-page
+                // popup — the slide carries tagging, the amen roster,
+                // words of comfort, and (for the owner) Edit / Renew
+                // pills next to Back.
+                onOpen={() => setLocation(`/prayer-requests/${r.id}`)}
               />
             ))}
           </SectionShell>

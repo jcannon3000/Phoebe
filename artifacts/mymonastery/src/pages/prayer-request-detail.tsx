@@ -252,6 +252,22 @@ export default function PrayerRequestDetailPage() {
     },
   });
 
+  // Owner inline body edit — the slide replaces the modal that used
+  // to carry Edit; reuse the same PATCH endpoint the prayer-list
+  // modal used. `editing` toggles the textarea over the body; the
+  // draft seeds from data.body when the owner taps Edit.
+  const [editing, setEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState("");
+  const editBodyMutation = useMutation({
+    mutationFn: (body: string) =>
+      apiRequest("PATCH", `/api/prayer-requests/${id}`, { body }),
+    onSuccess: () => {
+      setEditing(false);
+      queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    },
+  });
+
   // Paint Safari/WebView background to the slide bg + play the opening
   // swell + medium haptic on arrival. We do NOT lock body scroll here
   // — the slideshow does because each slide fits in one viewport, but
@@ -491,15 +507,63 @@ export default function PrayerRequestDetailPage() {
               </p>
             </div>
 
-            <p
-              className="text-[22px] leading-[1.5] font-medium italic"
-              style={{
-                color: "#E8E4D8",
-                fontFamily: "Georgia, 'Times New Roman', serif",
-              }}
-            >
-              {data.body}
-            </p>
+            {editing ? (
+              // Inline edit — textarea in the body slot + Save/Cancel.
+              // Same shape the prayer-list modal used; the Edit pill
+              // next to Back toggles this on.
+              <div className="w-full" style={{ maxWidth: 480 }}>
+                <textarea
+                  value={editDraft}
+                  onChange={(e) => setEditDraft(e.target.value)}
+                  rows={4}
+                  maxLength={1000}
+                  autoFocus
+                  className="w-full px-3 py-2.5 rounded-lg focus:outline-none resize-none"
+                  style={{
+                    background: "#091A10",
+                    border: "1px solid rgba(46,107,64,0.3)",
+                    color: "#F0EDE6",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontSize: 16, // iOS Safari: ≥16 to prevent auto-zoom
+                  }}
+                />
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-[10px]" style={{ color: "rgba(143,175,150,0.55)" }}>
+                    {editDraft.trim().length}/1000
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(false)}
+                      disabled={editBodyMutation.isPending}
+                      className="text-xs font-medium px-3 py-1.5 rounded-full transition-opacity hover:opacity-80 disabled:opacity-40"
+                      style={{ color: "rgba(143,175,150,0.75)", border: "1px solid rgba(143,175,150,0.2)" }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => editBodyMutation.mutate(editDraft.trim())}
+                      disabled={!editDraft.trim() || editDraft.trim() === data.body || editBodyMutation.isPending}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80 disabled:opacity-40"
+                      style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                    >
+                      {editBodyMutation.isPending ? "Saving…" : "Save"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p
+                className="text-[22px] leading-[1.5] font-medium italic"
+                style={{
+                  color: "#E8E4D8",
+                  fontFamily: "Georgia, 'Times New Roman', serif",
+                }}
+              >
+                {data.body}
+              </p>
+            )}
 
             {/* Tagged users — read row + per-chip remove + "+ Tag
                 someone" pill. Owner can manage tags after creation:
@@ -706,19 +770,52 @@ export default function PrayerRequestDetailPage() {
 
         {/* Quiet "Back" anchored at the bottom — both branches share
             this so a recipient who tapped Amen and an owner reading
-            their amen rail both have the same exit. */}
+            their amen rail both have the same exit. The owner also
+            gets Edit + Renew pills inline with Back (replacing the
+            prayer-list popup that used to carry them). */}
         {data && (
-          <button
-            onClick={() => setLocation("/dashboard")}
-            className="mt-6 px-6 py-3 rounded-full text-sm font-medium"
-            style={{
-              color: "#C8D4C0",
-              background: "rgba(200,212,192,0.08)",
-              fontFamily: "'Space Grotesk', sans-serif",
-            }}
-          >
-            ← Back
-          </button>
+          <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
+            <button
+              onClick={() => setLocation("/dashboard")}
+              className="px-6 py-3 rounded-full text-sm font-medium"
+              style={{
+                color: "#C8D4C0",
+                background: "rgba(200,212,192,0.08)",
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              ← Back
+            </button>
+            {data.viewerIsOwner && !editing && (
+              <>
+                <button
+                  onClick={() => { setEditDraft(data.body); setEditing(true); }}
+                  className="px-5 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-90"
+                  style={{
+                    color: "#C8D4C0",
+                    background: "rgba(46,107,64,0.18)",
+                    border: "1px solid rgba(46,107,64,0.4)",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                  }}
+                >
+                  ✎ Edit
+                </button>
+                <button
+                  onClick={() => renewMutation.mutate()}
+                  disabled={renewMutation.isPending}
+                  className="px-5 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{
+                    color: "#C8D4C0",
+                    background: "rgba(46,107,64,0.18)",
+                    border: "1px solid rgba(46,107,64,0.4)",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                  }}
+                >
+                  {renewMutation.isPending ? "Renewing…" : "🔄 Renew"}
+                </button>
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>
