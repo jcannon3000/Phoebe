@@ -344,9 +344,10 @@ function SlideContent({
   lastMine: { id: number; body: string } | null;
   onRenewLastMine: () => void;
   renewingLastMine: boolean;
-  // Opens the contemplation timer overlay — surfaced as a CTA on the
-  // pause slide ("Begin contemplation") above Continue.
-  onStartContemplation: () => void;
+  // Opens the contemplation timer overlay from the pause slide. A
+  // number starts a sit of that length immediately (the quick 5/10/20
+  // buttons); undefined opens the full duration picker.
+  onStartContemplation: (minutes?: number) => void;
 }) {
   const [askBody, setAskBody] = useState("");
   const bcpPrayer = slide.kind === "intercession" ? findBcpPrayer(slide.text) : undefined;
@@ -565,21 +566,55 @@ function SlideContent({
         >
           Someone you haven&rsquo;t named, a worry that surfaced this morning, the world that needs holding.
         </p>
-        {/* Contemplation CTA — sits above Continue so the moment to
-            pause can become a timed, silent sit if the user wants one.
-            A bell opens and closes it; the time is logged to their
-            Contemplation stats. */}
-        <button
-          onClick={onStartContemplation}
-          className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+        {/* Contemplation card — the moment to pause can become a timed,
+            silent sit. Quick 5/10/20-min buttons start immediately;
+            "Begin contemplation" opens the full picker. A bell opens and
+            closes the sit; the time is logged to Contemplation stats. */}
+        <div
+          className="mt-2 w-full rounded-2xl p-4"
           style={{
-            background: "rgba(46,107,64,0.18)",
-            border: "1px solid rgba(46,107,64,0.45)",
-            color: "#F0EDE6",
+            maxWidth: 360,
+            background: "rgba(46,107,64,0.12)",
+            border: "1px solid rgba(46,107,64,0.3)",
           }}
         >
-          🧘 Begin contemplation
-        </button>
+          <div className="grid grid-cols-3 gap-2.5 mb-2.5">
+            {[5, 10, 20].map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => onStartContemplation(m)}
+                className="rounded-xl py-2.5 transition-opacity hover:opacity-90 active:scale-[0.98]"
+                style={{
+                  background: "rgba(46,107,64,0.2)",
+                  border: "1px solid rgba(46,107,64,0.4)",
+                  color: "#F0EDE6",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontWeight: 600,
+                  fontSize: 15,
+                  cursor: "pointer",
+                }}
+              >
+                {m}
+                <span className="block text-[10px] font-normal mt-0.5" style={{ color: "rgba(143,175,150,0.85)" }}>min</span>
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => onStartContemplation()}
+            className="w-full rounded-xl py-3 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+            style={{
+              background: "rgba(46,107,64,0.28)",
+              border: "1px solid rgba(46,107,64,0.5)",
+              color: "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+              cursor: "pointer",
+            }}
+          >
+            🧘 Begin contemplation
+          </button>
+        </div>
         <button
           onClick={onAdvance}
           className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
@@ -2980,9 +3015,12 @@ export default function PrayerModePage() {
   const showSetReminder = closingOnly && sidePref === "none";
   const [phase, setPhase] = useState<"prayer" | "closing" | "habit">(() => closingOnly ? "closing" : "prayer");
   // Contemplation timer overlay — opened from the pause slide's
-  // "Begin contemplation" CTA. Rendered at the page root below so it
-  // covers the whole screen regardless of which slide is showing.
+  // quick-start card. Rendered at the page root below so it covers the
+  // whole screen regardless of which slide is showing. startMinutes is
+  // set by the 5/10/20 quick buttons (begin immediately); undefined
+  // from "Begin contemplation" shows the picker.
   const [contemplationOpen, setContemplationOpen] = useState(false);
+  const [contemplationStartMinutes, setContemplationStartMinutes] = useState<number | undefined>(undefined);
   const [visible, setVisible] = useState(false);
   const [slideVisible, setSlideVisible] = useState(true);
   // Track which intercessions the viewer has already "amened" this
@@ -3631,7 +3669,10 @@ export default function PrayerModePage() {
                 });
               }}
               renewingLastMine={renewLastMineMutation.isPending}
-              onStartContemplation={() => setContemplationOpen(true)}
+              onStartContemplation={(minutes) => {
+                setContemplationStartMinutes(minutes);
+                setContemplationOpen(true);
+              }}
             />
           </div>
         )}
@@ -3730,8 +3771,12 @@ export default function PrayerModePage() {
       )}
 
       {/* Contemplation timer — full-screen overlay launched from the
-          pause slide's "Begin contemplation" CTA. */}
-      <ContemplationTimer open={contemplationOpen} onClose={() => setContemplationOpen(false)} />
+          pause slide's quick-start card. */}
+      <ContemplationTimer
+        open={contemplationOpen}
+        startMinutes={contemplationStartMinutes}
+        onClose={() => { setContemplationOpen(false); setContemplationStartMinutes(undefined); }}
+      />
     </div>
   );
 }
