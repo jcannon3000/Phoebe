@@ -460,25 +460,47 @@ function dayKey(): number {
   return Math.floor(Date.now() / 86_400_000);
 }
 
-// Deck-style daily rotation: given the feed's full ordered list of
-// active intercessions and a stable day index, return a sliding
-// window of FEED_DAILY_LIMIT items starting at offset = day % N and
-// wrapping around. Each day the window advances by one, so two of
-// today's three were on yesterday's card and one new one rotates
-// in — feels like a gentle deck shuffle rather than a hard 3-day
-// rebuild.
+// Deck-style daily rotation, anchored so a freshly-added intercession
+// leads then drifts.
+//
+// `all` is the feed's active intercessions ordered NEWEST-FIRST (the
+// caller passes loadFeedIntercessions output, which sorts createdAt
+// desc). The window of FEED_DAILY_LIMIT advances one position per day
+// and we anchor day-0 of the cursor to the newest card's creation
+// day. Concretely, with newest at index 0 and `start = -elapsed mod N`
+// (elapsed = days since the newest card was added):
+//
+//   • Day a card is added:   elapsed 0 → start 0 → window [0,1,2] →
+//                            the new card sits at the TOP.
+//   • Next day:              start N-1 → window [N-1, 0, 1] → it has
+//                            drifted to the MIDDLE.
+//   • Third day:             start N-2 → window [N-2, N-1, 0] → it's
+//                            at the BACK.
+//   • Fourth day on:         the new card rotates out and the window
+//                            keeps sliding through the rest of the
+//                            deck, so every intercession gets its turn.
+//
+// Every subscriber sees the same window on a given day (the cursor is
+// keyed by calendar day + the feed's own newest-createdAt, not by
+// viewer), preserving the "we prayed the same three today" property.
+// Adding a new intercession re-anchors the cursor so the fresh one
+// jumps to the top — exactly "it goes to the top and then enters the
+// rotation."
 //
 // When the feed has FEED_DAILY_LIMIT or fewer intercessions there's
 // nothing to rotate; return all of them.
-function rotateTodaySlice<T>(all: T[], today: number): T[] {
+function rotateTodaySlice<T extends { createdAt: Date }>(all: T[], today: number): T[] {
   if (all.length === 0) return [];
   if (all.length <= FEED_DAILY_LIMIT) return all;
-  const start = ((today % all.length) + all.length) % all.length;
-  // Build the window with wrap-around so the slice is always exactly
-  // FEED_DAILY_LIMIT long, even when (start + N) overflows the list.
+  const n = all.length;
+  // Anchor day = the newest card's creation day (all[0] is newest).
+  const anchorDay = Math.floor(all[0].createdAt.getTime() / 86_400_000);
+  const elapsed = today - anchorDay;
+  // start = (-elapsed) mod n, normalized to [0, n).
+  const start = (((-elapsed) % n) + n) % n;
   const out: T[] = [];
   for (let i = 0; i < FEED_DAILY_LIMIT; i++) {
-    out.push(all[(start + i) % all.length]);
+    out.push(all[(start + i) % n]);
   }
   return out;
 }
