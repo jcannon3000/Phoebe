@@ -2735,7 +2735,7 @@ export function FeedHeroCard({ feed: row }: { feed: SubscribedFeed }) {
               fontFamily: "'Space Grotesk', sans-serif",
             }}
           >
-            Home
+            Reminders
           </Link>
         </div>
         <div className="mt-[4px] flex items-center justify-between gap-3">
