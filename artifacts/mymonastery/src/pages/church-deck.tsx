@@ -89,7 +89,6 @@ const SLIDES: Slide[] = [
     headline: "You'll know you're being prayed for.",
     body: [
       "When someone shares a request, the community is gently notified — a quiet nudge, not a flood. People show up, leave a word, tap Amen.",
-      "And when others have prayed for you that day, Phoebe lets you know. Theresa and three others held you in prayer this morning. A small, ordinary miracle, made visible.",
     ],
     mock: "prayer-notification",
     stacked: true,
