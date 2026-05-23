@@ -504,20 +504,10 @@ function PrayerNotificationMock() {
       </p>
       <div className="flex-1 min-w-0 text-left pr-8 md:pr-10">
         <p
-          className="text-[15px] md:text-[17px] font-semibold leading-snug mb-1"
+          className="text-[15px] md:text-[17px] font-semibold leading-snug"
           style={{ color: "#F5F5F5", fontFamily: iosFont, letterSpacing: "-0.01em" }}
         >
           You've been held in prayer today
-        </p>
-        <p
-          className="text-[14px] md:text-[16px] leading-snug"
-          style={{
-            color: "rgba(230,235,240,0.92)",
-            fontFamily: iosFont,
-            letterSpacing: "-0.005em",
-          }}
-        >
-          Theresa and others prayed for your requests today.
         </p>
       </div>
     </div>
