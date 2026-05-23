@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, prayerSessionsTable, prayerSurfaces } from "@workspace/db";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 
 const router: IRouter = Router();
@@ -89,6 +90,46 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
   });
 
   res.json({ ok: true, recorded: true, durationSeconds: capped });
+});
+
+// GET /api/me/contemplation-stats — the viewer's own contemplation
+// totals, for the Contemplation page. Sums durationSeconds over the
+// "contemplation" surface: all-time, the rolling 7 days, and a session
+// count. Cheap — covered by the (user_id, ended_at) index.
+router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const [totals] = await db
+      .select({
+        totalSeconds: sql<number>`COALESCE(SUM(${prayerSessionsTable.durationSeconds}), 0)::int`,
+        sessionCount: sql<number>`COUNT(*)::int`,
+      })
+      .from(prayerSessionsTable)
+      .where(and(
+        eq(prayerSessionsTable.userId, sessionUserId),
+        eq(prayerSessionsTable.surface, "contemplation"),
+      ));
+    const [week] = await db
+      .select({
+        weekSeconds: sql<number>`COALESCE(SUM(${prayerSessionsTable.durationSeconds}), 0)::int`,
+      })
+      .from(prayerSessionsTable)
+      .where(and(
+        eq(prayerSessionsTable.userId, sessionUserId),
+        eq(prayerSessionsTable.surface, "contemplation"),
+        gte(prayerSessionsTable.endedAt, weekAgo),
+      ));
+    res.json({
+      totalSeconds: totals?.totalSeconds ?? 0,
+      weekSeconds: week?.weekSeconds ?? 0,
+      sessionCount: totals?.sessionCount ?? 0,
+    });
+  } catch (err) {
+    console.error("[/me/contemplation-stats GET] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
 });
 
 export default router;

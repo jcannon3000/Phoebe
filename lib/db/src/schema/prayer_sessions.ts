@@ -26,6 +26,11 @@ export const prayerSurfaces = [
   // dashboard's Times-prayed rollup. Visit rows are exempt from the
   // 5-second minimum so a brief glance still records.
   "prayer-list",
+  // Silent contemplation timer — launched from the prayer-mode pause
+  // slide or the Contemplation menu entry. One row per completed (or
+  // ended-early) sit; durationSeconds is the actual time spent, which
+  // backs the "time in contemplation" stat on the Contemplation page.
+  "contemplation",
 ] as const;
 export type PrayerSurface = (typeof prayerSurfaces)[number];
 

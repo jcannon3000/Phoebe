@@ -13,6 +13,7 @@ import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them"
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
+import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 
 // Scale the big prayer-text block by character length so long prayers
@@ -318,6 +319,7 @@ function SlideContent({
   lastMine,
   onRenewLastMine,
   renewingLastMine,
+  onStartContemplation,
 }: {
   slide: PrayerSlide;
   // Stable key per slide — drives the 3-second Amen pause-reset. The
@@ -342,6 +344,9 @@ function SlideContent({
   lastMine: { id: number; body: string } | null;
   onRenewLastMine: () => void;
   renewingLastMine: boolean;
+  // Opens the contemplation timer overlay — surfaced as a CTA on the
+  // pause slide ("Begin contemplation") above Continue.
+  onStartContemplation: () => void;
 }) {
   const [askBody, setAskBody] = useState("");
   const bcpPrayer = slide.kind === "intercession" ? findBcpPrayer(slide.text) : undefined;
@@ -560,9 +565,24 @@ function SlideContent({
         >
           Someone you haven&rsquo;t named, a worry that surfaced this morning, the world that needs holding.
         </p>
+        {/* Contemplation CTA — sits above Continue so the moment to
+            pause can become a timed, silent sit if the user wants one.
+            A bell opens and closes it; the time is logged to their
+            Contemplation stats. */}
+        <button
+          onClick={onStartContemplation}
+          className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+          style={{
+            background: "rgba(46,107,64,0.18)",
+            border: "1px solid rgba(46,107,64,0.45)",
+            color: "#F0EDE6",
+          }}
+        >
+          🧘 Begin contemplation
+        </button>
         <button
           onClick={onAdvance}
-          className="mt-2 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+          className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
           style={{ background: "#2D5E3F", color: "#F0EDE6" }}
         >
           Continue →
@@ -2959,6 +2979,10 @@ export default function PrayerModePage() {
     : officePrefsQuery.data?.evening;
   const showSetReminder = closingOnly && sidePref === "none";
   const [phase, setPhase] = useState<"prayer" | "closing" | "habit">(() => closingOnly ? "closing" : "prayer");
+  // Contemplation timer overlay — opened from the pause slide's
+  // "Begin contemplation" CTA. Rendered at the page root below so it
+  // covers the whole screen regardless of which slide is showing.
+  const [contemplationOpen, setContemplationOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const [slideVisible, setSlideVisible] = useState(true);
   // Track which intercessions the viewer has already "amened" this
@@ -3607,6 +3631,7 @@ export default function PrayerModePage() {
                 });
               }}
               renewingLastMine={renewLastMineMutation.isPending}
+              onStartContemplation={() => setContemplationOpen(true)}
             />
           </div>
         )}
@@ -3703,6 +3728,10 @@ export default function PrayerModePage() {
           </p>
         </div>
       )}
+
+      {/* Contemplation timer — full-screen overlay launched from the
+          pause slide's "Begin contemplation" CTA. */}
+      <ContemplationTimer open={contemplationOpen} onClose={() => setContemplationOpen(false)} />
     </div>
   );
 }

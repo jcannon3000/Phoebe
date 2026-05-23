@@ -117,6 +117,7 @@ import InvitationsPage from "./pages/invitations";
 import BcpPage from "./pages/bcp";
 import OfficesPage from "./pages/offices";
 import ExamenPage from "./pages/examen";
+import ContemplationPage from "./pages/contemplation";
 import BcpIntercessionsPage from "./pages/bcp-intercessions";
 import BcpDailyOfficePage from "./pages/bcp-daily-office";
 import BcpDailyDevotionPage from "./pages/bcp-daily-devotion";
@@ -335,6 +336,9 @@ function ParishGate({ children }: { children: ReactNode }) {
         // card on the Prayer List section taps through to.
         location === "/prayer-chooser" ||
         location.startsWith("/prayer-mode") ||
+        // Contemplation timer — a silent-prayer surface open to every
+        // tier (offices-only + parish-only included).
+        location === "/contemplation" ||
         location.startsWith("/moments/") ||
         // Public prayer feeds — discovery + detail. Offices-only and
         // parish-only members may browse and subscribe to public feeds
@@ -458,6 +462,7 @@ function Router() {
       <Route path="/invitations" component={InvitationsPage} />
       <Route path="/offices" component={OfficesPage} />
       <Route path="/examen" component={ExamenPage} />
+      <Route path="/contemplation" component={ContemplationPage} />
       <Route path="/bcp" component={BcpPage} />
       <Route path="/bcp/intercessions" component={BcpIntercessionsPage} />
       <Route path="/bcp/daily-office" component={BcpDailyOfficePage} />
