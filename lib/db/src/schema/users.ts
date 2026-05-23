@@ -143,6 +143,22 @@ export const usersTable = pgTable("users", {
   // digest. Disabling stops both channels, not just one — the digest is
   // one unified prompt.
   weeklyDigestEnabled: boolean("weekly_digest_enabled").notNull().default(true),
+  // ── Feed-first home ──────────────────────────────────────────────────────
+  // The prayer feed to feature in the big primary slot on the home
+  // screen — the slot the Book of Common Prayer / Daily Office card
+  // normally occupies. Set at signup to whichever feed's public portal
+  // created the account (the /feed/:slug landing posts subscribeToFeedSlug
+  // to /auth/register; that feed's id lands here). NULL = no featured
+  // feed, normal office-led home. FK to prayer_feeds.id enforced in
+  // migration SQL only (same circular-import dodge as parish_feed_id).
+  homeFeedId: integer("home_feed_id"),
+  // Toggle for the feed-first home layout. Default on so a portal
+  // sign-up lands on the feed they came for; the user flips it from
+  // Settings → Home screen. Only meaningful when home_feed_id is set —
+  // with no featured feed the home is office-led regardless. When on
+  // AND the featured feed is in the user's subscriptions, the feed gets
+  // the tall PrayerOfficeCard-style card and the office card is hidden.
+  feedFirstHome: boolean("feed_first_home").notNull().default(true),
   // BCP-47 locale code (e.g. "en", "es"). Drives i18next on the client
   // and template selection in pushSender / email senders. Beta users
   // can flip this to "es" via Settings → Language; non-beta accounts

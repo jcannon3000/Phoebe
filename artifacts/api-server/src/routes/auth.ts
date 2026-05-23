@@ -199,6 +199,8 @@ router.get("/auth/me", async (req, res) => {
     parishFeedId: number | null;
     bellEnabled: boolean;
     locale: string | null;
+    homeFeedId: number | null;
+    feedFirstHome: boolean;
   };
   // Phoebe Parish access tier. Computed server-side so every page that
   // calls useAuth() knows immediately whether to render the simplified
@@ -239,6 +241,12 @@ router.get("/auth/me", async (req, res) => {
     accessTier: access.tier,
     parishFeedId: access.parishFeedId,
     parishSlug: access.parishSlug,
+    // Feed-first home — which feed (if any) leads the home screen and
+    // whether the layout is currently switched on. The dashboard pairs
+    // homeFeedId against the subscribed-feeds list to render the tall
+    // featured card in place of the office card.
+    homeFeedId: u.homeFeedId ?? null,
+    feedFirstHome: u.feedFirstHome ?? true,
   });
 });
 
@@ -820,6 +828,14 @@ router.post(
           .where(eq(prayerFeedsTable.id, feed.id));
         const { reconcileAllPracticesForFeed } = await import("./groups");
         await reconcileAllPracticesForFeed(feed.id);
+        // Feed-first home: a portal sign-up came here FOR this feed, so
+        // make it the featured card on their home screen (the slot the
+        // office card normally holds). feed_first_home defaults true, so
+        // setting home_feed_id is all it takes to flip the layout; the
+        // user can turn it off in Settings → Home screen.
+        await db.update(usersTable)
+          .set({ homeFeedId: feed.id })
+          .where(eq(usersTable.id, user.id));
       }
     } catch (err) {
       console.error("[auth/register] auto-subscribe to feed failed:", err);

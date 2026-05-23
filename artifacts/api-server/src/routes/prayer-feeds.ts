@@ -625,6 +625,14 @@ router.get("/prayer-feeds/subscribed", requireAuth, async (req, res): Promise<vo
   // rosters.
   type WeekPrayer = { id: number; name: string; avatarUrl: string | null };
   const weekPrayersByFeed = new Map<number, WeekPrayer[]>();
+  // Accurate distinct-pray-er count per feed, uncapped — the avatar
+  // array below is truncated to MAX_PER_FEED for payload size, which is
+  // fine for a 5-avatar rail but understates the count on a popular
+  // feed (climate has hundreds praying weekly). The feed-first hero
+  // card surfaces this number as "N prayed this week", so it has to be
+  // honest, not the avatar-array length. Tracked via a per-feed Set of
+  // distinct user ids built from the same rows — no extra query.
+  const weekPrayerIdsByFeed = new Map<number, Set<number>>();
   const feedIdsForRoster = subs.map((s) => s.feed.id);
   if (feedIdsForRoster.length > 0) {
     const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -657,6 +665,10 @@ router.get("/prayer-feeds/subscribed", requireAuth, async (req, res): Promise<vo
       // Drop the viewer themselves — the avatar stack is "OTHER people
       // praying with you," same convention PrayerOfficeCard uses.
       if (r.email.toLowerCase() === viewerLc) continue;
+      // Uncapped distinct count for the hero's "N prayed this week".
+      const idSet = weekPrayerIdsByFeed.get(r.feedId) ?? new Set<number>();
+      idSet.add(r.userId);
+      weekPrayerIdsByFeed.set(r.feedId, idSet);
       const list = weekPrayersByFeed.get(r.feedId) ?? [];
       if (list.length >= MAX_PER_FEED) continue;
       if (!list.find((p) => p.id === r.userId)) {
@@ -688,6 +700,7 @@ router.get("/prayer-feeds/subscribed", requireAuth, async (req, res): Promise<vo
         : null,
       prayedToday: newest?.prayedToday ?? false,
       weekPrayers: weekPrayersByFeed.get(feed.id) ?? [],
+      weekPrayerCount: weekPrayerIdsByFeed.get(feed.id)?.size ?? 0,
       unprayedCount,
     };
   });

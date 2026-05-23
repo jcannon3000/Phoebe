@@ -1640,6 +1640,32 @@ router.put("/me/weekly-digest-pref", async (req, res): Promise<void> => {
   }
 });
 
+// ── Feed-first home toggle ───────────────────────────────────────────
+// Switches the home screen between feed-led (the featured feed gets the
+// tall primary card; office card hidden) and office-led (the default).
+// Only meaningful when the user has a home_feed_id — the Settings UI
+// only surfaces the toggle in that case. Returns the new value so the
+// client can flip /auth/me's cached copy without a round trip.
+router.put("/me/feed-first-home", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const enabled = (req.body as { enabled?: unknown })?.enabled;
+  if (typeof enabled !== "boolean") {
+    res.status(400).json({ error: "enabled must be a boolean" });
+    return;
+  }
+  try {
+    await db
+      .update(usersTable)
+      .set({ feedFirstHome: enabled })
+      .where(eq(usersTable.id, sessionUserId));
+    res.json({ enabled });
+  } catch (err) {
+    console.error("[/me/feed-first-home PUT] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // ─── Public share endpoints ──────────────────────────────────────────
 // No auth required. A prayer-request owner hands out a /p/:token
 // link; the visitor lands on a slim public page that reads through

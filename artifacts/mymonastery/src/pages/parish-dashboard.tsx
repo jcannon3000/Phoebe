@@ -27,6 +27,7 @@ import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import {
   PrayerOfficeCard,
   FeedPrayerCard,
+  FeedHeroCard,
   type SubscribedFeed as SubscribedFeedDashboard,
 } from "./dashboard";
 import { PHOEBE_HIDE_OFFICES_LS_KEY } from "./settings";
@@ -165,6 +166,19 @@ export default function ParishDashboard() {
     }
   })();
 
+  // Feed-first home — identical to the main dashboard. A climate (or any
+  // other) portal sign-up is offices-only and lands HERE, so this is the
+  // home that actually shows the featured-feed hero for most portal
+  // users. When on, the featured feed gets the tall hero card in the
+  // office card's slot and is dropped from the secondary FeedPrayerCard
+  // stack so it isn't doubled.
+  const featuredFeed = (user.feedFirstHome && user.homeFeedId != null)
+    ? subscribedFeedsData.find((f) => f.feed.id === user.homeFeedId) ?? null
+    : null;
+  const secondaryFeeds = featuredFeed
+    ? subscribedFeedsData.filter((f) => f.feed.id !== featuredFeed.feed.id)
+    : subscribedFeedsData;
+
   // ─── Offices-only home ─────────────────────────────────────────────
   // A trimmed version of the full /dashboard layout. Same header
   // rhythm (date + feast subtitle), same PrayerOfficeCard, same
@@ -197,23 +211,28 @@ export default function ParishDashboard() {
           </h1>
           <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
 
-          {/* The shared PrayerOfficeCard. Drives the entire daily
-              office rhythm — morning vs evening, prayed/not, who else
-              prayed this week. Hidden when the user has opted out
-              of seeing the offices on home via Settings → Phoebe
-              home → Hide the Daily Office on home. */}
-          {!hideOffices && (
+          {/* Primary anchor. Feed-first home (the default for portal
+              sign-ups) shows the featured feed's tall hero card and
+              hides the office card. Otherwise the shared PrayerOfficeCard
+              leads — itself hidden when the user opted out via Settings →
+              Home screen → Hide the Daily Office on home. */}
+          {featuredFeed ? (
+            <div className="mt-5">
+              <FeedHeroCard feed={featuredFeed} />
+            </div>
+          ) : !hideOffices ? (
             <div className="mt-5">
               <PrayerOfficeCard />
             </div>
-          )}
+          ) : null}
 
           {/* FeedPrayerCard stack — same component the full dashboard
               renders. "Begin praying / X New Prayers / Completed |
-              View list" comes for free. */}
-          {subscribedFeedsData.length > 0 && (
+              View list" comes for free. The featured feed is excluded
+              here when feed-first is on so it isn't shown twice. */}
+          {secondaryFeeds.length > 0 && (
             <div className="mt-3 mb-2 flex flex-col gap-3">
-              {subscribedFeedsData.map((row) => (
+              {secondaryFeeds.map((row) => (
                 <FeedPrayerCard key={row.feed.id} feed={row} />
               ))}
             </div>

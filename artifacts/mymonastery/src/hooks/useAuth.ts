@@ -41,6 +41,11 @@ export interface AuthUser {
   accessTier: AccessTier;
   parishFeedId: number | null;
   parishSlug: string | null;
+  // Feed-first home — the feed (if any) to feature in the big primary
+  // home-screen slot, and whether that layout is currently switched on.
+  // Set at signup for portal sign-ups; toggled in Settings → Home screen.
+  homeFeedId: number | null;
+  feedFirstHome: boolean;
 }
 
 async function fetchMe(): Promise<AuthUser | null> {

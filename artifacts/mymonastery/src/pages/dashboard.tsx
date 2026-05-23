@@ -392,8 +392,13 @@ type SubscribedFeed = {
   prayedToday: boolean;
   // OTHER subscribers (not the viewer) who've prayed any of this feed's
   // intercessions in the last 7 days. Server-truth — backs the avatar
-  // stack on FeedPrayerCard. Optional for older API builds.
+  // stack on FeedPrayerCard. Optional for older API builds. Capped at
+  // 12 for payload size — use weekPrayerCount for the honest total.
   weekPrayers?: Array<{ id: number; name: string; avatarUrl: string | null }>;
+  // Uncapped distinct count of OTHER subscribers who prayed this week.
+  // Backs the feed-first hero card's "N prayed this week" line, where
+  // the capped weekPrayers.length would understate a popular feed.
+  weekPrayerCount?: number;
   // Intercessions in this feed the viewer has NEVER prayed (no
   // check-in on any date). Drives the "X New Prayers" pulsing CTA
   // on the dashboard card. Optional — older API builds omit.
@@ -2625,6 +2630,151 @@ export function PrayerOfficeCard() {
   );
 }
 
+// ── FeedHeroCard — feed-first home's tall primary anchor ──
+//
+// The big card that takes the office card's slot when a user has
+// feed-first home switched on (portal sign-ups default to it). Same
+// visual format as PrayerOfficeCard — eyebrow, big title, "N prayed
+// this week" sub-line, avatar rail, Begin/Completed CTA — but sourced
+// from the featured prayer feed instead of the Daily Office. Tapping
+// Begin opens the same /prayer-mode?queue=feed walk the FeedPrayerCard
+// uses, so the prayer experience is identical; only the home anchor
+// changes shape.
+export function FeedHeroCard({ feed: row }: { feed: SubscribedFeed }) {
+  const { feed, prayedToday, weekPrayers, weekPrayerCount } = row;
+  const faces = (weekPrayers ?? []).filter((p) => !!p.avatarUrl);
+  // Honest total (uncapped) — falls back to the capped array length on
+  // older API builds that don't return weekPrayerCount yet.
+  const total = weekPrayerCount ?? (weekPrayers?.length ?? 0);
+  const countCopy = total === 0
+    ? null
+    : total === 1
+      ? "1 person prayed this week"
+      : `${total} people prayed this week`;
+  const walkHref = `/prayer-mode?queue=feed&slug=${feed.slug}`;
+
+  return (
+    <div
+      className="relative flex rounded-xl overflow-hidden"
+      style={{
+        background: "rgba(46,107,64,0.08)",
+        border: "1px solid rgba(46,107,64,0.4)",
+      }}
+    >
+      <div className="flex-1 px-4 pt-[20px] pb-[20px]">
+        <div className="flex items-start justify-between gap-2">
+          <p
+            className="text-[11px] font-semibold uppercase tracking-widest"
+            style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
+          >
+            Prayer Feed
+          </p>
+          <Link
+            href="/settings"
+            className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center shrink-0 transition-opacity hover:opacity-80"
+            style={{
+              background: "rgba(46,107,64,0.22)",
+              color: "#A8C5A0",
+              border: "1px solid rgba(46,107,64,0.4)",
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            Home
+          </Link>
+        </div>
+        <div className="mt-[4px] flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p
+              className="text-2xl font-semibold"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}
+            >
+              {feed.title} {feed.coverEmoji ?? "🌿"}
+            </p>
+            {countCopy && (
+              <p
+                className="text-[11px]"
+                style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif", margin: 0, marginTop: 10 }}
+              >
+                {countCopy}
+              </p>
+            )}
+          </div>
+          {faces.length > 0 && (
+            <div className="flex items-center -space-x-2 shrink-0">
+              {faces.slice(0, 5).map((p) => (
+                <img
+                  key={p.id}
+                  src={p.avatarUrl as string}
+                  alt={p.name}
+                  title={p.name}
+                  className="w-6 h-6 rounded-full object-cover"
+                  style={{ border: "1.5px solid rgba(12,31,18,0.9)" }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+        {prayedToday ? (
+          <div className="mt-[12px] flex items-stretch gap-2">
+            <div
+              aria-label="Prayed today"
+              className="flex-1 rounded-xl text-center"
+              style={{
+                background: "rgba(46,107,64,0.10)",
+                color: "rgba(168,197,160,0.9)",
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: 13,
+                fontWeight: 500,
+                padding: "7px 12px",
+                border: "1px solid rgba(46,107,64,0.22)",
+              }}
+            >
+              Prayed today <span aria-hidden>✓</span>
+            </div>
+            <Link href={walkHref} className="flex-1">
+              <div
+                role="button"
+                tabIndex={0}
+                className="rounded-xl text-center cursor-pointer"
+                style={{
+                  background: "rgba(46,107,64,0.22)",
+                  color: "#F0EDE6",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  padding: "7px 12px",
+                  border: "1px solid rgba(46,107,64,0.45)",
+                }}
+              >
+                Pray again <span aria-hidden>→</span>
+              </div>
+            </Link>
+          </div>
+        ) : (
+          <Link href={walkHref}>
+            <div
+              role="button"
+              tabIndex={0}
+              className="mt-[12px] w-full rounded-xl text-center cursor-pointer"
+              style={{
+                background: "rgba(46,107,64,0.22)",
+                color: "#F0EDE6",
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: 14,
+                fontWeight: 500,
+                padding: "7px 12px",
+                border: "1px solid rgba(46,107,64,0.45)",
+              }}
+            >
+              Begin praying <span aria-hidden>→</span>
+            </div>
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── FeedPrayerCard — per-subscribed-feed home anchor (beta only) ──
 //
 // One card per feed the viewer subscribes to, rendered under
@@ -4157,15 +4307,31 @@ export default function Dashboard() {
   });
   const serviceSchedules = serviceSchedulesData?.schedules ?? [];
 
-  // Subscribed prayer feeds — beta only. Each row carries the feed plus
-  // (optionally) today's entry and whether I've already prayed today, so
-  // the dashboard card can render without a second hop.
+  // Subscribed prayer feeds. Each row carries the feed plus (optionally)
+  // today's entry and whether I've already prayed today, so the
+  // dashboard card can render without a second hop. Fetched for any
+  // signed-in user — the earlier beta gate was stale (the FeedPrayerCard
+  // render is already open to everyone) and feed-first home needs this
+  // for portal sign-ups, who aren't necessarily beta. The endpoint
+  // returns only the caller's own subscriptions, so it's cheap + safe.
   const { data: subscribedFeedsData } = useQuery<{ subscriptions: SubscribedFeed[] }>({
     queryKey: ["/api/prayer-feeds/subscribed"],
     queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed"),
-    enabled: !!user && isBeta,
+    enabled: !!user,
   });
   const subscribedFeeds = subscribedFeedsData?.subscriptions ?? [];
+
+  // Feed-first home: when the user has a featured feed (set at signup
+  // for portal sign-ups) AND the toggle is on AND that feed is in their
+  // subscriptions, it gets the tall hero card in the office card's slot,
+  // the office card is hidden, and the feed is dropped from the
+  // secondary FeedPrayerCard list below so it isn't doubled.
+  const featuredFeed = (user?.feedFirstHome && user?.homeFeedId != null)
+    ? subscribedFeeds.find((f) => f.feed.id === user.homeFeedId) ?? null
+    : null;
+  const secondaryFeeds = featuredFeed
+    ? subscribedFeeds.filter((f) => f.feed.id !== featuredFeed.feed.id)
+    : subscribedFeeds;
 
   // Gatherings / traditions the user owns or participates in. Enriched
   // rows already carry `nextMeetupDate`, so bucketing into Today /
@@ -5021,21 +5187,26 @@ export default function Dashboard() {
                   <NewPrayerRequestsCard count={newPrayersCount} faces={homeFaces} />
                 </div>
               )}
+              {/* Primary anchor. Feed-first home (portal sign-ups,
+                  toggle on) puts the featured feed's tall hero card
+                  here and HIDES the office card; otherwise the office
+                  card leads as usual. */}
               <div className="mt-3">
-                <PrayerOfficeCard />
+                {featuredFeed
+                  ? <FeedHeroCard feed={featuredFeed} />
+                  : <PrayerOfficeCard />}
               </div>
 
               {/* Per-feed "begin praying" anchors — one card per
-                  subscribed prayer feed. Open to everyone now (the
-                  earlier beta gate is gone). No section heading per
-                  user direction — the cards sit directly under
-                  PrayerOfficeCard as a quieter continuation rather
-                  than a separate named group. The mb-2 below gives
-                  a little breathing room before the next dashboard
-                  section ("This week" etc.) drops in. */}
-              {subscribedFeeds.length > 0 && (
+                  subscribed prayer feed. Open to everyone. No section
+                  heading per user direction — the cards sit directly
+                  under the primary anchor as a quieter continuation.
+                  The featured feed is excluded here when feed-first is
+                  on so it isn't shown twice. The mb-2 gives a little
+                  breathing room before the next dashboard section. */}
+              {secondaryFeeds.length > 0 && (
                 <div className="mt-3 mb-2 flex flex-col gap-3">
-                  {subscribedFeeds.map((row) => (
+                  {secondaryFeeds.map((row) => (
                     <FeedPrayerCard key={row.feed.id} feed={row} />
                   ))}
                 </div>

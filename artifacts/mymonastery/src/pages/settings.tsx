@@ -91,6 +91,88 @@ function ReminderTimeRow({
 // (push + email + slideshow). Beta-only — the sender's beta gate is
 // the source of truth; the UI hides the section for non-beta users
 // so it doesn't show a toggle for a feature they can't trigger.
+// Feed-first home toggle. Only shown to users who have a featured feed
+// (homeFeedId — set at signup for portal sign-ups). Lets them choose
+// whether their home screen leads with that feed's tall card or with
+// the Daily Office. Server-backed via PUT /api/me/feed-first-home;
+// flipping it invalidates /api/auth/me so the dashboard re-reads
+// feedFirstHome and re-renders the primary anchor on next paint.
+function HomeScreenSettings() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  // The featured feed's title, for a concrete toggle label. Pulled from
+  // the same subscribed-feeds endpoint the dashboard uses.
+  const { data: subsData } = useQuery<{ subscriptions: Array<{ feed: { id: number; title: string; coverEmoji: string | null } }> }>({
+    queryKey: ["/api/prayer-feeds/subscribed"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed") as Promise<{ subscriptions: Array<{ feed: { id: number; title: string; coverEmoji: string | null } }> }>,
+    enabled: !!user?.homeFeedId,
+  });
+  const save = useMutation({
+    mutationFn: (enabled: boolean) =>
+      apiRequest("PUT", "/api/me/feed-first-home", { enabled }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }),
+  });
+
+  if (!user?.homeFeedId) return null;
+  const homeFeed = subsData?.subscriptions.find((s) => s.feed.id === user.homeFeedId)?.feed;
+  const feedLabel = homeFeed ? `${homeFeed.title} ${homeFeed.coverEmoji ?? "🌿"}`.trim() : "your prayer feed";
+  const enabled = user.feedFirstHome ?? true;
+
+  const options: Array<{ value: boolean; label: string; sub: string }> = [
+    { value: true, label: `Lead with ${feedLabel}`, sub: "Your feed gets the big card; the Daily Office is tucked into the menu" },
+    { value: false, label: "Lead with the Daily Office", sub: "Morning & Evening Prayer takes the top spot" },
+  ];
+
+  return (
+    <>
+      <SectionHeader label="Home screen" />
+      <p
+        className="text-[13px] mb-3"
+        style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}
+      >
+        Choose what greets you when you open Phoebe.
+      </p>
+      <SettingsCard>
+        {options.map((opt, i) => {
+          const isSelected = enabled === opt.value;
+          return (
+            <button
+              key={String(opt.value)}
+              type="button"
+              onClick={() => save.mutate(opt.value)}
+              className="w-full flex items-center gap-3 py-2.5 text-left"
+              style={{
+                borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            >
+              <div
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+                  background: isSelected ? "#A8C5A0" : "transparent",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                  {opt.label}
+                </p>
+                {opt.sub && (
+                  <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+                    {opt.sub}
+                  </p>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </SettingsCard>
+    </>
+  );
+}
+
 function WeeklyDigestSettings() {
   const { isBeta } = useBetaStatus();
   const queryClient = useQueryClient();
@@ -1117,6 +1199,10 @@ export default function SettingsPage() {
                 office. Both preferences are read by the offices-
                 only home (parish-dashboard) on next paint. */}
         {user.accessTier === "offices-only" && <OfficesOnlyExtras />}
+
+        {/* ── Home screen ── (feed-first toggle; only for users with a
+            featured feed set at signup) */}
+        <HomeScreenSettings />
 
         {/* ── Weekly prayer-feed digest ── (beta-only for now) */}
         <WeeklyDigestSettings />
