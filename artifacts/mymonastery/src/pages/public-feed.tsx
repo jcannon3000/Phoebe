@@ -421,21 +421,28 @@ function PrayingScreen({
                   </button>
                 </div>
               ) : item.learnMoreTitle ? (
-                // Learn more with an article title — caption above the
-                // pill, same style as the take-action copy.
+                // Learn more with an article title — a small "Read
+                // Article" label stacked on top of the quoted article
+                // title, then the pill. Mirrors the in-app slideshow.
                 <div
                   className="w-full mt-2 flex flex-col items-center text-center"
-                  style={{ gap: 12 }}
+                  style={{ gap: 8 }}
                 >
                   <p
-                    className="text-sm leading-relaxed"
-                    style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}
+                    className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+                    style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
                   >
-                    {item.learnMoreTitle}
+                    Read Article
+                  </p>
+                  <p
+                    className="text-sm leading-relaxed"
+                    style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+                  >
+                    &ldquo;{item.learnMoreTitle}&rdquo;
                   </p>
                   <button
                     onClick={() => openExternal(item.learnMoreUrl!)}
-                    className="text-[13px] font-semibold px-4 py-2.5 rounded-full"
+                    className="text-[13px] font-semibold px-4 py-2.5 rounded-full mt-1"
                     style={{
                       background: "rgba(46,107,64,0.35)",
                       color: WARM_TEXT,
