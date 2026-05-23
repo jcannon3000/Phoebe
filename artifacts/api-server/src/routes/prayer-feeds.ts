@@ -396,8 +396,11 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
 
   // One row per intercession on every subscribed feed, grouped
   // feed-first (the UI renders one card per feed with N intercessions
-  // inside). Feeds are a flat ongoing list now — `slot` is just the
-  // newest-first index and `isRecurring` is always false.
+  // inside). Feeds carry a rolling list of ongoing intercessions, but
+  // the "today" surface — the daily rhythm a subscriber prays through
+  // — is capped at FEED_DAILY_LIMIT entries per feed. Beyond that we
+  // bury the older ones; admins can still see / archive them via the
+  // feed-management page.
   const byFeed = await loadFeedIntercessions(
     subs.map((s) => s.feedId),
     await viewerEmailFor(user.id),
@@ -417,7 +420,9 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
   };
   const entries: Row[] = [];
   for (const s of subs) {
-    (byFeed.get(s.feedId) ?? []).forEach((m, i) => {
+    // Take the FEED_DAILY_LIMIT newest. loadFeedIntercessions already
+    // sorts by createdAt desc, so .slice(0, N) is the newest-N.
+    (byFeed.get(s.feedId) ?? []).slice(0, FEED_DAILY_LIMIT).forEach((m, i) => {
       entries.push({
         id: m.id,
         feedId: s.feedId,
@@ -436,6 +441,14 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
 
   res.json({ entries });
 });
+
+// A feed's daily-surface cap. Subscribers pray through a rotating-but-
+// gentle daily set; surfacing every active intercession at once turned
+// "3 per day" into "everything ever programmed." Admins (via the feed-
+// management page) and the slideshow's "Pray the full list" tap still
+// walk every active intercession; this cap is purely a presentation
+// constraint on the daily/today surfaces.
+const FEED_DAILY_LIMIT = 3;
 
 // GET /api/groups/:slug/prayer-feeds — feeds bound to this group, each
 // with today's intercessions. Same merge semantics as /today above
@@ -482,9 +495,10 @@ router.get("/groups/:slug/prayer-feeds", requireBeta, async (req, res): Promise<
     todayEntries: Array<{ id: number; slot: number; title: string; isRecurring: boolean }>;
   };
 
-  // Feeds are a flat ongoing list of intercessions now — `todayEntries`
-  // is the feed's current intercessions (newest first), `slot` a stable
-  // index and `isRecurring` always false.
+  // todayEntries is capped at FEED_DAILY_LIMIT (3) so the community
+  // detail page shows "3 intercessions today" max, matching the
+  // /prayer-feeds/today rule that subscribers see. The feed-detail
+  // page still surfaces every active intercession.
   const byFeed = await loadFeedIntercessions(
     bound.map((f) => f.feedId),
     await viewerEmailFor(user.id),
@@ -495,7 +509,7 @@ router.get("/groups/:slug/prayer-feeds", requireBeta, async (req, res): Promise<
     feedTitle: f.feedTitle,
     feedCoverEmoji: f.feedCoverEmoji ?? null,
     subscriberCount: f.feedSubscriberCount ?? 0,
-    todayEntries: (byFeed.get(f.feedId) ?? []).map((m, i) => ({
+    todayEntries: (byFeed.get(f.feedId) ?? []).slice(0, FEED_DAILY_LIMIT).map((m, i) => ({
       id: m.id,
       slot: i,
       title: m.title,
