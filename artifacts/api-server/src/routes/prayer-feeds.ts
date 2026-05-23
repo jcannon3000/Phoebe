@@ -1288,6 +1288,25 @@ router.get("/prayer-feeds/:slug/intercessions", async (req, res): Promise<void> 
     ...r,
     weekPrayCount: countById.get(r.id) ?? 0,
   }));
+
+  // Order to reflect today's deck rotation: today's window (the same
+  // FEED_DAILY_LIMIT cards the prayer-list FeedCard + community detail
+  // surface) leads, in rotation order, followed by the rest of the
+  // active deck in newest-first order. This makes the slideshow walk
+  // today's three first, the feed-detail page list them at the top,
+  // and the offices-only home Prayer List reflect the rotation —
+  // every surface that reads this endpoint stays in sync with the
+  // daily window. Editors (isCreator) get the raw newest-first list
+  // so the management view shows everything in a stable authoring
+  // order rather than a rotating one.
+  if (!isCreator) {
+    const todayWindow = rotateTodaySlice(intercessions, dayKey());
+    const windowIds = new Set(todayWindow.map((i) => i.id));
+    const rest = intercessions.filter((i) => !windowIds.has(i.id));
+    res.json({ intercessions: [...todayWindow, ...rest] });
+    return;
+  }
+
   res.json({ intercessions });
 });
 
