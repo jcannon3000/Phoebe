@@ -337,17 +337,19 @@ function pickConcludingBlessing(date: Date): { ref: string; text: string } {
 // daily until the Day of Pentecost."
 //
 // The old logic pinned exactly ONE invitatory per season — Pascha
-// Nostrum every single day of Eastertide, Jubilate every day of Lent,
-// Venite the rest of the year — so a daily reader never saw any
-// variety. We rotate deterministically by day-of-year instead: the
-// choice is the same for everyone praying a given date (and matches the
-// per-date office cache) while still cycling the options:
+// Nostrum every single day of Eastertide, but ALSO Jubilate every day
+// of Lent and Venite every other day of the year, so the Venite and
+// Jubilate never rotated at all. Now:
 //
-//   • Easter Week (Easter Day → the Saturday after): Pascha Nostrum
-//     daily — the one place the rubric *requires* it.
-//   • Rest of Eastertide (through the Day of Pentecost): rotate
-//     Pascha Nostrum / Venite / Jubilate.
-//   • Every other day of the year: rotate Venite / Jubilate.
+//   • All of Eastertide (Easter Day → the Day of Pentecost): Pascha
+//     Nostrum, "Christ our Passover." The rubric requires it in Easter
+//     Week (it stands in place of the Invitatory Psalm) and says it
+//     "may also be used daily until the Day of Pentecost" — by product
+//     direction we keep it the whole season so Easter reads as Easter.
+//   • Every other day of the year: rotate Venite / Jubilate. The BCP
+//     leaves this choice free ("one of the Invitatory Psalms, Venite or
+//     Jubilate"), so we alternate deterministically by day-of-year —
+//     the same for everyone praying a given date, and cache-safe.
 //
 // If the day's own appointed psalm already IS Psalm 95 (Venite) or 100
 // (Jubilate), that option drops out so the office never prays the same
@@ -355,20 +357,17 @@ function pickConcludingBlessing(date: Date): { ref: string; text: string } {
 type InvitatoryKey = "venite" | "jubilate" | "pascha_nostrum";
 
 function pickInvitatoryKey(
-  liturgicalDay: { season: string; weekInSeason: number },
+  liturgicalDay: { season: string },
   date: Date,
   appointedPsalmNumbers: number[],
 ): InvitatoryKey {
-  // Easter Week — Pascha Nostrum stands in for the Invitatory Psalm.
-  if (liturgicalDay.season === "easter" && liturgicalDay.weekInSeason === 1) {
+  // All of Eastertide — Pascha Nostrum.
+  if (liturgicalDay.season === "easter") {
     return "pascha_nostrum";
   }
 
-  // Candidate pool — Eastertide folds Pascha Nostrum into the rotation.
-  let pool: InvitatoryKey[] =
-    liturgicalDay.season === "easter"
-      ? ["pascha_nostrum", "venite", "jubilate"]
-      : ["venite", "jubilate"];
+  // Every other season: rotate Venite / Jubilate.
+  let pool: InvitatoryKey[] = ["venite", "jubilate"];
 
   // Don't double up on a psalm already appointed for the day.
   if (appointedPsalmNumbers.includes(95)) pool = pool.filter((k) => k !== "venite");
