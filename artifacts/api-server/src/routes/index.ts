@@ -31,6 +31,7 @@ import prayerSessionsRouter from "./prayer-sessions";
 import parishRouter from "./parish";
 import actionsRouter from "./actions";
 import newsletterRouter from "./newsletter";
+import adminMetricsRouter from "./admin-metrics";
 import meetupsRouter from "./meetups";
 
 const router: IRouter = Router();
@@ -138,6 +139,7 @@ router.use(prayerSessionsRouter);
 router.use(parishRouter);
 router.use(actionsRouter);
 router.use(newsletterRouter);
+router.use(adminMetricsRouter);
 router.use(meetupsRouter);
 
 export default router;
