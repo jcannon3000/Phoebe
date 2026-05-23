@@ -91,36 +91,51 @@ function ReminderTimeRow({
 // (push + email + slideshow). Beta-only — the sender's beta gate is
 // the source of truth; the UI hides the section for non-beta users
 // so it doesn't show a toggle for a feature they can't trigger.
-// Feed-first home toggle. Only shown to users who have a featured feed
-// (homeFeedId — set at signup for portal sign-ups). Lets them choose
-// whether their home screen leads with that feed's tall card or with
-// the Daily Office. Server-backed via PUT /api/me/feed-first-home;
-// flipping it invalidates /api/auth/me so the dashboard re-reads
-// feedFirstHome and re-renders the primary anchor on next paint.
+// Feed-first home picker. Shown to ANY user who follows at least one
+// prayer feed (not just portal sign-ups). Lists the Daily Office plus
+// one row per subscribed feed; picking a feed makes it lead the home
+// screen with the tall hero card, picking the Office reverts to the
+// default. Server-backed via PUT /api/me/feed-first-home { feedId };
+// on save we invalidate /api/auth/me (so the dashboard re-reads
+// homeFeedId + feedFirstHome) and the subscribed-feeds list.
 function HomeScreenSettings() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  // The featured feed's title, for a concrete toggle label. Pulled from
-  // the same subscribed-feeds endpoint the dashboard uses.
   const { data: subsData } = useQuery<{ subscriptions: Array<{ feed: { id: number; title: string; coverEmoji: string | null } }> }>({
     queryKey: ["/api/prayer-feeds/subscribed"],
     queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed") as Promise<{ subscriptions: Array<{ feed: { id: number; title: string; coverEmoji: string | null } }> }>,
-    enabled: !!user?.homeFeedId,
+    enabled: !!user,
   });
   const save = useMutation({
-    mutationFn: (enabled: boolean) =>
-      apiRequest("PUT", "/api/me/feed-first-home", { enabled }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }),
+    // feedId === null → office-led; a number → that feed leads.
+    mutationFn: (feedId: number | null) =>
+      apiRequest("PUT", "/api/me/feed-first-home", { feedId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
+    },
   });
 
-  if (!user?.homeFeedId) return null;
-  const homeFeed = subsData?.subscriptions.find((s) => s.feed.id === user.homeFeedId)?.feed;
-  const feedLabel = homeFeed ? `${homeFeed.title} ${homeFeed.coverEmoji ?? "🌿"}`.trim() : "your prayer feed";
-  const enabled = user.feedFirstHome ?? true;
+  const feeds = subsData?.subscriptions.map((s) => s.feed) ?? [];
+  // Nothing to feature → no picker (the Daily Office is the only option).
+  if (feeds.length === 0) return null;
 
-  const options: Array<{ value: boolean; label: string; sub: string }> = [
-    { value: true, label: `Lead with ${feedLabel}`, sub: "Your feed gets the big card; the Daily Office is tucked into the menu" },
-    { value: false, label: "Lead with the Daily Office", sub: "Morning & Evening Prayer takes the top spot" },
+  // Selected = the featured feed when feed-first is on AND that feed is
+  // still followed; otherwise the Daily Office.
+  const selectedFeedId = (user?.feedFirstHome && user?.homeFeedId != null
+    && feeds.some((f) => f.id === user.homeFeedId))
+    ? user.homeFeedId
+    : null;
+
+  type Row = { key: string; feedId: number | null; label: string; sub: string };
+  const rows: Row[] = [
+    { key: "office", feedId: null, label: "Lead with the Daily Office", sub: "Morning & Evening Prayer takes the top spot" },
+    ...feeds.map((f): Row => ({
+      key: `feed-${f.id}`,
+      feedId: f.id,
+      label: `Lead with ${`${f.title} ${f.coverEmoji ?? "🌿"}`.trim()}`,
+      sub: "This feed gets the big card; the Daily Office moves to the menu",
+    })),
   ];
 
   return (
@@ -133,13 +148,13 @@ function HomeScreenSettings() {
         Choose what greets you when you open Phoebe.
       </p>
       <SettingsCard>
-        {options.map((opt, i) => {
-          const isSelected = enabled === opt.value;
+        {rows.map((row, i) => {
+          const isSelected = selectedFeedId === row.feedId;
           return (
             <button
-              key={String(opt.value)}
+              key={row.key}
               type="button"
-              onClick={() => save.mutate(opt.value)}
+              onClick={() => save.mutate(row.feedId)}
               className="w-full flex items-center gap-3 py-2.5 text-left"
               style={{
                 borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)",
@@ -157,11 +172,11 @@ function HomeScreenSettings() {
               />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-                  {opt.label}
+                  {row.label}
                 </p>
-                {opt.sub && (
+                {row.sub && (
                   <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
-                    {opt.sub}
+                    {row.sub}
                   </p>
                 )}
               </div>

@@ -3003,6 +3003,23 @@ export default function PrayerModePage() {
     }
   }, [displaySlides.length, momentsData, prayerRequests, myPrayersFor, officesOnly, dataReady, seamlessFlow, queueMode, closingOnly, finishHref, setLocation]);
 
+  // Focused-queue gating-query failure → bail home instead of spinning
+  // forever. dataReady only flips on isSuccess, so if the queue's source
+  // query ERRORS (e.g. queue=feed for a feed that was deleted, paused,
+  // unsubscribed, or made private since the link was created — its
+  // /prayer-feeds/:slug fetch 404s), dataReady never becomes true, the
+  // frozenSlides snapshot is never taken, and the user is stuck on the
+  // loading spinner. Redirect them back to where they came from. Only
+  // applies to the focused queues whose deck depends on a single source
+  // query; the default walk degrades to an empty closing recap instead.
+  const focusedQueueErrored =
+    (queueMode === "feed" && (feedMetaQuery.isError || feedIntercessionsQuery.isError)) ||
+    (queueMode === "feed-digest" && feedDigestQuery.isError) ||
+    (queueMode === "prayers-for-me" && prayersForMeQuery.isError);
+  useEffect(() => {
+    if (focusedQueueErrored) setLocation(finishHref);
+  }, [focusedQueueErrored, finishHref, setLocation]);
+
   // When the user lands on the closing slide, log the prayer-list streak.
   // The server is idempotent per TZ-local day — calling twice doesn't
   // double-count. If this is the first completion today, we pop the

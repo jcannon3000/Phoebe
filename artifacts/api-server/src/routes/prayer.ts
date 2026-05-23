@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, inArray, notInArray, and, isNull, or, gt } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, fellowsTable, prayerRequestTagsTable } from "@workspace/db";
+import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, fellowsTable, prayerRequestTagsTable, prayerFeedSubscriptionsTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -1640,26 +1640,54 @@ router.put("/me/weekly-digest-pref", async (req, res): Promise<void> => {
   }
 });
 
-// ── Feed-first home toggle ───────────────────────────────────────────
-// Switches the home screen between feed-led (the featured feed gets the
-// tall primary card; office card hidden) and office-led (the default).
-// Only meaningful when the user has a home_feed_id — the Settings UI
-// only surfaces the toggle in that case. Returns the new value so the
-// client can flip /auth/me's cached copy without a round trip.
+// ── Feed-first home ──────────────────────────────────────────────────
+// Sets which feed (if any) leads the home screen. Any subscriber can
+// pick — the Settings UI lists the Daily Office plus one row per feed
+// they follow. Body: { feedId: number | null }.
+//   • null   → office-led home (feed_first_home off; home_feed_id left
+//              as-is so a later re-enable can remember the last choice,
+//              though the picker always re-sends an explicit feedId).
+//   • number → that feed leads. We verify the caller is actually
+//              subscribed before honoring it, so a hand-crafted request
+//              can't pin a feed the user doesn't follow (the dashboard
+//              would just fall back to the office card anyway, but we
+//              reject it cleanly rather than store a dangling pointer).
+// Returns the resulting { homeFeedId, feedFirstHome } so the client can
+// reconcile its /auth/me cache.
 router.put("/me/feed-first-home", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  const enabled = (req.body as { enabled?: unknown })?.enabled;
-  if (typeof enabled !== "boolean") {
-    res.status(400).json({ error: "enabled must be a boolean" });
+  const feedId = (req.body as { feedId?: unknown })?.feedId;
+  if (feedId !== null && typeof feedId !== "number") {
+    res.status(400).json({ error: "feedId must be a number or null" });
     return;
   }
   try {
+    if (feedId === null) {
+      await db
+        .update(usersTable)
+        .set({ feedFirstHome: false })
+        .where(eq(usersTable.id, sessionUserId));
+      res.json({ homeFeedId: null, feedFirstHome: false });
+      return;
+    }
+    // Verify the subscription before pinning the feed.
+    const [sub] = await db
+      .select({ feedId: prayerFeedSubscriptionsTable.feedId })
+      .from(prayerFeedSubscriptionsTable)
+      .where(and(
+        eq(prayerFeedSubscriptionsTable.userId, sessionUserId),
+        eq(prayerFeedSubscriptionsTable.feedId, feedId),
+      ));
+    if (!sub) {
+      res.status(400).json({ error: "Not subscribed to that feed." });
+      return;
+    }
     await db
       .update(usersTable)
-      .set({ feedFirstHome: enabled })
+      .set({ homeFeedId: feedId, feedFirstHome: true })
       .where(eq(usersTable.id, sessionUserId));
-    res.json({ enabled });
+    res.json({ homeFeedId: feedId, feedFirstHome: true });
   } catch (err) {
     console.error("[/me/feed-first-home PUT] failed:", err);
     res.status(500).json({ error: "internal_error" });
