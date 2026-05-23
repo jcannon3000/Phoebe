@@ -601,9 +601,16 @@ export async function assembleMorningPrayer(
   };
 
   // antiphon_none seeds an empty content; the placeholder check also
-  // catches missed-seed cases ("[antiphon_xxx — see BCP]").
+  // catches missed-seed cases ("[antiphon_xxx — see BCP]"). The antiphon
+  // is appointed "with the Invitatory Psalm" (BCP p. 80) — Venite or
+  // Jubilate — so it's suppressed for Pascha Nostrum, which is a set of
+  // anthems carrying its own alleluias, not a psalm that takes one.
   const antiphonText = getText(liturgicalDay.antiphonKey);
-  const hasAntiphon = !!antiphonText && antiphonText.trim().length > 0 && !antiphonText.startsWith("[");
+  const hasAntiphon =
+    invitPsalmKey !== "pascha_nostrum" &&
+    !!antiphonText &&
+    antiphonText.trim().length > 0 &&
+    !antiphonText.startsWith("[");
   const psalmBody = getText(invitPsalmKey);
   const invitEyebrow = invitPsalmEyebrows[invitPsalmKey] ?? "VENITE";
   const invitHeadline = invitPsalmHeadlines[invitPsalmKey] ?? "Venite";

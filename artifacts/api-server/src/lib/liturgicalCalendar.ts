@@ -528,8 +528,11 @@ function getAntiphonKey(season: LiturgicalSeason, date: Date): string {
     case "epiphany":
       return "antiphon_epiphany";
     case "lent":
-    case "holy_week":
       return "antiphon_lent";
+    case "holy_week":
+      // antiphon_holyweek is seeded but was never reached — Holy Week
+      // fell through to the Lent antiphon. Route it to its own text.
+      return "antiphon_holyweek";
     case "easter": {
       // Check if Ascension or after
       const year = date.getFullYear();

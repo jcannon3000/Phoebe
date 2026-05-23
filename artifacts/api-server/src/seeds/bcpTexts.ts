@@ -447,6 +447,48 @@ async function seedStaticTexts() {
       content: "Alleluia. The Lord is risen indeed: Come let us adore him. Alleluia.",
     },
     {
+      // Ascension Day through the eve of Pentecost (still within the
+      // Great Fifty Days). Previously unseeded — the office showed NO
+      // antiphon in this whole window because getAntiphonKey returned
+      // "antiphon_ascension" with nothing behind it.
+      textKey: "antiphon_ascension",
+      category: "antiphon",
+      title: "Antiphon — Ascension",
+      bcpReference: "BCP p. 81",
+      seasonRestriction: "easter",
+      content: "Alleluia. Christ the Lord has ascended into heaven: Come let us adore him. Alleluia.",
+    },
+    {
+      // The Day of Pentecost. Also previously unseeded.
+      textKey: "antiphon_pentecost",
+      category: "antiphon",
+      title: "Antiphon — Pentecost",
+      bcpReference: "BCP p. 81",
+      seasonRestriction: "easter",
+      content: "Alleluia. The Spirit of the Lord fills the whole world: Come let us adore him. Alleluia.",
+    },
+    {
+      // Trinity Sunday. Previously unseeded.
+      textKey: "antiphon_trinity",
+      category: "antiphon",
+      title: "Antiphon — Trinity Sunday",
+      bcpReference: "BCP p. 81",
+      seasonRestriction: "season_after_pentecost",
+      content: "Father, Son, and Holy Spirit, one God: Come let us adore him.",
+    },
+    {
+      // The whole Season after Pentecost — roughly half the year — used
+      // "antiphon_anytime", which was never seeded, so the office ran
+      // for months with no invitatory antiphon. This is the first of the
+      // three general antiphons the BCP appoints "at other times" (p. 82).
+      textKey: "antiphon_anytime",
+      category: "antiphon",
+      title: "Antiphon — At other times",
+      bcpReference: "BCP p. 82",
+      seasonRestriction: "season_after_pentecost",
+      content: "The earth is the Lord's, for he made it: Come let us adore him.",
+    },
+    {
       textKey: "antiphon_none",
       category: "antiphon",
       title: "Antiphon (none)",
