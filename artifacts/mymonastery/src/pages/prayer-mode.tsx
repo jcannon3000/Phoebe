@@ -566,12 +566,25 @@ function SlideContent({
         >
           Someone you haven&rsquo;t named, a worry that surfaced this morning, the world that needs holding.
         </p>
+        <button
+          onClick={onAdvance}
+          className="mt-2 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+        >
+          Continue →
+        </button>
+        <p
+          className="text-[13px]"
+          style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, serif", fontStyle: "italic" }}
+        >
+          or pause for a time of contemplative prayer
+        </p>
         {/* Contemplation card — the moment to pause can become a timed,
             silent sit. Quick 5/10/20-min buttons start immediately;
             "Begin contemplation" opens the full picker. A bell opens and
             closes the sit; the time is logged to Contemplation stats. */}
         <div
-          className="mt-2 w-full rounded-2xl p-4"
+          className="w-full rounded-2xl p-4"
           style={{
             maxWidth: 360,
             background: "rgba(46,107,64,0.12)",
@@ -615,13 +628,6 @@ function SlideContent({
             🧘 Begin contemplation
           </button>
         </div>
-        <button
-          onClick={onAdvance}
-          className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-        >
-          Continue →
-        </button>
       </div>
     );
   }
