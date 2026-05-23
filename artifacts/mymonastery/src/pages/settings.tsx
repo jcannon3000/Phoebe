@@ -581,7 +581,7 @@ function PhoneSection() {
   // Contacts" — that path doesn't exist on the web build, so showing
   // the form there is just an empty input asking for a number we have
   // no way to verify. Hide the entire section unless we're inside the
-  // Capacitor shell (matching the MobileDeviceSection pattern below).
+  // Capacitor shell.
   const [isNative, setIsNative] = useState(false);
   useEffect(() => {
     try {
