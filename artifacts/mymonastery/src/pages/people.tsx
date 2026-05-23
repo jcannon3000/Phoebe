@@ -618,6 +618,62 @@ export default function People() {
           )}
         </div>
 
+        {/* Fellows section — sits below the search bar so the
+            durable share-link connections are surfaced before the
+            broader garden. Drawn from /api/fellows; hidden entirely
+            when the viewer has no fellows yet. */}
+        {(() => {
+          const fellowPeople = sorted.filter(p => fellowEmails.has(p.email.toLowerCase()));
+          if (fellowPeople.length === 0) return null;
+          return (
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>Fellows</p>
+                <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
+                <span
+                  className="text-[10px] uppercase tracking-[0.14em] px-2 py-0.5 rounded-full"
+                  style={{
+                    background: "rgba(46,107,64,0.18)",
+                    color: "rgba(168,197,160,0.85)",
+                    border: "1px solid rgba(46,107,64,0.4)",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                  }}
+                >
+                  {fellowPeople.length}
+                </span>
+              </div>
+              <p
+                className="text-[12px] mb-3"
+                style={{
+                  color: "rgba(143,175,150,0.7)",
+                  fontFamily: "Georgia, 'Times New Roman', serif",
+                  fontStyle: "italic",
+                }}
+              >
+                People who joined Phoebe to pray with you, or whose share-link prayers you answered with an Amen.
+              </p>
+              <div className="space-y-2">
+                {fellowPeople.map(person => {
+                  const isHighlighted = highlightEmail === person.email;
+                  return (
+                    <div key={person.email} ref={isHighlighted ? highlightRef : null}>
+                      <PersonCard
+                        person={person}
+                        isPresent={presentEmails.has(person.email)}
+                        iPrayFor={iPrayForEmails.has(person.email.toLowerCase())}
+                        prayForMe={prayForMeEmails.has(person.email.toLowerCase())}
+                        isFellow
+                        activePrayerFor={null}
+                        activePrayerForMe={null}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Find friends entry — native-only. The underlying flow reads
             iOS Contacts via the Capacitor plugin, which doesn't exist
             on the plain web build; showing the card there dropped
