@@ -1,5 +1,5 @@
 import { Router, type IRouter, type RequestHandler } from "express";
-import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lte, sql, or, isNull } from "drizzle-orm";
 import {
   db,
   prayerFeedsTable,
@@ -585,9 +585,28 @@ router.get("/groups/:slug/prayer-feeds", requireBeta, async (req, res): Promise<
 // state for cleanup purposes.
 router.get("/prayer-feeds/mine", requireBeta, async (req, res): Promise<void> => {
   const user = getUser(req)!;
+  // "Mine" = feeds the caller can manage, matching canEditFeed:
+  //   • feeds they created, plus
+  //   • platform-owned feeds (creator_user_id NULL, e.g. phoebe-climate)
+  //     when the caller is a beta admin.
+  // Without the admin branch, a beta admin who can edit phoebe-climate
+  // saw no "Manage Prayer Feeds" entry because the platform feed has a
+  // null creator and so never matched creatorUserId = them. (The
+  // phoebe-climate seed nulls the creator on every boot, which is what
+  // made the entry disappear for whoever originally created it.)
+  const [betaAdmin] = await db.select({ isAdmin: betaUsersTable.isAdmin })
+    .from(betaUsersTable)
+    .where(eq(betaUsersTable.email, (user.email ?? "").toLowerCase()));
+  const isAdmin = !!betaAdmin?.isAdmin;
+
   const rows = await db.select().from(prayerFeedsTable)
     .where(and(
-      eq(prayerFeedsTable.creatorUserId, user.id),
+      isAdmin
+        ? or(
+            eq(prayerFeedsTable.creatorUserId, user.id),
+            isNull(prayerFeedsTable.creatorUserId),
+          )
+        : eq(prayerFeedsTable.creatorUserId, user.id),
       eq(prayerFeedsTable.state, "live"),
     ))
     .orderBy(desc(prayerFeedsTable.createdAt));
