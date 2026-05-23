@@ -3000,13 +3000,16 @@ export default function PrayerModePage() {
       ? dataReady
       : !!(momentsData && prayerRequests && myPrayersFor);
     if (displaySlides.length === 0 && queriesSettled) {
-      if (seamlessFlow) {
+      if (seamlessFlow || queueMode === "feed") {
+        // Feed walks (and seamless office handoffs) never show the
+        // friends/community closing recap — if the deck is empty,
+        // just return to where the user came from.
         setLocation(finishHref);
       } else {
         setPhase("closing");
       }
     }
-  }, [displaySlides.length, momentsData, prayerRequests, myPrayersFor, officesOnly, dataReady, seamlessFlow, closingOnly, finishHref, setLocation]);
+  }, [displaySlides.length, momentsData, prayerRequests, myPrayersFor, officesOnly, dataReady, seamlessFlow, queueMode, closingOnly, finishHref, setLocation]);
 
   // When the user lands on the closing slide, log the prayer-list streak.
   // The server is idempotent per TZ-local day — calling twice doesn't
@@ -3091,6 +3094,21 @@ export default function PrayerModePage() {
     };
   }, []);
 
+  // Fade out + navigate to finishHref without showing the closing
+  // summary. Used by queue=feed walks: a feed's "Pray the full list"
+  // is about carrying causes, not friends, so the "you prayed for N
+  // people this week" recap doesn't belong at the end. Per-slide amen
+  // POSTs already logged every check-in during the walk, so there's
+  // nothing left to record here — we just exit. Mirrors the fade
+  // timing handleDone uses so the transition feels the same.
+  const exitToFinish = () => {
+    setSlideVisible(false);
+    setTimeout(() => {
+      setVisible(false);
+      setTimeout(() => setLocation(finishHref), 500);
+    }, 300);
+  };
+
   // Move to the next slide without recording an amen / check-in.
   // Used by the "Not today" hyperlink under the Amen button — gives
   // viewers a quiet way to pass on a particular prayer (e.g. "I
@@ -3116,11 +3134,13 @@ export default function PrayerModePage() {
         // Seamless mode (intercessions handoff from the Daily
         // Office / Devotion): skip the closing summary entirely
         // and hand the user back to the office for its General
-        // Thanksgiving + final blessing. Otherwise show the
-        // streak / "you've prayed for X people" closing as
-        // usual.
+        // Thanksgiving + final blessing. Feed walks skip the
+        // friends/community recap too. Otherwise show the streak /
+        // "you've prayed for X people" closing as usual.
         if (seamlessFlow) {
           setLocation(finishHref);
+        } else if (queueMode === "feed") {
+          exitToFinish();
         } else {
           setPhase("closing");
         }
@@ -3310,6 +3330,9 @@ export default function PrayerModePage() {
         } catch { /* non-fatal */ }
         if (seamlessFlow) {
           setLocation(finishHref);
+        } else if (queueMode === "feed") {
+          // Feed walks skip the friends/community closing recap.
+          exitToFinish();
         } else {
           setPhase("closing");
         }
