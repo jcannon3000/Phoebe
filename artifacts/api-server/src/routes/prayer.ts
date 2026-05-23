@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, inArray, notInArray, and, isNull, or, gt } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable } from "@workspace/db";
+import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, fellowsTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
+import crypto from "crypto";
 import { getCorrespondentUserIds } from "../lib/correspondents";
 import { getGardenUserIds } from "../lib/garden";
 import { sendPrayerWordPush, sendFirstAmenPush, sendNewPrayerRequestPush } from "../lib/pushSender";
@@ -492,6 +493,13 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
 
   const expiresAt = new Date(Date.now() + parsed.data.durationDays * 24 * 60 * 60 * 1000);
 
+  // Every new request gets a public share token at creation time.
+  // The /p/:token public page reads through this slug; without one,
+  // the owner can't share. 96 bits of entropy (24 hex chars) keeps
+  // brute-forcing the namespace infeasible. Per-row uniqueness is
+  // enforced by the partial UNIQUE index in migrate.ts.
+  const shareToken = crypto.randomBytes(12).toString("hex");
+
   const [created] = await db.insert(prayerRequestsTable)
     .values({
       ownerId: sessionUserId,
@@ -500,6 +508,7 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
       createdByName: owner?.name ?? null,
       kind: parsed.data.kind,
       expiresAt,
+      shareToken,
     })
     .returning();
 
@@ -1273,5 +1282,190 @@ router.put("/me/weekly-digest-pref", async (req, res): Promise<void> => {
     res.status(500).json({ error: "internal_error" });
   }
 });
+
+// ─── Public share endpoints ──────────────────────────────────────────
+// No auth required. A prayer-request owner hands out a /p/:token
+// link; the visitor lands on a slim public page that reads through
+// here. Two endpoints:
+//
+//   GET  /api/prayer-requests/share/:token
+//        Slim payload — body, owner display name + avatar, kind,
+//        days-left, prayed-count. Honors is_anonymous (returns
+//        "Someone" + no avatar). 404 if the token is unknown,
+//        revoked, or the request is closed / answered (the page
+//        treats expired-but-active rows as visible so a visitor
+//        can still pray on the very last day; the link only goes
+//        dead once the owner actually closes the request).
+//
+//   POST /api/prayer-requests/share/:token/amen
+//        Records an Amen. Two paths:
+//          • Authenticated viewer  — write a real prayer_request_amens
+//            row keyed on user_id, then auto-Fellow the viewer + owner
+//            (two directional rows). Same as the existing in-app amen
+//            endpoint, just reached via the share path.
+//          • Unauthenticated      — write an anonymous_amens row
+//            keyed by the body's sessionId (96-bit hex from the
+//            visitor's localStorage). Signup linker later claims
+//            these rows and fans them out to prayer_request_amens
+//            + fellows. Self-deduping via the UNIQUE
+//            (request_id, session_id) index.
+//
+// Anonymous requests are still surfaceable through this path; the
+// public payload just hides identifying fields. Once the
+// "no more anonymous requests" UI removal lands, new requests
+// won't be anonymous, but the existing rows stay valid.
+
+router.get("/prayer-requests/share/:token", async (req, res): Promise<void> => {
+  const token = String(req.params.token ?? "").trim();
+  if (token.length < 8) { res.status(404).json({ error: "Not found" }); return; }
+
+  try {
+    const [row] = await db
+      .select({
+        id: prayerRequestsTable.id,
+        body: prayerRequestsTable.body,
+        kind: prayerRequestsTable.kind,
+        isAnonymous: prayerRequestsTable.isAnonymous,
+        ownerId: prayerRequestsTable.ownerId,
+        createdByName: prayerRequestsTable.createdByName,
+        expiresAt: prayerRequestsTable.expiresAt,
+        closedAt: prayerRequestsTable.closedAt,
+        isAnswered: prayerRequestsTable.isAnswered,
+        createdAt: prayerRequestsTable.createdAt,
+      })
+      .from(prayerRequestsTable)
+      .where(eq(prayerRequestsTable.shareToken, token));
+
+    if (!row) { res.status(404).json({ error: "Not found" }); return; }
+    if (row.closedAt || row.isAnswered) {
+      // Treat closed/answered as gone — the owner shouldn't have a
+      // shareable link to a request they've already wrapped up.
+      res.status(404).json({ error: "Not found" }); return;
+    }
+
+    // Owner display fields. Anonymous requests redact name + avatar.
+    const [owner] = await db
+      .select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+      .from(usersTable)
+      .where(eq(usersTable.id, row.ownerId));
+
+    // Distinct pray-count: real amens + anonymous amens (deduped by
+    // session_id). Cheap two-query approach — keeping them split
+    // makes the SQL legible and the totals additive.
+    const realAmenRows = await db
+      .selectDistinct({ userId: prayerRequestAmensTable.userId })
+      .from(prayerRequestAmensTable)
+      .where(eq(prayerRequestAmensTable.requestId, row.id));
+    const anonAmenRows = await db
+      .selectDistinct({ sessionId: anonymousAmensTable.sessionId })
+      .from(anonymousAmensTable)
+      .where(eq(anonymousAmensTable.requestId, row.id));
+    const prayedCount = realAmenRows.length + anonAmenRows.length;
+
+    const daysLeft = row.expiresAt
+      ? Math.max(0, Math.ceil((row.expiresAt.getTime() - Date.now()) / 86_400_000))
+      : null;
+
+    res.json({
+      request: {
+        body: row.body,
+        kind: row.kind,
+        daysLeft,
+        prayedCount,
+        owner: row.isAnonymous
+          ? { name: "Someone", avatarUrl: null, isAnonymous: true }
+          : {
+              name: row.createdByName ?? owner?.name ?? "Someone",
+              avatarUrl: owner?.avatarUrl ?? null,
+              isAnonymous: false,
+            },
+      },
+    });
+  } catch (err) {
+    console.error("[prayer-requests/share GET] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+router.post("/prayer-requests/share/:token/amen", async (req, res): Promise<void> => {
+  const token = String(req.params.token ?? "").trim();
+  if (token.length < 8) { res.status(404).json({ error: "Not found" }); return; }
+
+  const schema = z.object({
+    // 24-hex from the visitor's localStorage. Required for the
+    // unauthenticated path (the only way we can later link these
+    // rows to a real account at signup); ignored if the request is
+    // authenticated.
+    sessionId: z.string().min(16).max(64).optional(),
+    // Optional self-declared name from the public page. Stored on
+    // the anonymous row so the owner's "Someone prayed for you" copy
+    // can include it. Capped tight to avoid abuse vectors.
+    visitorName: z.string().max(64).optional(),
+  });
+  const parsed = schema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(400).json({ error: "bad_request" });
+    return;
+  }
+
+  try {
+    const [row] = await db
+      .select({ id: prayerRequestsTable.id, ownerId: prayerRequestsTable.ownerId })
+      .from(prayerRequestsTable)
+      .where(eq(prayerRequestsTable.shareToken, token));
+    if (!row) { res.status(404).json({ error: "Not found" }); return; }
+
+    const viewerUserId = req.user ? (req.user as { id: number }).id : null;
+
+    if (viewerUserId) {
+      // Authenticated viewer — treat this exactly like the in-app
+      // amen endpoint. The viewer also gets fellowed to the owner.
+      // ON CONFLICT DO NOTHING for the amen so a re-tap is a no-op.
+      await db
+        .insert(prayerRequestAmensTable)
+        .values({ requestId: row.id, userId: viewerUserId })
+        .onConflictDoNothing();
+      if (viewerUserId !== row.ownerId) {
+        await createFellowPair(viewerUserId, row.ownerId, "shared_prayer");
+      }
+      res.json({ ok: true, claimed: true });
+      return;
+    }
+
+    // Unauthenticated — anonymous amen, keyed by session_id.
+    if (!parsed.data.sessionId) {
+      res.status(400).json({ error: "session_id_required" });
+      return;
+    }
+    await db
+      .insert(anonymousAmensTable)
+      .values({
+        requestId: row.id,
+        sessionId: parsed.data.sessionId,
+        visitorName: parsed.data.visitorName ?? null,
+      })
+      .onConflictDoNothing();
+    res.json({ ok: true, claimed: false });
+  } catch (err) {
+    console.error("[prayer-requests/share/amen POST] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// Helper — insert both directions of a fellow pair. Idempotent via
+// the UNIQUE (user_id, fellow_user_id) constraint. Kept local so
+// the route file is self-contained; the signup linker has its own
+// copy in routes/auth.ts (small duplication; the surface is so thin
+// it's cheaper than a shared helper file).
+async function createFellowPair(a: number, b: number, source: string) {
+  if (a === b) return;
+  await db
+    .insert(fellowsTable)
+    .values([
+      { userId: a, fellowUserId: b, source },
+      { userId: b, fellowUserId: a, source },
+    ])
+    .onConflictDoNothing();
+}
 
 export default router;

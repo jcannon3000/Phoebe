@@ -75,10 +75,24 @@ const OFFICES_ONLY_BLOCKED_PREFIXES = [
   "/climate",
 ];
 
+// Paths that LOOK blocked (their prefix is in the list above) but
+// are intentionally reachable for offices-only viewers. Public
+// share-link endpoints land here — an offices-only user tapping a
+// /p/:token link should be able to amen + auto-Fellow with the
+// requester, which is the whole point of the share feature.
+// Check is "startsWith" so subroutes inherit the carve-out.
+const OFFICES_ONLY_CARVE_OUTS = [
+  "/prayer-requests/share",
+];
+
 const blockOfficesOnly: RequestHandler = (req, res, next) => {
   const user = req.user as { officesOnly?: boolean } | undefined;
   if (user?.officesOnly) {
     const p = req.path;
+    const carved = OFFICES_ONLY_CARVE_OUTS.some(
+      (prefix) => p === prefix || p.startsWith(prefix + "/"),
+    );
+    if (carved) { next(); return; }
     const blocked = OFFICES_ONLY_BLOCKED_PREFIXES.some(
       (prefix) => p === prefix || p.startsWith(prefix + "/"),
     );

@@ -1690,6 +1690,70 @@ export async function migrate() {
     // Backfill the intended default. Idempotent.
     await run(client, `UPDATE group_members SET role = 'member' WHERE role IS NULL`);
 
+    // ── Shareable prayer requests + Fellows (revived) ─────────────────────
+    // Three pieces work together:
+    //   1. prayer_requests.share_token — opaque slug minted at insert
+    //      time. Hands the owner a no-auth deep link (/p/:token) they
+    //      can pass to anyone. We backfill existing rows so every
+    //      request gets a token without needing a write from the
+    //      owner. UNIQUE index for fast lookup by token.
+    //   2. anonymous_amens — rows recorded when a visitor without an
+    //      account taps Amen on /p/:token. Keyed by client-generated
+    //      session_id so we can later "claim" them onto a real account
+    //      at signup. claimed_by_user_id / claimed_at are stamped at
+    //      claim time so re-runs of the linker are idempotent.
+    //   3. fellows — a directional (user_id → fellow_user_id) social
+    //      connection that lives OUTSIDE community membership. The
+    //      table already exists in the schema (marked historical); we
+    //      keep CREATE TABLE IF NOT EXISTS so a fresh install gets it
+    //      without depending on the prior historical migration block
+    //      having run. Insert pattern is "two rows per pair" (A→B and
+    //      B→A) so a single-side query returns my fellows.
+    await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS share_token TEXT`);
+    // Backfill — use gen_random_uuid() rendered as hex so existing
+    // rows pick up a token without us needing to round-trip each one
+    // through application code. UPDATE …WHERE share_token IS NULL keeps
+    // this idempotent on re-deploys.
+    await run(client, `
+      UPDATE prayer_requests
+      SET share_token = REPLACE(gen_random_uuid()::text, '-', '')
+      WHERE share_token IS NULL
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS idx_prayer_requests_share_token ON prayer_requests (share_token) WHERE share_token IS NOT NULL`);
+
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS anonymous_amens (
+        id SERIAL PRIMARY KEY,
+        request_id INTEGER NOT NULL REFERENCES prayer_requests(id) ON DELETE CASCADE,
+        session_id TEXT NOT NULL,
+        visitor_name TEXT,
+        claimed_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        claimed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_anonymous_amens_session ON anonymous_amens (session_id) WHERE claimed_at IS NULL`);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_anonymous_amen ON anonymous_amens (request_id, session_id)`);
+
+    // fellows already created above as a historical table — this is
+    // belt-and-suspenders for fresh installs that hit this block first.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS fellows (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        fellow_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        note TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (user_id, fellow_user_id)
+      )
+    `);
+    // Source column — distinguishes share-link auto-creation from any
+    // future manual-add flow, plus drives future copy ("you became
+    // Fellows because Maria amened your prayer request"). Idempotent
+    // add so old environments don't error.
+    await run(client, `ALTER TABLE fellows ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'shared_prayer'`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_fellows_user_id ON fellows (user_id)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns
