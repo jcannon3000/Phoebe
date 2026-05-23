@@ -754,6 +754,7 @@ function TaggedRow({
   removingId: number | null;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [query, setQuery] = useState("");
   // Picker draws from the owner's people garden — same set the
   // compose form uses. We're rendering the owner-edit picker only
   // when ownerEditing is true, so usePeople(ownerUserId) is the
@@ -766,6 +767,16 @@ function TaggedRow({
     ),
     [people, taggedIds],
   );
+  // Name / email filter for the picker list. With a large garden the
+  // un-searchable scroll was hard to use — this narrows as you type.
+  const filteredEligible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return eligible;
+    return eligible.filter(p =>
+      (p.name ?? "").toLowerCase().includes(q) ||
+      (p.email ?? "").toLowerCase().includes(q),
+    );
+  }, [eligible, query]);
 
   // Don't render anything when there's no row and no edit affordance
   // (recipient view + no tags = nothing to surface).
@@ -868,8 +879,32 @@ function TaggedRow({
               Everyone in your garden is already tagged here.
             </p>
           ) : (
-            <div style={{ maxHeight: 200, overflowY: "auto" }}>
-              {eligible.map(p => (
+            <>
+              {/* Search — narrows the list by name / email. Auto-
+                  focused so the keyboard is ready the moment the
+                  picker opens. */}
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search people…"
+                autoFocus
+                className="w-full mb-2 px-3 py-2 rounded-lg text-sm"
+                style={{
+                  background: "rgba(200,212,192,0.06)",
+                  border: "1px solid rgba(46,107,64,0.35)",
+                  color: "#F0EDE6",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  outline: "none",
+                }}
+              />
+              {filteredEligible.length === 0 ? (
+                <p className="text-xs italic text-center py-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+                  No one matches "{query.trim()}".
+                </p>
+              ) : (
+                <div style={{ maxHeight: 200, overflowY: "auto" }}>
+                  {filteredEligible.map(p => (
                 <button
                   key={p.userId}
                   type="button"
@@ -900,8 +935,10 @@ function TaggedRow({
                     {p.name}
                   </span>
                 </button>
-              ))}
-            </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
