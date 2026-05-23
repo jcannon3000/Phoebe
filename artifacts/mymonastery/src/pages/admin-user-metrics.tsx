@@ -41,6 +41,27 @@ type AppMetrics = {
   prayerRequestsTotal: number;
 };
 
+type FeedAuditRow = {
+  id: number;
+  slug: string;
+  title: string;
+  state: string;
+  creatorUserId: number | null;
+  subscriberCountColumn: number;
+  realSubscriptions: number;
+  boundGroups: Array<{ id: number; slug: string; name: string }>;
+  intercessionCount: number;
+  tokenHolders: number;
+  leakCount: number;
+  leakEmails: string[];
+};
+type FeedAudit = {
+  feedCount: number;
+  duplicateSlugs: string[];
+  duplicateTitles: string[];
+  feeds: FeedAuditRow[];
+};
+
 export default function AdminAppMetricsPage() {
   const { user } = useAuth();
   const { rawIsAdmin } = useBetaStatus();
@@ -48,6 +69,13 @@ export default function AdminAppMetricsPage() {
   const { data, isLoading, error } = useQuery<AppMetrics>({
     queryKey: ["/api/admin/metrics"],
     queryFn: () => apiRequest("GET", "/api/admin/metrics"),
+    enabled: !!user && rawIsAdmin,
+    staleTime: 60_000,
+  });
+
+  const { data: audit } = useQuery<FeedAudit>({
+    queryKey: ["/api/admin/feed-audit"],
+    queryFn: () => apiRequest("GET", "/api/admin/feed-audit"),
     enabled: !!user && rawIsAdmin,
     staleTime: 60_000,
   });
@@ -129,6 +157,92 @@ export default function AdminAppMetricsPage() {
               <TileRow today={data.newUsersToday} week={data.newUsersThisWeek} allTime={data.totalUsers} allTimeLabel="Total" />
             </Section>
           </>
+        )}
+
+        {/* Feed audit — surfaces duplicate feed rows + subscriber/group
+            /token reconciliation so the "Manage shows 2 feeds" and
+            "people praying without being subscribed" issues are
+            diagnosable at a glance. */}
+        {audit && (
+          <div className="mt-10">
+            <div className="flex items-center gap-3 mb-2">
+              <p
+                className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+                style={{ color: FAINT, fontFamily: SPACE_GROTESK }}
+              >
+                Feed audit · {audit.feedCount} {audit.feedCount === 1 ? "feed" : "feeds"}
+              </p>
+              <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.10)" }} />
+            </div>
+
+            {(audit.duplicateSlugs.length > 0 || audit.duplicateTitles.length > 0) && (
+              <div
+                className="rounded-xl px-4 py-3 mb-3"
+                style={{ background: "rgba(193,154,58,0.12)", border: "1px solid rgba(193,154,58,0.35)" }}
+              >
+                <p className="text-[13px] font-semibold" style={{ color: "#E8B872", fontFamily: SPACE_GROTESK }}>
+                  ⚠️ Duplicate feeds detected
+                </p>
+                {audit.duplicateSlugs.length > 0 && (
+                  <p className="text-[12px] mt-1" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                    Same slug: {audit.duplicateSlugs.join(", ")}
+                  </p>
+                )}
+                {audit.duplicateTitles.length > 0 && (
+                  <p className="text-[12px] mt-1" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                    Same title: {audit.duplicateTitles.join(", ")}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-3">
+              {audit.feeds.map((f) => (
+                <div
+                  key={f.id}
+                  className="rounded-xl px-4 py-3"
+                  style={{
+                    background: "rgba(46,107,64,0.10)",
+                    border: `1px solid ${f.leakCount > 0 ? "rgba(193,154,58,0.45)" : "rgba(46,107,64,0.22)"}`,
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[15px] font-semibold truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+                      {f.title}
+                    </p>
+                    <span className="text-[11px]" style={{ color: FAINT, fontFamily: SPACE_GROTESK }}>
+                      #{f.id} · {f.slug} · {f.state}
+                    </span>
+                  </div>
+                  <p className="text-[12px] mt-1.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                    {f.realSubscriptions} subscribers
+                    {f.subscriberCountColumn !== f.realSubscriptions && (
+                      <span style={{ color: "#E8B872" }}> (cached column says {f.subscriberCountColumn})</span>
+                    )}
+                    {" · "}{f.intercessionCount} intercessions
+                    {" · "}{f.tokenHolders} token-holders
+                  </p>
+                  <p className="text-[12px] mt-1" style={{ color: FAINT, fontFamily: SPACE_GROTESK }}>
+                    Bound groups: {f.boundGroups.length > 0 ? f.boundGroups.map(g => g.slug).join(", ") : "(none)"}
+                  </p>
+                  {f.leakCount > 0 ? (
+                    <div className="mt-2">
+                      <p className="text-[12px] font-semibold" style={{ color: "#E8B872", fontFamily: SPACE_GROTESK }}>
+                        ⚠️ {f.leakCount} praying without subscription or bound-group membership
+                      </p>
+                      <p className="text-[11px] mt-1 break-words" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                        {f.leakEmails.join(", ")}{f.leakCount > f.leakEmails.length ? " …" : ""}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-[12px] mt-2" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>
+                      ✓ every token-holder is a subscriber or bound-group member
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
     </Layout>

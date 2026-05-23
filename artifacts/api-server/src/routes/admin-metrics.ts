@@ -22,8 +22,20 @@
  */
 
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
-import { db, usersTable, betaUsersTable, pool } from "@workspace/db";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import {
+  db,
+  usersTable,
+  betaUsersTable,
+  pool,
+  prayerFeedsTable,
+  prayerFeedSubscriptionsTable,
+  prayerFeedGroupsTable,
+  groupsTable,
+  groupMembersTable,
+  sharedMomentsTable,
+  momentUserTokensTable,
+} from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -209,6 +221,139 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
     });
   } catch (err) {
     console.error("[admin/metrics] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// GET /api/admin/feed-audit — for every prayer feed, report:
+//   • duplicate slugs / titles (the "Manage shows 2 feeds but there's
+//     really 1" symptom)
+//   • real subscription count vs the cached subscriber_count column
+//   • bound groups
+//   • intercession count
+//   • token-holders who are NEITHER subscribed NOR a member of any
+//     bound group — the "praying it without being subscribed / in a
+//     group" leak.
+// Beta-admin gated. Read-only.
+router.get("/admin/feed-audit", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(await isBetaAdmin(session.id))) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  try {
+    const feeds = await db
+      .select({
+        id: prayerFeedsTable.id,
+        slug: prayerFeedsTable.slug,
+        title: prayerFeedsTable.title,
+        state: prayerFeedsTable.state,
+        creatorUserId: prayerFeedsTable.creatorUserId,
+        subscriberCountColumn: prayerFeedsTable.subscriberCount,
+        createdAt: prayerFeedsTable.createdAt,
+      })
+      .from(prayerFeedsTable)
+      .orderBy(prayerFeedsTable.createdAt);
+
+    // Duplicate detection.
+    const slugCounts = new Map<string, number>();
+    const titleCounts = new Map<string, number>();
+    for (const f of feeds) {
+      slugCounts.set(f.slug, (slugCounts.get(f.slug) ?? 0) + 1);
+      const t = (f.title ?? "").toLowerCase();
+      titleCounts.set(t, (titleCounts.get(t) ?? 0) + 1);
+    }
+    const duplicateSlugs = [...slugCounts].filter(([, n]) => n > 1).map(([s]) => s);
+    const duplicateTitles = [...titleCounts].filter(([, n]) => n > 1).map(([t]) => t);
+
+    const perFeed = [];
+    for (const f of feeds) {
+      const realSubs = (await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(prayerFeedSubscriptionsTable)
+        .where(eq(prayerFeedSubscriptionsTable.feedId, f.id)))[0]?.n ?? 0;
+
+      const groups = await db
+        .select({ id: groupsTable.id, slug: groupsTable.slug, name: groupsTable.name })
+        .from(prayerFeedGroupsTable)
+        .innerJoin(groupsTable, eq(groupsTable.id, prayerFeedGroupsTable.groupId))
+        .where(eq(prayerFeedGroupsTable.feedId, f.id));
+
+      const moments = await db
+        .select({ id: sharedMomentsTable.id })
+        .from(sharedMomentsTable)
+        .where(eq(sharedMomentsTable.prayerFeedId, f.id));
+      const momentIds = moments.map(m => m.id);
+
+      let tokenHolders = 0;
+      let leakEmails: string[] = [];
+      if (momentIds.length > 0) {
+        // Distinct emails holding a token on any of this feed's moments.
+        const holders = await db
+          .selectDistinct({ email: sql<string>`LOWER(${momentUserTokensTable.email})` })
+          .from(momentUserTokensTable)
+          .where(inArray(momentUserTokensTable.momentId, momentIds));
+        const holderEmails = holders.map(h => h.email).filter(Boolean);
+        tokenHolders = holderEmails.length;
+
+        // Subscriber emails.
+        const subRows = await db
+          .select({ email: sql<string>`LOWER(${usersTable.email})` })
+          .from(prayerFeedSubscriptionsTable)
+          .innerJoin(usersTable, eq(usersTable.id, prayerFeedSubscriptionsTable.userId))
+          .where(eq(prayerFeedSubscriptionsTable.feedId, f.id));
+        const subscriberEmails = new Set(subRows.map(r => r.email));
+
+        // Members of any bound group (by user email OR invite email).
+        const groupMemberEmails = new Set<string>();
+        if (groups.length > 0) {
+          const gmRows = await db
+            .select({
+              userEmail: sql<string | null>`LOWER(${usersTable.email})`,
+              inviteEmail: sql<string | null>`LOWER(${groupMembersTable.email})`,
+            })
+            .from(groupMembersTable)
+            .leftJoin(usersTable, eq(usersTable.id, groupMembersTable.userId))
+            .where(and(
+              inArray(groupMembersTable.groupId, groups.map(g => g.id)),
+              isNotNull(groupMembersTable.joinedAt),
+            ));
+          for (const r of gmRows) {
+            if (r.userEmail) groupMemberEmails.add(r.userEmail);
+            if (r.inviteEmail) groupMemberEmails.add(r.inviteEmail);
+          }
+        }
+
+        leakEmails = holderEmails.filter(
+          e => !subscriberEmails.has(e) && !groupMemberEmails.has(e),
+        );
+      }
+
+      perFeed.push({
+        id: f.id,
+        slug: f.slug,
+        title: f.title,
+        state: f.state,
+        creatorUserId: f.creatorUserId,
+        subscriberCountColumn: f.subscriberCountColumn ?? 0,
+        realSubscriptions: realSubs,
+        boundGroups: groups.map(g => ({ id: g.id, slug: g.slug, name: g.name })),
+        intercessionCount: momentIds.length,
+        tokenHolders,
+        leakCount: leakEmails.length,
+        // Cap the email list so a huge leak doesn't bloat the payload;
+        // leakCount is the authoritative number.
+        leakEmails: leakEmails.slice(0, 100),
+      });
+    }
+
+    res.json({
+      feedCount: feeds.length,
+      duplicateSlugs,
+      duplicateTitles,
+      feeds: perFeed,
+    });
+  } catch (err) {
+    console.error("[admin/feed-audit] failed:", err);
     res.status(500).json({ error: "internal_error" });
   }
 });
