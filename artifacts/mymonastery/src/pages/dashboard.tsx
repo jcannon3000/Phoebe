@@ -10,6 +10,7 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
+import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
 import { ParishWeeklyCard } from "@/components/ParishWeeklyCard";
 import { RsvpBlock, RsvpSummaryStrip, useDashboardRsvpSummary } from "@/components/RsvpBlock";
@@ -403,6 +404,10 @@ type SubscribedFeed = {
   // check-in on any date). Drives the "X New Prayers" pulsing CTA
   // on the dashboard card. Optional — older API builds omit.
   unprayedCount?: number;
+  // Upcoming events the feed manager published (soonest few). Rendered
+  // as a compact event row beneath the feed card. Optional — older
+  // API builds omit.
+  upcomingEvents?: FeedEvent[];
 };
 
 // ─── Reusable card sub-components ────────────────────────────────────────────
@@ -2698,6 +2703,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
 // changes shape.
 export function FeedHeroCard({ feed: row }: { feed: SubscribedFeed }) {
   const { feed, prayedToday, weekPrayers, weekPrayerCount } = row;
+  const upcomingEvents = row.upcomingEvents ?? [];
   const faces = (weekPrayers ?? []).filter((p) => !!p.avatarUrl);
   // Honest total (uncapped) — falls back to the capped array length on
   // older API builds that don't return weekPrayerCount yet.
@@ -2826,6 +2832,13 @@ export function FeedHeroCard({ feed: row }: { feed: SubscribedFeed }) {
             </div>
           </Link>
         )}
+        {upcomingEvents.length > 0 && (
+          <div className="mt-3 flex flex-col gap-2">
+            {upcomingEvents.slice(0, 2).map((ev) => (
+              <FeedEventCard key={ev.id} event={ev} compact />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2851,6 +2864,7 @@ export function FeedHeroCard({ feed: row }: { feed: SubscribedFeed }) {
 export type { SubscribedFeed };
 export function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
   const { feed, prayedToday, unprayedCount } = row;
+  const upcomingEvents = row.upcomingEvents ?? [];
   const [, setLocation] = useLocation();
   const newCount = unprayedCount ?? 0;
   // "New prayers" trumps "Prayer completed" — even if the viewer has
@@ -2871,11 +2885,12 @@ export function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
     ? { label: "View list", href: listPath, emphasized: false }
     : { label: "Begin praying", href: slidePath, emphasized: false };
   return (
-    // The whole card is tappable → opens the feed detail page. The CTA
-    // pill keeps its own (sometimes different — slideshow) destination
-    // and stops propagation so a tap on the pill doesn't also fire the
-    // card-level navigation. role/tabIndex/onKeyDown make the card
-    // surface keyboard-operable like a button.
+    <div className="flex flex-col gap-2">
+    {/* The whole card is tappable → opens the feed detail page. The CTA
+        pill keeps its own (sometimes different — slideshow) destination
+        and stops propagation so a tap on the pill doesn't also fire the
+        card-level navigation. role/tabIndex/onKeyDown make the card
+        surface keyboard-operable like a button. */}
     <div
       role="button"
       tabIndex={0}
@@ -2965,6 +2980,10 @@ export function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
           {cta.label} <span aria-hidden>→</span>
         </div>
       </div>
+    </div>
+    {upcomingEvents.length > 0 && upcomingEvents.slice(0, 2).map((ev) => (
+      <FeedEventCard key={ev.id} event={ev} compact />
+    ))}
     </div>
   );
 }

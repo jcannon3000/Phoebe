@@ -8,6 +8,7 @@ import {
   prayerFeedPrayersTable,
   prayerFeedGroupsTable,
   prayerFeedRecurringEntriesTable,
+  prayerFeedEventsTable,
   usersTable,
   betaUsersTable,
   groupsTable,
@@ -697,6 +698,47 @@ router.get("/prayer-feeds/subscribed", requireAuth, async (req, res): Promise<vo
     }
   }
 
+  // Upcoming published events per subscribed feed, batched in one
+  // query and capped to the soonest 3 per feed so the dashboard can
+  // render them without an extra round trip.
+  const eventsByFeed = new Map<number, Array<{
+    id: number; title: string; startsAt: string; endsAt: string | null;
+    location: string | null; joinUrl: string | null;
+  }>>();
+  if (feedIdsForRoster.length > 0) {
+    const eventRows = await db
+      .select({
+        id: prayerFeedEventsTable.id,
+        feedId: prayerFeedEventsTable.feedId,
+        title: prayerFeedEventsTable.title,
+        startsAt: prayerFeedEventsTable.startsAt,
+        endsAt: prayerFeedEventsTable.endsAt,
+        location: prayerFeedEventsTable.location,
+        joinUrl: prayerFeedEventsTable.joinUrl,
+      })
+      .from(prayerFeedEventsTable)
+      .where(and(
+        inArray(prayerFeedEventsTable.feedId, feedIdsForRoster),
+        eq(prayerFeedEventsTable.state, "published"),
+        sql`COALESCE(${prayerFeedEventsTable.endsAt}, ${prayerFeedEventsTable.startsAt}) >= NOW()`,
+      ))
+      .orderBy(asc(prayerFeedEventsTable.startsAt));
+    const PER_FEED = 3;
+    for (const e of eventRows) {
+      const list = eventsByFeed.get(e.feedId) ?? [];
+      if (list.length >= PER_FEED) continue;
+      list.push({
+        id: e.id,
+        title: e.title,
+        startsAt: e.startsAt.toISOString(),
+        endsAt: e.endsAt ? e.endsAt.toISOString() : null,
+        location: e.location,
+        joinUrl: e.joinUrl,
+      });
+      eventsByFeed.set(e.feedId, list);
+    }
+  }
+
   // Feeds are a flat ongoing list now — there is no per-day entry, so
   // the dashboard card previews the feed's newest intercession.
   const out = subs.map(({ feed }) => {
@@ -721,6 +763,7 @@ router.get("/prayer-feeds/subscribed", requireAuth, async (req, res): Promise<vo
       weekPrayers: weekPrayersByFeed.get(feed.id) ?? [],
       weekPrayerCount: weekPrayerIdsByFeed.get(feed.id)?.size ?? 0,
       unprayedCount,
+      upcomingEvents: eventsByFeed.get(feed.id) ?? [],
     };
   });
   res.json({ subscriptions: out });
@@ -1448,6 +1491,170 @@ router.post("/prayer-feeds/:slug/intercessions", requireBeta, async (req, res): 
       }
     })();
   }
+});
+
+// ─── Feed events ────────────────────────────────────────────────────────────
+//
+// A feed manager attaches time-bound events (vigils, days of prayer,
+// webinars, local actions) to their feed; subscribers see them in-app.
+// Announce-only in v1 — no RSVP, no calendar fan-out. Same permission
+// gate as intercessions (requireBeta middleware + canEditFeed). Reads
+// are subscribers-only (canViewFeed); there is intentionally NO anon
+// branch — feed events do not appear on the public /feed/:slug page.
+
+const feedEventSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  description: z.string().trim().max(2000).optional().nullable(),
+  startsAt: z.string().datetime(),
+  endsAt: z.string().datetime().optional().nullable(),
+  location: z.string().trim().max(200).optional().nullable(),
+  joinUrl: z.string().trim().url().max(500).optional().nullable(),
+});
+const updateFeedEventSchema = feedEventSchema.partial().extend({
+  state: z.enum(["published", "cancelled"]).optional(),
+});
+
+// GET /api/prayer-feeds/:slug/events — list this feed's events.
+// Editors see all states; subscribers see published. Defaults to
+// upcoming (coalesce(ends_at, starts_at) >= now); editors can pass
+// ?all=1 to include past events in the management view.
+router.get("/prayer-feeds/:slug/events", requireAuth, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  const isCreator = await canEditFeed(user.id, feed);
+  if (!(await canViewFeed(user.id, feed, isCreator))) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  const includeAll = isCreator && req.query.all === "1";
+  const conditions = [eq(prayerFeedEventsTable.feedId, feed.id)];
+  if (!isCreator) conditions.push(eq(prayerFeedEventsTable.state, "published"));
+  if (!includeAll) {
+    conditions.push(sql`COALESCE(${prayerFeedEventsTable.endsAt}, ${prayerFeedEventsTable.startsAt}) >= NOW()`);
+  }
+  const events = await db
+    .select()
+    .from(prayerFeedEventsTable)
+    .where(and(...conditions))
+    .orderBy(asc(prayerFeedEventsTable.startsAt));
+
+  res.json({ events });
+});
+
+// POST /api/prayer-feeds/:slug/events — manager creates an event.
+router.post("/prayer-feeds/:slug/events", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  if (!(await canEditFeed(user.id, feed))) {
+    res.status(403).json({ error: "You don't have permission to publish to this feed." });
+    return;
+  }
+  const parsed = feedEventSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
+    return;
+  }
+  const { title, description, startsAt, endsAt, location, joinUrl } = parsed.data;
+  if (endsAt && new Date(endsAt) <= new Date(startsAt)) {
+    res.status(400).json({ error: "End time must be after the start time." });
+    return;
+  }
+
+  const [event] = await db
+    .insert(prayerFeedEventsTable)
+    .values({
+      feedId: feed.id,
+      createdByUserId: user.id,
+      title,
+      description: description ?? null,
+      startsAt: new Date(startsAt),
+      endsAt: endsAt ? new Date(endsAt) : null,
+      location: location ?? null,
+      joinUrl: joinUrl ?? null,
+      state: "published",
+    })
+    .returning();
+
+  res.status(201).json({ event });
+
+  // Fire-and-forget creation push to every subscriber. Best-effort —
+  // the response already went out, so a push failure never blocks save.
+  void (async () => {
+    try {
+      const { sendNewFeedEventPush } = await import("../lib/pushSender");
+      await sendNewFeedEventPush(feed.id, {
+        feedSlug: feed.slug,
+        feedTitle: feed.title,
+        eventTitle: event.title,
+        eventId: event.id,
+      });
+    } catch (err) {
+      console.warn("[feed event] creation push failed:", err);
+    }
+  })();
+});
+
+// PATCH /api/prayer-feeds/:slug/events/:id — edit or cancel an event.
+router.patch("/prayer-feeds/:slug/events/:id", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  if (!(await canEditFeed(user.id, feed))) {
+    res.status(403).json({ error: "You don't have permission to edit this feed." });
+    return;
+  }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [existing] = await db.select().from(prayerFeedEventsTable)
+    .where(eq(prayerFeedEventsTable.id, id));
+  if (!existing || existing.feedId !== feed.id) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const parsed = updateFeedEventSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
+    return;
+  }
+  const d = parsed.data;
+  const patch: Record<string, unknown> = { updatedAt: new Date() };
+  if (d.title !== undefined) patch.title = d.title;
+  if (d.description !== undefined) patch.description = d.description ?? null;
+  if (d.startsAt !== undefined) patch.startsAt = new Date(d.startsAt);
+  if (d.endsAt !== undefined) patch.endsAt = d.endsAt ? new Date(d.endsAt) : null;
+  if (d.location !== undefined) patch.location = d.location ?? null;
+  if (d.joinUrl !== undefined) patch.joinUrl = d.joinUrl ?? null;
+  if (d.state !== undefined) patch.state = d.state;
+
+  const [event] = await db
+    .update(prayerFeedEventsTable)
+    .set(patch)
+    .where(eq(prayerFeedEventsTable.id, id))
+    .returning();
+  res.json({ event });
+});
+
+// DELETE /api/prayer-feeds/:slug/events/:id — hard-remove an event.
+// (The manage UI's "Cancel" uses PATCH→cancelled for a soft cancel;
+// this is the "remove entirely" path.)
+router.delete("/prayer-feeds/:slug/events/:id", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  if (!(await canEditFeed(user.id, feed))) {
+    res.status(403).json({ error: "You don't have permission to edit this feed." });
+    return;
+  }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  await db.delete(prayerFeedEventsTable).where(and(
+    eq(prayerFeedEventsTable.id, id),
+    eq(prayerFeedEventsTable.feedId, feed.id),
+  ));
+  res.json({ ok: true });
 });
 
 // GET /api/prayer-feeds/:slug/group-intercession-options — community

@@ -218,6 +218,10 @@ export default function PrayerFeedManagePage() {
             Prayer / Action chooser. */}
         <FeedIntercessionsSection slug={slug!} />
 
+        {/* Events — time-bound happenings (vigils, days of prayer,
+            webinars) the manager announces to subscribers. */}
+        <FeedEventsSection slug={slug!} />
+
         {/* Communities bound to this feed. Adding a group auto-
             subscribes every joined member; removing just stops
             auto-subscribing future joiners. */}
@@ -848,6 +852,308 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
 // Adding a group auto-subscribes every joined member of that group
 // to the feed. Removing leaves existing subscribers in place — only
 // future joiners stop being auto-subscribed.
+type FeedEvent = {
+  id: number;
+  title: string;
+  description: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  location: string | null;
+  joinUrl: string | null;
+  state: "published" | "cancelled";
+};
+
+// Format an ISO timestamp for a human-readable manage-row label.
+function formatEventWhen(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleString(undefined, {
+    weekday: "short", month: "short", day: "numeric",
+    hour: "numeric", minute: "2-digit",
+  });
+}
+
+// Events section — mirrors FeedIntercessionsSection. Manager publishes
+// time-bound events (vigils, days of prayer, webinars) subscribers see.
+function FeedEventsSection({ slug }: { slug: string }) {
+  const qc = useQueryClient();
+  const [composing, setComposing] = useState(false);
+  const [hasLink, setHasLink] = useState(false);
+  const [draft, setDraft] = useState<{
+    title: string;
+    description: string;
+    startsAt: string;   // datetime-local value
+    endsAt: string;     // datetime-local value
+    location: string;
+    joinUrl: string;
+  }>({ title: "", description: "", startsAt: "", endsAt: "", location: "", joinUrl: "" });
+  const [error, setError] = useState<string | null>(null);
+
+  // ?all=1 so the manage view also shows past events.
+  const listQ = useQuery<{ events: FeedEvent[] }>({
+    queryKey: [`/api/prayer-feeds/${slug}/events`, "manage"],
+    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/events?all=1`),
+  });
+  const events = listQ.data?.events ?? [];
+
+  const createMutation = useMutation({
+    mutationFn: (payload: Record<string, unknown>) =>
+      apiRequest("POST", `/api/prayer-feeds/${slug}/events`, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/events`, "manage"] });
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/events`] });
+      setComposing(false);
+      setHasLink(false);
+      setDraft({ title: "", description: "", startsAt: "", endsAt: "", location: "", joinUrl: "" });
+      setError(null);
+    },
+    onError: (e) => setError(e instanceof Error ? e.message : "Couldn't add the event."),
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest("PATCH", `/api/prayer-feeds/${slug}/events/${id}`, { state: "cancelled" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/events`, "manage"] });
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/events`] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest("DELETE", `/api/prayer-feeds/${slug}/events/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/events`, "manage"] });
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/events`] });
+    },
+  });
+
+  function save() {
+    if (!draft.title.trim() || !draft.startsAt) {
+      setError("A title and a start time are required.");
+      return;
+    }
+    // datetime-local has no timezone — new Date() reads it as local,
+    // toISOString() converts to UTC for the server.
+    const startsIso = new Date(draft.startsAt).toISOString();
+    const endsIso = draft.endsAt ? new Date(draft.endsAt).toISOString() : null;
+    if (endsIso && new Date(endsIso) <= new Date(startsIso)) {
+      setError("End time must be after the start time.");
+      return;
+    }
+    if (hasLink && !draft.joinUrl.trim()) {
+      setError("Add a link, or turn off the video / link toggle.");
+      return;
+    }
+    createMutation.mutate({
+      title: draft.title.trim(),
+      description: draft.description.trim() || null,
+      startsAt: startsIso,
+      endsAt: endsIso,
+      location: draft.location.trim() || null,
+      joinUrl: hasLink ? draft.joinUrl.trim() : null,
+    });
+  }
+
+  const inputStyle = { borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" } as const;
+
+  return (
+    <div className="mb-8">
+      <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.55)" }}>
+        Events
+      </p>
+      <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
+        Vigils, days of prayer, webinars. Subscribers see upcoming events and get a heads-up push.
+      </p>
+
+      <div className="space-y-2 mb-3">
+        {events.map((ev) => {
+          const cancelled = ev.state === "cancelled";
+          return (
+            <div
+              key={ev.id}
+              className="rounded-xl px-4 py-3 flex items-center gap-3"
+              style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.45)", opacity: cancelled ? 0.6 : 1 }}
+            >
+              <div className="min-w-0 flex-1">
+                <p
+                  className="text-sm font-semibold truncate"
+                  style={{ color: "#F0EDE6", textDecoration: cancelled ? "line-through" : undefined }}
+                >
+                  {ev.title}
+                </p>
+                <p className="text-[11px] mt-0.5 truncate" style={{ color: "rgba(143,175,150,0.7)" }}>
+                  {formatEventWhen(ev.startsAt)}{ev.location ? ` · ${ev.location}` : ""}
+                </p>
+              </div>
+              {cancelled ? (
+                <button
+                  type="button"
+                  onClick={() => deleteMutation.mutate(ev.id)}
+                  className="text-[11px] font-medium px-2.5 py-1 rounded-full shrink-0"
+                  style={{ background: "transparent", border: "1px solid rgba(193,154,58,0.4)", color: "#E8B872" }}
+                >
+                  Delete
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof window !== "undefined" && !window.confirm(`Cancel "${ev.title}"?`)) return;
+                    cancelMutation.mutate(ev.id);
+                  }}
+                  className="text-[11px] font-medium px-2.5 py-1 rounded-full shrink-0"
+                  style={{ background: "rgba(46,107,64,0.2)", border: "1px solid rgba(46,107,64,0.45)", color: "#C8D4C0" }}
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+          );
+        })}
+        {events.length === 0 && !listQ.isLoading && (
+          <p className="text-xs italic px-1" style={{ color: "rgba(143,175,150,0.5)" }}>
+            No events yet.
+          </p>
+        )}
+      </div>
+
+      {composing ? (
+        <div
+          className="rounded-lg p-3 space-y-3"
+          style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.2)" }}
+        >
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+              Title
+            </label>
+            <input
+              type="text"
+              value={draft.title}
+              onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+              maxLength={120}
+              placeholder="e.g. Climate Prayer Vigil"
+              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+              Description (optional)
+            </label>
+            <textarea
+              value={draft.description}
+              onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+              maxLength={2000}
+              rows={3}
+              placeholder="What is it, and who's it for?"
+              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm resize-none"
+              style={inputStyle}
+            />
+          </div>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+                Starts
+              </label>
+              <input
+                type="datetime-local"
+                value={draft.startsAt}
+                onChange={(e) => setDraft({ ...draft, startsAt: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
+                style={inputStyle}
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+                Ends (optional)
+              </label>
+              <input
+                type="datetime-local"
+                value={draft.endsAt}
+                onChange={(e) => setDraft({ ...draft, endsAt: e.target.value })}
+                className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+              Location (optional)
+            </label>
+            <input
+              type="text"
+              value={draft.location}
+              onChange={(e) => setDraft({ ...draft, location: e.target.value })}
+              maxLength={200}
+              placeholder="e.g. St. Mary's, or 'Online'"
+              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
+              style={inputStyle}
+            />
+          </div>
+          {/* Video / link toggle — mirrors the Prayer/Action chooser. */}
+          <button
+            type="button"
+            onClick={() => setHasLink((v) => !v)}
+            className="text-left rounded-lg px-3 py-2 w-full transition-opacity"
+            style={{
+              background: hasLink ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+              border: `1px solid ${hasLink ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
+            }}
+          >
+            <p className="text-xs font-semibold" style={{ color: "#F0EDE6" }}>📹 Video / link event</p>
+            <p className="text-[10px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)" }}>
+              Adds a "Join →" button to the event.
+            </p>
+          </button>
+          {hasLink && (
+            <input
+              type="url"
+              value={draft.joinUrl}
+              onChange={(e) => setDraft({ ...draft, joinUrl: e.target.value })}
+              maxLength={500}
+              placeholder="https://zoom.us/…"
+              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
+              style={inputStyle}
+            />
+          )}
+
+          {error && <p className="text-xs" style={{ color: "#E8B872" }}>{error}</p>}
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={save}
+              disabled={createMutation.isPending}
+              className="flex-1 text-sm font-semibold rounded-full py-2 disabled:opacity-50"
+              style={{ background: "#2E6B40", color: "#F0EDE6" }}
+            >
+              {createMutation.isPending ? "Publishing…" : "Publish event"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setComposing(false); setError(null); }}
+              className="text-sm font-medium rounded-full px-4 py-2"
+              style={{ background: "transparent", border: "1px solid rgba(46,107,64,0.4)", color: "#8FAF96" }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => { setError(null); setComposing(true); }}
+          className="text-sm font-semibold rounded-full px-4 py-2 transition-opacity hover:opacity-90"
+          style={{ background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.45)", color: "#C8D4C0" }}
+        >
+          + Add an event
+        </button>
+      )}
+    </div>
+  );
+}
+
 type BoundGroup = {
   groupId: number;
   groupSlug: string | null;

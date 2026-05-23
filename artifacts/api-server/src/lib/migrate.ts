@@ -1525,6 +1525,30 @@ export async function migrate() {
     await run(client, `ALTER TABLE group_announcements ADD COLUMN IF NOT EXISTS prayer_feed_id INTEGER REFERENCES prayer_feeds(id) ON DELETE CASCADE`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_group_announcements_prayer_feed ON group_announcements (prayer_feed_id)`);
 
+    // ── Prayer-feed events ──────────────────────────────────────────────────
+    // A feed manager can attach time-bound events (vigils, days of prayer,
+    // webinars) to their feed; subscribers see them in-app. Lean, announce-
+    // only model — no RSVP / calendar fan-out in v1. state = published |
+    // cancelled (soft cancel). reminder_sent_at dedups the day-before push.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_feed_events (
+        id SERIAL PRIMARY KEY,
+        feed_id INTEGER NOT NULL REFERENCES prayer_feeds(id) ON DELETE CASCADE,
+        created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        starts_at TIMESTAMPTZ NOT NULL,
+        ends_at TIMESTAMPTZ,
+        location TEXT,
+        join_url TEXT,
+        state TEXT NOT NULL DEFAULT 'published',
+        reminder_sent_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_events_feed_starts ON prayer_feed_events (feed_id, starts_at)`);
+
     // Backfill: every existing climate-enrolled user gets a subscription
     // to phoebe-climate so they pick up feed-scoped intercessions on
     // their dashboard and slideshow without a manual opt-in step.

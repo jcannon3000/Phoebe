@@ -21,7 +21,7 @@ import http2 from "node:http2";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { SignJWT, importPKCS8, type KeyLike } from "jose";
 import webpush from "web-push";
-import { db, deviceTokensTable, webPushSubscriptionsTable } from "@workspace/db";
+import { db, deviceTokensTable, webPushSubscriptionsTable, prayerFeedSubscriptionsTable } from "@workspace/db";
 import { logger } from "./logger";
 
 // VAPID config for browser Web Push (Android Chrome / Firefox / Edge,
@@ -1193,6 +1193,56 @@ export function sendGatheringTomorrowPush(
     path: `/communities/${opts.groupSlug}`,
     threadId: `gathering-${opts.ritualId}`,
     collapseId: `gathering-tomorrow-${opts.meetupId}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
+// ── Prayer-feed events ──────────────────────────────────────────────
+// Feed events fan out to ALL subscribers of the feed (a different,
+// often large population than a community), so these resolve the
+// recipient set themselves and use sendPushToUsers. Tap deep-links
+// to the in-app feed detail page.
+
+// Published-event push — fired when a feed manager creates an event.
+export async function sendNewFeedEventPush(
+  feedId: number,
+  opts: { feedSlug: string; feedTitle: string; eventTitle: string; eventId: number },
+): Promise<void> {
+  const subs = await db
+    .select({ userId: prayerFeedSubscriptionsTable.userId })
+    .from(prayerFeedSubscriptionsTable)
+    .where(eq(prayerFeedSubscriptionsTable.feedId, feedId));
+  const userIds = subs.map(s => s.userId);
+  if (userIds.length === 0) return;
+  await sendPushToUsers(userIds, {
+    title: opts.eventTitle,
+    body: `New event from ${opts.feedTitle}.`,
+    path: `/prayer-feeds/${opts.feedSlug}`,
+    threadId: `feed-event-${opts.eventId}`,
+    collapseId: `new-feed-event-${opts.eventId}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
+// Day-before reminder for a feed event. Fired once per event by the
+// bell scanner, deduped via prayer_feed_events.reminder_sent_at.
+export async function sendFeedEventTomorrowPush(
+  feedId: number,
+  opts: { feedSlug: string; eventTitle: string; eventId: number; location: string | null },
+): Promise<void> {
+  const subs = await db
+    .select({ userId: prayerFeedSubscriptionsTable.userId })
+    .from(prayerFeedSubscriptionsTable)
+    .where(eq(prayerFeedSubscriptionsTable.feedId, feedId));
+  const userIds = subs.map(s => s.userId);
+  if (userIds.length === 0) return;
+  const body = opts.location ? `See you at ${opts.location}.` : "See you there.";
+  await sendPushToUsers(userIds, {
+    title: `${opts.eventTitle} is tomorrow`,
+    body,
+    path: `/prayer-feeds/${opts.feedSlug}`,
+    threadId: `feed-event-${opts.eventId}`,
+    collapseId: `feed-event-tomorrow-${opts.eventId}`,
     sound: PHOEBE_SOUND_MID,
   });
 }

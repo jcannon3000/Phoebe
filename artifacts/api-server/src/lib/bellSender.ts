@@ -17,6 +17,7 @@ import {
   actionsTable,
   betaUsersTable,
   prayerFeedSubscriptionsTable,
+  prayerFeedEventsTable,
 } from "@workspace/db";
 import { eq, and, gte, ne, sql, isNull, inArray, isNotNull } from "drizzle-orm";
 import {
@@ -28,6 +29,7 @@ import {
   sendParishOfficeReminderPush,
   sendParishEveningRecapPush,
   sendGatheringTomorrowPush,
+  sendFeedEventTomorrowPush,
   sendActionReminderPush,
   sendWeeklyDigestPush,
   sendParishWeeklyRecapPush,
@@ -1113,6 +1115,53 @@ export async function runGatheringReminderSender(): Promise<void> {
   }
 }
 
+// ─── Prayer-feed event reminders ────────────────────────────────────────────
+//
+// Day-before reminder for published feed events. Fires once per event,
+// deduped via prayer_feed_events.reminder_sent_at. Fans to every feed
+// subscriber (handled inside sendFeedEventTomorrowPush). UTC calendar-
+// date comparison, same as the gathering/action reminders.
+export async function runFeedEventReminderSender(): Promise<void> {
+  try {
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+
+    const rows = await db
+      .select({
+        eventId: prayerFeedEventsTable.id,
+        feedId: prayerFeedEventsTable.feedId,
+        title: prayerFeedEventsTable.title,
+        location: prayerFeedEventsTable.location,
+        feedSlug: prayerFeedsTable.slug,
+      })
+      .from(prayerFeedEventsTable)
+      .innerJoin(prayerFeedsTable, eq(prayerFeedsTable.id, prayerFeedEventsTable.feedId))
+      .where(and(
+        eq(prayerFeedEventsTable.state, "published"),
+        isNull(prayerFeedEventsTable.reminderSentAt),
+        sql`to_char(${prayerFeedEventsTable.startsAt} AT TIME ZONE 'UTC', 'YYYY-MM-DD') = ${tomorrowStr}`,
+      ));
+
+    for (const row of rows) {
+      await sendFeedEventTomorrowPush(row.feedId, {
+        feedSlug: row.feedSlug,
+        eventTitle: row.title,
+        eventId: row.eventId,
+        location: row.location,
+      });
+      await db
+        .update(prayerFeedEventsTable)
+        .set({ reminderSentAt: new Date() })
+        .where(eq(prayerFeedEventsTable.id, row.eventId));
+      logger.info({ eventId: row.eventId, title: row.title }, "[feed-event-reminder] sent day-before push");
+    }
+  } catch (err) {
+    logger.error({ err }, "[feed-event-reminder] sender failed");
+  }
+}
+
 // ─── Action advance reminders ──────────────────────────────────────────────
 //
 // Runs on every scheduler tick. For each active community action:
@@ -1402,6 +1451,9 @@ export function startBellScheduler(): void {
     runGatheringReminderSender().catch((err) =>
       logger.error({ err }, "[gathering-reminder] initial run failed"),
     );
+    runFeedEventReminderSender().catch((err) =>
+      logger.error({ err }, "[feed-event-reminder] initial run failed"),
+    );
     runActionReminderSender().catch((err) =>
       logger.error({ err }, "[action-reminder] initial run failed"),
     );
@@ -1438,6 +1490,9 @@ export function startBellScheduler(): void {
       );
       runGatheringReminderSender().catch((err) =>
         logger.error({ err }, "[gathering-reminder] scheduled run failed"),
+      );
+      runFeedEventReminderSender().catch((err) =>
+        logger.error({ err }, "[feed-event-reminder] scheduled run failed"),
       );
       runActionReminderSender().catch((err) =>
         logger.error({ err }, "[action-reminder] scheduled run failed"),

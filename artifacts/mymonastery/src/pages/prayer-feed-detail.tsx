@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
+import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 
 // Subscriber detail page for a Prayer Feed.
 //
@@ -93,6 +94,15 @@ export default function PrayerFeedDetailPage() {
   const intercessions = [...(intercessionsQ.data?.intercessions ?? [])]
     .filter((it) => it.state !== "archived")
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  // Upcoming events the feed manager published. Subscribers-only —
+  // the endpoint has no anon branch.
+  const eventsQ = useQuery<{ events: FeedEvent[] }>({
+    queryKey: [`/api/prayer-feeds/${slug}/events`],
+    queryFn: () => apiRequest("GET", `/api/prayer-feeds/${slug}/events`),
+    enabled: !!feed,
+  });
+  const events = eventsQ.data?.events ?? [];
 
   // ── Mutations ──────────────────────────────────────────────────────────
   const subscribe = useMutation({
@@ -249,6 +259,23 @@ export default function PrayerFeedDetailPage() {
               >
                 🕯️ Pray the full list →
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Upcoming events the manager attached to this feed. */}
+        {events.length > 0 && (
+          <div className="mb-6">
+            <p
+              className="text-[10px] font-semibold uppercase tracking-widest mb-2"
+              style={{ color: "rgba(200,212,192,0.45)" }}
+            >
+              Upcoming events
+            </p>
+            <div className="flex flex-col gap-2">
+              {events.map((ev) => (
+                <FeedEventCard key={ev.id} event={ev} />
+              ))}
             </div>
           </div>
         )}
