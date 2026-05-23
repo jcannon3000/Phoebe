@@ -78,6 +78,13 @@ export const sharedMomentsTable = pgTable("shared_moments", {
   // Used today by climate feed admins to attach pieces from grist.org
   // or similar, but generic — group admins can use it too.
   learnMoreUrl: text("learn_more_url"),
+  // Title of the linked article, auto-fetched (page <title> / og:title)
+  // when the admin saves a learnMoreUrl. Surfaced above the
+  // "Learn more →" pill on the intercession slide so the reader sees
+  // what they're about to open. Null when the fetch found nothing
+  // (paywall, JS-only page, timeout) — the slide then shows the bare
+  // pill with no caption.
+  learnMoreTitle: text("learn_more_title"),
 });
 
 export type SharedMoment = typeof sharedMomentsTable.$inferSelect;

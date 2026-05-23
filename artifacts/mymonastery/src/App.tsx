@@ -141,6 +141,7 @@ import WaitlistAdminPage from "./pages/waitlist-admin";
 import BetaClaimPage from "./pages/beta-claim";
 import AdminToolsPage from "./pages/admin-tools";
 import AdminUserMetricsPage from "./pages/admin-user-metrics";
+import MyPrayerFeedsPage from "./pages/my-prayer-feeds";
 import AdminNewsletterPage from "./pages/admin-newsletter";
 import LearnPage from "./pages/learn";
 import ChurchDeck from "./pages/church-deck";
@@ -434,6 +435,7 @@ function Router() {
       <Route path="/admin/reports" component={ReportsAdminPage} />
       <Route path="/admin/tools" component={AdminToolsPage} />
       <Route path="/admin/users" component={AdminUserMetricsPage} />
+      <Route path="/my-prayer-feeds" component={MyPrayerFeedsPage} />
       <Route path="/admin/newsletter" component={AdminNewsletterPage} />
       <Route path="/prayer-list" component={PrayerListPage} />
       <Route path="/my-prayer-requests" component={MyPrayerRequestsPage} />

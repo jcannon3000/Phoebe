@@ -170,7 +170,11 @@ export default function AdminToolsPage() {
                 onClick={() => setLocation(
                   myFeeds.length === 1
                     ? `/prayer-feeds/${myFeeds[0].slug}/manage`
-                    : "/prayer-feeds",
+                    // Multi-feed owners land on the My Prayer Feeds list
+                    // (creator-owned, includes drafts) instead of the
+                    // public browse page — which is live-only and hides
+                    // a stray draft, making it impossible to find/delete.
+                    : "/my-prayer-feeds",
                 )}
               />
             )}

@@ -1244,6 +1244,7 @@ router.get("/prayer-feeds/:slug/intercessions", async (req, res): Promise<void> 
       intercessionFullText: sharedMomentsTable.intercessionFullText,
       intercessionSource: sharedMomentsTable.intercessionSource,
       learnMoreUrl: sharedMomentsTable.learnMoreUrl,
+      learnMoreTitle: sharedMomentsTable.learnMoreTitle,
       state: sharedMomentsTable.state,
       createdAt: sharedMomentsTable.createdAt,
       // Needed by the feed slideshow so each Continue can POST an amen
