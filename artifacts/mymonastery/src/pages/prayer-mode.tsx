@@ -818,26 +818,19 @@ function SlideContent({
       )}
 
       <div className="flex flex-col items-center gap-1.5">
-        {/* Eyebrow. For a feed intercession the feed name pill below
-            already says where this came from, so we drop the generic
-            "Community Intercession" eyebrow and let the feed name be
-            the top label. Non-feed intercessions / circle intentions /
-            requests keep their eyebrow. */}
-        {!(slide.kind === "intercession" && slide.feedTag) && (
-          <div className="flex items-center gap-2 flex-wrap justify-center">
-            <p
-              className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-              style={{ color: "rgba(143,175,150,0.45)" }}
-            >
-              {slide.kind === "intercession"
-                ? "Community Intercession"
-                : slide.kind === "circle-intention"
-                  ? "Circle Intention"
-                  : "Prayer Request"}
-            </p>
-            {slide.kind === "request" && <PrayerKindPill kind={slide.requestKind} />}
-          </div>
-        )}
+        <div className="flex items-center gap-2 flex-wrap justify-center">
+          <p
+            className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+            style={{ color: "rgba(143,175,150,0.45)" }}
+          >
+            {slide.kind === "intercession"
+              ? "Community Intercession"
+              : slide.kind === "circle-intention"
+                ? "Circle Intention"
+                : "Prayer Request"}
+          </p>
+          {slide.kind === "request" && <PrayerKindPill kind={slide.requestKind} />}
+        </div>
         {slide.kind === "intercession" && slide.feedTag && (
           <span
             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide"
@@ -850,6 +843,24 @@ function SlideContent({
           >
             🌿 {slide.feedTag}
           </span>
+        )}
+        {/* "Read Article" reference sits directly above the title so
+            the reader sees the source framing the intercession before
+            the prayer itself. The tappable "Learn more →" pill stays
+            lower on the slide (below the body) as the action. Only
+            renders for non-action intercessions that carry an
+            auto-fetched article title. */}
+        {slide.kind === "intercession"
+          && slide.source !== "action"
+          && slide.learnMoreUrl
+          && slide.learnMoreTitle && (
+          <p
+            className="text-sm leading-relaxed text-center mt-1"
+            style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            <span style={{ color: "rgba(143,175,150,0.7)" }}>Read Article: </span>
+            &ldquo;{slide.learnMoreTitle}&rdquo;
+          </p>
         )}
       </div>
 
@@ -1096,42 +1107,15 @@ function SlideContent({
             <ExternalLinkPill url={slide.learnMoreUrl} label="Take action →" />
           </div>
         ) : (
-          // Learn more — when we have the auto-fetched article title,
-          // show it above the pill in the same caption style the
-          // take-action copy uses, so the reader knows what they're
-          // about to open. No title → bare pill (the fetch found
-          // nothing).
-          slide.learnMoreTitle ? (
-            <div
-              className="w-full mt-2 flex flex-col items-center text-center"
-              style={{ gap: 12 }}
-            >
-              <p
-                className="text-sm leading-relaxed"
-                style={{
-                  color: "#C8D4C0",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                }}
-              >
-                {/* "Read Article:" label before the auto-fetched
-                    headline so the reader knows the line names a
-                    linked article, not part of the prayer. The
-                    headline is wrapped in quotation marks (article-
-                    title convention) rather than italicized — the
-                    prayer body above is already italic, so italics
-                    here would blur the line between prayer + title. */}
-                <span style={{ color: "rgba(143,175,150,0.7)" }}>Read Article: </span>
-                &ldquo;{slide.learnMoreTitle}&rdquo;
-              </p>
-              <ExternalLinkPill url={slide.learnMoreUrl} label="Learn more →" />
-            </div>
-          ) : (
-            <ExternalLinkPill
-              url={slide.learnMoreUrl}
-              label="Learn more →"
-              className="mt-1"
-            />
-          )
+          // Learn more — the article reference ("Read Article: …")
+          // now renders above the title near the top of the slide,
+          // so down here we show just the bare tappable pill as the
+          // action.
+          <ExternalLinkPill
+            url={slide.learnMoreUrl}
+            label="Learn more →"
+            className="mt-1"
+          />
         )
       )}
 
@@ -1968,7 +1952,17 @@ export default function PrayerModePage() {
     const n = v ? parseInt(v, 10) : NaN;
     return Number.isFinite(n) ? n : null;
   })();
-  const finishHref = returnToHref ?? "/dashboard";
+  // Where the slideshow returns to on finish / X-out. An explicit
+  // returnTo (the office handoff) always wins. Otherwise default to
+  // the viewer's home: offices-only + parish-only tiers live at
+  // /parish, everyone else at /dashboard. Without the tier check an
+  // offices-only user finishing a feed walk would land on /dashboard,
+  // flash the full-app home + fire its queries, then get bounced to
+  // /parish by the router gate.
+  const tierHome = (user?.accessTier === "offices-only" || user?.accessTier === "parish-only")
+    ? "/parish"
+    : "/dashboard";
+  const finishHref = returnToHref ?? tierHome;
 
   const momentsQuery = useQuery<{ moments: Moment[] }>({
     queryKey: ["/api/moments"],
