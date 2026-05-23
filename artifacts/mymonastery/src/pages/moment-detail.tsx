@@ -60,6 +60,7 @@ interface MomentDetail {
     intercessionSource?: string | null;
     intercessionFullText?: string | null;
     learnMoreUrl?: string | null;
+    learnMoreTitle?: string | null;
     timezone?: string | null;
     practiceDays?: string | string[] | null;
     timeOfDay?: string | null;
@@ -379,6 +380,11 @@ export default function MomentDetail() {
   const [editGoalDays, setEditGoalDays] = useState(7);
   const [editScheduledTime, setEditScheduledTime] = useState("");
   const [editEmoji, setEditEmoji] = useState("");
+  // Learn-more link + the editable article title shown above the
+  // "Learn more →" / "Take action →" pill on the slide. The title is
+  // auto-fetched on create; this lets an admin override it.
+  const [editLearnMoreUrl, setEditLearnMoreUrl] = useState("");
+  const [editArticleTitle, setEditArticleTitle] = useState("");
 
   // Renew / extend-goal modal
   const [renewModalOpen, setRenewModalOpen] = useState(false);
@@ -1655,6 +1661,8 @@ export default function MomentDetail() {
                       setEditGoalDays(moment.goalDays);
                       setEditScheduledTime(moment.scheduledTime);
                       setEditEmoji((moment as any).customEmoji ?? "");
+                      setEditLearnMoreUrl(moment.learnMoreUrl ?? "");
+                      setEditArticleTitle(moment.learnMoreTitle ?? "");
                       setEditingPractice(true);
                     }}
                     className="shrink-0 ml-4 text-xs font-medium text-[#5C7A5F] border border-[#5C7A5F]/40 rounded-full px-4 py-2 hover:bg-[#5C7A5F]/8 transition-colors min-h-[36px]"
@@ -1726,6 +1734,42 @@ export default function MomentDetail() {
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">Shown on dashboard cards. Tap again to clear.</p>
                     </div>
+                  )}
+                  {isIntercession && (
+                    <>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground block mb-1">
+                          {moment.intercessionSource === "action" ? "Action link" : "Learn more link"}
+                        </label>
+                        <input
+                          type="url"
+                          value={editLearnMoreUrl}
+                          onChange={e => setEditLearnMoreUrl(e.target.value)}
+                          placeholder="https://…"
+                          className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5C7A5F]/20"
+                          style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
+                        />
+                      </div>
+                      {/* Article title — only meaningful when there's a
+                          link to caption. Editable override of the
+                          auto-fetched title. */}
+                      {editLearnMoreUrl.trim().length > 0 && (
+                        <div>
+                          <label className="text-xs font-medium text-muted-foreground block mb-1">
+                            Article title <span style={{ color: "rgba(143,175,150,0.5)" }}>(shown above the link)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={editArticleTitle}
+                            onChange={e => setEditArticleTitle(e.target.value)}
+                            maxLength={200}
+                            placeholder="Auto-filled from the link — edit to override"
+                            className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5C7A5F]/20"
+                            style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
                   <div>
                     <label className="text-xs font-medium text-muted-foreground block mb-1">Goal (days)</label>
@@ -1860,6 +1904,12 @@ export default function MomentDetail() {
                         }
                         if (editScheduledTime && editScheduledTime !== moment.scheduledTime) payload.scheduledTime = editScheduledTime;
                         if (editEmoji !== ((moment as any).customEmoji ?? "")) payload.customEmoji = editEmoji || null;
+                        if (editLearnMoreUrl.trim() !== (moment.learnMoreUrl ?? "")) {
+                          payload.learnMoreUrl = editLearnMoreUrl.trim() || null;
+                        }
+                        if (editArticleTitle.trim() !== (moment.learnMoreTitle ?? "")) {
+                          payload.learnMoreTitle = editArticleTitle.trim() || null;
+                        }
                         if (Object.keys(payload).length > 0) {
                           editMutation.mutate(payload);
                         } else {

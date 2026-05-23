@@ -3827,6 +3827,11 @@ const EditMomentSchema = z.object({
   contemplativeDurationMinutes: z.number().int().min(1).max(60).nullable().optional(),
   allowMemberInvites: z.boolean().optional(),
   customEmoji: z.string().max(10).nullable().optional(),
+  // Learn-more / take-action link + the editable title of the linked
+  // article. Lets a feed admin override the auto-fetched
+  // learnMoreTitle (or set one when the fetch found nothing).
+  learnMoreUrl: z.string().trim().max(2000).nullable().optional(),
+  learnMoreTitle: z.string().trim().max(200).nullable().optional(),
 });
 
 router.patch("/moments/:id", async (req, res): Promise<void> => {
@@ -3874,6 +3879,10 @@ router.patch("/moments/:id", async (req, res): Promise<void> => {
   if (d.contemplativeDurationMinutes !== undefined) updates.contemplativeDurationMinutes = d.contemplativeDurationMinutes;
   if (d.allowMemberInvites !== undefined) updates.allowMemberInvites = d.allowMemberInvites;
   if (d.customEmoji !== undefined) updates.customEmoji = d.customEmoji;
+  if (d.learnMoreUrl !== undefined) updates.learnMoreUrl = d.learnMoreUrl ? d.learnMoreUrl.trim() : null;
+  // Empty string clears the title (back to the bare pill); a value
+  // overrides the auto-fetched one.
+  if (d.learnMoreTitle !== undefined) updates.learnMoreTitle = d.learnMoreTitle && d.learnMoreTitle.trim() ? d.learnMoreTitle.trim() : null;
 
   if (Object.keys(updates).length === 0) {
     res.json({ ok: true });
