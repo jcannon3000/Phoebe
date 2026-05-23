@@ -75,7 +75,7 @@ export default function MyPrayerFeedsPage() {
           My Prayer Feeds
         </h1>
         <p className="text-sm mb-6" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-          Every feed you created, including drafts that don&rsquo;t appear on the public browse page.
+          The live feeds you created.
         </p>
 
         {isLoading && <p className="text-sm" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>Loading…</p>}
