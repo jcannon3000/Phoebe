@@ -190,15 +190,20 @@ router.get("/people", async (req, res): Promise<void> => {
     }
   }
 
-  // Batch-fetch avatarUrl for all garden members
+  // Batch-fetch avatarUrl + user id for all garden members. The id
+  // is surfaced in the response so the client can call user-id-
+  // keyed endpoints (e.g. the tag-people-in-this-prayer flow) without
+  // a second email→id lookup.
   const allGardenEmails = Array.from(map.keys());
   const avatarByEmail = new Map<string, string | null>();
+  const userIdByEmail = new Map<string, number>();
   if (allGardenEmails.length > 0) {
-    const avatarRows = await db.select({ email: usersTable.email, avatarUrl: usersTable.avatarUrl })
+    const avatarRows = await db.select({ id: usersTable.id, email: usersTable.email, avatarUrl: usersTable.avatarUrl })
       .from(usersTable)
       .where(inArray(usersTable.email, allGardenEmails));
     for (const row of avatarRows) {
       avatarByEmail.set(row.email.toLowerCase(), row.avatarUrl);
+      userIdByEmail.set(row.email.toLowerCase(), row.id);
     }
   }
 
@@ -398,6 +403,11 @@ router.get("/people", async (req, res): Promise<void> => {
       const prayer = activePrayerMap.get(p.email) ?? null;
 
       return {
+        // Internal user id — included so client-side flows that
+        // need to talk to user-id-keyed endpoints (e.g. tag-people)
+        // don't need a second email→id round trip. May be null
+        // for an invited email that doesn't yet have an account.
+        userId: userIdByEmail.get(p.email.toLowerCase()) ?? null,
         name: p.name,
         email: p.email,
         avatarUrl: avatarByEmail.get(p.email.toLowerCase()) ?? null,

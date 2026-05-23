@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, inArray, notInArray, and, isNull, or, gt } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, fellowsTable } from "@workspace/db";
+import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, fellowsTable, prayerRequestTagsTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -49,7 +49,21 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
   if (!r) { res.status(404).json({ error: "Not found" }); return; }
 
   const viewerIsOwner = r.ownerId === sessionUserId;
-  if (!viewerIsOwner) {
+  // Tag-based visibility: a viewer who was tagged in this request
+  // can see it regardless of garden membership. Drives the
+  // "praying for my friend Matthew" flow where the tagged user
+  // gets a notification + can read the request even if they're not
+  // in any shared community with the owner.
+  const taggedRow = await db
+    .select({ id: prayerRequestTagsTable.id })
+    .from(prayerRequestTagsTable)
+    .where(and(
+      eq(prayerRequestTagsTable.requestId, id),
+      eq(prayerRequestTagsTable.taggedUserId, sessionUserId),
+      isNull(prayerRequestTagsTable.removedAt),
+    ));
+  const viewerIsTagged = taggedRow.length > 0;
+  if (!viewerIsOwner && !viewerIsTagged) {
     const garden = await getGardenUserIds(sessionUserId);
     if (!garden.includes(r.ownerId)) {
       res.status(403).json({ error: "Forbidden" });
@@ -175,6 +189,22 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     }
   }
 
+  // Fetch active tags so the detail page can render the "Tagged"
+  // row beneath the body + drive the per-viewer "I'm tagged" pill.
+  const tagRows = await db
+    .select({
+      id: prayerRequestTagsTable.id,
+      userId: prayerRequestTagsTable.taggedUserId,
+      userName: usersTable.name,
+      userAvatarUrl: usersTable.avatarUrl,
+    })
+    .from(prayerRequestTagsTable)
+    .leftJoin(usersTable, eq(usersTable.id, prayerRequestTagsTable.taggedUserId))
+    .where(and(
+      eq(prayerRequestTagsTable.requestId, id),
+      isNull(prayerRequestTagsTable.removedAt),
+    ));
+
   res.json({
     id: r.id,
     body: r.body,
@@ -186,6 +216,17 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     ownerName: owner?.name ?? null,
     ownerAvatarUrl: owner?.avatarUrl ?? null,
     viewerIsOwner,
+    viewerIsTagged,
+    // Tagged users — rendered in a "Tagged" row beneath the body.
+    // Empty array when nobody was tagged. Visible to everyone with
+    // access to the request (owner / tagged users / garden viewers)
+    // since the tag itself is the visibility signal — once you can
+    // see the request, you know who else was named.
+    tags: tagRows.map(t => ({
+      id: t.userId,
+      name: t.userName ?? null,
+      avatarUrl: t.userAvatarUrl ?? null,
+    })),
     // Owner-only share token. Surfaces the /p/:token public-share
     // link on the detail page so the requester can hand it out.
     // Only sent on the owner's view of the row; non-owners get
@@ -215,6 +256,20 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
 
   const gardenIds = await getGardenUserIds(sessionUserId);
   const visibleOwnerIds = [sessionUserId, ...gardenIds];
+
+  // Requests the viewer has been TAGGED in by someone else. Tag is
+  // a per-request visibility grant — the viewer sees that specific
+  // request regardless of garden / community membership. We pull
+  // ids only and OR them into the visibility WHERE clause below so
+  // the SQL stays a single query.
+  const taggedInRows = await db
+    .select({ requestId: prayerRequestTagsTable.requestId })
+    .from(prayerRequestTagsTable)
+    .where(and(
+      eq(prayerRequestTagsTable.taggedUserId, sessionUserId),
+      isNull(prayerRequestTagsTable.removedAt),
+    ));
+  const taggedInIds = taggedInRows.map(r => r.requestId);
 
   // Fetch muted user IDs so we can exclude their requests
   const mutedRows = await db
@@ -252,8 +307,17 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     isNull(prayerRequestsTable.expiresAt),
     gt(prayerRequestsTable.expiresAt, new Date()),
   );
+  // Visibility = (owner is in my garden) OR (I'm tagged in this
+  // specific request). Wrapped in `or()` so either signal grants
+  // access without breaking the existing garden-based filtering.
+  const visibilityFilter = taggedInIds.length > 0
+    ? or(
+        inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
+        inArray(prayerRequestsTable.id, taggedInIds),
+      )!
+    : inArray(prayerRequestsTable.ownerId, visibleOwnerIds);
   const baseFilters = [
-    inArray(prayerRequestsTable.ownerId, visibleOwnerIds),
+    visibilityFilter,
     isNull(prayerRequestsTable.closedAt),
     freshOrMine,
     // Parish-scoped "pastoral concerns" are private to the requester
@@ -468,6 +532,13 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
     // shared_moments via /moment/new?template=intercession, so they
     // never reach this endpoint.
     kind: z.enum(["request", "life-event", "justice"]).optional().default("request"),
+    // Tagged Phoebe users — the owner explicitly named these people
+    // in the request ("praying for my friend Matthew"). They get
+    // visibility regardless of garden membership and receive a push
+    // on creation + on first amen + on words of comfort. Empty /
+    // missing array = no one tagged; the rest of the flow behaves
+    // exactly like a normal request.
+    taggedUserIds: z.array(z.number().int().positive()).optional().default([]),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
@@ -518,6 +589,39 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
     })
     .returning();
 
+  // Insert tag rows for each user explicitly named in the request.
+  // Filter out the owner themselves (no-op tag) and dedupe. The
+  // taggedUserIds array was validated by zod above; we still verify
+  // each id exists in users before INSERT to avoid orphan tags from
+  // a hand-crafted client. Best-effort — a tag insertion failure
+  // shouldn't unwind the just-created request.
+  const validTaggedIds: number[] = [];
+  if (parsed.data.taggedUserIds.length > 0) {
+    const wantedIds = Array.from(new Set(parsed.data.taggedUserIds.filter(id => id !== sessionUserId)));
+    if (wantedIds.length > 0) {
+      try {
+        const existing = await db
+          .select({ id: usersTable.id })
+          .from(usersTable)
+          .where(inArray(usersTable.id, wantedIds));
+        const existingSet = new Set(existing.map(u => u.id));
+        for (const id of wantedIds) if (existingSet.has(id)) validTaggedIds.push(id);
+        if (validTaggedIds.length > 0) {
+          await db
+            .insert(prayerRequestTagsTable)
+            .values(validTaggedIds.map(uid => ({
+              requestId: created.id,
+              taggedUserId: uid,
+              createdByUserId: sessionUserId,
+            })))
+            .onConflictDoNothing();
+        }
+      } catch (err) {
+        console.warn("[prayer] tag insert failed (non-fatal):", err);
+      }
+    }
+  }
+
   // Fan out a "{owner} is asking for your prayers" push to every
   // member of the requester's garden. Re-enabled per user direction
   // — the request appearing in the slideshow / prayer list isn't
@@ -533,7 +637,16 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
   (async () => {
     try {
       const gardenIds = await getGardenUserIds(sessionUserId);
-      const recipients = gardenIds.filter((id) => id !== sessionUserId);
+      // Union garden + tagged users so a tagged person who isn't in
+      // any shared community still gets the "asking for your
+      // prayers" push. Self-tag was already filtered out above when
+      // we built validTaggedIds, but we also skip the author here
+      // (gardenIds includes them by design — they're the center of
+      // their own garden — and we don't want them to push themselves).
+      const recipients = Array.from(new Set([
+        ...gardenIds.filter((id) => id !== sessionUserId),
+        ...validTaggedIds,
+      ]));
       if (recipients.length === 0) return;
       // Drop anyone who has muted the author. userMutes(muter=R, muted=A)
       // → R does not receive A's pushes. Single SELECT, cheap.
@@ -562,6 +675,145 @@ router.post("/prayer-requests", async (req, res): Promise<void> => {
   })();
 
   res.status(201).json(created);
+});
+
+// ── Tag CRUD ──────────────────────────────────────────────────────
+//
+// Owner-only: POST /api/prayer-requests/:id/tags { userIds: number[] }
+// Adds the listed Phoebe users as tags. Idempotent — already-tagged
+// users are skipped via the UNIQUE constraint. A previously-removed
+// user (removed_at set) gets their row revived by lifting removed_at
+// back to NULL.
+//
+// DELETE /api/prayer-requests/:id/tags/:userId — owner OR the tagged
+// user themselves can remove. Soft-delete via removed_at so the audit
+// row persists; the visibility join filters them out via the partial
+// indexes on (removed_at IS NULL).
+router.post("/prayer-requests/:id/tags", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [r] = await db.select().from(prayerRequestsTable).where(eq(prayerRequestsTable.id, id));
+  if (!r) { res.status(404).json({ error: "Not found" }); return; }
+  if (r.ownerId !== sessionUserId) {
+    res.status(403).json({ error: "Only the prayer-request owner can tag people." });
+    return;
+  }
+
+  const schema = z.object({ userIds: z.array(z.number().int().positive()).min(1).max(50) });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "bad_request" }); return; }
+  const userIds = Array.from(new Set(parsed.data.userIds.filter(uid => uid !== sessionUserId)));
+
+  if (userIds.length === 0) { res.json({ ok: true, tags: [] }); return; }
+
+  try {
+    // Verify each id exists. Drop unknown ids silently — the
+    // caller can detect missing entries by diffing the returned
+    // tag list against what they sent.
+    const existing = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(inArray(usersTable.id, userIds));
+    const validIds = existing.map(u => u.id);
+    if (validIds.length === 0) { res.json({ ok: true, tags: [] }); return; }
+
+    await db
+      .insert(prayerRequestTagsTable)
+      .values(validIds.map(uid => ({
+        requestId: id,
+        taggedUserId: uid,
+        createdByUserId: sessionUserId,
+      })))
+      .onConflictDoUpdate({
+        target: [prayerRequestTagsTable.requestId, prayerRequestTagsTable.taggedUserId],
+        // Re-tag of a previously-removed user lifts removed_at back
+        // to NULL. createdByUserId stays whatever it was originally
+        // (or the new value if the row didn't exist — ON CONFLICT
+        // here only fires on a real conflict).
+        set: { removedAt: null },
+      });
+
+    // Push notification to each newly-tagged user (best-effort).
+    // We use the same "asking for your prayers" push the create
+    // fan-out uses so the tagged user lands on the same lock-screen
+    // copy — the request IS now visible to them.
+    (async () => {
+      try {
+        const muteRows = await db
+          .select({ muterId: userMutesTable.muterId })
+          .from(userMutesTable)
+          .where(eq(userMutesTable.mutedUserId, sessionUserId));
+        const muters = new Set(muteRows.map(m => m.muterId));
+        const authorName = r.createdByName ?? "Someone";
+        await Promise.all(validIds.filter(uid => !muters.has(uid)).map(uid =>
+          sendNewPrayerRequestPush(uid, {
+            authorName,
+            isAnonymous: r.isAnonymous,
+            prayerRequestId: r.id,
+          }).catch(err => console.warn("[prayer] tag-push failed:", err))
+        ));
+      } catch (err) {
+        console.warn("[prayer] tag-push fan-out failed:", err);
+      }
+    })();
+
+    const tagsAfter = await db
+      .select({
+        id: prayerRequestTagsTable.taggedUserId,
+        name: usersTable.name,
+        avatarUrl: usersTable.avatarUrl,
+      })
+      .from(prayerRequestTagsTable)
+      .leftJoin(usersTable, eq(usersTable.id, prayerRequestTagsTable.taggedUserId))
+      .where(and(
+        eq(prayerRequestTagsTable.requestId, id),
+        isNull(prayerRequestTagsTable.removedAt),
+      ));
+    res.json({ ok: true, tags: tagsAfter });
+  } catch (err) {
+    console.error("[prayer-requests/tags POST] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+router.delete("/prayer-requests/:id/tags/:userId", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id, 10);
+  const userId = parseInt(req.params.userId, 10);
+  if (!Number.isFinite(id) || !Number.isFinite(userId)) {
+    res.status(400).json({ error: "Invalid id" }); return;
+  }
+
+  const [r] = await db.select({ ownerId: prayerRequestsTable.ownerId })
+    .from(prayerRequestsTable)
+    .where(eq(prayerRequestsTable.id, id));
+  if (!r) { res.status(404).json({ error: "Not found" }); return; }
+  // Allowed: owner of the request, OR the tagged user removing
+  // themselves. Anyone else (including a non-tagged garden viewer)
+  // can't manipulate someone else's tag.
+  if (r.ownerId !== sessionUserId && userId !== sessionUserId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+
+  try {
+    await db
+      .update(prayerRequestTagsTable)
+      .set({ removedAt: new Date() })
+      .where(and(
+        eq(prayerRequestTagsTable.requestId, id),
+        eq(prayerRequestTagsTable.taggedUserId, userId),
+        isNull(prayerRequestTagsTable.removedAt),
+      ));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[prayer-requests/tags DELETE] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
 });
 
 // POST /api/prayer-requests/:id/word — leave (or update) a word on a request
@@ -612,7 +864,10 @@ router.post("/prayer-requests/:id/word", async (req, res): Promise<void> => {
   // Push the owner on every word submission, not just the first — the
   // owner wants to feel each act of prayer, not just the initial ping.
   // Self-words still suppressed (the rare case where the owner writes
-  // on their own request).
+  // on their own request). Also fan out to every active tagged user
+  // so they feel each word of comfort coming in for the person they
+  // were asked to pray for. The author themselves is excluded
+  // (suppresses a self-push if a tagged user writes their own word).
   if (request.ownerId !== sessionUserId) {
     sendPrayerWordPush(request.ownerId, {
       authorUserId: sessionUserId,
@@ -622,6 +877,29 @@ router.post("/prayer-requests/:id/word", async (req, res): Promise<void> => {
       console.warn("[prayer/word] push dispatch failed:", err);
     });
   }
+  (async () => {
+    try {
+      const taggedRows = await db
+        .select({ uid: prayerRequestTagsTable.taggedUserId })
+        .from(prayerRequestTagsTable)
+        .where(and(
+          eq(prayerRequestTagsTable.requestId, id),
+          isNull(prayerRequestTagsTable.removedAt),
+        ));
+      const taggedIds = taggedRows
+        .map(t => t.uid)
+        .filter(uid => uid !== sessionUserId && uid !== request.ownerId);
+      await Promise.all(taggedIds.map(uid =>
+        sendPrayerWordPush(uid, {
+          authorUserId: sessionUserId,
+          authorName,
+          prayerRequestId: id,
+        }).catch(err => console.warn("[prayer/word] tagged push failed:", err))
+      ));
+    } catch (err) {
+      console.warn("[prayer/word] tagged fan-out failed:", err);
+    }
+  })();
 
   res.json(word);
 });
@@ -1052,12 +1330,40 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
   if (firstAmenFire) {
     const [prayer] = await db.select({ name: usersTable.name })
       .from(usersTable).where(eq(usersTable.id, sessionUserId));
+    const prayerName = prayer?.name || "Someone";
     sendFirstAmenPush(request.ownerId, {
       prayerRequestId: id,
-      prayerName: prayer?.name || "Someone",
+      prayerName,
     }).catch((err) => {
       console.warn("[prayer/amen] first-amen push failed:", err);
     });
+    // Fan out the first-amen push to active tagged users too —
+    // they get to share in the moment when the first prayer
+    // lands for the person they were named alongside. Owner +
+    // the pray-er themselves are excluded (owner already got
+    // their push above; pray-er would self-push otherwise).
+    (async () => {
+      try {
+        const taggedRows = await db
+          .select({ uid: prayerRequestTagsTable.taggedUserId })
+          .from(prayerRequestTagsTable)
+          .where(and(
+            eq(prayerRequestTagsTable.requestId, id),
+            isNull(prayerRequestTagsTable.removedAt),
+          ));
+        const taggedIds = taggedRows
+          .map(t => t.uid)
+          .filter(uid => uid !== request.ownerId && uid !== sessionUserId);
+        await Promise.all(taggedIds.map(uid =>
+          sendFirstAmenPush(uid, {
+            prayerRequestId: id,
+            prayerName,
+          }).catch(err => console.warn("[prayer/amen] tagged first-amen push failed:", err))
+        ));
+      } catch (err) {
+        console.warn("[prayer/amen] tagged first-amen fan-out failed:", err);
+      }
+    })();
   }
   // "3 people are praying for you today" push — disabled per user
   // direction. The owner can still see their amen counts inside

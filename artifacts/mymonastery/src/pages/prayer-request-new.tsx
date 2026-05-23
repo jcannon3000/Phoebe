@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
+import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 
 type LastMineRow = {
   id: number;
@@ -96,6 +97,11 @@ export default function PrayerRequestNew() {
   const [body, setBody] = useState("");
   const [days, setDays] = useState<3 | 7>(7);
   const [error, setError] = useState("");
+  // Tag picker — userIds of people the requester has named in this
+  // prayer. Sent in the POST body; server fans out a push to each
+  // and grants them request-scoped visibility regardless of garden
+  // membership. Reset on success when the form unmounts.
+  const [taggedUserIds, setTaggedUserIds] = useState<number[]>([]);
 
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { if (step === 0) bodyRef.current?.focus(); }, [step]);
@@ -119,6 +125,9 @@ export default function PrayerRequestNew() {
         isAnonymous: false,
         durationDays: days,
         kind,
+        // Server accepts an empty / missing array — it's only meaningful
+        // when the user picked tags via the TagPicker below.
+        taggedUserIds,
       }),
     onSuccess: () => {
       triggerSubmitFeedback();
@@ -223,6 +232,18 @@ export default function PrayerRequestNew() {
               <p className="text-[11px] mb-6 text-right" style={{ color: "rgba(143,175,150,0.5)" }}>
                 {body.length} / 1000
               </p>
+
+              {/* Tag people — the "praying for my friend Matthew"
+                  signal. Selected users get visibility on this
+                  request (regardless of garden / community), a push
+                  on creation, and pushes on the first amen + every
+                  word of comfort. Optional; an empty selection is
+                  the default. */}
+              <TagPicker
+                ownerId={user?.id}
+                selectedIds={taggedUserIds}
+                onChange={setTaggedUserIds}
+              />
 
               {error && <p className="text-sm mb-4" style={{ color: "#C47A65" }}>{error}</p>}
 
@@ -338,6 +359,185 @@ export default function PrayerRequestNew() {
 
         </AnimatePresence>
       </div>
+    </div>
+  );
+}
+
+// ── Tag picker ─────────────────────────────────────────────────────
+//
+// Inline picker beneath the prayer-request textarea. Renders:
+//   • "Tag someone" pill — opens / closes the suggestion list.
+//   • Selected chips — each removable via the small "×".
+//   • Search-as-you-type from the viewer's garden (the same set
+//     /people surfaces, scoped to people they already know).
+//
+// Designed to add zero friction when not used — collapsed by
+// default, an empty selection is the no-op default state.
+function TagPicker({
+  ownerId,
+  selectedIds,
+  onChange,
+}: {
+  ownerId: number | undefined;
+  selectedIds: number[];
+  onChange: (next: number[]) => void;
+}) {
+  const { data: people = [] } = usePeople(ownerId);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  // Only people with a real user account can be tagged (server
+  // enforces this too — we just hide the rest to avoid a confusing
+  // "Tagged ✓ — except no, it didn't take" interaction).
+  const eligible = useMemo(
+    () => people.filter((p): p is PersonSummary & { userId: number } => typeof p.userId === "number"),
+    [people],
+  );
+
+  const selected = useMemo(
+    () => eligible.filter(p => selectedIds.includes(p.userId)),
+    [eligible, selectedIds],
+  );
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return eligible;
+    return eligible.filter(p =>
+      (p.name ?? "").toLowerCase().includes(q) ||
+      (p.email ?? "").toLowerCase().includes(q),
+    );
+  }, [eligible, query]);
+
+  const toggle = (uid: number) => {
+    if (selectedIds.includes(uid)) {
+      onChange(selectedIds.filter(x => x !== uid));
+    } else {
+      onChange([...selectedIds, uid]);
+    }
+  };
+
+  return (
+    <div className="mb-6">
+      {/* Trigger + selected chips on the same row. */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          className="text-[12px] font-medium px-3 py-1.5 rounded-full transition-opacity hover:opacity-90"
+          style={{
+            background: "rgba(46,107,64,0.18)",
+            border: "1px solid rgba(46,107,64,0.4)",
+            color: "#C8D4C0",
+            fontFamily: "'Space Grotesk', sans-serif",
+          }}
+        >
+          🏷️  {selected.length > 0 ? `Tagged · ${selected.length}` : "Tag someone"}
+        </button>
+        {selected.map(p => (
+          <span
+            key={p.userId}
+            className="inline-flex items-center gap-1 text-[12px] px-2.5 py-1 rounded-full"
+            style={{
+              background: "rgba(46,107,64,0.28)",
+              border: "1px solid rgba(46,107,64,0.5)",
+              color: "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            {p.name}
+            <button
+              type="button"
+              onClick={() => toggle(p.userId)}
+              aria-label={`Untag ${p.name}`}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "rgba(143,175,150,0.85)",
+                cursor: "pointer",
+                padding: 0,
+                marginLeft: 2,
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+
+      {open && (
+        <div
+          className="mt-3 rounded-xl"
+          style={{
+            background: "#0F2818",
+            border: "1px solid rgba(46,107,64,0.35)",
+            padding: 8,
+          }}
+        >
+          <input
+            type="text"
+            placeholder="Search by name…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="w-full text-sm px-3 py-2 rounded-lg mb-2 outline-none"
+            style={{
+              background: "rgba(15,40,24,0.7)",
+              border: "1px solid rgba(46,107,64,0.3)",
+              color: "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          />
+          <div style={{ maxHeight: 200, overflowY: "auto" }}>
+            {filtered.length === 0 && (
+              <p className="text-xs italic text-center py-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+                {eligible.length === 0
+                  ? "No one in your community yet."
+                  : "No one matches that name."}
+              </p>
+            )}
+            {filtered.map(p => {
+              const isSelected = selectedIds.includes(p.userId);
+              return (
+                <button
+                  key={p.userId}
+                  type="button"
+                  onClick={() => toggle(p.userId)}
+                  className="w-full flex items-center gap-3 px-2 py-2 rounded-lg text-left transition-colors"
+                  style={{
+                    background: isSelected ? "rgba(46,107,64,0.25)" : "transparent",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = "rgba(200,212,192,0.06)";
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                  }}
+                >
+                  {p.avatarUrl ? (
+                    <img
+                      src={p.avatarUrl}
+                      alt={p.name}
+                      className="w-7 h-7 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold"
+                      style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                    >
+                      {(p.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+                    </div>
+                  )}
+                  <span className="text-sm flex-1 truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    {p.name}
+                  </span>
+                  {isSelected && <span className="text-sm" style={{ color: "#A8C5A0" }}>✓</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

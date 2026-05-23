@@ -1754,6 +1754,29 @@ export async function migrate() {
     await run(client, `ALTER TABLE fellows ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'shared_prayer'`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_fellows_user_id ON fellows (user_id)`);
 
+    // ── Prayer-request tags ────────────────────────────────────────────────
+    // Owner can name specific Phoebe users in a prayer request ("praying
+    // for my friend Matthew"). Tagged users:
+    //   • can see the request regardless of garden / fellow / community
+    //     membership (the GET /api/prayer-requests list joins tags in);
+    //   • receive a push on first amen + on any word of comfort;
+    //   • can remove themselves (sets removed_at; row stays for audit).
+    // UNIQUE (request_id, tagged_user_id) — re-tagging flips removed_at
+    // back to NULL on the existing row instead of inserting a dup.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_request_tags (
+        id SERIAL PRIMARY KEY,
+        request_id INTEGER NOT NULL REFERENCES prayer_requests(id) ON DELETE CASCADE,
+        tagged_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        removed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (request_id, tagged_user_id)
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_tags_user ON prayer_request_tags (tagged_user_id) WHERE removed_at IS NULL`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_tags_request ON prayer_request_tags (request_id) WHERE removed_at IS NULL`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

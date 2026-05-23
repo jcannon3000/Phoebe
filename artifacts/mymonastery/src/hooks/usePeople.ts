@@ -19,6 +19,11 @@ export interface PersonPrayerRequest {
 }
 
 export interface PersonSummary {
+  // Internal user id. May be null for legacy email-only invites
+  // that haven't been linked to an account yet. Surfaced so flows
+  // like the tag-people picker can hand a user id directly to
+  // user-id-keyed endpoints without a second resolution step.
+  userId: number | null;
   name: string;
   email: string;
   avatarUrl?: string | null;

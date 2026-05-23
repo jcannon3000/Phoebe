@@ -32,6 +32,12 @@ type PrayerAmen = {
   prayedAt: string;
 };
 
+type TaggedUser = {
+  id: number;
+  name: string | null;
+  avatarUrl: string | null;
+};
+
 type PrayerRequestDetail = {
   id: number;
   body: string;
@@ -40,6 +46,15 @@ type PrayerRequestDetail = {
   ownerName: string | null;
   ownerAvatarUrl: string | null;
   viewerIsOwner: boolean;
+  // True when the viewer was explicitly tagged in this prayer
+  // request. Drives the "Remove me" affordance + a small "Tagged
+  // here" pill so a viewer who's not an owner / garden member
+  // understands why they're seeing this.
+  viewerIsTagged: boolean;
+  // Users the owner tagged in this prayer ("praying for my friend
+  // Matthew"). Rendered as a row of small avatars beneath the
+  // body. Empty array when nobody was tagged.
+  tags: TaggedUser[];
   // Owner-only share token. Drives the "Share" button on the
   // detail page — populated only when viewerIsOwner is true,
   // otherwise null. /p/:token is the public-share URL fragment
@@ -195,6 +210,21 @@ export default function PrayerRequestDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
       queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
       setLocation("/prayer-list");
+    },
+  });
+
+  // Tagged-user opt-out. Lets a viewer who was tagged ("praying
+  // for my friend Matthew") remove themselves quietly — the row is
+  // soft-deleted server-side (removed_at stamped) so the audit
+  // trail persists, and they stop receiving pushes / lose request-
+  // scoped visibility on the next refetch. We invalidate both
+  // detail + list so the dashboard reflects the change immediately.
+  const removeMyTag = useMutation({
+    mutationFn: (userId: number) =>
+      apiRequest("DELETE", `/api/prayer-requests/${id}/tags/${userId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
     },
   });
 
@@ -359,6 +389,16 @@ export default function PrayerRequestDetailPage() {
               {data.body}
             </p>
 
+            {/* Tagged users row — shared with the owner view below. */}
+            {data.tags.length > 0 && (
+              <TaggedRow
+                tags={data.tags}
+                viewerIsTagged={data.viewerIsTagged}
+                onRemoveSelf={(uid) => removeMyTag.mutate(uid)}
+                removingId={removeMyTag.isPending ? removeMyTag.variables ?? null : null}
+              />
+            )}
+
             {/* Word of comfort — shared component the slideshow uses,
                 so the composer behavior (existing word display, ×-clear,
                 error mapping) matches exactly. */}
@@ -415,6 +455,18 @@ export default function PrayerRequestDetailPage() {
             >
               {data.body}
             </p>
+
+            {/* Tagged users — the people the owner named in this
+                prayer. Read-only for the owner (they tagged them at
+                compose; future enhancement: a manage-tags affordance). */}
+            {data.tags.length > 0 && (
+              <TaggedRow
+                tags={data.tags}
+                viewerIsTagged={false}
+                onRemoveSelf={() => undefined}
+                removingId={null}
+              />
+            )}
 
             {/* Latest amen — pulses the freshest pray-er, the avatar
                 the first/third-amen pushes are heralding. */}
@@ -632,6 +684,119 @@ export default function PrayerRequestDetailPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// ── Tagged row ────────────────────────────────────────────────────────
+//
+// Shared component for both viewer-classes (owner + recipient). Renders
+// the small "TAGGED" eyebrow, an avatar-and-name row for each user the
+// owner named in this prayer, and — when `viewerIsTagged` is true —
+// a "Remove me" affordance so a tagged user can opt out without
+// confronting the owner.
+function TaggedRow({
+  tags,
+  viewerIsTagged,
+  onRemoveSelf,
+  removingId,
+}: {
+  tags: TaggedUser[];
+  viewerIsTagged: boolean;
+  onRemoveSelf: (userId: number) => void;
+  removingId: number | null;
+}) {
+  return (
+    <div className="w-full flex flex-col items-center gap-2 mt-1">
+      <p
+        className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+        style={{ color: "rgba(143,175,150,0.45)" }}
+      >
+        Tagged
+      </p>
+      <div className="flex items-center justify-center flex-wrap gap-2">
+        {tags.map((t) => (
+          <div
+            key={t.id}
+            className="flex items-center gap-2 px-2.5 py-1 rounded-full"
+            style={{
+              background: "rgba(46,107,64,0.18)",
+              border: "1px solid rgba(46,107,64,0.4)",
+            }}
+          >
+            {t.avatarUrl ? (
+              <img
+                src={t.avatarUrl}
+                alt={t.name ?? ""}
+                className="w-6 h-6 rounded-full object-cover"
+              />
+            ) : (
+              <div
+                className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
+                style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+              >
+                {(t.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+              </div>
+            )}
+            <span
+              className="text-[13px]"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              {t.name ?? "Someone"}
+            </span>
+          </div>
+        ))}
+      </div>
+      {viewerIsTagged && (
+        <RemoveSelfButton
+          tags={tags}
+          onRemoveSelf={onRemoveSelf}
+          removingId={removingId}
+        />
+      )}
+    </div>
+  );
+}
+
+// Renders the "Remove me from this prayer" button. We resolve the
+// viewer's id from the auth cache (the same /api/auth/me query the
+// rest of the app reads) so the parent doesn't have to thread the
+// id all the way down.
+function RemoveSelfButton({
+  tags,
+  onRemoveSelf,
+  removingId,
+}: {
+  tags: TaggedUser[];
+  onRemoveSelf: (userId: number) => void;
+  removingId: number | null;
+}) {
+  const queryClient = useQueryClient();
+  const me = queryClient.getQueryData<{ id?: number }>(["/api/auth/me"]);
+  const myId = me?.id;
+  if (!myId) return null;
+  const myTag = tags.find(t => t.id === myId);
+  if (!myTag) return null;
+  const pending = removingId === myId;
+  return (
+    <button
+      type="button"
+      onClick={() => onRemoveSelf(myId)}
+      disabled={pending}
+      className="mt-1 text-[11px] transition-opacity hover:opacity-80 disabled:opacity-50"
+      style={{
+        background: "transparent",
+        border: "none",
+        color: "rgba(143,175,150,0.7)",
+        textDecoration: "underline",
+        textDecorationColor: "rgba(143,175,150,0.35)",
+        textUnderlineOffset: 3,
+        fontFamily: "'Space Grotesk', sans-serif",
+        cursor: pending ? "default" : "pointer",
+        padding: 4,
+      }}
+    >
+      {pending ? "Removing…" : "Remove me from this prayer"}
+    </button>
   );
 }
 
