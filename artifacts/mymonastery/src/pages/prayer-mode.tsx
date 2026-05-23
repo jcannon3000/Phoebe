@@ -818,19 +818,26 @@ function SlideContent({
       )}
 
       <div className="flex flex-col items-center gap-1.5">
-        <div className="flex items-center gap-2 flex-wrap justify-center">
-          <p
-            className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-            style={{ color: "rgba(143,175,150,0.45)" }}
-          >
-            {slide.kind === "intercession"
-              ? "Community Intercession"
-              : slide.kind === "circle-intention"
-                ? "Circle Intention"
-                : "Prayer Request"}
-          </p>
-          {slide.kind === "request" && <PrayerKindPill kind={slide.requestKind} />}
-        </div>
+        {/* Eyebrow. For a feed intercession the feed name pill below
+            already says where this came from, so we drop the generic
+            "Community Intercession" eyebrow and let the feed name be
+            the top label. Non-feed intercessions / circle intentions /
+            requests keep their eyebrow. */}
+        {!(slide.kind === "intercession" && slide.feedTag) && (
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            <p
+              className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+              style={{ color: "rgba(143,175,150,0.45)" }}
+            >
+              {slide.kind === "intercession"
+                ? "Community Intercession"
+                : slide.kind === "circle-intention"
+                  ? "Circle Intention"
+                  : "Prayer Request"}
+            </p>
+            {slide.kind === "request" && <PrayerKindPill kind={slide.requestKind} />}
+          </div>
+        )}
         {slide.kind === "intercession" && slide.feedTag && (
           <span
             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide"
@@ -1108,9 +1115,13 @@ function SlideContent({
               >
                 {/* "Read Article:" label before the auto-fetched
                     headline so the reader knows the line names a
-                    linked article, not part of the prayer. */}
+                    linked article, not part of the prayer. The
+                    headline is wrapped in quotation marks (article-
+                    title convention) rather than italicized — the
+                    prayer body above is already italic, so italics
+                    here would blur the line between prayer + title. */}
                 <span style={{ color: "rgba(143,175,150,0.7)" }}>Read Article: </span>
-                {slide.learnMoreTitle}
+                &ldquo;{slide.learnMoreTitle}&rdquo;
               </p>
               <ExternalLinkPill url={slide.learnMoreUrl} label="Learn more →" />
             </div>
