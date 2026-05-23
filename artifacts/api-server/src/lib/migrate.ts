@@ -1764,6 +1764,15 @@ export async function migrate() {
     await run(client, `ALTER TABLE fellows ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'shared_prayer'`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_fellows_user_id ON fellows (user_id)`);
 
+    // ── beta_users.seen_welcome ────────────────────────────────────────────
+    // The schema (lib/db/src/schema/groups.ts) declares seen_welcome on
+    // beta_users with NOT NULL DEFAULT false. Production didn't have the
+    // column added before drizzle started generating INSERTs that
+    // reference it — the Pilot Users admin tool 500'd with "42703
+    // undefined_column" until we ran a manual ALTER. Idempotent
+    // IF NOT EXISTS so re-deploys are safe.
+    await run(client, `ALTER TABLE beta_users ADD COLUMN IF NOT EXISTS seen_welcome BOOLEAN NOT NULL DEFAULT false`);
+
     // ── Prayer-request tags ────────────────────────────────────────────────
     // Owner can name specific Phoebe users in a prayer request ("praying
     // for my friend Matthew"). Tagged users:
