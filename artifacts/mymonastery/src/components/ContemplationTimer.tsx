@@ -67,9 +67,24 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
   // stale closure value), which would double-strike the ending bell.
   const finishedRef = useRef(false);
 
-  // ── Wake lock — keep the screen on during a sit. Re-acquired on
-  // foreground because the OS auto-releases it when the app backgrounds.
+  // Fire a native-shell bridge event (no-op on the plain web build —
+  // nothing listens there).
+  function nativeEvent(name: string, detail?: unknown) {
+    try { window.dispatchEvent(new CustomEvent(name, detail !== undefined ? { detail } : undefined)); }
+    catch { /* non-fatal */ }
+  }
+
+  // ── Keep the screen on during a sit. Two layers, because each covers
+  // a gap the other doesn't:
+  //   • Native keep-awake (UIApplication.isIdleTimerDisabled via the
+  //     phoebe:contemplation-keep-awake bridge) — the reliable path on
+  //     the iOS app, where the web wakeLock below doesn't hold in
+  //     WKWebView.
+  //   • Web navigator.wakeLock — the only option on the plain web build;
+  //     re-acquired on foreground since the OS auto-releases it when the
+  //     app backgrounds.
   async function acquireWakeLock() {
+    nativeEvent("phoebe:contemplation-keep-awake");
     try {
       const nav = navigator as Navigator & { wakeLock?: { request: (t: "screen") => Promise<WakeLockSentinel> } };
       if (nav.wakeLock) {
@@ -80,8 +95,21 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
     }
   }
   function releaseWakeLock() {
+    nativeEvent("phoebe:contemplation-allow-sleep");
     try { wakeLockRef.current?.release(); } catch { /* non-fatal */ }
     wakeLockRef.current = null;
+  }
+
+  // ── Fallback closing bell as a one-shot local notification, so a sit
+  // that's backgrounded or has the phone manually locked (keep-awake
+  // can't prevent those) still delivers the bell at the end time. The
+  // in-app Web Audio swell remains the primary close when foregrounded;
+  // we cancel the notification on an in-app finish to avoid a double.
+  function scheduleEndBell(atMs: number) {
+    nativeEvent("phoebe:contemplation-schedule-end", { at: new Date(atMs).toISOString() });
+  }
+  function cancelEndBell() {
+    nativeEvent("phoebe:contemplation-cancel-end");
   }
   useEffect(() => {
     if (phase !== "running") return;
@@ -103,6 +131,7 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
       finishedRef.current = false;
     } else {
       releaseWakeLock();
+      cancelEndBell();
     }
   }, [open]);
 
@@ -150,6 +179,7 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
     setEndedEarly(false);
     setPhase("running");
     void acquireWakeLock();
+    scheduleEndBell(endAtRef.current);
     // Opening swell — the same chapel-exhale the prayer slideshow plays
     // on every slide entry (octave 0, the base voicing).
     playOpeningSwell(0);
@@ -163,6 +193,9 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
     if (finishedRef.current) return;
     finishedRef.current = true;
     releaseWakeLock();
+    // Foregrounded finish — the in-app swell handles the close, so drop
+    // the pending notification to avoid a double bell.
+    cancelEndBell();
     setSatSeconds(Math.round(seconds));
     setEndedEarly(early);
     recordSession(seconds);
@@ -182,6 +215,7 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
 
   function handleClose() {
     releaseWakeLock();
+    cancelEndBell();
     onClose();
   }
 

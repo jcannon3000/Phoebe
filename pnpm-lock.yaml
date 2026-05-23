@@ -745,6 +745,9 @@ importers:
       '@capacitor-community/contacts':
         specifier: ^6.0.0
         version: 6.1.1(@capacitor/core@6.2.1)
+      '@capacitor-community/keep-awake':
+        specifier: ^5.0.0
+        version: 5.0.1(@capacitor/core@6.2.1)
       '@capacitor/app':
         specifier: ^6.0.0
         version: 6.0.3(@capacitor/core@6.2.1)
@@ -974,6 +977,11 @@ packages:
 
   '@capacitor-community/contacts@6.1.1':
     resolution: {integrity: sha512-/VFEYyJQUajUcjWdR7thsTYXDcoKtE5NLkU5dLql72xbLFCoSNWrgTQwj6kPpAvYSi32smUDabeipsIseVSFlg==}
+    peerDependencies:
+      '@capacitor/core': ^6.0.0
+
+  '@capacitor-community/keep-awake@5.0.1':
+    resolution: {integrity: sha512-5ZeJ5DQE5Aa1NwzD1kKv8IkHoLwKhkGYlURWHh4/SDrug0KBaGocKuk1q1TAk1nsCs6ndbSsEvUt2LZDoPo9SQ==}
     peerDependencies:
       '@capacitor/core': ^6.0.0
 
@@ -4353,6 +4361,10 @@ snapshots:
       scriptjs: 2.5.9
 
   '@capacitor-community/contacts@6.1.1(@capacitor/core@6.2.1)':
+    dependencies:
+      '@capacitor/core': 6.2.1
+
+  '@capacitor-community/keep-awake@5.0.1(@capacitor/core@6.2.1)':
     dependencies:
       '@capacitor/core': 6.2.1
 

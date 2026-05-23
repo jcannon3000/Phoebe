@@ -30,6 +30,7 @@ import { Preferences } from "@capacitor/preferences";
 import { Contacts } from "@capacitor-community/contacts";
 import { SignInWithApple, type SignInWithAppleResponse } from "@capacitor-community/apple-sign-in";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { KeepAwake } from "@capacitor-community/keep-awake";
 import { NativeBiometric, BiometryType } from "@capgo/capacitor-native-biometric";
 
 // ─── API base URL ──────────────────────────────────────────────────────────
@@ -902,6 +903,67 @@ function wireLocalNotifications() {
   });
 }
 
+// ─── Contemplation timer bridge ─────────────────────────────────────────────
+// Keeps the screen lit through a silent-prayer sit and delivers the closing
+// bell even if the phone gets locked or the app backgrounded mid-sit.
+//
+//   • phoebe:contemplation-keep-awake / -allow-sleep — toggle
+//     UIApplication.isIdleTimerDisabled via the keep-awake plugin, so the
+//     screen doesn't auto-lock while the countdown runs (the web
+//     navigator.wakeLock the app also calls is unreliable in WKWebView).
+//   • phoebe:contemplation-schedule-end { at: ISO } — schedules a ONE-SHOT
+//     local notification at the sit's end time. This is the fallback for the
+//     case keep-awake can't cover: the user manually locks the phone or
+//     switches apps, so the in-app Web Audio bell never fires. A fixed id
+//     gives upsert/cancel semantics.
+//   • phoebe:contemplation-cancel-end — cancels that pending one-shot (fired
+//     when the sit ends in-app so a foregrounded finish doesn't double-bell).
+const CONTEMPLATION_BELL_ID = 880_001;
+
+function wireContemplation() {
+  window.addEventListener("phoebe:contemplation-keep-awake", async () => {
+    try { await KeepAwake.keepAwake(); } catch { /* unsupported — web wakeLock still tries */ }
+  });
+  window.addEventListener("phoebe:contemplation-allow-sleep", async () => {
+    try { await KeepAwake.allowSleep(); } catch { /* non-fatal */ }
+  });
+
+  window.addEventListener("phoebe:contemplation-schedule-end", async e => {
+    const detail = (e as CustomEvent).detail as { at?: string } | undefined;
+    const at = detail?.at ? new Date(detail.at) : null;
+    if (!at || Number.isNaN(at.getTime()) || at.getTime() <= Date.now()) return;
+    try {
+      const perm = await LocalNotifications.checkPermissions();
+      if (perm.display !== "granted") {
+        const req = await LocalNotifications.requestPermissions();
+        if (req.display !== "granted") return; // in-app bell still rings if foregrounded
+      }
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            id: CONTEMPLATION_BELL_ID,
+            title: "Contemplation",
+            body: "Your time is complete.",
+            schedule: { at, allowWhileIdle: true },
+            smallIcon: "phoebe_bell",
+            iconColor: "#2E6B40",
+          },
+        ],
+      });
+    } catch {
+      /* best-effort — the foreground in-app bell is the primary path */
+    }
+  });
+
+  window.addEventListener("phoebe:contemplation-cancel-end", async () => {
+    try {
+      await LocalNotifications.cancel({ notifications: [{ id: CONTEMPLATION_BELL_ID }] });
+    } catch {
+      /* best-effort */
+    }
+  });
+}
+
 // ─── Persisted storage bridge ──────────────────────────────────────────────
 // Capacitor Preferences is more reliable than localStorage inside a
 // WKWebView cold start on iOS. The web app still uses localStorage; we
@@ -1155,6 +1217,7 @@ function exposePublicApi() {
   injectSiwaButton();
   wireBiometricLock();
   wireLocalNotifications();
+  wireContemplation();
   wireDurableStorage();
   wireLifecycle();
 })();
