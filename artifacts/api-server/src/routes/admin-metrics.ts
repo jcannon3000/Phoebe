@@ -358,4 +358,127 @@ router.get("/admin/feed-audit", async (req, res): Promise<void> => {
   }
 });
 
+// POST /api/admin/feed-repair — prune orphan feed tokens + resync the
+// cached subscriber_count column. Defaults to a DRY RUN (reports what
+// it WOULD do); pass { apply: true } to actually mutate.
+//
+// "Orphan token" = a moment_user_tokens row on a feed-scoped
+// intercession whose holder is NEITHER a subscriber NOR a member of
+// any bound group NOR the moment's organizer (smallest-id token,
+// preserved so the authoring account never loses access). These are
+// the people "praying it without being subscribed / in a group."
+// Removing the token revokes feed access on their next load;
+// historical moment_posts stay intact (we only delete the token row,
+// the same operation reconcileFeedPracticeMembers already performs).
+//
+// Beta-admin gated.
+router.post("/admin/feed-repair", async (req, res): Promise<void> => {
+  const session = getUser(req);
+  if (!session) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(await isBetaAdmin(session.id))) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const apply = req.body?.apply === true;
+
+  try {
+    const feeds = await db
+      .select({ id: prayerFeedsTable.id, slug: prayerFeedsTable.slug, title: prayerFeedsTable.title })
+      .from(prayerFeedsTable);
+
+    const report: Array<{
+      feedId: number;
+      slug: string;
+      title: string;
+      orphanTokensPruned: number;
+      subscriberCountBefore: number;
+      subscriberCountAfter: number;
+    }> = [];
+
+    for (const f of feeds) {
+      // Allowed emails = subscribers ∪ bound-group members.
+      const subRows = await db
+        .select({ email: sql<string>`LOWER(${usersTable.email})` })
+        .from(prayerFeedSubscriptionsTable)
+        .innerJoin(usersTable, eq(usersTable.id, prayerFeedSubscriptionsTable.userId))
+        .where(eq(prayerFeedSubscriptionsTable.feedId, f.id));
+      const allowed = new Set(subRows.map(r => r.email));
+
+      const groups = await db
+        .select({ id: prayerFeedGroupsTable.groupId })
+        .from(prayerFeedGroupsTable)
+        .where(eq(prayerFeedGroupsTable.feedId, f.id));
+      if (groups.length > 0) {
+        const gmRows = await db
+          .select({
+            userEmail: sql<string | null>`LOWER(${usersTable.email})`,
+            inviteEmail: sql<string | null>`LOWER(${groupMembersTable.email})`,
+          })
+          .from(groupMembersTable)
+          .leftJoin(usersTable, eq(usersTable.id, groupMembersTable.userId))
+          .where(and(
+            inArray(groupMembersTable.groupId, groups.map(g => g.id)),
+            isNotNull(groupMembersTable.joinedAt),
+          ));
+        for (const r of gmRows) {
+          if (r.userEmail) allowed.add(r.userEmail);
+          if (r.inviteEmail) allowed.add(r.inviteEmail);
+        }
+      }
+
+      // Resync the cached subscriber_count to the real subscription count.
+      const realSubs = (await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(prayerFeedSubscriptionsTable)
+        .where(eq(prayerFeedSubscriptionsTable.feedId, f.id)))[0]?.n ?? 0;
+      const beforeCol = (await db
+        .select({ c: prayerFeedsTable.subscriberCount })
+        .from(prayerFeedsTable)
+        .where(eq(prayerFeedsTable.id, f.id)))[0]?.c ?? 0;
+
+      const moments = await db
+        .select({ id: sharedMomentsTable.id })
+        .from(sharedMomentsTable)
+        .where(eq(sharedMomentsTable.prayerFeedId, f.id));
+
+      let pruned = 0;
+      for (const m of moments) {
+        const tokens = await db
+          .select({ id: momentUserTokensTable.id, email: momentUserTokensTable.email })
+          .from(momentUserTokensTable)
+          .where(eq(momentUserTokensTable.momentId, m.id));
+        if (tokens.length === 0) continue;
+        // Organizer = smallest token id, always preserved.
+        const organizerId = tokens.reduce((min, t) => (t.id < min.id ? t : min), tokens[0]).id;
+        const orphans = tokens.filter(t =>
+          t.id !== organizerId && !allowed.has((t.email || "").toLowerCase()),
+        );
+        pruned += orphans.length;
+        if (apply && orphans.length > 0) {
+          await db.delete(momentUserTokensTable)
+            .where(inArray(momentUserTokensTable.id, orphans.map(o => o.id)));
+        }
+      }
+
+      if (apply && beforeCol !== realSubs) {
+        await db.update(prayerFeedsTable)
+          .set({ subscriberCount: realSubs })
+          .where(eq(prayerFeedsTable.id, f.id));
+      }
+
+      report.push({
+        feedId: f.id,
+        slug: f.slug,
+        title: f.title,
+        orphanTokensPruned: pruned,
+        subscriberCountBefore: beforeCol,
+        subscriberCountAfter: realSubs,
+      });
+    }
+
+    res.json({ applied: apply, report });
+  } catch (err) {
+    console.error("[admin/feed-repair] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 export default router;

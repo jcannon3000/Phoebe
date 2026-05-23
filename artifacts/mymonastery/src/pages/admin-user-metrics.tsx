@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -62,6 +63,18 @@ type FeedAudit = {
   feeds: FeedAuditRow[];
 };
 
+type FeedRepairResult = {
+  applied: boolean;
+  report: Array<{
+    feedId: number;
+    slug: string;
+    title: string;
+    orphanTokensPruned: number;
+    subscriberCountBefore: number;
+    subscriberCountAfter: number;
+  }>;
+};
+
 export default function AdminAppMetricsPage() {
   const { user } = useAuth();
   const { rawIsAdmin } = useBetaStatus();
@@ -73,11 +86,28 @@ export default function AdminAppMetricsPage() {
     staleTime: 60_000,
   });
 
+  const queryClient = useQueryClient();
   const { data: audit } = useQuery<FeedAudit>({
     queryKey: ["/api/admin/feed-audit"],
     queryFn: () => apiRequest("GET", "/api/admin/feed-audit"),
     enabled: !!user && rawIsAdmin,
     staleTime: 60_000,
+  });
+
+  // Repair: dry-run first (apply:false) to preview the prune counts,
+  // then apply:true to actually prune orphan tokens + resync the
+  // cached subscriber_count. We keep the latest report in state so
+  // the admin can read what would change before committing.
+  const [repairReport, setRepairReport] = useState<FeedRepairResult | null>(null);
+  const repair = useMutation({
+    mutationFn: (apply: boolean) =>
+      apiRequest("POST", "/api/admin/feed-repair", { apply }) as Promise<FeedRepairResult>,
+    onSuccess: (res) => {
+      setRepairReport(res);
+      if (res.applied) {
+        queryClient.invalidateQueries({ queryKey: ["/api/admin/feed-audit"] });
+      }
+    },
   });
 
   if (!user) return null;
@@ -242,6 +272,63 @@ export default function AdminAppMetricsPage() {
                 </div>
               ))}
             </div>
+
+            {/* Repair controls — dry-run preview then apply. Prunes
+                orphan feed tokens (people praying without a
+                subscription or bound-group membership) and resyncs
+                the cached subscriber_count column. */}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => repair.mutate(false)}
+                disabled={repair.isPending}
+                className="text-[12px] font-medium px-3 py-2 rounded-xl transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{
+                  background: "rgba(46,107,64,0.18)",
+                  border: "1px solid rgba(46,107,64,0.4)",
+                  color: "#C8D4C0",
+                  fontFamily: SPACE_GROTESK,
+                }}
+              >
+                {repair.isPending ? "Working…" : "Preview repair (dry run)"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== "undefined" && !window.confirm("Prune orphan feed tokens and resync subscriber counts? This revokes feed access for anyone who isn't a subscriber or bound-group member.")) return;
+                  repair.mutate(true);
+                }}
+                disabled={repair.isPending}
+                className="text-[12px] font-medium px-3 py-2 rounded-xl transition-opacity hover:opacity-90 disabled:opacity-50"
+                style={{
+                  background: "rgba(193,154,58,0.18)",
+                  border: "1px solid rgba(193,154,58,0.45)",
+                  color: "#E8B872",
+                  fontFamily: SPACE_GROTESK,
+                }}
+              >
+                Apply repair
+              </button>
+            </div>
+
+            {repairReport && (
+              <div
+                className="mt-3 rounded-xl px-4 py-3"
+                style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
+              >
+                <p className="text-[12px] font-semibold mb-1" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+                  {repairReport.applied ? "Repair applied" : "Dry run — nothing changed yet"}
+                </p>
+                {repairReport.report.map((r) => (
+                  <p key={r.feedId} className="text-[12px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                    {r.title}: {r.orphanTokensPruned} orphan token{r.orphanTokensPruned === 1 ? "" : "s"}
+                    {r.subscriberCountBefore !== r.subscriberCountAfter && (
+                      <> · subscriber_count {r.subscriberCountBefore} → {r.subscriberCountAfter}</>
+                    )}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
