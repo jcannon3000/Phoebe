@@ -229,7 +229,7 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
                 Contemplation
               </p>
               <p className="text-[22px] leading-[1.4] font-medium italic mb-8" style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif" }}>
-                How long would you like to sit?
+                How long would you like to pray?
               </p>
 
               {!customMode ? (

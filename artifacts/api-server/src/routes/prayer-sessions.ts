@@ -93,15 +93,41 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
 });
 
 // GET /api/me/contemplation-stats — the viewer's own contemplation
-// totals, for the Contemplation page. Sums durationSeconds over the
-// "contemplation" surface: all-time, the rolling 7 days, and a session
-// count. Cheap — covered by the (user_id, ended_at) index.
+// totals for the Contemplation page: today, this week (rolling 7 days),
+// and all time, plus a session count. Cheap — covered by the
+// (user_id, ended_at) index.
+//
+// "Today" is the user's LOCAL calendar day, which the server can't know
+// on its own, so the client passes its local midnight as ?todaySince=
+// (ISO). We fall back to UTC midnight if it's missing or unparseable —
+// off by a few hours at worst, never wrong by a day for most users.
 router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-    const [totals] = await db
+    const todaySinceParam = typeof req.query.todaySince === "string" ? new Date(req.query.todaySince) : null;
+    const todaySince = todaySinceParam && !Number.isNaN(todaySinceParam.getTime())
+      ? todaySinceParam
+      : new Date(new Date().setUTCHours(0, 0, 0, 0));
+
+    const sumSince = async (since: Date | null): Promise<number> => {
+      const conds = [
+        eq(prayerSessionsTable.userId, sessionUserId),
+        eq(prayerSessionsTable.surface, "contemplation"),
+      ];
+      if (since) conds.push(gte(prayerSessionsTable.endedAt, since));
+      const [row] = await db
+        .select({
+          seconds: sql<number>`COALESCE(SUM(${prayerSessionsTable.durationSeconds}), 0)::int`,
+          count: sql<number>`COUNT(*)::int`,
+        })
+        .from(prayerSessionsTable)
+        .where(and(...conds));
+      return row?.seconds ?? 0;
+    };
+
+    const [allRow] = await db
       .select({
         totalSeconds: sql<number>`COALESCE(SUM(${prayerSessionsTable.durationSeconds}), 0)::int`,
         sessionCount: sql<number>`COUNT(*)::int`,
@@ -111,20 +137,16 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
         eq(prayerSessionsTable.userId, sessionUserId),
         eq(prayerSessionsTable.surface, "contemplation"),
       ));
-    const [week] = await db
-      .select({
-        weekSeconds: sql<number>`COALESCE(SUM(${prayerSessionsTable.durationSeconds}), 0)::int`,
-      })
-      .from(prayerSessionsTable)
-      .where(and(
-        eq(prayerSessionsTable.userId, sessionUserId),
-        eq(prayerSessionsTable.surface, "contemplation"),
-        gte(prayerSessionsTable.endedAt, weekAgo),
-      ));
+    const [todaySeconds, weekSeconds] = await Promise.all([
+      sumSince(todaySince),
+      sumSince(weekAgo),
+    ]);
+
     res.json({
-      totalSeconds: totals?.totalSeconds ?? 0,
-      weekSeconds: week?.weekSeconds ?? 0,
-      sessionCount: totals?.sessionCount ?? 0,
+      todaySeconds,
+      weekSeconds,
+      totalSeconds: allRow?.totalSeconds ?? 0,
+      sessionCount: allRow?.sessionCount ?? 0,
     });
   } catch (err) {
     console.error("[/me/contemplation-stats GET] failed:", err);

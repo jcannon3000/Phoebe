@@ -13,7 +13,7 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 
-type Stats = { totalSeconds: number; weekSeconds: number; sessionCount: number };
+type Stats = { todaySeconds: number; weekSeconds: number; totalSeconds: number; sessionCount: number };
 
 // "42 min", "1h 12m", "—" for zero.
 function humanMinutes(seconds: number): string {
@@ -43,9 +43,18 @@ function StatTile({ label, value }: { label: string; value: string }) {
 
 export default function ContemplationPage() {
   const [timerOpen, setTimerOpen] = useState(false);
+  // Local midnight so the server can scope "today" to the user's
+  // calendar day rather than UTC. Stable within a day; keyed into the
+  // query so it refetches cleanly across a midnight rollover.
+  const todaySince = (() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  })();
   const { data: stats } = useQuery<Stats>({
-    queryKey: ["/api/me/contemplation-stats"],
-    queryFn: () => apiRequest("GET", "/api/me/contemplation-stats") as Promise<Stats>,
+    queryKey: ["/api/me/contemplation-stats", todaySince.slice(0, 10)],
+    queryFn: () =>
+      apiRequest("GET", `/api/me/contemplation-stats?todaySince=${encodeURIComponent(todaySince)}`) as Promise<Stats>,
   });
 
   return (
@@ -68,11 +77,11 @@ export default function ContemplationPage() {
           </div>
         </div>
 
-        {/* Stats — this week + all time + sessions. */}
+        {/* Stats — today / this week / all time. */}
         <div className="flex gap-3 mb-6">
+          <StatTile label="today" value={humanMinutes(stats?.todaySeconds ?? 0)} />
           <StatTile label="this week" value={humanMinutes(stats?.weekSeconds ?? 0)} />
           <StatTile label="all time" value={humanMinutes(stats?.totalSeconds ?? 0)} />
-          <StatTile label={stats?.sessionCount === 1 ? "sitting" : "sittings"} value={String(stats?.sessionCount ?? 0)} />
         </div>
 
         <button
