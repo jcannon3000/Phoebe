@@ -45,6 +45,11 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
   const startedAtRef = useRef<Date | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const recordedRef = useRef(false);
+  // Guards finish() against a double-call: the countdown interval can
+  // tick once more between `left <= 0` firing finish() and the phase
+  // state actually flipping (the `phase` check inside finish reads a
+  // stale closure value), which would double-strike the ending bell.
+  const finishedRef = useRef(false);
 
   // ── Wake lock — keep the screen on during a sit. Re-acquired on
   // foreground because the OS auto-releases it when the app backgrounds.
@@ -79,6 +84,7 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
       setPhase("picker");
       setCustomMode(false);
       recordedRef.current = false;
+      finishedRef.current = false;
     } else {
       releaseWakeLock();
     }
@@ -122,6 +128,7 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
     setRemaining(total);
     setSatSeconds(0);
     recordedRef.current = false;
+    finishedRef.current = false;
     startedAtRef.current = new Date();
     endAtRef.current = Date.now() + total * 1000;
     setPhase("running");
@@ -133,7 +140,8 @@ export function ContemplationTimer({ open, onClose }: { open: boolean; onClose: 
   // the time actually sat (full length on a natural finish; elapsed on
   // an early end).
   function finish(seconds: number) {
-    if (phase === "complete") return;
+    if (finishedRef.current) return;
+    finishedRef.current = true;
     releaseWakeLock();
     setSatSeconds(Math.round(seconds));
     recordSession(seconds);
