@@ -300,7 +300,20 @@ export default function BetaAdminPage() {
             )}
           </div>
           {addMutation.isError && (
-            <p className="text-xs mt-2" style={{ color: "#E57373" }}>Failed to add user.</p>
+            <p className="text-xs mt-2" style={{ color: "#E57373" }}>
+              {/* Surface the actual server error so admins can act on it
+                  (e.g. "already a beta user", "couldn't reach DB"). The
+                  apiRequest wrapper throws ApiError with .message set to
+                  the server's `error` field; we fall back to a generic
+                  line for anything that doesn't carry one. */}
+              {(() => {
+                const err = addMutation.error as unknown;
+                const msg = err && typeof err === "object" && "message" in err
+                  ? String((err as { message?: unknown }).message ?? "")
+                  : "";
+                return msg.trim() || "Failed to add user.";
+              })()}
+            </p>
           )}
         </div>
 

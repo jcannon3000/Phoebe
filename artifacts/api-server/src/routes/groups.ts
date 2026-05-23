@@ -3126,7 +3126,22 @@ router.post("/beta/users", async (req, res): Promise<void> => {
     if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
 
     const emailLower = parsed.data.email.toLowerCase();
-    const [existing] = await db.select({ id: betaUsersTable.id, email: betaUsersTable.email }).from(betaUsersTable).where(eq(betaUsersTable.email, emailLower));
+
+    // Case-insensitive existence check on beta_users. The legacy
+    // version compared exact-case, which let mixed-case duplicates
+    // through (someone added with "Anabelle.Helsell@…" then a
+    // re-add at the all-lowercase form would hit the UNIQUE
+    // constraint on insert and 500). Now: LOWER(...) on both sides.
+    const [existing] = await db
+      .select({
+        id: betaUsersTable.id,
+        email: betaUsersTable.email,
+        name: betaUsersTable.name,
+        isAdmin: betaUsersTable.isAdmin,
+        createdAt: betaUsersTable.createdAt,
+      })
+      .from(betaUsersTable)
+      .where(sql`LOWER(${betaUsersTable.email}) = ${emailLower}`);
     if (existing) { res.json({ user: existing, alreadyExists: true }); return; }
 
     // Also create the full users row if this email has never been seen.
@@ -3135,11 +3150,16 @@ router.post("/beta/users", async (req, res): Promise<void> => {
     // logged in themselves. When the real person signs up later, the
     // Google auth upsert (routes/auth.ts) matches by email and links
     // their Google ID to the existing row — no dup account created.
+    //
+    // Case-insensitive lookup for the same reason as above —
+    // existing users rows with mixed-case emails should be picked
+    // up rather than triggering a UNIQUE-constraint conflict on
+    // INSERT.
     let userAccountCreated = false;
     {
       const [byEmail] = await db.select({ id: usersTable.id })
         .from(usersTable)
-        .where(eq(usersTable.email, emailLower));
+        .where(sql`LOWER(${usersTable.email}) = ${emailLower}`);
       if (!byEmail) {
         const display = parsed.data.name?.trim() || emailLower.split("@")[0];
         await db.insert(usersTable).values({
@@ -3164,8 +3184,17 @@ router.post("/beta/users", async (req, res): Promise<void> => {
 
     res.json({ user: betaUser, userAccountCreated });
   } catch (err) {
+    // Surface the actual cause instead of the legacy "table not
+    // ready" string — the catch fired for any failure, so admins
+    // saw a misleading reason. Most common real-world causes:
+    // (a) FK violation if the admin's own users.id was deleted,
+    // (b) UNIQUE collision after a case-mismatched lookup (now
+    // patched above), (c) genuine DB outage. We log the full err
+    // server-side and return the message so the admin UI can show
+    // something actionable instead of a generic "Failed."
     console.error("POST /api/beta/users error:", err);
-    res.status(500).json({ error: "Table not ready — run schema push" });
+    const message = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: message || "Couldn't add this pilot user." });
   }
 });
 
