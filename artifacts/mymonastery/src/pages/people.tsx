@@ -115,6 +115,7 @@ function PersonCard({
   isPresent,
   iPrayFor,
   prayForMe,
+  isFellow,
   activePrayerFor,
   activePrayerForMe,
 }: {
@@ -122,6 +123,11 @@ function PersonCard({
   isPresent: boolean;
   iPrayFor: boolean;
   prayForMe: boolean;
+  // True when the viewer + this person are linked via a Fellow row.
+  // Drives a small "Fellow" pill on the card so a user can tell
+  // who they connected with via a share-link Amen flow vs through
+  // a normal community / letter path.
+  isFellow: boolean;
   activePrayerFor: MyActivePrayerFor | null;
   activePrayerForMe: PrayerForMe | null;
 }) {
@@ -241,6 +247,20 @@ function PersonCard({
                     className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0"
                     style={{ backgroundColor: "#C19A3A", boxShadow: "0 0 6px rgba(193,154,58,0.6)" }}
                   />
+                )}
+                {isFellow && (
+                  <span
+                    title="Connected as Fellows"
+                    className="text-[10px] font-semibold uppercase tracking-[0.12em] px-1.5 py-0.5 rounded-full flex-shrink-0"
+                    style={{
+                      background: "rgba(46,107,64,0.22)",
+                      color: "rgba(168,197,160,0.95)",
+                      border: "1px solid rgba(46,107,64,0.4)",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                    }}
+                  >
+                    Fellow
+                  </span>
                 )}
               </div>
               <RotatingLine lines={flapLines} />
@@ -408,6 +428,30 @@ export default function People() {
   const emptyMomentIds = useMemo(() => new Set<number>(), []);
   const { presentUsers } = useGardenSocket(user, gardenEmails, emptyMomentIds);
   const presentEmails = useMemo(() => new Set(presentUsers.map(u => u.email)), [presentUsers]);
+
+  // Fellows — durable person-to-person connections created when
+  // someone signs up via a /p/:token share-link Amen. Already part
+  // of the /api/people garden, so they appear in the main list; we
+  // pull the dedicated list too so we can render a small "Fellow"
+  // badge on their card and (later) gate a manage-fellows surface.
+  type Fellow = {
+    userId: number;
+    name: string | null;
+    email: string;
+    avatarUrl: string | null;
+    source: string;
+    createdAt: string | null;
+  };
+  const { data: fellowsData } = useQuery<{ fellows: Fellow[] }>({
+    queryKey: ["/api/fellows"],
+    queryFn: () => apiRequest("GET", "/api/fellows"),
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+  const fellowEmails = useMemo(
+    () => new Set((fellowsData?.fellows ?? []).map(f => f.email.toLowerCase())),
+    [fellowsData],
+  );
 
   // Subtle "pray for" indicators — both directions. Keyed by lowercase email.
   const { data: iPrayFor = [] } = useQuery<MyActivePrayerFor[]>({
@@ -641,6 +685,7 @@ export default function People() {
                     isPresent={presentEmails.has(person.email)}
                     iPrayFor={iPrayForEmails.has(person.email.toLowerCase())}
                     prayForMe={prayForMeEmails.has(person.email.toLowerCase())}
+                    isFellow={fellowEmails.has(person.email.toLowerCase())}
                     activePrayerFor={
                       iPrayFor.find(
                         p => {

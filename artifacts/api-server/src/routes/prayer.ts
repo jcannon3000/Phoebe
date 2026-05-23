@@ -1305,8 +1305,14 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
   // request by Sara") with the same "held in prayer" framing — a
   // second batched push the same day would be a double-tap. The
   // daily batched cadence kicks in on day 1 and beyond.
+  //
+  // Recipients are the owner PLUS every active tagged user (skipping
+  // the pray-er themselves so a self-amen never schedules a push for
+  // the amener). Each row uses the recipient's own timezone for the
+  // dayKey so "today" lines up with their lived day, not the owner's.
   if (!isOwnerSelfAmen && ownerLocalYmd && !firstEverAmenWasToday) {
     try {
+      // Owner row (existing behaviour).
       await db
         .insert(prayerHeldNotificationsTable)
         .values({
@@ -1318,10 +1324,49 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
           amenCount: 1,
         })
         .onConflictDoUpdate({
-          target: [prayerHeldNotificationsTable.requestId, prayerHeldNotificationsTable.dayKey],
+          target: [prayerHeldNotificationsTable.requestId, prayerHeldNotificationsTable.recipientId, prayerHeldNotificationsTable.dayKey],
           set: { amenCount: sql`${prayerHeldNotificationsTable.amenCount} + 1` },
           where: isNull(prayerHeldNotificationsTable.sentAt),
         });
+
+      // Tagged-user rows. Look up each tagged user's tz so the
+      // dayKey is in their own local day. Skip the pray-er
+      // themselves (self-amen suppression) + the owner (already
+      // handled above; a tag on yourself is filtered at insert
+      // time but we belt-and-suspender here).
+      const taggedRows = await db
+        .select({
+          uid: prayerRequestTagsTable.taggedUserId,
+          tz: usersTable.timezone,
+        })
+        .from(prayerRequestTagsTable)
+        .leftJoin(usersTable, eq(usersTable.id, prayerRequestTagsTable.taggedUserId))
+        .where(and(
+          eq(prayerRequestTagsTable.requestId, id),
+          isNull(prayerRequestTagsTable.removedAt),
+        ));
+      const eligibleTags = taggedRows.filter(t =>
+        t.uid !== sessionUserId && t.uid !== request.ownerId,
+      );
+      for (const t of eligibleTags) {
+        const tz = t.tz || "UTC";
+        const taggedYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+        await db
+          .insert(prayerHeldNotificationsTable)
+          .values({
+            requestId: id,
+            recipientId: t.uid,
+            dayKey: taggedYmd,
+            firstAmenAt: new Date(),
+            firstAmenUserId: sessionUserId,
+            amenCount: 1,
+          })
+          .onConflictDoUpdate({
+            target: [prayerHeldNotificationsTable.requestId, prayerHeldNotificationsTable.recipientId, prayerHeldNotificationsTable.dayKey],
+            set: { amenCount: sql`${prayerHeldNotificationsTable.amenCount} + 1` },
+            where: isNull(prayerHeldNotificationsTable.sentAt),
+          });
+      }
     } catch (err) {
       logger.warn({ err, requestId: id }, "[prayer/amen] held-in-prayer upsert failed");
     }

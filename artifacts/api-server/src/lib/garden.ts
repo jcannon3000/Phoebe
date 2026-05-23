@@ -17,9 +17,22 @@
 //      community. Mirror of the existing rule that group members
 //      can't see hidden_admins.
 
-import { and, eq, inArray, sql } from "drizzle-orm";
-import { db, groupMembersTable, usersTable } from "@workspace/db";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { db, groupMembersTable, usersTable, fellowsTable } from "@workspace/db";
 import { getCorrespondentUserIds } from "./correspondents";
+
+// Helper — returns the user IDs of the viewer's Fellows. Each Fellow
+// pair is stored as two directional rows (A→B, B→A) so a single-side
+// `WHERE user_id = me` returns the right set without needing
+// `OR fellow_user_id = me`. Exported so other surfaces (push fan-out,
+// /api/people garden union) can reuse it.
+export async function getFellowUserIds(userId: number): Promise<number[]> {
+  const rows = await db
+    .select({ id: fellowsTable.fellowUserId })
+    .from(fellowsTable)
+    .where(eq(fellowsTable.userId, userId));
+  return rows.map(r => r.id).filter(id => id !== userId);
+}
 
 export async function getGardenUserIds(userId: number): Promise<number[]> {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
@@ -111,6 +124,21 @@ export async function getGardenUserIds(userId: number): Promise<number[]> {
   for (const id of correspondentIds) {
     if (id !== userId) groupPeerIds.add(id);
   }
+
+  // Fellows — durable person-to-person link created when someone
+  // signs up via a /p/:token share-link Amen. Fellows see each
+  // other's future prayer requests without needing to share a
+  // community, which is the whole point of the share-link primitive.
+  // Hidden-admin veto below still applies (rule 3): a Fellow who is
+  // hidden_admin in any of the viewer's groups gets dropped, same
+  // as a community peer would. This guards the rare case where two
+  // people are both Fellows AND share a community where one is
+  // hidden — the hidden-admin contract beats the Fellow grant.
+  const fellowIds = await getFellowUserIds(userId);
+  for (const id of fellowIds) {
+    if (id !== userId) groupPeerIds.add(id);
+  }
+  void isNull; // reserved for future "ignore soft-removed fellows" check
 
   if (vetoLookupGroupIds.length > 0 && groupPeerIds.size > 0) {
     const vetoRows = await db

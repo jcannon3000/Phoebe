@@ -5,6 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { playOpeningSwell, triggerAmenFeedback, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { RequestWordField } from "@/components/RequestWordField";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
+import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 
 // Deep-link landing for "X is asking for your prayers" (and the
 // other prayer-request pushes — first amen, third amen, word of
@@ -228,6 +229,29 @@ export default function PrayerRequestDetailPage() {
     },
   });
 
+  // Owner-side tag management. addTags POSTs the requested userIds;
+  // the server uses ON CONFLICT DO UPDATE to revive soft-removed
+  // rows or insert fresh. We use the same DELETE endpoint as
+  // removeMyTag (owner is also authorized server-side) but key the
+  // mutation off the target user id so the UI can show per-row
+  // pending state if multiple removals overlap.
+  const addTags = useMutation({
+    mutationFn: (userIds: number[]) =>
+      apiRequest("POST", `/api/prayer-requests/${id}/tags`, { userIds }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    },
+  });
+  const removeTag = useMutation({
+    mutationFn: (userId: number) =>
+      apiRequest("DELETE", `/api/prayer-requests/${id}/tags/${userId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+    },
+  });
+
   // Paint Safari/WebView background to the slide bg + play the opening
   // swell + medium haptic on arrival. We do NOT lock body scroll here
   // — the slideshow does because each slide fits in one viewport, but
@@ -394,6 +418,10 @@ export default function PrayerRequestDetailPage() {
               <TaggedRow
                 tags={data.tags}
                 viewerIsTagged={data.viewerIsTagged}
+                ownerEditing={false}
+                ownerAddTags={() => undefined}
+                ownerRemoveTag={() => undefined}
+                ownerUserId={data.ownerId}
                 onRemoveSelf={(uid) => removeMyTag.mutate(uid)}
                 removingId={removeMyTag.isPending ? removeMyTag.variables ?? null : null}
               />
@@ -456,17 +484,21 @@ export default function PrayerRequestDetailPage() {
               {data.body}
             </p>
 
-            {/* Tagged users — the people the owner named in this
-                prayer. Read-only for the owner (they tagged them at
-                compose; future enhancement: a manage-tags affordance). */}
-            {data.tags.length > 0 && (
-              <TaggedRow
-                tags={data.tags}
-                viewerIsTagged={false}
-                onRemoveSelf={() => undefined}
-                removingId={null}
-              />
-            )}
+            {/* Tagged users — read row + per-chip remove + "+ Tag
+                someone" pill. Owner can manage tags after creation:
+                tap × on a chip to untag (soft-delete), tap + Tag
+                someone to open a picker. */}
+            <TaggedRow
+              tags={data.tags}
+              viewerIsTagged={false}
+              ownerEditing
+              ownerAddTags={(ids) => addTags.mutate(ids)}
+              ownerRemoveTag={(uid) => removeTag.mutate(uid)}
+              ownerUserId={data.ownerId}
+              removingId={removeTag.isPending ? removeTag.variables ?? null : null}
+              onRemoveSelf={() => undefined}
+            />
+
 
             {/* Latest amen — pulses the freshest pray-er, the avatar
                 the first/third-amen pushes are heralding. */}
@@ -689,63 +721,184 @@ export default function PrayerRequestDetailPage() {
 
 // ── Tagged row ────────────────────────────────────────────────────────
 //
-// Shared component for both viewer-classes (owner + recipient). Renders
-// the small "TAGGED" eyebrow, an avatar-and-name row for each user the
-// owner named in this prayer, and — when `viewerIsTagged` is true —
-// a "Remove me" affordance so a tagged user can opt out without
-// confronting the owner.
+// Shared component for both viewer-classes (owner + recipient).
+//
+// Three render shapes:
+//   • Recipient viewer (default) — read-only chip row.
+//   • Recipient who happens to be tagged — chip row + "Remove me".
+//   • Owner editing — chip row + "×" on each chip + "+ Tag someone"
+//     pill that opens an inline picker.
 function TaggedRow({
   tags,
   viewerIsTagged,
+  ownerEditing,
+  ownerAddTags,
+  ownerRemoveTag,
+  ownerUserId,
   onRemoveSelf,
   removingId,
 }: {
   tags: TaggedUser[];
   viewerIsTagged: boolean;
+  ownerEditing: boolean;
+  ownerAddTags: (userIds: number[]) => void;
+  ownerRemoveTag: (userId: number) => void;
+  ownerUserId: number;
   onRemoveSelf: (userId: number) => void;
   removingId: number | null;
 }) {
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // Picker draws from the owner's people garden — same set the
+  // compose form uses. We're rendering the owner-edit picker only
+  // when ownerEditing is true, so usePeople(ownerUserId) is the
+  // right scope (people the owner can already see).
+  const { data: people = [] } = usePeople(ownerEditing ? ownerUserId : undefined);
+  const taggedIds = useMemo(() => new Set(tags.map(t => t.id)), [tags]);
+  const eligible = useMemo(
+    () => people.filter((p): p is PersonSummary & { userId: number } =>
+      typeof p.userId === "number" && !taggedIds.has(p.userId),
+    ),
+    [people, taggedIds],
+  );
+
+  // Don't render anything when there's no row and no edit affordance
+  // (recipient view + no tags = nothing to surface).
+  if (tags.length === 0 && !ownerEditing) return null;
+
   return (
     <div className="w-full flex flex-col items-center gap-2 mt-1">
-      <p
-        className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-        style={{ color: "rgba(143,175,150,0.45)" }}
-      >
-        Tagged
-      </p>
+      {tags.length > 0 && (
+        <p
+          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+          style={{ color: "rgba(143,175,150,0.45)" }}
+        >
+          Tagged
+        </p>
+      )}
       <div className="flex items-center justify-center flex-wrap gap-2">
-        {tags.map((t) => (
-          <div
-            key={t.id}
-            className="flex items-center gap-2 px-2.5 py-1 rounded-full"
+        {tags.map((t) => {
+          const removingThis = removingId === t.id;
+          return (
+            <div
+              key={t.id}
+              className="flex items-center gap-2 px-2.5 py-1 rounded-full"
+              style={{
+                background: "rgba(46,107,64,0.18)",
+                border: "1px solid rgba(46,107,64,0.4)",
+                opacity: removingThis ? 0.5 : 1,
+              }}
+            >
+              {t.avatarUrl ? (
+                <img
+                  src={t.avatarUrl}
+                  alt={t.name ?? ""}
+                  className="w-6 h-6 rounded-full object-cover"
+                />
+              ) : (
+                <div
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
+                  style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                >
+                  {(t.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+                </div>
+              )}
+              <span
+                className="text-[13px]"
+                style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+              >
+                {t.name ?? "Someone"}
+              </span>
+              {ownerEditing && (
+                <button
+                  type="button"
+                  onClick={() => ownerRemoveTag(t.id)}
+                  disabled={removingThis}
+                  aria-label={`Untag ${t.name ?? "this person"}`}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: "rgba(143,175,150,0.85)",
+                    cursor: removingThis ? "default" : "pointer",
+                    padding: 0,
+                    marginLeft: 2,
+                    fontSize: 14,
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          );
+        })}
+        {ownerEditing && (
+          <button
+            type="button"
+            onClick={() => setPickerOpen(o => !o)}
+            className="text-[12px] font-medium px-3 py-1 rounded-full transition-opacity hover:opacity-90"
             style={{
-              background: "rgba(46,107,64,0.18)",
-              border: "1px solid rgba(46,107,64,0.4)",
+              background: "rgba(46,107,64,0.10)",
+              border: "1px dashed rgba(46,107,64,0.5)",
+              color: "rgba(168,197,160,0.9)",
+              fontFamily: "'Space Grotesk', sans-serif",
             }}
           >
-            {t.avatarUrl ? (
-              <img
-                src={t.avatarUrl}
-                alt={t.name ?? ""}
-                className="w-6 h-6 rounded-full object-cover"
-              />
-            ) : (
-              <div
-                className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
-                style={{ background: "#1A4A2E", color: "#A8C5A0" }}
-              >
-                {(t.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
-              </div>
-            )}
-            <span
-              className="text-[13px]"
-              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              {t.name ?? "Someone"}
-            </span>
-          </div>
-        ))}
+            🏷️  + Tag someone
+          </button>
+        )}
       </div>
+      {ownerEditing && pickerOpen && (
+        <div
+          className="mt-2 rounded-xl w-full"
+          style={{
+            background: "#0F2818",
+            border: "1px solid rgba(46,107,64,0.35)",
+            padding: 8,
+            maxWidth: 380,
+          }}
+        >
+          {eligible.length === 0 ? (
+            <p className="text-xs italic text-center py-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+              Everyone in your garden is already tagged here.
+            </p>
+          ) : (
+            <div style={{ maxHeight: 200, overflowY: "auto" }}>
+              {eligible.map(p => (
+                <button
+                  key={p.userId}
+                  type="button"
+                  onClick={() => {
+                    ownerAddTags([p.userId]);
+                    setPickerOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-2 py-2 rounded-lg text-left transition-colors"
+                  style={{ background: "transparent" }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(200,212,192,0.06)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
+                >
+                  {p.avatarUrl ? (
+                    <img
+                      src={p.avatarUrl}
+                      alt={p.name ?? ""}
+                      className="w-7 h-7 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold"
+                      style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                    >
+                      {(p.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+                    </div>
+                  )}
+                  <span className="text-sm flex-1 truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    {p.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {viewerIsTagged && (
         <RemoveSelfButton
           tags={tags}

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, or, sql, inArray, and, isNull, ne, gt } from "drizzle-orm";
-import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable } from "@workspace/db";
+import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable, fellowsTable } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
 import { getCorrespondentUserIds } from "../lib/correspondents";
 
@@ -748,6 +748,84 @@ router.get("/people/:email", async (req, res): Promise<void> => {
     sharedGroups,
     activePrayerRequest,
   });
+});
+
+// ── Fellows ──────────────────────────────────────────────────────────
+//
+// A Fellow link is a durable person-to-person connection created
+// when a visitor lands on /p/:token, taps Amen, and signs up. The
+// fellows table stores BOTH directions (A→B and B→A) so a single
+// WHERE user_id = me returns the viewer's fellows without an OR
+// across two columns.
+//
+// GET    /api/fellows       — list my fellows + when they were added
+// DELETE /api/fellows/:userId — unfellow (removes both directions)
+//
+// Fellows aren't a tier — they're a visibility / notification graft on
+// top of garden membership (see lib/garden.ts: getFellowUserIds adds
+// them to the prayer-request feed and the /api/people garden). So the
+// only management surface a user needs is "see them" and "remove
+// them"; v1 doesn't have a manual-add flow.
+
+router.get("/fellows", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const rows = await db
+      .select({
+        fellowUserId: fellowsTable.fellowUserId,
+        source: fellowsTable.source,
+        createdAt: fellowsTable.createdAt,
+        name: usersTable.name,
+        email: usersTable.email,
+        avatarUrl: usersTable.avatarUrl,
+      })
+      .from(fellowsTable)
+      .innerJoin(usersTable, eq(usersTable.id, fellowsTable.fellowUserId))
+      .where(eq(fellowsTable.userId, sessionUserId))
+      .orderBy(desc(fellowsTable.createdAt));
+
+    res.json({
+      fellows: rows.map(r => ({
+        userId: r.fellowUserId,
+        name: r.name,
+        email: r.email,
+        avatarUrl: r.avatarUrl,
+        source: r.source,
+        createdAt: r.createdAt?.toISOString() ?? null,
+      })),
+    });
+  } catch (err) {
+    console.error("[fellows GET] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+router.delete("/fellows/:userId", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const otherId = parseInt(req.params.userId, 10);
+  if (!Number.isFinite(otherId) || otherId === sessionUserId) {
+    res.status(400).json({ error: "Invalid user id" });
+    return;
+  }
+
+  try {
+    // Delete BOTH directions so the other person also stops seeing
+    // the viewer's requests. The pair was created symmetrically at
+    // signup time (two rows); we tear it down the same way.
+    await db
+      .delete(fellowsTable)
+      .where(or(
+        and(eq(fellowsTable.userId, sessionUserId), eq(fellowsTable.fellowUserId, otherId)),
+        and(eq(fellowsTable.userId, otherId), eq(fellowsTable.fellowUserId, sessionUserId)),
+      ));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[fellows DELETE] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
 });
 
 export default router;

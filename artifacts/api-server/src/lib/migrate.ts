@@ -994,6 +994,16 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_phn_request_day ON prayer_held_notifications (request_id, day_key)`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_phn_pending ON prayer_held_notifications (sent_at, first_amen_at)`);
+    // Recipient-scoped unique. The original index above was
+    // (request_id, day_key) — fine when only the owner ever got
+    // batched. We now also enqueue rows for tagged users (the
+    // "praying for my friend Matthew" feature), so a SECOND row per
+    // (request, day) with a different recipient_id is legitimate.
+    // Add a wider index covering all three columns and drop the
+    // narrower one. IF NOT EXISTS / IF EXISTS make this safe on
+    // re-deploys.
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_phn_request_recipient_day ON prayer_held_notifications (request_id, recipient_id, day_key)`);
+    await run(client, `DROP INDEX IF EXISTS uniq_phn_request_day`);
 
     // ── Group service schedules ───────────────────────────────────────────
     // A community can have one recurring service schedule — e.g. "Sunday
