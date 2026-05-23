@@ -3244,8 +3244,12 @@ export default function PrayerModePage() {
         promise
           .then(() => {
             // Keep the detail page + dashboard fresh so the new amen shows
-            // up the moment the viewer lands there.
+            // up the moment the viewer lands there. The feed-subscribed
+            // query backs the dashboard FeedPrayerCard's prayedToday /
+            // New-Prayers state, so it has to refresh too when the
+            // amen lands on a feed-scoped intercession.
             queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
           })
           .catch(() => {
             /* swallow — best-effort, handleDone will retry if still pending */
@@ -3360,6 +3364,10 @@ export default function PrayerModePage() {
       ),
     );
     queryClient.invalidateQueries({ queryKey: ["/api/moments"] });
+    // Feed-scoped intercessions (queue=feed walk) back the dashboard
+    // FeedPrayerCard — refresh that query so it flips to "Completed"
+    // and clears the "New Prayers" pulse when the user lands home.
+    queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
 
     // Native haptic on finish — a quiet "success" buzz so the user's
     // body knows the list is complete even before they look back at
