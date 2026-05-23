@@ -328,6 +328,59 @@ function pickConcludingBlessing(date: Date): { ref: string; text: string } {
   return CONCLUDING_BLESSINGS[day % CONCLUDING_BLESSINGS.length];
 }
 
+// ── Invitatory rotation ─────────────────────────────────────────────────────────
+//
+// BCP 1979, Morning Prayer Rite II (pp. 80-83): after "Lord, open our
+// lips" the office uses "one of the Invitatory Psalms, Venite or
+// Jubilate." In Easter Week the Pascha Nostrum ("Christ our Passover")
+// is said *in place of* an Invitatory Psalm, and it "may also be used
+// daily until the Day of Pentecost."
+//
+// The old logic pinned exactly ONE invitatory per season — Pascha
+// Nostrum every single day of Eastertide, Jubilate every day of Lent,
+// Venite the rest of the year — so a daily reader never saw any
+// variety. We rotate deterministically by day-of-year instead: the
+// choice is the same for everyone praying a given date (and matches the
+// per-date office cache) while still cycling the options:
+//
+//   • Easter Week (Easter Day → the Saturday after): Pascha Nostrum
+//     daily — the one place the rubric *requires* it.
+//   • Rest of Eastertide (through the Day of Pentecost): rotate
+//     Pascha Nostrum / Venite / Jubilate.
+//   • Every other day of the year: rotate Venite / Jubilate.
+//
+// If the day's own appointed psalm already IS Psalm 95 (Venite) or 100
+// (Jubilate), that option drops out so the office never prays the same
+// psalm twice in one sitting.
+type InvitatoryKey = "venite" | "jubilate" | "pascha_nostrum";
+
+function pickInvitatoryKey(
+  liturgicalDay: { season: string; weekInSeason: number },
+  date: Date,
+  appointedPsalmNumbers: number[],
+): InvitatoryKey {
+  // Easter Week — Pascha Nostrum stands in for the Invitatory Psalm.
+  if (liturgicalDay.season === "easter" && liturgicalDay.weekInSeason === 1) {
+    return "pascha_nostrum";
+  }
+
+  // Candidate pool — Eastertide folds Pascha Nostrum into the rotation.
+  let pool: InvitatoryKey[] =
+    liturgicalDay.season === "easter"
+      ? ["pascha_nostrum", "venite", "jubilate"]
+      : ["venite", "jubilate"];
+
+  // Don't double up on a psalm already appointed for the day.
+  if (appointedPsalmNumbers.includes(95)) pool = pool.filter((k) => k !== "venite");
+  if (appointedPsalmNumbers.includes(100)) pool = pool.filter((k) => k !== "jubilate");
+  if (pool.length === 0) pool = ["venite"]; // both appointed (vanishingly rare) — fall back
+
+  // Day-of-year rotation — same cadence + math as pickConcludingBlessing.
+  const start = Date.UTC(date.getUTCFullYear(), 0, 0);
+  const dayOfYear = Math.floor((date.getTime() - start) / 86_400_000);
+  return pool[dayOfYear % pool.length];
+}
+
 // ── Main Assembly ─────────────────────────────────────────────────────────────
 
 export async function assembleMorningPrayer(
@@ -380,23 +433,26 @@ export async function assembleMorningPrayer(
   const { psalms, lesson1, lesson2 } = getLectionaryReadings(liturgicalDay);
   const { afterOT, afterNT } = getCanticles(liturgicalDay);
 
+  // Parse appointed psalms up front — we keep both the bare number
+  // (used to look up the seeded psalm row) and the optional verse
+  // range, so partial appointments like "119:1-24" or "37:19-42" can
+  // be sliced down before rendering. The invitatory picker also reads
+  // the numbers to avoid doubling a psalm already appointed today.
+  const appointedPsalms = psalms
+    .map(parsePsalmRef)
+    .filter((p): p is NonNullable<typeof p> => p !== null);
+
   // Determine text keys needed
   const openingSentenceKey = pickOpeningSentenceKey(
     liturgicalDay.season,
     date.getDate(),
   );
 
-  let invitPsalmKey: string;
-  if (liturgicalDay.invitatorySeason === "easter") {
-    invitPsalmKey = "pascha_nostrum";
-  } else if (
-    liturgicalDay.invitatorySeason === "lent" ||
-    liturgicalDay.invitatorySeason === "holy_week"
-  ) {
-    invitPsalmKey = "jubilate";
-  } else {
-    invitPsalmKey = "venite";
-  }
+  const invitPsalmKey = pickInvitatoryKey(
+    liturgicalDay,
+    date,
+    appointedPsalms.map((p) => p.number),
+  );
 
   const suffragesKey = pickSuffragesKey(liturgicalDay.weekInSeason);
   const keysNeeded = [
@@ -413,14 +469,6 @@ export async function assembleMorningPrayer(
     liturgicalDay.collectKey,
     "general_thanksgiving",
   ];
-
-  // Parse appointed psalms — we keep both the bare number (used to
-  // look up the seeded psalm row) and the optional verse range, so
-  // partial-psalm appointments like "119:1-24" or "37:19-42" can be
-  // sliced down before rendering rather than dumping all 176 verses.
-  const appointedPsalms = psalms
-    .map(parsePsalmRef)
-    .filter((p): p is NonNullable<typeof p> => p !== null);
 
   const psalmKeys = [
     ...new Set([
