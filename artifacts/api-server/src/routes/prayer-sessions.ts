@@ -112,6 +112,12 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
     const todaySince = todaySinceParam && !Number.isNaN(todaySinceParam.getTime())
       ? todaySinceParam
       : new Date(new Date().setUTCHours(0, 0, 0, 0));
+    // Caller's IANA timezone — used so distinct days-sat are counted in
+    // local time (Postgres `AT TIME ZONE`). Validate the shape before it
+    // touches SQL; fall back to UTC on anything unexpected. Bad zone
+    // strings would otherwise throw at query time.
+    const tzRaw = typeof req.query.tz === "string" ? req.query.tz : "";
+    const tz = /^[A-Za-z0-9_+\-/]{1,64}$/.test(tzRaw) ? tzRaw : "UTC";
 
     const windowStats = async (since: Date | null): Promise<{ seconds: number; count: number; days: number }> => {
       const conds = [
@@ -123,10 +129,10 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
         .select({
           seconds: sql<number>`COALESCE(SUM(${prayerSessionsTable.durationSeconds}), 0)::int`,
           count: sql<number>`COUNT(*)::int`,
-          // Distinct calendar days sat (UTC). Approximate at a day
-          // boundary but close enough for a "per day" average; "today"
-          // is overridden to 1 below since it's definitionally one day.
-          days: sql<number>`COUNT(DISTINCT (${prayerSessionsTable.endedAt})::date)::int`,
+          // Distinct calendar days sat, in the caller's local timezone —
+          // so evening sits don't split across UTC midnight and inflate
+          // the day count (which deflated the per-day average).
+          days: sql<number>`COUNT(DISTINCT (${prayerSessionsTable.endedAt} AT TIME ZONE ${tz})::date)::int`,
         })
         .from(prayerSessionsTable)
         .where(and(...conds));

@@ -84,10 +84,20 @@ export default function ContemplationPage() {
     d.setHours(0, 0, 0, 0);
     return d.toISOString();
   })();
+  // IANA timezone so the server counts distinct days-sat in LOCAL time
+  // (not UTC) — otherwise evening sits straddle UTC midnight and the
+  // per-day average divides by an inflated day count.
+  const tz = (() => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; }
+    catch { return "UTC"; }
+  })();
   const { data: stats } = useQuery<Stats>({
-    queryKey: ["/api/me/contemplation-stats", todaySince.slice(0, 10)],
+    queryKey: ["/api/me/contemplation-stats", todaySince.slice(0, 10), tz],
     queryFn: () =>
-      apiRequest("GET", `/api/me/contemplation-stats?todaySince=${encodeURIComponent(todaySince)}`) as Promise<Stats>,
+      apiRequest(
+        "GET",
+        `/api/me/contemplation-stats?todaySince=${encodeURIComponent(todaySince)}&tz=${encodeURIComponent(tz)}`,
+      ) as Promise<Stats>,
   });
 
   return (
