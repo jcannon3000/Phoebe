@@ -2188,39 +2188,87 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
 export default function BcpDailyOfficePage() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
-  const [showOffice, setShowOffice] = useState<"morning" | "evening" | null>(null);
+  // All four liturgies live behind this one picker now (the Daily
+  // Devotions menu entry was folded in). null = show the chooser.
+  const [showMode, setShowMode] = useState<LiturgyMode | null>(null);
 
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
   }, [user, isLoading, setLocation]);
 
-  // Auto-resume the office viewer when /prayer-mode hands the user
-  // back here with ?mode=morning|evening — this keeps the
-  // intercessions handoff seamless instead of dumping the user on
-  // the picker mid-liturgy.
+  // Auto-resume the viewer when /prayer-mode hands the user back here
+  // with ?mode=… — keeps the intercessions handoff seamless instead of
+  // dumping them on the picker mid-liturgy. Accepts all four modes.
   useEffect(() => {
     const search = new URLSearchParams(window.location.search);
     const mode = search.get("mode");
-    if (mode === "morning" || mode === "evening") setShowOffice(mode);
+    if (mode === "morning" || mode === "evening" || mode === "morning-devotion" || mode === "early-evening-devotion") {
+      setShowMode(mode);
+    }
   }, []);
 
   if (isLoading || !user) return null;
 
-  if (showOffice === "morning") {
-    return <OfficeViewer office="morning" onBack={() => setShowOffice(null)} />;
-  }
-  if (showOffice === "evening") {
-    return <OfficeViewer office="evening" onBack={() => setShowOffice(null)} />;
+  if (showMode) {
+    return <OfficeViewer mode={showMode} onBack={() => setShowMode(null)} />;
   }
 
   const hour = new Date().getHours();
   const isMorning = hour < 14;
   const isEvening = hour >= 14;
 
+  type OfficeOption = {
+    mode: LiturgyMode;
+    emoji: string;
+    label: string;
+    sub: string;
+    now: boolean;
+  };
+  const fullOffice: OfficeOption[] = [
+    { mode: "morning", emoji: "🌅", label: "Morning Prayer", sub: "Rite II · the full Daily Office", now: isMorning },
+    { mode: "evening", emoji: "🌙", label: "Evening Prayer", sub: "Rite II · the full Daily Office", now: isEvening },
+  ];
+  const devotions: OfficeOption[] = [
+    { mode: "morning-devotion", emoji: "🌿", label: "Morning Devotion", sub: "A short devotion · BCP p. 137", now: isMorning },
+    { mode: "early-evening-devotion", emoji: "🌆", label: "Early Evening Devotion", sub: "A short devotion · BCP p. 139", now: isEvening },
+  ];
+
+  const OptionButton = ({ opt }: { opt: OfficeOption }) => (
+    <button
+      onClick={() => setShowMode(opt.mode)}
+      className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
+      style={{
+        background: opt.now ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.08)",
+        border: `1px solid ${opt.now ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.18)"}`,
+      }}
+    >
+      <div className="flex items-center gap-4">
+        <span className="text-3xl">{opt.emoji}</span>
+        <div className="flex-1">
+          <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+            {opt.label}
+          </p>
+          <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>{opt.sub}</p>
+          {opt.now && <p className="text-xs mt-1.5 font-medium" style={{ color: "#6FAF85" }}>Available now</p>}
+        </div>
+        <span className="text-sm" style={{ color: "#8FAF96" }}>→</span>
+      </div>
+    </button>
+  );
+
+  const SectionLabel = ({ children }: { children: string }) => (
+    <p
+      className="text-[11px] font-semibold uppercase tracking-[0.16em] mt-6 mb-2"
+      style={{ color: "rgba(143,175,150,0.5)", fontFamily: "'Space Grotesk', sans-serif" }}
+    >
+      {children}
+    </p>
+  );
+
   return (
     <Layout>
       <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
-        <div className="mb-6">
+        <div className="mb-2">
           <Link href="/bcp" className="text-sm mb-3 inline-block" style={{ color: "#8FAF96" }}>
             ← Book of Common Prayer
           </Link>
@@ -2228,54 +2276,18 @@ export default function BcpDailyOfficePage() {
             Daily Offices 📖
           </h1>
           <p className="text-sm" style={{ color: "#8FAF96" }}>
-            Morning Prayer and Evening Prayer for today
+            The full Morning &amp; Evening Prayer, or the short Daily Devotions
           </p>
         </div>
 
+        <SectionLabel>The full office</SectionLabel>
         <div className="space-y-3">
-          {/* Morning Prayer */}
-          <button
-            onClick={() => setShowOffice("morning")}
-            className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
-            style={{
-              background: isMorning ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.08)",
-              border: `1px solid ${isMorning ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.18)"}`,
-            }}
-          >
-            <div className="flex items-center gap-4">
-              <span className="text-3xl">🌅</span>
-              <div className="flex-1">
-                <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  Morning Prayer
-                </p>
-                <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>Rite II · The Daily Office</p>
-                {isMorning && <p className="text-xs mt-1.5 font-medium" style={{ color: "#6FAF85" }}>Available now</p>}
-              </div>
-              <span className="text-sm" style={{ color: "#8FAF96" }}>→</span>
-            </div>
-          </button>
+          {fullOffice.map((opt) => <OptionButton key={opt.mode} opt={opt} />)}
+        </div>
 
-          {/* Evening Prayer */}
-          <button
-            onClick={() => setShowOffice("evening")}
-            className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
-            style={{
-              background: isEvening ? "rgba(26,28,46,0.4)" : "rgba(26,28,46,0.15)",
-              border: `1px solid ${isEvening ? "rgba(139,157,195,0.25)" : "rgba(46,107,64,0.18)"}`,
-            }}
-          >
-            <div className="flex items-center gap-4">
-              <span className="text-3xl">🌙</span>
-              <div className="flex-1">
-                <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  Evening Prayer
-                </p>
-                <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>Rite II · The Daily Office</p>
-                {isEvening && <p className="text-xs mt-1.5 font-medium" style={{ color: "#8B9DC3" }}>Available now</p>}
-              </div>
-              <span className="text-sm" style={{ color: "#8FAF96" }}>→</span>
-            </div>
-          </button>
+        <SectionLabel>Short devotions</SectionLabel>
+        <div className="space-y-3">
+          {devotions.map((opt) => <OptionButton key={opt.mode} opt={opt} />)}
         </div>
 
         <div className="mt-8 rounded-xl px-5 py-4 text-center" style={{ background: "rgba(92,122,95,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
