@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, inArray, notInArray, and, isNull, or, gt } from "drizzle-orm";
+import { eq, desc, inArray, notInArray, and, isNull, isNotNull, or, gt, lt } from "drizzle-orm";
 import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, fellowsTable, prayerRequestTagsTable, prayerFeedSubscriptionsTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
@@ -484,6 +484,93 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
   // and `isOwnRequest` flags are still attached to every row so the
   // client can decorate cards with a correspondent badge or "Your
   // request" label without that decoration affecting position.
+
+  res.json(enriched);
+});
+
+// GET /api/prayer-requests/mine/past — the viewer's OWN past requests:
+// answered, released/closed, or expired (ran their 3-day cycle without
+// renewal). Powers the faded "Past" backlog at the bottom of the Prayer
+// List so a request doesn't simply vanish when its window closes — it
+// joins the user's standing record of what they've carried. Strictly
+// owner-scoped; we never expose anyone else's closed requests here.
+//
+// Path is two segments (`mine/past`) so it never collides with the
+// single-segment `/prayer-requests/:id` route.
+router.get("/prayer-requests/mine/past", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const now = new Date();
+  const rows = await db.select().from(prayerRequestsTable)
+    .where(and(
+      eq(prayerRequestsTable.ownerId, sessionUserId),
+      // Past = closed (released/answered set closedAt) OR explicitly
+      // answered OR expired past its window.
+      or(
+        isNotNull(prayerRequestsTable.closedAt),
+        eq(prayerRequestsTable.isAnswered, true),
+        and(
+          isNotNull(prayerRequestsTable.expiresAt),
+          lt(prayerRequestsTable.expiresAt, now),
+        )!,
+      )!,
+    ))
+    .orderBy(desc(prayerRequestsTable.createdAt));
+
+  const [owner] = await db
+    .select({ name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+    .from(usersTable)
+    .where(eq(usersTable.id, sessionUserId));
+
+  const enriched = await Promise.all(rows.map(async (r) => {
+    // Distinct people who prayed it — drives the "Prayed by N people"
+    // line, which is a quietly lovely thing to keep on an answered
+    // prayer. One round-trip per row is fine: a user's past list is
+    // small and this endpoint isn't on a hot path.
+    const amens = await db
+      .select({ userId: prayerRequestAmensTable.userId })
+      .from(prayerRequestAmensTable)
+      .where(eq(prayerRequestAmensTable.requestId, r.id));
+    const amenPeopleCount = new Set(amens.map((a) => a.userId)).size;
+
+    const endedRaw = r.closedAt ?? r.expiresAt ?? r.createdAt;
+    return {
+      // Shape matches the client's PrayerRequest type so the same
+      // RequestCard renders these (with isPast). Words aren't surfaced
+      // on the faded card, so we send an empty array rather than pay
+      // for the per-row word fetch.
+      id: r.id,
+      body: r.body,
+      ownerId: r.ownerId,
+      ownerName: r.isAnonymous ? null : (owner?.name ?? null),
+      ownerAvatarUrl: r.isAnonymous ? null : (owner?.avatarUrl ?? null),
+      isOwnRequest: true,
+      isAnswered: !!r.isAnswered,
+      isAnonymous: !!r.isAnonymous,
+      closedAt: r.closedAt?.toISOString() ?? null,
+      expiresAt: r.expiresAt?.toISOString() ?? null,
+      nearingExpiry: false,
+      // These are renewable from the detail page; flag as needing
+      // renewal so any shared "past" affordance reads consistently.
+      needsRenewal: true,
+      words: [] as Array<{ authorName: string; content: string; createdAt?: string | null }>,
+      myWord: null,
+      createdAt: r.createdAt.toISOString(),
+      amenPeopleCount,
+      kind: r.kind ?? null,
+      // Extra fields (not on every active row) for ordering / future use.
+      endedAt: endedRaw ? new Date(endedRaw).toISOString() : null,
+      closeReason: r.closeReason ?? null,
+    };
+  }));
+
+  // Most-recently-ended first so the freshest history reads at the top.
+  enriched.sort((a, b) => {
+    const ax = a.endedAt ? Date.parse(a.endedAt) : 0;
+    const bx = b.endedAt ? Date.parse(b.endedAt) : 0;
+    return bx - ax;
+  });
 
   res.json(enriched);
 });

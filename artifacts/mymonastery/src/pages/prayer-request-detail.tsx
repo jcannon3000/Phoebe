@@ -202,6 +202,8 @@ export default function PrayerRequestDetailPage() {
       triggerSubmitFeedback();
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
       queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
+      // Renewing / releasing changes the Prayer List "Past" backlog.
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/mine/past"] });
       setLocation("/prayer-list");
     },
   });
@@ -210,6 +212,7 @@ export default function PrayerRequestDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
       queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/mine/past"] });
       setLocation("/prayer-list");
     },
   });

@@ -436,11 +436,15 @@ function PastIntercessionCard({ p }: { p: PastIntercession }) {
   );
 }
 
-function RequestCard({ req, onOpen, viewerAvatarUrl, viewerName }: {
+function RequestCard({ req, onOpen, viewerAvatarUrl, viewerName, isPast = false }: {
   req: PrayerRequest;
   onOpen: () => void;
   viewerAvatarUrl?: string | null;
   viewerName?: string | null;
+  /** Faded backlog treatment for answered / cycle-expired requests —
+   *  dimmed accent + border, content at 0.78 opacity, days-left pill
+   *  dropped. Mirrors PastIntercessionCard / PrayerFromCard isPast. */
+  isPast?: boolean;
 }) {
   const daysLeft = req.expiresAt
     ? Math.max(0, Math.ceil((new Date(req.expiresAt).getTime() - Date.now()) / 86400000))
@@ -455,8 +459,13 @@ function RequestCard({ req, onOpen, viewerAvatarUrl, viewerName }: {
     ? null
     : (req.isOwnRequest ? (viewerAvatarUrl ?? null) : req.ownerAvatarUrl);
   return (
-    <BarCard onClick={onOpen} accent="#8FAF96">
-      <div className="flex items-center gap-3">
+    <BarCard
+      onClick={onOpen}
+      accent={isPast ? "rgba(46,107,64,0.45)" : "#8FAF96"}
+      bg={isPast ? "rgba(46,107,64,0.04)" : undefined}
+      border={isPast ? "rgba(46,107,64,0.15)" : undefined}
+    >
+      <div className="flex items-center gap-3" style={isPast ? { opacity: 0.78 } : undefined}>
         {/* Author avatar — mirrors PrayerForCard's recipient avatar
             so both sections read with the same visual rhythm. */}
         {displayAvatar ? (
@@ -516,7 +525,7 @@ function RequestCard({ req, onOpen, viewerAvatarUrl, viewerName }: {
               <MessageCircle size={14} />
             </span>
           )}
-          {daysLeft !== null && req.isOwnRequest && (
+          {!isPast && daysLeft !== null && req.isOwnRequest && (
             <span
               className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
               style={{
@@ -526,6 +535,21 @@ function RequestCard({ req, onOpen, viewerAvatarUrl, viewerName }: {
               }}
             >
               {daysLeft === 0 ? "today" : `${daysLeft}d left`}
+            </span>
+          )}
+          {/* Past rows get a quiet "Renew" hint in place of the
+              days-left pill — tapping the card routes to the detail
+              page where the owner can renew or release it. */}
+          {isPast && req.isOwnRequest && (
+            <span
+              className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+              style={{
+                background: "rgba(46,107,64,0.10)",
+                color: "rgba(143,175,150,0.6)",
+                border: "1px solid rgba(46,107,64,0.18)",
+              }}
+            >
+              Ended
             </span>
           )}
         </div>
@@ -711,6 +735,8 @@ function DetailModal({
     mutationFn: (id: number) => apiRequest("PATCH", `/api/prayer-requests/${id}/release`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      // Releasing moves the request into the Past backlog.
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/mine/past"] });
       onClose();
     },
   });
@@ -718,12 +744,17 @@ function DetailModal({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/prayer-requests/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/mine/past"] });
       onClose();
     },
   });
   const renewRequestMutation = useMutation({
     mutationFn: (id: number) => apiRequest("PATCH", `/api/prayer-requests/${id}/renew`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      // Renewing pulls it back OUT of the Past backlog into active.
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/mine/past"] });
+    },
   });
   const renewPrayerFor = useMutation({
     mutationFn: ({ id, days }: { id: number; days: 3 | 7 }) =>
@@ -1136,6 +1167,16 @@ export default function PrayerListPage() {
     enabled: !!user,
   });
 
+  // The viewer's own PAST requests — answered, released, or expired.
+  // The live /prayer-requests feed only carries active rows (plus the
+  // owner's own expired ones), so a dedicated endpoint backs the faded
+  // "Past" backlog so answered / released prayers don't disappear.
+  const { data: pastMineRequests = [] } = useQuery<PrayerRequest[]>({
+    queryKey: ["/api/prayer-requests/mine/past"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests/mine/past"),
+    enabled: !!user,
+  });
+
   const { data: prayersForMine = [] } = useQuery<MyActivePrayerFor[]>({
     queryKey: ["/api/prayers-for/mine"],
     queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
@@ -1338,7 +1379,18 @@ export default function PrayerListPage() {
     ...intercessions.filter((m) => !m.windowOpen),
   ];
 
-  const allRequests = prayerRequests.filter((r) => !r.isAnswered);
+  // Active requests come from the live feed — everything that hasn't
+  // been answered and hasn't run past its window. (The live feed also
+  // returns the owner's own expired rows flagged needsRenewal; we drop
+  // those here since the dedicated past endpoint is the source of truth
+  // for the backlog.)
+  const activeRequests = prayerRequests.filter((r) => !r.isAnswered && !r.needsRenewal);
+  // Past = the viewer's own answered / released / expired requests, from
+  // /api/prayer-requests/mine/past. Rendered faded at the bottom of the
+  // section (same treatment as the "Prayers for You" / intercessions
+  // backlogs) so a request doesn't just vanish when its window closes.
+  const pastRequests = pastMineRequests;
+  const hasAnyRequests = activeRequests.length > 0 || pastRequests.length > 0;
 
   // Past prayers (expired or acknowledged) that aren't surfaced in
   // the live "Prayers for You" section. We compute this by filtering
@@ -1430,16 +1482,19 @@ export default function PrayerListPage() {
           </button>
         )}
 
-        {/* Prayer Requests */}
-        {allRequests.length > 0 && (focused === null || focused === "requests") && (
+        {/* Prayer Requests — active rows first, then a faded "Past"
+            sub-group for answered / cycle-expired requests so they
+            don't disappear when their window closes (same faded
+            backlog treatment as the other sections). */}
+        {hasAnyRequests && (focused === null || focused === "requests") && (
           <SectionShell
             id="requests"
             label="Prayer Requests"
-            count={allRequests.length}
+            count={activeRequests.length + pastRequests.length}
             focused={focused}
             onFocus={setFocused}
           >
-            {allRequests.map((r) => (
+            {activeRequests.map((r) => (
               <RequestCard
                 key={r.id}
                 req={r}
@@ -1450,6 +1505,30 @@ export default function PrayerListPage() {
                 // popup — the slide carries tagging, the amen roster,
                 // words of comfort, and (for the owner) Edit / Renew
                 // pills next to Back.
+                onOpen={() => setLocation(`/prayer-requests/${r.id}`)}
+              />
+            ))}
+            {/* "Past" divider — labels the faded backlog of requests
+                that have run their course. Only shown when there's a
+                past row to introduce. */}
+            {pastRequests.length > 0 && (
+              <div className="flex items-center gap-2 pt-3 pb-0.5">
+                <span
+                  className="text-[10px] font-semibold uppercase"
+                  style={{ color: "rgba(143,175,150,0.5)", letterSpacing: "0.14em" }}
+                >
+                  Past
+                </span>
+                <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.1)" }} />
+              </div>
+            )}
+            {pastRequests.map((r) => (
+              <RequestCard
+                key={`past-${r.id}`}
+                req={r}
+                isPast
+                viewerAvatarUrl={user.avatarUrl ?? null}
+                viewerName={user.name ?? null}
                 onOpen={() => setLocation(`/prayer-requests/${r.id}`)}
               />
             ))}
@@ -1547,7 +1626,7 @@ export default function PrayerListPage() {
         {intercessionsSorted.length === 0
           && feedsToday.length === 0
           && pastIntercessions.length === 0
-          && allRequests.length === 0
+          && !hasAnyRequests
           && activePrayersFor.length === 0
           && prayersForMe.length === 0
           && pastPrayersForMe.length === 0 && (
