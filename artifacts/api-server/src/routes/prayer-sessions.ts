@@ -93,8 +93,10 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
 });
 
 // GET /api/me/contemplation-stats — the viewer's own contemplation
-// totals for the Contemplation page: today, this week (rolling 7 days),
-// and all time, plus a session count. Cheap — covered by the
+// figures for the Contemplation page, per window (today / this week —
+// rolling 7 days / all time): both the SUM of seconds and the session
+// COUNT, so the client can show cumulative time on one row and average
+// sit length (sum/count) on another. Cheap — covered by the
 // (user_id, ended_at) index.
 //
 // "Today" is the user's LOCAL calendar day, which the server can't know
@@ -111,7 +113,7 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
       ? todaySinceParam
       : new Date(new Date().setUTCHours(0, 0, 0, 0));
 
-    const sumSince = async (since: Date | null): Promise<number> => {
+    const windowStats = async (since: Date | null): Promise<{ seconds: number; count: number }> => {
       const conds = [
         eq(prayerSessionsTable.userId, sessionUserId),
         eq(prayerSessionsTable.surface, "contemplation"),
@@ -124,29 +126,22 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
         })
         .from(prayerSessionsTable)
         .where(and(...conds));
-      return row?.seconds ?? 0;
+      return { seconds: row?.seconds ?? 0, count: row?.count ?? 0 };
     };
 
-    const [allRow] = await db
-      .select({
-        totalSeconds: sql<number>`COALESCE(SUM(${prayerSessionsTable.durationSeconds}), 0)::int`,
-        sessionCount: sql<number>`COUNT(*)::int`,
-      })
-      .from(prayerSessionsTable)
-      .where(and(
-        eq(prayerSessionsTable.userId, sessionUserId),
-        eq(prayerSessionsTable.surface, "contemplation"),
-      ));
-    const [todaySeconds, weekSeconds] = await Promise.all([
-      sumSince(todaySince),
-      sumSince(weekAgo),
+    const [today, week, all] = await Promise.all([
+      windowStats(todaySince),
+      windowStats(weekAgo),
+      windowStats(null),
     ]);
 
     res.json({
-      todaySeconds,
-      weekSeconds,
-      totalSeconds: allRow?.totalSeconds ?? 0,
-      sessionCount: allRow?.sessionCount ?? 0,
+      todaySeconds: today.seconds,
+      todayCount: today.count,
+      weekSeconds: week.seconds,
+      weekCount: week.count,
+      totalSeconds: all.seconds,
+      sessionCount: all.count,
     });
   } catch (err) {
     console.error("[/me/contemplation-stats GET] failed:", err);

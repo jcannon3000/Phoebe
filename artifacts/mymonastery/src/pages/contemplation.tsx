@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
@@ -16,7 +16,18 @@ const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 // Quick-start lengths shown on the Begin card above the full picker.
 const QUICK_MINUTES = [5, 10, 20] as const;
 
-type Stats = { todaySeconds: number; weekSeconds: number; totalSeconds: number; sessionCount: number };
+type Stats = {
+  todaySeconds: number; todayCount: number;
+  weekSeconds: number; weekCount: number;
+  totalSeconds: number; sessionCount: number;
+};
+
+// Average sit length within a window (sum/count), formatted; "—" when
+// there are no sits in that window.
+function avg(seconds: number, count: number): string {
+  if (!count) return "—";
+  return humanMinutes(Math.round(seconds / count));
+}
 
 // "42 min", "1h 12m", "—" for zero.
 function humanMinutes(seconds: number): string {
@@ -26,6 +37,17 @@ function humanMinutes(seconds: number): string {
   const h = Math.floor(m / 60);
   const rem = m % 60;
   return rem === 0 ? `${h}h` : `${h}h ${rem}m`;
+}
+
+function RowLabel({ children }: { children: ReactNode }) {
+  return (
+    <p
+      className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2"
+      style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}
+    >
+      {children}
+    </p>
+  );
 }
 
 function StatTile({ label, value }: { label: string; value: string }) {
@@ -88,11 +110,19 @@ export default function ContemplationPage() {
           </div>
         </div>
 
-        {/* Stats — today / this week / all time. */}
-        <div className="flex gap-3 mb-6">
+        {/* Stats — two rows over the same Today / This Week / All Time
+            columns: cumulative time on top, average sit length below. */}
+        <RowLabel>Cumulative</RowLabel>
+        <div className="flex gap-3 mb-4">
           <StatTile label="today" value={humanMinutes(stats?.todaySeconds ?? 0)} />
           <StatTile label="this week" value={humanMinutes(stats?.weekSeconds ?? 0)} />
           <StatTile label="all time" value={humanMinutes(stats?.totalSeconds ?? 0)} />
+        </div>
+        <RowLabel>Average</RowLabel>
+        <div className="flex gap-3 mb-6">
+          <StatTile label="today" value={avg(stats?.todaySeconds ?? 0, stats?.todayCount ?? 0)} />
+          <StatTile label="this week" value={avg(stats?.weekSeconds ?? 0, stats?.weekCount ?? 0)} />
+          <StatTile label="all time" value={avg(stats?.totalSeconds ?? 0, stats?.sessionCount ?? 0)} />
         </div>
 
         {/* Begin card — quick-length buttons up top, then the full
