@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, prayerSessionsTable, prayerSurfaces } from "@workspace/db";
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 
 const router: IRouter = Router();
@@ -160,6 +160,104 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
     });
   } catch (err) {
     console.error("[/me/contemplation-stats GET] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// GET /api/me/contemplation-sessions — the viewer's recent contemplation
+// sits, newest first. Powers the History list on the Contemplation page;
+// each card shows the date, the time, and how long the sit was.
+router.get("/me/contemplation-sessions", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const limitRaw = typeof req.query.limit === "string" ? parseInt(req.query.limit, 10) : NaN;
+    const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 200) : 100;
+    const rows = await db
+      .select({
+        id: prayerSessionsTable.id,
+        startedAt: prayerSessionsTable.startedAt,
+        endedAt: prayerSessionsTable.endedAt,
+        durationSeconds: prayerSessionsTable.durationSeconds,
+      })
+      .from(prayerSessionsTable)
+      .where(and(
+        eq(prayerSessionsTable.userId, sessionUserId),
+        eq(prayerSessionsTable.surface, "contemplation"),
+      ))
+      .orderBy(desc(prayerSessionsTable.endedAt))
+      .limit(limit);
+    res.json(rows.map((r) => ({
+      id: r.id,
+      startedAt: r.startedAt ? r.startedAt.toISOString() : null,
+      endedAt: r.endedAt ? r.endedAt.toISOString() : null,
+      durationSeconds: r.durationSeconds,
+    })));
+  } catch (err) {
+    console.error("[/me/contemplation-sessions GET] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// POST /api/me/contemplation-sessions — manually log a sit that wasn't
+// timed in-app (e.g. you sat away from your phone). Body: how long it was
+// and when it happened. Stored as an ordinary contemplation session so it
+// rolls into the same cumulative + average-per-day totals. The 12-hour
+// cap is generous (retreat sits) but guards against fat-fingered entries.
+const manualLogSchema = z.object({
+  durationSeconds: z.number().int().min(1).max(12 * 60 * 60),
+  // When the sit began (ISO). The client sends the user's chosen local
+  // time converted to UTC.
+  occurredAt: z.string(),
+});
+router.post("/me/contemplation-sessions", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parsed = manualLogSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
+  const { durationSeconds, occurredAt } = parsed.data;
+  const startedAt = new Date(occurredAt);
+  if (Number.isNaN(startedAt.getTime())) { res.status(400).json({ error: "Invalid timestamp" }); return; }
+  // Reject sits logged in the future (allow a small clock-skew grace).
+  if (startedAt.getTime() > Date.now() + 5 * 60 * 1000) {
+    res.status(400).json({ error: "Cannot log a sit in the future" });
+    return;
+  }
+  const endedAt = new Date(startedAt.getTime() + durationSeconds * 1000);
+  try {
+    const [created] = await db.insert(prayerSessionsTable).values({
+      userId: sessionUserId,
+      surface: "contemplation",
+      durationSeconds,
+      slidesCompleted: null,
+      startedAt,
+      endedAt,
+    }).returning({ id: prayerSessionsTable.id });
+    res.json({ ok: true, id: created?.id ?? null });
+  } catch (err) {
+    console.error("[/me/contemplation-sessions POST] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// DELETE /api/me/contemplation-sessions/:id — remove one of the viewer's
+// own contemplation sessions (e.g. a mis-entered manual log). Scoped to
+// the owner AND the contemplation surface so it can never touch another
+// user's rows or a non-contemplation session.
+router.delete("/me/contemplation-sessions/:id", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  try {
+    await db.delete(prayerSessionsTable).where(and(
+      eq(prayerSessionsTable.id, id),
+      eq(prayerSessionsTable.userId, sessionUserId),
+      eq(prayerSessionsTable.surface, "contemplation"),
+    ));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[/me/contemplation-sessions DELETE] failed:", err);
     res.status(500).json({ error: "internal_error" });
   }
 });

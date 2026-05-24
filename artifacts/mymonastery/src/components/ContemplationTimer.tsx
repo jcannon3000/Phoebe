@@ -179,7 +179,11 @@ export function ContemplationTimer({
       startedAt: startedAt.toISOString(),
       endedAt: new Date().toISOString(),
     })
-      .then(() => queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] }))
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+        // Refresh the History list so the just-finished sit appears.
+        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+      })
       .catch(() => { /* best-effort — a dropped stat shouldn't break the close */ });
   }
 

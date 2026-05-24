@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Trash2 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
@@ -21,6 +22,39 @@ type Stats = {
   weekSeconds: number; weekCount: number; weekDays: number;
   totalSeconds: number; sessionCount: number; totalDays: number;
 };
+
+// One logged sit — drives the History cards.
+type Session = {
+  id: number;
+  startedAt: string | null;
+  endedAt: string | null;
+  durationSeconds: number;
+};
+
+// "Today" / "Yesterday" / "Fri, May 23" for a history card.
+function formatSessionDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const that = new Date(d); that.setHours(0, 0, 0, 0);
+  const diff = Math.round((today.getTime() - that.getTime()) / 86400000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+}
+
+// "7:14 AM" for a history card.
+function formatSessionTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+// <input type="datetime-local"> wants LOCAL "YYYY-MM-DDTHH:mm".
+function localDatetimeValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 // Average time per day sat within a window (sum / distinct days);
 // "—" when there are no days with a sit.
@@ -66,6 +100,65 @@ function StatTile({ label, value }: { label: string; value: string }) {
   );
 }
 
+// One History card: date + time on the left, duration on the right, with
+// a two-tap delete (tap the trash, then confirm) so an errant manual log
+// can be removed without a stray tap nuking a real sit.
+function SessionRow({ s, onDelete, deleting }: { s: Session; onDelete: () => void; deleting: boolean }) {
+  const [confirming, setConfirming] = useState(false);
+  const when = s.startedAt ?? s.endedAt;
+  return (
+    <div
+      className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
+      style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.20)" }}
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+          {when ? formatSessionDate(when) : "—"}
+        </p>
+        <p className="text-[12px] mt-0.5" style={{ color: SAGE, margin: 0 }}>
+          {when ? formatSessionTime(when) : ""}
+        </p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+          {humanMinutes(s.durationSeconds)}
+        </span>
+        {confirming ? (
+          <>
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={deleting}
+              className="text-[12px] font-semibold rounded-full px-2.5 py-1 transition-opacity hover:opacity-90 disabled:opacity-40"
+              style={{ color: "#D98C4A", background: "rgba(217,140,74,0.12)", border: "1px solid rgba(217,140,74,0.3)", cursor: "pointer" }}
+            >
+              Delete
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              className="text-[12px] rounded-full px-2 py-1 transition-opacity hover:opacity-90"
+              style={{ color: SAGE, cursor: "pointer" }}
+            >
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            aria-label="Remove sit"
+            className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity hover:opacity-100"
+            style={{ color: "rgba(143,175,150,0.6)", opacity: 0.7, cursor: "pointer" }}
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ContemplationPage() {
   const [timerOpen, setTimerOpen] = useState(false);
   // Set by a quick button (5/10/20) to start that length immediately;
@@ -98,6 +191,46 @@ export default function ContemplationPage() {
         "GET",
         `/api/me/contemplation-stats?todaySince=${encodeURIComponent(todaySince)}&tz=${encodeURIComponent(tz)}`,
       ) as Promise<Stats>,
+  });
+
+  // History — every logged sit, newest first.
+  const { data: sessions = [] } = useQuery<Session[]>({
+    queryKey: ["/api/me/contemplation-sessions"],
+    queryFn: () => apiRequest("GET", "/api/me/contemplation-sessions") as Promise<Session[]>,
+  });
+
+  // Manual-log form state.
+  const queryClient = useQueryClient();
+  const [logOpen, setLogOpen] = useState(false);
+  const [logMinutes, setLogMinutes] = useState(20);
+  const [logWhen, setLogWhen] = useState(() => localDatetimeValue(new Date()));
+  const inputStyle = {
+    background: "rgba(0,0,0,0.25)",
+    border: "1px solid rgba(46,107,64,0.35)",
+    color: WARM,
+    fontFamily: SPACE_GROTESK,
+    colorScheme: "dark" as const,
+  };
+  const refreshContemplation = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+  };
+  const logMutation = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", "/api/me/contemplation-sessions", {
+        durationSeconds: Math.round(logMinutes * 60),
+        occurredAt: new Date(logWhen).toISOString(),
+      }),
+    onSuccess: () => {
+      refreshContemplation();
+      setLogOpen(false);
+      setLogMinutes(20);
+      setLogWhen(localDatetimeValue(new Date()));
+    },
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/me/contemplation-sessions/${id}`),
+    onSuccess: refreshContemplation,
   });
 
   return (
@@ -180,6 +313,111 @@ export default function ContemplationPage() {
         <p className="text-[12px] mt-4 text-center" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
           Tap a length to begin, or choose your own.
         </p>
+
+        {/* History — every logged sit, newest first. The "Log a sit"
+            button opens an inline form for sits done away from the app. */}
+        <div className="mt-10">
+          <div className="flex items-center justify-between mb-3">
+            <p
+              className="text-[10px] uppercase tracking-[0.16em] font-semibold"
+              style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK, margin: 0 }}
+            >
+              History
+            </p>
+            <button
+              type="button"
+              onClick={() => setLogOpen((v) => !v)}
+              className="text-[12px] font-semibold rounded-full px-3 py-1.5 transition-opacity hover:opacity-90"
+              style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, cursor: "pointer" }}
+            >
+              {logOpen ? "Close" : "+ Log a sit"}
+            </button>
+          </div>
+
+          {logOpen && (
+            <div className="rounded-2xl p-4 mb-3" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}>
+              <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: SAGE, fontFamily: SPACE_GROTESK, margin: "0 0 8px" }}>
+                How long
+              </p>
+              <div className="grid grid-cols-4 gap-2 mb-3">
+                {[5, 10, 15, 20, 30, 45, 60, 90].map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setLogMinutes(m)}
+                    className="rounded-lg py-2 text-sm transition-opacity hover:opacity-90"
+                    style={{
+                      background: logMinutes === m ? "rgba(46,107,64,0.38)" : "rgba(46,107,64,0.12)",
+                      border: `1px solid ${logMinutes === m ? "rgba(46,107,64,0.7)" : "rgba(46,107,64,0.3)"}`,
+                      color: WARM, fontFamily: SPACE_GROTESK, cursor: "pointer",
+                    }}
+                  >
+                    {m}m
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 mb-3">
+                <input
+                  type="number"
+                  min={1}
+                  max={720}
+                  value={logMinutes}
+                  onChange={(e) => setLogMinutes(Math.max(1, Math.min(720, parseInt(e.target.value || "0", 10) || 0)))}
+                  className="w-20 rounded-lg px-3 py-2 text-sm"
+                  style={inputStyle}
+                />
+                <span className="text-sm" style={{ color: SAGE }}>minutes</span>
+              </div>
+              <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: SAGE, fontFamily: SPACE_GROTESK, margin: "0 0 8px" }}>
+                When
+              </p>
+              <input
+                type="datetime-local"
+                value={logWhen}
+                max={localDatetimeValue(new Date())}
+                onChange={(e) => setLogWhen(e.target.value)}
+                className="w-full rounded-lg px-3 py-2 mb-4 text-sm"
+                style={inputStyle}
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => logMutation.mutate()}
+                  disabled={logMutation.isPending || logMinutes < 1}
+                  className="flex-1 rounded-xl py-2.5 text-center transition-opacity hover:opacity-90 disabled:opacity-40"
+                  style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+                >
+                  {logMutation.isPending ? "Logging…" : "Log sit"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLogOpen(false)}
+                  className="rounded-xl py-2.5 px-4 text-center transition-opacity hover:opacity-90"
+                  style={{ color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 15, cursor: "pointer" }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {sessions.length === 0 ? (
+            <p className="text-[13px] text-center py-6" style={{ color: "rgba(143,175,150,0.5)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+              No sits logged yet.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {sessions.map((s) => (
+                <SessionRow
+                  key={s.id}
+                  s={s}
+                  onDelete={() => deleteMutation.mutate(s.id)}
+                  deleting={deleteMutation.isPending}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <ContemplationTimer
