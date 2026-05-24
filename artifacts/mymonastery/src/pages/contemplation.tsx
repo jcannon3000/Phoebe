@@ -73,14 +73,12 @@ function avgPerDay(seconds: number, days: number): string {
   return humanMinutes(Math.round(seconds / days));
 }
 
-// "42 min", "1h 12m", "—" for zero.
+// Always plain minutes — "75 min", "<1 min", "—" for zero. (Per product
+// direction the contemplation times read in minutes, not h/m: 1h 15m → 75.)
 function humanMinutes(seconds: number): string {
   if (!seconds || seconds < 60) return seconds > 0 ? "<1 min" : "—";
   const m = Math.round(seconds / 60);
-  if (m < 60) return `${m} min`;
-  const h = Math.floor(m / 60);
-  const rem = m % 60;
-  return rem === 0 ? `${h}h` : `${h}h ${rem}m`;
+  return `${m} min`;
 }
 
 function RowLabel({ children }: { children: ReactNode }) {
