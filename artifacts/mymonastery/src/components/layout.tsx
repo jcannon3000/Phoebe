@@ -22,7 +22,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const logout = useLogout();
   const [, setLocation] = useLocation();
-  const { isAdmin: isBetaAdmin, rawIsAdmin, rawIsBeta } = useBetaStatus();
+  const { isAdmin: isBetaAdmin, isBeta, rawIsAdmin, rawIsBeta } = useBetaStatus();
   // Offices-only accounts 403 on /api/groups, /api/me/pending-…,
   // and /api/prayer-feeds/mine (requireBeta). Firing them on every
   // drawer open / Layout mount used to trip NetworkBanner's "flaky"
@@ -117,8 +117,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // to every signed-in user.
     { emoji: "🤔", label: "Ignatian Examen", path: "/examen" },
     // Gratitude — a daily thanksgiving journal (private, optionally
-    // shared to the garden). Open to every tier.
-    { emoji: "🌾", label: "Gratitude", path: "/gratitude" },
+    // shared to the garden). Beta-only at first (pilot view); open to
+    // every tier once it graduates.
+    ...(isBeta ? [{ emoji: "🌾", label: "Gratitude", path: "/gratitude" }] : []),
     { divider: true },
     // Letters is an admin-driven surface — only community admins (or
     // hidden admins) ever author rounds. Members in a community where

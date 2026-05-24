@@ -1627,22 +1627,25 @@ function HabitSlide({
 
       {/* Give-thanks pill — a gratitude beat the office close offers
           before you go. Opens the GratitudeNudge overlay (name one
-          thing, optionally share to the garden). Shown to everyone. */}
-      <button
-        type="button"
-        onClick={() => setThanksOpen(true)}
-        className="text-[12px] font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-90"
-        style={{
-          background: "rgba(46,107,64,0.22)",
-          color: "#A8C5A0",
-          border: "1px solid rgba(46,107,64,0.45)",
-          fontFamily: "'Space Grotesk', sans-serif",
-          cursor: "pointer",
-        }}
-      >
-        🌾 Give thanks
-      </button>
-      <GratitudeNudge open={thanksOpen} onClose={() => setThanksOpen(false)} />
+          thing, optionally share to the garden). Beta-only at first,
+          same gate as the menu entry. */}
+      {isBeta && (
+        <button
+          type="button"
+          onClick={() => setThanksOpen(true)}
+          className="text-[12px] font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-90"
+          style={{
+            background: "rgba(46,107,64,0.22)",
+            color: "#A8C5A0",
+            border: "1px solid rgba(46,107,64,0.45)",
+            fontFamily: "'Space Grotesk', sans-serif",
+            cursor: "pointer",
+          }}
+        >
+          🌾 Give thanks
+        </button>
+      )}
+      {isBeta && <GratitudeNudge open={thanksOpen} onClose={() => setThanksOpen(false)} />}
 
       {/* Ignatian Examen pill — evening only (the Examen is an
           end-of-day prayer), and pilot-only (same gate as the menu
