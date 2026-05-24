@@ -625,7 +625,7 @@ function SlideContent({
               cursor: "pointer",
             }}
           >
-            🌬️ Begin contemplation
+            🕯️ Begin contemplation
           </button>
         </div>
       </div>

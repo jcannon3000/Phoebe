@@ -109,10 +109,10 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     { emoji: "🌿", label: "Daily Devotions", path: "/bcp/daily-devotions" },
     // Contemplation — a silent-prayer timer (bell to begin, bell to
     // close) with its own time-in-stillness stats. Open to every tier.
-    { emoji: "🌬️", label: "Contemplation", path: "/contemplation" },
+    { emoji: "🕯️", label: "Contemplation", path: "/contemplation" },
     // The Daily Examen — Ignatian end-of-day reflective prayer.
     // Pilot-only for now: shows for beta users with pilot view on.
-    ...(isBeta ? [{ emoji: "🕯️", label: "Ignatian Examen", path: "/examen" }] : []),
+    ...(isBeta ? [{ emoji: "🤔", label: "Ignatian Examen", path: "/examen" }] : []),
     { divider: true },
     // Letters is an admin-driven surface — only community admins (or
     // hidden admins) ever author rounds. Members in a community where
