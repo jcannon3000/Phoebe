@@ -94,10 +94,10 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
 
 // GET /api/me/contemplation-stats — the viewer's own contemplation
 // figures for the Contemplation page, per window (today / this week —
-// rolling 7 days / all time): both the SUM of seconds and the session
-// COUNT, so the client can show cumulative time on one row and average
-// sit length (sum/count) on another. Cheap — covered by the
-// (user_id, ended_at) index.
+// rolling 7 days / all time): the SUM of seconds, the session COUNT,
+// and the number of distinct DAYS sat in that window, so the client can
+// show cumulative time on one row and average-per-day (sum/days) on
+// another. Cheap — covered by the (user_id, ended_at) index.
 //
 // "Today" is the user's LOCAL calendar day, which the server can't know
 // on its own, so the client passes its local midnight as ?todaySince=
@@ -113,7 +113,7 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
       ? todaySinceParam
       : new Date(new Date().setUTCHours(0, 0, 0, 0));
 
-    const windowStats = async (since: Date | null): Promise<{ seconds: number; count: number }> => {
+    const windowStats = async (since: Date | null): Promise<{ seconds: number; count: number; days: number }> => {
       const conds = [
         eq(prayerSessionsTable.userId, sessionUserId),
         eq(prayerSessionsTable.surface, "contemplation"),
@@ -123,10 +123,14 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
         .select({
           seconds: sql<number>`COALESCE(SUM(${prayerSessionsTable.durationSeconds}), 0)::int`,
           count: sql<number>`COUNT(*)::int`,
+          // Distinct calendar days sat (UTC). Approximate at a day
+          // boundary but close enough for a "per day" average; "today"
+          // is overridden to 1 below since it's definitionally one day.
+          days: sql<number>`COUNT(DISTINCT (${prayerSessionsTable.endedAt})::date)::int`,
         })
         .from(prayerSessionsTable)
         .where(and(...conds));
-      return { seconds: row?.seconds ?? 0, count: row?.count ?? 0 };
+      return { seconds: row?.seconds ?? 0, count: row?.count ?? 0, days: row?.days ?? 0 };
     };
 
     const [today, week, all] = await Promise.all([
@@ -138,10 +142,15 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
     res.json({
       todaySeconds: today.seconds,
       todayCount: today.count,
+      // Today is one local day — a sit means 1 day, not the UTC-split
+      // count, so the per-day average == today's total.
+      todayDays: today.count > 0 ? 1 : 0,
       weekSeconds: week.seconds,
       weekCount: week.count,
+      weekDays: week.days,
       totalSeconds: all.seconds,
       sessionCount: all.count,
+      totalDays: all.days,
     });
   } catch (err) {
     console.error("[/me/contemplation-stats GET] failed:", err);

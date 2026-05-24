@@ -17,16 +17,16 @@ const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const QUICK_MINUTES = [5, 10, 20] as const;
 
 type Stats = {
-  todaySeconds: number; todayCount: number;
-  weekSeconds: number; weekCount: number;
-  totalSeconds: number; sessionCount: number;
+  todaySeconds: number; todayCount: number; todayDays: number;
+  weekSeconds: number; weekCount: number; weekDays: number;
+  totalSeconds: number; sessionCount: number; totalDays: number;
 };
 
-// Average sit length within a window (sum/count), formatted; "—" when
-// there are no sits in that window.
-function avg(seconds: number, count: number): string {
-  if (!count) return "—";
-  return humanMinutes(Math.round(seconds / count));
+// Average time per day sat within a window (sum / distinct days);
+// "—" when there are no days with a sit.
+function avgPerDay(seconds: number, days: number): string {
+  if (!days) return "—";
+  return humanMinutes(Math.round(seconds / days));
 }
 
 // "42 min", "1h 12m", "—" for zero.
@@ -111,18 +111,18 @@ export default function ContemplationPage() {
         </div>
 
         {/* Stats — two rows over the same Today / This Week / All Time
-            columns: cumulative time on top, average sit length below. */}
+            columns: cumulative time on top, average per day below. */}
         <RowLabel>Cumulative</RowLabel>
         <div className="flex gap-3 mb-4">
           <StatTile label="today" value={humanMinutes(stats?.todaySeconds ?? 0)} />
           <StatTile label="this week" value={humanMinutes(stats?.weekSeconds ?? 0)} />
           <StatTile label="all time" value={humanMinutes(stats?.totalSeconds ?? 0)} />
         </div>
-        <RowLabel>Average</RowLabel>
+        <RowLabel>Average / day</RowLabel>
         <div className="flex gap-3 mb-6">
-          <StatTile label="today" value={avg(stats?.todaySeconds ?? 0, stats?.todayCount ?? 0)} />
-          <StatTile label="this week" value={avg(stats?.weekSeconds ?? 0, stats?.weekCount ?? 0)} />
-          <StatTile label="all time" value={avg(stats?.totalSeconds ?? 0, stats?.sessionCount ?? 0)} />
+          <StatTile label="today" value={avgPerDay(stats?.todaySeconds ?? 0, stats?.todayDays ?? 0)} />
+          <StatTile label="this week" value={avgPerDay(stats?.weekSeconds ?? 0, stats?.weekDays ?? 0)} />
+          <StatTile label="all time" value={avgPerDay(stats?.totalSeconds ?? 0, stats?.totalDays ?? 0)} />
         </div>
 
         {/* Begin card — quick-length buttons up top, then the full
