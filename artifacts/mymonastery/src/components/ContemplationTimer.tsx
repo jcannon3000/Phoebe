@@ -394,9 +394,9 @@ export function ContemplationTimer({
                 {endedEarly ? "Contemplation ended" : "Contemplation complete"}
               </p>
               <p className="text-[26px] leading-[1.3] font-medium italic mb-2" style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif" }}>
-                {/* Always name the exact time sat — important on an early
+                {/* Always name the exact time prayed — important on an early
                     end so the user sees what they actually did. */}
-                {formatDone(satSeconds)} of stillness
+                {formatDone(satSeconds)} of contemplative prayer
               </p>
               <p className="text-[13px] mb-8" style={{ color: "rgba(143,175,150,0.65)", fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 300 }}>
                 Carry the quiet with you.

@@ -935,7 +935,7 @@ export default function MomentPostPage() {
             {m.templateType === "contemplative" && m.contemplativeDurationMinutes && (
               <div className="bg-[#F5F0FF] border border-[#8B7CF6]/20 rounded-xl px-4 py-3 mb-5 flex items-center gap-3">
                 <span className="text-xl">🕯️</span>
-                <p className="text-sm text-[#5B4B9A]">{m.contemplativeDurationMinutes} minutes of stillness</p>
+                <p className="text-sm text-[#5B4B9A]">{m.contemplativeDurationMinutes} minutes of contemplative prayer</p>
               </div>
             )}
 

@@ -864,9 +864,9 @@ export default function MomentDetail() {
             <span className="text-2xl">🕯️</span>
             <div>
               <p className="text-sm font-semibold text-[#5B4B9A]">
-                {moment.contemplativeDurationMinutes} minutes of silence together
+                {moment.contemplativeDurationMinutes} minutes of contemplative prayer together
               </p>
-              <p className="text-xs text-[#5B4B9A]/70 mt-0.5">Everyone sits for the same length, wherever they are</p>
+              <p className="text-xs text-[#5B4B9A]/70 mt-0.5">Everyone prays for the same length, wherever they are</p>
             </div>
           </div>
         )}

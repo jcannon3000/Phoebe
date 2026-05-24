@@ -12,7 +12,7 @@ type Frequency = "daily" | "weekly" | "monthly";
 
 const INTENTION_PLACEHOLDERS = [
   "Share your morning coffee together ☕",
-  "Five minutes of stillness before the day starts 🌿",
+  "Five minutes of contemplative prayer before the day starts 🌿",
   "Breathe together. Pray together. Show up together.",
   "A moment of gratitude, wherever you are 🌸",
   "Walk outside and notice something beautiful 🚶🏽",

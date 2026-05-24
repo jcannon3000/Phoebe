@@ -1896,14 +1896,14 @@ export default function MomentNew() {
               {/* ── Contemplative Prayer — duration selection ────── */}
               {step === "contemplative-duration" && (
                 <div className="flex-1">
-                  <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>How long will you sit together? 🕯️</h2>
-                  <p className="text-sm text-muted-foreground italic mb-6">Everyone sits for the same length of time, wherever they are.</p>
+                  <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>How long will you pray together? 🕯️</h2>
+                  <p className="text-sm text-muted-foreground italic mb-6">Everyone prays for the same length of time, wherever they are.</p>
                   <div className="grid gap-3">
                     {([
-                      { emoji: "🌱", label: "5 minutes", sub: "A brief stillness", mins: 5 },
+                      { emoji: "🌱", label: "5 minutes", sub: "A brief prayer", mins: 5 },
                       { emoji: "🌿", label: "10 minutes", sub: "A gentle practice", mins: 10 },
-                      { emoji: "🌸", label: "20 minutes", sub: "A deeper sit", mins: 20 },
-                      { emoji: "🌳", label: "30 minutes", sub: "A sustained silence", mins: 30 },
+                      { emoji: "🌸", label: "20 minutes", sub: "A deeper prayer", mins: 20 },
+                      { emoji: "🌳", label: "30 minutes", sub: "A sustained prayer", mins: 30 },
                     ] as const).map(opt => (
                       <button key={opt.mins}
                         onClick={() => { setContemplativeDuration(opt.mins); goNext(); }}
@@ -2165,7 +2165,7 @@ export default function MomentNew() {
                   <p className="text-sm text-[#4a6b50] font-medium mb-1">🌿 This practice needs at least one other person.</p>
                   <p className="text-xs text-[#4a6b50]/70 leading-relaxed">
                     Eleanor is built for doing things together across distance —<br />
-                    praying the same words, sitting in the same silence,<br />
+                    praying the same words, sharing the same silence,<br />
                     keeping the same fast. Add someone to share it with.
                   </p>
                 </div>

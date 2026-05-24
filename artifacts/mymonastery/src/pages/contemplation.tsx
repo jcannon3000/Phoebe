@@ -147,7 +147,7 @@ function SessionRow({ s, onDelete, deleting }: { s: Session; onDelete: () => voi
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            aria-label="Remove sit"
+            aria-label="Remove entry"
             className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity hover:opacity-100"
             style={{ color: "rgba(143,175,150,0.6)", opacity: 0.7, cursor: "pointer" }}
           >
@@ -330,7 +330,7 @@ export default function ContemplationPage() {
               className="text-[12px] font-semibold rounded-full px-3 py-1.5 transition-opacity hover:opacity-90"
               style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, cursor: "pointer" }}
             >
-              {logOpen ? "Close" : "+ Log a sit"}
+              {logOpen ? "Close" : "+ Log prayer time"}
             </button>
           </div>
 
@@ -387,7 +387,7 @@ export default function ContemplationPage() {
                   className="flex-1 rounded-xl py-2.5 text-center transition-opacity hover:opacity-90 disabled:opacity-40"
                   style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
                 >
-                  {logMutation.isPending ? "Logging…" : "Log sit"}
+                  {logMutation.isPending ? "Logging…" : "Log prayer time"}
                 </button>
                 <button
                   type="button"
@@ -403,7 +403,7 @@ export default function ContemplationPage() {
 
           {sessions.length === 0 ? (
             <p className="text-[13px] text-center py-6" style={{ color: "rgba(143,175,150,0.5)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-              No sits logged yet.
+              No prayer time logged yet.
             </p>
           ) : (
             <div className="space-y-2">
