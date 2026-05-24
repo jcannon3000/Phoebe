@@ -103,12 +103,13 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // Lessons render as references for readers to open in their own
     // bible; the Office cache is content-addressable so the load is
     // cheap.
+    // Daily Offices leads the liturgy section — it's the daily-rhythm
+    // surface. Houses all four liturgies (Morning/Evening Prayer + the
+    // two short Devotions) behind one picker, so the separate Daily
+    // Devotions entry is gone.
+    { emoji: "🌅", label: "Daily Offices", path: "/bcp/daily-office" },
     { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },
     { emoji: "📜", label: "Psalter",     path: "/bcp/psalter" },
-    // Daily Offices now houses all four liturgies (Morning/Evening
-    // Prayer + the two short Devotions) behind one picker, so the
-    // separate Daily Devotions entry is gone.
-    { emoji: "🌅", label: "Daily Offices", path: "/bcp/daily-office" },
     // Contemplation — a silent-prayer timer (bell to begin, bell to
     // close) with its own time-in-stillness stats. Open to every tier.
     { emoji: "🕯️", label: "Contemplation", path: "/contemplation" },
