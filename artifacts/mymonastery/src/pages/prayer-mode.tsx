@@ -14,6 +14,7 @@ import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
+import { GratitudeNudge } from "@/components/GratitudeComposer";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 
 // Scale the big prayer-text block by character length so long prayers
@@ -1329,6 +1330,9 @@ function HabitSlide({
   // The Examen is pilot-only, so the pill only shows for pilot users
   // with pilot view on — same gate as the menu entry.
   const { isBeta } = useBetaStatus();
+  // End-of-office gratitude beat — a gentle "name one thing you're
+  // grateful for" the close offers before you leave.
+  const [thanksOpen, setThanksOpen] = useState(false);
   // Server is the source of truth — past completions from any device
   // live in prayer_sessions, not localStorage. We still union with
   // localStorage for the freshly-finished office so the slide reflects
@@ -1620,6 +1624,25 @@ function HabitSlide({
           {encouragement}
         </motion.p>
       )}
+
+      {/* Give-thanks pill — a gratitude beat the office close offers
+          before you go. Opens the GratitudeNudge overlay (name one
+          thing, optionally share to the garden). Shown to everyone. */}
+      <button
+        type="button"
+        onClick={() => setThanksOpen(true)}
+        className="text-[12px] font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-90"
+        style={{
+          background: "rgba(46,107,64,0.22)",
+          color: "#A8C5A0",
+          border: "1px solid rgba(46,107,64,0.45)",
+          fontFamily: "'Space Grotesk', sans-serif",
+          cursor: "pointer",
+        }}
+      >
+        🌾 Give thanks
+      </button>
+      <GratitudeNudge open={thanksOpen} onClose={() => setThanksOpen(false)} />
 
       {/* Ignatian Examen pill — evening only (the Examen is an
           end-of-day prayer), and pilot-only (same gate as the menu

@@ -116,6 +116,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // The Daily Examen — Ignatian end-of-day reflective prayer. Open
     // to every signed-in user.
     { emoji: "🤔", label: "Ignatian Examen", path: "/examen" },
+    // Gratitude — a daily thanksgiving journal (private, optionally
+    // shared to the garden). Open to every tier.
+    { emoji: "🌾", label: "Gratitude", path: "/gratitude" },
     { divider: true },
     // Letters is an admin-driven surface — only community admins (or
     // hidden admins) ever author rounds. Members in a community where
