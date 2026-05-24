@@ -47,3 +47,4 @@ export * from "./newsletters";
 export * from "./meetup_rsvps";
 export * from "./ritual_groups";
 export * from "./persistent_auth_tokens";
+export * from "./app_opens";

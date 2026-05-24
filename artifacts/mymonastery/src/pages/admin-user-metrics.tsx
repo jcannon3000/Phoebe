@@ -40,6 +40,14 @@ type AppMetrics = {
   prayerRequestsToday: number;
   prayerRequestsThisWeek: number;
   prayerRequestsTotal: number;
+
+  openedToday: number;
+  openedThisWeek: number;
+  openedAllTime: number;
+
+  opensToday: number;
+  opensThisWeek: number;
+  opensTotal: number;
 };
 
 type FeedAuditRow = {
@@ -200,6 +208,20 @@ export default function AdminAppMetricsPage() {
 
             <Section eyebrow="Users">
               <TileRow today={data.newUsersToday} week={data.newUsersThisWeek} allTime={data.totalUsers} allTimeLabel="Total" />
+            </Section>
+
+            <Section
+              eyebrow="People who opened the app"
+              caption="Distinct signed-in users who opened or foregrounded the app in each window."
+            >
+              <TileRow today={data.openedToday} week={data.openedThisWeek} allTime={data.openedAllTime} />
+            </Section>
+
+            <Section
+              eyebrow="Times opened"
+              caption="App opens, deduped to once every 15 minutes per person."
+            >
+              <TileRow today={data.opensToday} week={data.opensThisWeek} allTime={data.opensTotal} />
             </Section>
           </>
         )}

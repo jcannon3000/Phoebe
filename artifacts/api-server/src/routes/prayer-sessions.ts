@@ -1,9 +1,31 @@
 import { Router, type IRouter } from "express";
-import { db, prayerSessionsTable, prayerSurfaces } from "@workspace/db";
+import { db, prayerSessionsTable, prayerSurfaces, appOpensTable } from "@workspace/db";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 
 const router: IRouter = Router();
+
+// POST /api/app-open — records that the signed-in user opened/foregrounded
+// the app. Stamped into a 15-minute bucket (floor(epoch/900)) with a
+// unique (user_id, bucket) index, so rapid re-opens within the window
+// collapse to one row. Backs the "people who opened" / "times opened"
+// admin metrics. Fire-and-forget from the client; always 200.
+router.post("/app-open", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const bucket = Math.floor(Date.now() / 1000 / 900);
+    await db
+      .insert(appOpensTable)
+      .values({ userId: sessionUserId, bucket })
+      .onConflictDoNothing();
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[/app-open] failed:", err);
+    // Non-fatal — a dropped open ping shouldn't surface an error.
+    res.json({ ok: false });
+  }
+});
 
 // Per-user prayer-time ledger. Client posts a finished session; the
 // metrics page reads the rolled-up totals via /api/groups/:slug/metrics.

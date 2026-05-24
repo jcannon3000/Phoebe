@@ -194,7 +194,22 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
         (SELECT COUNT(*) FROM users
            WHERE to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS new_users_today,
         (SELECT COUNT(*) FROM users
-           WHERE to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS new_users_week
+           WHERE to_char((created_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS new_users_week,
+
+        -- App opens. Each app_opens row is already one 15-min-deduped
+        -- open (unique user_id+bucket), so COUNT(DISTINCT user_id) =
+        -- "people who opened" and COUNT(*) = "times opened."
+        (SELECT COUNT(DISTINCT user_id) FROM app_opens
+           WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS opened_today,
+        (SELECT COUNT(DISTINCT user_id) FROM app_opens
+           WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS opened_week,
+        (SELECT COUNT(DISTINCT user_id) FROM app_opens)::int AS opened_all_time,
+
+        (SELECT COUNT(*) FROM app_opens
+           WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $1)::int AS opens_today,
+        (SELECT COUNT(*) FROM app_opens
+           WHERE to_char((opened_at AT TIME ZONE $3)::date, 'YYYY-MM-DD') >= $2)::int AS opens_week,
+        (SELECT COUNT(*) FROM app_opens)::int AS opens_total
     `, [todayStr, weekStartStr, tz]);
 
     const row = q.rows[0] ?? {};
@@ -218,6 +233,14 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
       prayerRequestsToday: Number(row.prayer_requests_today ?? 0),
       prayerRequestsThisWeek: Number(row.prayer_requests_week ?? 0),
       prayerRequestsTotal: Number(row.prayer_requests_total ?? 0),
+
+      openedToday: Number(row.opened_today ?? 0),
+      openedThisWeek: Number(row.opened_week ?? 0),
+      openedAllTime: Number(row.opened_all_time ?? 0),
+
+      opensToday: Number(row.opens_today ?? 0),
+      opensThisWeek: Number(row.opens_week ?? 0),
+      opensTotal: Number(row.opens_total ?? 0),
     });
   } catch (err) {
     console.error("[admin/metrics] failed:", err);

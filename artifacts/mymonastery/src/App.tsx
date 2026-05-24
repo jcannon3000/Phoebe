@@ -9,6 +9,7 @@ import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
 import { IOSAppDownloadPrompt } from "@/components/IOSAppDownloadPrompt";
 import { DesktopAppPrompt } from "@/components/DesktopAppPrompt";
+import { AppOpenTracker } from "@/components/AppOpenTracker";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { Component, useEffect, type ReactNode, type ErrorInfo } from "react";
@@ -582,6 +583,7 @@ function App() {
       <TooltipProvider>
         <ErrorBoundary>
           <GlobalButtonHaptics />
+          <AppOpenTracker />
           <PushPermissionPrompt />
           <WebPushPermissionPrompt />
           <IOSAppDownloadPrompt />
