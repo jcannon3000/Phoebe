@@ -22,7 +22,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const logout = useLogout();
   const [, setLocation] = useLocation();
-  const { isAdmin: isBetaAdmin, isBeta, rawIsAdmin, rawIsBeta } = useBetaStatus();
+  const { isAdmin: isBetaAdmin, rawIsAdmin, rawIsBeta } = useBetaStatus();
   // Offices-only accounts 403 on /api/groups, /api/me/pending-…,
   // and /api/prayer-feeds/mine (requireBeta). Firing them on every
   // drawer open / Layout mount used to trip NetworkBanner's "flaky"
@@ -113,9 +113,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // Contemplation — a silent-prayer timer (bell to begin, bell to
     // close) with its own time-in-stillness stats. Open to every tier.
     { emoji: "🕯️", label: "Contemplation", path: "/contemplation" },
-    // The Daily Examen — Ignatian end-of-day reflective prayer.
-    // Pilot-only for now: shows for beta users with pilot view on.
-    ...(isBeta ? [{ emoji: "🤔", label: "Ignatian Examen", path: "/examen" }] : []),
+    // The Daily Examen — Ignatian end-of-day reflective prayer. Open
+    // to every signed-in user.
+    { emoji: "🤔", label: "Ignatian Examen", path: "/examen" },
     { divider: true },
     // Letters is an admin-driven surface — only community admins (or
     // hidden admins) ever author rounds. Members in a community where

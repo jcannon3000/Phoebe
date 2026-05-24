@@ -336,9 +336,10 @@ function ParishGate({ children }: { children: ReactNode }) {
         // card on the Prayer List section taps through to.
         location === "/prayer-chooser" ||
         location.startsWith("/prayer-mode") ||
-        // Contemplation timer — a silent-prayer surface open to every
-        // tier (offices-only + parish-only included).
+        // Contemplation timer + Daily Examen — reflective-prayer
+        // surfaces open to every tier (offices-only + parish-only).
         location === "/contemplation" ||
+        location === "/examen" ||
         location.startsWith("/moments/") ||
         // Public prayer feeds — discovery + detail. Offices-only and
         // parish-only members may browse and subscribe to public feeds
