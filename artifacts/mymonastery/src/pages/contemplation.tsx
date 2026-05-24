@@ -23,13 +23,23 @@ type Stats = {
   totalSeconds: number; sessionCount: number; totalDays: number;
 };
 
-// One logged sit — drives the History cards.
+// Someone in your garden whose contemplative prayer overlapped yours.
+type Companion = { userId: number; name: string | null; avatarUrl: string | null };
+
+// One logged session of prayer — drives the History cards.
 type Session = {
   id: number;
   startedAt: string | null;
   endedAt: string | null;
   durationSeconds: number;
+  // Garden members who were praying at the same moment as this session.
+  companions?: Companion[];
 };
+
+// Two-letter fallback for a companion with no avatar.
+function initials(name: string): string {
+  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "·";
+}
 
 // "Today" / "Yesterday" / "Fri, May 23" for a history card.
 function formatSessionDate(iso: string): string {
@@ -120,6 +130,42 @@ function SessionRow({ s, onDelete, deleting }: { s: Session; onDelete: () => voi
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
+        {/* Garden members who were praying at the same moment — faces to
+            the left of the duration. A quiet "you weren't alone." */}
+        {s.companions && s.companions.length > 0 && (
+          <div
+            className="flex items-center -space-x-1.5"
+            title={`Praying alongside ${s.companions.map((c) => c.name ?? "someone").join(", ")}`}
+          >
+            {s.companions.slice(0, 3).map((c) =>
+              c.avatarUrl ? (
+                <img
+                  key={c.userId}
+                  src={c.avatarUrl}
+                  alt={c.name ?? "Someone"}
+                  className="w-5 h-5 rounded-full object-cover"
+                  style={{ border: "1.5px solid #0E2016" }}
+                />
+              ) : (
+                <div
+                  key={c.userId}
+                  className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-semibold"
+                  style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid #0E2016" }}
+                >
+                  {initials(c.name ?? "?")}
+                </div>
+              ),
+            )}
+            {s.companions.length > 3 && (
+              <div
+                className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-semibold"
+                style={{ background: "rgba(46,107,64,0.45)", color: WARM, border: "1.5px solid #0E2016" }}
+              >
+                +{s.companions.length - 3}
+              </div>
+            )}
+          </div>
+        )}
         <span className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
           {humanMinutes(s.durationSeconds)}
         </span>

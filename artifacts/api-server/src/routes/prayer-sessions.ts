@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
-import { db, prayerSessionsTable, prayerSurfaces, appOpensTable } from "@workspace/db";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, usersTable } from "@workspace/db";
+import { and, desc, eq, gte, gt, lt, inArray, sql } from "drizzle-orm";
 import { z } from "zod/v4";
+import { getGardenUserIds } from "../lib/garden";
 
 const router: IRouter = Router();
 
@@ -189,6 +190,11 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
 // GET /api/me/contemplation-sessions — the viewer's recent contemplation
 // sits, newest first. Powers the History list on the Contemplation page;
 // each card shows the date, the time, and how long the sit was.
+//
+// Each card also carries `companions`: people in the viewer's garden
+// (group peers + correspondents) whose OWN contemplation prayer
+// overlapped this one in time — "you were praying at the same moment."
+// The client shows their faces beside the duration.
 router.get("/me/contemplation-sessions", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -209,11 +215,69 @@ router.get("/me/contemplation-sessions", async (req, res): Promise<void> => {
       ))
       .orderBy(desc(prayerSessionsTable.endedAt))
       .limit(limit);
+
+    // ── Overlapping garden companions ──────────────────────────────────
+    // Find garden members whose contemplation sessions overlap any of the
+    // viewer's returned sessions, then match them up per-session in JS.
+    // Two windows overlap iff a.start < b.end AND a.end > b.start.
+    type Companion = { userId: number; name: string | null; avatarUrl: string | null };
+    const companionsBySession = new Map<number, Companion[]>();
+
+    const withTimes = rows.filter((r) => r.startedAt && r.endedAt);
+    if (withTimes.length > 0) {
+      const minStart = new Date(Math.min(...withTimes.map((r) => r.startedAt!.getTime())));
+      const maxEnd = new Date(Math.max(...withTimes.map((r) => r.endedAt!.getTime())));
+      const gardenIds = await getGardenUserIds(sessionUserId);
+      if (gardenIds.length > 0) {
+        const gardenSessions = await db
+          .select({
+            userId: prayerSessionsTable.userId,
+            startedAt: prayerSessionsTable.startedAt,
+            endedAt: prayerSessionsTable.endedAt,
+          })
+          .from(prayerSessionsTable)
+          .where(and(
+            eq(prayerSessionsTable.surface, "contemplation"),
+            inArray(prayerSessionsTable.userId, gardenIds),
+            // Only sessions that could overlap the viewer's overall span.
+            gt(prayerSessionsTable.endedAt, minStart),
+            lt(prayerSessionsTable.startedAt, maxEnd),
+          ));
+
+        if (gardenSessions.length > 0) {
+          const ids = [...new Set(gardenSessions.map((g) => g.userId))];
+          const userRows = await db
+            .select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+            .from(usersTable)
+            .where(inArray(usersTable.id, ids));
+          const userMap = new Map(userRows.map((u) => [u.id, u]));
+
+          for (const r of withTimes) {
+            const sStart = r.startedAt!.getTime();
+            const sEnd = r.endedAt!.getTime();
+            const seen = new Set<number>();
+            const companions: Companion[] = [];
+            for (const g of gardenSessions) {
+              if (!g.startedAt || !g.endedAt) continue;
+              if (g.startedAt.getTime() < sEnd && g.endedAt.getTime() > sStart && !seen.has(g.userId)) {
+                seen.add(g.userId);
+                const u = userMap.get(g.userId);
+                companions.push({ userId: g.userId, name: u?.name ?? null, avatarUrl: u?.avatarUrl ?? null });
+                if (companions.length >= 6) break; // cap — the card shows a few + "+N"
+              }
+            }
+            if (companions.length > 0) companionsBySession.set(r.id, companions);
+          }
+        }
+      }
+    }
+
     res.json(rows.map((r) => ({
       id: r.id,
       startedAt: r.startedAt ? r.startedAt.toISOString() : null,
       endedAt: r.endedAt ? r.endedAt.toISOString() : null,
       durationSeconds: r.durationSeconds,
+      companions: companionsBySession.get(r.id) ?? [],
     })));
   } catch (err) {
     console.error("[/me/contemplation-sessions GET] failed:", err);
