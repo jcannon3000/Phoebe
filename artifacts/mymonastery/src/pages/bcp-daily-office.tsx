@@ -2289,15 +2289,6 @@ export default function BcpDailyOfficePage() {
         <div className="space-y-3">
           {devotions.map((opt) => <OptionButton key={opt.mode} opt={opt} />)}
         </div>
-
-        <div className="mt-8 rounded-xl px-5 py-4 text-center" style={{ background: "rgba(92,122,95,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
-          <p className="text-xs" style={{ color: "rgba(143,175,150,0.5)" }}>
-            Want to pray the office daily with others?
-          </p>
-          <Link href="/moment/new" className="text-xs font-semibold mt-1 inline-block" style={{ color: "#6FAF85" }}>
-            Start a Daily Office practice →
-          </Link>
-        </div>
       </div>
     </Layout>
   );
