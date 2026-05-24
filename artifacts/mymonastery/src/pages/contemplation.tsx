@@ -98,7 +98,7 @@ export default function ContemplationPage() {
             className="text-3xl w-12 h-12 flex items-center justify-center rounded-2xl flex-shrink-0"
             style={{ background: "rgba(62,124,122,0.18)", border: "1px solid rgba(62,124,122,0.35)" }}
           >
-            🧘
+            🌬️
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
