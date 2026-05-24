@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, or, sql, inArray, and, isNull, ne, gt } from "drizzle-orm";
-import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable, fellowsTable } from "@workspace/db";
+import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerRequestAmensTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable, fellowsTable } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
 import { getCorrespondentUserIds } from "../lib/correspondents";
 
@@ -209,6 +209,10 @@ router.get("/people", async (req, res): Promise<void> => {
 
   // Batch-fetch active prayer requests with body text for all garden members
   const activePrayerMap = new Map<string, { id: number; body: string; createdAt: string }>();
+  // How many Amens the viewer has tapped on each garden person's prayer
+  // requests — drives the "people you pray for most" ranking. Keyed by
+  // the garden person's user id.
+  const myAmenByUserId = new Map<number, number>();
   if (allGardenEmails.length > 0) {
     const gardenUsers = await db.select({ id: usersTable.id, email: usersTable.email })
       .from(usersTable)
@@ -236,6 +240,25 @@ router.get("/people", async (req, res): Promise<void> => {
           activePrayerMap.set(email, { id: r.id, body: r.body, createdAt: r.createdAt.toISOString() });
         }
       }
+
+      // One grouped query: count the viewer's Amen taps per garden owner.
+      // Scoped to the garden's request owners and joined by request id
+      // (which prayer_request_amens already indexes), so the planner
+      // walks only this viewer's amens on this garden's requests — cheap,
+      // no per-person N+1.
+      const amenRows = await db
+        .select({
+          ownerId: prayerRequestsTable.ownerId,
+          count: sql<number>`cast(count(*) as int)`,
+        })
+        .from(prayerRequestAmensTable)
+        .innerJoin(prayerRequestsTable, eq(prayerRequestsTable.id, prayerRequestAmensTable.requestId))
+        .where(and(
+          eq(prayerRequestAmensTable.userId, ownerId),
+          inArray(prayerRequestsTable.ownerId, gardenUserIds),
+        ))
+        .groupBy(prayerRequestsTable.ownerId);
+      for (const r of amenRows) myAmenByUserId.set(r.ownerId, r.count);
     }
   }
 
@@ -415,6 +438,10 @@ router.get("/people", async (req, res): Promise<void> => {
         firstCircleDate: p.firstCircleDate.toISOString(),
         maxSharedStreak: maxStreak,
         score,
+        // How many Amens the viewer has tapped on this person's prayer
+        // requests — the client sorts the garden by this so the people
+        // you pray for most rise to the top.
+        myAmenCount: myAmenByUserId.get(userIdByEmail.get(p.email.toLowerCase()) ?? -1) ?? 0,
         sharedPractices,
         sharedTraditions,
         lastActiveDate: lastActiveDate ?? p.firstCircleDate.toISOString(),

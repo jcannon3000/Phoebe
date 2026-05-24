@@ -49,6 +49,13 @@ function daysSince(dateStr: string): number {
 
 function sortPeople(people: PersonSummary[], presentEmails: Set<string>): PersonSummary[] {
   return [...people].sort((a, b) => {
+    // Primary: people you've prayed for most (most Amens you've tapped
+    // on their requests) rise to the top.
+    const aAmens = a.myAmenCount ?? 0;
+    const bAmens = b.myAmenCount ?? 0;
+    if (aAmens !== bAmens) return bAmens - aAmens;
+    // Tiebreakers (incl. everyone at 0 amens): an active request first,
+    // then who's present now, then most recently active.
     const aPrayer = a.activePrayerRequest ? 1 : 0;
     const bPrayer = b.activePrayerRequest ? 1 : 0;
     if (aPrayer !== bPrayer) return bPrayer - aPrayer;

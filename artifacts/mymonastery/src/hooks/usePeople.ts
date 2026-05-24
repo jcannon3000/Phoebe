@@ -31,6 +31,10 @@ export interface PersonSummary {
   firstCircleDate: string;
   maxSharedStreak: number;
   score: number;
+  // How many Amens the viewer has tapped on this person's prayer
+  // requests. Drives the garden's primary sort (people you pray for
+  // most rise to the top). Optional for older API builds → treat as 0.
+  myAmenCount?: number;
   sharedPractices: PersonPracticeSummary[];
   sharedTraditions: PersonTraditionSummary[];
   lastActiveDate: string;
