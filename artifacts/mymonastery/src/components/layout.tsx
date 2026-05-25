@@ -156,9 +156,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const isCommunityAdmin = (groupsData?.groups ?? []).some(
     (g) => g.myRole === "admin" || g.myRole === "hidden_admin",
   );
-  // Letters — community admins author rounds; offices-only users get it
-  // too (their "monk-like" 1:1 rhythm, and writing one upgrades them).
-  const showLetters = officesOnly || isCommunityAdmin;
+  // Letters — community admins only. (Previously also surfaced to
+  // offices-only users; turned off for non-admins per product direction.)
+  const showLetters = isCommunityAdmin;
   // Admin Tools — beta users, community admins, feed creators, beta admins.
   const showAdminTools = rawIsBeta || rawIsAdmin || myFeeds.length > 0 || isCommunityAdmin;
 
