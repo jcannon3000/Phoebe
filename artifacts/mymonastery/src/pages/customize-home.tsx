@@ -16,30 +16,36 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 
-const HOME_MODULES = ["office", "feeds", "contemplation", "requests"] as const;
+const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "requests"] as const;
 type HomeModule = typeof HOME_MODULES[number];
+
+// Prayer requests always leads the home — it can't be hidden or reordered.
+const PINNED: HomeModule = "requests";
 
 const MODULE_META: Record<HomeModule, { label: string; emoji: string; sub: string }> = {
   office: { label: "Daily Office", emoji: "📖", sub: "Morning & Evening Prayer" },
   feeds: { label: "Prayer feeds", emoji: "🌿", sub: "The feeds you follow" },
   contemplation: { label: "Contemplation", emoji: "🕯️", sub: "A timer for silent prayer" },
+  gratitude: { label: "Gratitude", emoji: "🌾", sub: "A daily thanksgiving journal" },
+  examen: { label: "Ignatian Examen", emoji: "🤔", sub: "End-of-day reflective prayer" },
   requests: { label: "Prayer requests", emoji: "🙏🏽", sub: "New requests from your community" },
 };
 
 // Build a complete, valid order from a saved one (or a fallback),
 // keeping known keys in order then appending any missing modules.
 function buildOrder(saved: string[] | null | undefined, fallback: HomeModule[]): HomeModule[] {
-  if (!saved) return fallback;
   const seen = new Set<string>();
   const out: HomeModule[] = [];
-  for (const k of saved) {
+  for (const k of saved ?? fallback) {
     if ((HOME_MODULES as readonly string[]).includes(k) && !seen.has(k)) {
       seen.add(k);
       out.push(k as HomeModule);
     }
   }
   for (const k of HOME_MODULES) if (!seen.has(k)) out.push(k);
-  return out;
+  // Prayer requests always leads — pin it to the front regardless of the
+  // saved order.
+  return [PINNED, ...out.filter((k) => k !== PINNED)];
 }
 
 // Gate on the auth user being loaded before mounting the stateful inner
@@ -69,11 +75,21 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
   // fields directly so it doesn't wait on the feeds query.
   const feedLed = !!(user?.feedFirstHome && user?.homeFeedId != null);
   const fallbackOrder: HomeModule[] = feedLed
-    ? ["requests", "feeds", "office", "contemplation"]
-    : ["requests", "office", "feeds", "contemplation"];
+    ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen"]
+    : ["requests", "office", "feeds", "contemplation", "gratitude", "examen"];
 
   const [order, setOrder] = useState<HomeModule[]>(() => buildOrder(user?.homeLayout?.order, fallbackOrder));
-  const [hidden, setHidden] = useState<Set<string>>(() => new Set(user?.homeLayout?.hidden ?? ["contemplation"]));
+  const [hidden, setHidden] = useState<Set<string>>(() => {
+    const savedHidden = user?.homeLayout?.hidden;
+    const savedOrder = user?.homeLayout?.order;
+    // Modules the user has never seen (not in their saved order) default to
+    // hidden, so adding Gratitude / Examen doesn't suddenly populate the
+    // homes of users who already customized.
+    const newlyAdded = savedOrder ? HOME_MODULES.filter((k) => !savedOrder.includes(k)) : [];
+    const s = new Set<string>([...(savedHidden ?? ["contemplation", "gratitude", "examen"]), ...newlyAdded]);
+    s.delete(PINNED); // Prayer requests can never be hidden.
+    return s;
+  });
 
   const { data: subsData } = useQuery<{ subscriptions: Array<{ feed: { id: number; title: string; coverEmoji: string | null } }> }>({
     queryKey: ["/api/prayer-feeds/subscribed"],
@@ -96,11 +112,15 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
   const move = (index: number, dir: -1 | 1) => {
     const j = index + dir;
     if (j < 0 || j >= order.length) return;
+    // Prayer requests is pinned to the top — never move it, and never let
+    // another module swap into the lead slot above it.
+    if (order[index] === PINNED || order[j] === PINNED) return;
     const next = [...order];
     [next[index], next[j]] = [next[j], next[index]];
     persist(next, hidden);
   };
   const toggleHidden = (k: HomeModule) => {
+    if (k === PINNED) return; // pinned — always visible
     const next = new Set(hidden);
     if (next.has(k)) next.delete(k);
     else {
@@ -153,6 +173,7 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
             const meta = MODULE_META[key];
             const isHidden = hidden.has(key);
             const isLead = key === leadKey;
+            const pinned = key === PINNED;
             return (
               <div
                 key={key}
@@ -163,29 +184,36 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
                   opacity: isHidden ? 0.6 : 1,
                 }}
               >
-                {/* Reorder arrows */}
-                <div className="flex flex-col">
-                  <button
-                    type="button"
-                    aria-label="Move up"
-                    onClick={() => move(i, -1)}
-                    disabled={i === 0}
-                    className="transition-opacity disabled:opacity-25 hover:opacity-80"
-                    style={{ color: SAGE, cursor: i === 0 ? "default" : "pointer", lineHeight: 0, padding: 2 }}
-                  >
-                    <ChevronUp size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Move down"
-                    onClick={() => move(i, 1)}
-                    disabled={i === order.length - 1}
-                    className="transition-opacity disabled:opacity-25 hover:opacity-80"
-                    style={{ color: SAGE, cursor: i === order.length - 1 ? "default" : "pointer", lineHeight: 0, padding: 2 }}
-                  >
-                    <ChevronDown size={16} />
-                  </button>
-                </div>
+                {/* Reorder arrows — omitted for the pinned lead (Prayer
+                    requests), which always leads and can't move. A spacer
+                    keeps the rows aligned. The first movable row can't go
+                    up (it would displace the pinned lead). */}
+                {pinned ? (
+                  <div style={{ width: 20, flexShrink: 0 }} />
+                ) : (
+                  <div className="flex flex-col">
+                    <button
+                      type="button"
+                      aria-label="Move up"
+                      onClick={() => move(i, -1)}
+                      disabled={i <= 1}
+                      className="transition-opacity disabled:opacity-25 hover:opacity-80"
+                      style={{ color: SAGE, cursor: i <= 1 ? "default" : "pointer", lineHeight: 0, padding: 2 }}
+                    >
+                      <ChevronUp size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Move down"
+                      onClick={() => move(i, 1)}
+                      disabled={i === order.length - 1}
+                      className="transition-opacity disabled:opacity-25 hover:opacity-80"
+                      style={{ color: SAGE, cursor: i === order.length - 1 ? "default" : "pointer", lineHeight: 0, padding: 2 }}
+                    >
+                      <ChevronDown size={16} />
+                    </button>
+                  </div>
+                )}
 
                 <span style={{ fontSize: 20 }}>{meta.emoji}</span>
 
@@ -208,16 +236,19 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
                   </p>
                 </div>
 
-                {/* Show / hide */}
-                <button
-                  type="button"
-                  aria-label={isHidden ? "Show" : "Hide"}
-                  onClick={() => toggleHidden(key)}
-                  className="transition-opacity hover:opacity-80"
-                  style={{ color: isHidden ? "rgba(143,175,150,0.6)" : "#A8C5A0", cursor: "pointer", lineHeight: 0, padding: 4 }}
-                >
-                  {isHidden ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                {/* Show / hide — omitted for the pinned lead, which is
+                    always visible. */}
+                {!pinned && (
+                  <button
+                    type="button"
+                    aria-label={isHidden ? "Show" : "Hide"}
+                    onClick={() => toggleHidden(key)}
+                    className="transition-opacity hover:opacity-80"
+                    style={{ color: isHidden ? "rgba(143,175,150,0.6)" : "#A8C5A0", cursor: "pointer", lineHeight: 0, padding: 4 }}
+                  >
+                    {isHidden ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                )}
               </div>
             );
           })}

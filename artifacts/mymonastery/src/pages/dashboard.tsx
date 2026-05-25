@@ -2398,6 +2398,79 @@ function ContemplationHomeCard() {
   );
 }
 
+// ── Compact home anchors for the other daily practices ───────────────
+// Same one-line tap-through shape as ContemplationHomeCard. Both default
+// to hidden on the home; surfaced + reorderable from the Customize page.
+function PracticeHomeCard({
+  href, label, cta, tintBg, tintBorder, pillBg, pillBorder,
+}: {
+  href: string; label: string; cta: string;
+  tintBg: string; tintBorder: string; pillBg: string; pillBorder: string;
+}) {
+  return (
+    <Link href={href} className="block">
+      <div
+        role="button"
+        tabIndex={0}
+        className="relative flex rounded-xl overflow-hidden cursor-pointer"
+        style={{ background: tintBg, border: `1px solid ${tintBorder}` }}
+      >
+        <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
+          <p
+            className="font-semibold min-w-0 truncate"
+            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
+          >
+            {label}
+          </p>
+          <div
+            className="rounded-full text-center shrink-0"
+            style={{
+              background: pillBg,
+              color: "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 13,
+              fontWeight: 500,
+              padding: "6px 14px",
+              border: `1px solid ${pillBorder}`,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {cta} <span aria-hidden>→</span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function GratitudeHomeCard() {
+  return (
+    <PracticeHomeCard
+      href="/gratitude"
+      label="Gratitude 🌾"
+      cta="Give thanks"
+      tintBg="rgba(142,158,66,0.12)"
+      tintBorder="rgba(142,158,66,0.35)"
+      pillBg="rgba(142,158,66,0.28)"
+      pillBorder="rgba(142,158,66,0.45)"
+    />
+  );
+}
+
+function ExamenHomeCard() {
+  return (
+    <PracticeHomeCard
+      href="/examen"
+      label="Ignatian Examen 🤔"
+      cta="Begin"
+      tintBg="rgba(90,140,114,0.12)"
+      tintBorder="rgba(90,140,114,0.35)"
+      pillBg="rgba(90,140,114,0.28)"
+      pillBorder="rgba(90,140,114,0.45)"
+    />
+  );
+}
+
 // ── PrayerOfficeCard — always-visible "pray with your community" anchor ──
 //
 // The home-screen invitation to pray the appropriate office for the
@@ -4456,27 +4529,37 @@ export default function Dashboard() {
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
-  const homeHidden = new Set<string>(user?.homeLayout?.hidden ?? ["contemplation"]);
+  // Prayer requests always leads — never hidden. Newly-added modules
+  // (Gratitude / Examen) default to hidden so they don't suddenly populate
+  // the homes of users who already customized.
+  const homeHidden = (() => {
+    const savedHidden = user?.homeLayout?.hidden;
+    const savedOrder = user?.homeLayout?.order;
+    const newlyAdded = savedOrder ? HOME_MODULES.filter((k) => !savedOrder.includes(k)) : [];
+    const s = new Set<string>([...(savedHidden ?? ["contemplation", "gratitude", "examen"]), ...newlyAdded]);
+    s.delete("requests");
+    return s;
+  })();
   const homeOrder: HomeModule[] = (() => {
     const saved = user?.homeLayout?.order ?? null;
     const fallback: HomeModule[] = featuredFeed
-      ? ["requests", "feeds", "office", "contemplation"]
-      : ["requests", "office", "feeds", "contemplation"];
-    if (!saved) return fallback;
+      ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen"]
+      : ["requests", "office", "feeds", "contemplation", "gratitude", "examen"];
     // Keep known keys in saved order, then append any missing modules so
     // a newly-added module always has a place.
     const seen = new Set<string>();
     const out: HomeModule[] = [];
-    for (const k of saved) {
+    for (const k of saved ?? fallback) {
       if ((HOME_MODULES as readonly string[]).includes(k) && !seen.has(k)) {
         seen.add(k);
         out.push(k as HomeModule);
       }
     }
     for (const k of HOME_MODULES) if (!seen.has(k)) out.push(k);
-    return out;
+    // Pin Prayer requests to the front so it always leads.
+    return ["requests", ...out.filter((k) => k !== "requests")];
   })();
   // Primary anchor = first visible office/feeds module → full office /
   // feed hero; the other office instance drops to the compact card.
@@ -5367,6 +5450,10 @@ export default function Dashboard() {
                 }
                 case "contemplation":
                   return <ContemplationHomeCard />;
+                case "gratitude":
+                  return <GratitudeHomeCard />;
+                case "examen":
+                  return <ExamenHomeCard />;
                 default:
                   return null;
               }
