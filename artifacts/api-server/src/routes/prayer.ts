@@ -1801,7 +1801,14 @@ router.put("/me/home-layout", async (req, res): Promise<void> => {
   const seen = new Set<string>();
   const cleanOrder = order.filter((k) => allowed.has(k) && !seen.has(k) && (seen.add(k), true));
   for (const k of HOME_MODULE_KEYS) if (!seen.has(k)) cleanOrder.push(k);
-  const cleanHidden = [...new Set(hidden.filter((k) => allowed.has(k)))];
+  let cleanHidden = [...new Set(hidden.filter((k) => allowed.has(k)))];
+  // Never hide every module — that would leave the home's anchor area
+  // blank. If a request would hide all of them, drop the first module in
+  // order from the hidden set so at least one card always leads. (The
+  // client already guards this; this is server-side defense-in-depth.)
+  if (cleanHidden.length >= cleanOrder.length) {
+    cleanHidden = cleanHidden.filter((k) => k !== cleanOrder[0]);
+  }
   const layout = { order: cleanOrder, hidden: cleanHidden };
   try {
     await db.update(usersTable).set({ homeLayout: layout }).where(eq(usersTable.id, sessionUserId));
