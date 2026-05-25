@@ -107,9 +107,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // surface. Houses all four liturgies (Morning/Evening Prayer + the
     // two short Devotions) behind one picker, so the separate Daily
     // Devotions entry is gone.
+    // Practices first (Offices, Contemplation, Examen, Gratitude), then
+    // the reference content (BCP Prayers, Psalter) below them.
     { emoji: "🌅", label: "Daily Offices", path: "/bcp/daily-office" },
-    { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },
-    { emoji: "📜", label: "Psalter",     path: "/bcp/psalter" },
     // Contemplation — a silent-prayer timer (bell to begin, bell to
     // close) with its own time-in-stillness stats. Open to every tier.
     { emoji: "🕯️", label: "Contemplation", path: "/contemplation" },
@@ -120,6 +120,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // shared to the garden). Beta-only at first (pilot view); open to
     // every tier once it graduates.
     ...(isBeta ? [{ emoji: "🌾", label: "Gratitude", path: "/gratitude" }] : []),
+    // Reference content — sits below the daily practices.
+    { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },
+    { emoji: "📜", label: "Psalter",     path: "/bcp/psalter" },
     { divider: true },
     // Letters is an admin-driven surface — only community admins (or
     // hidden admins) ever author rounds. Members in a community where
