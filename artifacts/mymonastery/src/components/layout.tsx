@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight, ChevronDown } from "lucide-react";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -177,7 +178,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
             className="fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-y-auto"
-            style={{ width: "min(340px, 90vw)", background: "#040D06", borderLeft: "1px solid rgba(46,107,64,0.18)" }}
+            style={{ width: "min(340px, 90vw)", background: "rgba(4,13,6,0.95)", borderLeft: "1px solid rgba(46,107,64,0.18)" }}
           >
             {/* Close button. The drawer spans the full viewport height
                 from top: 0, which on a notched iPhone puts this row
@@ -383,7 +384,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 
 // ─── Layout ──────────────────────────────────────────────────────────────────
 
-export function Layout({ children }: { children: ReactNode }) {
+export function Layout({ children, animatedBg = false }: { children: ReactNode; animatedBg?: boolean }) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { isBeta } = useBetaStatus();
@@ -402,7 +403,11 @@ export function Layout({ children }: { children: ReactNode }) {
   const prayerStreak = streakData?.streak ?? 0;
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10" }}>
+    <div
+      className="min-h-screen flex flex-col relative overflow-x-hidden"
+      style={{ background: "#091A10", isolation: animatedBg ? "isolate" : undefined }}
+    >
+      {animatedBg && <AnimatedBackground base="#091A10" variant="subtle" fadeTop />}
       <header
         className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pt-5 pb-2 md:pt-6 md:pb-5 flex justify-between items-center"
         style={{ background: "#091A10" }}

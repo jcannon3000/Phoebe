@@ -43,8 +43,15 @@ const KEYFRAMES = `
 @media (prefers-reduced-motion: reduce) { .phoebe-bg-blob { animation: none !important; } }
 `;
 
-export function AnimatedBackground({ base, variant = "subtle" }: { base: string; variant?: Variant }) {
+export function AnimatedBackground({ base, variant = "subtle", fadeTop = false }: { base: string; variant?: Variant; fadeTop?: boolean }) {
   const blobs = variant === "pronounced" ? PRONOUNCED : SUBTLE;
+  // When fadeTop is set, mask the layer out across the top so the blobs'
+  // gradient ends below the top header instead of crowding it: fully
+  // transparent through the header band (safe-area + ~88px), then fading
+  // in to full below it. base === the surface bg, so the masked-out band
+  // just shows the same color.
+  const topMask =
+    "linear-gradient(to bottom, transparent 0, transparent calc(env(safe-area-inset-top, 0px) + 88px), #000 calc(env(safe-area-inset-top, 0px) + 220px))";
   return (
     <div
       aria-hidden
@@ -55,6 +62,7 @@ export function AnimatedBackground({ base, variant = "subtle" }: { base: string;
         overflow: "hidden",
         pointerEvents: "none",
         background: base,
+        ...(fadeTop ? { maskImage: topMask, WebkitMaskImage: topMask } : {}),
       }}
     >
       <style>{KEYFRAMES}</style>
