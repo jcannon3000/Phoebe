@@ -9,6 +9,8 @@ PODS:
     - Capacitor
   - CapacitorCommunityContacts (6.1.1):
     - Capacitor
+  - CapacitorCommunityKeepAwake (5.0.1):
+    - Capacitor
   - CapacitorCordova (6.2.1)
   - CapacitorHaptics (6.0.3):
     - Capacitor
@@ -35,6 +37,7 @@ DEPENDENCIES:
   - "CapacitorBrowser (from `../../../../node_modules/.pnpm/@capacitor+browser@6.0.6_@capacitor+core@6.2.1/node_modules/@capacitor/browser`)"
   - "CapacitorCommunityAppleSignIn (from `../../../../node_modules/.pnpm/@capacitor-community+apple-sign-in@6.0.0_@capacitor+core@6.2.1/node_modules/@capacitor-community/apple-sign-in`)"
   - "CapacitorCommunityContacts (from `../../../../node_modules/.pnpm/@capacitor-community+contacts@6.1.1_@capacitor+core@6.2.1/node_modules/@capacitor-community/contacts`)"
+  - "CapacitorCommunityKeepAwake (from `../../../../node_modules/.pnpm/@capacitor-community+keep-awake@5.0.1_@capacitor+core@6.2.1/node_modules/@capacitor-community/keep-awake`)"
   - "CapacitorCordova (from `../../../../node_modules/.pnpm/@capacitor+ios@6.2.1_@capacitor+core@6.2.1/node_modules/@capacitor/ios`)"
   - "CapacitorHaptics (from `../../../../node_modules/.pnpm/@capacitor+haptics@6.0.3_@capacitor+core@6.2.1/node_modules/@capacitor/haptics`)"
   - "CapacitorKeyboard (from `../../../../node_modules/.pnpm/@capacitor+keyboard@6.0.4_@capacitor+core@6.2.1/node_modules/@capacitor/keyboard`)"
@@ -57,6 +60,8 @@ EXTERNAL SOURCES:
     :path: "../../../../node_modules/.pnpm/@capacitor-community+apple-sign-in@6.0.0_@capacitor+core@6.2.1/node_modules/@capacitor-community/apple-sign-in"
   CapacitorCommunityContacts:
     :path: "../../../../node_modules/.pnpm/@capacitor-community+contacts@6.1.1_@capacitor+core@6.2.1/node_modules/@capacitor-community/contacts"
+  CapacitorCommunityKeepAwake:
+    :path: "../../../../node_modules/.pnpm/@capacitor-community+keep-awake@5.0.1_@capacitor+core@6.2.1/node_modules/@capacitor-community/keep-awake"
   CapacitorCordova:
     :path: "../../../../node_modules/.pnpm/@capacitor+ios@6.2.1_@capacitor+core@6.2.1/node_modules/@capacitor/ios"
   CapacitorHaptics:
@@ -84,6 +89,7 @@ SPEC CHECKSUMS:
   CapacitorBrowser: 825163a1d6adce944ac7b9e3cab101146b5a9df8
   CapacitorCommunityAppleSignIn: c9c2541ee7580618055a91b3516c3f0313fe2544
   CapacitorCommunityContacts: 9cde99c2cd212f6594677aae542436e2174c4ef2
+  CapacitorCommunityKeepAwake: 6ca8e4c8db46f0cf99e33f1ca1162fbc97c8611e
   CapacitorCordova: 8d93e14982f440181be7304aa9559ca631d77fff
   CapacitorHaptics: 40f83026feeee9cfe36e89e9c98a3baaaf20c450
   CapacitorKeyboard: e8cd50fd5cbdd023a5947a5c0f5cca6e5aa5a253
@@ -95,6 +101,6 @@ SPEC CHECKSUMS:
   CapacitorStatusBar: 149cde8f1328ec3aa6cbdd872a55137ae3f98b16
   CapgoCapacitorNativeBiometric: 2cbb9787f3a73bd4e8bccbd5e10bec7231a48ccd
 
-PODFILE CHECKSUM: cfc938757e812d62e402838d83f6f7ddae971eb3
+PODFILE CHECKSUM: 9a9dbb7b39052f8f6d86bdc1e4b83221acea4272
 
 COCOAPODS: 1.16.2

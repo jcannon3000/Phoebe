@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
 import { bibleUrlSegments } from "@/lib/bibleGatewayUrl";
+import { fixQuoteDirection } from "@/lib/smartQuotes";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { playOfficeChime } from "@/lib/amenFeedback";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
@@ -187,6 +189,54 @@ function parsePsalmContent(content: string): PsalmEntry[] {
   if (current) result.push({ kind: "verse", ...current });
   if (gloria) result.push({ kind: "doxology", text: gloria });
   return result;
+}
+
+// A psalm / canticle hemistich that may end in the BCP pointing
+// asterisk "*". Two things keep that caesura mark from being orphaned
+// onto a line by itself when the first hemistich nearly fills the
+// column:
+//
+//   1) The trailing " *" is bound to the preceding word with a
+//      non-breaking space, so the asterisk can never wrap alone — at
+//      worst it travels to the next line *with* its word.
+//   2) If that would push the word+asterisk onto a new line when the
+//      rest of the line fit, we instead shave a little letter-spacing
+//      (measured after layout) so the whole hemistich stays on one
+//      line. Only the *minimal* condense that removes the extra line
+//      is applied, and only when a small squeeze (≤ 1.2px) is enough —
+//      genuinely long hemistichs that wrap regardless are left alone.
+function PointedLine({ text, style }: { text: string; style: CSSProperties }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const pointed = / \*$/.test(text);
+  const bound = pointed ? text.replace(/ \*$/, " *") : text;
+
+  // letterSpacing is owned entirely by this effect (none of the callers
+  // set it), so it's tuned imperatively without fighting React.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.letterSpacing = ""; // measure at the natural spacing
+    if (!pointed) return;
+    const lh = parseFloat(window.getComputedStyle(el).lineHeight);
+    if (!lh) return;
+    const naturalLines = Math.round(el.offsetHeight / lh);
+    if (naturalLines <= 1) return;
+    // Shave the least letter-spacing that drops a wrapped line, so the
+    // word+asterisk stays put instead of falling to the next line.
+    for (let ls = 0.2; ls <= 1.2 + 1e-9; ls += 0.2) {
+      el.style.letterSpacing = `-${ls.toFixed(1)}px`;
+      if (Math.round(el.offsetHeight / lh) < naturalLines) return;
+    }
+    // Beyond the squeeze budget — leave it natural; the non-breaking
+    // space still keeps the asterisk attached to its word.
+    el.style.letterSpacing = "";
+  }, [bound, pointed]);
+
+  return (
+    <p ref={ref} style={style}>
+      {bound}
+    </p>
+  );
 }
 
 // Centered intercession head — eyebrow + (optionally) avatar + name
@@ -562,6 +612,18 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
   const sectionLabel = SECTION_LABEL[currentSlide.type] ?? currentSlide.type.toUpperCase();
   const refLabel = officeDay?.feastName ?? officeDay?.weekdayLabel ?? officeDay?.sundayLabel ?? "";
 
+  // Title/poster slides (office threshold, psalm/canticle/lesson titles,
+  // intercessions portal) are vertically centered rather than top-
+  // aligned, so they need much less top padding than body slides — the
+  // big top padding on body slides only exists to clear the fixed
+  // header, which centered cards already sit well below.
+  const isTitleCard =
+    currentSlide.type === "office_intro"
+    || currentSlide.type === "intercessions_portal"
+    || currentSlide.type === "psalm_title"
+    || currentSlide.type === "canticle_title"
+    || currentSlide.type === "lesson_title";
+
   function next() {
     if (atEnd) return;
     // Tapping "Next" on the intercessions portal should mean "take me
@@ -746,8 +808,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
         display: "flex",
         flexDirection: "column",
         fontFamily: SPACE_GROTESK,
+        position: "relative",
+        isolation: "isolate",
       }}
     >
+      <AnimatedBackground base={BG} />
       {/* Top bar — Back / Menu / eyebrow+ref. Mirrors Lectio's header. */}
       <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, pointerEvents: "none" }}>
         <div
@@ -792,15 +857,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
         </div>
       </header>
 
-      {/* Body. Top padding bumped from safe+88 → max(120, safe+108)
-          so the bar clears on web (where safe-area-inset-top is 0)
-          without forcing the slide content to ride up under the
-          fixed header. The earlier value left the title sitting too
-          close to the bar; the user reported "loads a little too low"
-          as shorthand for content reading too compressed against the
-          header strip. Inner content is left-aligned now (was center)
-          so liturgical text reads like a missal page rather than a
-          centered poster. */}
+      {/* Body. Body slides get a generous top padding so liturgical
+          text clears the fixed header on web (where safe-area-inset-top
+          is 0) and doesn't ride up under the header strip. Title/poster
+          cards are vertically centered, so they don't need that
+          clearance — they take a much smaller top padding so the copy
+          sits higher and isn't floated down by the header gap. */}
       <main
         ref={mainRef}
         className="flex-1 px-5"
@@ -809,7 +871,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
           overflowY: "auto",
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
-          paddingTop: "max(72px, calc(env(safe-area-inset-top) + 60px))",
+          paddingTop: isTitleCard
+            ? "max(24px, env(safe-area-inset-top))"
+            : "max(72px, calc(env(safe-area-inset-top) + 60px))",
           paddingBottom: "calc(env(safe-area-inset-bottom) + 112px)",
           display: "flex",
           flexDirection: "column",
@@ -817,27 +881,19 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
       >
         <div
           className="max-w-2xl w-full mx-auto"
-          style={(() => {
-            const isTitleCard =
-              currentSlide.type === "office_intro"
-              || currentSlide.type === "intercessions_portal"
-              || currentSlide.type === "psalm_title"
-              || currentSlide.type === "canticle_title"
-              || currentSlide.type === "lesson_title";
-            return {
-              display: "flex",
-              flexDirection: "column",
-              // flex-grow fills the scroll container so justifyContent:center
-              // vertically centers title cards in the full viewport.
-              // flex-shrink:0 lets content slides overflow and scroll normally.
-              flexGrow: 1,
-              flexShrink: 0,
-              justifyContent: isTitleCard ? "center" : "flex-start",
-              textAlign: isTitleCard ? ("center" as const) : ("left" as const),
-              alignItems: isTitleCard ? "center" : undefined,
-              gap: 20,
-            };
-          })()}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            // flex-grow fills the scroll container so justifyContent:center
+            // vertically centers title cards in the full viewport.
+            // flex-shrink:0 lets content slides overflow and scroll normally.
+            flexGrow: 1,
+            flexShrink: 0,
+            justifyContent: isTitleCard ? "center" : "flex-start",
+            textAlign: isTitleCard ? "center" : "left",
+            alignItems: isTitleCard ? "center" : undefined,
+            gap: 20,
+          }}
         >
           {/* Intercession-mode head: avatar (when we have one) + name
               + eyebrow, mirroring prayer-mode.tsx's "request" slide.
@@ -1525,7 +1581,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
             })()
           ) : currentSlide.type === "psalm" && currentSlide.content ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 600 }}>
-              {parsePsalmContent(currentSlide.content).map((v, i) => (
+              {parsePsalmContent(fixQuoteDirection(currentSlide.content)).map((v, i) => (
                 v.kind === "verse" ? (
                   <div key={i} style={{ display: "flex", gap: 10 }}>
                     <span
@@ -1543,8 +1599,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
                     </span>
                     <div style={{ flex: 1 }}>
                       {v.lines.map((ln, li) => (
-                        <p
+                        <PointedLine
                           key={li}
+                          text={ln.text}
                           style={{
                             fontSize: 19,
                             lineHeight: 1.6,
@@ -1554,14 +1611,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
                             fontFamily: SPACE_GROTESK,
                             whiteSpace: "pre-wrap",
                           }}
-                        >
-                          {/* Bind a trailing " *" caesura with a
-                              non-breaking space so the asterisk
-                              never wraps onto its own line when
-                              the first hemistich is too long for
-                              the viewport. */}
-                          {ln.text.replace(/ \*$/, " *")}
-                        </p>
+                        />
                       ))}
                     </div>
                   </div>
@@ -1628,7 +1678,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
                   key={i}
                   style={{ fontSize: 20, lineHeight: 1.6, color: WARM_TEXT, margin: 0, fontFamily: SPACE_GROTESK }}
                 >
-                  {line.text}
+                  {fixQuoteDirection(line.text)}
                 </p>
               ))}
             </div>
@@ -1669,7 +1719,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
                       whiteSpace: "pre-wrap",
                     }}
                   >
-                    {text}
+                    {fixQuoteDirection(text)}
                   </p>
                 </div>
               );
@@ -1677,15 +1727,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
                 <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 600 }}>
                   {antiphonOpen && renderAntiphon(antiphonOpen, "open")}
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {currentSlide.content.split("\n").map((raw, i) => {
+                    {fixQuoteDirection(currentSlide.content).split("\n").map((raw, i) => {
                       if (raw.trim().length === 0) {
                         return <div key={i} style={{ height: 8 }} />;
                       }
                       const indented = /^\s/.test(raw);
-                      const text = raw.trimEnd().replace(/ \*$/, " *");
                       return (
-                        <p
+                        <PointedLine
                           key={i}
+                          text={raw.trim()}
                           style={{
                             fontSize: 20,
                             lineHeight: 1.6,
@@ -1694,9 +1744,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
                             paddingLeft: indented ? 32 : 0,
                             fontFamily: SPACE_GROTESK,
                           }}
-                        >
-                          {text.replace(/^\s+/, "")}
-                        </p>
+                        />
                       );
                     })}
                   </div>
@@ -1705,31 +1753,23 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
               );
             })()
           ) : currentSlide.type === "canticle" && currentSlide.content ? (
-            // Canticles render line-by-line so:
-            //   1) Indented continuation lines (the second hemistich
-            //      after the BCP `*` caesura) get a real paddingLeft
-            //      rather than just the 2 literal spaces from the
-            //      seed text, which collapsed visually under
-            //      pre-wrap.
-            //   2) The `*` caesura mark binds to the end of its
-            //      first hemistich via a non-breaking space, so it
-            //      can't get pushed onto a line by itself when the
-            //      first hemistich wraps.
-            //   3) Each source line is its own <p> block, so a long
-            //      first hemistich wrapping doesn't drag the * down
-            //      with weird whitespace under it.
+            // Canticles render line-by-line: indented continuation
+            // lines (the second hemistich after the BCP `*` caesura)
+            // get a real paddingLeft, and each source line goes
+            // through <PointedLine>, which keeps the `*` caesura mark
+            // from being orphaned onto its own line (binding it to the
+            // preceding word, and condensing the line's kerning when
+            // that would otherwise push the word+asterisk down).
             <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 600 }}>
-              {currentSlide.content.split("\n").map((raw, i) => {
+              {fixQuoteDirection(currentSlide.content).split("\n").map((raw, i) => {
                 if (raw.trim().length === 0) {
                   return <div key={i} style={{ height: 8 }} />;
                 }
                 const indented = /^\s/.test(raw);
-                // Bind a trailing " *" so the caesura can't wrap
-                // onto its own line. Replace the last " *" only.
-                const text = raw.trimEnd().replace(/ \*$/, " *");
                 return (
-                  <p
+                  <PointedLine
                     key={i}
+                    text={raw.trim()}
                     style={{
                       fontSize: 20,
                       lineHeight: 1.6,
@@ -1738,9 +1778,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
                       paddingLeft: indented ? 32 : 0,
                       fontFamily: SPACE_GROTESK,
                     }}
-                  >
-                    {text.replace(/^\s+/, "")}
-                  </p>
+                  />
                 );
               })}
             </div>
@@ -1772,7 +1810,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
               // spaces. For everything else: render as one block
               // with pre-wrap so structural line breaks survive.
               if (isProse) {
-                const paragraphs = currentSlide.content
+                const paragraphs = fixQuoteDirection(currentSlide.content)
                   .split(/\n\s*\n/)
                   .map((p) => p.replace(/\s*\n\s*/g, " ").trim())
                   .filter((p) => p.length > 0);
@@ -1812,7 +1850,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
                     maxWidth: 600,
                   }}
                 >
-                  {currentSlide.content}
+                  {fixQuoteDirection(currentSlide.content)}
                 </p>
               );
             })()

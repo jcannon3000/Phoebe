@@ -1,4 +1,5 @@
 import type { CallAndResponseLine } from "./types";
+import { fixQuoteDirection } from "@/lib/smartQuotes";
 
 interface CallAndResponseProps {
   lines: CallAndResponseLine[];
@@ -58,7 +59,7 @@ export function CallAndResponse({ lines, theme = "morning" }: CallAndResponsePro
                 paddingLeft: !label ? 26 : 0,
               }}
             >
-              {line.text}
+              {fixQuoteDirection(line.text)}
             </p>
           </div>
         );

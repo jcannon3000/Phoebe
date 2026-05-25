@@ -47,7 +47,9 @@ export function FeedEventCard({ event, compact = false }: { event: FeedEvent; co
     <div
       className="relative flex rounded-xl overflow-hidden"
       style={{
-        background: "#0F2818",
+        // 80% fill so the animated home background drifts faintly behind
+        // the card; the bar + text stay fully opaque.
+        background: "rgba(15,40,24,0.8)",
         border: "1px solid rgba(111,175,133,0.28)",
         opacity: cancelled ? 0.6 : 1,
       }}

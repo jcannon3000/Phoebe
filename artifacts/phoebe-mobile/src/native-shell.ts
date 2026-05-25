@@ -947,6 +947,11 @@ function wireContemplation() {
             schedule: { at, allowWhileIdle: true },
             smallIcon: "phoebe_bell",
             iconColor: "#2E6B40",
+            // Closing bell that rings even on the lock screen (the whole
+            // point of this fallback). PhoebeRising-high.caf is the same
+            // bright chapel-exhale the in-app close plays, bundled in the
+            // iOS app as a notification sound resource.
+            sound: "PhoebeRising-high.caf",
           },
         ],
       });

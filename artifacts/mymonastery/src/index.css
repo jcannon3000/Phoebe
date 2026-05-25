@@ -468,6 +468,45 @@ textarea:focus {
     title-glow 3.6s ease-in-out 0.7s infinite;
 }
 
+/* ── Animated "lava lamp" green background ────────────────────────────
+   See components/AnimatedBackground.tsx. A few pre-blurred radial green
+   blobs drift via transform only (compositor-only → no per-frame repaint
+   or re-blur), so it's gentle on battery. Sits at z-index:-1 behind all
+   content; freezes for reduced-motion. */
+.phoebe-animated-bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.phoebe-animated-bg__blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(64px);
+  will-change: transform;
+}
+@keyframes phoebe-bg-drift-1 {
+  0%   { transform: translate(-14%, -11%) scale(1); }
+  50%  { transform: translate(17%, 15%) scale(1.36); }
+  100% { transform: translate(-14%, -11%) scale(1); }
+}
+@keyframes phoebe-bg-drift-2 {
+  0%   { transform: translate(12%, 9%) scale(1.2); }
+  50%  { transform: translate(-19%, -15%) scale(0.72); }
+  100% { transform: translate(12%, 9%) scale(1.2); }
+}
+@keyframes phoebe-bg-drift-3 {
+  0%   { transform: translate(10%, -15%) scale(0.84); }
+  50%  { transform: translate(-14%, 17%) scale(1.32); }
+  100% { transform: translate(10%, -15%) scale(0.84); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .phoebe-animated-bg__blob {
+    animation: none !important;
+  }
+}
+
 /* ── Hide scrollbars on horizontal scroll strips ─────────────────── */
 .no-scrollbar {
   -ms-overflow-style: none;

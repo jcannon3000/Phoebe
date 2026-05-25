@@ -14,6 +14,7 @@ import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { GratitudeNudge } from "@/components/GratitudeComposer";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 
@@ -3625,8 +3626,13 @@ export default function PrayerModePage() {
         opacity: visible ? 1 : 0,
         transition: "opacity 0.5s ease",
         position: "relative",
+        isolation: "isolate",
       }}
     >
+      {/* Subtle drifting green backdrop on the prayer slides. Skipped on
+          the closing slide, which runs its own "you arrived" color pulse
+          (.closing-pulse) on the container background instead. */}
+      {phase !== "closing" && <AnimatedBackground base="#0C1F12" />}
       {/* Exit button — lands on the dashboard so leaving prayer is a clean
           return to the home view rather than dropping the user back into
           the prayer-list they were just trying to step away from. */}
@@ -3804,7 +3810,14 @@ export default function PrayerModePage() {
       <ContemplationTimer
         open={contemplationOpen}
         startMinutes={contemplationStartMinutes}
-        onClose={() => { setContemplationOpen(false); setContemplationStartMinutes(undefined); }}
+        onClose={(result) => {
+          setContemplationOpen(false);
+          setContemplationStartMinutes(undefined);
+          // A completed sit returns to the "take a breath" slide and
+          // proceeds to the next slide (same as tapping Continue);
+          // backing out of the picker just closes the overlay.
+          if (result?.completed) advance();
+        }}
       />
     </div>
   );

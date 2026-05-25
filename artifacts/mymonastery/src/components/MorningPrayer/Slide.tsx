@@ -2,6 +2,7 @@ import { forwardRef } from "react";
 import type { Slide as SlideData, MemberPresence } from "./types";
 import { CallAndResponse } from "./CallAndResponse";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
+import { fixQuoteDirection } from "@/lib/smartQuotes";
 
 interface SlideProps {
   slide: SlideData;
@@ -476,7 +477,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
               </p>
             </div>
           ) : (
-            <p style={textStyle}>{slide.content}</p>
+            <p style={textStyle}>{fixQuoteDirection(slide.content)}</p>
           )}
 
           {slide.type === "general_thanksgiving" && !!slide.metadata?.prompt && (
