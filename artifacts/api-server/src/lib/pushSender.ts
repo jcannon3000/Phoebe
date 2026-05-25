@@ -1081,7 +1081,10 @@ export function sendFirstAmenPush(
   return sendPushToUser(recipientUserId, {
     title: "You've been held in prayer",
     body: `The first amen just went up for your request by ${firstName}.`,
-    path: `/prayer-requests/${opts.prayerRequestId}`,
+    // ?amen=1 tells the detail page this is the first-amen landing, so it
+    // features the pray-er. Opening the request any other way (e.g. the
+    // prayer list) omits the param and shows no single featured amen.
+    path: `/prayer-requests/${opts.prayerRequestId}?amen=1`,
     threadId: `prayer-request-${opts.prayerRequestId}`,
     collapseId: `first-amen-${opts.prayerRequestId}`,
     sound: PHOEBE_SOUND_HIGH,

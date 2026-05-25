@@ -154,6 +154,14 @@ export default function PrayerRequestDetailPage() {
     return new URLSearchParams(search).get("renew") === "1";
   }, [search]);
 
+  // Only feature a single "Amen from {name}" when the viewer arrived from
+  // the first-amen push (?amen=1), which is heralding that pray-er.
+  // Opening the request any other way (e.g. tapping it in the prayer
+  // list) shouldn't single out one amen above the others.
+  const fromAmenPush = useMemo(() => {
+    return new URLSearchParams(search).get("amen") === "1";
+  }, [search]);
+
   const { data, isLoading, error } = useQuery<PrayerRequestDetail>({
     queryKey: [`/api/prayer-requests/by-id/${id}`],
     queryFn: () => apiRequest("GET", `/api/prayer-requests/by-id/${id}`) as Promise<PrayerRequestDetail>,
@@ -584,9 +592,11 @@ export default function PrayerRequestDetailPage() {
             />
 
 
-            {/* Latest amen — pulses the freshest pray-er, the avatar
-                the first/third-amen pushes are heralding. */}
-            {data.amens.length > 0 && (() => {
+            {/* Featured amen — pulses the pray-er the first-amen push is
+                heralding. Only shown when the viewer arrived from that
+                push (?amen=1); opening from the prayer list shows the
+                count + faces row below, but no single featured amen. */}
+            {fromAmenPush && data.amens.length > 0 && (() => {
               const latestAmen = data.amens[0];
               const latestAmenName = latestAmen.userName ?? "Someone";
               return (
