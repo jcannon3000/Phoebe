@@ -119,6 +119,10 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // Gratitude — a daily thanksgiving journal (private, optionally
     // shared to the garden). Open to every signed-in user.
     { emoji: "🌾", label: "Gratitude", path: "/gratitude" },
+    // Saints — a browsable, searchable index of the Episcopal calendar's
+    // commemorations, for finding a holy companion in prayer. Beta-gated
+    // for the first pass.
+    ...(rawIsBeta ? [{ emoji: "📿", label: "Saints", path: "/saints", badge: "beta" }] : []),
     // Reference content — sits below the daily practices.
     { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },
     { emoji: "📜", label: "Psalter",     path: "/bcp/psalter" },
