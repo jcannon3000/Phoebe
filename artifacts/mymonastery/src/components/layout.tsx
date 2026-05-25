@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { X, LogOut, ChevronRight } from "lucide-react";
+import { X, LogOut, ChevronRight, ChevronDown } from "lucide-react";
 import { useBetaStatus } from "@/hooks/useDemo";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
@@ -15,6 +15,74 @@ const SECTION_COLORS = {
   people:     "#4A9E84",   // muted teal-green
   prayer:     "#5A8C72",   // mid-sage
 };
+
+// ─── Drawer building blocks ─────────────────────────────────────────────────
+
+// A tappable menu row — a standalone link, or a child inside a section.
+function MenuRow({
+  emoji, label, badge, count, onClick,
+}: {
+  emoji: string; label: string; badge?: string; count?: number; onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors"
+      onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
+      onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
+    >
+      <div className="flex items-center gap-3">
+        <span className="text-base leading-none w-5 text-center">{emoji}</span>
+        <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{label}</span>
+        {badge && (
+          <span className="text-[10px] font-medium" style={{ color: "rgba(143,175,150,0.45)" }}>{badge}</span>
+        )}
+        {!!count && count > 0 && (
+          <span
+            className="inline-flex items-center justify-center text-[10px] font-bold rounded-full"
+            style={{ background: "#2D5E3F", color: "#F0EDE6", minWidth: 18, height: 18, padding: "0 5px" }}
+          >
+            {count}
+          </span>
+        )}
+      </div>
+      <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
+    </button>
+  );
+}
+
+// A collapsible section: a header row with a caret that reveals its
+// children (indented) when open. Manages its own open/closed state.
+function MenuSection({
+  emoji, label, defaultOpen = false, children,
+}: {
+  emoji: string; label: string; defaultOpen?: boolean; children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors"
+        onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
+        onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-base leading-none w-5 text-center">{emoji}</span>
+          <span className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>{label}</span>
+        </div>
+        <ChevronDown
+          size={15}
+          style={{ color: "rgba(200,212,192,0.45)", transition: "transform 0.2s ease", transform: open ? "rotate(180deg)" : "none" }}
+        />
+      </button>
+      {open && <div className="mt-0.5 mb-1 space-y-0.5" style={{ marginLeft: 8 }}>{children}</div>}
+    </div>
+  );
+}
 
 // ─── Hamburger Drawer ─────────────────────────────────────────────────────────
 
@@ -82,68 +150,17 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   // this is the visual mirror so the menu doesn't dangle dead links.
   const officesOnly = user?.accessTier === "offices-only";
 
-  const navItems: Array<{ emoji: string; label: string; path: string; badge?: string; count?: number } | { divider: true }> = [
-    // Prayer List and People now live as pills in the top header (beside
-    // Menu), so they're no longer duplicated in this drawer. Gatherings +
-    // Prayer Feeds also stay off the side menu — both still live at
-    // /gatherings and /prayer-feeds for deep links, but day-to-day
-    // discovery happens through the slideshow / community pages.
-    // Liturgy section — book of common prayer reference content.
-    // Daily Office (Morning + Evening Prayer Rite II) and the
-    // Daily Devotions (BCP pp. 137 + 139, the abbreviated morning +
-    // early-evening forms) are now visible to every signed-in user.
-    // Lessons render as references for readers to open in their own
-    // bible; the Office cache is content-addressable so the load is
-    // cheap.
-    // Daily Offices leads the liturgy section — it's the daily-rhythm
-    // surface. Houses all four liturgies (Morning/Evening Prayer + the
-    // two short Devotions) behind one picker, so the separate Daily
-    // Devotions entry is gone.
-    // Practices first (Offices, Contemplation, Examen, Gratitude), then
-    // the reference content (BCP Prayers, Psalter) below them.
-    { emoji: "🌅", label: "Daily Offices", path: "/bcp/daily-office" },
-    // Contemplation — a silent-prayer timer (bell to begin, bell to
-    // close) with its own time-in-stillness stats. Open to every tier.
-    { emoji: "🕯️", label: "Contemplation", path: "/contemplation" },
-    // The Daily Examen — Ignatian end-of-day reflective prayer. Open
-    // to every signed-in user.
-    { emoji: "🤔", label: "Ignatian Examen", path: "/examen" },
-    // Gratitude — a daily thanksgiving journal (private, optionally
-    // shared to the garden). Open to every signed-in user.
-    { emoji: "🌾", label: "Gratitude", path: "/gratitude" },
-    // Reference content — sits below the daily practices.
-    { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },
-    { emoji: "📜", label: "Psalter",     path: "/bcp/psalter" },
-    // Saints — a browsable, searchable index of the Episcopal calendar's
-    // commemorations (a BCP-Prayers-style reference). Beta-gated for now.
-    ...(rawIsBeta ? [{ emoji: "📿", label: "Saints", path: "/saints", badge: "beta" }] : []),
-    { divider: true },
-    // Letters is an admin-driven surface for community members — only
-    // community admins (or hidden admins) ever author rounds, so for full
-    // accounts we gate the menu entry on at least one community-admin role
-    // (surfacing it to everyone just exposed a feature they couldn't use
-    // until an admin opened a round).
-    //
-    // Offices-only accounts are the deliberate exception: Letters is the
-    // other "monk-like" rhythm (slow, 1:1, contemplative) we want them to
-    // have, and they can start their own correspondence directly. So they
-    // always see the entry. (Writing a letter links them as a Fellow with
-    // their correspondent, which upgrades them to the full app.)
-    ...((officesOnly || (groupsData?.groups ?? []).some(g => g.myRole === "admin" || g.myRole === "hidden_admin")) ? [
-      { emoji: "📮", label: "Letters", path: "/letters", badge: "beta" },
-    ] : []),
-    // "Manage Prayer Feeds" only renders for users who actually
-    // admin a feed — single-feed admins land directly on that
-    // feed's manage page; multi-feed admins land on the browse
-    // page where their feeds carry an admin badge.
-    { emoji: "⚙️", label: "Settings",    path: "/settings"    },
-    // Admin Tools — visible to beta users (pilot view toggle), community
-    // admins (community admin toggle), prayer-feed creators, and beta admins.
-    ...((rawIsBeta || rawIsAdmin || myFeeds.length > 0 || (groupsData?.groups ?? []).some(g => g.myRole === "admin" || g.myRole === "hidden_admin")) ? [
-      { emoji: "🔧", label: "Admin Tools", path: "/admin/tools" },
-    ] : []),
-    { emoji: "ℹ️", label: "About",       path: "/church-deck"  },
-  ];
+  // The drawer is organized into collapsible sections (Communities,
+  // Offices, Practices, Resources) plus a footer. These flags gate the
+  // entries that aren't open to every tier.
+  const isCommunityAdmin = (groupsData?.groups ?? []).some(
+    (g) => g.myRole === "admin" || g.myRole === "hidden_admin",
+  );
+  // Letters — community admins author rounds; offices-only users get it
+  // too (their "monk-like" 1:1 rhythm, and writing one upgrades them).
+  const showLetters = officesOnly || isCommunityAdmin;
+  // Admin Tools — beta users, community admins, feed creators, beta admins.
+  const showAdminTools = rawIsBeta || rawIsAdmin || myFeeds.length > 0 || isCommunityAdmin;
 
   return (
     <AnimatePresence>
@@ -207,14 +224,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               {/* Pilot view / community admin toggles moved to Admin Tools page */}
             </div>
 
-            {/* ── My Communities ── offices-only tier has no
-                communities by construction, so the section is hidden
-                entirely (rather than rendering with an empty state). */}
+            {/* ── Communities ── collapsible; lists the user's
+                communities. Offices-only tier has none, so it's hidden. */}
             {!officesOnly && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-                <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.4)" }}>
-                  My Communities
-                </p>
+                <MenuSection emoji="🏘️" label="Communities" defaultOpen>
                 {(groupsData?.groups ?? []).length > 0 ? (
                   // Clamp to ~3.5 rows with a bottom fade once there
                   // are more than 3 communities — mirrors the Prayer
@@ -302,51 +316,40 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     )}
                   </div>
                 )}
+                </MenuSection>
               </div>
             )}
 
-            {/* ── Navigation ── */}
-            <div className="px-5 py-4" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-              <p className="text-[10px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(200,212,192,0.4)" }}>
-                Navigate
-              </p>
-              <nav className="space-y-1">
-                {navItems.map((item, i) => {
-                  if ("divider" in item) {
-                    return <div key={`divider-${i}`} className="my-2" style={{ height: 1, background: "rgba(46,107,64,0.18)" }} />;
-                  }
-                  const { emoji, label, path, badge, count } = item as { emoji: string; label: string; path: string; badge?: string; count?: number };
-                  const handleNavClick = () => {
-                    navigate(path);
-                  };
-                  return (
-                    <button
-                      key={path}
-                      onClick={handleNavClick}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors"
-                      onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
-                      onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-base leading-none w-5 text-center">{emoji}</span>
-                        <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{label}</span>
-                        {badge && (
-                          <span className="text-[10px] font-medium" style={{ color: "rgba(143,175,150,0.45)" }}>{badge}</span>
-                        )}
-                        {!!count && count > 0 && (
-                          <span
-                            className="inline-flex items-center justify-center text-[10px] font-bold rounded-full"
-                            style={{ background: "#2D5E3F", color: "#F0EDE6", minWidth: 18, height: 18, padding: "0 5px" }}
-                          >
-                            {count}
-                          </span>
-                        )}
-                      </div>
-                      <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
-                    </button>
-                  );
-                })}
-              </nav>
+            {/* ── Navigate ── collapsible sections: Offices stands alone,
+                Practices and Resources group their members; Letters shows
+                when the viewer has access. */}
+            <div className="px-5 py-4 space-y-1" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
+              {/* Daily Offices — the 4 liturgies live behind one picker. */}
+              <MenuRow emoji="🌅" label="Daily Offices" onClick={() => navigate("/bcp/daily-office")} />
+              <MenuSection emoji="🪷" label="Practices">
+                <MenuRow emoji="🕯️" label="Contemplation" onClick={() => navigate("/contemplation")} />
+                <MenuRow emoji="🌾" label="Gratitude" onClick={() => navigate("/gratitude")} />
+                <MenuRow emoji="🤔" label="Ignatian Examen" onClick={() => navigate("/examen")} />
+              </MenuSection>
+              <MenuSection emoji="📚" label="Resources">
+                <MenuRow emoji="📖" label="BCP Prayers" onClick={() => navigate("/bcp/intercessions")} />
+                <MenuRow emoji="📜" label="Psalter" onClick={() => navigate("/bcp/psalter")} />
+                {rawIsBeta && (
+                  <MenuRow emoji="📿" label="Saints" badge="beta" onClick={() => navigate("/saints")} />
+                )}
+              </MenuSection>
+              {showLetters && (
+                <MenuRow emoji="📮" label="Letters" badge="beta" onClick={() => navigate("/letters")} />
+              )}
+            </div>
+
+            {/* ── Account + info footer ── */}
+            <div className="px-5 py-3 space-y-1" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
+              <MenuRow emoji="⚙️" label="Settings" onClick={() => navigate("/settings")} />
+              {showAdminTools && (
+                <MenuRow emoji="🔧" label="Admin Tools" onClick={() => navigate("/admin/tools")} />
+              )}
+              <MenuRow emoji="ℹ️" label="About" onClick={() => navigate("/church-deck")} />
             </div>
 
             {/* ── Sign out ── */}
