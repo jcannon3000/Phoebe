@@ -197,7 +197,15 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 
             {/* ── Profile ── */}
             <div className="px-5 pb-5" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-              <div className="flex items-center gap-3 mb-3">
+              {/* Tapping the profile (avatar / name / email) opens
+                  Settings — navigate() closes the drawer first. */}
+              <button
+                type="button"
+                onClick={() => navigate("/settings")}
+                aria-label="Open settings"
+                className="w-full flex items-center gap-3 mb-3 text-left transition-opacity hover:opacity-80"
+                style={{ background: "transparent", cursor: "pointer" }}
+              >
                 {user?.avatarUrl ? (
                   <img
                     src={user.avatarUrl}
@@ -213,13 +221,14 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     {user?.name?.charAt(0).toUpperCase() ?? "?"}
                   </div>
                 )}
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="font-semibold truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                     {user?.name}
                   </p>
                   <p className="text-xs truncate" style={{ color: "#8FAF96" }}>{user?.email}</p>
                 </div>
-              </div>
+                <span aria-hidden className="flex-shrink-0" style={{ color: "rgba(143,175,150,0.6)", fontSize: 22, lineHeight: 1 }}>›</span>
+              </button>
 
               {/* Pilot view / community admin toggles moved to Admin Tools page */}
             </div>
