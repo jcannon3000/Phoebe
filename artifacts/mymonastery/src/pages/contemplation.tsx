@@ -4,6 +4,46 @@ import { Trash2 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
+import { openExternal } from "@/lib/openExternal";
+
+// Curated "Learn" resources — talks, videos, and guides on contemplative /
+// centering prayer. Opened externally (SFSafariViewController on iOS via
+// openExternal). To add a YouTube video or article, drop a new entry here:
+//   { kind: "video" | "article", title, source, url }
+// "video" rows get a ▶ glyph; "article" rows get a 📖. Order = display order.
+type LearnResource = { kind: "video" | "article"; title: string; source: string; url: string };
+const LEARN_RESOURCES: LearnResource[] = [
+  {
+    kind: "video",
+    title: "Centering Prayer — talks & guided sits",
+    source: "YouTube",
+    url: "https://www.youtube.com/results?search_query=centering+prayer+thomas+keating",
+  },
+  {
+    kind: "video",
+    title: "Christian meditation — how to begin",
+    source: "YouTube",
+    url: "https://www.youtube.com/results?search_query=christian+meditation+john+main",
+  },
+  {
+    kind: "article",
+    title: "The Method of Centering Prayer",
+    source: "Contemplative Outreach",
+    url: "https://www.contemplativeoutreach.org",
+  },
+  {
+    kind: "article",
+    title: "Christian Meditation",
+    source: "World Community for Christian Meditation",
+    url: "https://wccm.org",
+  },
+  {
+    kind: "article",
+    title: "Daily Meditations",
+    source: "Center for Action & Contemplation",
+    url: "https://cac.org",
+  },
+];
 
 // Contemplation home — reachable from the side menu. Shows the viewer's
 // time-in-silence stats and a button to begin a sit. The timer itself
@@ -213,6 +253,8 @@ export default function ContemplationPage() {
     setStartMinutes(minutes);
     setTimerOpen(true);
   };
+  // Learn — an expandable list of contemplative-prayer resources.
+  const [learnOpen, setLearnOpen] = useState(false);
   // Local midnight so the server can scope "today" to the user's
   // calendar day rather than UTC. Stable within a day; keyed into the
   // query so it refetches cleanly across a midnight rollover.
@@ -357,6 +399,64 @@ export default function ContemplationPage() {
         <p className="text-[12px] mt-4 text-center" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
           Tap a length to begin, or choose your own.
         </p>
+
+        {/* Learn — a pill that expands a list of contemplative-prayer
+            resources (talks, videos, guides). Each opens externally. */}
+        <div className="mt-6 flex justify-center">
+          <button
+            type="button"
+            onClick={() => setLearnOpen((v) => !v)}
+            aria-expanded={learnOpen}
+            className="inline-flex items-center gap-2 rounded-full px-4 py-2 transition-opacity hover:opacity-90 active:scale-[0.98]"
+            style={{
+              background: "rgba(62,124,122,0.16)",
+              border: "1px solid rgba(62,124,122,0.4)",
+              color: "#A8C5A0",
+              fontFamily: SPACE_GROTESK,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            <span aria-hidden>📺</span>
+            {learnOpen ? "Hide resources" : "Learn"}
+            <span aria-hidden style={{ fontSize: 11, opacity: 0.7 }}>{learnOpen ? "▲" : "▼"}</span>
+          </button>
+        </div>
+
+        {learnOpen && (
+          <div className="mt-3 space-y-2">
+            <p className="text-[12px] mb-1" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+              Ways into the practice — talks, guided sits, and reading.
+            </p>
+            {LEARN_RESOURCES.map((r) => (
+              <button
+                key={r.url}
+                type="button"
+                onClick={() => openExternal(r.url)}
+                className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)", cursor: "pointer" }}
+              >
+                <span
+                  className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-[14px]"
+                  style={{ background: "rgba(62,124,122,0.16)", border: "1px solid rgba(62,124,122,0.3)" }}
+                  aria-hidden
+                >
+                  {r.kind === "video" ? "▶" : "📖"}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+                    {r.title}
+                  </p>
+                  <p className="text-[12px] truncate" style={{ color: SAGE, margin: "2px 0 0" }}>
+                    {r.source}
+                  </p>
+                </div>
+                <span aria-hidden className="shrink-0 text-[13px]" style={{ color: "rgba(143,175,150,0.6)" }}>↗</span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* History — every logged sit, newest first. The "Log a sit"
             button opens an inline form for sits done away from the app. */}
