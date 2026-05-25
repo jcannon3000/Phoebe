@@ -76,8 +76,13 @@ export default function GratitudePage() {
     if (tab !== "community") return;
     const unseen = gardenEntries.filter((g) => g.isNew).map((g) => g.id);
     if (unseen.length === 0) return;
-    apiRequest("POST", "/api/gratitude/seen", { responseIds: unseen }).catch(() => {});
-  }, [tab, gardenEntries]);
+    // Refetch after marking seen so isNew flips and the tab dot clears
+    // this session (not just on next load). Self-terminates: the refetch
+    // returns rows with isNew=false, so the effect re-runs to a no-op.
+    apiRequest("POST", "/api/gratitude/seen", { responseIds: unseen })
+      .then(() => queryClient.invalidateQueries({ queryKey: ["/api/gratitude/responses"] }))
+      .catch(() => {});
+  }, [tab, gardenEntries, queryClient]);
 
   // New community responses the viewer hasn't seen — drives the tab dot.
   const hasNewCommunity = gardenEntries.some((g) => g.isNew && !g.isYou);

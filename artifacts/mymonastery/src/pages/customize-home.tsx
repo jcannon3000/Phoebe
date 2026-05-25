@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronUp, ChevronDown, Eye, EyeOff } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, type AuthUser } from "@/hooks/useAuth";
 
 // Customize home screen — reached from the "Customize" pill at the
 // bottom of the dashboard. Lets the viewer reorder the home modules,
@@ -42,8 +42,25 @@ function buildOrder(saved: string[] | null | undefined, fallback: HomeModule[]):
   return out;
 }
 
+// Gate on the auth user being loaded before mounting the stateful inner
+// component. Critical: the inner initializes its order/hidden state from
+// user.homeLayout in a useState initializer, which only runs once — if it
+// ran while user was still loading (hard refresh / direct nav), it would
+// seed the DEFAULT layout and a subsequent edit would clobber the user's
+// saved layout. Mounting only once user is present avoids that.
 export default function CustomizeHomePage() {
   const { user } = useAuth();
+  if (!user) {
+    return (
+      <Layout>
+        <div className="max-w-xl mx-auto w-full pb-24" />
+      </Layout>
+    );
+  }
+  return <CustomizeHomeInner user={user} />;
+}
+
+function CustomizeHomeInner({ user }: { user: AuthUser }) {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
