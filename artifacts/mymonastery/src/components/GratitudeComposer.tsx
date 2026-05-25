@@ -79,7 +79,7 @@ export function GratitudeComposer({
           >
             {shared ? "✓" : ""}
           </span>
-          Share with the garden
+          Share with the community
         </button>
       </div>
       <button

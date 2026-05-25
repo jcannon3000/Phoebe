@@ -1206,37 +1206,11 @@ export default function MomentDetail() {
             const prayedWeekLogs = (weekLogs ?? []).filter(l => !!l.loggedAt);
             return (
               <div className="mb-6">
-                {/* Two-up streak boxes — number + emoji on top row,
-                    label on bottom row. Your streak pairs with 🔥 (the
-                    viewer's own consecutive-days fire), Group streak
-                    with 🙏🏽 (communal prayer). Centered so the number
-                    reads as the headline of the box. */}
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div
-                    className="rounded-2xl px-4 py-4 text-center"
-                    style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}
-                  >
-                    <p className="text-2xl font-bold text-foreground tabular-nums leading-none">
-                      {myStreak ?? 0} <span aria-hidden>🔥</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">Your streak</p>
-                  </div>
-                  <div
-                    className="rounded-2xl px-4 py-4 text-center"
-                    style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}
-                  >
-                    <p className="text-2xl font-bold text-foreground tabular-nums leading-none">
-                      {groupStreak} <span aria-hidden>🙏🏽</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">Group streak</p>
-                  </div>
-                </div>
-
-                {/* Prayed this week — auto-scrolling ticker ONLY when
-                    the pills overflow the container width. If the row
-                    fits, render once statically with no animation. The
-                    duplicated copy + translate-to-(-50%) seam trick
-                    only kicks in when we've measured real overflow. */}
+                {/* Streak boxes removed per product direction — an
+                    intercession isn't a streak to chase. We keep the
+                    "prayed this week" row: who in the community has
+                    prayed this intercession in the last 7 days.
+                    (Auto-scrolls only when the pills overflow.) */}
                 {prayedWeekLogs.length > 0 ? (
                   <PrayedThisWeekRow logs={prayedWeekLogs} />
                 ) : (

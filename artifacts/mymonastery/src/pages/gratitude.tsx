@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
@@ -19,28 +19,18 @@ type GardenEntry = {
   authorName: string; avatarUrl: string | null; isYou: boolean; isNew: boolean;
 };
 
-// Local YYYY-MM-DD for a timestamp — streak + "days of thanks" are about
-// the user's calendar day.
+// Local YYYY-MM-DD for a timestamp — "days of thanks" is about the
+// user's calendar day.
 function localDay(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-function computeStats(entries: Entry[]): { days: number; streak: number; total: number; today: boolean } {
+function computeStats(entries: Entry[]): { days: number; total: number; today: boolean } {
   const daySet = new Set(entries.map((e) => localDay(e.createdAt)));
   const todayKey = localDay(new Date().toISOString());
-  // Streak: consecutive days back from today (or yesterday, so a day not
-  // yet prayed doesn't zero a live streak).
-  let streak = 0;
-  const cursor = new Date();
-  if (!daySet.has(todayKey)) cursor.setDate(cursor.getDate() - 1);
-  for (;;) {
-    const key = localDay(cursor.toISOString());
-    if (daySet.has(key)) { streak += 1; cursor.setDate(cursor.getDate() - 1); }
-    else break;
-  }
-  return { days: daySet.size, streak, total: entries.length, today: daySet.has(todayKey) };
+  return { days: daySet.size, total: entries.length, today: daySet.has(todayKey) };
 }
 
 function formatDay(iso: string): string {
@@ -64,6 +54,8 @@ function StatTile({ label, value }: { label: string; value: string }) {
 
 export default function GratitudePage() {
   const queryClient = useQueryClient();
+  // "mine" = my journal + composer; "community" = others' shared thanks.
+  const [tab, setTab] = useState<"mine" | "community">("mine");
 
   const { data: mine } = useQuery<{ entries: Entry[]; total: number }>({
     queryKey: ["/api/gratitude/mine"],
@@ -78,12 +70,17 @@ export default function GratitudePage() {
   const stats = computeStats(entries);
   const gardenEntries = garden?.responses ?? [];
 
-  // Mark others' new garden entries as seen once they're on screen.
+  // Mark others' new community entries as seen once the Community tab is
+  // open (so the "new" dot on the tab clears when they actually look).
   useEffect(() => {
+    if (tab !== "community") return;
     const unseen = gardenEntries.filter((g) => g.isNew).map((g) => g.id);
     if (unseen.length === 0) return;
     apiRequest("POST", "/api/gratitude/seen", { responseIds: unseen }).catch(() => {});
-  }, [gardenEntries]);
+  }, [tab, gardenEntries]);
+
+  // New community responses the viewer hasn't seen — drives the tab dot.
+  const hasNewCommunity = gardenEntries.some((g) => g.isNew && !g.isYou);
 
   const toggleShare = useMutation({
     mutationFn: ({ id, shared }: { id: number; shared: boolean }) =>
@@ -103,57 +100,83 @@ export default function GratitudePage() {
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Gratitude</h1>
-            <p className="text-xs mt-0.5" style={{ color: SAGE }}>Name the good. Keep it, or share it with the garden.</p>
+            <p className="text-xs mt-0.5" style={{ color: SAGE }}>Name the good. Keep it, or share it with your community.</p>
           </div>
         </div>
 
-        <div className="flex gap-3 mb-6">
-          <StatTile label="day streak" value={String(stats.streak)} />
-          <StatTile label={stats.days === 1 ? "day of thanks" : "days of thanks"} value={String(stats.days)} />
-          <StatTile label="total" value={String(stats.total)} />
+        {/* Tabs — your own gratitude vs. the community's shared thanks. */}
+        <div className="flex gap-2 mb-6">
+          {([
+            { key: "mine", label: "My gratitude" },
+            { key: "community", label: "Community" },
+          ] as const).map((t) => {
+            const active = tab === t.key;
+            const dot = t.key === "community" && hasNewCommunity;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setTab(t.key)}
+                className="flex items-center gap-1.5 rounded-full px-4 py-2 transition-opacity hover:opacity-90"
+                style={{
+                  background: active ? "rgba(46,107,64,0.25)" : "rgba(46,107,64,0.08)",
+                  border: `1px solid ${active ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.2)"}`,
+                  color: active ? WARM : SAGE,
+                  fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                {t.label}
+                {dot && <span aria-hidden style={{ width: 7, height: 7, borderRadius: "50%", background: "#D98C4A", display: "inline-block" }} />}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Composer */}
-        <div className="rounded-2xl p-4 mb-6" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.25)" }}>
-          <p className="text-[15px] font-semibold mb-3" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-            {stats.today ? "Give thanks again" : "What are you grateful for today?"}
-          </p>
-          <GratitudeComposer />
-        </div>
-
-        {/* Your journal */}
-        {entries.length > 0 && (
+        {tab === "mine" ? (
           <>
-            <p className="text-[11px] uppercase tracking-[0.16em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}>
-              Your journal
-            </p>
-            <div className="space-y-2 mb-6">
-              {entries.map((e) => (
-                <div key={e.id} className="rounded-2xl px-4 py-3" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.18)" }}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>{formatDay(e.createdAt)}</span>
-                    <button
-                      type="button"
-                      onClick={() => toggleShare.mutate({ id: e.id, shared: !e.shared })}
-                      className="text-[11px] transition-opacity hover:opacity-80"
-                      style={{ color: e.shared ? "#A8C5A0" : "rgba(143,175,150,0.6)", background: "none", border: "none", cursor: "pointer", fontFamily: SPACE_GROTESK }}
-                    >
-                      {e.shared ? "🌿 Shared · make private" : "Share with the garden"}
-                    </button>
-                  </div>
-                  <p className="text-[15px] italic" style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif" }}>{e.text}</p>
-                </div>
-              ))}
+            <div className="flex gap-3 mb-6">
+              <StatTile label={stats.days === 1 ? "day of thanks" : "days of thanks"} value={String(stats.days)} />
+              <StatTile label="total" value={String(stats.total)} />
             </div>
-          </>
-        )}
 
-        {/* Garden wall */}
-        {gardenEntries.length > 0 && (
-          <>
-            <p className="text-[11px] uppercase tracking-[0.16em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}>
-              From the garden
-            </p>
+            {/* Composer */}
+            <div className="rounded-2xl p-4 mb-6" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.25)" }}>
+              <p className="text-[15px] font-semibold mb-3" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+                {stats.today ? "Give thanks again" : "What are you grateful for today?"}
+              </p>
+              <GratitudeComposer />
+            </div>
+
+            {/* Your journal */}
+            {entries.length > 0 && (
+              <>
+                <p className="text-[11px] uppercase tracking-[0.16em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}>
+                  Your journal
+                </p>
+                <div className="space-y-2 mb-6">
+                  {entries.map((e) => (
+                    <div key={e.id} className="rounded-2xl px-4 py-3" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.18)" }}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>{formatDay(e.createdAt)}</span>
+                        <button
+                          type="button"
+                          onClick={() => toggleShare.mutate({ id: e.id, shared: !e.shared })}
+                          className="text-[11px] transition-opacity hover:opacity-80"
+                          style={{ color: e.shared ? "#A8C5A0" : "rgba(143,175,150,0.6)", background: "none", border: "none", cursor: "pointer", fontFamily: SPACE_GROTESK }}
+                        >
+                          {e.shared ? "🌿 Shared · make private" : "Share with the community"}
+                        </button>
+                      </div>
+                      <p className="text-[15px] italic" style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif" }}>{e.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        ) : (
+          /* Community — others' shared thanks. */
+          gardenEntries.length > 0 ? (
             <div className="space-y-2">
               {gardenEntries.map((g) => (
                 <div key={g.id} className="rounded-2xl px-4 py-3 flex gap-3" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.18)" }}>
@@ -167,7 +190,11 @@ export default function GratitudePage() {
                 </div>
               ))}
             </div>
-          </>
+          ) : (
+            <p className="text-[13px] text-center py-12" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic" }}>
+              No one has shared yet. Share an entry from My gratitude to start it off.
+            </p>
+          )
         )}
       </div>
     </Layout>
