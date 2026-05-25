@@ -1468,6 +1468,23 @@ export async function migrate() {
     // suppresses every push when false.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS push_enabled BOOLEAN NOT NULL DEFAULT true`);
 
+    // App-open metrics (admin metrics page). One row per user per 15-min
+    // window; the unique (user_id, bucket) index dedups rapid re-opens so
+    // POST /api/app-open's onConflictDoNothing collapses them. This table
+    // was added to the schema + the /admin/metrics query but its CREATE
+    // was missing — so /admin/metrics 500'd ("app metrics not loading")
+    // because the combined query referenced a non-existent table.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS app_opens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        bucket INTEGER NOT NULL,
+        opened_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_app_opens_user_bucket ON app_opens (user_id, bucket)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_app_opens_opened_at ON app_opens (opened_at)`);
+
     // ── Standard daily bell time → 09:30 ────────────────────────────────────
     // Default went from 07:00 → 09:30 by user direction (a more
     // pastoral hour). Idempotent: re-running this on a DB that's
