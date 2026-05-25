@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { playOpeningSwell } from "@/lib/amenFeedback";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 // Silent contemplation timer — Insight-Timer-style. The slideshow's
 // chapel-exhale swell opens the sit, a glowing countdown title holds
@@ -336,8 +337,12 @@ export function ContemplationTimer({
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25 }}
         className="fixed inset-0 z-[60] flex flex-col items-center"
-        style={{ background: BG }}
+        style={{ background: BG, isolation: "isolate" }}
       >
+        {/* Drifting green backdrop — sits at z-index:-1 behind the timer,
+            isolation:isolate keeps it contained so the content paints
+            above it without per-element z-index. */}
+        <AnimatedBackground base={BG} />
         {/* Close (×) — top right, safe-area aware. Hidden mid-sit so a
             stray tap doesn't abandon the silence; an explicit "End"
             sits at the bottom instead. */}

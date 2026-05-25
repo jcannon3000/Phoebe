@@ -391,6 +391,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
   const mainRef = useRef<HTMLElement | null>(null);
   const swipeTouchStartXRef = useRef<number | null>(null);
   const swipeTouchStartYRef = useRef<number | null>(null);
+  // Plays the chapel chime once when the office first opens (a refetch
+  // shouldn't re-strike it), mirroring prayer-mode's opening swell.
+  const openingChimeRef = useRef(false);
   const queryClient = useQueryClient();
   const [, setViewerLocation] = useLocation();
   // Once-per-mount guard so a user who navigates BACK to the
@@ -495,6 +498,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
           }
         }
         setSlideIdx(initialIdx);
+        // Opening chime — the chapel exhaling as the office opens, the
+        // same chime every slide turn plays. Once per open (guarded so a
+        // background refetch doesn't re-strike it). Mirrors the swell
+        // prayer-mode plays on its first slide.
+        if (!openingChimeRef.current) {
+          openingChimeRef.current = true;
+          playOfficeChime(initialIdx % 3);
+        }
         // If we're resuming PAST the intercessions portal (a
         // localStorage in-progress index, or a ?slide= deep link that
         // lands beyond it), the user has already crossed the handoff —

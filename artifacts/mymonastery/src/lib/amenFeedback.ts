@@ -23,6 +23,23 @@ let _visibilityHookInstalled = false;
 // go on web sometimes."
 const _pendingAudio: Array<() => void> = [];
 
+// Replay every queued audio attempt. Called whenever the context leaves
+// the "suspended" state — from the unlock gesture, a visibility resume,
+// OR a successful resume() kicked off by a play attempt itself. That last
+// path matters: a sound that queues while the context is suspended but
+// the app is already foregrounded (so no visibility event is coming, and
+// the one-shot unlock listeners have long since self-removed) would
+// otherwise sit in the queue forever. Draining on resume-success means it
+// fires as soon as the context wakes.
+function drainPendingAudio() {
+  // Splice rather than mutate in place so a callback that itself enqueues
+  // something (rare) is handled on the next drain, not mid-iteration.
+  const drained = _pendingAudio.splice(0, _pendingAudio.length);
+  for (const fn of drained) {
+    try { fn(); } catch { /* one callback failing shouldn't block the rest */ }
+  }
+}
+
 // iOS WKWebView, Safari, and most browser audio policies only let an
 // AudioContext leave the "suspended" state from inside a handler
 // that's running because of a real user gesture. We install one-shot
@@ -39,14 +56,8 @@ function ensureAudioUnlock() {
         await _audioCtx.resume();
       }
     } catch { /* ignore */ }
-    // Drain any swells that tried to fire while we were locked. We
-    // pop and call rather than splicing the array in place so a
-    // pending callback that itself enqueues something else (rare) is
-    // handled in the next pass instead of mutating mid-iteration.
-    const drained = _pendingAudio.splice(0, _pendingAudio.length);
-    for (const fn of drained) {
-      try { fn(); } catch { /* per-callback failure shouldn't block the rest */ }
-    }
+    // Drain any swells that tried to fire while we were locked.
+    drainPendingAudio();
     document.removeEventListener("touchend", unlock);
     document.removeEventListener("pointerdown", unlock);
     document.removeEventListener("click", unlock);
@@ -77,12 +88,7 @@ function ensureVisibilityResume() {
   _visibilityHookInstalled = true;
   const tryResume = () => {
     if (!_audioCtx || _audioCtx.state !== "suspended") return;
-    _audioCtx.resume().then(() => {
-      const drained = _pendingAudio.splice(0, _pendingAudio.length);
-      for (const fn of drained) {
-        try { fn(); } catch { /* per-callback failure shouldn't block */ }
-      }
-    }).catch(() => { /* ignore — next user gesture will retry */ });
+    _audioCtx.resume().then(drainPendingAudio).catch(() => { /* ignore — next user gesture will retry */ });
   };
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") tryResume();
@@ -209,7 +215,7 @@ export function triggerSubmitFeedback() {
     ensureAudioUnlock();
     ensureVisibilityResume();
     if (isAudioStillLocked()) {
-      void ctx.resume().catch(() => { /* ignore */ });
+      void ctx.resume().then(drainPendingAudio).catch(() => { /* ignore */ });
       _pendingAudio.push(() => triggerSubmitFeedback());
       return;
     }
@@ -304,7 +310,7 @@ export function playOpeningSwell(octaveStep: number = 0) {
     ensureAudioUnlock();
     ensureVisibilityResume();
     if (isAudioStillLocked()) {
-      void _audioCtx.resume().catch(() => { /* ignore */ });
+      void _audioCtx.resume().then(drainPendingAudio).catch(() => { /* ignore */ });
       _pendingAudio.push(() => playOpeningSwell(octaveStep));
       return;
     }
@@ -401,7 +407,7 @@ export function playOfficeChime(octaveStep: number = 0) {
     ensureAudioUnlock();
     ensureVisibilityResume();
     if (isAudioStillLocked()) {
-      void _audioCtx.resume().catch(() => { /* ignore */ });
+      void _audioCtx.resume().then(drainPendingAudio).catch(() => { /* ignore */ });
       _pendingAudio.push(() => playOfficeChime(octaveStep));
       return;
     }
