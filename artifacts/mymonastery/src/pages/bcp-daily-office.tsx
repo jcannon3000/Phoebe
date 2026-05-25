@@ -779,6 +779,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
       /* non-fatal; web build has no listener and the OS will drop the push later */
     }
     if (!atEnd) {
+      // Same chapel chime Next/tap/swipe play — the Amen button is just
+      // another advance, so it shouldn't be the one silent path.
+      playOfficeChime((slideIdx + 1) % 3);
       setSlideIdx(slideIdx + 1);
       return;
     }
