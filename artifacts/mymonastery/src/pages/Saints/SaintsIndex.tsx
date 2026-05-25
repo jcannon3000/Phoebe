@@ -255,12 +255,16 @@ export default function SaintsIndex() {
                 </div>
               )}
 
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "rgba(143,175,150,0.5)" }}>
-                Known for
-              </p>
-              <p className="text-[15px] leading-relaxed" style={{ color: "#C8D4C0", fontFamily: SERIF }}>
-                {selected.knownFor}
-              </p>
+              {selected.knownFor && (
+                <>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "rgba(143,175,150,0.5)" }}>
+                    Known for
+                  </p>
+                  <p className="text-[15px] leading-relaxed" style={{ color: "#C8D4C0", fontFamily: SERIF }}>
+                    {selected.knownFor}
+                  </p>
+                </>
+              )}
 
               {selected.patronOf.length > 0 && (
                 <>

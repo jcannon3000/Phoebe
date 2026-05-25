@@ -282,4 +282,9 @@ const ENTRIES: FixedFeastEntry[] = [
   { month: 12, day: 31, rank: "lesser_feast", name: "Frances Joseph Gaudet, Educator and Social Reformer",  color: "white", life: "1934" },
 ];
 
+// Exported so the Saints index can be derived from the same calendar that
+// drives the home-screen feast header — guaranteeing every commemoration the
+// home screen can show is also browsable in Saints.
+export const LESSER_FEASTS = ENTRIES;
+
 registerLesserFeasts(ENTRIES);
