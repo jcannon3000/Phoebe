@@ -65,7 +65,50 @@ app.use(
   }),
 );
 
-app.use(cors({ origin: true, credentials: true }));
+// CORS: credentialed requests are allowed only from known origins.
+// Previously `origin: true` reflected ANY origin with credentials, which
+// (paired with sameSite:"none" cookies) let any website make
+// authenticated requests to the API and read the responses. The web app
+// is served same-origin (no CORS needed); the cross-origin clients are
+// the native app webviews — iOS `capacitor://localhost`, Android
+// `https://localhost` (androidScheme) — plus the production web origins.
+// (On iOS the app routes fetch through the native HTTP stack via
+// CapacitorHttp, which bypasses CORS entirely, so this is mainly the
+// guard against malicious third-party sites.) Extra origins can be added
+// via ALLOWED_ORIGINS (comma-separated). Requests with no Origin header
+// (same-origin fetch, native HTTP, curl, health checks) are allowed.
+const allowedOrigins = new Set<string>([
+  "https://withphoebe.app",
+  "https://www.withphoebe.app",
+  "capacitor://localhost",
+  "https://localhost",
+  ...(process.env["NODE_ENV"] !== "production"
+    ? ["http://localhost:5173", "http://localhost:4173", "http://localhost:3000"]
+    : []),
+  ...(process.env["ALLOWED_ORIGINS"]?.split(",").map((s) => s.trim()).filter(Boolean) ?? []),
+]);
+app.use(cors({
+  origin(origin, cb) {
+    // No Origin header → not a cross-site browser request. Allow.
+    if (!origin) { cb(null, true); return; }
+    cb(null, allowedOrigins.has(origin));
+  },
+  credentials: true,
+}));
+
+// Baseline security headers (defense-in-depth). No Content-Security-
+// Policy here — the SPA leans on inline styles, and a default CSP would
+// break it; that's a larger, separate effort.
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "SAMEORIGIN");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+  if (process.env["NODE_ENV"] === "production") {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
+  next();
+});
 // 10MB JSON cap: covers base64-encoded profile photos (the avatar
 // endpoint already rejects anything past ~7MB) and the occasional
 // large prayer-feed payload. Express's default 100KB was being
