@@ -6,7 +6,6 @@ import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
 import { bibleUrlSegments } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { playOfficeChime } from "@/lib/amenFeedback";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
@@ -822,11 +821,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
         display: "flex",
         flexDirection: "column",
         fontFamily: SPACE_GROTESK,
-        position: "relative",
-        isolation: "isolate",
       }}
     >
-      <AnimatedBackground base={BG} variant="subtle" />
       {/* Top bar — Back / Menu / eyebrow+ref. Mirrors Lectio's header. */}
       <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, pointerEvents: "none" }}>
         <div

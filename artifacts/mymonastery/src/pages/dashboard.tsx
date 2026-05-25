@@ -5238,7 +5238,7 @@ export default function Dashboard() {
   const userName = user.name ?? "";
 
   return (
-    <Layout animatedBg>
+    <Layout>
       <style>{`
         @media (min-width: 768px) {
           .dash-shell {
