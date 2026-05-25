@@ -1,6 +1,7 @@
 import { pgTable, serial, text, timestamp, boolean, integer, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { encryptedText } from "./encrypted-text";
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -12,8 +13,11 @@ export const usersTable = pgTable("users", {
   // per Apple ID. Null for users who only signed in via Google or
   // email/password. Mirrors googleId so native auth paths stay parallel.
   appleId: text("apple_id").unique(),
-  googleAccessToken: text("google_access_token"),
-  googleRefreshToken: text("google_refresh_token"),
+  // Encrypted at rest (AES-256-GCM) via the transparent column type when
+  // TOKEN_ENC_KEY is set; plaintext passthrough otherwise. Reads/writes
+  // are transparent to every consumer.
+  googleAccessToken: encryptedText("google_access_token"),
+  googleRefreshToken: encryptedText("google_refresh_token"),
   googleTokenExpiry: timestamp("google_token_expiry", { withTimezone: true }),
   passwordHash: text("password_hash"),
   resetToken: text("reset_token"),
