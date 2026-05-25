@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Plus, X, Camera } from "lucide-react";
+import { Plus, X, Camera, Sliders } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -2357,6 +2357,47 @@ function NewPrayerRequestsCard({
   );
 }
 
+// ── ContemplationHomeCard — compact "sit in silence" home anchor ──
+// A one-line card that taps through to /contemplation. Hidden by
+// default; surfaced (and pinnable to the top) from the Customize page so
+// someone whose daily rhythm is silent prayer can lead with it.
+function ContemplationHomeCard() {
+  return (
+    <Link href="/contemplation" className="block">
+      <div
+        role="button"
+        tabIndex={0}
+        className="relative flex rounded-xl overflow-hidden cursor-pointer"
+        style={{ background: "rgba(62,124,122,0.12)", border: "1px solid rgba(62,124,122,0.35)" }}
+      >
+        <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
+          <p
+            className="font-semibold min-w-0 truncate"
+            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
+          >
+            Contemplation 🕯️
+          </p>
+          <div
+            className="rounded-full text-center shrink-0"
+            style={{
+              background: "rgba(62,124,122,0.28)",
+              color: "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 13,
+              fontWeight: 500,
+              padding: "6px 14px",
+              border: "1px solid rgba(62,124,122,0.45)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Begin <span aria-hidden>→</span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 // ── PrayerOfficeCard — always-visible "pray with your community" anchor ──
 //
 // The home-screen invitation to pray the appropriate office for the
@@ -4408,6 +4449,41 @@ export default function Dashboard() {
     ? subscribedFeeds.filter((f) => f.feed.id !== featuredFeed.feed.id)
     : subscribedFeeds;
 
+  // ── Home-screen layout (Customize page) ──────────────────────────────
+  // The anchor area is an ordered, hideable list of modules. When the
+  // user hasn't customized (homeLayout null), we derive a default that
+  // preserves today's layout: requests on top, the lead (feed if
+  // feed-led, else office), then the rest; Contemplation hidden by
+  // default. The first visible office/feeds module is the "primary"
+  // anchor — it gets the full office card / the feed hero card.
+  const HOME_MODULES = ["office", "feeds", "contemplation", "requests"] as const;
+  type HomeModule = typeof HOME_MODULES[number];
+  const homeHidden = new Set<string>(user?.homeLayout?.hidden ?? ["contemplation"]);
+  const homeOrder: HomeModule[] = (() => {
+    const saved = user?.homeLayout?.order ?? null;
+    const fallback: HomeModule[] = featuredFeed
+      ? ["requests", "feeds", "office", "contemplation"]
+      : ["requests", "office", "feeds", "contemplation"];
+    if (!saved) return fallback;
+    // Keep known keys in saved order, then append any missing modules so
+    // a newly-added module always has a place.
+    const seen = new Set<string>();
+    const out: HomeModule[] = [];
+    for (const k of saved) {
+      if ((HOME_MODULES as readonly string[]).includes(k) && !seen.has(k)) {
+        seen.add(k);
+        out.push(k as HomeModule);
+      }
+    }
+    for (const k of HOME_MODULES) if (!seen.has(k)) out.push(k);
+    return out;
+  })();
+  // Primary anchor = first visible office/feeds module → full office /
+  // feed hero; the other office instance drops to the compact card.
+  const primaryAnchor = homeOrder.find(
+    (k) => (k === "office" || k === "feeds") && !homeHidden.has(k),
+  );
+
   // Gatherings / traditions the user owns or participates in. Enriched
   // rows already carry `nextMeetupDate`, so bucketing into Today /
   // Tomorrow / This week is the same pattern as service schedules.
@@ -5249,45 +5325,65 @@ export default function Dashboard() {
                    that wasn't working — the daily rhythm is now
                    "respond to your community + pray the office,"
                    not "walk through the slideshow every day." */}
-          {filter === null && (
-            <>
-              {/* Simple count-style card at the top: "X prayer
-                  requests waiting" + the first few faces + a
-                  Respond pill. Only rendered when newPrayersCount > 0
-                  — disappears entirely on quiet days, no completion
-                  state, no avatar-stack rollup. Matches the
-                  pre-parish-weekly-card behaviour per user direction. */}
-              {newPrayersCount > 0 && (
-                <div className="mt-5">
-                  <NewPrayerRequestsCard count={newPrayersCount} faces={homeFaces} />
-                </div>
-              )}
-              {/* Primary anchor. Feed-first home (portal sign-ups,
-                  toggle on) puts the featured feed's tall hero card
-                  here; otherwise the office card leads as usual. */}
-              <div className="mt-3">
-                {featuredFeed
-                  ? <FeedHeroCard feed={featuredFeed} />
-                  : <PrayerOfficeCard />}
-              </div>
-
-              {/* Secondary anchors. When feed-first promotes a feed to
-                  the hero, the office is NOT hidden — it drops to a
-                  compact one-line card here, the same quieter format
-                  the feed takes for most people. Followed by the
-                  per-feed "begin praying" cards (the featured feed
-                  excluded so it isn't doubled). mb-2 gives breathing
-                  room before the next dashboard section. */}
-              {(featuredFeed || secondaryFeeds.length > 0) && (
-                <div className="mt-3 mb-2 flex flex-col gap-3">
-                  {featuredFeed && <PrayerOfficeCard compact />}
-                  {secondaryFeeds.map((row) => (
-                    <FeedPrayerCard key={row.feed.id} feed={row} />
-                  ))}
-                </div>
-              )}
-            </>
-          )}
+          {filter === null && (() => {
+            // Render the home modules in the user's chosen order, skipping
+            // hidden ones. Each module returns its content (or null when it
+            // has nothing to show); the first non-null gets mt-5, the rest
+            // mt-3, so spacing stays even regardless of what's on.
+            const renderModule = (key: HomeModule): React.ReactNode => {
+              if (homeHidden.has(key)) return null;
+              switch (key) {
+                case "requests":
+                  // "X new prayer requests" notification card — only on
+                  // days there's something waiting.
+                  return newPrayersCount > 0
+                    ? <NewPrayerRequestsCard count={newPrayersCount} faces={homeFaces} />
+                    : null;
+                case "office":
+                  // Full card when it's the primary anchor; compact
+                  // one-liner when something else leads.
+                  return <PrayerOfficeCard compact={primaryAnchor !== "office"} />;
+                case "feeds": {
+                  if (subscribedFeeds.length === 0) return null;
+                  // Feed hero only when feeds is the primary anchor AND a
+                  // home feed is pinned; otherwise every feed is a card.
+                  if (primaryAnchor === "feeds" && featuredFeed) {
+                    return (
+                      <div className="flex flex-col gap-3">
+                        <FeedHeroCard feed={featuredFeed} />
+                        {secondaryFeeds.map((row) => (
+                          <FeedPrayerCard key={row.feed.id} feed={row} />
+                        ))}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="flex flex-col gap-3">
+                      {subscribedFeeds.map((row) => (
+                        <FeedPrayerCard key={row.feed.id} feed={row} />
+                      ))}
+                    </div>
+                  );
+                }
+                case "contemplation":
+                  return <ContemplationHomeCard />;
+                default:
+                  return null;
+              }
+            };
+            const rendered = homeOrder
+              .map((k) => ({ k, node: renderModule(k) }))
+              .filter((m) => m.node != null);
+            return (
+              <>
+                {rendered.map((m, i) => (
+                  <div key={m.k} className={i === 0 ? "mt-5" : "mt-3"}>
+                    {m.node}
+                  </div>
+                ))}
+              </>
+            );
+          })()}
 
           {/* Prayer pills removed per product direction — the
               dedicated /my-prayer-requests, /prayers-for-me, and
@@ -5481,8 +5577,30 @@ export default function Dashboard() {
             pages remain reachable from the side menu and from the
             "View list" pill on the Daily Prayer List card. */}
 
+        {/* Customize pill — opens the home-screen customization page
+            (reorder / show-hide modules, pick what leads). Only on the
+            unfiltered home. */}
+        {filter === null && (
+          <div className="flex justify-center mt-10">
+            <Link
+              href="/customize-home"
+              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 transition-opacity hover:opacity-90"
+              style={{
+                background: "rgba(46,107,64,0.10)",
+                border: "1px solid rgba(46,107,64,0.28)",
+                color: "#A8C5A0",
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
+              <Sliders size={14} /> Customize
+            </Link>
+          </div>
+        )}
+
         {/* Footer */}
-        <p className="text-center text-xs mt-10 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
+        <p className="text-center text-xs mt-8 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
           Inspired by Monastic Wisdom
         </p>
         {/* The "About" pill that lived here (linking to /church-deck)

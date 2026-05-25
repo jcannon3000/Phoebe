@@ -1781,6 +1781,37 @@ router.put("/me/feed-first-home", async (req, res): Promise<void> => {
   }
 });
 
+// ── Home-screen layout ───────────────────────────────────────────────
+// Backs the Customize page (reached from the "Customize" pill on the
+// home screen). Body: { order: string[], hidden: string[] } where each
+// entry is a known home-module key. We validate against the allowed set
+// and ensure `order` is a complete permutation so the dashboard never
+// drops a module it doesn't know how to place. Returns the saved layout.
+const HOME_MODULE_KEYS = ["office", "feeds", "contemplation", "requests"] as const;
+router.put("/me/home-layout", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const body = req.body as { order?: unknown; hidden?: unknown };
+  const order = Array.isArray(body.order) ? body.order.filter((k): k is string => typeof k === "string") : null;
+  const hidden = Array.isArray(body.hidden) ? body.hidden.filter((k): k is string => typeof k === "string") : [];
+  if (!order) { res.status(400).json({ error: "order must be an array" }); return; }
+  const allowed = new Set<string>(HOME_MODULE_KEYS);
+  // Keep only known keys, dedupe, then append any missing keys so the
+  // stored order is always a full permutation of the module set.
+  const seen = new Set<string>();
+  const cleanOrder = order.filter((k) => allowed.has(k) && !seen.has(k) && (seen.add(k), true));
+  for (const k of HOME_MODULE_KEYS) if (!seen.has(k)) cleanOrder.push(k);
+  const cleanHidden = [...new Set(hidden.filter((k) => allowed.has(k)))];
+  const layout = { order: cleanOrder, hidden: cleanHidden };
+  try {
+    await db.update(usersTable).set({ homeLayout: layout }).where(eq(usersTable.id, sessionUserId));
+    res.json(layout);
+  } catch (err) {
+    console.error("[/me/home-layout PUT] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // ─── Public share endpoints ──────────────────────────────────────────
 // No auth required. A prayer-request owner hands out a /p/:token
 // link; the visitor lands on a slim public page that reads through

@@ -1457,6 +1457,12 @@ export async function migrate() {
     // at the API surface (the settings toggle is hidden for them).
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS locale TEXT NOT NULL DEFAULT 'en'`);
 
+    // Home-screen layout customization (the "Customize" pill → page).
+    // JSON { order: string[], hidden: string[] } of home-module keys.
+    // NULL = not customized (dashboard derives a default from
+    // feed_first_home, preserving the existing layout).
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS home_layout JSONB`);
+
     // ── Standard daily bell time → 09:30 ────────────────────────────────────
     // Default went from 07:00 → 09:30 by user direction (a more
     // pastoral hour). Idempotent: re-running this on a DB that's

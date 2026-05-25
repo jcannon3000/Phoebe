@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, boolean, integer, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -159,6 +159,15 @@ export const usersTable = pgTable("users", {
   // AND the featured feed is in the user's subscriptions, the feed gets
   // the tall PrayerOfficeCard-style card and the office card is hidden.
   feedFirstHome: boolean("feed_first_home").notNull().default(true),
+  // Home-screen layout customization (Customize page, reached from the
+  // "Customize" pill at the bottom of the home). Shape:
+  //   { order: string[]; hidden: string[] }
+  // where each entry is a home-module key ("office" | "feeds" |
+  // "contemplation" | "requests"). `order` defines vertical order +
+  // which module leads (first visible); `hidden` is the set switched
+  // off. NULL = the user hasn't customized, so the dashboard derives a
+  // sensible default from feed_first_home (preserving today's layout).
+  homeLayout: jsonb("home_layout").$type<{ order: string[]; hidden: string[] }>(),
   // BCP-47 locale code (e.g. "en", "es"). Drives i18next on the client
   // and template selection in pushSender / email senders. Beta users
   // can flip this to "es" via Settings → Language; non-beta accounts

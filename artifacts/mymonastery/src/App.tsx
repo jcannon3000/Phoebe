@@ -119,6 +119,7 @@ import BcpPage from "./pages/bcp";
 import OfficesPage from "./pages/offices";
 import ExamenPage from "./pages/examen";
 import ContemplationPage from "./pages/contemplation";
+import CustomizeHomePage from "./pages/customize-home";
 import GratitudePage from "./pages/gratitude";
 import BcpIntercessionsPage from "./pages/bcp-intercessions";
 import BcpDailyOfficePage from "./pages/bcp-daily-office";
@@ -460,6 +461,7 @@ function Router() {
       <Route path="/pray-request/new" component={PrayerRequestNew} />
       <Route path="/pray-for/:email" component={PrayerForDetail} />
       <Route path="/settings" component={SettingsPage} />
+      <Route path="/customize-home" component={CustomizeHomePage} />
       <Route path="/about" component={AboutPage} />
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/terms" component={TermsPage} />

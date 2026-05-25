@@ -201,6 +201,7 @@ router.get("/auth/me", async (req, res) => {
     locale: string | null;
     homeFeedId: number | null;
     feedFirstHome: boolean;
+    homeLayout: { order: string[]; hidden: string[] } | null;
   };
   // Phoebe Parish access tier. Computed server-side so every page that
   // calls useAuth() knows immediately whether to render the simplified
@@ -247,6 +248,9 @@ router.get("/auth/me", async (req, res) => {
     // featured card in place of the office card.
     homeFeedId: u.homeFeedId ?? null,
     feedFirstHome: u.feedFirstHome ?? true,
+    // Home-screen layout (Customize page). null = not customized; the
+    // dashboard derives a default from feedFirstHome.
+    homeLayout: u.homeLayout ?? null,
   });
 });
 

@@ -46,6 +46,9 @@ export interface AuthUser {
   // Set at signup for portal sign-ups; toggled in Settings → Home screen.
   homeFeedId: number | null;
   feedFirstHome: boolean;
+  // Home-screen layout (Customize page). null = not customized; the
+  // dashboard derives a default from feedFirstHome.
+  homeLayout: { order: string[]; hidden: string[] } | null;
 }
 
 async function fetchMe(): Promise<AuthUser | null> {

@@ -1,0 +1,267 @@
+import { useState } from "react";
+import { Link, useLocation } from "wouter";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft, ChevronUp, ChevronDown, Eye, EyeOff } from "lucide-react";
+import { Layout } from "@/components/layout";
+import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+
+// Customize home screen — reached from the "Customize" pill at the
+// bottom of the dashboard. Lets the viewer reorder the home modules,
+// show/hide them, choose what leads (the top one), and pick which feed
+// gets the big card. Saves immediately: order/hidden via
+// PUT /api/me/home-layout, featured feed via PUT /api/me/feed-first-home.
+
+const WARM = "#F0EDE6";
+const SAGE = "#8FAF96";
+const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
+
+const HOME_MODULES = ["office", "feeds", "contemplation", "requests"] as const;
+type HomeModule = typeof HOME_MODULES[number];
+
+const MODULE_META: Record<HomeModule, { label: string; emoji: string; sub: string }> = {
+  office: { label: "Daily Office", emoji: "📖", sub: "Morning & Evening Prayer" },
+  feeds: { label: "Prayer feeds", emoji: "🌿", sub: "The feeds you follow" },
+  contemplation: { label: "Contemplation", emoji: "🕯️", sub: "A timer for silent prayer" },
+  requests: { label: "Prayer requests", emoji: "🙏🏽", sub: "New requests from your community" },
+};
+
+// Build a complete, valid order from a saved one (or a fallback),
+// keeping known keys in order then appending any missing modules.
+function buildOrder(saved: string[] | null | undefined, fallback: HomeModule[]): HomeModule[] {
+  if (!saved) return fallback;
+  const seen = new Set<string>();
+  const out: HomeModule[] = [];
+  for (const k of saved) {
+    if ((HOME_MODULES as readonly string[]).includes(k) && !seen.has(k)) {
+      seen.add(k);
+      out.push(k as HomeModule);
+    }
+  }
+  for (const k of HOME_MODULES) if (!seen.has(k)) out.push(k);
+  return out;
+}
+
+export default function CustomizeHomePage() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+
+  // Feed-led default mirrors the dashboard: feed-led users lead with
+  // feeds, everyone else leads with the office. Computed from the user
+  // fields directly so it doesn't wait on the feeds query.
+  const feedLed = !!(user?.feedFirstHome && user?.homeFeedId != null);
+  const fallbackOrder: HomeModule[] = feedLed
+    ? ["requests", "feeds", "office", "contemplation"]
+    : ["requests", "office", "feeds", "contemplation"];
+
+  const [order, setOrder] = useState<HomeModule[]>(() => buildOrder(user?.homeLayout?.order, fallbackOrder));
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set(user?.homeLayout?.hidden ?? ["contemplation"]));
+
+  const { data: subsData } = useQuery<{ subscriptions: Array<{ feed: { id: number; title: string; coverEmoji: string | null } }> }>({
+    queryKey: ["/api/prayer-feeds/subscribed"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed") as Promise<{ subscriptions: Array<{ feed: { id: number; title: string; coverEmoji: string | null } }> }>,
+    enabled: !!user,
+  });
+  const feeds = subsData?.subscriptions.map((s) => s.feed) ?? [];
+
+  const saveLayout = useMutation({
+    mutationFn: (layout: { order: string[]; hidden: string[] }) =>
+      apiRequest("PUT", "/api/me/home-layout", layout),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }),
+  });
+  const persist = (nextOrder: HomeModule[], nextHidden: Set<string>) => {
+    setOrder(nextOrder);
+    setHidden(new Set(nextHidden));
+    saveLayout.mutate({ order: nextOrder, hidden: [...nextHidden] });
+  };
+
+  const move = (index: number, dir: -1 | 1) => {
+    const j = index + dir;
+    if (j < 0 || j >= order.length) return;
+    const next = [...order];
+    [next[index], next[j]] = [next[j], next[index]];
+    persist(next, hidden);
+  };
+  const toggleHidden = (k: HomeModule) => {
+    const next = new Set(hidden);
+    if (next.has(k)) next.delete(k);
+    else {
+      // Keep at least one module visible.
+      if (hidden.size >= order.length - 1) return;
+      next.add(k);
+    }
+    persist(order, next);
+  };
+
+  // Featured-feed picker (which feed gets the big card when feeds lead).
+  const setFeed = useMutation({
+    mutationFn: (feedId: number | null) => apiRequest("PUT", "/api/me/feed-first-home", { feedId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
+    },
+  });
+  const selectedFeedId = (user?.feedFirstHome && user?.homeFeedId != null && feeds.some((f) => f.id === user.homeFeedId))
+    ? user.homeFeedId
+    : null;
+
+  // The first visible module "leads" — gets the prominent card.
+  const leadKey = order.find((k) => !hidden.has(k));
+
+  return (
+    <Layout>
+      <div className="max-w-xl mx-auto w-full pb-24">
+        <button
+          type="button"
+          onClick={() => setLocation("/dashboard")}
+          className="inline-flex items-center gap-1.5 text-xs font-medium mb-6 transition-opacity hover:opacity-80"
+          style={{ color: SAGE, background: "transparent", cursor: "pointer" }}
+        >
+          <ChevronLeft size={14} />
+          Home
+        </button>
+
+        <h1 className="text-2xl font-bold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+          Customize home 🪟
+        </h1>
+        <p className="text-sm mt-1 mb-5" style={{ color: SAGE }}>
+          Reorder, show or hide the cards on your home screen. The top one leads.
+        </p>
+
+        {/* Module list — reorder with the arrows, toggle visibility with
+            the eye. The top visible row carries a "Leads" badge. */}
+        <div className="flex flex-col gap-2">
+          {order.map((key, i) => {
+            const meta = MODULE_META[key];
+            const isHidden = hidden.has(key);
+            const isLead = key === leadKey;
+            return (
+              <div
+                key={key}
+                className="flex items-center gap-3 rounded-xl px-3 py-3"
+                style={{
+                  background: isHidden ? "rgba(46,107,64,0.04)" : "rgba(46,107,64,0.10)",
+                  border: "1px solid rgba(46,107,64,0.22)",
+                  opacity: isHidden ? 0.6 : 1,
+                }}
+              >
+                {/* Reorder arrows */}
+                <div className="flex flex-col">
+                  <button
+                    type="button"
+                    aria-label="Move up"
+                    onClick={() => move(i, -1)}
+                    disabled={i === 0}
+                    className="transition-opacity disabled:opacity-25 hover:opacity-80"
+                    style={{ color: SAGE, cursor: i === 0 ? "default" : "pointer", lineHeight: 0, padding: 2 }}
+                  >
+                    <ChevronUp size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Move down"
+                    onClick={() => move(i, 1)}
+                    disabled={i === order.length - 1}
+                    className="transition-opacity disabled:opacity-25 hover:opacity-80"
+                    style={{ color: SAGE, cursor: i === order.length - 1 ? "default" : "pointer", lineHeight: 0, padding: 2 }}
+                  >
+                    <ChevronDown size={16} />
+                  </button>
+                </div>
+
+                <span style={{ fontSize: 20 }}>{meta.emoji}</span>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+                      {meta.label}
+                    </p>
+                    {isLead && (
+                      <span
+                        className="text-[9px] font-semibold uppercase rounded-full px-2 py-0.5"
+                        style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", letterSpacing: "0.1em" }}
+                      >
+                        Leads
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>
+                    {meta.sub}
+                  </p>
+                </div>
+
+                {/* Show / hide */}
+                <button
+                  type="button"
+                  aria-label={isHidden ? "Show" : "Hide"}
+                  onClick={() => toggleHidden(key)}
+                  className="transition-opacity hover:opacity-80"
+                  style={{ color: isHidden ? "rgba(143,175,150,0.6)" : "#A8C5A0", cursor: "pointer", lineHeight: 0, padding: 4 }}
+                >
+                  {isHidden ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Featured feed — which feed gets the big card when Prayer feeds
+            lead. Only shown when the viewer follows at least one feed. */}
+        {feeds.length > 0 && (
+          <>
+            <h2
+              className="text-[10px] uppercase tracking-[0.16em] font-semibold mt-8 mb-2"
+              style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}
+            >
+              Featured feed
+            </h2>
+            <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+              When Prayer feeds lead, this one gets the big card.
+            </p>
+            <div
+              className="rounded-xl px-3"
+              style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
+            >
+              {[{ id: null as number | null, label: "No featured feed", sub: "Every feed shows as a card" },
+                ...feeds.map((f) => ({ id: f.id as number | null, label: `${f.title} ${f.coverEmoji ?? "🌿"}`.trim(), sub: "Gets the tall hero card" }))]
+                .map((row, idx) => {
+                  const isSel = selectedFeedId === row.id;
+                  return (
+                    <button
+                      key={row.id ?? "none"}
+                      type="button"
+                      onClick={() => setFeed.mutate(row.id)}
+                      className="w-full flex items-center gap-3 py-2.5 text-left"
+                      style={{ borderTop: idx === 0 ? "none" : "1px solid rgba(200,212,192,0.12)", background: "transparent", cursor: "pointer" }}
+                    >
+                      <div
+                        style={{
+                          width: 18, height: 18, borderRadius: "50%",
+                          border: `2px solid ${isSel ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+                          background: isSel ? "#A8C5A0" : "transparent",
+                          flexShrink: 0,
+                        }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[14px]" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>{row.label}</p>
+                        <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>{row.sub}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+            </div>
+          </>
+        )}
+
+        <Link
+          href="/dashboard"
+          className="block text-center mt-8 text-sm font-semibold transition-opacity hover:opacity-80"
+          style={{ color: "#A8C5A0", fontFamily: SPACE_GROTESK }}
+        >
+          Done →
+        </Link>
+      </div>
+    </Layout>
+  );
+}
