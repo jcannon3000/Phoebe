@@ -342,7 +342,7 @@ export function ContemplationTimer({
         {/* Drifting green backdrop — sits at z-index:-1 behind the timer,
             isolation:isolate keeps it contained so the content paints
             above it without per-element z-index. */}
-        <AnimatedBackground base={BG} />
+        <AnimatedBackground base={BG} variant="pronounced" />
         {/* Close (×) — top right, safe-area aware. Hidden mid-sit so a
             stray tap doesn't abandon the silence; an explicit "End"
             sits at the bottom instead. */}

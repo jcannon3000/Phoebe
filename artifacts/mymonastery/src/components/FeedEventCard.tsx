@@ -47,7 +47,11 @@ export function FeedEventCard({ event, compact = false }: { event: FeedEvent; co
     <div
       className="relative flex rounded-xl overflow-hidden"
       style={{
-        background: "#0F2818",
+        // 90% fill so the home's drifting backdrop shows faintly through
+        // the card; the colored bar, text, and border stay fully opaque
+        // (only the background-color carries the transparency, not the
+        // element's opacity).
+        background: "rgba(15,40,24,0.9)",
         border: "1px solid rgba(111,175,133,0.28)",
         opacity: cancelled ? 0.6 : 1,
       }}
