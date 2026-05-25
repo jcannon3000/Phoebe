@@ -177,7 +177,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             exit={{ x: "100%" }}
             transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
             className="fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-y-auto"
-            style={{ width: "min(340px, 90vw)", background: "rgba(4,13,6,0.95)", borderLeft: "1px solid rgba(46,107,64,0.18)" }}
+            style={{ width: "min(340px, 90vw)", background: "#040D06", borderLeft: "1px solid rgba(46,107,64,0.18)" }}
           >
             {/* Close button. The drawer spans the full viewport height
                 from top: 0, which on a notched iPhone puts this row
