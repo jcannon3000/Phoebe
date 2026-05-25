@@ -3,17 +3,24 @@ import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { playOpeningSwell } from "@/lib/amenFeedback";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 // Silent contemplation timer — Insight-Timer-style. The slideshow's
-// chapel-exhale swell opens the sit, the screen counts down in
-// stillness, and the same swell (a brighter octave) closes it — same
-// sound effect the prayer slideshow uses on every slide, per user
-// direction. The elapsed time is logged as a "contemplation"
+// chapel-exhale swell opens the sit, a glowing countdown title holds
+// the stillness, and the same swell (a brighter octave) marks the end
+// — same sound effect the prayer slideshow uses on every slide. That
+// closing bell is also scheduled as a local notification, so it rings
+// even if the phone is locked or the app is backgrounded mid-sit.
+//
+// When the set time is reached the bell rings but the sit doesn't stop:
+// a smaller count-up appears under the (now frozen) goal time so the
+// user can keep sitting, and that overtime is added to the logged time
+// when they end. The elapsed time is logged as a "contemplation"
 // prayer_session so it shows on the Contemplation page's stats.
 //
-// Launched two ways (both render this overlay): the "Begin
-// contemplation" CTA on the prayer-mode pause slide, and the
-// Contemplation menu page. Self-contained — controlled by `open`.
+// Launched two ways (both render this overlay): the pause slide of the
+// prayer slideshow (which advances to the next slide once the sit is
+// done), and the Contemplation menu page. Self-contained — `open`.
 
 const BG = "#0C1F12";
 const WARM = "#F0EDE6";
@@ -52,7 +59,15 @@ export function ContemplationTimer({
   // Contemplation page. Undefined → show the picker (the default, and
   // what the pause-slide CTA + "Begin contemplation" button use).
   startMinutes,
-}: { open: boolean; onClose: () => void; startMinutes?: number }) {
+}: {
+  open: boolean;
+  // `completed` is true when the user actually sat (reached the closing
+  // screen), false when they backed out of the picker without sitting.
+  // The pause-slide caller uses it to decide whether to advance the
+  // slideshow to the next slide.
+  onClose: (result?: { completed: boolean }) => void;
+  startMinutes?: number;
+}) {
   const queryClient = useQueryClient();
   const [phase, setPhase] = useState<Phase>("picker");
   const [customMode, setCustomMode] = useState(false);
@@ -60,6 +75,10 @@ export function ContemplationTimer({
   // Chosen length + the live remaining count (seconds).
   const [totalSeconds, setTotalSeconds] = useState(0);
   const [remaining, setRemaining] = useState(0);
+  // Once the set time is reached, the countdown freezes at the goal and
+  // `overtime` counts up the extra seconds the user keeps sitting.
+  const [reachedGoal, setReachedGoal] = useState(false);
+  const [overtime, setOvertime] = useState(0);
   // What the closing screen reports — the seconds actually sat, and
   // whether the user ended before the bell (changes the closing copy).
   const [satSeconds, setSatSeconds] = useState(0);
@@ -69,6 +88,8 @@ export function ContemplationTimer({
   const startedAtRef = useRef<Date | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const recordedRef = useRef(false);
+  // Guards reachGoal() against the countdown interval firing it twice.
+  const reachedRef = useRef(false);
   // Guards finish() against a double-call: the countdown interval can
   // tick once more between `left <= 0` firing finish() and the phase
   // state actually flipping (the `phase` check inside finish reads a
@@ -136,9 +157,12 @@ export function ContemplationTimer({
     if (open) {
       recordedRef.current = false;
       finishedRef.current = false;
+      reachedRef.current = false;
       if (startMinutes && startMinutes > 0) {
         begin(startMinutes);
       } else {
+        setReachedGoal(false);
+        setOvertime(0);
         setPhase("picker");
         setCustomMode(false);
       }
@@ -153,18 +177,30 @@ export function ContemplationTimer({
 
   // ── Countdown loop. Remaining is derived from an absolute end time so
   // a backgrounded tab resyncs correctly on return rather than drifting.
+  // Reaching the end time doesn't stop the sit — it rings the bell and
+  // flips into a count-up (overtime), which keeps accruing until the
+  // user ends. Overtime is measured from the goal time, not from when
+  // the JS catches up, so a locked/backgrounded sit credits correctly.
   useEffect(() => {
     if (phase !== "running") return;
     const tick = () => {
-      const left = Math.max(0, (endAtRef.current - Date.now()) / 1000);
+      const now = Date.now();
+      if (reachedRef.current) {
+        setOvertime(Math.max(0, (now - endAtRef.current) / 1000));
+        return;
+      }
+      const left = Math.max(0, (endAtRef.current - now) / 1000);
       setRemaining(left);
-      if (left <= 0) finish(totalSeconds, false);
+      if (left <= 0) {
+        reachGoal();
+        setOvertime(Math.max(0, (now - endAtRef.current) / 1000));
+      }
     };
     tick();
     const id = window.setInterval(tick, 250);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, totalSeconds]);
+  }, [phase]);
 
   function recordSession(seconds: number) {
     if (recordedRef.current) return;
@@ -192,8 +228,11 @@ export function ContemplationTimer({
     setTotalSeconds(total);
     setRemaining(total);
     setSatSeconds(0);
+    setReachedGoal(false);
+    setOvertime(0);
     recordedRef.current = false;
     finishedRef.current = false;
+    reachedRef.current = false;
     startedAtRef.current = new Date();
     endAtRef.current = Date.now() + total * 1000;
     setEndedEarly(false);
@@ -205,38 +244,87 @@ export function ContemplationTimer({
     playOpeningSwell(0);
   }
 
-  // Both the natural finish and an early "End" land here. `seconds` is
-  // the time actually sat (full length on a natural finish; elapsed on
-  // an early end). `early` flags the latter so the closing copy can
-  // acknowledge it.
+  // The set time has elapsed. Ring the closing bell and flip into
+  // overtime — the sit keeps running (count-up) until the user ends.
+  function reachGoal() {
+    if (reachedRef.current) return;
+    reachedRef.current = true;
+    setReachedGoal(true);
+    // Only ring the in-app swell when we hit the goal roughly on time
+    // (i.e. foregrounded). If we're catching up after a locked/back-
+    // grounded stretch, the scheduled local notification already rang
+    // the bell, so a second one would double up. Either way drop the
+    // pending notification.
+    const onTime = Date.now() - endAtRef.current < 2500;
+    cancelEndBell();
+    if (onTime) {
+      // Closing swell — same slideshow sound, brighter (octave 2).
+      playOpeningSwell(2);
+      try {
+        window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } }));
+      } catch { /* non-fatal */ }
+    }
+  }
+
+  // Ends the sit and shows the closing screen. `seconds` is the time
+  // actually sat; `early` flags an end before the bell so the closing
+  // copy can acknowledge it. The bell only strikes here when the goal
+  // was never reached — once it has, reachGoal() already rang it.
   function finish(seconds: number, early: boolean) {
     if (finishedRef.current) return;
     finishedRef.current = true;
     releaseWakeLock();
-    // Foregrounded finish — the in-app swell handles the close, so drop
-    // the pending notification to avoid a double bell.
+    // Drop any pending notification so a foregrounded finish doesn't
+    // bell after the user has already left the sit.
     cancelEndBell();
     setSatSeconds(Math.round(seconds));
     setEndedEarly(early);
     recordSession(seconds);
-    // Closing swell — same slideshow sound, brighter (octave 2) so the
-    // ending reads as a resolution rather than a repeat of the opening.
-    playOpeningSwell(2);
-    try {
-      window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } }));
-    } catch { /* non-fatal */ }
+    if (!reachedRef.current) {
+      // Closing swell — same slideshow sound, brighter (octave 2) so the
+      // ending reads as a resolution rather than a repeat of the opening.
+      playOpeningSwell(2);
+      try {
+        window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } }));
+      } catch { /* non-fatal */ }
+    }
     setPhase("complete");
   }
 
-  function endEarly() {
-    const elapsed = totalSeconds - remaining;
-    finish(elapsed, true);
+  // The "End" pill. Before the bell → log the elapsed time (early end).
+  // After the bell → log the full goal plus the overtime they kept
+  // sitting, so the extra minutes count toward their contemplation time.
+  function endSit() {
+    const now = Date.now();
+    if (reachedRef.current) {
+      const over = Math.max(0, (now - endAtRef.current) / 1000);
+      finish(totalSeconds + over, false);
+    } else {
+      const left = Math.max(0, (endAtRef.current - now) / 1000);
+      finish(totalSeconds - left, true);
+    }
+  }
+
+  // Discard — leave the sit WITHOUT logging it. Mark both guards so the
+  // countdown tick can't sneak in a finish()/recordSession() on the way
+  // out, drop the keep-awake + pending bell, and close straight away
+  // (completed:false, so the pause-slide caller doesn't advance and no
+  // closing screen shows). The minutes sat are intentionally not saved.
+  function discardSit() {
+    finishedRef.current = true;
+    recordedRef.current = true;
+    releaseWakeLock();
+    cancelEndBell();
+    onClose({ completed: false });
   }
 
   function handleClose() {
     releaseWakeLock();
     cancelEndBell();
-    onClose();
+    // "completed" when the user actually sat (reached the closing
+    // screen); false when they backed out of the picker. The pause-slide
+    // caller advances the slideshow only on a completed sit.
+    onClose({ completed: phase === "complete" });
   }
 
   if (!open) return null;
@@ -249,8 +337,9 @@ export function ContemplationTimer({
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25 }}
         className="fixed inset-0 z-[60] flex flex-col items-center"
-        style={{ background: BG }}
+        style={{ background: BG, isolation: "isolate" }}
       >
+        <AnimatedBackground base={BG} />
         {/* Close (×) — top right, safe-area aware. Hidden mid-sit so a
             stray tap doesn't abandon the silence; an explicit "End"
             sits at the bottom instead. */}
@@ -363,27 +452,48 @@ export function ContemplationTimer({
 
           {phase === "running" && (
             <>
-              {/* Breathing ring — a slow pulse to settle into, behind the
-                  countdown. Pure CSS via framer's infinite scale. */}
-              <motion.div
-                aria-hidden
-                animate={{ scale: [1, 1.08, 1], opacity: [0.5, 0.85, 0.5] }}
-                transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-                style={{
-                  position: "absolute",
-                  width: 260, height: 260, borderRadius: "50%",
-                  border: "1px solid rgba(143,210,160,0.35)",
-                  background: "radial-gradient(circle, rgba(46,107,64,0.18) 0%, rgba(46,107,64,0) 70%)",
-                }}
-              />
+              {/* Glowing countdown title — once the goal is reached it
+                  freezes at the set time and the smaller count-up below
+                  carries the overtime. */}
               <p
-                className="font-semibold tabular-nums"
-                style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 56, letterSpacing: "-0.02em", position: "relative" }}
+                className="title-glow-breathe tabular-nums"
+                style={{
+                  color: WARM,
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: "clamp(64px, 17vw, 104px)",
+                  fontWeight: 700,
+                  letterSpacing: "-0.02em",
+                  lineHeight: 1,
+                  margin: 0,
+                }}
               >
-                {mmss(remaining)}
+                {mmss(reachedGoal ? totalSeconds : remaining)}
               </p>
-              <p className="text-[12px] mt-3" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, serif", fontStyle: "italic", position: "relative" }}>
-                Be still, and know.
+              {reachedGoal && (
+                <p
+                  className="tabular-nums"
+                  style={{
+                    color: SAGE,
+                    fontFamily: SPACE_GROTESK,
+                    fontSize: 30,
+                    fontWeight: 600,
+                    letterSpacing: "-0.01em",
+                    marginTop: 12,
+                  }}
+                >
+                  +{mmss(overtime)}
+                </p>
+              )}
+              <p
+                className="text-[13px]"
+                style={{
+                  color: "rgba(143,175,150,0.6)",
+                  fontFamily: "Georgia, serif",
+                  fontStyle: "italic",
+                  marginTop: 20,
+                }}
+              >
+                {reachedGoal ? "Stay as long as you like." : "Be still, and know."}
               </p>
             </>
           )}
@@ -413,20 +523,49 @@ export function ContemplationTimer({
           )}
         </div>
 
-        {/* End-early — only mid-sit, at the bottom out of the focal area. */}
+        {/* End pill — only mid-sit, at the bottom out of the focal area.
+            After the goal it reads "Done" since the bell has rung. A
+            smaller "Discard session" link sits beneath it for leaving
+            without logging the sit. */}
         {phase === "running" && (
-          <button
-            type="button"
-            onClick={endEarly}
-            className="text-[13px] transition-opacity hover:opacity-80"
-            style={{
-              marginBottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)",
-              color: "rgba(143,175,150,0.55)", background: "none", border: "none",
-              cursor: "pointer", fontFamily: SPACE_GROTESK, textDecoration: "underline", textUnderlineOffset: 3,
-            }}
+          <div
+            className="flex flex-col items-center gap-2.5"
+            style={{ marginBottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
           >
-            End
-          </button>
+            <button
+              type="button"
+              onClick={endSit}
+              className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.98]"
+              style={{
+                padding: "13px 44px",
+                background: "rgba(46,107,64,0.18)",
+                border: "1px solid rgba(46,107,64,0.5)",
+                color: WARM,
+                fontFamily: SPACE_GROTESK,
+                fontSize: 15,
+                fontWeight: 600,
+                letterSpacing: "0.02em",
+                cursor: "pointer",
+              }}
+            >
+              {reachedGoal ? "Done" : "End"}
+            </button>
+            <button
+              type="button"
+              onClick={discardSit}
+              className="transition-opacity hover:opacity-80"
+              style={{
+                background: "none",
+                border: "none",
+                color: "rgba(143,175,150,0.6)",
+                fontFamily: SPACE_GROTESK,
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              Discard session
+            </button>
+          </div>
         )}
       </motion.div>
     </AnimatePresence>
