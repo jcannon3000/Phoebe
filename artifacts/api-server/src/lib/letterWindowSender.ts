@@ -42,6 +42,7 @@ import {
   sendLetterReminderDay3Push,
   sendLetterReminderDay7Push,
   sendLetterDayBeforePush,
+  sendLetterFollowUpPush,
 } from "./pushSender";
 import { logger } from "./logger";
 
@@ -97,6 +98,12 @@ export async function runLetterWindowSweep(): Promise<void> {
           authorEmail: l.authorEmail,
           sentAt: new Date(l.sentAt),
         }));
+        // Author of the most-recent letter — used to spot the follow-up
+        // case (I wrote last, the other went quiet, my turn re-opened).
+        const lastRef = [...letterRefs].sort(
+          (a, b) => a.sentAt.getTime() - b.sentAt.getTime(),
+        ).pop();
+        const lastAuthorEmail = lastRef?.authorEmail.toLowerCase() ?? null;
 
         // Need the creator email so getOneToOneTurnState can resolve
         // who writes first. The creator is the row with isCreator (or
@@ -130,6 +137,28 @@ export async function runLetterWindowSweep(): Promise<void> {
           // Resolve recipient name once — needed by every push path
           // (day-before, day-of, day-3, day-7).
           const recipientName = (other.name ?? other.email.split("@")[0] ?? "your friend").trim();
+
+          // Follow-up window opened. I wrote the most-recent letter and my
+          // correspondent has gone quiet past the OVERDUE mark (14 days),
+          // so getOneToOneTurnState flips MY turn back to OPEN — I may send
+          // another without waiting for a reply. Notify me once that the
+          // window opened, keyed on the overdue date so each fresh 14-day
+          // silence earns its own ping. `continue` so the normal turn
+          // open / day-3 / day-7 nudges (which are meant for the *replier*,
+          // and would all misfire at once here) don't also run for me.
+          if (
+            turn.state === "OPEN" &&
+            lastAuthorEmail &&
+            lastAuthorEmail === m.email.toLowerCase()
+          ) {
+            const followUpKey = turn.overdueDate
+              ? formatPeriodStartDateString(turn.overdueDate)
+              : turn.windowOpenDate
+                ? formatPeriodStartDateString(turn.windowOpenDate)
+                : periodStartStr;
+            await followUpPushOnce(c.id, m.userId, followUpKey, recipientName);
+            continue;
+          }
 
           // Day-before heads-up. Fires when the window opens TOMORROW —
           // i.e. turn state is WAITING, I am the next writer, and the
@@ -296,6 +325,44 @@ async function reminderPushOnce(
   }).catch((err) => logger.warn(
     { err, userId, correspondenceId, kind },
     "[letter-window] reminder push failed",
+  ));
+}
+
+// Follow-up window push. Same insert-then-send dedupe shape, with a
+// dedicated "followup_open" kind keyed on the overdue date so it never
+// collides with the replier-facing "open"/reminder rows and so each
+// fresh 14-day silence fires exactly one ping.
+async function followUpPushOnce(
+  correspondenceId: number,
+  userId: number,
+  periodKey: string,
+  recipientName: string,
+): Promise<void> {
+  const [existing] = await db.select({ id: letterWindowPushesTable.id })
+    .from(letterWindowPushesTable)
+    .where(and(
+      eq(letterWindowPushesTable.correspondenceId, correspondenceId),
+      eq(letterWindowPushesTable.userId, userId),
+      eq(letterWindowPushesTable.periodStartDate, periodKey),
+      eq(letterWindowPushesTable.kind, "followup_open"),
+    ));
+  if (existing) return;
+
+  const ins = await db.insert(letterWindowPushesTable).values({
+    correspondenceId,
+    userId,
+    periodStartDate: periodKey,
+    kind: "followup_open",
+  }).onConflictDoNothing().returning({ id: letterWindowPushesTable.id });
+  if (ins.length === 0) return;
+
+  await sendLetterFollowUpPush(userId, {
+    correspondenceId,
+    periodStartDate: periodKey,
+    recipientName,
+  }).catch((err) => logger.warn(
+    { err, userId, correspondenceId },
+    "[letter-window] follow-up push failed",
   ));
 }
 

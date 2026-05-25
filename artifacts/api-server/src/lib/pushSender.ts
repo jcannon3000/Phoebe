@@ -745,6 +745,30 @@ export function sendLetterReminderDay7Push(
   });
 }
 
+// Follow-up window opened: you wrote last and your correspondent has
+// gone quiet for two weeks. Strict alternation normally keeps you
+// WAITING, but after 14 days of silence your turn flips back to OPEN so
+// you can send another letter without waiting for a reply. This is the
+// one-time heads-up that the follow-up window is now open. Names the
+// silent correspondent and deep-links to the write surface.
+export function sendLetterFollowUpPush(
+  userId: number,
+  opts: {
+    correspondenceId: number;
+    periodStartDate: string;
+    recipientName: string;
+  },
+) {
+  return sendPushToUser(userId, {
+    title: `You can write ${opts.recipientName} again`,
+    body: `It's been two weeks without a reply — feel free to send ${opts.recipientName} another letter whenever you'd like.`,
+    path: `/letters/${opts.correspondenceId}/write`,
+    threadId: `letter-${opts.correspondenceId}`,
+    collapseId: `letter-followup-${opts.correspondenceId}-${opts.periodStartDate}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
 // Fires when someone writes a "word of comfort" / prayer response on
 // another user's prayer request. Sender-revealing (recipients want to
 // know who cared enough to reach out). Tap lands on the recipient's

@@ -174,7 +174,10 @@ export function getWhoseTurn(
  *   Letter 1   → OPEN for everyone (anyone can start, anytime).
  *   Letter 2   → immediate response allowed — author of Letter 1 must WAIT;
  *                the other participant has an OPEN window with no time gate.
- *                This is the ONLY exception to strict alternation.
+ *                Exception: if that first reply never comes, the opening
+ *                author's turn re-opens 14 days after their most-recent
+ *                letter so they can send a follow-up (same relief valve
+ *                as Letter 3+ below).
  *   Letter 3+  → alternation with a 7-day wait anchored to the
  *                most-recent letter's sentAt. Window opens at sentAt + 7 days.
  *                If the next writer doesn't write within 7 more days, the
@@ -252,12 +255,32 @@ export function getOneToOneTurnState(
     return { state: "OPEN", windowOpenDate: null, overdueDate: null, nextWriterEmail: null };
   }
 
-  // Letter 2 — exactly one letter exists and first exchange not yet complete:
-  // the non-author has an OPEN window with no time gate; the author waits.
+  // Letter 2 — first exchange not yet complete (only one person has
+  // written so far): the non-author has an OPEN window with no time
+  // gate; the opening author waits.
   if (!firstExchangeComplete) {
     const firstAuthor = lower(chrono[0].authorEmail);
     if (me === firstAuthor) {
-      return { state: "WAITING", windowOpenDate: null, overdueDate: null, nextWriterEmail: other };
+      // I sent the opening letter(s) and the first reply hasn't come.
+      // The recipient can reply anytime (no 7-day gate on the first
+      // exchange), so I normally WAIT. But if they've stayed silent for
+      // 14 days since my most-recent letter, my turn re-opens so I can
+      // send a follow-up rather than waiting forever — the same relief
+      // valve as Letter 3+. Anchored to the LAST letter's sentAt so a
+      // follow-up resets the clock.
+      const lastSent = chrono[chrono.length - 1].sentAt;
+      const lastUtcDay = Date.UTC(
+        lastSent.getUTCFullYear(),
+        lastSent.getUTCMonth(),
+        lastSent.getUTCDate(),
+      );
+      const followUpUtc = lastUtcDay + (WAIT_DAYS + OVERDUE_AFTER_OPEN_DAYS) * 24 * 60 * 60 * 1000;
+      const nowUtcDay = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+      const followUpDate = new Date(followUpUtc);
+      if (nowUtcDay >= followUpUtc) {
+        return { state: "OPEN", windowOpenDate: followUpDate, overdueDate: followUpDate, nextWriterEmail: me };
+      }
+      return { state: "WAITING", windowOpenDate: followUpDate, overdueDate: followUpDate, nextWriterEmail: other };
     }
     return { state: "OPEN", windowOpenDate: null, overdueDate: null, nextWriterEmail: me };
   }
