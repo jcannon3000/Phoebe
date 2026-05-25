@@ -1205,9 +1205,6 @@ export default function SettingsPage() {
           </SettingsCard>
         </div>
 
-        {/* ── Notifications master switch ── */}
-        <NotificationsSettings />
-
         {/* ── Office reminders ── */}
         <OfficeReminderSettings />
 
@@ -1242,6 +1239,12 @@ export default function SettingsPage() {
 
         {/* ── Muted People ── */}
         <MutedPeople />
+        <div className="mb-8" />
+
+        {/* ── Notifications master switch — the pause-everything toggle.
+            Kept at the bottom of the settings (below the other prefs,
+            above the account actions) per direction. ── */}
+        <NotificationsSettings />
         <div className="mb-8" />
 
         {/* ── Sign out ── */}
