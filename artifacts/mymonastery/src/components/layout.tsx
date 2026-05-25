@@ -335,7 +335,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 <MenuRow emoji="📖" label="BCP Prayers" onClick={() => navigate("/bcp/intercessions")} />
                 <MenuRow emoji="📜" label="Psalter" onClick={() => navigate("/bcp/psalter")} />
                 {rawIsBeta && (
-                  <MenuRow emoji="📿" label="Saints" badge="beta" onClick={() => navigate("/saints")} />
+                  <MenuRow emoji="😇" label="Saints" badge="beta" onClick={() => navigate("/saints")} />
                 )}
               </MenuSection>
               {showLetters && (

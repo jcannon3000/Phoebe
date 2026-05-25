@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronUp, ChevronDown, Eye, EyeOff } from "lucide-react";
+import { Reorder } from "framer-motion";
+import { ChevronLeft, Eye, EyeOff, GripVertical } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth, type AuthUser } from "@/hooks/useAuth";
@@ -109,16 +110,11 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
     saveLayout.mutate({ order: nextOrder, hidden: [...nextHidden] });
   };
 
-  const move = (index: number, dir: -1 | 1) => {
-    const j = index + dir;
-    if (j < 0 || j >= order.length) return;
-    // Prayer requests is pinned to the top — never move it, and never let
-    // another module swap into the lead slot above it.
-    if (order[index] === PINNED || order[j] === PINNED) return;
-    const next = [...order];
-    [next[index], next[j]] = [next[j], next[index]];
-    persist(next, hidden);
-  };
+  // The draggable rows — everything except the pinned lead. Reordering
+  // these writes back a full order with the pinned module still first.
+  const movable = order.filter((k) => k !== PINNED);
+  const reorder = (next: HomeModule[]) => persist([PINNED, ...next], hidden);
+
   const toggleHidden = (k: HomeModule) => {
     if (k === PINNED) return; // pinned — always visible
     const next = new Set(hidden);
@@ -139,12 +135,13 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
     },
   });
+  // Featured-feed selection. When the viewer hasn't explicitly chosen one,
+  // default to Creation Care (if they follow it) rather than "No featured
+  // feed" — it's the house feed we lead with.
+  const creationCareId = feeds.find((f) => /creation\s*care/i.test(f.title))?.id ?? null;
   const selectedFeedId = (user?.feedFirstHome && user?.homeFeedId != null && feeds.some((f) => f.id === user.homeFeedId))
     ? user.homeFeedId
-    : null;
-
-  // The first visible module "leads" — gets the prominent card.
-  const leadKey = order.find((k) => !hidden.has(k));
+    : creationCareId;
 
   return (
     <Layout>
@@ -166,93 +163,84 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
           Reorder, show or hide the cards on your home screen. The top one leads.
         </p>
 
-        {/* Module list — reorder with the arrows, toggle visibility with
-            the eye. The top visible row carries a "Leads" badge. */}
-        <div className="flex flex-col gap-2">
-          {order.map((key, i) => {
+        {/* Pinned lead — Prayer requests always sits at the top, set apart
+            from the draggable list below. It can't be moved or hidden. */}
+        {(() => {
+          const meta = MODULE_META[PINNED];
+          return (
+            <div
+              className="flex items-center gap-3 rounded-xl px-3 py-3"
+              style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
+            >
+              <span style={{ fontSize: 20 }}>{meta.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+                    {meta.label}
+                  </p>
+                  <span
+                    className="text-[9px] font-semibold uppercase rounded-full px-2 py-0.5"
+                    style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", letterSpacing: "0.1em" }}
+                  >
+                    Leads
+                  </span>
+                </div>
+                <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>
+                  {meta.sub}
+                </p>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Draggable rows — everything below the pinned lead. */}
+        <p className="text-[11px] mt-4 mb-2" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}>
+          Drag to reorder · tap the eye to show or hide
+        </p>
+        <Reorder.Group as="div" axis="y" values={movable} onReorder={reorder} className="flex flex-col gap-2">
+          {movable.map((key) => {
             const meta = MODULE_META[key];
             const isHidden = hidden.has(key);
-            const isLead = key === leadKey;
-            const pinned = key === PINNED;
             return (
-              <div
+              <Reorder.Item
                 key={key}
-                className="flex items-center gap-3 rounded-xl px-3 py-3"
+                as="div"
+                value={key}
+                className="flex items-center gap-3 rounded-xl px-3 py-3 select-none"
                 style={{
                   background: isHidden ? "rgba(46,107,64,0.04)" : "rgba(46,107,64,0.10)",
                   border: "1px solid rgba(46,107,64,0.22)",
                   opacity: isHidden ? 0.6 : 1,
+                  cursor: "grab",
                 }}
+                whileDrag={{ cursor: "grabbing", scale: 1.02, boxShadow: "0 8px 24px rgba(0,0,0,0.45)" }}
               >
-                {/* Reorder arrows — omitted for the pinned lead (Prayer
-                    requests), which always leads and can't move. A spacer
-                    keeps the rows aligned. The first movable row can't go
-                    up (it would displace the pinned lead). */}
-                {pinned ? (
-                  <div style={{ width: 20, flexShrink: 0 }} />
-                ) : (
-                  <div className="flex flex-col">
-                    <button
-                      type="button"
-                      aria-label="Move up"
-                      onClick={() => move(i, -1)}
-                      disabled={i <= 1}
-                      className="transition-opacity disabled:opacity-25 hover:opacity-80"
-                      style={{ color: SAGE, cursor: i <= 1 ? "default" : "pointer", lineHeight: 0, padding: 2 }}
-                    >
-                      <ChevronUp size={16} />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Move down"
-                      onClick={() => move(i, 1)}
-                      disabled={i === order.length - 1}
-                      className="transition-opacity disabled:opacity-25 hover:opacity-80"
-                      style={{ color: SAGE, cursor: i === order.length - 1 ? "default" : "pointer", lineHeight: 0, padding: 2 }}
-                    >
-                      <ChevronDown size={16} />
-                    </button>
-                  </div>
-                )}
-
+                <GripVertical size={16} style={{ color: "rgba(143,175,150,0.5)", flexShrink: 0 }} />
                 <span style={{ fontSize: 20 }}>{meta.emoji}</span>
-
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
-                      {meta.label}
-                    </p>
-                    {isLead && (
-                      <span
-                        className="text-[9px] font-semibold uppercase rounded-full px-2 py-0.5"
-                        style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", letterSpacing: "0.1em" }}
-                      >
-                        Leads
-                      </span>
-                    )}
-                  </div>
+                  <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+                    {meta.label}
+                  </p>
                   <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>
                     {meta.sub}
                   </p>
                 </div>
-
-                {/* Show / hide — omitted for the pinned lead, which is
-                    always visible. */}
-                {!pinned && (
-                  <button
-                    type="button"
-                    aria-label={isHidden ? "Show" : "Hide"}
-                    onClick={() => toggleHidden(key)}
-                    className="transition-opacity hover:opacity-80"
-                    style={{ color: isHidden ? "rgba(143,175,150,0.6)" : "#A8C5A0", cursor: "pointer", lineHeight: 0, padding: 4 }}
-                  >
-                    {isHidden ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                )}
-              </div>
+                {/* Show / hide. stopPropagation on pointer-down so tapping
+                    the eye doesn't begin a drag. */}
+                <button
+                  type="button"
+                  aria-label={isHidden ? "Show" : "Hide"}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() => toggleHidden(key)}
+                  className="transition-opacity hover:opacity-80"
+                  style={{ color: isHidden ? "rgba(143,175,150,0.6)" : "#A8C5A0", cursor: "pointer", lineHeight: 0, padding: 4 }}
+                >
+                  {isHidden ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </Reorder.Item>
             );
           })}
-        </div>
+        </Reorder.Group>
 
         {/* Featured feed — which feed gets the big card when Prayer feeds
             lead. Only shown when the viewer follows at least one feed. */}
