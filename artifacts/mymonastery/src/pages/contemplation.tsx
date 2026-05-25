@@ -253,8 +253,8 @@ export default function ContemplationPage() {
     setStartMinutes(minutes);
     setTimerOpen(true);
   };
-  // Learn — an expandable list of contemplative-prayer resources.
-  const [learnOpen, setLearnOpen] = useState(false);
+  // Which supporting section shows under the Begin card.
+  const [tab, setTab] = useState<"history" | "stats" | "learn">("history");
   // Local midnight so the server can scope "today" to the user's
   // calendar day rather than UTC. Stable within a day; keyed into the
   // query so it refetches cleanly across a midnight rollover.
@@ -339,23 +339,8 @@ export default function ContemplationPage() {
           </div>
         </div>
 
-        {/* Stats — two rows over the same Today / This Week / All Time
-            columns: cumulative time on top, average per day below. */}
-        <RowLabel>Cumulative</RowLabel>
-        <div className="flex gap-3 mb-4">
-          <StatTile label="today" value={humanMinutes(stats?.todaySeconds ?? 0)} />
-          <StatTile label="this week" value={humanMinutes(stats?.weekSeconds ?? 0)} />
-          <StatTile label="all time" value={humanMinutes(stats?.totalSeconds ?? 0)} />
-        </div>
-        <RowLabel>Average / day</RowLabel>
-        <div className="flex gap-3 mb-6">
-          <StatTile label="today" value={avgPerDay(stats?.todaySeconds ?? 0, stats?.todayDays ?? 0)} />
-          <StatTile label="this week" value={avgPerDay(stats?.weekSeconds ?? 0, stats?.weekDays ?? 0)} />
-          <StatTile label="all time" value={avgPerDay(stats?.totalSeconds ?? 0, stats?.totalDays ?? 0)} />
-        </div>
-
-        {/* Begin card — quick-length buttons up top, then the full
-            picker via "Begin contemplation". */}
+        {/* Begin card — leads the page. Quick-length buttons up top,
+            then the full picker via "Begin contemplation". */}
         <div
           className="rounded-2xl p-4"
           style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.25)" }}
@@ -400,32 +385,57 @@ export default function ContemplationPage() {
           Tap a length to begin, or choose your own.
         </p>
 
-        {/* Learn — a pill that expands a list of contemplative-prayer
-            resources (talks, videos, guides). Each opens externally. */}
-        <div className="mt-6 flex justify-center">
-          <button
-            type="button"
-            onClick={() => setLearnOpen((v) => !v)}
-            aria-expanded={learnOpen}
-            className="inline-flex items-center gap-2 rounded-full px-4 py-2 transition-opacity hover:opacity-90 active:scale-[0.98]"
-            style={{
-              background: "rgba(62,124,122,0.16)",
-              border: "1px solid rgba(62,124,122,0.4)",
-              color: "#A8C5A0",
-              fontFamily: SPACE_GROTESK,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            <span aria-hidden>📺</span>
-            {learnOpen ? "Hide resources" : "Learn"}
-            <span aria-hidden style={{ fontSize: 11, opacity: 0.7 }}>{learnOpen ? "▲" : "▼"}</span>
-          </button>
+        {/* Section selector — History · Stats · Learn. The Begin card
+            leads; these reveal the supporting surfaces below it. */}
+        <div
+          className="flex rounded-xl p-1 mt-7 mb-5"
+          style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
+        >
+          {([["history", "History"], ["stats", "Stats"], ["learn", "Learn"]] as const).map(([key, label]) => {
+            const on = tab === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTab(key)}
+                className="flex-1 rounded-lg py-2 text-center transition-colors"
+                style={{
+                  background: on ? "#2D5E3F" : "transparent",
+                  color: on ? WARM : "rgba(143,175,150,0.8)",
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
 
-        {learnOpen && (
-          <div className="mt-3 space-y-2">
+        {/* Stats — cumulative time + average per day, over Today / This
+            Week / All Time. */}
+        {tab === "stats" && (
+          <div>
+            <RowLabel>Cumulative</RowLabel>
+            <div className="flex gap-3 mb-4">
+              <StatTile label="today" value={humanMinutes(stats?.todaySeconds ?? 0)} />
+              <StatTile label="this week" value={humanMinutes(stats?.weekSeconds ?? 0)} />
+              <StatTile label="all time" value={humanMinutes(stats?.totalSeconds ?? 0)} />
+            </div>
+            <RowLabel>Average / day</RowLabel>
+            <div className="flex gap-3">
+              <StatTile label="today" value={avgPerDay(stats?.todaySeconds ?? 0, stats?.todayDays ?? 0)} />
+              <StatTile label="this week" value={avgPerDay(stats?.weekSeconds ?? 0, stats?.weekDays ?? 0)} />
+              <StatTile label="all time" value={avgPerDay(stats?.totalSeconds ?? 0, stats?.totalDays ?? 0)} />
+            </div>
+          </div>
+        )}
+
+        {/* Learn — talks, guided sits, and reading. Each opens externally. */}
+        {tab === "learn" && (
+          <div className="space-y-2">
             <p className="text-[12px] mb-1" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
               Ways into the practice — talks, guided sits, and reading.
             </p>
@@ -458,16 +468,11 @@ export default function ContemplationPage() {
           </div>
         )}
 
-        {/* History — every logged sit, newest first. The "Log a sit"
-            button opens an inline form for sits done away from the app. */}
-        <div className="mt-10">
-          <div className="flex items-center justify-between mb-3">
-            <p
-              className="text-[10px] uppercase tracking-[0.16em] font-semibold"
-              style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK, margin: 0 }}
-            >
-              History
-            </p>
+        {/* History — every logged sit, newest first. "Log prayer time"
+            opens an inline form for sits done away from the app. */}
+        {tab === "history" && (
+        <div>
+          <div className="flex items-center justify-end mb-3">
             <button
               type="button"
               onClick={() => setLogOpen((v) => !v)}
@@ -562,6 +567,7 @@ export default function ContemplationPage() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       <ContemplationTimer
