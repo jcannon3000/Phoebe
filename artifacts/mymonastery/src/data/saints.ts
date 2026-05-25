@@ -32,14 +32,14 @@ export type Vocation =
   | "priest" | "deacon" | "theologian" | "mystic" | "monastic"
   | "abbot" | "abbess" | "hermit" | "religious" | "reformer"
   | "missionary" | "pastor" | "teacher" | "poet" | "composer"
-  | "scholar" | "nurse" | "physician" | "queen" | "prophet"
+  | "scholar" | "nurse" | "physician" | "queen" | "king" | "prophet"
   | "layperson" | "mother";
 
 export type Intention =
   | "grief" | "illness" | "healing" | "dying" | "suffering"
   | "vocation" | "doubt" | "faith" | "conversion" | "reconciliation"
   | "justice" | "courage" | "perseverance" | "prayer" | "study"
-  | "creativity" | "childbirth" | "family" | "marriage" | "poverty"
+  | "creativity" | "childbirth" | "children" | "family" | "marriage" | "poverty"
   | "the_poor" | "hospitality" | "peace" | "protection" | "travel"
   | "leadership" | "mission" | "hope" | "temptation" | "work"
   | "mental_health" | "the_elderly" | "animals";
@@ -95,9 +95,11 @@ interface Enrichment {
 function normalizeCore(name: string): string {
   return name
     .split(",")[0]
+    .replace(/\s*\([^)]*\)/g, "") // drop parentheticals, e.g. "(Dorcas)"
     .toLowerCase()
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "") // strip combining diacritical marks
+    .replace(/['ʼʻ’`´]/g, "") // strip apostrophes / Hawaiian okina
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -221,7 +223,7 @@ const ENRICHMENTS: Record<string, Enrichment> = {
     intercedesFor: ["hope", "doubt", "perseverance"],
     collectExcerpt: "Make known the love and mercy of our Lord.",
   },
-  "all saints' day": {
+  "all saints day": {
     intercedesFor: ["grief", "hope", "faith"],
     collectExcerpt: "You knit together your elect in one communion and fellowship.",
   },
@@ -568,6 +570,231 @@ const ENRICHMENTS: Record<string, Enrichment> = {
     intercedesFor: ["study", "leadership", "reconciliation"],
     anglicanNote: "She hosted the Synod of Whitby (664), a turning point for the English Church.",
   },
+
+  // ── January ──
+  "elizabeth seton": { vocation: ["religious", "teacher"], knownFor: "Widow and convert who founded the Sisters of Charity and America's first free Catholic school — the first native-born U.S. citizen to be canonized." },
+  "sarah": { vocation: ["monastic"], knownFor: "Sarah, Theodora, and Syncletica — Desert Mothers of fourth- and fifth-century Egypt whose hard-won sayings on prayer and humility shaped early monasticism." },
+  "harriet bedell": { vocation: ["deacon", "missionary"], knownFor: "Episcopal deaconess who served Native peoples in Oklahoma, Alaska, and among the Florida Seminole, honoring their language and culture." },
+  "julia chester emery": { vocation: ["layperson", "missionary"], knownFor: "For forty years led the Episcopal Church's Woman's Auxiliary, building the United Thank Offering and a vast network of mission support." },
+  "aelred of rievaulx": { vocation: ["monastic", "abbot", "theologian"], knownFor: "Cistercian abbot of Rievaulx whose treatise Spiritual Friendship found the love of God within the love of friends." },
+  "hilary of poitiers": { vocation: ["bishop", "theologian"], knownFor: "Bishop of Poitiers and 'hammer of the Arians,' exiled for defending the divinity of Christ in the Western church." },
+  "richard meux benson": { vocation: ["priest", "monastic"], knownFor: "Founded the Society of St. John the Evangelist (the Cowley Fathers), reviving men's religious life in the Anglican Communion; remembered with Bishop Charles Gore." },
+  "wulfstan of worcester": { vocation: ["bishop"], knownFor: "The last Anglo-Saxon bishop, who kept his see at Worcester after the Norman Conquest and worked to end the Bristol slave trade." },
+  "fabian": { vocation: ["bishop", "martyr"], knownFor: "Bishop of Rome martyred in the persecution under the emperor Decius.", intercedesFor: ["courage"] },
+  "agnes and cecilia of rome": { vocation: ["martyr"], knownFor: "Agnes, a young virgin martyr of the early Roman church; Cecilia, martyr and the traditional patron of music.", patronOf: ["musicians"], intercedesFor: ["courage", "creativity"] },
+  "vincent of saragossa": { vocation: ["deacon", "martyr"], knownFor: "Deacon of Saragossa and the first martyr of Spain, who died under the emperor Diocletian.", intercedesFor: ["courage"] },
+  "phillips brooks": { vocation: ["bishop", "priest"], knownFor: "Beloved Boston preacher and bishop, who wrote the carol 'O Little Town of Bethlehem.'" },
+  "florence li tim-oi": { vocation: ["priest"], knownFor: "The first woman ordained a priest in the Anglican Communion, ordained in 1944 to serve wartime Macao.", anglicanNote: "Her ordination, decades ahead of its time, foreshadowed the priesthood of women across the Communion." },
+  "timothy and titus": { vocation: ["bishop"], knownFor: "Companions and coworkers of the Apostle Paul, entrusted with the young churches of Ephesus and Crete." },
+  "john chrysostom": { vocation: ["bishop", "theologian"], knownFor: "Archbishop of Constantinople called 'golden-mouthed' for his preaching; his eucharistic liturgy is still prayed across the Eastern church." },
+  "thomas aquinas": { vocation: ["religious", "theologian", "scholar"], knownFor: "Dominican friar whose Summa Theologiae wove faith and reason into the great synthesis of medieval theology.", patronOf: ["students", "theologians"], intercedesFor: ["study"] },
+  "liliuokalani of hawaii": { vocation: ["queen"], knownFor: "Last sovereign queen of Hawai'i, composer of 'Aloha 'Oe,' who met the overthrow of her kingdom with Christian dignity and forgiveness." },
+  "marcella of rome": { vocation: ["monastic", "scholar"], knownFor: "Roman noblewoman who turned her palace into a house of prayer and study, a mother of Western monasticism for women." },
+
+  // ── February ──
+  "anskar": { vocation: ["bishop", "missionary"], knownFor: "The 'Apostle of the North,' a monk who carried the gospel into Denmark and Sweden.", patronOf: ["Scandinavia"] },
+  "manche masemola": { vocation: ["martyr"], knownFor: "A South African teenager martyred by her own family for seeking baptism — remembered among the modern martyrs at Westminster Abbey.", intercedesFor: ["courage", "faith"] },
+  "agatha of sicily": { vocation: ["martyr"], knownFor: "A young Sicilian woman martyred under Decius for her faith and her refusal of a powerful suitor.", intercedesFor: ["courage"] },
+  "the martyrs of japan": { vocation: ["martyr"], knownFor: "Twenty-six Christians — friars, laymen, and children — crucified at Nagasaki in 1597 at the start of Japan's long persecution.", intercedesFor: ["courage", "perseverance"] },
+  "bakhita": { vocation: ["religious"], knownFor: "Kidnapped and enslaved as a Sudanese child, she found freedom and faith in Italy and became a Canossian sister known for radiant gentleness." },
+  "scholastica": { vocation: ["monastic"], knownFor: "Sister of Benedict and a mother of women's monasticism, remembered for a last night of holy conversation with her brother." },
+  "the consecration of barbara clementine harris": { vocation: ["bishop"], knownFor: "In 1989 became the first woman consecrated a bishop in the Anglican Communion — a Philadelphia priest and tireless advocate for the marginalized.", intercedesFor: ["justice"] },
+  "theodora": { vocation: ["queen"], knownFor: "Byzantine empress who restored the holy images to the Church, ending the iconoclast controversy." },
+  "cyril and methodius": { vocation: ["missionary", "bishop"], knownFor: "Brothers and missionaries to the Slavs who created an alphabet and translated the Scriptures and liturgy into their tongue." },
+  "thomas bray": { vocation: ["priest", "missionary"], knownFor: "Anglican priest who founded the SPCK and the SPG, seeding libraries, schools, and missions across the colonies." },
+  "janani luwum": { vocation: ["archbishop", "martyr"], knownFor: "Archbishop of Uganda, murdered in 1977 for confronting the brutality of Idi Amin's regime.", intercedesFor: ["courage", "justice"] },
+  "martin luther": { vocation: ["pastor", "reformer", "theologian"], knownFor: "The Augustinian friar whose Ninety-Five Theses lit the Protestant Reformation and whose translations gave Germany the Bible in its own tongue." },
+  "agnes tsao kou ying": { vocation: ["martyr", "layperson"], knownFor: "Chinese catechists — Agnes Tsao Kou Ying, Agatha Lin Zhao, and Lucy Yi Zhenmei — martyred for teaching and keeping the faith.", intercedesFor: ["courage", "faith"] },
+  "frederick douglass": { vocation: ["reformer", "layperson"], knownFor: "Escaped from slavery to become the great abolitionist orator and writer, a lay leader whose faith fueled the fight for freedom.", intercedesFor: ["justice"] },
+  "margaret of cortona": { vocation: ["religious"], knownFor: "A Franciscan penitent whose dramatic conversion led her to care for the sick and poor of Cortona." },
+  "emily malbone morgan": { vocation: ["layperson"], knownFor: "Laywoman who founded the Society of the Companions of the Holy Cross, binding intercessory prayer to social justice.", intercedesFor: ["prayer", "justice"] },
+  "photini": { vocation: ["layperson"], knownFor: "The Samaritan woman who met Jesus at the well (John 4) — by tradition named Photini, 'the enlightened,' and counted an evangelist." },
+  "anna julia haywood cooper": { vocation: ["teacher", "scholar"], knownFor: "Born enslaved, she became an educator and scholar — 'the Voice of the South' — championing the education of Black women.", intercedesFor: ["study", "justice"] },
+
+  // ── March ──
+  "david of wales": { vocation: ["bishop", "monastic"], knownFor: "Monastic bishop and patron of Wales, who told his monks to 'do the little things' for God.", patronOf: ["Wales"] },
+  "chad of lichfield": { vocation: ["bishop", "monastic"], knownFor: "Humble bishop of Lichfield who evangelized the English Midlands and went on foot among his people." },
+  "john and charles wesley": { vocation: ["priest"], knownFor: "Anglican priests whose evangelical revival became Methodism — John the preacher and organizer, Charles the author of thousands of hymns." },
+  "gregory of nyssa": { vocation: ["bishop", "theologian"], knownFor: "Cappadocian bishop and mystical theologian who taught the soul's endless ascent into the boundless God." },
+  "james theodore holly": { vocation: ["bishop", "missionary"], knownFor: "The first African American bishop in the Episcopal Church, who led a community of emigrants in founding the church in Haiti." },
+  "vincent de paul": { vocation: ["priest"], knownFor: "Vincent de Paul and Louise de Marillac, apostles of charity in France, who organized the care of the poor, the sick, and the abandoned.", patronOf: ["charitable works"], intercedesFor: ["the_poor"] },
+  "patrick of ireland": { vocation: ["bishop", "missionary"], knownFor: "Carried back to the land of his enslavement as a missionary bishop, he is the apostle and patron of Ireland.", patronOf: ["Ireland"] },
+  "cyril of jerusalem": { vocation: ["bishop", "theologian"], knownFor: "Bishop of Jerusalem whose Catechetical Lectures still guide those preparing for baptism." },
+  "cuthbert": { vocation: ["bishop", "monastic"], knownFor: "Beloved monk-bishop of Lindisfarne, hermit and wonderworker of the Northumbrian church." },
+  "thomas ken": { vocation: ["bishop"], knownFor: "Bishop of Bath and Wells and a steadfast Nonjuror, who gave the Church the Doxology, 'Praise God from whom all blessings flow.'" },
+  "james de koven": { vocation: ["priest"], knownFor: "Wisconsin priest and eloquent defender of catholic worship and the Real Presence in the Episcopal Church.", anglicanNote: "A leading voice for Anglo-Catholic ritual in nineteenth-century America." },
+  "gregory the illuminator": { vocation: ["bishop", "missionary"], knownFor: "Apostle of Armenia, whose witness made it the first nation to embrace the Christian faith." },
+  "oscar romero": { vocation: ["archbishop", "martyr"], knownFor: "Archbishop of San Salvador, shot at the altar in 1980 for defending the poor — a voice for the voiceless and martyr of the Americas.", intercedesFor: ["justice", "courage", "the_poor"] },
+  "harriet monsell": { vocation: ["monastic"], knownFor: "Widow who founded the Community of St. John Baptist, renewing the religious life for women in the Church of England." },
+  "james solomon russell": { vocation: ["priest"], knownFor: "Born enslaved, he became a priest and founder of Saint Paul's College in Virginia, a builder of Black Episcopal life." },
+  "mary of egypt": { vocation: ["monastic", "hermit"], knownFor: "A great penitent who left a dissolute life in Alexandria for decades of solitary repentance in the desert beyond the Jordan.", intercedesFor: ["conversion", "perseverance"] },
+
+  // ── April ──
+  "james lloyd breck": { vocation: ["priest", "missionary"], knownFor: "The 'Apostle of the Wilderness,' who planted churches, schools, and monastic communities across the American frontier." },
+  "richard of chichester": { vocation: ["bishop"], knownFor: "Bishop of Chichester remembered for the prayer to know Christ 'more clearly, love more dearly, follow more nearly.'", intercedesFor: ["vocation"] },
+  "harriet starr cannon": { vocation: ["monastic"], knownFor: "Founder of the Community of St. Mary, an early American sisterhood serving the sick, orphaned, and poor." },
+  "tikhon": { vocation: ["bishop"], knownFor: "Russian Orthodox patriarch who shepherded the church in America and through the Soviet persecution, an ecumenist and reconciler.", intercedesFor: ["reconciliation"] },
+  "william augustus muhlenberg": { vocation: ["priest"], knownFor: "Priest, hymnwriter, and reformer who founded schools, a hospital, and a Christian community, urging a broader, more catholic church." },
+  "dietrich bonhoeffer": { vocation: ["pastor", "theologian", "martyr"], knownFor: "German pastor and theologian of 'costly grace,' hanged by the Nazis for resisting Hitler.", intercedesFor: ["courage", "justice"] },
+  "william law": { vocation: ["priest"], knownFor: "Nonjuring priest whose A Serious Call to a Devout and Holy Life shaped the Wesleys and generations of English devotion." },
+  "george augustus selwyn": { vocation: ["bishop", "missionary"], knownFor: "First bishop of New Zealand, who learned the Māori tongue and carried the gospel across the islands of the Pacific." },
+  "zenaida": { vocation: ["physician"], knownFor: "Zenaida, Philonella, and Hermione — early women remembered as 'unmercenary physicians' who healed without charge in Christ's name.", intercedesFor: ["healing", "illness"] },
+  "damien": { vocation: ["priest", "missionary"], knownFor: "Damien and Marianne Cope, who gave their lives serving the exiled lepers of Molokai in Hawai'i.", intercedesFor: ["illness", "the_poor"] },
+  "peter williams cassey": { vocation: ["deacon"], knownFor: "Peter Williams Cassey, a Black deacon who founded a school for African American children in California, and Annie Besant Cassey, his coworker and wife." },
+  "kateri tekakwitha": { vocation: ["layperson"], knownFor: "Mohawk-Algonquin laywoman, 'Lily of the Mohawks,' who embraced the faith amid hardship — the first Native American saint.", intercedesFor: ["perseverance"] },
+  "juana ines de la cruz": { vocation: ["monastic", "poet", "scholar"], knownFor: "Mexican nun, poet, and scholar who defended women's right to learning against the powers of her age.", intercedesFor: ["study", "creativity"] },
+  "alphege": { vocation: ["archbishop", "martyr"], knownFor: "Archbishop of Canterbury martyred by Viking raiders when he refused to let his ransom burden the poor.", intercedesFor: ["courage"] },
+  "anselm": { vocation: ["archbishop", "theologian"], knownFor: "Archbishop of Canterbury and 'father of scholasticism,' who sought 'faith seeking understanding' and the reason of the Incarnation.", intercedesFor: ["study"] },
+  "hadewijch of brabant": { vocation: ["poet", "mystic"], knownFor: "Thirteenth-century Beguine whose visionary poems sing of 'Minne,' the overwhelming love of God.", intercedesFor: ["creativity", "prayer"] },
+  "toyohiko kagawa": { vocation: ["reformer", "missionary"], knownFor: "Japanese evangelist who lived in the slums of Kobe and gave his life to labor reform, cooperatives, and peace.", intercedesFor: ["justice", "the_poor", "peace"] },
+  "zita of tuscany": { vocation: ["layperson"], knownFor: "A household servant of Lucca who made her daily work a life of prayer and quiet charity to the poor.", patronOf: ["domestic workers"], intercedesFor: ["work"] },
+
+  // ── May ──
+  "elisabeth cruciger": { vocation: ["poet"], knownFor: "Former nun and friend of the Luthers, the first woman hymnwriter of the Reformation.", intercedesFor: ["creativity"] },
+  "martyrs of the reformation era": { vocation: ["martyr"], knownFor: "All who died for conscience and faith across the divisions of the Reformation — Catholic and Protestant alike — remembered together in penitence.", intercedesFor: ["reconciliation", "courage"] },
+  "george of lydda": { vocation: ["martyr"], knownFor: "Soldier-martyr of the early church whose legend made him patron of England and of all who fight dragons within and without.", patronOf: ["England", "soldiers"], intercedesFor: ["courage"] },
+  "gregory of nazianzus": { vocation: ["bishop", "theologian", "poet"], knownFor: "Cappadocian bishop called 'the Theologian,' whose orations on the Trinity steadied the Nicene faith." },
+  "johann arndt and jacob boehme": { vocation: ["mystic"], knownFor: "German mystics whose writings on union with Christ nourished the inner, heartfelt strands of Protestant devotion.", intercedesFor: ["prayer"] },
+  "pachomius of tabennisi": { vocation: ["monastic", "abbot"], knownFor: "An Egyptian father of communal monasticism, who first gathered hermits under a common rule and roof." },
+  "thurgood marshall": { vocation: ["layperson", "reformer"], knownFor: "Lawyer who argued Brown v. Board of Education and became the first Black justice of the U.S. Supreme Court, a faithful Episcopalian.", intercedesFor: ["justice"] },
+  "dunstan": { vocation: ["archbishop", "monastic"], knownFor: "Archbishop of Canterbury, reformer of English monasticism, and a craftsman in metal and music." },
+  "alcuin": { vocation: ["deacon", "abbot", "scholar"], knownFor: "Deacon and scholar of York who led Charlemagne's renewal of learning and worship.", intercedesFor: ["study"] },
+  "lydia of thyatira": { vocation: ["layperson"], knownFor: "A dealer in purple cloth and the first convert in Europe, whose household became the church at Philippi.", patronOf: ["dyers"] },
+  "helena of constantinople": { vocation: ["queen"], knownFor: "Mother of Constantine, whose pilgrimage tradition credits with finding the true cross and building the holy places of Jerusalem.", intercedesFor: ["travel"] },
+  "jackson kemper": { vocation: ["bishop", "missionary"], knownFor: "The first missionary bishop of the Episcopal Church, who rode the frontier from the Great Lakes to the Plains." },
+  "bede the venerable": { vocation: ["monastic", "priest", "scholar"], knownFor: "Northumbrian monk of Jarrow and 'father of English history,' whose Ecclesiastical History of the English People still tells the story of the church among the English.", intercedesFor: ["study"], anglicanNote: "The first great scholar of the English church; he died translating John's Gospel into English." },
+  "augustine": { vocation: ["archbishop", "missionary"], knownFor: "Sent by Gregory the Great, he became the first Archbishop of Canterbury and apostle to the English.", anglicanNote: "His mission in 597 is the founding of the See of Canterbury." },
+  "mechthild of magdeburg": { vocation: ["mystic", "poet"], knownFor: "Beguine mystic whose The Flowing Light of the Godhead poured out the love between the soul and God.", intercedesFor: ["prayer", "creativity"] },
+
+  // ── June ──
+  "justin": { vocation: ["martyr", "theologian", "layperson"], knownFor: "Philosopher who found in Christ the true wisdom, the first great Christian apologist, martyred at Rome.", intercedesFor: ["study", "courage"] },
+  "blandina and her companions": { vocation: ["martyr"], knownFor: "A young enslaved woman and her companions, the Martyrs of Lyons, whose endurance under torture astonished their persecutors.", intercedesFor: ["courage", "perseverance"] },
+  "the martyrs of uganda": { vocation: ["martyr"], knownFor: "Young pages of the Bugandan court burned alive in 1886 for refusing to renounce Christ — seed of a great African church.", intercedesFor: ["courage", "faith"] },
+  "john xxiii": { vocation: ["bishop"], knownFor: "The 'good pope' who called the Second Vatican Council and threw open the windows of the Church to renewal and reconciliation.", intercedesFor: ["reconciliation"] },
+  "boniface": { vocation: ["bishop", "missionary", "martyr"], knownFor: "Apostle of Germany, who felled the sacred oak of Thor and gave his life carrying the gospel to the Frisians.", patronOf: ["Germany"], intercedesFor: ["mission"] },
+  "melania the elder": { vocation: ["monastic"], knownFor: "Wealthy Roman widow who founded monasteries in Jerusalem and championed the desert fathers." },
+  "columba of iona": { vocation: ["abbot", "monastic", "missionary"], knownFor: "Irish monk who founded the monastery of Iona, the cradle of Christianity in Scotland." },
+  "ephrem of nisibis": { vocation: ["deacon", "poet", "theologian"], knownFor: "Syrian deacon called the 'harp of the Spirit,' whose hymns taught the faith in song.", intercedesFor: ["creativity"] },
+  "enmegahbowh": { vocation: ["priest", "missionary"], knownFor: "Ojibwe leader and the first Native American priest in the Episcopal Church, peacemaker among his people.", intercedesFor: ["reconciliation", "peace"] },
+  "the first book of common prayer": { knownFor: "The 1549 Prayer Book, which first gave the English church a common liturgy in its own tongue — the root of all Anglican worship.", anglicanNote: "Cranmer's book made the daily prayer of the Church the prayer of the people." },
+  "basil of caesarea": { vocation: ["bishop", "theologian", "monastic"], knownFor: "Cappadocian bishop, defender of the Trinity, author of a monastic rule, and founder of one of the first Christian hospitals.", intercedesFor: ["the_poor"] },
+  "joseph butler": { vocation: ["bishop", "theologian"], knownFor: "Bishop whose Analogy of Religion answered the skeptics of his age with patient reason." },
+  "marina the monk": { vocation: ["monastic"], knownFor: "A woman who lived hidden as a monk and bore a false accusation in silence for years before her innocence was known.", intercedesFor: ["perseverance"] },
+  "bernard mizeki": { vocation: ["martyr", "teacher"], knownFor: "African catechist who carried the gospel in what is now Zimbabwe and was martyred for his witness.", intercedesFor: ["courage", "mission"] },
+  "adelaide teague case": { vocation: ["teacher", "layperson"], knownFor: "Educator and the first woman to be a full professor at an Episcopal seminary, a teacher of religious education and peace.", intercedesFor: ["study", "peace"] },
+  "alban": { vocation: ["martyr"], knownFor: "The first martyr of Britain, who sheltered a fleeing priest, took his place, and died in his stead.", intercedesFor: ["courage"] },
+  "isabel florence hapgood": { vocation: ["layperson", "scholar"], knownFor: "Translator and ecumenist who brought Russian literature and Orthodox liturgy to the English-speaking world.", intercedesFor: ["reconciliation"] },
+  "irenaeus of lyons": { vocation: ["bishop", "theologian"], knownFor: "Bishop of Lyons who confronted the gnostics and taught that 'the glory of God is a human being fully alive.'" },
+
+  // ── July ──
+  "moses the black": { vocation: ["monastic", "martyr"], knownFor: "A robber turned desert monk whose radical humility and refusal of violence made him a father of the Egyptian desert.", intercedesFor: ["conversion", "perseverance", "peace"] },
+  "eva lee matthews": { vocation: ["monastic"], knownFor: "Founder of the Community of the Transfiguration, an Episcopal sisterhood serving children and the poor." },
+  "priscilla and aquila": { vocation: ["layperson"], knownFor: "A married couple and coworkers of Paul who taught the faith, hosted the church in their home, and instructed the eloquent Apollos." },
+  "argula von grumbach": { vocation: ["scholar", "reformer", "layperson"], knownFor: "Bavarian noblewoman and the first published Protestant woman writer, who defended the Reformation in print.", intercedesFor: ["study", "courage"] },
+  "elizabeth cady stanton": { vocation: ["reformer", "layperson"], knownFor: "Elizabeth Cady Stanton, Amelia Bloomer, and Sojourner Truth — reformers and prophets of the rights and dignity of women.", intercedesFor: ["justice"] },
+  "maria skobtsova": { vocation: ["monastic", "martyr"], knownFor: "Orthodox nun in Paris who sheltered Jews and the destitute and died at Ravensbrück, by tradition in another's place.", intercedesFor: ["justice", "courage", "the_poor"] },
+  "john cassian": { vocation: ["monastic", "theologian"], knownFor: "Carried the wisdom of the Egyptian desert to the West; his Conferences shaped Benedict and all Western monasticism.", intercedesFor: ["prayer"] },
+  "thomas a kempis": { vocation: ["monastic", "priest"], knownFor: "Augustinian canon whose The Imitation of Christ is, after the Bible, among the most beloved books of devotion.", intercedesFor: ["prayer"] },
+  "the parents of the blessed virgin mary": { vocation: ["layperson"], knownFor: "By tradition Joachim and Anne, the parents of Mary, remembered as the grandparents of our Lord.", intercedesFor: ["family"] },
+  "william reed huntington": { vocation: ["priest"], knownFor: "Influential priest and reformer whose vision gave the Anglican Communion the Chicago-Lambeth Quadrilateral.", anglicanNote: "His four-point basis for Christian unity remains a touchstone of Anglican identity." },
+  "johann sebastian bach": { vocation: ["composer"], knownFor: "The supreme church musician, who signed his works 'to the glory of God alone' and turned Scripture into towering sound.", intercedesFor: ["creativity"] },
+  "mary and martha of bethany": { vocation: ["layperson"], knownFor: "Sisters of Bethany and friends of Jesus — Martha who served and confessed him, Mary who sat at his feet.", intercedesFor: ["hospitality", "prayer"] },
+  "william wilberforce": { vocation: ["reformer", "layperson"], knownFor: "Evangelical member of Parliament whose lifelong campaign ended the British slave trade.", intercedesFor: ["justice", "perseverance"] },
+  "ignatius of loyola": { vocation: ["priest"], knownFor: "Soldier turned founder of the Jesuits, whose Spiritual Exercises still train countless souls to find God in all things.", intercedesFor: ["prayer", "conversion"] },
+
+  // ── August ──
+  "joseph of arimathaea": { vocation: ["layperson"], knownFor: "The secret disciple who boldly asked for the body of Jesus and laid him in his own new tomb." },
+  "joanna": { vocation: ["layperson"], knownFor: "Joanna, Mary, and Salome — the myrrh-bearing women who followed Jesus, kept watch at the cross, and first found the empty tomb.", intercedesFor: ["grief", "faith"] },
+  "john mason neale": { vocation: ["priest", "poet"], knownFor: "Priest and hymn translator who gave English its versions of 'O come, O come, Emmanuel' and 'Good King Wenceslas.'", intercedesFor: ["creativity"] },
+  "dominic": { vocation: ["priest", "religious"], knownFor: "Founder of the Order of Preachers (the Dominicans), who answered heresy with study, poverty, and proclamation." },
+  "edith stein": { vocation: ["scholar", "monastic", "martyr"], knownFor: "Jewish philosopher and convert who became a Carmelite nun (Teresa Benedicta of the Cross) and died at Auschwitz.", intercedesFor: ["study", "courage"] },
+  "laurence of rome": { vocation: ["deacon", "martyr"], knownFor: "Deacon of Rome who, ordered to surrender the church's treasure, presented the poor — and was martyred on a gridiron.", patronOf: ["the poor"], intercedesFor: ["courage", "the_poor"] },
+  "jeremy taylor": { vocation: ["bishop", "theologian"], knownFor: "Bishop and golden-tongued writer whose Holy Living and Holy Dying are classics of Anglican devotion.", intercedesFor: ["dying"] },
+  "bernard of clairvaux": { vocation: ["abbot", "monastic", "theologian"], knownFor: "Cistercian abbot whose preaching and burning love of God shaped a century — 'the mellifluous doctor.'", intercedesFor: ["prayer"] },
+  "louis": { vocation: ["king", "layperson"], knownFor: "King of France remembered for justice, almsgiving, and personal holiness on the throne.", intercedesFor: ["justice", "leadership"] },
+  "thomas gallaudet and henry winter syle": { vocation: ["priest"], knownFor: "Priests who pioneered ministry among the Deaf, bringing word and sacrament in sign language." },
+  "the beheading of saint john the baptist": { vocation: ["prophet", "martyr"], knownFor: "The death of the forerunner, beheaded by Herod for fearlessly speaking the truth.", intercedesFor: ["courage"] },
+  "margaret ward": { vocation: ["martyr"], knownFor: "Margaret Ward, Margaret Clitherow, and Anne Line — Englishwomen martyred for sheltering priests in penal times.", intercedesFor: ["courage", "hospitality"] },
+  "aidan of lindisfarne": { vocation: ["bishop", "monastic", "missionary"], knownFor: "Gentle monk of Iona who, from the island of Lindisfarne, re-evangelized the north of England on foot." },
+
+  // ── September ──
+  "david pendleton oakerhater": { vocation: ["deacon"], knownFor: "Cheyenne warrior turned deacon, 'God's warrior,' who brought the gospel to his own people in Oklahoma.", intercedesFor: ["peace", "reconciliation"] },
+  "the martyrs of new guinea": { vocation: ["martyr"], knownFor: "Missionaries and local Christians who refused to flee and died serving their people during the Second World War.", intercedesFor: ["courage", "perseverance"] },
+  "phoebe": { vocation: ["deacon"], knownFor: "Deacon of the church at Cenchreae, commended by Paul as a benefactor and the trusted bearer of his Letter to the Romans.", intercedesFor: ["hospitality", "vocation"] },
+  "paul jones": { vocation: ["bishop"], knownFor: "Bishop of Utah who lost his see for preaching against war, a steadfast witness for Christian peace.", intercedesFor: ["peace", "courage"] },
+  "katharina zell": { vocation: ["reformer", "layperson"], knownFor: "Strasbourg reformer and writer who married a priest, sheltered refugees, and defended the gospel and the poor.", intercedesFor: ["hospitality", "the_poor"] },
+  "hannah more": { vocation: ["layperson", "teacher"], knownFor: "Writer and philanthropist of the evangelical revival who founded schools for the poor and wrote for their dignity.", intercedesFor: ["study", "the_poor"] },
+  "kassiani": { vocation: ["abbess", "poet", "composer"], knownFor: "Byzantine abbess and hymnographer, the only woman whose hymns are sung in the Orthodox liturgy.", intercedesFor: ["creativity"] },
+  "the nativity of the blessed virgin mary": { knownFor: "The birth of Mary, the mother of our Lord — the dawn that heralds the coming of Christ.", intercedesFor: ["childbirth", "family"] },
+  "alexander crummell": { vocation: ["priest", "missionary", "scholar"], knownFor: "Priest, missionary, and intellectual who labored for the dignity and education of people of African descent on two continents.", intercedesFor: ["justice", "study"] },
+  "john henry hobart": { vocation: ["bishop"], knownFor: "Energetic bishop of New York whose 'Evangelical Truth and Apostolic Order' revived the Episcopal Church." },
+  "catherine of genoa": { vocation: ["mystic", "nurse", "layperson"], knownFor: "Married laywoman, hospital director, and mystic of God's purifying love.", intercedesFor: ["illness", "healing"] },
+  "ninian": { vocation: ["bishop", "missionary"], knownFor: "Early missionary bishop who carried the gospel to the southern Picts from his 'White House' at Whithorn." },
+  "theodore of tarsus": { vocation: ["archbishop", "scholar"], knownFor: "Archbishop of Canterbury who organized the English church and made Canterbury a center of learning." },
+  "john coleridge patteson": { vocation: ["bishop", "missionary", "martyr"], knownFor: "Missionary bishop of Melanesia, martyred in reprisal for the crimes of slave-traders against the islanders.", intercedesFor: ["mission", "courage", "reconciliation"] },
+  "philander chase": { vocation: ["bishop", "missionary"], knownFor: "Pioneer bishop of the western frontier who founded Kenyon College and Jubilee College out of nothing." },
+  "thecla of iconium": { vocation: ["martyr"], knownFor: "Convert and companion of Paul, honored from antiquity as the first woman martyr, who survived fire and beasts.", intercedesFor: ["courage"] },
+  "anna ellison butler alexander": { vocation: ["deacon", "teacher"], knownFor: "Georgia-born deaconess, the first Black deaconess in the Episcopal Church, who founded a school and church for her people.", intercedesFor: ["study", "justice"] },
+  "sergius of radonezh": { vocation: ["monastic", "abbot"], knownFor: "Renewer of Russian monasticism whose humble holiness made his Trinity monastery the heart of a nation's faith." },
+  "euphrosyne/smaragdus of alexandria": { vocation: ["monastic"], knownFor: "An Alexandrian who, to give her life wholly to God, lived hidden as the monk Smaragdus." },
+  "paula and eustochium of rome": { vocation: ["monastic", "scholar"], knownFor: "Mother and daughter of Rome who founded monasteries in Bethlehem and supported Jerome's translation of the Scriptures.", intercedesFor: ["study"] },
+  "jerome": { vocation: ["priest", "scholar", "monastic"], knownFor: "Fierce and brilliant scholar who translated the Bible into Latin — the Vulgate that fed the Western church for a thousand years.", intercedesFor: ["study"] },
+
+  // ── October ──
+  "therese of lisieux": { vocation: ["monastic"], knownFor: "Carmelite who taught the 'little way' of small things done with great love, a doctor of the Church.", patronOf: ["the missions", "florists"], intercedesFor: ["prayer"] },
+  "remigius of rheims": { vocation: ["bishop", "missionary"], knownFor: "Bishop who baptized Clovis and the Franks, a founder of Christian France." },
+  "john raleigh mott": { vocation: ["layperson", "missionary"], knownFor: "Lay leader of the YMCA and student movements, a tireless ecumenist who won the Nobel Peace Prize.", intercedesFor: ["reconciliation", "mission"] },
+  "francis of assisi": { vocation: ["religious"], knownFor: "The poor man of Assisi who wedded Lady Poverty, preached to all creation, and bore the wounds of Christ.", patronOf: ["animals", "ecology"], intercedesFor: ["animals", "peace", "the_poor"] },
+  "william tyndale": { vocation: ["priest", "martyr", "scholar"], knownFor: "Translator strangled and burned for putting the Bible into plain English — his words live on in every English Scripture.", intercedesFor: ["study", "courage"] },
+  "birgitta of sweden": { vocation: ["mystic", "religious"], knownFor: "Wife, mother, and visionary who founded the Bridgettine order and counseled popes and kings.", intercedesFor: ["family"] },
+  "robert grosseteste": { vocation: ["bishop", "scholar"], knownFor: "Bishop of Lincoln and pioneering scientist-theologian who joined rigorous learning to pastoral reform.", intercedesFor: ["study"] },
+  "philip": { vocation: ["deacon", "evangelist"], knownFor: "One of the seven deacons, who carried the gospel to Samaria and baptized the Ethiopian official on the desert road.", intercedesFor: ["mission"] },
+  "edith cavell": { vocation: ["nurse"], knownFor: "English nurse in occupied Belgium, shot for helping soldiers escape — 'patriotism is not enough; I must have no hatred.'", intercedesFor: ["courage", "healing", "reconciliation"] },
+  "samuel isaac joseph schereschewsky": { vocation: ["bishop", "missionary", "scholar"], knownFor: "Bishop in China who, paralyzed, typed his translation of the Bible with one finger for over twenty years.", intercedesFor: ["perseverance", "study"] },
+  "henry martyn": { vocation: ["priest", "missionary", "scholar"], knownFor: "Anglican missionary who translated the New Testament into Urdu and Persian before dying young, 'to burn out for God.'", intercedesFor: ["mission"] },
+  "cornelius the centurion": { vocation: ["layperson"], knownFor: "The God-fearing Roman centurion whose baptism by Peter opened the door of the church to the Gentiles.", intercedesFor: ["conversion"] },
+  "tabitha of joppa": { vocation: ["layperson"], knownFor: "Tabitha (Dorcas) of Joppa, a disciple 'full of good works and acts of charity,' raised to life by Peter.", patronOf: ["seamstresses"], intercedesFor: ["the_poor"] },
+  "alfred": { vocation: ["king"], knownFor: "King of Wessex who saved English Christianity from the Vikings and translated works of faith for his people.", intercedesFor: ["leadership", "study"] },
+  "james hannington": { vocation: ["bishop", "missionary", "martyr"], knownFor: "Bishop of Eastern Equatorial Africa, martyred with his companions on the road to Uganda.", intercedesFor: ["courage", "mission"] },
+  "maryam of qidun": { vocation: ["monastic", "hermit"], knownFor: "A desert solitary who, after a grievous fall, was sought out by her uncle and restored to grace and hope.", intercedesFor: ["conversion", "perseverance"] },
+
+  // ── November ──
+  "all faithful departed": { knownFor: "All Souls' Day — a day to remember before God all the faithful departed, and to pray in the sure hope of the resurrection.", intercedesFor: ["grief", "hope", "dying"] },
+  "adeline blanchard tyler and her companions": { vocation: ["nurse", "religious"], knownFor: "Pioneering Episcopal nursing sisters who cared for the sick and the wounded of the Civil War.", intercedesFor: ["illness", "healing"] },
+  "william temple": { vocation: ["archbishop", "theologian"], knownFor: "Archbishop of Canterbury, ecumenist and social reformer, who proclaimed the gospel's claim on the whole of common life.", intercedesFor: ["justice", "reconciliation"] },
+  "willibrord": { vocation: ["bishop", "missionary"], knownFor: "Northumbrian monk and 'Apostle of Frisia,' first archbishop of Utrecht." },
+  "ammonius": { vocation: ["hermit", "monastic"], knownFor: "A learned desert hermit so set against high office that, by tradition, he maimed himself to avoid being made a bishop." },
+  "richard rolle": { vocation: ["hermit", "mystic", "poet"], knownFor: "Richard Rolle, Walter Hilton, and Margery Kempe — English mystics whose writings map the soul's fire, ladder, and pilgrimage of love.", intercedesFor: ["prayer"] },
+  "leo of rome": { vocation: ["bishop", "theologian"], knownFor: "Bishop of Rome whose Tome steadied the Church's faith in Christ, and who turned Attila from the gates of Rome." },
+  "martin of tours": { vocation: ["bishop", "monastic"], knownFor: "Soldier who cut his cloak for a beggar — and met Christ in him — then became a monk and beloved bishop of Tours.", patronOf: ["soldiers", "the poor"], intercedesFor: ["the_poor"] },
+  "herman of alaska": { vocation: ["monastic", "missionary"], knownFor: "Russian monk of Kodiak who defended the Alaskan native peoples and embodied the gospel's gentleness.", intercedesFor: ["justice", "peace"] },
+  "hugh of lincoln": { vocation: ["bishop", "monastic"], knownFor: "Carthusian monk and bishop of Lincoln, fearless before kings and tender to lepers and the poor.", intercedesFor: ["the_poor", "courage"] },
+  "elizabeth of hungary": { vocation: ["layperson"], knownFor: "A princess and young widow who gave her wealth to the poor and built a hospital, serving the sick with her own hands.", intercedesFor: ["the_poor", "illness"] },
+  "edmund": { vocation: ["king", "martyr"], knownFor: "King of East Anglia, killed by the Danes for refusing to renounce Christ or rule under a pagan.", intercedesFor: ["courage"] },
+  "mechthilde of hackeborn and gertrude the great": { vocation: ["monastic", "mystic", "theologian"], knownFor: "Nuns of Helfta whose visions of the Sacred Heart and the love of God enriched the Church's prayer.", intercedesFor: ["prayer"] },
+  "clive staples lewis": { vocation: ["scholar", "teacher"], knownFor: "Oxford scholar and the twentieth century's great apologist — Mere Christianity, The Screwtape Letters, and the Chronicles of Narnia.", intercedesFor: ["study", "doubt", "creativity"] },
+  "clement of rome": { vocation: ["bishop"], knownFor: "Early bishop of Rome whose letter to the Corinthians, calling them to humility and order, is among the oldest Christian writings outside the New Testament." },
+  "catherine of alexandria": { vocation: ["martyr"], knownFor: "Catherine of Alexandria, Barbara, and Margaret — early women martyrs whose courage and learning were honored across the medieval church.", intercedesFor: ["courage", "study"] },
+  "james otis sargent huntington": { vocation: ["monastic", "priest"], knownFor: "Founder of the Order of the Holy Cross, the first enduring monastic order for men in the American church.", intercedesFor: ["the_poor"] },
+  "kamehameha and emma of hawaii": { vocation: ["king", "queen"], knownFor: "King and Queen of Hawai'i who welcomed the Anglican church to the islands and founded its hospital and schools.", intercedesFor: ["illness", "leadership"] },
+
+  // ── December ──
+  "charles de foucauld": { vocation: ["hermit", "priest", "martyr"], knownFor: "Soldier and explorer turned hermit among the Tuareg of the Sahara, who sought to be a 'universal brother' and died at his post.", intercedesFor: ["prayer", "hospitality"] },
+  "channing moore williams": { vocation: ["bishop", "missionary"], knownFor: "Pioneering Episcopal missionary bishop in China and Japan, who planted the church and translated its prayers." },
+  "francis xavier": { vocation: ["priest", "missionary"], knownFor: "Jesuit who carried the gospel across India, the Indies, and Japan, baptizing tens of thousands.", patronOf: ["the missions"], intercedesFor: ["mission"] },
+  "john of damascus": { vocation: ["priest", "theologian", "poet"], knownFor: "The last of the Greek fathers, defender of the holy images and a great hymn-writer of the Eastern church.", intercedesFor: ["creativity"] },
+  "clement of alexandria": { vocation: ["priest", "theologian", "teacher"], knownFor: "Learned teacher of Alexandria who commended Christ as the true Word to the wisdom of the Greeks.", intercedesFor: ["study"] },
+  "nicholas of myra": { vocation: ["bishop"], knownFor: "Bishop of Myra famed for secret gifts to the poor — the saint behind Santa Claus.", patronOf: ["children", "sailors"], intercedesFor: ["the_poor", "children"] },
+  "ambrose of milan": { vocation: ["bishop", "theologian"], knownFor: "Bishop of Milan who stood up to emperors, baptized Augustine, and gave the Western church its hymns.", intercedesFor: ["courage"] },
+  "nicholas ferrar": { vocation: ["deacon"], knownFor: "Founder of the household community at Little Gidding, a life of prayer, work, and hospitality praised by George Herbert and T. S. Eliot.", intercedesFor: ["prayer", "hospitality"] },
+  "francis de sales": { vocation: ["bishop", "theologian"], knownFor: "Francis de Sales and Jane de Chantal — gentle guides of the devout life for ordinary people, founders of the Visitation order.", intercedesFor: ["prayer"] },
+  "lucy of syracuse": { vocation: ["martyr"], knownFor: "Young Sicilian martyr whose name means 'light,' kept near the year's darkest day.", patronOf: ["the blind", "those with eye trouble"], intercedesFor: ["illness", "courage"] },
+  "john of the cross": { vocation: ["mystic", "priest", "reformer", "poet"], knownFor: "Carmelite reformer and poet of 'the dark night of the soul,' who found God in the deepest emptiness.", intercedesFor: ["prayer", "doubt", "suffering"] },
+  "nino of georgia": { vocation: ["missionary"], knownFor: "A captive woman whose witness and healing brought the nation of Georgia to the Christian faith.", intercedesFor: ["mission", "healing"] },
+  "dorothy l. sayers": { vocation: ["scholar", "poet", "teacher"], knownFor: "Mystery novelist, dramatist, and translator of Dante, who made the creeds vivid and the work of the mind a vocation.", intercedesFor: ["creativity", "study", "work"] },
+  "katharina von bora": { vocation: ["reformer", "layperson"], knownFor: "A runaway nun who married Martin Luther and built the household that became a model of Reformation family life.", intercedesFor: ["family"] },
+  "thomas becket": { vocation: ["archbishop", "martyr"], knownFor: "Archbishop of Canterbury cut down in his own cathedral for defending the Church against the king.", intercedesFor: ["courage"] },
+  "frances joseph gaudet": { vocation: ["layperson", "reformer", "teacher"], knownFor: "Black educator of New Orleans, a pioneer of prison reform and of schooling for neglected children.", intercedesFor: ["justice", "study"] },
 };
 
 // ─── Build the index from the calendar + enrichment ─────────────────────────
