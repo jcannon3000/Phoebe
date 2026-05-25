@@ -228,7 +228,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 communities. Offices-only tier has none, so it's hidden. */}
             {!officesOnly && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-                <MenuSection emoji="🏘️" label="Communities" defaultOpen>
+                <MenuSection emoji="🏘️" label="Communities">
                 {(groupsData?.groups ?? []).length > 0 ? (
                   // Clamp to ~3.5 rows with a bottom fade once there
                   // are more than 3 communities — mirrors the Prayer
@@ -326,7 +326,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             <div className="px-5 py-4 space-y-1" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
               {/* Daily Offices — the 4 liturgies live behind one picker. */}
               <MenuRow emoji="🌅" label="Daily Offices" onClick={() => navigate("/bcp/daily-office")} />
-              <MenuSection emoji="🪷" label="Practices">
+              <MenuSection emoji="🕯️" label="Practices">
                 <MenuRow emoji="🕯️" label="Contemplation" onClick={() => navigate("/contemplation")} />
                 <MenuRow emoji="🌾" label="Gratitude" onClick={() => navigate("/gratitude")} />
                 <MenuRow emoji="🤔" label="Ignatian Examen" onClick={() => navigate("/examen")} />
