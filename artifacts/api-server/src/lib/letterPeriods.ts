@@ -175,13 +175,19 @@ export function getWhoseTurn(
  *   Letter 2   → immediate response allowed — author of Letter 1 must WAIT;
  *                the other participant has an OPEN window with no time gate.
  *                This is the ONLY exception to strict alternation.
- *   Letter 3+  → strict alternation with a 7-day wait anchored to the
+ *   Letter 3+  → alternation with a 7-day wait anchored to the
  *                most-recent letter's sentAt. Window opens at sentAt + 7 days.
  *                If the next writer doesn't write within 7 more days, the
  *                window does NOT close — it transitions to OVERDUE and
- *                remains open until they write. Alternation is preserved:
- *                the other participant stays WAITING and can never
- *                "jump the turn".
+ *                remains open until they write.
+ *
+ *                Alternation is preserved up to a point: normally the
+ *                participant who just wrote stays WAITING and can't
+ *                "jump the turn". But if the other person goes silent
+ *                all the way past the OVERDUE mark (14 days after the
+ *                last letter), the original writer is no longer trapped —
+ *                their state flips back to OPEN so they can send a
+ *                follow-up rather than waiting forever for a reply.
  */
 
 /** Days to wait after a letter is sent before the next writer's window opens. */
@@ -282,8 +288,17 @@ export function getOneToOneTurnState(
   const windowOpen = new Date(windowOpenUtc);
   const overdue = new Date(overdueUtc);
 
-  // If requester is NOT the next writer, they're waiting.
+  // If requester is NOT the next writer, they normally wait their turn.
+  // EXCEPTION: once the next writer has gone silent past the OVERDUE mark
+  // (14 days after the last letter — WAIT_DAYS + OVERDUE_AFTER_OPEN_DAYS),
+  // the original writer is no longer trapped. They may send a follow-up
+  // rather than waiting indefinitely for a reply. Sending one resets the
+  // clock (the follow-up becomes the most-recent letter), so they'd again
+  // wait the full 14 days before another nudge is allowed.
   if (me !== nextWriter) {
+    if (nowUtcDay >= overdueUtc) {
+      return { state: "OPEN", windowOpenDate: windowOpen, overdueDate: overdue, nextWriterEmail: me };
+    }
     return { state: "WAITING", windowOpenDate: windowOpen, overdueDate: overdue, nextWriterEmail: nextWriter };
   }
 
