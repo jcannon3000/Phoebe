@@ -1,0 +1,19 @@
+version: 2
+updates:
+  # npm/pnpm dependencies across the workspace. Grouped into a single
+  # weekly PR to keep the noise down; security updates still come through.
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+
+  # Keep the GitHub Actions in this workflow current.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly

@@ -9,6 +9,15 @@ import { getGardenUserIds } from "../lib/garden";
 import { sendPrayerWordPush, sendFirstAmenPush, sendNewPrayerRequestPush } from "../lib/pushSender";
 import { logger } from "../lib/logger";
 import { isParishOnlyUser } from "../lib/parishGate";
+import { rateLimit } from "../lib/rate-limit";
+
+// Per-user rate-limit key — throttles by account, not IP, so users
+// behind a shared NAT aren't penalized for each other. Returns null
+// (fail-open) for unauthenticated requests; those 401 in the handler.
+const byUser = (req: { user?: unknown }): string | null => {
+  const u = req.user as { id?: number } | undefined;
+  return u?.id ? `u:${u.id}` : null;
+};
 
 const router: IRouter = Router();
 
@@ -581,7 +590,13 @@ router.get("/prayer-requests/mine/past", async (req, res): Promise<void> => {
 // keep seeing their own expired requests so they can renew them).
 const ACTIVE_PRAYER_REQUEST_CAP = 3;
 
-router.post("/prayer-requests", async (req, res): Promise<void> => {
+router.post("/prayer-requests", rateLimit({
+  name: "prayer_request_create",
+  max: 30,
+  windowMs: 60 * 60 * 1000,
+  keyFn: byUser,
+  message: "You're creating prayer requests very quickly — please slow down a moment.",
+}), async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) {
     logger.warn({
@@ -904,10 +919,16 @@ router.delete("/prayer-requests/:id/tags/:userId", async (req, res): Promise<voi
 });
 
 // POST /api/prayer-requests/:id/word — leave (or update) a word on a request
-router.post("/prayer-requests/:id/word", async (req, res): Promise<void> => {
+router.post("/prayer-requests/:id/word", rateLimit({
+  name: "prayer_word_create",
+  max: 60,
+  windowMs: 60 * 60 * 1000,
+  keyFn: byUser,
+  message: "You're leaving words very quickly — please slow down a moment.",
+}), async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(String(req.params.id), 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const schema = z.object({

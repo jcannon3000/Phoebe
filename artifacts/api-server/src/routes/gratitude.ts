@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { pool } from "@workspace/db";
+import { rateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -18,7 +19,16 @@ function wordCount(s: string): number {
 
 // ── POST /api/gratitude — write a gratitude entry ──────────────────────────
 // Private by default; pass { shared: true } to also post it to the garden.
-router.post("/gratitude", async (req, res) => {
+router.post("/gratitude", rateLimit({
+  name: "gratitude_create",
+  max: 60,
+  windowMs: 60 * 60 * 1000,
+  keyFn: (req) => {
+    const u = (req as { user?: { id?: number } }).user;
+    return u?.id ? `u:${u.id}` : null;
+  },
+  message: "You're adding entries very quickly — please slow down a moment.",
+}), async (req, res) => {
   try {
     const user = getUser(req);
     if (!user) return res.status(401).json({ error: "Not authenticated" });
