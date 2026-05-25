@@ -772,9 +772,11 @@ export function sendLetterFollowUpPush(
     recipientName: string;
   },
 ) {
+  // First name only in the title so the lock-screen top line stays short.
+  const firstName = (opts.recipientName || "your friend").trim().split(/\s+/)[0] || "your friend";
   return sendPushToUser(userId, {
-    title: `You can write ${opts.recipientName} again`,
-    body: `It's been two weeks without a reply — feel free to send ${opts.recipientName} another letter whenever you'd like.`,
+    title: `You can write ${firstName} again`,
+    body: `It's been two weeks without a reply — feel free to send ${firstName} another letter whenever you'd like.`,
     path: `/letters/${opts.correspondenceId}/write`,
     threadId: `letter-${opts.correspondenceId}`,
     collapseId: `letter-followup-${opts.correspondenceId}-${opts.periodStartDate}`,

@@ -353,6 +353,19 @@ export default function WriteLetter() {
 
   const isOverdue = isOneToOne && correspondence?.turnState === "OVERDUE";
 
+  // Follow-up: I wrote the most-recent letter, yet my turn is OPEN again —
+  // my correspondent went quiet for 14 days and the server re-opened my
+  // window so I can write a second time. Surface a note so the writer knows
+  // they're sending a nudge, not a reply.
+  const lastLetterRef = (correspondence?.letters ?? [])
+    .slice()
+    .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime())[0];
+  const isFollowUp =
+    isOneToOne &&
+    correspondence?.turnState === "OPEN" &&
+    !!lastLetterRef &&
+    lastLetterRef.authorEmail.toLowerCase() === (user?.email ?? "").toLowerCase();
+
   // Draft-ahead: if it's not yet our turn (WAITING with a future window
   // open date), the user can write but can't send. The button below
   // turns into "Send in Xd" and is disabled until the window opens.
@@ -458,6 +471,11 @@ export default function WriteLetter() {
           {correspondence?.currentPeriod && (
             <p className="text-[13px] font-medium" style={{ color: "#5C7A5F" }}>
               {isOneToOne ? `Letter ${(correspondence.letters?.length ?? 0) + 1}` : `Round ${correspondence.currentPeriod.periodNumber}`}
+            </p>
+          )}
+          {isFollowUp && (
+            <p className="text-[12px] mt-0.5 font-medium" style={{ color: "#5C7A5F" }}>
+              Follow-up · no reply in 14 days 🕊️
             </p>
           )}
           {isOverdue && waitingDays > 0 && (

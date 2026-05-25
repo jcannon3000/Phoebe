@@ -182,6 +182,12 @@ export default function CorrespondencePage() {
   })();
   const isOpen = isOneToOne && (turnState === "OPEN" || turnState === "OVERDUE" || localWindowOpenForMe);
   const isOverdue = isOneToOne && turnState === "OVERDUE";
+  // Follow-up: I wrote the most-recent letter, yet my turn is OPEN again —
+  // that only happens when my correspondent went quiet for 14 days and the
+  // server re-opened my window so I can write a second time. Distinct from
+  // a normal "your turn," so we surface it with its own notation.
+  const iWroteLast = !!lastLetterAny && (lastLetterAny.authorEmail || "").toLowerCase() === me;
+  const isFollowUp = isOneToOne && isOpen && iWroteLast;
 
   // Other member's most recent letter — used for "waiting since" copy on OVERDUE.
   const lastLetterByOther = [...letters]
@@ -296,10 +302,15 @@ export default function CorrespondencePage() {
               : 0;
 
             if (isOpen) {
-              subtitle = isOverdue && lastLetterByOther
-                ? `${otherMembers} has been waiting ${daysSince(lastLetterByOther.sentAt)} days · no rush 🌿`
-                : "Your turn to write 🖋️";
-              ctaLabel = "Write your letter 🖋️";
+              if (isFollowUp) {
+                subtitle = "Follow-up · no reply in 14 days 🕊️";
+                ctaLabel = "Send a follow-up 🖋️";
+              } else {
+                subtitle = isOverdue && lastLetterByOther
+                  ? `${otherMembers} has been waiting ${daysSince(lastLetterByOther.sentAt)} days · no rush 🌿`
+                  : "Your turn to write 🖋️";
+                ctaLabel = "Write your letter 🖋️";
+              }
               ctaHref = writeUrl;
             } else if (isWaitingForWindow) {
               subtitle = daysUntilOpen === 0
@@ -351,7 +362,20 @@ export default function CorrespondencePage() {
                   >
                     📮 {periodLabel}
                   </span>
-                  {isOverdue && (
+                  {isFollowUp ? (
+                    <span
+                      className="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase"
+                      style={{
+                        color: "#A8C5A0",
+                        background: "rgba(46,107,64,0.15)",
+                        border: "1px solid rgba(46,107,64,0.45)",
+                        letterSpacing: "0.08em",
+                        fontFamily: "'Space Grotesk', sans-serif",
+                      }}
+                    >
+                      Follow-up
+                    </span>
+                  ) : isOverdue ? (
                     <span
                       className="shrink-0 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold uppercase"
                       style={{
@@ -364,7 +388,7 @@ export default function CorrespondencePage() {
                     >
                       Overdue
                     </span>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Line 2: status text (left) + Write pill (right) — matches
