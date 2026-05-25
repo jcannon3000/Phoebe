@@ -22,9 +22,9 @@ type Blob = {
 };
 
 const SUBTLE: Blob[] = [
-  { rgb: "46,107,64", alpha: 0.5, size: "78vmax", top: "-22%", left: "-18%", n: 1, dur: "38s" },
-  { rgb: "20,72,46", alpha: 0.55, size: "66vmax", top: "26%", left: "36%", n: 2, dur: "47s" },
-  { rgb: "64,122,86", alpha: 0.34, size: "60vmax", top: "58%", left: "-12%", n: 3, dur: "43s" },
+  { rgb: "46,107,64", alpha: 0.26, size: "82vmax", top: "-24%", left: "-20%", n: 1, dur: "58s" },
+  { rgb: "22,74,48", alpha: 0.3, size: "70vmax", top: "28%", left: "38%", n: 2, dur: "70s" },
+  { rgb: "60,116,80", alpha: 0.16, size: "62vmax", top: "60%", left: "-12%", n: 3, dur: "64s" },
 ];
 
 const PRONOUNCED: Blob[] = [
@@ -34,9 +34,9 @@ const PRONOUNCED: Blob[] = [
 ];
 
 const KEYFRAMES = `
-@keyframes phoebe-bg-subtle-1 { 0% { transform: translate(-6%, -5%) scale(1); } 50% { transform: translate(8%, 7%) scale(1.18); } 100% { transform: translate(-6%, -5%) scale(1); } }
-@keyframes phoebe-bg-subtle-2 { 0% { transform: translate(5%, 4%) scale(1.08); } 50% { transform: translate(-9%, -7%) scale(0.88); } 100% { transform: translate(5%, 4%) scale(1.08); } }
-@keyframes phoebe-bg-subtle-3 { 0% { transform: translate(4%, -7%) scale(0.96); } 50% { transform: translate(-6%, 9%) scale(1.16); } 100% { transform: translate(4%, -7%) scale(0.96); } }
+@keyframes phoebe-bg-subtle-1 { 0% { transform: translate(-4%, -3%) scale(1); } 50% { transform: translate(4%, 4%) scale(1.08); } 100% { transform: translate(-4%, -3%) scale(1); } }
+@keyframes phoebe-bg-subtle-2 { 0% { transform: translate(3%, 2%) scale(1.05); } 50% { transform: translate(-5%, -4%) scale(0.95); } 100% { transform: translate(3%, 2%) scale(1.05); } }
+@keyframes phoebe-bg-subtle-3 { 0% { transform: translate(2%, -4%) scale(0.97); } 50% { transform: translate(-3%, 5%) scale(1.07); } 100% { transform: translate(2%, -4%) scale(0.97); } }
 @keyframes phoebe-bg-pronounced-1 { 0% { transform: translate(-14%, -11%) scale(1); } 50% { transform: translate(17%, 15%) scale(1.36); } 100% { transform: translate(-14%, -11%) scale(1); } }
 @keyframes phoebe-bg-pronounced-2 { 0% { transform: translate(12%, 9%) scale(1.2); } 50% { transform: translate(-19%, -15%) scale(0.72); } 100% { transform: translate(12%, 9%) scale(1.2); } }
 @keyframes phoebe-bg-pronounced-3 { 0% { transform: translate(10%, -15%) scale(0.84); } 50% { transform: translate(-14%, 17%) scale(1.32); } 100% { transform: translate(10%, -15%) scale(0.84); } }

@@ -84,19 +84,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const officesOnly = user?.accessTier === "offices-only";
 
   const navItems: Array<{ emoji: string; label: string; path: string; badge?: string; count?: number } | { divider: true }> = [
-    // Practices used to have its own top-level entry that deep-linked into
-    // the dashboard's filter; removed — the dashboard itself is the home
-    // surface, and the Practices pill there is the canonical way to narrow.
-    ...(officesOnly ? [] : [{ emoji: "🙏🏽", label: "Prayer List", path: "/prayer-list" }]),
-    // Gatherings + Prayer Feeds tabs are intentionally kept off the
-    // side menu — both pages still live at /gatherings and
-    // /prayer-feeds for direct deep-link access, but day-to-day
+    // Prayer List and People now live as pills in the top header (beside
+    // Menu), so they're no longer duplicated in this drawer. Gatherings +
+    // Prayer Feeds also stay off the side menu — both still live at
+    // /gatherings and /prayer-feeds for deep links, but day-to-day
     // discovery happens through the slideshow / community pages.
-    ...(officesOnly ? [] : [{ emoji: "👥", label: "People",      path: "/people" }]),
-    // Skip the leading divider for offices-only — both items above
-    // are filtered out, so a divider here would sit alone at the top
-    // of the menu separating nothing.
-    ...(officesOnly ? [] : [{ divider: true as const }]),
     // Liturgy section — book of common prayer reference content.
     // Daily Office (Morning + Evening Prayer Rite II) and the
     // Daily Devotions (BCP pp. 137 + 139, the abbreviated morning +
@@ -441,6 +433,24 @@ export function Layout({ children, animatedBg = false }: { children: ReactNode; 
                 }}
               >
                 Prayer list
+              </Link>
+            )}
+            {/* People pill — sits between Prayer list and Menu. Same
+                gating as the drawer entry it replaces: hidden for the
+                offices-only tier, who have no community. */}
+            {!officesOnly && (
+              <Link
+                href="/people"
+                className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  letterSpacing: "-0.01em",
+                  background: "rgba(200,212,192,0.08)",
+                  color: "#C8D4C0",
+                  border: "1px solid rgba(46,107,64,0.3)",
+                }}
+              >
+                People
               </Link>
             )}
             <button
