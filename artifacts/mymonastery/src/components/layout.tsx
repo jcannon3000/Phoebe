@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight } from "lucide-react";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -119,13 +120,12 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     // Gratitude — a daily thanksgiving journal (private, optionally
     // shared to the garden). Open to every signed-in user.
     { emoji: "🌾", label: "Gratitude", path: "/gratitude" },
-    // Saints — a browsable, searchable index of the Episcopal calendar's
-    // commemorations, for finding a holy companion in prayer. Beta-gated
-    // for the first pass.
-    ...(rawIsBeta ? [{ emoji: "📿", label: "Saints", path: "/saints", badge: "beta" }] : []),
     // Reference content — sits below the daily practices.
     { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },
     { emoji: "📜", label: "Psalter",     path: "/bcp/psalter" },
+    // Saints — a browsable, searchable index of the Episcopal calendar's
+    // commemorations (a BCP-Prayers-style reference). Beta-gated for now.
+    ...(rawIsBeta ? [{ emoji: "📿", label: "Saints", path: "/saints", badge: "beta" }] : []),
     { divider: true },
     // Letters is an admin-driven surface for community members — only
     // community admins (or hidden admins) ever author rounds, so for full
@@ -380,7 +380,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 
 // ─── Layout ──────────────────────────────────────────────────────────────────
 
-export function Layout({ children }: { children: ReactNode }) {
+export function Layout({ children, animatedBg = false }: { children: ReactNode; animatedBg?: boolean }) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { isBeta } = useBetaStatus();
@@ -399,7 +399,11 @@ export function Layout({ children }: { children: ReactNode }) {
   const prayerStreak = streakData?.streak ?? 0;
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10" }}>
+    <div
+      className="min-h-screen flex flex-col relative overflow-x-hidden"
+      style={{ background: "#091A10", isolation: animatedBg ? "isolate" : undefined }}
+    >
+      {animatedBg && <AnimatedBackground base="#091A10" variant="subtle" />}
       <header
         className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pt-5 pb-2 md:pt-6 md:pb-5 flex justify-between items-center"
         style={{ background: "#091A10" }}

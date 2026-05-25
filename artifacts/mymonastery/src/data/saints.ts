@@ -99,7 +99,7 @@ export interface FeastDate {
 }
 
 export interface Saint {
-  id: string; // stable slug (URL-friendly; used for routing /saints/:id)
+  id: string; // stable slug — React keys + the "add to a letter" handoff
   name: string;
   feastDate: FeastDate;
   rank: SaintRank;
@@ -1073,7 +1073,9 @@ export function getSaintsByIntention(intention: Intention): Saint[] {
   return SAINTS.filter((s) => s.intercedesFor.includes(intention));
 }
 
-// Free-text search across name, "known for", patronage, and Anglican note.
+// Free-text search across name, "known for", patronage, Anglican note,
+// vocation, and the tagged intentions (so typing a need like "grief" or
+// "doubt" surfaces the saints who accompany it).
 export function searchSaints(query: string): Saint[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
@@ -1084,6 +1086,7 @@ export function searchSaints(query: string): Saint[] {
       s.anglicanNote ?? "",
       ...s.patronOf,
       ...s.vocation,
+      ...s.intercedesFor.map(intentionLabel),
     ]
       .join(" ")
       .toLowerCase();

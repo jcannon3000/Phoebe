@@ -120,8 +120,6 @@ import OfficesPage from "./pages/offices";
 import ExamenPage from "./pages/examen";
 import ContemplationPage from "./pages/contemplation";
 import SaintsIndex from "./pages/Saints/SaintsIndex";
-import SaintDetail from "./pages/Saints/SaintDetail";
-import PrayWithSaint from "./pages/Saints/PrayWithSaint";
 import CustomizeHomePage from "./pages/customize-home";
 import GratitudePage from "./pages/gratitude";
 import BcpIntercessionsPage from "./pages/bcp-intercessions";
@@ -472,9 +470,7 @@ function Router() {
       <Route path="/offices" component={OfficesPage} />
       <Route path="/examen" component={ExamenPage} />
       <Route path="/contemplation" component={ContemplationPage} />
-      {/* Saints — specific routes first (wouter is first-match-wins). */}
-      <Route path="/saints/:id/pray" component={PrayWithSaint} />
-      <Route path="/saints/:id" component={SaintDetail} />
+      {/* Saints — a single browsable/searchable index (BCP-Prayers-style). */}
       <Route path="/saints" component={SaintsIndex} />
       <Route path="/gratitude" component={GratitudePage} />
       <Route path="/bcp" component={BcpPage} />
