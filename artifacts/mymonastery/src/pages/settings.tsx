@@ -265,6 +265,69 @@ function WeeklyDigestSettings() {
   );
 }
 
+// Master notifications switch. The single on/off that gates every push
+// (server-side, in sendPushToUser) — bell, reminders, digest, prayers
+// for you, words of comfort. Reads pushEnabled off /auth/me; saves via
+// PUT /api/me/notifications-pref and re-reads auth so the granular
+// sections below still show their own state.
+function NotificationsSettings() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const save = useMutation({
+    mutationFn: (enabled: boolean) => apiRequest("PUT", "/api/me/notifications-pref", { enabled }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }),
+  });
+  const enabled = user?.pushEnabled ?? true;
+  const options: Array<{ value: boolean; label: string; sub: string }> = [
+    { value: true, label: "On", sub: "Reminders, prayers for you, words of comfort, and more" },
+    { value: false, label: "Off", sub: "Pause every notification from Phoebe" },
+  ];
+  return (
+    <>
+      <SectionHeader label="Notifications" />
+      <p
+        className="text-[13px] mb-3"
+        style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}
+      >
+        The master switch for every Phoebe notification. Turn it off to go quiet without touching your other settings.
+      </p>
+      <SettingsCard>
+        {options.map((opt, i) => {
+          const isSelected = enabled === opt.value;
+          return (
+            <button
+              key={String(opt.value)}
+              type="button"
+              onClick={() => save.mutate(opt.value)}
+              className="w-full flex items-center gap-3 py-2.5 text-left"
+              style={{ borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)", background: "transparent", cursor: "pointer" }}
+            >
+              <div
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+                  background: isSelected ? "#A8C5A0" : "transparent",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                  {opt.label}
+                </p>
+                {opt.sub && (
+                  <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+                    {opt.sub}
+                  </p>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </SettingsCard>
+    </>
+  );
+}
+
 function OfficeReminderSettings() {
   const queryClient = useQueryClient();
   const { data } = useQuery<OfficePrefs>({
@@ -1141,6 +1204,9 @@ export default function SettingsPage() {
             </button>
           </SettingsCard>
         </div>
+
+        {/* ── Notifications master switch ── */}
+        <NotificationsSettings />
 
         {/* ── Office reminders ── */}
         <OfficeReminderSettings />

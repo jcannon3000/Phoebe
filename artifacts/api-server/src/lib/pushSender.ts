@@ -21,7 +21,7 @@ import http2 from "node:http2";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { SignJWT, importPKCS8, type KeyLike } from "jose";
 import webpush from "web-push";
-import { db, deviceTokensTable, webPushSubscriptionsTable, prayerFeedSubscriptionsTable } from "@workspace/db";
+import { db, deviceTokensTable, webPushSubscriptionsTable, prayerFeedSubscriptionsTable, usersTable } from "@workspace/db";
 import { logger } from "./logger";
 
 // VAPID config for browser Web Push (Android Chrome / Firefox / Edge,
@@ -126,6 +126,19 @@ interface SendResult {
  * `invalidated_at = now()` so the next cron pass skips them.
  */
 export async function sendPushToUser(userId: number, payload: PushPayload): Promise<SendResult> {
+  // Master notifications switch (Settings → Notifications). Every push
+  // passes through this function, so one flag here silences all of them
+  // — the bell, reminders, digests, prayer-for-you, words of comfort —
+  // regardless of device tokens or OS permission. `=== false` so a null
+  // (legacy) or true value still sends.
+  const [pref] = await db
+    .select({ pushEnabled: usersTable.pushEnabled })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId));
+  if (pref?.pushEnabled === false) {
+    return { attempted: 0, succeeded: 0, invalidated: 0 };
+  }
+
   // Centralized emoji strip — every push goes through this function, so
   // sanitizing here means callers can pass moment / community names with
   // emoji and we still ship a clean lock-screen string.

@@ -22,6 +22,12 @@ export const usersTable = pgTable("users", {
   correspondenceImprintCompleted: boolean("correspondence_imprint_completed").notNull().default(false),
   gatheringImprintCompleted: boolean("gathering_imprint_completed").notNull().default(false),
   bellEnabled: boolean("bell_enabled").notNull().default(false),
+  // Master notifications switch (Settings → Notifications). When false,
+  // every push is suppressed — the single gate in sendPushToUser checks
+  // this, so it silences the bell, reminders, digests, prayer-for-you,
+  // words of comfort, everything. Default true so existing users keep
+  // receiving notifications until they opt out.
+  pushEnabled: boolean("push_enabled").notNull().default(true),
   dailyBellTime: text("daily_bell_time"),           // HH:MM format, e.g. "07:00"
   timezone: text("timezone"),                        // IANA timezone, e.g. "America/New_York"
   bellCalendarEventId: text("bell_calendar_event_id"), // Google Calendar event ID for the daily bell

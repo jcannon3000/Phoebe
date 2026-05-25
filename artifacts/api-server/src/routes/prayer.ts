@@ -1812,6 +1812,28 @@ router.put("/me/home-layout", async (req, res): Promise<void> => {
   }
 });
 
+// ── Master notifications switch ──────────────────────────────────────
+// Settings → Notifications. Body: { enabled: boolean }. When off,
+// sendPushToUser suppresses every push for this user. Returns the saved
+// value; /auth/me also carries pushEnabled so the toggle reads its
+// current state.
+router.put("/me/notifications-pref", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const enabled = (req.body as { enabled?: unknown })?.enabled;
+  if (typeof enabled !== "boolean") {
+    res.status(400).json({ error: "enabled must be a boolean" });
+    return;
+  }
+  try {
+    await db.update(usersTable).set({ pushEnabled: enabled }).where(eq(usersTable.id, sessionUserId));
+    res.json({ pushEnabled: enabled });
+  } catch (err) {
+    console.error("[/me/notifications-pref PUT] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // ─── Public share endpoints ──────────────────────────────────────────
 // No auth required. A prayer-request owner hands out a /p/:token
 // link; the visitor lands on a slim public page that reads through

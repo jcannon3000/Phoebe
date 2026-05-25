@@ -49,6 +49,8 @@ export interface AuthUser {
   // Home-screen layout (Customize page). null = not customized; the
   // dashboard derives a default from feedFirstHome.
   homeLayout: { order: string[]; hidden: string[] } | null;
+  // Master notifications switch (Settings → Notifications).
+  pushEnabled: boolean;
 }
 
 async function fetchMe(): Promise<AuthUser | null> {

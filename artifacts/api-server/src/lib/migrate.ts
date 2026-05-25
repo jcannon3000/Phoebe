@@ -1463,6 +1463,11 @@ export async function migrate() {
     // feed_first_home, preserving the existing layout).
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS home_layout JSONB`);
 
+    // Master notifications switch (Settings → Notifications). Default
+    // true so existing users keep their notifications; sendPushToUser
+    // suppresses every push when false.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS push_enabled BOOLEAN NOT NULL DEFAULT true`);
+
     // ── Standard daily bell time → 09:30 ────────────────────────────────────
     // Default went from 07:00 → 09:30 by user direction (a more
     // pastoral hour). Idempotent: re-running this on a DB that's
