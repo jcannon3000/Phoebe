@@ -160,6 +160,9 @@ type FeedIntercession = {
   // at least once on ANY date. Drives the "X new prayers" count on
   // the dashboard FeedPrayerCard — counted as `everPrayed === false`.
   everPrayed: boolean;
+  // Most recent time THIS viewer prayed it (epoch ms), or null if never.
+  // Drives the per-user rotation: least-recently-prayed surface first.
+  lastPrayedAt: number | null;
 };
 
 async function loadFeedIntercessions(
@@ -198,6 +201,7 @@ async function loadFeedIntercessions(
     .select({
       momentId: momentPostsTable.momentId,
       windowDate: momentPostsTable.windowDate,
+      createdAt: momentPostsTable.createdAt,
       email: momentUserTokensTable.email,
     })
     .from(momentPostsTable)
@@ -211,6 +215,8 @@ async function loadFeedIntercessions(
     ));
 
   const myWindowDates = new Map<number, Set<string>>();
+  // Most recent check-in time (epoch ms) by the viewer, per intercession.
+  const myLastPrayedAt = new Map<number, number>();
   const prayerEmails = new Map<number, Set<string>>();
   for (const c of checkins) {
     const lc = c.email.toLowerCase();
@@ -221,6 +227,8 @@ async function loadFeedIntercessions(
       const wd = myWindowDates.get(c.momentId) ?? new Set<string>();
       wd.add(c.windowDate);
       myWindowDates.set(c.momentId, wd);
+      const t = c.createdAt ? c.createdAt.getTime() : 0;
+      if (t > (myLastPrayedAt.get(c.momentId) ?? 0)) myLastPrayedAt.set(c.momentId, t);
     }
   }
 
@@ -238,6 +246,7 @@ async function loadFeedIntercessions(
       prayedToday: myWindowDates.get(m.id)?.has(today) ?? false,
       prayCount: prayerEmails.get(m.id)?.size ?? 0,
       everPrayed: (myWindowDates.get(m.id)?.size ?? 0) > 0,
+      lastPrayedAt: myLastPrayedAt.get(m.id) ?? null,
     });
     byFeed.set(m.feedId, list);
   }
@@ -418,9 +427,8 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
     prayedToday: boolean;
   };
   const entries: Row[] = [];
-  const todayKey = dayKey();
   for (const s of subs) {
-    rotateTodaySlice(byFeed.get(s.feedId) ?? [], todayKey).forEach((m, i) => {
+    userTodaySlice(byFeed.get(s.feedId) ?? []).forEach((m, i) => {
       entries.push({
         id: m.id,
         feedId: s.feedId,
@@ -449,61 +457,37 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
 // this window.
 const FEED_DAILY_LIMIT = 3;
 
-// Day index — number of whole days since the Unix epoch, in UTC.
-// Stable across requests within the same UTC day. Used as the
-// rotation cursor for "today's slice" of a feed's intercessions.
-// We use UTC rather than per-user-tz on purpose: every subscriber
-// of a given feed sees the SAME daily slice. (Different tz users
-// might cross over the slice boundary at slightly different
-// wall-clock times, but the "we're all praying the same three
-// today" property holds.)
-function dayKey(): number {
-  return Math.floor(Date.now() / 86_400_000);
+// Per-user rotation. Each subscriber walks the feed at their OWN pace:
+// the intercessions they've prayed LEAST recently surface first, so the
+// last few they prayed sink to the back and they always meet fresh
+// ground. Never-prayed cards lead (newest first), so a freshly-added
+// intercession tops the deck until it's prayed, then enters the
+// rotation. (This replaces the old global day-keyed deck where every
+// subscriber saw the same three on a given calendar day; the cursor is
+// now each viewer's own prayer history, not the calendar.)
+//
+// Ordering, in priority:
+//   1. Never prayed by this viewer → newest createdAt first.
+//   2. Prayed → least-recently-prayed first (oldest lastPrayedAt).
+// So the three a viewer most recently prayed are always at the back.
+function rotateForUser<T extends { createdAt: Date; lastPrayedAt: number | null }>(all: T[]): T[] {
+  return [...all].sort((a, b) => {
+    if (a.lastPrayedAt === null && b.lastPrayedAt === null) {
+      return b.createdAt.getTime() - a.createdAt.getTime(); // never-prayed: newest first
+    }
+    if (a.lastPrayedAt === null) return -1; // never-prayed before prayed
+    if (b.lastPrayedAt === null) return 1;
+    if (a.lastPrayedAt !== b.lastPrayedAt) return a.lastPrayedAt - b.lastPrayedAt; // least-recent first
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
 }
 
-// Deck-style daily rotation, anchored so a freshly-added intercession
-// leads then drifts.
-//
-// `all` is the feed's active intercessions ordered NEWEST-FIRST (the
-// caller passes loadFeedIntercessions output, which sorts createdAt
-// desc). The window of FEED_DAILY_LIMIT advances one position per day
-// and we anchor day-0 of the cursor to the newest card's creation
-// day. Concretely, with newest at index 0 and `start = -elapsed mod N`
-// (elapsed = days since the newest card was added):
-//
-//   • Day a card is added:   elapsed 0 → start 0 → window [0,1,2] →
-//                            the new card sits at the TOP.
-//   • Next day:              start N-1 → window [N-1, 0, 1] → it has
-//                            drifted to the MIDDLE.
-//   • Third day:             start N-2 → window [N-2, N-1, 0] → it's
-//                            at the BACK.
-//   • Fourth day on:         the new card rotates out and the window
-//                            keeps sliding through the rest of the
-//                            deck, so every intercession gets its turn.
-//
-// Every subscriber sees the same window on a given day (the cursor is
-// keyed by calendar day + the feed's own newest-createdAt, not by
-// viewer), preserving the "we prayed the same three today" property.
-// Adding a new intercession re-anchors the cursor so the fresh one
-// jumps to the top — exactly "it goes to the top and then enters the
-// rotation."
-//
-// When the feed has FEED_DAILY_LIMIT or fewer intercessions there's
-// nothing to rotate; return all of them.
-function rotateTodaySlice<T extends { createdAt: Date }>(all: T[], today: number): T[] {
-  if (all.length === 0) return [];
-  if (all.length <= FEED_DAILY_LIMIT) return all;
-  const n = all.length;
-  // Anchor day = the newest card's creation day (all[0] is newest).
-  const anchorDay = Math.floor(all[0].createdAt.getTime() / 86_400_000);
-  const elapsed = today - anchorDay;
-  // start = (-elapsed) mod n, normalized to [0, n).
-  const start = (((-elapsed) % n) + n) % n;
-  const out: T[] = [];
-  for (let i = 0; i < FEED_DAILY_LIMIT; i++) {
-    out.push(all[(start + i) % n]);
-  }
-  return out;
+// Today's slice for a viewer — the FEED_DAILY_LIMIT they're "due" next,
+// in rotation order. Feeds at or under the cap return everything (still
+// in rotation order so even a short feed walks fresh ground first).
+function userTodaySlice<T extends { createdAt: Date; lastPrayedAt: number | null }>(all: T[]): T[] {
+  const ordered = rotateForUser(all);
+  return ordered.length <= FEED_DAILY_LIMIT ? ordered : ordered.slice(0, FEED_DAILY_LIMIT);
 }
 
 // GET /api/groups/:slug/prayer-feeds — feeds bound to this group, each
@@ -551,23 +535,21 @@ router.get("/groups/:slug/prayer-feeds", requireBeta, async (req, res): Promise<
     todayEntries: Array<{ id: number; slot: number; title: string; isRecurring: boolean }>;
   };
 
-  // todayEntries uses the same deck-style daily rotation as the
-  // personal /prayer-feeds/today surface — a sliding window of
-  // FEED_DAILY_LIMIT entries advancing by one each UTC day. Every
-  // subscriber of a given feed sees the SAME three today, and one
-  // new card rotates in tomorrow.
+  // todayEntries uses the same per-user rotation as the personal
+  // /prayer-feeds/today surface — each viewer sees the three they've
+  // prayed least recently, so the cards advance as they pray rather
+  // than on a shared calendar cursor.
   const byFeed = await loadFeedIntercessions(
     bound.map((f) => f.feedId),
     await viewerEmailFor(user.id),
   );
-  const todayKey = dayKey();
   const feeds: FeedOut[] = bound.map((f) => ({
     feedId: f.feedId,
     feedSlug: f.feedSlug,
     feedTitle: f.feedTitle,
     feedCoverEmoji: f.feedCoverEmoji ?? null,
     subscriberCount: f.feedSubscriberCount ?? 0,
-    todayEntries: rotateTodaySlice(byFeed.get(f.feedId) ?? [], todayKey).map((m, i) => ({
+    todayEntries: userTodaySlice(byFeed.get(f.feedId) ?? []).map((m, i) => ({
       id: m.id,
       slot: i,
       title: m.title,
@@ -1368,26 +1350,45 @@ router.get("/prayer-feeds/:slug/intercessions", async (req, res): Promise<void> 
       .groupBy(momentPostsTable.momentId);
     countById = new Map(grouped.map((g) => [g.momentId, Number(g.n) || 0]));
   }
+  // Per-user last-prayed time per intercession (epoch ms) — drives the
+  // viewer's personal rotation below. Anon viewers have none, so they
+  // fall back to the stable newest-first order.
+  const lastPrayedById = new Map<number, number>();
+  if (user && rows.length > 0) {
+    const viewerEmail = (await viewerEmailFor(user.id)).toLowerCase();
+    const mine = await db
+      .select({
+        momentId: momentPostsTable.momentId,
+        lastAt: sql<string>`max(${momentPostsTable.createdAt})`,
+      })
+      .from(momentPostsTable)
+      .innerJoin(momentUserTokensTable, eq(momentUserTokensTable.userToken, momentPostsTable.userToken))
+      .where(and(
+        inArray(momentPostsTable.momentId, rows.map((r) => r.id)),
+        eq(momentPostsTable.isCheckin, 1),
+        sql`lower(${momentUserTokensTable.email}) = ${viewerEmail}`,
+      ))
+      .groupBy(momentPostsTable.momentId);
+    for (const m of mine) {
+      const t = m.lastAt ? new Date(m.lastAt).getTime() : 0;
+      if (Number.isFinite(t) && t > 0) lastPrayedById.set(m.momentId, t);
+    }
+  }
   const intercessions = rows.map((r) => ({
     ...r,
     weekPrayCount: countById.get(r.id) ?? 0,
+    lastPrayedAt: lastPrayedById.get(r.id) ?? null,
   }));
 
-  // Order to reflect today's deck rotation: today's window (the same
-  // FEED_DAILY_LIMIT cards the prayer-list FeedCard + community detail
-  // surface) leads, in rotation order, followed by the rest of the
-  // active deck in newest-first order. This makes the slideshow walk
-  // today's three first, the feed-detail page list them at the top,
-  // and the offices-only home Prayer List reflect the rotation —
-  // every surface that reads this endpoint stays in sync with the
-  // daily window. Editors (isCreator) get the raw newest-first list
-  // so the management view shows everything in a stable authoring
-  // order rather than a rotating one.
+  // Order by the viewer's personal rotation: the intercessions they've
+  // prayed least recently lead (never-prayed first, newest first), so
+  // the slideshow, the feed-detail list, and the offices-only home
+  // Prayer List all walk fresh ground first and advance as the viewer
+  // prays — rather than on a shared calendar cursor. The first
+  // FEED_DAILY_LIMIT are "today's slice." Editors (isCreator) get the
+  // raw newest-first list so the management view stays stable.
   if (!isCreator) {
-    const todayWindow = rotateTodaySlice(intercessions, dayKey());
-    const windowIds = new Set(todayWindow.map((i) => i.id));
-    const rest = intercessions.filter((i) => !windowIds.has(i.id));
-    res.json({ intercessions: [...todayWindow, ...rest] });
+    res.json({ intercessions: rotateForUser(intercessions) });
     return;
   }
 
