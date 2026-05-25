@@ -39,7 +39,8 @@ const stepVariants = {
   exit:    { opacity: 0, x: -20 },
 };
 
-type Step = 0 | 1 | 2;
+type Step = 0 | 1 | 2 | 3;
+type Visibility = "private" | "public";
 
 export default function PrayerForNew() {
   // Match both route shapes — wouter returns the params for whichever fires.
@@ -57,11 +58,15 @@ export default function PrayerForNew() {
   // Total flow length depends on whether we needed the picker. If the user
   // arrived with an email, we only show 2 pills (write + duration).
   const needsPicker = !emailParam;
-  const totalSteps = needsPicker ? 3 : 2;
+  // Steps: [picker] → write → visibility → duration.
+  const totalSteps = needsPicker ? 4 : 3;
   const initialStep: Step = needsPicker ? 0 : 1;
 
   const [step, setStep] = useState<Step>(initialStep);
   const [text, setText] = useState("");
+  // "private" = a directed prayer just between the two of you (prayers-for).
+  // "public" = post it as your own prayer request with the person tagged.
+  const [visibility, setVisibility] = useState<Visibility>("private");
   const [days, setDays] = useState<3 | 7>(7);
   const [error, setError] = useState("");
 
@@ -84,6 +89,16 @@ export default function PrayerForNew() {
     mutationFn: () => {
       const recipientUserId = (person as any)?.userId as number | undefined;
       if (!recipientUserId) throw new Error("Recipient not loaded");
+      // Public → post as the writer's own prayer request with the person
+      // tagged (so their circle can pray and the person is notified).
+      if (visibility === "public") {
+        return apiRequest("POST", "/api/prayer-requests", {
+          body: text.trim(),
+          durationDays: days,
+          taggedUserIds: [recipientUserId],
+        });
+      }
+      // Private → a directed prayer held just between the two of you.
       return apiRequest("POST", "/api/prayers-for", {
         recipientUserId,
         prayerText: text.trim(),
@@ -92,6 +107,8 @@ export default function PrayerForNew() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/prayers-for/mine"] });
+      qc.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/prayer-requests/last-mine"] });
       setLocation(returnHref);
     },
     onError: (err: any) => {
@@ -220,8 +237,8 @@ export default function PrayerForNew() {
                     Write a prayer for {firstName} 🌿
                   </h1>
                   <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
-                    {firstName} will see that you're holding them in prayer — not
-                    the words. This is between you and God.
+                    Write what's on your heart for {firstName}. You'll choose who
+                    can see it next.
                   </p>
 
                   <textarea
@@ -259,8 +276,82 @@ export default function PrayerForNew() {
             </motion.div>
           )}
 
-          {/* Step 2 — Duration */}
+          {/* Step 2 — Visibility */}
           {step === 2 && (
+            <motion.div
+              key="s2v"
+              variants={stepVariants}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.2 }}
+            >
+              <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                Who can see this prayer? 🌿
+              </h1>
+              <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
+                Keep it between you and {firstName}, or share it as a prayer
+                request so your circle can pray too.
+              </p>
+
+              <div className="space-y-3 mb-8">
+                <button
+                  onClick={() => setVisibility("private")}
+                  className="w-full text-left p-4 rounded-2xl transition-all"
+                  style={{
+                    background: visibility === "private" ? "#2D5E3F" : "#0F2818",
+                    border: `2px solid ${visibility === "private" ? "rgba(46,107,64,0.65)" : "rgba(46,107,64,0.3)"}`,
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">🤍</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold" style={{ color: "#F0EDE6" }}>Just between us</p>
+                      <p className="text-sm" style={{ color: "#8FAF96" }}>
+                        {firstName} sees you're praying — not the words.
+                      </p>
+                    </div>
+                    {visibility === "private" && (
+                      <span className="text-base font-bold" style={{ color: "#C8D4C0" }}>✓</span>
+                    )}
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setVisibility("public")}
+                  className="w-full text-left p-4 rounded-2xl transition-all"
+                  style={{
+                    background: visibility === "public" ? "#2D5E3F" : "#0F2818",
+                    border: `2px solid ${visibility === "public" ? "rgba(46,107,64,0.65)" : "rgba(46,107,64,0.3)"}`,
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">🙏🏽</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold" style={{ color: "#F0EDE6" }}>Share as a prayer request</p>
+                      <p className="text-sm" style={{ color: "#8FAF96" }}>
+                        Posts to your circle with {firstName} tagged.
+                      </p>
+                    </div>
+                    {visibility === "public" && (
+                      <span className="text-base font-bold" style={{ color: "#C8D4C0" }}>✓</span>
+                    )}
+                  </div>
+                </button>
+              </div>
+
+              <button
+                onClick={() => { setError(""); setStep(3); }}
+                className="w-full py-4 rounded-2xl text-base font-semibold transition-all"
+                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+              >
+                Continue →
+              </button>
+            </motion.div>
+          )}
+
+          {/* Step 3 — Duration */}
+          {step === 3 && (
             <motion.div
               key="s2"
               variants={stepVariants}
@@ -309,7 +400,9 @@ export default function PrayerForNew() {
                 className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                {createMutation.isPending ? "Beginning…" : "Begin praying →"}
+                {createMutation.isPending
+                  ? (visibility === "public" ? "Sharing…" : "Beginning…")
+                  : (visibility === "public" ? "Share prayer request →" : "Begin praying →")}
               </button>
             </motion.div>
           )}
