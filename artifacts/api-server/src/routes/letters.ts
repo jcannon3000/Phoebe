@@ -23,6 +23,7 @@ import {
 import { sendInvitationEmail, sendReminderEmail } from "../lib/letterEmails";
 import { getInviteBaseUrl } from "../lib/urls";
 import { sendNewLetterPush } from "../lib/pushSender";
+import { ensureCorrespondenceFellows } from "../lib/correspondents";
 
 const router: IRouter = Router();
 
@@ -688,6 +689,13 @@ router.post(
       }
     }
 
+    // "Anyone you are writing a letter with becomes a Fellow." A letter
+    // was just sent — link the author with every other joined member.
+    // Fire-and-forget + idempotent; also upgrades an offices-only writer.
+    void ensureCorrespondenceFellows(correspondenceId).catch((err) =>
+      console.warn("[letters] ensureCorrespondenceFellows failed:", err),
+    );
+
     res.json(letter);
   }),
 );
@@ -878,6 +886,15 @@ router.post("/letters/invite/:token/accept", async (req, res): Promise<void> => 
       userId: existingUser?.id || null,
     })
     .where(eq(correspondenceMembersTable.id, member.id));
+
+  // Newly-joined member with an account → link them as Fellows with every
+  // other joined member ("writing a letter with" them). Fire-and-forget +
+  // idempotent. A Fellow link is a full-app trigger.
+  if (existingUser?.id) {
+    void ensureCorrespondenceFellows(member.correspondenceId).catch((err) =>
+      console.warn("[letters] ensureCorrespondenceFellows (accept) failed:", err),
+    );
+  }
 
   res.json({ correspondenceId: member.correspondenceId, token });
 });

@@ -5,7 +5,53 @@ import {
   correspondenceMembersTable,
   lettersTable,
   usersTable,
+  fellowsTable,
 } from "@workspace/db";
+
+// Ensure every pair of JOINED, account-linked members of a correspondence
+// has a mutual Fellow link (source "letter"). "Anyone you are writing a
+// letter with becomes a Fellow." Called when someone joins a correspondence
+// or sends a letter. Idempotent: the fellows UNIQUE (user_id,
+// fellow_user_id) constraint + onConflictDoNothing means repeat calls never
+// duplicate. Members without a userId (invited-but-not-signed-up) are
+// skipped until they have an account.
+//
+// A Fellow link is a full-app trigger (see parishGate.getUserAccessTier),
+// so this is also what upgrades an offices-only writer to the full
+// experience once they're corresponding with someone — exactly the intended
+// "letters lead to fellowship" path.
+export async function ensureCorrespondenceFellows(correspondenceId: number): Promise<void> {
+  const members = await db
+    .select({ userId: correspondenceMembersTable.userId })
+    .from(correspondenceMembersTable)
+    .where(
+      and(
+        eq(correspondenceMembersTable.correspondenceId, correspondenceId),
+        sql`${correspondenceMembersTable.userId} IS NOT NULL`,
+        sql`${correspondenceMembersTable.joinedAt} IS NOT NULL`,
+      ),
+    );
+
+  const ids = Array.from(
+    new Set(
+      members
+        .map((m) => m.userId)
+        .filter((id): id is number => id != null),
+    ),
+  );
+  if (ids.length < 2) return;
+
+  const rows: Array<{ userId: number; fellowUserId: number; source: string }> = [];
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      rows.push({ userId: ids[i], fellowUserId: ids[j], source: "letter" });
+      rows.push({ userId: ids[j], fellowUserId: ids[i], source: "letter" });
+    }
+  }
+  if (rows.length === 0) return;
+
+  await db.insert(fellowsTable).values(rows).onConflictDoNothing();
+}
 
 // Returns the set of user ids the viewer has an ACTIVELY EXCHANGED letter
 // correspondence with. "Exchanged" = both sides have sent ≥1 letter in the

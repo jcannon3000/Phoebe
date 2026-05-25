@@ -52,6 +52,10 @@ export default function WriteLetter() {
   const [isComposeRoute] = useRoute("/letters/compose");
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  // Offices-only accounts can't open /people (ParishGate blocks it), so
+  // the "back to the person's profile" target in new/compose mode would
+  // bounce them. Send them back to the new-letter flow instead.
+  const officesOnly = user?.accessTier === "offices-only";
   const correspondenceId = params?.id;
   const searchParams = new URLSearchParams(window.location.search);
   // "New" mode — composing the very first letter to a known person.
@@ -293,6 +297,11 @@ export default function WriteLetter() {
     onSuccess: (result: any) => {
       // Clear local draft state so we don't re-POST it on the way out.
       lastSavedRef.current = content;
+      // Writing a letter links you as a Fellow with your correspondent,
+      // which upgrades an offices-only account to the full app. Refresh
+      // /me so the new accessTier (and full UI) applies without a manual
+      // reload — for full accounts this is a cheap no-op refetch.
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       // New mode: the start endpoint returns the freshly-created
       // correspondence id — refresh the lists and jump into the thread.
       if (isNewMode) {
@@ -386,10 +395,11 @@ export default function WriteLetter() {
   }
 
   function handleBack() {
-    // New mode has no correspondence + no draft — return to the
-    // person's profile the writer came from.
+    // New mode has no correspondence + no draft — return to the person's
+    // profile the writer came from (or the new-letter flow for
+    // offices-only accounts, which can't open /people).
     if (isNewMode) {
-      setLocation(`/people/${encodeURIComponent(newRecipientEmail)}`);
+      setLocation(officesOnly ? "/letters/new" : `/people/${encodeURIComponent(newRecipientEmail)}`);
       return;
     }
     if (content.trim() && content !== lastSavedRef.current) saveDraft();
@@ -405,7 +415,7 @@ export default function WriteLetter() {
           <p className="text-sm mb-6" style={{ color: "#9a9390" }}>Next period starts {errorState.nextPeriodStart}.</p>
         )}
         <button
-          onClick={() => setLocation(isNewMode ? `/people/${encodeURIComponent(newRecipientEmail)}` : `/letters/${correspondenceId}${tokenParam}`)}
+          onClick={() => setLocation(isNewMode ? (officesOnly ? "/letters/new" : `/people/${encodeURIComponent(newRecipientEmail)}`) : `/letters/${correspondenceId}${tokenParam}`)}
           className="text-sm font-medium"
           style={{ color: "#5C7A5F" }}
         >

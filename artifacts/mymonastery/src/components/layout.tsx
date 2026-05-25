@@ -123,14 +123,18 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     { emoji: "📖", label: "BCP Prayers", path: "/bcp/intercessions" },
     { emoji: "📜", label: "Psalter",     path: "/bcp/psalter" },
     { divider: true },
-    // Letters is an admin-driven surface — only community admins (or
-    // hidden admins) ever author rounds. Members in a community where
-    // an admin starts a round get their write-window push notification
-    // and can write from there directly; surfacing the menu entry to
-    // every signed-in user just exposed a feature they can't actually
-    // use until an admin opens a round. Gate on at least one
-    // community-admin role (same check the Admin Tools entry uses).
-    ...((groupsData?.groups ?? []).some(g => g.myRole === "admin" || g.myRole === "hidden_admin") ? [
+    // Letters is an admin-driven surface for community members — only
+    // community admins (or hidden admins) ever author rounds, so for full
+    // accounts we gate the menu entry on at least one community-admin role
+    // (surfacing it to everyone just exposed a feature they couldn't use
+    // until an admin opened a round).
+    //
+    // Offices-only accounts are the deliberate exception: Letters is the
+    // other "monk-like" rhythm (slow, 1:1, contemplative) we want them to
+    // have, and they can start their own correspondence directly. So they
+    // always see the entry. (Writing a letter links them as a Fellow with
+    // their correspondent, which upgrades them to the full app.)
+    ...((officesOnly || (groupsData?.groups ?? []).some(g => g.myRole === "admin" || g.myRole === "hidden_admin")) ? [
       { emoji: "📮", label: "Letters", path: "/letters", badge: "beta" },
     ] : []),
     // "Manage Prayer Feeds" only renders for users who actually

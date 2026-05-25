@@ -24,6 +24,7 @@ import {
   sendReminderEmail,
 } from "../lib/letterEmails";
 import { sendNewLetterPush } from "../lib/pushSender";
+import { ensureCorrespondenceFellows } from "../lib/correspondents";
 import {
   sendLetterWindowOpenCalendarEvent,
   sendLetterOverdueCalendarEvent,
@@ -1015,6 +1016,14 @@ router.post(
       }).catch((err) => console.error("Letter email failed:", err));
     }
 
+    // "Anyone you are writing a letter with becomes a Fellow." Now that a
+    // letter has actually been sent, link the author with every other
+    // joined member. Fire-and-forget + idempotent. A Fellow link is a
+    // full-app trigger, so this also upgrades an offices-only writer.
+    void ensureCorrespondenceFellows(correspondenceId).catch((err) =>
+      console.warn("[phoebe] ensureCorrespondenceFellows failed:", err),
+    );
+
     res.json({ ...letter, firstExchangeJustCompleted });
     } catch (err) {
       // Catch-all so the client gets a specific message instead of the
@@ -1248,6 +1257,15 @@ router.post("/phoebe/invite/:token/accept", async (req, res): Promise<void> => {
       userId: existingUser?.id || null,
     })
     .where(eq(correspondenceMembersTable.id, member.id));
+
+  // Newly-joined member with an account → link them as Fellows with every
+  // other joined member of this correspondence ("writing a letter with"
+  // them). Fire-and-forget + idempotent.
+  if (existingUser?.id) {
+    void ensureCorrespondenceFellows(member.correspondenceId).catch((err) =>
+      console.warn("[phoebe] ensureCorrespondenceFellows (accept) failed:", err),
+    );
+  }
 
   res.json({ correspondenceId: member.correspondenceId, token });
 });
