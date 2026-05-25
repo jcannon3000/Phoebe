@@ -3247,7 +3247,17 @@ router.post("/beta/welcome-seen", async (req, res): Promise<void> => {
 // unset we fail closed — previously this fell back to a hardcoded string
 // that was checked into the repo, so any signed-in user could self-promote
 // to beta admin on any environment missing the env var.
-router.post("/beta/claim", async (req, res): Promise<void> => {
+router.post("/beta/claim", rateLimit({
+  // This endpoint grants admin if the caller presents the secret
+  // BETA_CLAIM_TOKEN. Throttle per-IP so a weak/guessable token can't be
+  // brute-forced. (Belt-and-suspenders — the token should be long and
+  // random, and BETA_CLAIM_TOKEN should be UNSET in prod once admins are
+  // claimed, which disables this endpoint entirely.)
+  name: "beta_claim",
+  max: 5,
+  windowMs: 60 * 60 * 1000,
+  message: "Too many attempts. Please try again later.",
+}), async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }

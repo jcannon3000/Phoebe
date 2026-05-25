@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, inArray, isNotNull, and, ne } from "drizzle-orm";
 import { db, ritualsTable, usersTable, momentUserTokensTable } from "@workspace/db";
+import { rateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -99,7 +100,21 @@ router.get("/contacts/search", async (req, res): Promise<void> => {
 //
 // Rate limit: cap at 5000 hashes per request to keep the IN clause
 // reasonable. Clients with larger address books can chunk.
-router.post("/contacts/match", async (req, res): Promise<void> => {
+router.post("/contacts/match", rateLimit({
+  // Phone-hash contact discovery is inherently enumerable (the phone
+  // number space is small + brute-forceable), so throttle per account.
+  // Legit use is a one-time address-book sync chunked into a few
+  // requests; 20/hour covers a very large book while making mass
+  // enumeration of the user base impractical.
+  name: "contacts_match",
+  max: 20,
+  windowMs: 60 * 60 * 1000,
+  keyFn: (req) => {
+    const u = (req as { user?: { id?: number } }).user;
+    return u?.id ? `u:${u.id}` : null;
+  },
+  message: "Too many contact lookups — please try again in a bit.",
+}), async (req, res): Promise<void> => {
   if (!req.user) { res.status(401).json({ error: "Not authenticated" }); return; }
   const sessionUserId = (req.user as { id: number }).id;
 
