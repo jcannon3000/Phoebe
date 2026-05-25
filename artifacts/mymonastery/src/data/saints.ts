@@ -827,12 +827,26 @@ function buildSaint(e: FixedFeastEntry): Saint {
   };
 }
 
+// A few calendar entries are temporal/civic feasts, not commemorations of a
+// holy person — they belong on the home-screen feast header but read oddly in
+// a "Saints" index. We keep the feasts of our Lord and saintly events (Holy
+// Name, Presentation, Annunciation, Transfiguration, Holy Cross, etc.) but
+// drop these. Matched on the raw calendar name.
+function isPersonOrSaintlyFeast(e: FixedFeastEntry): boolean {
+  if (e.name === "The Epiphany") return false;
+  if (e.name === "Independence Day") return false;
+  if (e.name.includes("Christmas Day")) return false;
+  return true;
+}
+
 // Every commemoration the home screen can name — Holy Days + Lesser Feasts —
-// in calendar order. Deduped by id (defensive against a shared date).
+// in calendar order, minus the temporal/civic feasts above. Deduped by id
+// (defensive against a shared date).
 export const SAINTS: Saint[] = (() => {
   const seen = new Set<string>();
   const all: Saint[] = [];
   for (const e of [...HOLY_DAYS, ...LESSER_FEASTS]) {
+    if (!isPersonOrSaintlyFeast(e)) continue;
     const s = buildSaint(e);
     if (seen.has(s.id)) continue;
     seen.add(s.id);
