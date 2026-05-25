@@ -9,7 +9,6 @@ import {
   feastDateLabel,
   intentionLabel,
   RANK_LABELS,
-  PENDING_SAINT_KEY,
 } from "@/data/saints";
 
 // Saints — a browsable, searchable reference index of the Episcopal
@@ -66,15 +65,6 @@ export default function SaintsIndex() {
   if (isLoading || !user) return null;
 
   const results = query.trim() ? searchSaints(query) : [];
-
-  function addToLetter(s: Saint) {
-    try {
-      sessionStorage.setItem(PENDING_SAINT_KEY, s.id);
-    } catch {
-      /* private mode — non-fatal */
-    }
-    setLocation("/letters/new");
-  }
 
   // A list row (used in both search results and the month accordion).
   function Row({ s }: { s: Saint }) {
@@ -318,17 +308,7 @@ export default function SaintsIndex() {
                 </>
               )}
 
-              {/* Cross-app action — pull this saint into a letter. */}
-              <button
-                type="button"
-                onClick={() => addToLetter(selected)}
-                className="mt-7 w-full rounded-xl py-2.5 text-center transition-opacity hover:opacity-90"
-                style={{ background: "rgba(46,107,64,0.14)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.4)", fontFamily: SANS, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-              >
-                + Add to a letter
-              </button>
-
-              <p className="text-[11px] mt-6 pt-4 italic" style={{ color: "rgba(143,175,150,0.4)", borderTop: "1px solid rgba(46,107,64,0.12)" }}>
+              <p className="text-[11px] mt-7 pt-4 italic" style={{ color: "rgba(143,175,150,0.4)", borderTop: "1px solid rgba(46,107,64,0.12)" }}>
                 From Lesser Feasts &amp; Fasts (2022) and A Great Cloud of Witnesses. Collect excerpts from the 1979 Book of Common Prayer (public domain).
               </p>
             </div>

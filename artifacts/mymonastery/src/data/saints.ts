@@ -650,16 +650,3 @@ const MONTHS_SHORT = [
 export function feastDateLabel(d: FeastDate): string {
   return `${MONTHS_SHORT[d.month - 1]} ${d.day}`;
 }
-
-// sessionStorage key the letter composer reads to pre-insert a saint chosen
-// from the Saints modal's "Add to a letter" action.
-export const PENDING_SAINT_KEY = "phoebe:pending-saint";
-
-// The snippet inserted into a letter draft when a saint is added.
-export function saintLetterSnippet(s: Saint): string {
-  const head = `${s.name} (${feastDateLabel(s.feastDate)})`;
-  const body = s.collectExcerpt
-    ? `“${s.collectExcerpt}”`
-    : s.knownFor ?? "a commemoration in the Episcopal calendar";
-  return `${head} — ${body}`;
-}

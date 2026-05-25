@@ -3,15 +3,6 @@ import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, ApiError } from "@/lib/queryClient";
-import {
-  SAINTS,
-  getSaintById,
-  searchSaints,
-  saintLetterSnippet,
-  feastDateLabel,
-  PENDING_SAINT_KEY,
-  type Saint,
-} from "@/data/saints";
 
 interface MemberData {
   id: number;
@@ -84,40 +75,6 @@ export default function WriteLetter() {
   const [confirmSend, setConfirmSend] = useState(false);
 
   const [errorState, setErrorState] = useState<{ message: string; nextPeriodStart?: string } | null>(null);
-
-  // "+ Add a saint" — pick a saint from the index and pull their name +
-  // collect excerpt into the draft. (See deliverable: Saints ↔ Letters.)
-  const [saintSheetOpen, setSaintSheetOpen] = useState(false);
-  const [saintQuery, setSaintQuery] = useState("");
-
-  const insertSaint = useCallback((s: Saint) => {
-    const snippet = saintLetterSnippet(s);
-    setContent((c) => {
-      const base = c.replace(/\s+$/, "");
-      return base ? `${base}\n\n${snippet}\n` : `${snippet}\n`;
-    });
-    setConfirmSend(false);
-    setSaintSheetOpen(false);
-    setSaintQuery("");
-  }, []);
-
-  // Pre-insert a saint chosen from the Saint detail screen's "Add to a
-  // letter" action (it stashes the id in sessionStorage, then routes here).
-  // Runs once on mount; only the new-letter flow reaches this path, so there
-  // is no saved draft to clobber.
-  useEffect(() => {
-    try {
-      const pendingId = sessionStorage.getItem(PENDING_SAINT_KEY);
-      if (pendingId) {
-        sessionStorage.removeItem(PENDING_SAINT_KEY);
-        const s = getSaintById(pendingId);
-        if (s) insertSaint(s);
-      }
-    } catch {
-      /* private mode / no sessionStorage — non-fatal */
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Override dark page background for paper theme
   useEffect(() => {
@@ -703,22 +660,6 @@ export default function WriteLetter() {
           new draft. The spacer doesn't affect the saved letter — it's
           just empty room below the textarea. */}
       <div className="flex-1 px-6 pt-6 max-w-3xl mx-auto w-full">
-        <button
-          type="button"
-          onClick={() => setSaintSheetOpen(true)}
-          className="mb-3 inline-flex items-center rounded-full px-3 py-1.5 transition-opacity hover:opacity-90"
-          style={{
-            background: "rgba(92,122,95,0.12)",
-            border: "1px solid rgba(92,122,95,0.35)",
-            color: "#5C7A5F",
-            fontFamily: "'Space Grotesk', sans-serif",
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          + Add a saint
-        </button>
         <textarea
           ref={textareaRef}
           value={content}
@@ -753,65 +694,6 @@ export default function WriteLetter() {
           }}
         />
       </div>
-
-      {/* "Add a saint" picker — a bottom sheet over the paper composer.
-          Search the index; tapping a saint inserts their name + collect
-          excerpt into the draft. */}
-      {saintSheetOpen && (
-        <div
-          className="fixed inset-0 z-[70] flex flex-col justify-end"
-          style={{ background: "rgba(20,12,8,0.45)" }}
-          onClick={() => setSaintSheetOpen(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="rounded-t-2xl flex flex-col"
-            style={{ background: "#F8F3EC", maxHeight: "80vh", borderTop: "1px solid #E7DECF" }}
-          >
-            <div className="px-5 pt-4 pb-3" style={{ borderBottom: "1px solid #EDE6D9" }}>
-              <div className="flex items-center justify-between mb-3">
-                <p style={{ color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 16, margin: 0 }}>
-                  Add a saint
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setSaintSheetOpen(false)}
-                  aria-label="Close"
-                  style={{ color: "#9a9390", cursor: "pointer", fontSize: 20, lineHeight: 1, background: "none", border: "none" }}
-                >
-                  ×
-                </button>
-              </div>
-              <input
-                type="text"
-                value={saintQuery}
-                onChange={(e) => setSaintQuery(e.target.value)}
-                placeholder="Search saints…"
-                className="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
-                style={{ background: "#fff", border: "1px solid #E0D6C6", color: "#2C1810", fontFamily: "'Space Grotesk', sans-serif" }}
-              />
-            </div>
-            <div className="overflow-y-auto px-3 py-2" style={{ flex: 1 }}>
-              {(saintQuery.trim() ? searchSaints(saintQuery) : SAINTS).map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => insertSaint(s)}
-                  className="w-full text-left rounded-lg px-3 py-2.5 transition-opacity hover:opacity-70"
-                  style={{ cursor: "pointer", background: "none", border: "none" }}
-                >
-                  <p style={{ color: "#2C1810", fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 16, margin: 0 }}>
-                    {s.name}
-                  </p>
-                  <p style={{ color: "#9a9390", fontFamily: "'Space Grotesk', sans-serif", fontSize: 12, margin: "2px 0 0" }}>
-                    {feastDateLabel(s.feastDate)}{s.collectExcerpt ? " · collect included" : ""}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
