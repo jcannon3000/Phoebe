@@ -258,6 +258,18 @@ export const en = {
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
   },
+  // Forgot password page (pages/forgot-password.tsx).
+  forgot_password: {
+    title: "Forgot your password?",
+    subtitle: "Enter your email and we'll send a reset link.",
+    email_placeholder: "Email address",
+    invalid_email: "Enter a valid email address.",
+    generic_error: "Something went wrong. Please try again.",
+    network_error: "Couldn't reach Phoebe. Check your connection and try again.",
+    sent: "If that account exists, a reset link is on its way. Check your inbox.",
+    send_reset: "Send reset link",
+    back_to_sign_in: "← Back to sign in",
+  },
   // Correspondence thread page (pages/Letters/CorrespondencePage.tsx).
   correspondence: {
     follow_up_chip: "Follow-up",

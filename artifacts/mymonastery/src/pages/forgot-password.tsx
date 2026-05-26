@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { apiRequest, ApiError } from "@/lib/queryClient";
 
 export default function ForgotPassword() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
@@ -14,7 +16,7 @@ export default function ForgotPassword() {
     e.preventDefault();
     setError("");
     if (!email.trim() || !email.includes("@")) {
-      setError("Enter a valid email address."); return;
+      setError(t("forgot_password.invalid_email")); return;
     }
     setSubmitting(true);
     try {
@@ -31,10 +33,10 @@ export default function ForgotPassword() {
         // message ("Too many password reset requests…"). 400
         // validation errors: surface them too. Anything else falls
         // back to the generic line.
-        setError(err.message || "Something went wrong. Please try again.");
+        setError(err.message || t("forgot_password.generic_error"));
       } else {
         // True network failure — fetch itself threw.
-        setError("Couldn't reach Phoebe. Check your connection and try again.");
+        setError(t("forgot_password.network_error"));
       }
     } finally {
       setSubmitting(false);
@@ -58,30 +60,30 @@ export default function ForgotPassword() {
           >
             <div className="text-4xl mb-5 text-center">✉️</div>
             <h1 className="text-2xl font-bold mb-2 text-center" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              Forgot your password?
+              {t("forgot_password.title")}
             </h1>
             <p className="text-sm text-center mb-8" style={{ color: "#8FAF96" }}>
-              Enter your email and we'll send a reset link.
+              {t("forgot_password.subtitle")}
             </p>
 
             {sent ? (
               <div className="text-center">
                 <p className="text-base mb-6" style={{ color: "#8FAF96" }}>
-                  If that account exists, a reset link is on its way. Check your inbox.
+                  {t("forgot_password.sent")}
                 </p>
                 <button
                   onClick={() => setLocation("/")}
                   className="text-sm font-semibold"
                   style={{ color: "#C8D4C0" }}
                 >
-                  ← Back to sign in
+                  {t("forgot_password.back_to_sign_in")}
                 </button>
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="flex flex-col gap-3">
                 <input
                   type="email"
-                  placeholder="Email address"
+                  placeholder={t("forgot_password.email_placeholder")}
                   value={email}
                   onChange={e => { setEmail(e.target.value); setError(""); }}
                   className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
@@ -102,7 +104,7 @@ export default function ForgotPassword() {
                 >
                   {submitting ? (
                     <div className="w-4 h-4 rounded-full border-2 border-[#F0EDE6] border-t-transparent animate-spin" />
-                  ) : "Send reset link"}
+                  ) : t("forgot_password.send_reset")}
                 </button>
 
                 <button
@@ -111,7 +113,7 @@ export default function ForgotPassword() {
                   className="text-sm text-center mt-1"
                   style={{ color: "#8FAF96" }}
                 >
-                  ← Back to sign in
+                  {t("forgot_password.back_to_sign_in")}
                 </button>
               </form>
             )}

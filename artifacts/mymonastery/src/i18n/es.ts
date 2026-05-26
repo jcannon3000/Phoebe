@@ -261,6 +261,17 @@ export const es: Translations = {
     daily_reminders: "🔔 Recordatorios diarios",
     daily_reminders_sub: "Elige una hora para la mañana y la tarde.",
   },
+  forgot_password: {
+    title: "¿Olvidaste tu contraseña?",
+    subtitle: "Ingresa tu correo y te enviaremos un enlace para restablecerla.",
+    email_placeholder: "Correo electrónico",
+    invalid_email: "Ingresa un correo electrónico válido.",
+    generic_error: "Algo salió mal. Por favor intenta de nuevo.",
+    network_error: "No pudimos conectar con Phoebe. Verifica tu conexión e intenta de nuevo.",
+    sent: "Si esa cuenta existe, un enlace para restablecer está en camino. Revisa tu bandeja de entrada.",
+    send_reset: "Enviar enlace",
+    back_to_sign_in: "← Volver a iniciar sesión",
+  },
   correspondence: {
     follow_up_chip: "Seguimiento",
     follow_up_subtitle: "Seguimiento · sin respuesta en 14 días 🕊️",
