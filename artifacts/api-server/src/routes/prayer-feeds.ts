@@ -1435,6 +1435,13 @@ router.post("/prayer-feeds/:slug/intercessions", requireBeta, async (req, res): 
     .from(usersTable)
     .where(eq(usersTable.id, user.id));
 
+  // 15-minute grace window before the "new intercession" push fans
+  // out to subscribers. Stamping this column (rather than pushing
+  // synchronously) lets the editor fix a typo, edit the body, or
+  // delete the moment entirely before anyone gets pinged — the
+  // bellSender scanner picks the row up once the window elapses.
+  const GRACE_MS = 15 * 60 * 1000;
+  const notifyAt = new Date(Date.now() + GRACE_MS);
   const [moment] = await db
     .insert(sharedMomentsTable)
     .values({
@@ -1455,6 +1462,11 @@ router.post("/prayer-feeds/:slug/intercessions", requireBeta, async (req, res): 
       state: "active",
       momentToken: generateToken(),
       learnMoreUrl: normalizedUrl,
+      notifySubscribersAt: notifyAt,
+      // Recorded so the scanner can exclude this user from the
+      // fan-out push — otherwise the publisher gets pinged 15
+      // minutes later about their own intercession.
+      publishedByUserId: user.id,
     })
     .returning();
 
@@ -1471,6 +1483,12 @@ router.post("/prayer-feeds/:slug/intercessions", requireBeta, async (req, res): 
   await reconcileFeedPracticeMembers(moment.id);
 
   res.status(201).json({ intercession: moment });
+
+  // (The "new intercession" push is NOT fired here. We stamped
+  // notify_subscribers_at above so bellSender.runFeedIntercessionPushSender
+  // sends it ~15 minutes later — gives the editor a grace window to
+  // edit the body or delete a mis-published intercession before
+  // subscribers get pinged.)
 
   // Auto-fetch the linked article's title AFTER responding so the
   // admin's save isn't blocked on a (possibly slow) outbound fetch.
@@ -1489,6 +1507,118 @@ router.post("/prayer-feeds/:slug/intercessions", requireBeta, async (req, res): 
         }
       } catch (err) {
         console.warn("[feed intercession] article-title fetch failed:", err);
+      }
+    })();
+  }
+});
+
+// PATCH /api/prayer-feeds/:slug/intercessions/:id — editor-only. Lets a
+// feed manager edit the copy (title, body, source pill, learn-more URL)
+// of an already-published intercession. Partial: any subset of the four
+// fields can change. We don't touch notify_subscribers_at — if the
+// edit happens inside the 15-minute grace window the scheduled push
+// just sends whatever the latest title is; if it's later, the push
+// already went and the edit is a quiet correction.
+const feedIntercessionPatchSchema = z.object({
+  source: z.enum(["bcp", "custom", "action"]).optional(),
+  title: z.string().trim().min(1).max(120).optional(),
+  fullText: z.string().trim().min(1).max(4000).optional(),
+  // null explicitly clears the URL; undefined leaves it unchanged.
+  learnMoreUrl: z.string().trim().max(500).optional().nullable(),
+}).refine(
+  (v) => v.source !== undefined || v.title !== undefined || v.fullText !== undefined || v.learnMoreUrl !== undefined,
+  { message: "Nothing to update." },
+);
+router.patch("/prayer-feeds/:slug/intercessions/:id", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const feed = await getFeedBySlug(String(req.params.slug));
+  if (!feed) { res.status(404).json({ error: "Not found" }); return; }
+  if (!(await canEditFeed(user.id, feed))) {
+    res.status(403).json({ error: "You don't have permission to edit this feed." });
+    return;
+  }
+  const momentId = parseInt(String(req.params.id), 10);
+  if (!Number.isFinite(momentId)) {
+    res.status(400).json({ error: "Invalid intercession id." });
+    return;
+  }
+  const parsed = feedIntercessionPatchSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid input", issues: parsed.error.issues });
+    return;
+  }
+
+  // Pull the current row so we can validate the EFFECTIVE state after
+  // the patch (e.g. switching source → "action" requires a URL; if the
+  // editor changes only the title we still need to check the existing
+  // URL is valid).
+  const [current] = await db
+    .select({
+      id: sharedMomentsTable.id,
+      prayerFeedId: sharedMomentsTable.prayerFeedId,
+      templateType: sharedMomentsTable.templateType,
+      intercessionSource: sharedMomentsTable.intercessionSource,
+      learnMoreUrl: sharedMomentsTable.learnMoreUrl,
+    })
+    .from(sharedMomentsTable)
+    .where(eq(sharedMomentsTable.id, momentId))
+    .limit(1);
+  if (!current || current.templateType !== "intercession" || current.prayerFeedId !== feed.id) {
+    res.status(404).json({ error: "Intercession not found on this feed." });
+    return;
+  }
+
+  const next = {
+    source: parsed.data.source ?? current.intercessionSource,
+    // learnMoreUrl: undefined → keep current; null → clear; string → normalize
+    rawUrl: parsed.data.learnMoreUrl === undefined ? current.learnMoreUrl : parsed.data.learnMoreUrl,
+  };
+  const normalizedUrl = next.rawUrl == null ? null : normalizeLearnMoreUrl(next.rawUrl);
+  if (next.source === "action" && !normalizedUrl) {
+    res.status(400).json({ error: "An action intercession needs a valid link." });
+    return;
+  }
+
+  // Build the partial update set — only the columns the patch actually
+  // touched, so an unrelated DB-side default (or trigger) on the
+  // untouched columns stays out of the way.
+  const updates: Partial<typeof sharedMomentsTable.$inferInsert> = {};
+  if (parsed.data.source !== undefined) updates.intercessionSource = parsed.data.source;
+  if (parsed.data.title !== undefined) {
+    updates.name = parsed.data.title;
+    updates.intention = parsed.data.title;
+    updates.intercessionTopic = parsed.data.title;
+  }
+  if (parsed.data.fullText !== undefined) updates.intercessionFullText = parsed.data.fullText;
+  if (parsed.data.learnMoreUrl !== undefined) {
+    updates.learnMoreUrl = normalizedUrl;
+    // Reset the cached article title — the background fetch below will
+    // refresh it. Without this, an edit from URL A to URL B would keep
+    // showing A's title until manual refresh.
+    updates.learnMoreTitle = null;
+  }
+
+  await db
+    .update(sharedMomentsTable)
+    .set(updates)
+    .where(eq(sharedMomentsTable.id, momentId));
+
+  res.json({ ok: true });
+
+  // Re-fetch the article title in the background if the URL changed.
+  // Same fire-and-forget pattern as the create path.
+  if (parsed.data.learnMoreUrl !== undefined && normalizedUrl) {
+    void (async () => {
+      try {
+        const { fetchArticleTitle } = await import("../lib/articleTitle");
+        const articleTitle = await fetchArticleTitle(normalizedUrl);
+        if (articleTitle) {
+          await db.update(sharedMomentsTable)
+            .set({ learnMoreTitle: articleTitle })
+            .where(eq(sharedMomentsTable.id, momentId));
+        }
+      } catch (err) {
+        console.warn("[feed intercession PATCH] article-title fetch failed:", err);
       }
     })();
   }
@@ -1726,6 +1856,11 @@ router.post("/prayer-feeds/:slug/intercessions/attach", requireBeta, async (req,
       groupId: sharedMomentsTable.groupId,
       prayerFeedId: sharedMomentsTable.prayerFeedId,
       templateType: sharedMomentsTable.templateType,
+      // Pulled for the fan-out push below — the subscribers who get
+      // notified should see WHAT they're being asked to pray for, not
+      // a generic "new intercession" headline.
+      intercessionTopic: sharedMomentsTable.intercessionTopic,
+      name: sharedMomentsTable.name,
     })
     .from(sharedMomentsTable)
     .where(eq(sharedMomentsTable.id, parsed.data.momentId))
@@ -1752,13 +1887,27 @@ router.post("/prayer-feeds/:slug/intercessions/attach", requireBeta, async (req,
     res.status(403).json({ error: "You don't administer that community." });
     return;
   }
+  // Attach + start the 15-minute grace window in the same write.
+  // Same rationale as the fresh-create path: gives the editor a buffer
+  // to revert if they attached the wrong intercession or want to edit
+  // it before subscribers see the push. publishedByUserId is the
+  // attaching editor (not the original community creator) — they're
+  // the one taking the action whose push we're deduping.
+  const GRACE_MS = 15 * 60 * 1000;
   await db
     .update(sharedMomentsTable)
-    .set({ prayerFeedId: feed.id })
+    .set({
+      prayerFeedId: feed.id,
+      notifySubscribersAt: new Date(Date.now() + GRACE_MS),
+      publishedByUserId: user.id,
+    })
     .where(eq(sharedMomentsTable.id, moment.id));
   const { reconcileFeedPracticeMembers } = await import("./groups");
   await reconcileFeedPracticeMembers(moment.id);
   res.json({ ok: true });
+
+  // (Push is deferred to bellSender.runFeedIntercessionPushSender per
+  // the notify_subscribers_at timestamp above.)
 });
 
 // DELETE /api/prayer-feeds/:slug/entries/:date — editor-only.

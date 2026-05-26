@@ -1547,6 +1547,21 @@ export async function migrate() {
     // Auto-fetched title of the learn_more_url article — shown above the
     // "Learn more →" pill on the intercession slide.
     await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS learn_more_title TEXT`);
+    // Scheduled time at which the "new intercession on your feed" push
+    // fans out to subscribers — set to NOW()+15min on insert so the
+    // editor has a grace window to fix typos / delete a mis-published
+    // intercession before subscribers get pinged. The scanner in
+    // bellSender.runFeedIntercessionPushSender picks up rows where this
+    // is non-null and in the past, fires the push, then NULLs it.
+    await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS notify_subscribers_at TIMESTAMP WITH TIME ZONE`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_shared_moments_notify_due ON shared_moments (notify_subscribers_at) WHERE notify_subscribers_at IS NOT NULL`);
+    // The user who scheduled the delayed push above. Scanner passes
+    // this through to sendNewFeedIntercessionPush as excludeUserId so
+    // the publisher doesn't get pinged about their own intercession
+    // 15 minutes later. No FK so a deleted user row doesn't cascade
+    // damage onto the intercession — a null/dangling id just means
+    // the scanner doesn't filter, which is the existing behavior.
+    await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS published_by_user_id INTEGER`);
 
     // group_announcements gains feed scope: prayer walks + announcements
     // can now belong to a feed instead of a group. group_id becomes

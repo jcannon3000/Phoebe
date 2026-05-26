@@ -1266,6 +1266,43 @@ export async function sendNewFeedEventPush(
   });
 }
 
+// New-intercession push — fired when an editor publishes (or attaches)
+// an intercession to a feed. Fans out to every subscriber of the feed,
+// independent of the Tuesday weekly digest (this is the timely "a new
+// one just landed" signal; the digest is the curated walk-through).
+//
+// Title carries the intercession topic so the lock-screen preview tells
+// the subscriber what they're being asked to pray for; body names the
+// feed for context. Tap deep-links to the feed page where the new card
+// shows up at the top of the day's slots.
+export async function sendNewFeedIntercessionPush(
+  feedId: number,
+  opts: {
+    feedSlug: string;
+    feedTitle: string;
+    intercessionTitle: string;
+    intercessionId: number;
+    excludeUserId?: number; // typically the editor who just published
+  },
+): Promise<void> {
+  const subs = await db
+    .select({ userId: prayerFeedSubscriptionsTable.userId })
+    .from(prayerFeedSubscriptionsTable)
+    .where(eq(prayerFeedSubscriptionsTable.feedId, feedId));
+  const userIds = subs
+    .map(s => s.userId)
+    .filter(id => id !== opts.excludeUserId);
+  if (userIds.length === 0) return;
+  await sendPushToUsers(userIds, {
+    title: opts.intercessionTitle,
+    body: `New intercession on ${opts.feedTitle}. Tap to pray.`,
+    path: `/prayer-feeds/${opts.feedSlug}`,
+    threadId: `feed-intercession-${opts.intercessionId}`,
+    collapseId: `new-feed-intercession-${opts.intercessionId}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
 // Day-before reminder for a feed event. Fired once per event by the
 // bell scanner, deduped via prayer_feed_events.reminder_sent_at.
 export async function sendFeedEventTomorrowPush(

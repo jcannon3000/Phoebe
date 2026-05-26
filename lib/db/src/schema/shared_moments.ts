@@ -85,6 +85,25 @@ export const sharedMomentsTable = pgTable("shared_moments", {
   // (paywall, JS-only page, timeout) — the slide then shows the bare
   // pill with no caption.
   learnMoreTitle: text("learn_more_title"),
+  // Scheduled time at which the "new intercession on your feed" push
+  // should fan out to subscribers. Set to NOW() + 15 minutes when an
+  // editor publishes (or attaches) a feed intercession — the delay
+  // gives the editor a window to fix a typo, edit the body, or delete
+  // the moment entirely before anyone gets pinged. After the scanner
+  // fires the push, it sets this column to NULL so the row isn't
+  // re-fired. Only meaningful for feed intercessions (prayer_feed_id
+  // is set); a group-only moment leaves it null forever.
+  notifySubscribersAt: timestamp("notify_subscribers_at", { withTimezone: true }),
+  // The user who triggered the push schedule above — either the feed
+  // editor who authored a fresh intercession via
+  // POST /prayer-feeds/:slug/intercessions, or the editor who attached
+  // an existing community intercession via .../intercessions/attach.
+  // The scanner passes this through to sendNewFeedIntercessionPush as
+  // excludeUserId so the publisher doesn't get pinged 15 minutes later
+  // about their own action. Nullable for back-compat with rows that
+  // pre-date the column; the scanner just won't exclude anyone in
+  // that case.
+  publishedByUserId: integer("published_by_user_id"),
 });
 
 export type SharedMoment = typeof sharedMomentsTable.$inferSelect;

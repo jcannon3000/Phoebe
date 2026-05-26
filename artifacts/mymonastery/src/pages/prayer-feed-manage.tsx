@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Pencil } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
@@ -541,6 +542,10 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
   const [composing, setComposing] = useState(false);
+  // When non-null the composer edits an existing intercession via PATCH
+  // instead of creating one via POST — same form, different verb. Set by
+  // startEdit(item); cleared by startNew(), Cancel, or a successful save.
+  const [editingId, setEditingId] = useState<number | null>(null);
   // Type toggle: "custom" = a written prayer; "action" = a prayer
   // plus a link the slideshow surfaces as a "Take action →" pill.
   const [draft, setDraft] = useState<{
@@ -565,17 +570,42 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
     enabled: picking,
   });
 
+  function closeComposer() {
+    setComposing(false);
+    setEditingId(null);
+    setDraft({ source: "custom", title: "", fullText: "", learnMoreUrl: "" });
+    setError(null);
+  }
+
   const createMutation = useMutation({
     mutationFn: (payload: { source: string; title: string; fullText: string; learnMoreUrl: string | null }) =>
       apiRequest("POST", `/api/prayer-feeds/${slug}/intercessions`, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/intercessions`] });
-      setComposing(false);
-      setDraft({ source: "custom", title: "", fullText: "", learnMoreUrl: "" });
-      setError(null);
+      closeComposer();
     },
     onError: (e) => {
       setError(e instanceof Error ? e.message : "Couldn't add the intercession.");
+    },
+  });
+
+  // Editing — PATCHes the existing intercession. Same payload shape as
+  // create (the server validates a partial against the same schema), but
+  // we always send all four fields so the user's choice is unambiguous
+  // (no surprise "I cleared the URL but the column still has the old
+  // value" because we forgot to include the null).
+  const editMutation = useMutation({
+    mutationFn: (args: { id: number; payload: { source: string; title: string; fullText: string; learnMoreUrl: string | null } }) =>
+      apiRequest("PATCH", `/api/prayer-feeds/${slug}/intercessions/${args.id}`, args.payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/intercessions`] });
+      // Also bust /moments/:id query so the detail page reads the new
+      // copy without a manual refresh.
+      qc.invalidateQueries({ queryKey: ["/api/moments"] });
+      closeComposer();
+    },
+    onError: (e) => {
+      setError(e instanceof Error ? e.message : "Couldn't save the changes.");
     },
   });
 
@@ -594,6 +624,22 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
   function startNew() {
     setDraft({ source: "custom", title: "", fullText: "", learnMoreUrl: "" });
     setError(null);
+    setEditingId(null);
+    setComposing(true);
+  }
+
+  function startEdit(it: FeedIntercession) {
+    setDraft({
+      // The server stores "bcp" / "custom" / "action"; the chooser only
+      // exposes custom & action, so coerce anything else (legacy "bcp"
+      // or null) back to "custom" so the toggle has a valid selection.
+      source: it.intercessionSource === "action" ? "action" : "custom",
+      title: it.intention || it.name || "",
+      fullText: it.intercessionFullText ?? "",
+      learnMoreUrl: it.learnMoreUrl ?? "",
+    });
+    setError(null);
+    setEditingId(it.id);
     setComposing(true);
   }
   function save() {
@@ -602,7 +648,7 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
       setError("An action needs a link.");
       return;
     }
-    createMutation.mutate({
+    const payload = {
       source: draft.source,
       title: draft.title.trim(),
       fullText: draft.fullText.trim(),
@@ -610,8 +656,14 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
       // optional for a written prayer ("Learn more →" pill — used to
       // link the article a prayer is responding to).
       learnMoreUrl: draft.learnMoreUrl.trim() || null,
-    });
+    };
+    if (editingId != null) {
+      editMutation.mutate({ id: editingId, payload });
+    } else {
+      createMutation.mutate(payload);
+    }
   }
+  const savePending = createMutation.isPending || editMutation.isPending;
 
   return (
     <div className="mb-8">
@@ -626,14 +678,21 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
         {items.map((it) => {
           const isAction = it.intercessionSource === "action";
           return (
-            <button
+            // Row container is a div (not a button) so the inline Edit
+            // pencil can be its own button without nesting interactive
+            // elements. The left text region keeps the tap-to-open
+            // affordance; the right-hand pencil opens the composer in
+            // edit mode without navigating away.
+            <div
               key={it.id}
-              type="button"
-              onClick={() => setLocation(`/moments/${it.id}`)}
-              className="w-full text-left rounded-xl px-4 py-3 flex items-center gap-3 transition-opacity hover:opacity-90"
+              className="w-full rounded-xl px-4 py-3 flex items-center gap-3"
               style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.45)" }}
             >
-              <div className="min-w-0 flex-1">
+              <button
+                type="button"
+                onClick={() => setLocation(`/moments/${it.id}`)}
+                className="min-w-0 flex-1 text-left bg-transparent transition-opacity hover:opacity-90"
+              >
                 <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
                   {it.intention || it.name}
                 </p>
@@ -642,7 +701,7 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
                     {it.intercessionFullText}
                   </p>
                 )}
-              </div>
+              </button>
               {isAction && (
                 <span
                   className="text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0"
@@ -655,7 +714,22 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
                   🌍 Action
                 </span>
               )}
-            </button>
+              <button
+                type="button"
+                aria-label="Edit intercession"
+                onClick={() => startEdit(it)}
+                className="shrink-0 rounded-full p-1.5 transition-opacity hover:opacity-90"
+                style={{
+                  background: "rgba(46,107,64,0.18)",
+                  border: "1px solid rgba(46,107,64,0.4)",
+                  color: "#A8C5A0",
+                  cursor: "pointer",
+                  lineHeight: 0,
+                }}
+              >
+                <Pencil size={14} />
+              </button>
+            </div>
           );
         })}
         {items.length === 0 && !listQ.isLoading && (
@@ -756,16 +830,18 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
             <button
               type="button"
               onClick={save}
-              disabled={createMutation.isPending || !draft.title.trim() || !draft.fullText.trim()}
+              disabled={savePending || !draft.title.trim() || !draft.fullText.trim()}
               className="text-xs font-semibold px-3 py-2 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-40"
               style={{ background: "#2D5E3F", border: "1px solid #2D5E3F", color: "#F0EDE6" }}
             >
-              {createMutation.isPending ? "Adding…" : "Add intercession"}
+              {savePending
+                ? (editingId != null ? "Saving…" : "Adding…")
+                : (editingId != null ? "Save changes" : "Add intercession")}
             </button>
             <button
               type="button"
-              onClick={() => { setComposing(false); setError(null); }}
-              disabled={createMutation.isPending}
+              onClick={closeComposer}
+              disabled={savePending}
               className="text-xs font-semibold px-3 py-2 rounded-lg transition-opacity hover:opacity-90"
               style={{ background: "transparent", border: "1px solid rgba(143,175,150,0.3)", color: "#A8C5A0" }}
             >

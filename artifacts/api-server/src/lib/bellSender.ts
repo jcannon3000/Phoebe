@@ -30,6 +30,7 @@ import {
   sendParishEveningRecapPush,
   sendGatheringTomorrowPush,
   sendFeedEventTomorrowPush,
+  sendNewFeedIntercessionPush,
   sendActionReminderPush,
   sendWeeklyDigestPush,
   sendParishWeeklyRecapPush,
@@ -1162,6 +1163,93 @@ export async function runFeedEventReminderSender(): Promise<void> {
   }
 }
 
+// ─── Delayed feed-intercession push ─────────────────────────────────────────
+//
+// When an editor publishes (or attaches) a feed intercession, we stamp
+// shared_moments.notify_subscribers_at = NOW() + 15min instead of pushing
+// immediately. This scanner picks up rows whose grace window has elapsed
+// and fans the "new intercession" push out to subscribers, then NULLs the
+// column so we don't re-fire on the next tick. The 15-min delay gives the
+// editor time to fix a typo / delete the moment before subscribers get
+// pinged; since the scanner runs every 15 min, real-world latency is
+// 15–30 min, which fits the "at least 15 minutes grace" goal.
+//
+// If the editor deletes the moment within the window, the row is gone and
+// nothing fires. If they edit the body, the new copy is what subscribers
+// see when they tap through (the push body itself names the feed, not the
+// edited text, so the push wording stays valid through edits).
+//
+// shared_moments.published_by_user_id is the editor who triggered the
+// schedule (fresh-create OR attach), threaded through to
+// sendNewFeedIntercessionPush as excludeUserId so the publisher doesn't
+// get pinged 15 minutes later about their own action. Null for rows
+// that pre-date the column — in that case we just don't exclude, which
+// matches the old immediate-push behavior.
+export async function runFeedIntercessionPushSender(): Promise<void> {
+  try {
+    const now = new Date();
+    const rows = await db
+      .select({
+        momentId: sharedMomentsTable.id,
+        feedId: sharedMomentsTable.prayerFeedId,
+        topic: sharedMomentsTable.intercessionTopic,
+        name: sharedMomentsTable.name,
+        publisherUserId: sharedMomentsTable.publishedByUserId,
+        feedSlug: prayerFeedsTable.slug,
+        feedTitle: prayerFeedsTable.title,
+      })
+      .from(sharedMomentsTable)
+      .innerJoin(prayerFeedsTable, eq(prayerFeedsTable.id, sharedMomentsTable.prayerFeedId))
+      .where(and(
+        isNotNull(sharedMomentsTable.notifySubscribersAt),
+        sql`${sharedMomentsTable.notifySubscribersAt} <= ${now}`,
+        eq(sharedMomentsTable.state, "active"),
+        eq(sharedMomentsTable.templateType, "intercession"),
+      ));
+
+    for (const row of rows) {
+      if (row.feedId == null) continue; // satisfies the type narrower; the join already filters nulls
+      const title = row.topic || row.name || "New intercession";
+      try {
+        await sendNewFeedIntercessionPush(row.feedId, {
+          feedSlug: row.feedSlug,
+          feedTitle: row.feedTitle,
+          intercessionTitle: title,
+          intercessionId: row.momentId,
+          excludeUserId: row.publisherUserId ?? undefined,
+        });
+      } catch (err) {
+        logger.warn({ err, momentId: row.momentId }, "[feed-intercession-push] send failed");
+      }
+      // NULL the column regardless of send success — a transient push
+      // failure shouldn't park the row in "pending" forever. The push
+      // layer already has its own retry / token-invalidation logic.
+      await db
+        .update(sharedMomentsTable)
+        .set({ notifySubscribersAt: null })
+        .where(eq(sharedMomentsTable.id, row.momentId));
+      logger.info({ momentId: row.momentId, title }, "[feed-intercession-push] fired");
+    }
+
+    // Orphan cleanup: if a feed was deleted while one of its moments
+    // still had a pending notify_subscribers_at, the ON DELETE SET NULL
+    // on prayer_feed_id leaves the row with no feed and a stuck timer.
+    // The INNER JOIN above filters those out (nothing to push since
+    // there's no feed slug/title), but the column itself stays
+    // non-null, so the partial index keeps indexing dead rows. One
+    // cheap UPDATE per tick clears them.
+    await db
+      .update(sharedMomentsTable)
+      .set({ notifySubscribersAt: null })
+      .where(and(
+        isNotNull(sharedMomentsTable.notifySubscribersAt),
+        isNull(sharedMomentsTable.prayerFeedId),
+      ));
+  } catch (err) {
+    logger.error({ err }, "[feed-intercession-push] sender failed");
+  }
+}
+
 // ─── Action advance reminders ──────────────────────────────────────────────
 //
 // Runs on every scheduler tick. For each active community action:
@@ -1454,6 +1542,9 @@ export function startBellScheduler(): void {
     runFeedEventReminderSender().catch((err) =>
       logger.error({ err }, "[feed-event-reminder] initial run failed"),
     );
+    runFeedIntercessionPushSender().catch((err) =>
+      logger.error({ err }, "[feed-intercession-push] initial run failed"),
+    );
     runActionReminderSender().catch((err) =>
       logger.error({ err }, "[action-reminder] initial run failed"),
     );
@@ -1493,6 +1584,9 @@ export function startBellScheduler(): void {
       );
       runFeedEventReminderSender().catch((err) =>
         logger.error({ err }, "[feed-event-reminder] scheduled run failed"),
+      );
+      runFeedIntercessionPushSender().catch((err) =>
+        logger.error({ err }, "[feed-intercession-push] scheduled run failed"),
       );
       runActionReminderSender().catch((err) =>
         logger.error({ err }, "[action-reminder] scheduled run failed"),
