@@ -11,6 +11,7 @@ import { assembleEveningPrayer } from "../lib/assembleEveningPrayer";
 import { assembleDevotion, type DevotionKind } from "../lib/assembleDevotion";
 import { assembleCompline } from "../lib/assembleCompline";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
+import { isUserBeta } from "../lib/parishGate";
 import { seedBcpTexts } from "../seeds/bcpTexts";
 import { PSALTER } from "../seeds/bcpPsalter";
 
@@ -202,14 +203,24 @@ router.get("/office/evening", async (req, res) => {
   }
 });
 
-// GET /office/compline — public, no auth required. Same shape as
-// /office/morning and /office/evening; the assembler returns a complete
-// slide deck for the night office (BCP pp. 127-135). No date-based
-// cache because the deck is built from a single psalm SELECT plus
-// in-memory string constants — cheaper than the cache machinery would
-// be. We still return `fromCache: false` for parity with the other
-// office endpoints so the client doesn't have to branch on the shape.
+// GET /office/compline — beta-only. Same shape as /office/morning and
+// /office/evening (assembled slide deck for the night office, BCP
+// pp. 127-135), but gated to beta users while we test the rotation +
+// inline-lesson rendering. Returns 401 for unauthenticated callers
+// and 403 for non-beta users; the client UI already hides every
+// Compline entry point for non-beta users, so this is defense in
+// depth for the direct-URL / API path.
 router.get("/office/compline", async (req, res) => {
+  const userId = (req.user as { id: number } | undefined)?.id ?? 0;
+  if (!userId) {
+    res.status(401).json({ error: "Sign in to pray Compline." });
+    return;
+  }
+  if (!(await isUserBeta(userId))) {
+    res.status(403).json({ error: "Compline is currently in beta." });
+    return;
+  }
+
   let date: Date;
   try {
     date = req.query.date ? new Date(req.query.date as string) : new Date();
@@ -219,7 +230,6 @@ router.get("/office/compline", async (req, res) => {
   }
 
   try {
-    const userId = (req.user as { id: number } | undefined)?.id ?? 0;
     const { slides, officeDay } = await assembleCompline(date, userId);
     return res.json({
       slides,

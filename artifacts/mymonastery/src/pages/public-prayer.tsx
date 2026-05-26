@@ -21,7 +21,10 @@ const FAINT = "rgba(143,175,150,0.55)";
 const BUTTON_BG = "#2D5E3F";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 
-type Choice = "office" | "devotion" | "compline";
+// Compline is beta-only (see /api/office/compline server gate) and the
+// public /pray surface is unauthenticated — so it's not offered here.
+// The two choices remain Office and Devotion.
+type Choice = "office" | "devotion";
 
 // Same 14:00 cutoff the Daily Office / Devotion pickers use, so the
 // public page resolves to the same morning/evening variant.
@@ -29,7 +32,6 @@ function isMorningNow(): boolean {
   return new Date().getHours() < 14;
 }
 function resolveMode(choice: Choice): LiturgyMode {
-  if (choice === "compline") return "compline";
   const morning = isMorningNow();
   if (choice === "office") return morning ? "morning" : "evening";
   return morning ? "morning-devotion" : "early-evening-devotion";
@@ -44,7 +46,7 @@ export default function PublicPrayerPage() {
   const startParam = (() => {
     if (typeof window === "undefined") return null;
     const p = new URLSearchParams(window.location.search).get("start");
-    return p === "office" || p === "devotion" || p === "compline" ? p as Choice : null;
+    return p === "office" || p === "devotion" ? p as Choice : null;
   })();
 
   const [phase, setPhase] = useState<"choose" | "pray" | "finish">(
@@ -119,12 +121,6 @@ function ChooseScreen({ onChoose }: { onChoose: (c: Choice) => void }) {
             title="Daily Devotion"
             subtitle={`${devotionVariant} · a short, gentle prayer`}
             onClick={() => onChoose("devotion")}
-          />
-          <ChoiceCard
-            emoji="🌌"
-            title="Compline"
-            subtitle="The night office · close the day in quiet"
-            onClick={() => onChoose("compline")}
           />
         </motion.div>
 

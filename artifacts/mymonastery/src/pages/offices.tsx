@@ -12,6 +12,7 @@ import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 
 type CardSpec = {
@@ -27,6 +28,7 @@ type CardSpec = {
 
 export default function OfficesPage() {
   const { user, isLoading } = useAuth();
+  const { rawIsBeta } = useBetaStatus();
   const [, setLocation] = useLocation();
   const { t } = useTranslation();
 
@@ -116,10 +118,17 @@ export default function OfficesPage() {
           <OfficeOption spec={eveningDevotion} />
         </div>
 
-        <SectionLabel>{t("offices.at_night", { defaultValue: "At night" })}</SectionLabel>
-        <div className="space-y-6 mb-12">
-          <OfficeOption spec={compline} />
-        </div>
+        {/* Compline — beta-only while the rotation + inline-lesson
+            rendering get road-tested. Non-beta users see no third
+            "At night" section. */}
+        {rawIsBeta && (
+          <>
+            <SectionLabel>{t("offices.at_night", { defaultValue: "At night" })}</SectionLabel>
+            <div className="space-y-6 mb-12">
+              <OfficeOption spec={compline} />
+            </div>
+          </>
+        )}
 
         {/* Reminders entry point. The actual pickers live on /settings
             so we don't fork the source of truth — this is just a

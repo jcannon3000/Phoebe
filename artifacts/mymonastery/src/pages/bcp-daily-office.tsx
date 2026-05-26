@@ -1,6 +1,7 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
@@ -2331,8 +2332,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
 
 export default function BcpDailyOfficePage() {
   const { user, isLoading } = useAuth();
+  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
   const [, setLocation] = useLocation();
-  // All four liturgies live behind this one picker now (the Daily
+  // All five liturgies live behind this one picker now (the Daily
   // Devotions menu entry was folded in). null = show the chooser.
   const [showMode, setShowMode] = useState<LiturgyMode | null>(null);
 
@@ -2342,22 +2344,30 @@ export default function BcpDailyOfficePage() {
 
   // Auto-resume the viewer when /prayer-mode hands the user back here
   // with ?mode=… — keeps the intercessions handoff seamless instead of
-  // dumping them on the picker mid-liturgy. Accepts all four modes.
+  // dumping them on the picker mid-liturgy. Accepts all five modes.
+  // Compline is beta-gated; a non-beta user hitting ?mode=compline
+  // (shared link, bookmark) gets bounced to the picker rather than
+  // mounted on an endpoint that would 403 them mid-load.
   useEffect(() => {
+    if (betaLoading) return;
     const search = new URLSearchParams(window.location.search);
     const mode = search.get("mode");
+    if (mode === "compline") {
+      if (rawIsBeta) setShowMode("compline");
+      // else: silently fall through to the chooser
+      return;
+    }
     if (
       mode === "morning" ||
       mode === "evening" ||
-      mode === "compline" ||
       mode === "morning-devotion" ||
       mode === "early-evening-devotion"
     ) {
       setShowMode(mode);
     }
-  }, []);
+  }, [betaLoading, rawIsBeta]);
 
-  if (isLoading || !user) return null;
+  if (isLoading || betaLoading || !user) return null;
 
   if (showMode) {
     return <OfficeViewer mode={showMode} onBack={() => setShowMode(null)} />;
