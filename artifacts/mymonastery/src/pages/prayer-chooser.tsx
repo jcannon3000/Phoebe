@@ -6,6 +6,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { playOpeningSwell } from "@/lib/amenFeedback";
+import { openExternal } from "@/lib/openExternal";
 import { readOfficeProgress, type LiturgyMode } from "@/pages/bcp-daily-office";
 
 // ── Prayer chooser ──────────────────────────────────────────────────────────
@@ -77,6 +78,45 @@ export default function PrayerChooserPage() {
     staleTime: 60_000,
   });
   const officeStreak = officePrefs?.officeStreak ?? 0;
+
+  // National Cathedral Morning Prayer — surfaced as a 4th option on
+  // the morning chooser, weekdays only (the broadcast is Mon-Fri at
+  // 7 AM ET). /api/ncmp/today-meta fetches the YouTube playlist RSS
+  // + scrapes today's video length so the card can show the actual
+  // duration ("≈ 13 min") rather than a static estimate.
+  //
+  // Gated on isMorning so the request only fires when the option is
+  // about to render. Weekends: still fires (cheap, server caches),
+  // but the card itself is hidden — saves us guarding the query in
+  // two places.
+  type NcmpMeta = {
+    url: string;
+    videoId: string | null;
+    title: string | null;
+    publishedAt: string | null;
+    durationSeconds: number | null;
+  };
+  const { data: ncmpMeta } = useQuery<NcmpMeta>({
+    queryKey: ["/api/ncmp/today-meta"],
+    queryFn: () => apiRequest("GET", "/api/ncmp/today-meta"),
+    enabled: isMorning,
+    staleTime: 60 * 60_000, // server already caches by day; this just dedupes within session
+  });
+  // Hide on weekends — no fresh broadcast Sat/Sun.
+  const isWeekday = (() => {
+    const d = new Date().getDay();
+    return d >= 1 && d <= 5;
+  })();
+  const showNcmpOption = isMorning && isWeekday;
+  // Pretty-printed duration. Whole-minute rounding for the badge
+  // since the chooser's other options ("5–10 Min", "15–20 Min") read
+  // as approximations, not stopwatch-precise.
+  const ncmpDurationLabel = (() => {
+    const s = ncmpMeta?.durationSeconds;
+    if (!s || s <= 0) return null;
+    const m = Math.max(1, Math.round(s / 60));
+    return `≈ ${m} Min`;
+  })();
 
   // Per-mode progress: drives the verb in the corner pill (Start /
   // Continue / Pray again) and the ?reset=1 suffix on the link.
@@ -235,6 +275,98 @@ export default function PrayerChooserPage() {
           </p>
 
           <div className="space-y-3">
+            {/* National Cathedral Morning Prayer — purple card,
+                weekday-mornings only. Opens the YouTube watch URL
+                externally (cathedral.org links to the same video).
+                Best-effort prayer-session log so the user's daily
+                prayer tracker credits the engagement. The duration
+                badge is populated from /api/ncmp/today-meta —
+                falls back to a generic label when the duration
+                fetch fails. */}
+            {showNcmpOption && (
+              <motion.div
+                key="ncmp"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, delay: 0.06, ease: "easeOut" }}
+              >
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    const url = ncmpMeta?.url ?? "https://www.youtube.com/playlist?list=PL1nLVw6M_fPisN8Gfk_tRsjTXqSexemlK";
+                    // Fire-and-forget prayer-session log — engagement
+                    // event is opening the page; we credit a fixed
+                    // ~20-minute (or actual length if known) duration.
+                    const now = new Date();
+                    const seconds = ncmpMeta?.durationSeconds && ncmpMeta.durationSeconds > 0
+                      ? ncmpMeta.durationSeconds
+                      : 20 * 60;
+                    apiRequest("POST", "/api/prayer-sessions", {
+                      surface: "national-cathedral",
+                      durationSeconds: seconds,
+                      startedAt: now.toISOString(),
+                      endedAt: new Date(now.getTime() + seconds * 1000).toISOString(),
+                    }).catch(() => { /* non-fatal */ });
+                    openExternal(url);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") (e.currentTarget as HTMLDivElement).click();
+                  }}
+                  className="w-full rounded-2xl p-4 cursor-pointer transition-opacity hover:opacity-90"
+                  // Royal-purple palette to distinguish from the
+                  // green BCP options. Stays muted enough not to
+                  // overwhelm the rest of the chooser; the duration
+                  // badge picks up a matching purple tint.
+                  style={{
+                    background: "rgba(120,80,180,0.14)",
+                    border: "1px solid rgba(120,80,180,0.40)",
+                  }}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p
+                          className="text-base font-semibold"
+                          style={{ color: "#F0EDE6", fontFamily: FONT, margin: 0, lineHeight: 1.2 }}
+                        >
+                          National Cathedral Morning Prayer
+                        </p>
+                        <span
+                          className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                          style={{
+                            background: "rgba(120,80,180,0.22)",
+                            color: "rgba(210,190,240,0.95)",
+                            border: "1px solid rgba(120,80,180,0.42)",
+                            fontFamily: FONT,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {ncmpDurationLabel ?? "Live at 7 AM ET"}
+                        </span>
+                      </div>
+                      <p
+                        className="text-[12px] mt-1"
+                        style={{ color: "rgba(199,176,235,0.85)", margin: 0 }}
+                      >
+                        Live weekdays at 7 AM Eastern · Washington National Cathedral
+                      </p>
+                    </div>
+                    <span
+                      className="text-[11px] font-semibold px-3 py-1.5 rounded-full shrink-0"
+                      style={{
+                        background: "rgba(120,80,180,0.32)",
+                        color: "#E0D0F5",
+                        border: "1px solid rgba(120,80,180,0.55)",
+                        fontFamily: FONT,
+                      }}
+                    >
+                      Watch →
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
             {options.map((opt, i) => (
               <motion.div
                 key={opt.href}

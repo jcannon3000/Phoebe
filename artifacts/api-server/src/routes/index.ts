@@ -34,6 +34,7 @@ import newsletterRouter from "./newsletter";
 import adminMetricsRouter from "./admin-metrics";
 import meetupsRouter from "./meetups";
 import cacRouter from "./cac";
+import ncmpRouter from "./ncmp";
 
 const router: IRouter = Router();
 
@@ -143,5 +144,6 @@ router.use(newsletterRouter);
 router.use(adminMetricsRouter);
 router.use(meetupsRouter);
 router.use(cacRouter);
+router.use(ncmpRouter);
 
 export default router;
