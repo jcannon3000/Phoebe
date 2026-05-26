@@ -3,6 +3,8 @@ import type { Slide as SlideData, MemberPresence } from "./types";
 import { CallAndResponse } from "./CallAndResponse";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
+import { openExternal } from "@/lib/openExternal";
+import { CAC_TODAY_URL, markCacRead } from "@/lib/cacReadState";
 
 interface SlideProps {
   slide: SlideData;
@@ -304,6 +306,36 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                 </button>
               )}
             </div>
+
+            {/* CAC Daily Reflection pill — morning-only, the
+                contemplative "what to read after Morning Prayer" slot
+                that mirrors how Evening Prayer / the slideshow leads
+                into the Examen. Opens externally via SFSafariView
+                (Browser.open) and stamps today as read so the home
+                card's pill flips to "Read again" on return. */}
+            {!isEvening && (
+              <button
+                type="button"
+                onClick={() => {
+                  markCacRead();
+                  openExternal(CAC_TODAY_URL);
+                }}
+                style={{
+                  background: "rgba(196,131,73,0.20)",
+                  color: CREAM,
+                  border: "1px solid rgba(196,131,73,0.45)",
+                  borderRadius: 999,
+                  padding: "10px 18px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: "Space Grotesk, sans-serif",
+                  cursor: "pointer",
+                  alignSelf: "flex-start",
+                }}
+              >
+                🌅 Read CAC reflection →
+              </button>
+            )}
 
             {onBack && (
               <button
