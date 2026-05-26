@@ -246,6 +246,22 @@ export const en = {
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
   },
+  // Parish dashboard (pages/parish-dashboard.tsx) — offices-only home.
+  parish: {
+    no_intentions_today: "No intentions published for today yet — check back soon.",
+    pray_with_parish: "Pray with your parish",
+    full_daily_office: "The full Daily Office",
+    browse_bcp: "Browse the Book of Common Prayer →",
+    share_heart: "Share something on your heart",
+    private_to_admin: "Private — goes only to your parish admin.",
+    shared_with_admin: "Shared with your parish admin.",
+    holding_this: "They'll be holding this for you.",
+    private_eyebrow: "Private — to your parish admin",
+    whats_on_heart: "What's on your heart? 🌿",
+    couldnt_send: "Couldn't send. Try again?",
+    sharing: "Sharing…",
+    share_with_admin: "Share with admin",
+  },
   // People page (pages/people.tsx) — page-level chrome only; individual
   // card states still read from English directly. We can extend over time.
   people: {

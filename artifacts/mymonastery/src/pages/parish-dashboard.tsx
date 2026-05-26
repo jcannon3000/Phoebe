@@ -20,6 +20,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { apiRequest } from "@/lib/queryClient";
@@ -71,6 +72,7 @@ const SLOT_LABEL: Record<number, string> = { 1: "First", 2: "Second", 3: "Third"
 
 export default function ParishDashboard() {
   const { user, isLoading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
   // Beta-preview mode: a beta user is full-tier by derivation (beta
@@ -601,7 +603,7 @@ export default function ParishDashboard() {
               fontSize: 14,
             }}
           >
-            No intentions published for today yet — check back soon.
+            {t("parish.no_intentions_today")}
           </div>
         )}
         </>
@@ -628,12 +630,12 @@ export default function ParishDashboard() {
             marginBottom: 8,
           }}
         >
-          Pray with your parish
+          {t("parish.pray_with_parish")}
         </p>
         <div className="grid grid-cols-2 gap-2 mb-6">
           <OfficeButton
-            label={isMorning ? "Morning Devotion" : "Evening Devotion"}
-            sub="Short BCP form"
+            label={isMorning ? t("offices.morning_devotion") : t("offices.early_evening_devotion")}
+            sub={t("settings.short_bcp_form")}
             href={
               isMorning
                 ? "/bcp/daily-devotions?mode=morning-devotion"
@@ -642,8 +644,8 @@ export default function ParishDashboard() {
             primary
           />
           <OfficeButton
-            label={isMorning ? "Morning Prayer" : "Evening Prayer"}
-            sub="The full Daily Office"
+            label={isMorning ? t("offices.morning_prayer") : t("offices.evening_prayer")}
+            sub={t("parish.full_daily_office")}
             href={isMorning ? "/bcp/daily-office?mode=morning" : "/bcp/daily-office?mode=evening"}
           />
         </div>
@@ -662,7 +664,7 @@ export default function ParishDashboard() {
         <div className="flex flex-col items-center gap-2 mt-8">
           <Link href="/bcp">
             <span style={{ color: SAGE, fontSize: 13, fontFamily: SPACE_GROTESK, cursor: "pointer" }}>
-              Browse the Book of Common Prayer →
+              {t("parish.browse_bcp")}
             </span>
           </Link>
         </div>
@@ -677,6 +679,7 @@ export default function ParishDashboard() {
 // what they share. Empty / loading / submitted states all render in
 // place to avoid a navigation away from the dashboard.
 function PrayerConcernCard({ parishId }: { parishId: number }) {
+  const { t } = useTranslation();
   const [body, setBody] = useState("");
   const [open, setOpen] = useState(false);
   const [done, setDone] = useState(false);
@@ -703,10 +706,10 @@ function PrayerConcernCard({ parishId }: { parishId: number }) {
         }}
       >
         <p style={{ fontFamily: SPACE_GROTESK, fontSize: 14, color: WARM_TEXT, margin: 0 }}>
-          🌿 Shared with your parish admin.
+          🌿 {t("parish.shared_with_admin")}
         </p>
         <p style={{ fontFamily: SPACE_GROTESK, fontSize: 12, color: SAGE, margin: "6px 0 0" }}>
-          They'll be holding this for you.
+          {t("parish.holding_this")}
         </p>
       </div>
     );
@@ -729,10 +732,10 @@ function PrayerConcernCard({ parishId }: { parishId: number }) {
         }}
       >
         <p style={{ fontSize: 14, fontWeight: 600, color: WARM_TEXT, margin: 0 }}>
-          🤲 Share something on your heart
+          🤲 {t("parish.share_heart")}
         </p>
         <p style={{ fontSize: 12, color: SAGE, margin: "4px 0 0" }}>
-          Private — goes only to your parish admin.
+          {t("parish.private_to_admin")}
         </p>
       </button>
     );
@@ -759,14 +762,14 @@ function PrayerConcernCard({ parishId }: { parishId: number }) {
           marginBottom: 8,
         }}
       >
-        Private — to your parish admin
+        {t("parish.private_eyebrow")}
       </p>
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={4}
         maxLength={2000}
-        placeholder="What's on your heart? 🌿"
+        placeholder={t("parish.whats_on_heart")}
         style={{
           width: "100%",
           background: "transparent",
@@ -782,7 +785,7 @@ function PrayerConcernCard({ parishId }: { parishId: number }) {
       />
       {submit.isError && (
         <p style={{ fontSize: 12, color: "#F87171", fontFamily: SPACE_GROTESK, margin: "6px 0 0" }}>
-          Couldn't send. Try again?
+          {t("parish.couldnt_send")}
         </p>
       )}
       <div className="flex justify-end gap-2 mt-3">
@@ -800,7 +803,7 @@ function PrayerConcernCard({ parishId }: { parishId: number }) {
             cursor: "pointer",
           }}
         >
-          Cancel
+          {t("common.cancel")}
         </button>
         <button
           onClick={() => submit.mutate()}
@@ -818,7 +821,7 @@ function PrayerConcernCard({ parishId }: { parishId: number }) {
             opacity: !body.trim() || submit.isPending ? 0.4 : 1,
           }}
         >
-          {submit.isPending ? "Sharing…" : "Share with admin"}
+          {submit.isPending ? t("parish.sharing") : t("parish.share_with_admin")}
         </button>
       </div>
     </div>
