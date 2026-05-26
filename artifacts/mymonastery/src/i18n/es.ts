@@ -249,6 +249,18 @@ export const es: Translations = {
     daily_reminders: "🔔 Recordatorios diarios",
     daily_reminders_sub: "Elige una hora para la mañana y la tarde.",
   },
+  people: {
+    eyebrow: "Mantente cerca de tu comunidad",
+    title: "Personas",
+    search_placeholder: "Busca en tu jardín",
+    fellows: "Compañeros",
+    fellows_blurb: "Personas que se unieron a Phoebe para orar contigo, o cuyas oraciones por enlace respondiste con un Amén.",
+    your_garden: "Tu jardín",
+    empty_title: "Tu jardín está vacío",
+    empty_body: "Comienza una práctica con alguien para verlo aquí",
+    no_matches_title: "Sin coincidencias",
+    no_matches_body: 'Nadie en tu jardín coincide con "{{query}}"',
+  },
   find_friends: {
     back: "← Atrás",
     title: "Encuentra amigos en Phoebe",

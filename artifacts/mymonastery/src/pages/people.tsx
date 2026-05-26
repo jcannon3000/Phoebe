@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 import { useGardenSocket } from "@/hooks/useGardenSocket";
@@ -423,6 +424,7 @@ function FindFriendsEntry() {
 export default function People() {
   const [location, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const { data: people, isLoading } = usePeople(user?.id);
   const highlightEmail = new URLSearchParams(location.includes("?") ? location.split("?")[1] : "").get("highlight") ?? null;
   const highlightRef = useRef<HTMLDivElement | null>(null);
@@ -549,10 +551,10 @@ export default function People() {
         {/* Header — matches dashboard style */}
         <div className="mb-5">
           <p className="text-[11px] tracking-widest uppercase mb-1" style={{ color: "rgba(143,175,150,0.5)" }}>
-            Stay close to your community
+            {t("people.eyebrow")}
           </p>
           <h1 style={{ color: "#F0EDE6", fontSize: "22px", fontWeight: 600, letterSpacing: "-0.02em" }}>
-            People 🌿
+            {t("people.title")} 🌿
           </h1>
         </div>
 
@@ -581,8 +583,8 @@ export default function People() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search your garden"
-            aria-label="Search your garden"
+            placeholder={t("people.search_placeholder")}
+            aria-label={t("people.search_placeholder")}
             className="w-full"
             style={{
               background: "#0F2818",
@@ -635,7 +637,7 @@ export default function People() {
           return (
             <div className="mb-6">
               <div className="flex items-center gap-2 mb-3">
-                <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>Fellows</p>
+                <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>{t("people.fellows")}</p>
                 <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
                 <span
                   className="text-[10px] uppercase tracking-[0.14em] px-2 py-0.5 rounded-full"
@@ -657,7 +659,7 @@ export default function People() {
                   fontStyle: "italic",
                 }}
               >
-                People who joined Phoebe to pray with you, or whose share-link prayers you answered with an Amen.
+                {t("people.fellows_blurb")}
               </p>
               <div className="space-y-2">
                 {fellowPeople.map(person => {
@@ -690,7 +692,7 @@ export default function People() {
 
         {/* Section divider */}
         <div className="flex items-center gap-2 mb-3">
-          <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>Your garden</p>
+          <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>{t("people.your_garden")}</p>
           <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
         </div>
 
@@ -709,10 +711,10 @@ export default function People() {
               <span style={{ fontSize: "32px" }}>🌱</span>
               <div>
                 <p className="font-semibold" style={{ color: "#F0EDE6", fontSize: "16px", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  Your garden is empty
+                  {t("people.empty_title")}
                 </p>
                 <p className="mt-0.5" style={{ color: "#8FAF96", fontSize: "13px" }}>
-                  Start a practice with someone to see them here
+                  {t("people.empty_body")}
                 </p>
               </div>
             </div>
@@ -726,10 +728,10 @@ export default function People() {
               <span style={{ fontSize: "28px" }}>🔍</span>
               <div>
                 <p className="font-semibold" style={{ color: "#F0EDE6", fontSize: "15px", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  No matches
+                  {t("people.no_matches_title")}
                 </p>
                 <p className="mt-0.5" style={{ color: "#8FAF96", fontSize: "13px" }}>
-                  Nobody in your garden matches "{searchQuery.trim()}"
+                  {t("people.no_matches_body", { query: searchQuery.trim() })}
                 </p>
               </div>
             </div>

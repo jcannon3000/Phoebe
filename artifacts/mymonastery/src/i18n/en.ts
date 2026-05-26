@@ -246,6 +246,20 @@ export const en = {
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
   },
+  // People page (pages/people.tsx) — page-level chrome only; individual
+  // card states still read from English directly. We can extend over time.
+  people: {
+    eyebrow: "Stay close to your community",
+    title: "People",
+    search_placeholder: "Search your garden",
+    fellows: "Fellows",
+    fellows_blurb: "People who joined Phoebe to pray with you, or whose share-link prayers you answered with an Amen.",
+    your_garden: "Your garden",
+    empty_title: "Your garden is empty",
+    empty_body: "Start a practice with someone to see them here",
+    no_matches_title: "No matches",
+    no_matches_body: 'Nobody in your garden matches "{{query}}"',
+  },
   // Find Friends page (pages/find-friends.tsx).
   find_friends: {
     back: "← Back",
