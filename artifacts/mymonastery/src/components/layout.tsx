@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight, ChevronDown } from "lucide-react";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { useTranslation } from "react-i18next";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -91,6 +92,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const logout = useLogout();
   const [, setLocation] = useLocation();
   const { isAdmin: isBetaAdmin, rawIsAdmin, rawIsBeta } = useBetaStatus();
+  const { t } = useTranslation();
   // Offices-only accounts 403 on /api/groups, /api/me/pending-…,
   // and /api/prayer-feeds/mine (requireBeta). Firing them on every
   // drawer open / Layout mount used to trip NetworkBanner's "flaky"
@@ -237,7 +239,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 communities. Offices-only tier has none, so it's hidden. */}
             {!officesOnly && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-                <MenuSection emoji="🏘️" label="Communities">
+                <MenuSection emoji="🏘️" label={t("menu.communities")}>
                 {(groupsData?.groups ?? []).length > 0 ? (
                   // Clamp to ~3.5 rows with a bottom fade once there
                   // are more than 3 communities — mirrors the Prayer
@@ -281,7 +283,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                             <span className="text-base leading-none">{g.emoji ?? "🏘️"}</span>
                             <div className="text-left">
                               <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{g.name}</p>
-                              <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.55)" }}>{g.memberCount} {g.memberCount === 1 ? "member" : "members"}</p>
+                              <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.55)" }}>{t("menu.members", { count: g.memberCount })}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -317,10 +319,10 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   </div>
                 ) : (
                   <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
-                    <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>No communities yet</p>
+                    <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>{t("menu.no_communities")}</p>
                     {rawIsAdmin && (
                       <button onClick={() => navigate("/communities/new")} className="text-xs font-semibold mt-1" style={{ color: "#A8C5A0" }}>
-                        Create one →
+                        {t("menu.create_one")}
                       </button>
                     )}
                   </div>
@@ -334,7 +336,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 when the viewer has access. */}
             <div className="px-5 py-4 space-y-1" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
               {/* Daily Offices — the 4 liturgies live behind one picker. */}
-              <MenuRow emoji="🌅" label="Daily Offices" onClick={() => navigate("/bcp/daily-office")} />
+              <MenuRow emoji="🌅" label={t("menu.daily_offices")} onClick={() => navigate("/bcp/daily-office")} />
               {/* Phoebe Parish — beta-only preview entry. Parish is in
                   private beta and the ParishGate normally bounces full-
                   tier users (which all beta users are, since beta wins
@@ -346,35 +348,35 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               {rawIsBeta && (
                 <MenuRow
                   emoji="🏛️"
-                  label="Phoebe Parish"
-                  badge="beta"
+                  label={t("menu.phoebe_parish")}
+                  badge={t("menu.beta")}
                   onClick={() => navigate(user?.parishFeedId ? "/parish" : "/parish/onboarding")}
                 />
               )}
-              <MenuSection emoji="🕯️" label="Practices">
-                <MenuRow emoji="🕯️" label="Contemplation" onClick={() => navigate("/contemplation")} />
-                <MenuRow emoji="🌾" label="Gratitude" onClick={() => navigate("/gratitude")} />
-                <MenuRow emoji="🤔" label="Ignatian Examen" onClick={() => navigate("/examen")} />
+              <MenuSection emoji="🕯️" label={t("menu.practices")}>
+                <MenuRow emoji="🕯️" label={t("menu.contemplation")} onClick={() => navigate("/contemplation")} />
+                <MenuRow emoji="🌾" label={t("menu.gratitude")} onClick={() => navigate("/gratitude")} />
+                <MenuRow emoji="🤔" label={t("menu.examen")} onClick={() => navigate("/examen")} />
               </MenuSection>
-              <MenuSection emoji="📚" label="Resources">
-                <MenuRow emoji="📖" label="BCP Prayers" onClick={() => navigate("/bcp/intercessions")} />
-                <MenuRow emoji="📜" label="Psalter" onClick={() => navigate("/bcp/psalter")} />
+              <MenuSection emoji="📚" label={t("menu.resources")}>
+                <MenuRow emoji="📖" label={t("menu.bcp_prayers")} onClick={() => navigate("/bcp/intercessions")} />
+                <MenuRow emoji="📜" label={t("menu.psalter")} onClick={() => navigate("/bcp/psalter")} />
                 {rawIsBeta && (
-                  <MenuRow emoji="😇" label="Saints" badge="beta" onClick={() => navigate("/saints")} />
+                  <MenuRow emoji="😇" label={t("menu.saints")} badge={t("menu.beta")} onClick={() => navigate("/saints")} />
                 )}
               </MenuSection>
               {showLetters && (
-                <MenuRow emoji="📮" label="Letters" badge="beta" onClick={() => navigate("/letters")} />
+                <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
               )}
             </div>
 
             {/* ── Account + info footer ── */}
             <div className="px-5 py-3 space-y-1" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-              <MenuRow emoji="⚙️" label="Settings" onClick={() => navigate("/settings")} />
+              <MenuRow emoji="⚙️" label={t("menu.settings")} onClick={() => navigate("/settings")} />
               {showAdminTools && (
-                <MenuRow emoji="🔧" label="Admin Tools" onClick={() => navigate("/admin/tools")} />
+                <MenuRow emoji="🔧" label={t("menu.admin_tools")} onClick={() => navigate("/admin/tools")} />
               )}
-              <MenuRow emoji="ℹ️" label="About" onClick={() => navigate("/church-deck")} />
+              <MenuRow emoji="ℹ️" label={t("menu.about")} onClick={() => navigate("/church-deck")} />
             </div>
 
             {/* ── Sign out ── */}
@@ -387,7 +389,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
               >
                 <LogOut size={15} />
-                Sign out
+                {t("menu.sign_out")}
               </button>
             </div>
           </motion.div>
@@ -404,6 +406,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { isBeta } = useBetaStatus();
   const [location] = useLocation();
+  const { t } = useTranslation();
   // Offices-only tier: no personal prayer requests + no garden. The
   // header "Prayer list" pill links into a surface they can't use, so
   // we hide it for that tier. Drawer filtering happens above.
@@ -461,7 +464,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   border: "1px solid rgba(46,107,64,0.3)",
                 }}
               >
-                Home
+                {t("header.home")}
               </Link>
             )}
             {/* Prayer list pill — sits to the left of Menu, same
@@ -482,7 +485,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   border: "1px solid rgba(46,107,64,0.3)",
                 }}
               >
-                Prayer list
+                {t("header.prayer_list")}
               </Link>
             )}
             {/* People pill — sits between Prayer list and Menu. Same
@@ -502,7 +505,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   border: "1px solid rgba(46,107,64,0.3)",
                 }}
               >
-                People
+                {t("header.people")}
               </Link>
             )}
             <button
@@ -521,7 +524,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   border: "1px solid rgba(46,107,64,0.3)",
                 }}
               >
-                Menu
+                {t("header.menu")}
               </span>
             </button>
           </div>

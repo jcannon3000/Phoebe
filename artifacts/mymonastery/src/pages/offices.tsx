@@ -10,6 +10,7 @@
 
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 
@@ -27,6 +28,7 @@ type CardSpec = {
 export default function OfficesPage() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
@@ -42,29 +44,29 @@ export default function OfficesPage() {
 
   const morningOffice: CardSpec = {
     emoji: "🌅",
-    title: "Morning Prayer",
-    sub: "Full Daily Office · BCP p. 75",
+    title: t("offices.morning_prayer"),
+    sub: t("offices.full_office_75"),
     href: "/bcp/daily-office?mode=morning",
     available: isMorning,
   };
   const morningDevotion: CardSpec = {
     emoji: "🌿",
-    title: "Morning Devotion",
-    sub: "Short form · BCP p. 137",
+    title: t("offices.morning_devotion"),
+    sub: t("offices.short_form_137"),
     href: "/bcp/daily-devotions?mode=morning-devotion",
     available: isMorning,
   };
   const eveningOffice: CardSpec = {
     emoji: "🌙",
-    title: "Evening Prayer",
-    sub: "Full Daily Office · BCP p. 115",
+    title: t("offices.evening_prayer"),
+    sub: t("offices.full_office_115"),
     href: "/bcp/daily-office?mode=evening",
     available: !isMorning,
   };
   const eveningDevotion: CardSpec = {
     emoji: "🌆",
-    title: "Early Evening Devotion",
-    sub: "Short form · BCP p. 139",
+    title: t("offices.early_evening_devotion"),
+    sub: t("offices.short_form_139"),
     href: "/bcp/daily-devotions?mode=early-evening-devotion",
     available: !isMorning,
   };
@@ -77,25 +79,25 @@ export default function OfficesPage() {
           className="text-sm mb-3 inline-block"
           style={{ color: "#8FAF96" }}
         >
-          ← Home
+          {t("offices.back_home")}
         </Link>
         <h1
           className="text-2xl font-bold mb-1"
           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
         >
-          Daily Prayer
+          {t("offices.title")}
         </h1>
         <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-          The 1979 Book of Common Prayer, full and short forms.
+          {t("offices.subtitle")}
         </p>
 
-        <SectionLabel>In the morning</SectionLabel>
+        <SectionLabel>{t("offices.in_the_morning")}</SectionLabel>
         <div className="space-y-6 mb-10">
           <OfficeOption spec={morningOffice} />
           <OfficeOption spec={morningDevotion} />
         </div>
 
-        <SectionLabel>In the evening</SectionLabel>
+        <SectionLabel>{t("offices.in_the_evening")}</SectionLabel>
         <div className="space-y-6 mb-12">
           <OfficeOption spec={eveningOffice} />
           <OfficeOption spec={eveningDevotion} />
@@ -118,13 +120,13 @@ export default function OfficesPage() {
                   className="text-base font-semibold"
                   style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
                 >
-                  🔔 Daily reminders
+                  {t("offices.daily_reminders")}
                 </p>
                 <p
                   className="text-sm mt-0.5"
                   style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
                 >
-                  Pick a morning + evening reminder time.
+                  {t("offices.daily_reminders_sub")}
                 </p>
               </div>
               <span style={{ color: "#8FAF96" }}>→</span>
@@ -148,6 +150,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 function OfficeOption({ spec }: { spec: CardSpec }) {
+  const { t } = useTranslation();
   return (
     <Link href={spec.href}>
       <div
@@ -171,7 +174,7 @@ function OfficeOption({ spec }: { spec: CardSpec }) {
             </p>
             {spec.available && (
               <p className="text-xs mt-1.5 font-medium" style={{ color: "#6FAF85" }}>
-                Available now
+                {t("offices.available_now")}
               </p>
             )}
           </div>

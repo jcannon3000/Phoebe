@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation, Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -104,6 +105,7 @@ function ReminderTimeRow({
 function LanguageSettings() {
   const { isBeta } = useBetaStatus();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const save = useMutation({
     mutationFn: (locale: "en" | "es") =>
@@ -123,18 +125,18 @@ function LanguageSettings() {
 
   const current: "en" | "es" = user?.locale ?? "en";
   const options: Array<{ value: "en" | "es"; label: string; sub: string }> = [
-    { value: "en", label: "English", sub: "Default" },
-    { value: "es", label: "Español", sub: "Beta — coverage is expanding" },
+    { value: "en", label: t("settings.language_english"), sub: t("settings.language_english_sub") },
+    { value: "es", label: t("settings.language_spanish"), sub: t("settings.language_subtitle") },
   ];
 
   return (
     <>
-      <SectionHeader label="Language" />
+      <SectionHeader label={t("settings.language")} />
       <p
         className="text-[13px] mb-3"
         style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}
       >
-        Switch the app's language. Spanish is in beta — common UI is translated; some prayer content still shows in English.
+        {t("settings.language_blurb")}
       </p>
       <SettingsCard>
         {options.map((opt, i) => {
@@ -266,6 +268,7 @@ function WeeklyDigestSettings() {
 // sections below still show their own state.
 function NotificationsSettings() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const save = useMutation({
     mutationFn: (enabled: boolean) => apiRequest("PUT", "/api/me/notifications-pref", { enabled }),
@@ -273,17 +276,17 @@ function NotificationsSettings() {
   });
   const enabled = user?.pushEnabled ?? true;
   const options: Array<{ value: boolean; label: string; sub: string }> = [
-    { value: true, label: "On", sub: "Reminders, prayers for you, words of comfort, and more" },
-    { value: false, label: "Off", sub: "Pause every notification from Phoebe" },
+    { value: true, label: t("settings.notif_on"), sub: t("settings.notif_on_sub") },
+    { value: false, label: t("settings.notif_off"), sub: t("settings.notif_off_sub") },
   ];
   return (
     <>
-      <SectionHeader label="Notifications" />
+      <SectionHeader label={t("settings.notifications")} />
       <p
         className="text-[13px] mb-3"
         style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}
       >
-        The master switch for every Phoebe notification. Turn it off to go quiet without touching your other settings.
+        {t("settings.notif_blurb")}
       </p>
       <SettingsCard>
         {options.map((opt, i) => {
@@ -324,6 +327,7 @@ function NotificationsSettings() {
 
 function OfficeReminderSettings() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const { data } = useQuery<OfficePrefs>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs") as Promise<OfficePrefs>,
@@ -345,25 +349,25 @@ function OfficeReminderSettings() {
   const eveningTime = data?.eveningTime ?? DEFAULT_EVENING;
 
   const morningOptions: Array<{ value: OfficePref; label: string; sub: string }> = [
-    { value: "none", label: "No reminder", sub: "" },
-    { value: "office", label: "Morning Prayer", sub: "Full Daily Office" },
-    { value: "devotion", label: "Morning Devotion", sub: "Short BCP form" },
+    { value: "none", label: t("settings.no_reminder"), sub: "" },
+    { value: "office", label: t("offices.morning_prayer"), sub: t("settings.full_daily_office") },
+    { value: "devotion", label: t("offices.morning_devotion"), sub: t("settings.short_bcp_form") },
   ];
   const eveningOptions: Array<{ value: OfficePref; label: string; sub: string }> = [
-    { value: "none", label: "No reminder", sub: "" },
-    { value: "office", label: "Evening Prayer", sub: "Full Daily Office" },
-    { value: "devotion", label: "Evening Devotion", sub: "Short BCP form" },
+    { value: "none", label: t("settings.no_reminder"), sub: "" },
+    { value: "office", label: t("offices.evening_prayer"), sub: t("settings.full_daily_office") },
+    { value: "devotion", label: t("offices.early_evening_devotion"), sub: t("settings.short_bcp_form") },
   ];
 
   return (
     <>
-      <SectionHeader label="Daily reminders" />
+      <SectionHeader label={t("settings.daily_reminders")} />
       <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-        Pick the office Phoebe will nudge you toward each morning and evening — or none, if you'd rather not be pinged.
+        {t("settings.daily_reminders_blurb")}
       </p>
       <SettingsCard>
         <p className="text-[12px] font-semibold mb-2" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
-          In the morning
+          {t("offices.in_the_morning")}
         </p>
         {morningOptions.map((opt, i) => {
           const isSelected = morning === opt.value;
@@ -402,15 +406,15 @@ function OfficeReminderSettings() {
         })}
         {morning !== "none" && (
           <ReminderTimeRow
-            label="Reminder time"
+            label={t("settings.reminder_time")}
             value={morningTime}
-            onChange={(t) => save.mutate({ morningTime: t })}
+            onChange={(time) => save.mutate({ morningTime: time })}
           />
         )}
       </SettingsCard>
       <SettingsCard>
         <p className="text-[12px] font-semibold mb-2" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
-          In the evening
+          {t("offices.in_the_evening")}
         </p>
         {eveningOptions.map((opt, i) => {
           const isSelected = evening === opt.value;
@@ -449,9 +453,9 @@ function OfficeReminderSettings() {
         })}
         {evening !== "none" && (
           <ReminderTimeRow
-            label="Reminder time"
+            label={t("settings.reminder_time")}
             value={eveningTime}
-            onChange={(t) => save.mutate({ eveningTime: t })}
+            onChange={(time) => save.mutate({ eveningTime: time })}
           />
         )}
       </SettingsCard>
@@ -461,9 +465,9 @@ function OfficeReminderSettings() {
           Evening Prayer with the BCP confession + absolution (p. 79–80
           / p. 116–117, "may be said"). Renders below the daily-reminder
           cards because it shares the same office-prefs query/mutation. */}
-      <SectionHeader label="Confession of Sin" />
+      <SectionHeader label={t("settings.confession_of_sin")} />
       <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-        The BCP allows the Daily Office to begin with a Confession of Sin. Off by default — turn this on to include it at the top of Morning and Evening Prayer.
+        {t("settings.confession_blurb")}
       </p>
       <SettingsCard>
         <button
@@ -1179,6 +1183,7 @@ function AccountSection() {
 
 export default function SettingsPage() {
   const { user, isLoading } = useAuth();
+  const { t } = useTranslation();
   const logout = useLogout();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -1204,15 +1209,15 @@ export default function SettingsPage() {
             className="text-2xl font-bold mb-1"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            Settings ⚙️
+            {t("settings.title")} ⚙️
           </h1>
           <p className="text-sm" style={{ color: "#8FAF96" }}>
-            Your account, notifications, and preferences.
+            {t("settings.page_sub")}
           </p>
         </div>
 
         {/* ── Account ── */}
-        <SectionHeader label="Account" />
+        <SectionHeader label={t("settings.account")} />
         <AccountSection />
 
         {/* ── Presence ── */}
@@ -1283,7 +1288,7 @@ export default function SettingsPage() {
           style={{ background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.18)" }}
         >
           <LogOut size={15} />
-          Sign out
+          {t("settings.sign_out")}
         </button>
 
         {/* ── Export my data ──

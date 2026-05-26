@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
@@ -81,16 +82,17 @@ function initials(name: string): string {
   return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "·";
 }
 
-// "Today" / "Yesterday" / "Fri, May 23" for a history card.
-function formatSessionDate(iso: string): string {
+// "Today" / "Yesterday" / "Fri, May 23" for a history card. Caller passes t
+// so the today/yesterday strings localize without coupling this util to React.
+function formatSessionDate(iso: string, t: (k: string) => string, locale?: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const that = new Date(d); that.setHours(0, 0, 0, 0);
   const diff = Math.round((today.getTime() - that.getTime()) / 86400000);
-  if (diff === 0) return "Today";
-  if (diff === 1) return "Yesterday";
-  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  if (diff === 0) return t("common.today");
+  if (diff === 1) return t("common.yesterday");
+  return d.toLocaleDateString(locale, { weekday: "short", month: "short", day: "numeric" });
 }
 
 // "7:14 AM" for a history card.
@@ -152,6 +154,7 @@ function StatTile({ label, value }: { label: string; value: string }) {
 // a two-tap delete (tap the trash, then confirm) so an errant manual log
 // can be removed without a stray tap nuking a real sit.
 function SessionRow({ s, onDelete, deleting }: { s: Session; onDelete: () => void; deleting: boolean }) {
+  const { t, i18n } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   const when = s.startedAt ?? s.endedAt;
   return (
@@ -161,7 +164,7 @@ function SessionRow({ s, onDelete, deleting }: { s: Session; onDelete: () => voi
     >
       <div className="min-w-0">
         <p className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
-          {when ? formatSessionDate(when) : "—"}
+          {when ? formatSessionDate(when, t, i18n.language) : "—"}
         </p>
         <p className="text-[12px] mt-0.5" style={{ color: SAGE, margin: 0 }}>
           {when ? formatSessionTime(when) : ""}
@@ -216,7 +219,7 @@ function SessionRow({ s, onDelete, deleting }: { s: Session; onDelete: () => voi
               className="text-[12px] font-semibold rounded-full px-2.5 py-1 transition-opacity hover:opacity-90 disabled:opacity-40"
               style={{ color: "#D98C4A", background: "rgba(217,140,74,0.12)", border: "1px solid rgba(217,140,74,0.3)", cursor: "pointer" }}
             >
-              Delete
+              {t("contemplation.delete")}
             </button>
             <button
               type="button"
@@ -224,7 +227,7 @@ function SessionRow({ s, onDelete, deleting }: { s: Session; onDelete: () => voi
               className="text-[12px] rounded-full px-2 py-1 transition-opacity hover:opacity-90"
               style={{ color: SAGE, cursor: "pointer" }}
             >
-              Cancel
+              {t("contemplation.cancel")}
             </button>
           </>
         ) : (
@@ -244,6 +247,7 @@ function SessionRow({ s, onDelete, deleting }: { s: Session; onDelete: () => voi
 }
 
 export default function ContemplationPage() {
+  const { t } = useTranslation();
   const [timerOpen, setTimerOpen] = useState(false);
   // Set by a quick button (5/10/20) to start that length immediately;
   // left undefined by "Begin contemplation" so the timer shows its
@@ -331,10 +335,10 @@ export default function ContemplationPage() {
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-              Contemplation
+              {t("contemplation.title")}
             </h1>
             <p className="text-xs mt-0.5" style={{ color: SAGE }}>
-              A timer for silent prayer — a bell to begin, a bell to close.
+              {t("contemplation.subtitle")}
             </p>
           </div>
         </div>
@@ -359,7 +363,7 @@ export default function ContemplationPage() {
                 }}
               >
                 {m}
-                <span className="block text-[11px] font-normal mt-0.5" style={{ color: SAGE }}>min</span>
+                <span className="block text-[11px] font-normal mt-0.5" style={{ color: SAGE }}>{t("contemplation.min")}</span>
               </button>
             ))}
           </div>
@@ -377,12 +381,12 @@ export default function ContemplationPage() {
               cursor: "pointer",
             }}
           >
-            Begin contemplation →
+            {t("contemplation.begin")}
           </button>
         </div>
 
         <p className="text-[12px] mt-4 text-center" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-          Tap a length to begin, or choose your own.
+          {t("contemplation.caption")}
         </p>
 
         {/* Section selector — History · Stats · Learn. The Begin card
@@ -391,7 +395,7 @@ export default function ContemplationPage() {
           className="flex rounded-xl p-1 mt-7 mb-5"
           style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
         >
-          {([["history", "History"], ["stats", "Stats"], ["learn", "Learn"]] as const).map(([key, label]) => {
+          {([["history", t("contemplation.history")], ["stats", t("contemplation.stats")], ["learn", t("contemplation.learn")]] as const).map(([key, label]) => {
             const on = tab === key;
             return (
               <button
@@ -418,17 +422,17 @@ export default function ContemplationPage() {
             Week / All Time. */}
         {tab === "stats" && (
           <div>
-            <RowLabel>Cumulative</RowLabel>
+            <RowLabel>{t("contemplation.cumulative")}</RowLabel>
             <div className="flex gap-3 mb-4">
-              <StatTile label="today" value={humanMinutes(stats?.todaySeconds ?? 0)} />
-              <StatTile label="this week" value={humanMinutes(stats?.weekSeconds ?? 0)} />
-              <StatTile label="all time" value={humanMinutes(stats?.totalSeconds ?? 0)} />
+              <StatTile label={t("contemplation.label_today")} value={humanMinutes(stats?.todaySeconds ?? 0)} />
+              <StatTile label={t("contemplation.label_this_week")} value={humanMinutes(stats?.weekSeconds ?? 0)} />
+              <StatTile label={t("contemplation.label_all_time")} value={humanMinutes(stats?.totalSeconds ?? 0)} />
             </div>
-            <RowLabel>Average / day</RowLabel>
+            <RowLabel>{t("contemplation.average_per_day")}</RowLabel>
             <div className="flex gap-3">
-              <StatTile label="today" value={avgPerDay(stats?.todaySeconds ?? 0, stats?.todayDays ?? 0)} />
-              <StatTile label="this week" value={avgPerDay(stats?.weekSeconds ?? 0, stats?.weekDays ?? 0)} />
-              <StatTile label="all time" value={avgPerDay(stats?.totalSeconds ?? 0, stats?.totalDays ?? 0)} />
+              <StatTile label={t("contemplation.label_today")} value={avgPerDay(stats?.todaySeconds ?? 0, stats?.todayDays ?? 0)} />
+              <StatTile label={t("contemplation.label_this_week")} value={avgPerDay(stats?.weekSeconds ?? 0, stats?.weekDays ?? 0)} />
+              <StatTile label={t("contemplation.label_all_time")} value={avgPerDay(stats?.totalSeconds ?? 0, stats?.totalDays ?? 0)} />
             </div>
           </div>
         )}
@@ -437,7 +441,7 @@ export default function ContemplationPage() {
         {tab === "learn" && (
           <div className="space-y-2">
             <p className="text-[12px] mb-1" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-              Ways into the practice — talks, guided sits, and reading.
+              {t("contemplation.learn_caption")}
             </p>
             {LEARN_RESOURCES.map((r) => (
               <button
@@ -479,14 +483,14 @@ export default function ContemplationPage() {
               className="text-[12px] font-semibold rounded-full px-3 py-1.5 transition-opacity hover:opacity-90"
               style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, cursor: "pointer" }}
             >
-              {logOpen ? "Close" : "+ Log prayer time"}
+              {logOpen ? t("contemplation.close") : t("contemplation.log_prayer_time")}
             </button>
           </div>
 
           {logOpen && (
             <div className="rounded-2xl p-4 mb-3" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}>
               <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: SAGE, fontFamily: SPACE_GROTESK, margin: "0 0 8px" }}>
-                How long
+                {t("contemplation.how_long")}
               </p>
               <div className="grid grid-cols-4 gap-2 mb-3">
                 {[5, 10, 15, 20, 30, 45, 60, 90].map((m) => (
@@ -515,10 +519,10 @@ export default function ContemplationPage() {
                   className="w-20 rounded-lg px-3 py-2 text-sm"
                   style={inputStyle}
                 />
-                <span className="text-sm" style={{ color: SAGE }}>minutes</span>
+                <span className="text-sm" style={{ color: SAGE }}>{t("contemplation.minutes")}</span>
               </div>
               <p className="text-[11px] uppercase tracking-[0.12em]" style={{ color: SAGE, fontFamily: SPACE_GROTESK, margin: "0 0 8px" }}>
-                When
+                {t("contemplation.when")}
               </p>
               <input
                 type="datetime-local"
@@ -536,7 +540,7 @@ export default function ContemplationPage() {
                   className="flex-1 rounded-xl py-2.5 text-center transition-opacity hover:opacity-90 disabled:opacity-40"
                   style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
                 >
-                  {logMutation.isPending ? "Logging…" : "Log prayer time"}
+                  {logMutation.isPending ? t("contemplation.logging") : t("contemplation.log_submit")}
                 </button>
                 <button
                   type="button"
@@ -544,7 +548,7 @@ export default function ContemplationPage() {
                   className="rounded-xl py-2.5 px-4 text-center transition-opacity hover:opacity-90"
                   style={{ color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 15, cursor: "pointer" }}
                 >
-                  Cancel
+                  {t("contemplation.cancel")}
                 </button>
               </div>
             </div>
@@ -552,7 +556,7 @@ export default function ContemplationPage() {
 
           {sessions.length === 0 ? (
             <p className="text-[13px] text-center py-6" style={{ color: "rgba(143,175,150,0.5)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-              No prayer time logged yet.
+              {t("contemplation.no_sessions")}
             </p>
           ) : (
             <div className="space-y-2">
