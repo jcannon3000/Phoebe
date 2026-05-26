@@ -3824,6 +3824,15 @@ const EditMomentSchema = z.object({
   commitmentSessionsGoal: z.number().int().min(0).max(365).nullable().optional(),
   scheduledTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   intercessionTopic: z.string().max(300).nullable().optional(),
+  // The pill type ("custom" → 🙏🏽 Prayer, "action" → 🌍 Action, "bcp"
+  // → BCP collect) and the body text behind the topic. Were missing
+  // from this schema, which meant community-intercession admins
+  // couldn't fix a typo in the prayer body OR retype an Action to a
+  // Prayer through the standard PATCH — only the topic line. Added
+  // here so the same fields the feed-side PATCH supports also work
+  // through this endpoint.
+  intercessionSource: z.enum(["bcp", "custom", "action"]).optional(),
+  intercessionFullText: z.string().max(4000).nullable().optional(),
   contemplativeDurationMinutes: z.number().int().min(1).max(60).nullable().optional(),
   allowMemberInvites: z.boolean().optional(),
   customEmoji: z.string().max(10).nullable().optional(),
@@ -3876,6 +3885,14 @@ router.patch("/moments/:id", async (req, res): Promise<void> => {
   if (d.goalDays !== undefined) updates.goalDays = d.goalDays;
   if (d.scheduledTime !== undefined) updates.scheduledTime = d.scheduledTime;
   if (d.intercessionTopic !== undefined) updates.intercessionTopic = d.intercessionTopic;
+  // intercessionSource and intercessionFullText were silently accepted
+  // but never written before — the schema validated them and the
+  // request returned 200, but the body / pill type stayed unchanged
+  // in the database. Now they actually persist, so community-
+  // intercession edits via this endpoint match what the feed-side
+  // PATCH /prayer-feeds/:slug/intercessions/:id has been doing.
+  if (d.intercessionSource !== undefined) updates.intercessionSource = d.intercessionSource;
+  if (d.intercessionFullText !== undefined) updates.intercessionFullText = d.intercessionFullText;
   if (d.contemplativeDurationMinutes !== undefined) updates.contemplativeDurationMinutes = d.contemplativeDurationMinutes;
   if (d.allowMemberInvites !== undefined) updates.allowMemberInvites = d.allowMemberInvites;
   if (d.customEmoji !== undefined) updates.customEmoji = d.customEmoji;

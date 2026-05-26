@@ -1808,7 +1808,13 @@ router.put("/me/feed-first-home", async (req, res): Promise<void> => {
 // entry is a known home-module key. We validate against the allowed set
 // and ensure `order` is a complete permutation so the dashboard never
 // drops a module it doesn't know how to place. Returns the saved layout.
-const HOME_MODULE_KEYS = ["office", "feeds", "contemplation", "requests"] as const;
+// Keep this list in sync with HOME_MODULES in customize-home.tsx and
+// dashboard.tsx — any key not in this set is silently dropped from the
+// stored order/hidden arrays, which presents in the UI as "the toggle
+// doesn't do anything." (Earlier this list was 4 keys and gratitude /
+// examen rows on /customize-home couldn't be turned on at all because
+// the server kept stripping them out on the way to the DB.)
+const HOME_MODULE_KEYS = ["office", "feeds", "contemplation", "gratitude", "examen", "requests"] as const;
 router.put("/me/home-layout", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }

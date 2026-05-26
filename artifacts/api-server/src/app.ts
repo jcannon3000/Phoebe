@@ -297,12 +297,14 @@ if (fs.existsSync(frontendDist)) {
       }
     }
 
-    // 3) Public prayer-request share → render "<Name> is asking for
-    // prayer" with a gentle CTA description. We intentionally do NOT
-    // surface the request body in the preview: the owner shared the
-    // *link*, not the body, and iMessage previews show on the lock
-    // screen where any shoulder-reader can see them. The recipient
-    // sees the body once they tap through.
+    // 3) Public prayer-request share → render the request body as the
+    // preview title (iMessage shows og:title prominently above the
+    // hostname) with "<Name> is asking for prayer" as the description.
+    // Earlier we hid the body to keep prayer details off a recipient's
+    // lock screen, but the SENDER chose to share — letting them choose
+    // whether the body shows beats deciding for them. The body is
+    // collapsed to its first non-empty line and truncated so iMessage
+    // doesn't elide it mid-word.
     const prayerMatch = prayerSharePathRe.exec(req.path);
     if (prayerMatch) {
       const token = prayerMatch[1]!.toLowerCase();
@@ -314,6 +316,7 @@ if (fs.existsSync(frontendDist)) {
             ownerId: prayerRequestsTable.ownerId,
             closedAt: prayerRequestsTable.closedAt,
             isAnswered: prayerRequestsTable.isAnswered,
+            body: prayerRequestsTable.body,
           })
           .from(prayerRequestsTable)
           .where(eq(prayerRequestsTable.shareToken, token));
@@ -335,10 +338,26 @@ if (fs.existsSync(frontendDist)) {
               displayName = owner?.name?.trim() || null;
             }
           }
-          const title = displayName
-            ? `${displayName} is asking for prayer`
-            : "Someone is asking for prayer";
-          const description = "Tap to read their request and pray with them on Phoebe.";
+          // First non-empty line of the body, collapsed-whitespace and
+          // truncated to ~140 chars. iMessage / Slack typically only
+          // render the first ~80 of og:title, but Twitter / Facebook
+          // show more — 140 hits both targets without breaking either.
+          const firstLine = row.body
+            .split(/\r?\n/)
+            .map((s) => s.trim())
+            .find((s) => s.length > 0) ?? row.body.trim();
+          const collapsed = firstLine.replace(/\s+/g, " ");
+          const MAX = 140;
+          const bodyPreview = collapsed.length > MAX
+            ? `${collapsed.slice(0, MAX - 1).trimEnd()}…`
+            : collapsed;
+          // The body leads the preview; the "is asking for prayer"
+          // framing moves to the description line, which also serves
+          // as fallback copy for any previewer that ignores og:title.
+          const title = bodyPreview;
+          const description = displayName
+            ? `${displayName} is asking for prayer on Phoebe.`
+            : "Someone is asking for prayer on Phoebe.";
           res.type("html").send(renderIndexWithOg(title, description));
           return;
         }
