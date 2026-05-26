@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
@@ -28,41 +29,24 @@ type Movement = {
   body: string;
 };
 
-const MOVEMENTS: Movement[] = [
-  {
-    n: 1,
-    title: "Gratitude",
-    lead: "Begin with thanks.",
-    body: "Recall the day that has passed. Notice its gifts — small and large, expected and unlooked-for. Let gratitude be the doorway in.",
-  },
-  {
-    n: 2,
-    title: "Ask for light",
-    lead: "Pray for clear sight.",
-    body: "Ask the Holy Spirit to walk back through the day with you — to help you see it not only as you remember it, but as God sees it.",
-  },
-  {
-    n: 3,
-    title: "Review the day",
-    lead: "Walk slowly through the hours.",
-    body: "Move from waking to now. Where did you feel close to God — alive, at peace, loving? Where did you feel distant — anxious, closed, pulled away?",
-  },
-  {
-    n: 4,
-    title: "Sorrow",
-    lead: "Notice where you fell short.",
-    body: "Without harshness, name the moments you turned from love. Ask for forgiveness, and receive the mercy already held out to you.",
-  },
-  {
-    n: 5,
-    title: "Toward tomorrow",
-    lead: "Look ahead with hope.",
-    body: "Turn to the day to come. Ask for the grace you will need. Place tomorrow, and yourself, into God's hands.",
-  },
-];
+// Build the movement list inside the component so it picks up live
+// translations (a top-level `const` would freeze the language at module-
+// load). Kept identical in shape to the prior MOVEMENTS const.
+function useMovements(): Movement[] {
+  const { t } = useTranslation();
+  return [
+    { n: 1, title: t("examen.m1_title"), lead: t("examen.m1_lead"), body: t("examen.m1_body") },
+    { n: 2, title: t("examen.m2_title"), lead: t("examen.m2_lead"), body: t("examen.m2_body") },
+    { n: 3, title: t("examen.m3_title"), lead: t("examen.m3_lead"), body: t("examen.m3_body") },
+    { n: 4, title: t("examen.m4_title"), lead: t("examen.m4_lead"), body: t("examen.m4_body") },
+    { n: 5, title: t("examen.m5_title"), lead: t("examen.m5_lead"), body: t("examen.m5_body") },
+  ];
+}
 
 export default function ExamenPage() {
   const { user, isLoading } = useAuth();
+  const { t } = useTranslation();
+  const MOVEMENTS = useMovements();
   const [, setLocation] = useLocation();
   // step 0 = intro, 1..5 = movements, 6 = closing.
   const [step, setStep] = useState(0);
@@ -119,7 +103,7 @@ export default function ExamenPage() {
             fontFamily: FONT,
           }}
         >
-          ← Back
+          {t("examen.back")}
         </button>
       </header>
 
@@ -138,21 +122,19 @@ export default function ExamenPage() {
                 className="text-[11px] font-semibold uppercase tracking-widest mb-3"
                 style={{ color: "rgba(143,175,150,0.55)" }}
               >
-                A prayer for the end of the day
+                {t("examen.eyebrow")}
               </p>
               <h1
                 className="text-3xl font-semibold leading-tight mb-3"
                 style={{ color: "#F0EDE6" }}
               >
-                The Daily Examen
+                {t("examen.title")}
               </h1>
               <p
                 className="text-[15px] leading-relaxed mb-8"
                 style={{ color: "#8FAF96" }}
               >
-                St. Ignatius's gentle walk back through your day — noticing
-                where God was near, and turning toward tomorrow. Five
-                movements, at your own pace. Find a quiet few minutes.
+                {t("examen.intro_body")}
               </p>
               <button
                 type="button"
@@ -160,7 +142,7 @@ export default function ExamenPage() {
                 className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                Begin →
+                {t("examen.begin")}
               </button>
             </motion.div>
           )}
@@ -178,7 +160,7 @@ export default function ExamenPage() {
                 className="text-[11px] font-semibold uppercase tracking-widest mb-4"
                 style={{ color: "rgba(143,175,150,0.55)" }}
               >
-                Movement {movement.n} of {MOVEMENTS.length}
+                {t("examen.movement_n_of_m", { n: movement.n, total: MOVEMENTS.length })}
               </p>
               <h2
                 className="title-glow-breathe text-3xl font-semibold leading-tight mb-2"
@@ -204,7 +186,7 @@ export default function ExamenPage() {
                 className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                {movement.n === MOVEMENTS.length ? "Amen" : "Continue →"}
+                {movement.n === MOVEMENTS.length ? t("examen.amen") : t("examen.continue")}
               </button>
               {/* Movement dots — quiet progress, no numbers shouting. */}
               <div className="flex items-center justify-center gap-1.5 mt-8">
@@ -241,14 +223,13 @@ export default function ExamenPage() {
                 className="text-2xl font-semibold leading-tight mb-3"
                 style={{ color: "#F0EDE6" }}
               >
-                The day is held.
+                {t("examen.day_is_held")}
               </h2>
               <p
                 className="text-[15px] leading-relaxed mb-8"
                 style={{ color: "#8FAF96" }}
               >
-                You have walked back through it with God. Rest now — and
-                come again tomorrow.
+                {t("examen.closing_body")}
               </p>
               <button
                 type="button"
@@ -256,7 +237,7 @@ export default function ExamenPage() {
                 className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                Done
+                {t("common.done")}
               </button>
             </motion.div>
           )}

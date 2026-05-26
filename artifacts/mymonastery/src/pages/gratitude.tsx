@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { GratitudeComposer } from "@/components/GratitudeComposer";
@@ -33,14 +34,14 @@ function computeStats(entries: Entry[]): { days: number; total: number; today: b
   return { days: daySet.size, total: entries.length, today: daySet.has(todayKey) };
 }
 
-function formatDay(iso: string): string {
+function formatDay(iso: string, todayLabel: string, yesterdayLabel: string, locale?: string): string {
   const d = new Date(iso);
   const t = localDay(iso);
   const today = localDay(new Date().toISOString());
   const y = new Date(); y.setDate(y.getDate() - 1);
-  if (t === today) return "Today";
-  if (t === localDay(y.toISOString())) return "Yesterday";
-  return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  if (t === today) return todayLabel;
+  if (t === localDay(y.toISOString())) return yesterdayLabel;
+  return d.toLocaleDateString(locale, { weekday: "short", month: "short", day: "numeric" });
 }
 
 function StatTile({ label, value }: { label: string; value: string }) {
@@ -54,6 +55,7 @@ function StatTile({ label, value }: { label: string; value: string }) {
 
 export default function GratitudePage() {
   const queryClient = useQueryClient();
+  const { t, i18n } = useTranslation();
   // "mine" = my journal + composer; "community" = others' shared thanks.
   const [tab, setTab] = useState<"mine" | "community">("mine");
 
@@ -104,24 +106,24 @@ export default function GratitudePage() {
             🌾
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Gratitude</h1>
-            <p className="text-xs mt-0.5" style={{ color: SAGE }}>Name the good. Keep it, or share it with your community.</p>
+            <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{t("gratitude.title")}</h1>
+            <p className="text-xs mt-0.5" style={{ color: SAGE }}>{t("gratitude.subtitle")}</p>
           </div>
         </div>
 
         {/* Tabs — your own gratitude vs. the community's shared thanks. */}
         <div className="flex gap-2 mb-6">
           {([
-            { key: "mine", label: "My gratitude" },
-            { key: "community", label: "Community" },
-          ] as const).map((t) => {
-            const active = tab === t.key;
-            const dot = t.key === "community" && hasNewCommunity;
+            { key: "mine", label: t("gratitude.tab_mine") },
+            { key: "community", label: t("gratitude.tab_community") },
+          ] as const).map((tab2) => {
+            const active = tab === tab2.key;
+            const dot = tab2.key === "community" && hasNewCommunity;
             return (
               <button
-                key={t.key}
+                key={tab2.key}
                 type="button"
-                onClick={() => setTab(t.key)}
+                onClick={() => setTab(tab2.key)}
                 className="flex items-center gap-1.5 rounded-full px-4 py-2 transition-opacity hover:opacity-90"
                 style={{
                   background: active ? "rgba(46,107,64,0.25)" : "rgba(46,107,64,0.08)",
@@ -130,7 +132,7 @@ export default function GratitudePage() {
                   fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, cursor: "pointer",
                 }}
               >
-                {t.label}
+                {tab2.label}
                 {dot && <span aria-hidden style={{ width: 7, height: 7, borderRadius: "50%", background: "#D98C4A", display: "inline-block" }} />}
               </button>
             );
@@ -140,14 +142,14 @@ export default function GratitudePage() {
         {tab === "mine" ? (
           <>
             <div className="flex gap-3 mb-6">
-              <StatTile label={stats.days === 1 ? "day of thanks" : "days of thanks"} value={String(stats.days)} />
-              <StatTile label="total" value={String(stats.total)} />
+              <StatTile label={t("gratitude.days_of_thanks", { count: stats.days })} value={String(stats.days)} />
+              <StatTile label={t("gratitude.total")} value={String(stats.total)} />
             </div>
 
             {/* Composer */}
             <div className="rounded-2xl p-4 mb-6" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.25)" }}>
               <p className="text-[15px] font-semibold mb-3" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                {stats.today ? "Give thanks again" : "What are you grateful for today?"}
+                {stats.today ? t("gratitude.give_thanks_again") : t("gratitude.what_grateful")}
               </p>
               <GratitudeComposer />
             </div>
@@ -156,20 +158,20 @@ export default function GratitudePage() {
             {entries.length > 0 && (
               <>
                 <p className="text-[11px] uppercase tracking-[0.16em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}>
-                  Your journal
+                  {t("gratitude.your_journal")}
                 </p>
                 <div className="space-y-2 mb-6">
                   {entries.map((e) => (
                     <div key={e.id} className="rounded-2xl px-4 py-3" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.18)" }}>
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>{formatDay(e.createdAt)}</span>
+                        <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>{formatDay(e.createdAt, t("common.today"), t("common.yesterday"), i18n.language)}</span>
                         <button
                           type="button"
                           onClick={() => toggleShare.mutate({ id: e.id, shared: !e.shared })}
                           className="text-[11px] transition-opacity hover:opacity-80"
                           style={{ color: e.shared ? "#A8C5A0" : "rgba(143,175,150,0.6)", background: "none", border: "none", cursor: "pointer", fontFamily: SPACE_GROTESK }}
                         >
-                          {e.shared ? "🌿 Shared · make private" : "Share with the community"}
+                          {e.shared ? t("gratitude.shared_make_private") : t("gratitude.share_with_community")}
                         </button>
                       </div>
                       <p className="text-[15px] italic" style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif" }}>{e.text}</p>
@@ -189,7 +191,7 @@ export default function GratitudePage() {
                     ? <img src={g.avatarUrl} alt={g.authorName} className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5" />
                     : <div className="w-7 h-7 rounded-full shrink-0 mt-0.5 flex items-center justify-center text-[11px] font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>{g.authorName.slice(0, 1).toUpperCase()}</div>}
                   <div className="flex-1 min-w-0">
-                    <p className="text-[12px] mb-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{g.isYou ? "You" : g.authorName}</p>
+                    <p className="text-[12px] mb-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{g.isYou ? t("gratitude.you") : g.authorName}</p>
                     <p className="text-[15px] italic" style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif" }}>{g.text}</p>
                   </div>
                 </div>
@@ -197,7 +199,7 @@ export default function GratitudePage() {
             </div>
           ) : (
             <p className="text-[13px] text-center py-12" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic" }}>
-              No one has shared yet. Share an entry from My gratitude to start it off.
+              {t("gratitude.no_one_shared")}
             </p>
           )
         )}
