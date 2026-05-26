@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePeople } from "@/hooks/usePeople";
@@ -1701,7 +1702,7 @@ function ClosingSlide({
   visible,
   showSetReminder = false,
   reminderSide = "morning",
-  doneLabel = "Done",
+  doneLabel,
   officesOnly = false,
 }: {
   celebration: { streak: number } | null;
@@ -1727,10 +1728,12 @@ function ClosingSlide({
    *  true (and there are no co-prayers to acknowledge). */
   officesOnly?: boolean;
 }) {
+  const { t } = useTranslation();
   void _streak;
   const visibleAvatars = coPrayers.slice(0, 5);
   const overflow = Math.max(0, coPrayers.length - visibleAvatars.length);
   const peopleCount = coPrayers.length;
+  const effectiveDoneLabel = doneLabel ?? t("common.done");
 
   return (
     <div
@@ -1758,7 +1761,7 @@ function ClosingSlide({
           className="text-[10px] uppercase tracking-[0.18em] font-semibold"
           style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
         >
-          You prayed for
+          {t("prayer_mode.you_prayed_for")}
         </p>
         {peopleCount > 0 ? (
           <>
@@ -1857,7 +1860,7 @@ function ClosingSlide({
         className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
         style={{ background: "#2D5E3F", color: "#F0EDE6" }}
       >
-        {doneLabel}
+        {effectiveDoneLabel}
       </button>
 
       {/* "Set reminder" CTA — fires when the user just finished an
@@ -1890,6 +1893,7 @@ function ClosingSlide({
 
 export default function PrayerModePage() {
   const { user, isLoading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   // Offices-only accounts have no access to /api/moments,
@@ -3744,7 +3748,7 @@ export default function PrayerModePage() {
             visible={slideVisible}
             showSetReminder={showSetReminder}
             reminderSide={reminderSide}
-            doneLabel={closingOnly || officesOnly ? "Continue" : "Done"}
+            doneLabel={closingOnly || officesOnly ? t("common.continue") : t("common.done")}
           />
         )}
         {phase === "habit" && (
@@ -3789,7 +3793,7 @@ export default function PrayerModePage() {
               fontFamily: "'Space Grotesk', sans-serif",
             }}
           >
-            Not today
+            {t("prayer_mode.not_today")}
           </button>
         </div>
       )}

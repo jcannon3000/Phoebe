@@ -258,6 +258,12 @@ export const en = {
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
   },
+  // Prayer mode slideshow chrome (pages/prayer-mode.tsx).
+  prayer_mode: {
+    you_prayed_for: "You prayed for",
+    not_today: "Not today",
+    amen: "Amen",
+  },
   // Letters index page (pages/Letters/LettersPage.tsx) — chrome + empty state.
   letters_page: {
     title: "Letters",

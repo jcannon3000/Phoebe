@@ -261,6 +261,11 @@ export const es: Translations = {
     daily_reminders: "🔔 Recordatorios diarios",
     daily_reminders_sub: "Elige una hora para la mañana y la tarde.",
   },
+  prayer_mode: {
+    you_prayed_for: "Oraste por",
+    not_today: "Hoy no",
+    amen: "Amén",
+  },
   letters_page: {
     title: "Cartas",
     subtitle: "Una forma experimental de mantenerte cerca de las personas que te importan.",
