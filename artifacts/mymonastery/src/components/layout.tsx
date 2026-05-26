@@ -335,6 +335,22 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             <div className="px-5 py-4 space-y-1" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
               {/* Daily Offices — the 4 liturgies live behind one picker. */}
               <MenuRow emoji="🌅" label="Daily Offices" onClick={() => navigate("/bcp/daily-office")} />
+              {/* Phoebe Parish — beta-only preview entry. Parish is in
+                  private beta and the ParishGate normally bounces full-
+                  tier users (which all beta users are, since beta wins
+                  the tier derivation) back to /dashboard. The drawer
+                  surfaces this entry only for beta_users so they can
+                  walk the picker + dashboard end-to-end before we open
+                  signup to everyone. Routes to /parish/onboarding if
+                  the user hasn't subscribed yet, else /parish. */}
+              {rawIsBeta && (
+                <MenuRow
+                  emoji="🏛️"
+                  label="Phoebe Parish"
+                  badge="beta"
+                  onClick={() => navigate(user?.parishFeedId ? "/parish" : "/parish/onboarding")}
+                />
+              )}
               <MenuSection emoji="🕯️" label="Practices">
                 <MenuRow emoji="🕯️" label="Contemplation" onClick={() => navigate("/contemplation")} />
                 <MenuRow emoji="🌾" label="Gratitude" onClick={() => navigate("/gratitude")} />

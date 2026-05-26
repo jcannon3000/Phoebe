@@ -167,6 +167,7 @@ import ParishNewPage from "./pages/parish-new";
 import ParishConcernsPage from "./pages/parish-concerns";
 import ParishIntercessionsPage from "./pages/parish-intercessions";
 import { useAuth as useAuthForGate } from "@/hooks/useAuth";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { PHOEBE_PARISH_ENABLED } from "@/lib/parishFlag";
 
 // Climate is now just a prayer feed (slug: phoebe-climate). The old
@@ -282,6 +283,13 @@ const PARISH_DENIED_PATHS = [
 function ParishGate({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const { user, isLoading } = useAuthForGate();
+  // Beta users sit in the "full" tier (beta wins the tier derivation
+  // in parishGate.ts), so the redirect below would bounce them out of
+  // Parish even though Parish is a beta-only feature. Carve them out
+  // so they can preview the picker + dashboard end-to-end. The drawer
+  // entry that surfaces /parish is itself gated on rawIsBeta in
+  // layout.tsx, so non-beta users still have no way in.
+  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
 
   useEffect(() => {
     // Tucked-away mode: the entire Parish flow is dormant. Don't
@@ -289,10 +297,15 @@ function ParishGate({ children }: { children: ReactNode }) {
     // Flip PHOEBE_PARISH_ENABLED in lib/parishFlag.ts (client + server)
     // when ready to roll Parish out.
     if (!PHOEBE_PARISH_ENABLED) return;
-    if (isLoading || !user) return;
+    if (isLoading || betaLoading || !user) return;
     if (user.accessTier === "full") {
-      // Full-app users shouldn't get stuck on /parish; if they
-      // navigated there manually, send them home.
+      // Beta users get to preview Parish. Skip the redirect so they
+      // can land on /parish, /parish/onboarding, /parish/admin, etc.
+      // from the drawer entry. They remain full-tier the whole time;
+      // subscribing to a parish doesn't demote them (beta wins).
+      if (rawIsBeta) return;
+      // Non-beta full-app users shouldn't get stuck on /parish; if
+      // they navigated there manually, send them home.
       if (location === "/parish" || location.startsWith("/parish/")) {
         setLocation("/dashboard");
       }
@@ -370,7 +383,7 @@ function ParishGate({ children }: { children: ReactNode }) {
         setLocation("/parish/onboarding");
       }
     }
-  }, [location, setLocation, user, isLoading]);
+  }, [location, setLocation, user, isLoading, rawIsBeta, betaLoading]);
 
   void PARISH_DENIED_PATHS; // explicit denylist kept for readability + future toggling
 
