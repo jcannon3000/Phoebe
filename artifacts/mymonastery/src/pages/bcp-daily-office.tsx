@@ -10,7 +10,7 @@ import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { playOfficeChime } from "@/lib/amenFeedback";
 import { apiRequest } from "@/lib/queryClient";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
@@ -2385,6 +2385,29 @@ export default function BcpDailyOfficePage() {
   const hour = new Date().getHours();
   const isMorning = hour < 14;
   const isNight = hour >= 20;
+  // Weekday flag for the National Cathedral Morning Prayer broadcast
+  // (Mon–Fri 7 AM ET). Used to hide the NCMP card on Sat/Sun.
+  const weekday = (() => {
+    const d = new Date().getDay();
+    return d >= 1 && d <= 5;
+  })();
+  // Fetch today's broadcast metadata so the tap can log the actual
+  // video length as the prayer-session duration. The badge itself
+  // shows the broadcast TIME ("7 AM ET"), not length, per product
+  // direction — same handling as the prayer-chooser NCMP card.
+  type NcmpMeta = {
+    url: string;
+    videoId: string | null;
+    title: string | null;
+    publishedAt: string | null;
+    durationSeconds: number | null;
+  };
+  const { data: ncmpMeta } = useQuery<NcmpMeta>({
+    queryKey: ["/api/ncmp/today-meta"],
+    queryFn: () => apiRequest("GET", "/api/ncmp/today-meta"),
+    enabled: weekday,
+    staleTime: 60 * 60_000,
+  });
   // Evening = the afternoon window 14:00–20:00; Compline owns the
   // 20:00+ block so the two don't both highlight "Available now" at
   // the same time.
@@ -2493,6 +2516,69 @@ export default function BcpDailyOfficePage() {
         <SectionLabel>The full office</SectionLabel>
         <div className="space-y-3">
           {fullOffice.map((opt) => <OptionButton key={opt.mode} opt={opt} />)}
+          {/* National Cathedral Morning Prayer — weekday-only purple
+              card slotted alongside the BCP full offices. Live at
+              7 AM ET; the cathedral.org page handles live-vs-recording
+              by itself once the user lands. Tap → opens today's
+              YouTube video externally + best-effort prayer-session
+              log (surface "national-cathedral", duration = actual
+              video length from /api/ncmp/today-meta if known, else
+              a 20-min fallback). Badge shows the broadcast time,
+              not length. */}
+          {weekday && (
+            <button
+              type="button"
+              onClick={() => {
+                const url = ncmpMeta?.url ?? "https://www.youtube.com/playlist?list=PL1nLVw6M_fPisN8Gfk_tRsjTXqSexemlK";
+                const now = new Date();
+                const seconds = ncmpMeta?.durationSeconds && ncmpMeta.durationSeconds > 0
+                  ? ncmpMeta.durationSeconds
+                  : 20 * 60;
+                apiRequest("POST", "/api/prayer-sessions", {
+                  surface: "national-cathedral",
+                  durationSeconds: seconds,
+                  startedAt: now.toISOString(),
+                  endedAt: new Date(now.getTime() + seconds * 1000).toISOString(),
+                }).catch(() => { /* non-fatal */ });
+                openExternal(url);
+              }}
+              className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
+              style={{
+                background: "rgba(120,80,180,0.14)",
+                border: "1px solid rgba(120,80,180,0.40)",
+              }}
+            >
+              <div className="flex items-center gap-4">
+                <span className="text-3xl">📺</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p
+                      className="font-semibold text-base"
+                      style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+                    >
+                      National Cathedral Morning Prayer
+                    </p>
+                    <span
+                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+                      style={{
+                        background: "rgba(120,80,180,0.22)",
+                        color: "rgba(210,190,240,0.95)",
+                        border: "1px solid rgba(120,80,180,0.42)",
+                        fontFamily: "'Space Grotesk', sans-serif",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      7 AM ET
+                    </span>
+                  </div>
+                  <p className="text-sm mt-0.5" style={{ color: "rgba(199,176,235,0.85)" }}>
+                    Weekday live broadcast · Washington National Cathedral
+                  </p>
+                </div>
+                <span className="text-sm" style={{ color: "#D0BFEF" }}>→</span>
+              </div>
+            </button>
+          )}
         </div>
 
         <SectionLabel>Short devotions</SectionLabel>

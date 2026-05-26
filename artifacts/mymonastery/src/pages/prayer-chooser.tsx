@@ -108,15 +108,13 @@ export default function PrayerChooserPage() {
     return d >= 1 && d <= 5;
   })();
   const showNcmpOption = isMorning && isWeekday;
-  // Pretty-printed duration. Whole-minute rounding for the badge
-  // since the chooser's other options ("5–10 Min", "15–20 Min") read
-  // as approximations, not stopwatch-precise.
-  const ncmpDurationLabel = (() => {
-    const s = ncmpMeta?.durationSeconds;
-    if (!s || s <= 0) return null;
-    const m = Math.max(1, Math.round(s / 60));
-    return `≈ ${m} Min`;
-  })();
+  // Static time-of-day badge — the user wanted broadcast time, not
+  // length, here. Keeps the meta query running so the URL + duration
+  // are still fetched (the durationSeconds is what the prayer-session
+  // log uses on tap), but the chip itself just names the broadcast
+  // schedule. "7 AM ET" matches the concise style of the other
+  // chooser badges ("5–10 Min", "15–20 Min").
+  const ncmpDurationLabel = "7 AM ET";
 
   // Per-mode progress: drives the verb in the corner pill (Start /
   // Continue / Pray again) and the ?reset=1 suffix on the link.
@@ -342,7 +340,7 @@ export default function PrayerChooserPage() {
                             whiteSpace: "nowrap",
                           }}
                         >
-                          {ncmpDurationLabel ?? "Live at 7 AM ET"}
+                          {ncmpDurationLabel}
                         </span>
                       </div>
                       <p
