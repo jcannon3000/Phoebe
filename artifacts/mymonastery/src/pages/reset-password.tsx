@@ -2,9 +2,11 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function ResetPassword() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const token = new URLSearchParams(window.location.search).get("token") ?? "";
 
   const [password, setPassword] = useState("");
@@ -17,9 +19,9 @@ export default function ResetPassword() {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "#091A10" }}>
         <div className="text-center max-w-sm px-4">
-          <p className="text-base mb-4" style={{ color: "#F0EDE6" }}>This reset link is invalid or has expired.</p>
+          <p className="text-base mb-4" style={{ color: "#F0EDE6" }}>{t("reset_password.invalid_link")}</p>
           <button onClick={() => setLocation("/")} className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>
-            Back to sign in
+            {t("reset_password.back_to_sign_in")}
           </button>
         </div>
       </div>
@@ -30,7 +32,7 @@ export default function ResetPassword() {
     e.preventDefault();
     setError("");
     if (!password || password.length < 6) {
-      setError("Password must be at least 6 characters."); return;
+      setError(t("reset_password.too_short")); return;
     }
     setSubmitting(true);
     try {
@@ -43,10 +45,10 @@ export default function ResetPassword() {
       if (data.ok) {
         setDone(true);
       } else {
-        setError(data.error ?? "Something went wrong.");
+        setError(data.error ?? t("reset_password.generic_error_short"));
       }
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t("reset_password.generic_error"));
     } finally {
       setSubmitting(false);
     }
@@ -69,20 +71,20 @@ export default function ResetPassword() {
           >
             <div className="text-4xl mb-5 text-center">🔑</div>
             <h1 className="text-2xl font-bold mb-2 text-center" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              Choose a new password
+              {t("reset_password.title")}
             </h1>
 
             {done ? (
               <div className="text-center mt-6">
                 <p className="text-base mb-6" style={{ color: "#8FAF96" }}>
-                  Password updated. You can now sign in.
+                  {t("reset_password.updated")}
                 </p>
                 <button
                   onClick={() => setLocation("/")}
                   className="btn-sage px-6 py-3 rounded-xl font-semibold text-sm"
                   style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                 >
-                  Sign in
+                  {t("reset_password.sign_in")}
                 </button>
               </div>
             ) : (
@@ -90,7 +92,7 @@ export default function ResetPassword() {
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
-                    placeholder="New password"
+                    placeholder={t("reset_password.new_password_placeholder")}
                     value={password}
                     onChange={e => { setPassword(e.target.value); setError(""); }}
                     className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none"
@@ -121,7 +123,7 @@ export default function ResetPassword() {
                 >
                   {submitting ? (
                     <div className="w-4 h-4 rounded-full border-2 border-[#F0EDE6] border-t-transparent animate-spin" />
-                  ) : "Set new password"}
+                  ) : t("reset_password.submit")}
                 </button>
               </form>
             )}

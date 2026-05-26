@@ -258,6 +258,28 @@ export const en = {
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
   },
+  // Reset password page (pages/reset-password.tsx).
+  reset_password: {
+    invalid_link: "This reset link is invalid or has expired.",
+    back_to_sign_in: "Back to sign in",
+    title: "Choose a new password",
+    new_password_placeholder: "New password",
+    too_short: "Password must be at least 6 characters.",
+    generic_error: "Something went wrong. Please try again.",
+    generic_error_short: "Something went wrong.",
+    updated: "Password updated. You can now sign in.",
+    sign_in: "Sign in",
+    submit: "Set new password",
+  },
+  // Welcome (post-signup picker, pages/welcome.tsx).
+  welcome: {
+    title: "Welcome to Phoebe.",
+    subtitle: "Pick a place to start. You can always change later.",
+    find_community: "Find a community",
+    find_community_body: "Browse parishes and groups on Phoebe. Request to join one and a leader will let you in.",
+    browse_cta: "Browse →",
+    explore_alone: "I'll explore on my own",
+  },
   // Forgot password page (pages/forgot-password.tsx).
   forgot_password: {
     title: "Forgot your password?",

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 
@@ -11,6 +12,7 @@ import { Layout } from "@/components/layout";
 // drops the user on the dashboard.
 export default function WelcomePage() {
   const { user, isLoading } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -32,10 +34,10 @@ export default function WelcomePage() {
               letterSpacing: "-0.03em",
             }}
           >
-            Welcome to Phoebe.
+            {t("welcome.title")}
           </h1>
           <p className="text-sm" style={{ color: "#8FAF96" }}>
-            Pick a place to start. You can always change later.
+            {t("welcome.subtitle")}
           </p>
         </div>
 
@@ -58,17 +60,16 @@ export default function WelcomePage() {
                   fontFamily: "'Space Grotesk', sans-serif",
                 }}
               >
-                Find a community
+                {t("welcome.find_community")}
               </p>
               <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
-                Browse parishes and groups on Phoebe. Request to join one and
-                a leader will let you in.
+                {t("welcome.find_community_body")}
               </p>
               <p
                 className="text-xs mt-2 font-semibold"
                 style={{ color: "#A8C5A0" }}
               >
-                Browse →
+                {t("welcome.browse_cta")}
               </p>
             </div>
           </div>
@@ -79,7 +80,7 @@ export default function WelcomePage() {
           className="text-xs text-center mt-2"
           style={{ color: "rgba(143,175,150,0.65)" }}
         >
-          I'll explore on my own
+          {t("welcome.explore_alone")}
         </Link>
       </div>
     </Layout>
