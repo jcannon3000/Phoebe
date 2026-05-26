@@ -9,7 +9,7 @@ import { logger } from "./lib/logger";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-import { db, groupsTable } from "@workspace/db";
+import { db, groupsTable, prayerRequestsTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -252,6 +252,13 @@ if (fs.existsSync(frontendDist)) {
   //   /communities/join/:slug  (legacy / bare-slug forms)
   const invitePathRe = /^\/communities\/join\/([a-z0-9][a-z0-9-]*)\b/i;
 
+  // Public prayer-request share links — /p/:token. The owner taps
+  // "Share" and sends this URL via iMessage; the recipient's phone
+  // fetches this very route before the user clicks through, so the
+  // preview card has to be baked into the initial HTML response.
+  // Tokens are 12-byte hex (24 chars) — see prayer.ts:680.
+  const prayerSharePathRe = /^\/p\/([a-f0-9]{16,})\b/i;
+
   app.get("/{*path}", async (req, res) => {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
 
@@ -290,7 +297,57 @@ if (fs.existsSync(frontendDist)) {
       }
     }
 
-    // 3) Default: just ship the SPA shell unchanged.
+    // 3) Public prayer-request share → render "<Name> is asking for
+    // prayer" with a gentle CTA description. We intentionally do NOT
+    // surface the request body in the preview: the owner shared the
+    // *link*, not the body, and iMessage previews show on the lock
+    // screen where any shoulder-reader can see them. The recipient
+    // sees the body once they tap through.
+    const prayerMatch = prayerSharePathRe.exec(req.path);
+    if (prayerMatch) {
+      const token = prayerMatch[1]!.toLowerCase();
+      try {
+        const [row] = await db
+          .select({
+            isAnonymous: prayerRequestsTable.isAnonymous,
+            createdByName: prayerRequestsTable.createdByName,
+            ownerId: prayerRequestsTable.ownerId,
+            closedAt: prayerRequestsTable.closedAt,
+            isAnswered: prayerRequestsTable.isAnswered,
+          })
+          .from(prayerRequestsTable)
+          .where(eq(prayerRequestsTable.shareToken, token));
+        // Closed/answered requests fall through to the default shell —
+        // the SPA renders the "not found" state and the preview should
+        // be generic, not "Someone is asking for prayer" for a request
+        // that's already been wrapped up.
+        if (row && !row.closedAt && !row.isAnswered) {
+          let displayName: string | null = null;
+          if (!row.isAnonymous) {
+            const stored = row.createdByName?.trim();
+            if (stored) {
+              displayName = stored;
+            } else {
+              const [owner] = await db
+                .select({ name: usersTable.name })
+                .from(usersTable)
+                .where(eq(usersTable.id, row.ownerId));
+              displayName = owner?.name?.trim() || null;
+            }
+          }
+          const title = displayName
+            ? `${displayName} is asking for prayer`
+            : "Someone is asking for prayer";
+          const description = "Tap to read their request and pray with them on Phoebe.";
+          res.type("html").send(renderIndexWithOg(title, description));
+          return;
+        }
+      } catch (err) {
+        logger.warn({ err, token }, "[og] prayer-share preview lookup failed");
+      }
+    }
+
+    // 4) Default: just ship the SPA shell unchanged.
     res.sendFile(path.join(frontendDist, "index.html"));
   });
 }

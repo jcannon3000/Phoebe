@@ -6,6 +6,7 @@ import { playOpeningSwell, triggerAmenFeedback, triggerSubmitFeedback } from "@/
 import { RequestWordField } from "@/components/RequestWordField";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
+import { sharePrayerRequest } from "@/lib/sharePrayerRequest";
 
 // Deep-link landing for "X is asking for your prayers" (and the
 // other prayer-request pushes — first amen, third amen, word of
@@ -1109,16 +1110,16 @@ function RemoveSelfButton({
 // ── Share-link button (owner-only) ───────────────────────────────────
 //
 // Renders on the owner's view of a prayer request, beneath the amen
-// recap. Tries navigator.share first (the OS share sheet on iOS /
-// Android); falls back to copy-to-clipboard with a brief "Link
-// copied" affordance so the user gets feedback that the action
-// landed. The link uses window.location.origin so it'll work on
-// custom domains (withphoebe.app) as well as preview deploys.
+// recap. Hands off to `sharePrayerRequest`, which picks the best
+// share surface for the runtime — native iOS share sheet via the
+// Capacitor Share plugin, the Web Share API on mobile browsers, or
+// the clipboard as last resort. The clipboard path briefly flips the
+// button to "Link copied ✓" so the user gets feedback that the
+// action landed.
 // Icon-only variant of <ShareLinkButton /> sized to sit alongside the
 // 36×36 close (×) chip in the page's fixed-position top-right header.
 // Same share/copy behavior; no "Share this prayer →" text — the action
-// is conveyed by the upload-arrow glyph. Briefly flips to a checkmark
-// on copy fallback so the user knows the link landed in the clipboard.
+// is conveyed by the upload-arrow glyph.
 function ShareLinkIconButton({
   shareToken,
   ownerName,
@@ -1127,28 +1128,12 @@ function ShareLinkIconButton({
   ownerName: string;
 }) {
   const [justCopied, setJustCopied] = useState(false);
-  const url = `${window.location.origin}/p/${shareToken}`;
-  const shareText =
-    `${ownerName} is asking for prayer on Phoebe.` +
-    `\n\nTap to read and pray:`;
 
   async function handleShare() {
-    if (typeof navigator !== "undefined" && "share" in navigator) {
-      try {
-        await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({
-          title: "Prayer request",
-          text: shareText,
-          url,
-        });
-        return;
-      } catch { /* user cancelled — fall through to clipboard */ }
-    }
-    try {
-      await navigator.clipboard.writeText(url);
+    const { copied } = await sharePrayerRequest({ shareToken, ownerName });
+    if (copied) {
       setJustCopied(true);
       window.setTimeout(() => setJustCopied(false), 1800);
-    } catch {
-      window.prompt("Copy this link", url);
     }
   }
 
@@ -1209,35 +1194,12 @@ function ShareLinkButton({
   ownerName: string;
 }) {
   const [justCopied, setJustCopied] = useState(false);
-  const url = `${window.location.origin}/p/${shareToken}`;
-  const shareText =
-    `${ownerName} is asking for prayer on Phoebe.` +
-    `\n\nTap to read and pray:`;
 
   async function handleShare() {
-    // navigator.share gives us the native iOS share sheet (Messages,
-    // Mail, AirDrop, etc.). If the browser doesn't support it (most
-    // desktop browsers and some webviews), fall through to clipboard.
-    if (typeof navigator !== "undefined" && "share" in navigator) {
-      try {
-        await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({
-          title: "Prayer request",
-          text: shareText,
-          url,
-        });
-        return;
-      } catch {
-        // User cancelled or share failed — fall through to clipboard.
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(url);
+    const { copied } = await sharePrayerRequest({ shareToken, ownerName });
+    if (copied) {
       setJustCopied(true);
       window.setTimeout(() => setJustCopied(false), 1800);
-    } catch {
-      // Last-resort fallback — a transient prompt the user can copy
-      // manually. Edge case; modern WebViews all support clipboard.
-      window.prompt("Copy this link", url);
     }
   }
 
