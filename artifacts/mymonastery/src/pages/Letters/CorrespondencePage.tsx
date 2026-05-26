@@ -512,13 +512,20 @@ export default function CorrespondencePage() {
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       className="relative cursor-pointer flex gap-3"
+                      // Left-edge accent indicates whose letter this is.
+                      // Painted as an inset box-shadow rather than a
+                      // borderLeft override, because mixing border widths
+                      // (1px top/right/bottom + 3px left) creates a visible
+                      // notch at the top-left and bottom-left rounded
+                      // corners — border-radius can't smooth a width-
+                      // mismatched corner cleanly. inset shadow gets
+                      // clipped by border-radius and renders flush.
                       style={{
                         background: "#0F2818",
                         border: `1px solid rgba(92,122,95,${isOwn ? "0.35" : "0.2"})`,
-                        borderLeft: `3px solid ${isOwn ? "#8FAF96" : "rgba(46,107,64,0.4)"}`,
                         borderRadius: "14px",
                         padding: "14px 16px",
-                        boxShadow: "0 2px 6px rgba(0,0,0,0.35)",
+                        boxShadow: `inset 3px 0 0 ${isOwn ? "#8FAF96" : "rgba(46,107,64,0.4)"}, 0 2px 6px rgba(0,0,0,0.35)`,
                       }}
                     >
                       {/* Author avatar — gives every letter card a face,
