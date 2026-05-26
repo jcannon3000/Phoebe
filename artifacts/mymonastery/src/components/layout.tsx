@@ -9,6 +9,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { openExternal } from "@/lib/openExternal";
 import { FDD_TODAY_URL, markFddRead } from "@/lib/cacReadState";
+import { isNativeShell } from "@/lib/isNativeShell";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -471,12 +472,19 @@ export function Layout({ children }: { children: ReactNode }) {
         className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pb-2 md:pb-5 flex justify-between items-center"
         style={{
           background: "#091A10",
-          // Pad the top by the iPhone notch height plus a little so the
-          // "Phoebe" wordmark sits below the system clock / camera
-          // housing on notched devices. Falls back to the old 20px/24px
-          // padding on devices without a safe-area inset (web, older
-          // iPhones, Android).
-          paddingTop: "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))",
+          // Native shell: Capacitor's StatusBar.setOverlaysWebView(false)
+          // already places the WebView BELOW the system status bar, so
+          // its strip is accounted for natively and the WebView itself
+          // doesn't need to inset for it. Earlier we still added
+          // env(safe-area-inset-top) here, which double-counted on
+          // iPhones with a Dynamic Island and left an enormous black
+          // gap above the "Phoebe" wordmark.
+          // Web (Safari / PWA with the translucent status bar meta tag):
+          // keep the safe-area math — there the WebView IS under the
+          // notch and needs the inset.
+          paddingTop: isNativeShell()
+            ? "1.25rem"
+            : "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))",
         }}
       >
         <div className="flex items-center gap-6">
