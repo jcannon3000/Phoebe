@@ -445,6 +445,25 @@ export function Layout({ children }: { children: ReactNode }) {
 
         {user && (
           <div className="flex items-center gap-2">
+            {/* Home pill — only renders on the communities surface, where
+                it replaces the People slot. Sits to the LEFT of Prayer
+                list so it reads as the primary "back out" affordance.
+                Routes to /dashboard. */}
+            {!officesOnly && onCommunitiesPage && (
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  letterSpacing: "-0.01em",
+                  background: "rgba(200,212,192,0.08)",
+                  color: "#C8D4C0",
+                  border: "1px solid rgba(46,107,64,0.3)",
+                }}
+              >
+                Home
+              </Link>
+            )}
             {/* Prayer list pill — sits to the left of Menu, same
                 height. Direct shortcut into the management view of
                 everything the viewer is carrying (their own
@@ -468,14 +487,12 @@ export function Layout({ children }: { children: ReactNode }) {
             )}
             {/* People pill — sits between Prayer list and Menu. Same
                 gating as the drawer entry it replaces: hidden for the
-                offices-only tier, who have no community. On the
-                communities surface this slot becomes "Home" instead
-                so the reader has a one-tap exit back to the dashboard
-                (the page they're on already IS the People-adjacent
-                surface, so doubling up was redundant). */}
-            {!officesOnly && (
+                offices-only tier, who have no community. Also hidden
+                on the communities surface, where the Home pill above
+                takes its slot (different position, different action). */}
+            {!officesOnly && !onCommunitiesPage && (
               <Link
-                href={onCommunitiesPage ? "/dashboard" : "/people"}
+                href="/people"
                 className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
                 style={{
                   fontFamily: "'Space Grotesk', sans-serif",
@@ -485,7 +502,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   border: "1px solid rgba(46,107,64,0.3)",
                 }}
               >
-                {onCommunitiesPage ? "Home" : "People"}
+                People
               </Link>
             )}
             <button
