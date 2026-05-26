@@ -261,6 +261,14 @@ export const es: Translations = {
     daily_reminders: "🔔 Recordatorios diarios",
     daily_reminders_sub: "Elige una hora para la mañana y la tarde.",
   },
+  read_letter: {
+    letter_n: "Carta {{n}}",
+    update_n: "Actualización {{n}}",
+    your_turn_prompt: "Es tu turno de escribir. 🖋️",
+    share_update_prompt: "Comparte tu actualización. 📮",
+    write_your_letter: "Escribe tu carta 🖋️",
+    share_your_update: "Comparte tu actualización 📮",
+  },
   letter_splash: {
     not_active: "Este enlace de carta ya no está activo.",
     maybe_archived: "La correspondencia puede haber sido archivada.",

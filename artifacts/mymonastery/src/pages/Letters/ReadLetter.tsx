@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -56,6 +57,7 @@ export default function ReadLetter() {
   const [, params] = useRoute("/letters/:id/read/:letterId");
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const correspondenceId = params?.id;
   const letterId = params?.letterId;
   const token = new URLSearchParams(window.location.search).get("token");
@@ -108,7 +110,7 @@ export default function ReadLetter() {
   if (!letter) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#FAF6F0" }}>
-        <p style={{ color: "#9a9390" }}>Loading...</p>
+        <p style={{ color: "#9a9390" }}>{t("common.loading")}</p>
       </div>
     );
   }
@@ -125,7 +127,7 @@ export default function ReadLetter() {
           className="text-sm"
           style={{ color: "#9a9390" }}
         >
-          ← Back
+          {t("common.back")}
         </button>
       </div>
 
@@ -147,7 +149,7 @@ export default function ReadLetter() {
         >
           {letter.authorName}
           {" · "}
-          {isOneToOne ? `Letter ${letter.letterNumber}` : `Update ${letter.letterNumber}`}
+          {isOneToOne ? t("read_letter.letter_n", { n: letter.letterNumber }) : t("read_letter.update_n", { n: letter.letterNumber })}
           {isOneToOne && ` · ${formatLetterDate(letter.sentAt)}`}
         </p>
 
@@ -177,14 +179,14 @@ export default function ReadLetter() {
         {!isOwnLetter && myTurn && !hasWrittenThisPeriod && (
           <div className="mt-8">
             <p className="text-[15px] italic mb-4" style={{ color: "#5C7A5F" }}>
-              {isOneToOne ? "Your turn to write. 🖋️" : "Share your update. 📮"}
+              {isOneToOne ? t("read_letter.your_turn_prompt") : t("read_letter.share_update_prompt")}
             </p>
             <button
               onClick={() => setLocation(writeUrl)}
               className="px-6 py-3 rounded-xl font-semibold text-sm"
               style={{ backgroundColor: "#5C7A5F", color: "#fff" }}
             >
-              {isOneToOne ? "Write your letter 🖋️" : "Share your update 📮"}
+              {isOneToOne ? t("read_letter.write_your_letter") : t("read_letter.share_your_update")}
             </button>
           </div>
         )}

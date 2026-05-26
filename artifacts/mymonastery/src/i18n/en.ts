@@ -258,6 +258,15 @@ export const en = {
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
   },
+  // Read letter (pages/Letters/ReadLetter.tsx) — paper-style letter viewer.
+  read_letter: {
+    letter_n: "Letter {{n}}",
+    update_n: "Update {{n}}",
+    your_turn_prompt: "Your turn to write. 🖋️",
+    share_update_prompt: "Share your update. 📮",
+    write_your_letter: "Write your letter 🖋️",
+    share_your_update: "Share your update 📮",
+  },
   // Letter splash (pages/Letters/LetterSplash.tsx) — landing for a letter share link.
   letter_splash: {
     not_active: "This letter link is no longer active.",
