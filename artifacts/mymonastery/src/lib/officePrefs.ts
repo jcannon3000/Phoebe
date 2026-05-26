@@ -23,6 +23,7 @@ import { useEffect, useState } from "react";
 // fallbacks easier to reason about than JSON.parse.
 const KEY_SHOW_CAC_CLOSE = "phoebe:office:show-cac-close";
 const KEY_SHOW_FDD_CLOSE = "phoebe:office:show-fdd-close";
+const KEY_SHOW_NCMP_CLOSE = "phoebe:office:show-ncmp-close";
 const KEY_INCLUDE_GRATITUDE_SLIDE = "phoebe:office:include-gratitude-slide";
 
 // ── Events ─────────────────────────────────────────────────────────
@@ -55,6 +56,20 @@ export function setShowCacClose(v: boolean): void { writeBool(KEY_SHOW_CAC_CLOSE
 export function getShowFddClose(): boolean { return readBool(KEY_SHOW_FDD_CLOSE); }
 export function setShowFddClose(v: boolean): void { writeBool(KEY_SHOW_FDD_CLOSE, v); }
 
+// ── National Cathedral Morning Prayer pill ──
+// Live-streamed weekdays at 7 AM ET from cathedral.org. The page
+// itself is the same URL every day; the broadcast goes live during
+// the window and a recording stays up afterward. We only render the
+// pill on MORNING Prayer's closing slide (the broadcast is morning;
+// surfacing it after Evening Prayer would point users at a stale
+// stream, except we add a tiny "Live in N min" / "Live now" / "View
+// today's recording" label that's time-aware so a 6:50 AM user sees
+// it framed as "about to start" and a 9 AM user sees "today's
+// recording." Outside weekdays, we drop the pill entirely — the
+// cathedral doesn't broadcast on weekends.
+export function getShowNcmpClose(): boolean { return readBool(KEY_SHOW_NCMP_CLOSE); }
+export function setShowNcmpClose(v: boolean): void { writeBool(KEY_SHOW_NCMP_CLOSE, v); }
+
 // ── Gratitude slide in the office ──
 // When on, MorningPrayerSlideshow splices a "Personal Thanksgiving"
 // slide in before the closing — a contemplative prompt that asks
@@ -70,21 +85,72 @@ export function setIncludeGratitudeSlide(v: boolean): void { writeBool(KEY_INCLU
 export function useOfficePrefs(): {
   showCacClose: boolean;
   showFddClose: boolean;
+  showNcmpClose: boolean;
   includeGratitudeSlide: boolean;
 } {
   const [state, setState] = useState(() => ({
     showCacClose: getShowCacClose(),
     showFddClose: getShowFddClose(),
+    showNcmpClose: getShowNcmpClose(),
     includeGratitudeSlide: getIncludeGratitudeSlide(),
   }));
   useEffect(() => {
     const refresh = () => setState({
       showCacClose: getShowCacClose(),
       showFddClose: getShowFddClose(),
+      showNcmpClose: getShowNcmpClose(),
       includeGratitudeSlide: getIncludeGratitudeSlide(),
     });
     window.addEventListener(OFFICE_PREFS_EVENT, refresh);
     return () => window.removeEventListener(OFFICE_PREFS_EVENT, refresh);
   }, []);
   return state;
+}
+
+// ── National Cathedral Morning Prayer URL + broadcast window ──
+// The page is the same every day; the schedule logic below decides
+// what label to show on the close pill. Window is Mon-Fri 07:00-07:30
+// US Eastern (broadcast lasts ~25 minutes). We compute "now in ET"
+// via Intl.DateTimeFormat rather than naively touching the user's
+// local clock — a PT user opening the office at 5:00 AM local should
+// see "Live in 2 hours" since the broadcast is at 7 AM ET = 4 AM PT,
+// which already passed.
+export const NCMP_URL = "https://cathedral.org/worship/weekly-services/morning-prayer/";
+
+// Today's National Cathedral Morning Prayer state, computed in ET.
+// `kind` drives the pill label; `show` is false on weekends so the
+// pill disappears entirely (no broadcast Sat/Sun).
+export type NcmpState =
+  | { show: false }
+  | { show: true; kind: "upcoming"; minutesUntil: number }
+  | { show: true; kind: "live" }
+  | { show: true; kind: "recording" };
+
+export function getNcmpState(now: Date = new Date()): NcmpState {
+  // Pull the ET wall-clock parts via Intl — handles DST automatically.
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    weekday: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(now);
+  const wd = parts.find(p => p.type === "weekday")?.value ?? "";
+  const h = parseInt(parts.find(p => p.type === "hour")?.value ?? "0", 10);
+  const m = parseInt(parts.find(p => p.type === "minute")?.value ?? "0", 10);
+  const isWeekday = ["Mon", "Tue", "Wed", "Thu", "Fri"].includes(wd);
+  if (!isWeekday) return { show: false };
+  const minutesIntoDay = h * 60 + m;
+  // Broadcast window: 07:00 - 07:30 ET (best estimate of typical length).
+  const START = 7 * 60;
+  const END = START + 30;
+  if (minutesIntoDay >= START && minutesIntoDay < END) {
+    return { show: true, kind: "live" };
+  }
+  if (minutesIntoDay < START) {
+    return { show: true, kind: "upcoming", minutesUntil: START - minutesIntoDay };
+  }
+  // After the window has passed today — a recording lives on the same
+  // URL until tomorrow's broadcast.
+  return { show: true, kind: "recording" };
 }

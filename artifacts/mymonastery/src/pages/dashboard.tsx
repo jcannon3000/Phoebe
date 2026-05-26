@@ -2506,11 +2506,12 @@ function CacHomeCard() {
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
       className="relative flex rounded-xl overflow-hidden cursor-pointer"
-      // Warm dawn tones (the 🌅 emoji's palette) to distinguish from
-      // Gratitude (olive) and Examen (sage-teal). Lifts the card out
-      // of the rest of the green stack without breaking the home's
-      // overall palette.
-      style={{ background: "rgba(196,131,73,0.10)", border: "1px solid rgba(196,131,73,0.32)" }}
+      // Brand forest green — keeps the card visually in the same
+      // family as the other practice anchors (Gratitude / Examen /
+      // Contemplation) rather than reading as an external/foreign
+      // surface. Slightly deeper saturation than its siblings so it
+      // still reads as distinct when stacked next to them.
+      style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.40)" }}
     >
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
         <p
@@ -2522,13 +2523,13 @@ function CacHomeCard() {
         <div
           className="rounded-full text-center shrink-0"
           style={{
-            background: "rgba(196,131,73,0.24)",
+            background: "rgba(46,107,64,0.30)",
             color: "#F0EDE6",
             fontFamily: "'Space Grotesk', sans-serif",
             fontSize: 13,
             fontWeight: 500,
             padding: "6px 14px",
-            border: "1px solid rgba(196,131,73,0.42)",
+            border: "1px solid rgba(46,107,64,0.50)",
             whiteSpace: "nowrap",
           }}
         >

@@ -13,6 +13,7 @@ import {
   useOfficePrefs,
   setShowCacClose,
   setShowFddClose,
+  setShowNcmpClose,
   setIncludeGratitudeSlide,
 } from "@/lib/officePrefs";
 
@@ -575,6 +576,30 @@ function OfficeCloseExtrasSettings() {
             </p>
             <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
               From Forward Movement.
+            </p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowNcmpClose(!prefs.showNcmpClose)}
+          className="w-full flex items-center gap-3 py-2.5 text-left"
+          style={{ background: "transparent", cursor: "pointer", borderTop: "1px solid rgba(200,212,192,0.12)" }}
+        >
+          <div
+            style={{
+              width: 18, height: 18, borderRadius: "50%",
+              border: `2px solid ${prefs.showNcmpClose ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+              background: prefs.showNcmpClose ? "#A8C5A0" : "transparent",
+              flexShrink: 0,
+            }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+              National Cathedral Morning Prayer 📺
+            </p>
+            <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+              Weekdays at 7 AM Eastern. Morning Prayer only.
             </p>
           </div>
         </button>
