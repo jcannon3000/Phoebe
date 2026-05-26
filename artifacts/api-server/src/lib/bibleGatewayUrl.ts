@@ -139,6 +139,16 @@ export function bibleUrl(reference: string): string | null {
   const dotted = rest.replace(/:/g, ".");
   const firstSegment = dotted.split(/[,;]/)[0].trim();
 
+  // Cross-chapter range ("1.18-2.13"). Bible.com can't render a range
+  // that spans chapters in a single URL — out-of-range upper bounds
+  // return "No Available Verses" — so fall back to the starting
+  // chapter so the link still opens to the right pericope.
+  if (/^\d+\.\d+-\d+\.\d+$/.test(firstSegment)) {
+    const chapterMatch = firstSegment.match(/^(\d+)/);
+    if (!chapterMatch) return null;
+    return `https://www.bible.com/bible/${NRSVUE_VERSION_ID}/${usfm}.${chapterMatch[1]}.NRSVUE`;
+  }
+
   if (!/^\d+(\.\d+(-\d+(\.\d+)?)?)?$/.test(firstSegment)) {
     const chapterMatch = firstSegment.match(/^(\d+)/);
     if (!chapterMatch) return null;

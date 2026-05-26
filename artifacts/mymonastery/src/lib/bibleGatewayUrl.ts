@@ -116,6 +116,18 @@ export function bibleUrl(reference: string): string | null {
   const dotted = rest.replace(/:/g, ".");
   const firstSegment = dotted.split(/[,;]/)[0].trim();
 
+  // Cross-chapter range ("1.18-2.13"). Bible.com can't render a range
+  // that spans chapters in a single URL — out-of-range upper bounds
+  // return "No Available Verses" — so fall back to the starting
+  // chapter so the link still opens to the right pericope. The
+  // segment-aware builder below splits this into two pills; this
+  // single-URL path is the legacy entry point used by lectio.tsx.
+  if (/^\d+\.\d+-\d+\.\d+$/.test(firstSegment)) {
+    const chapterMatch = firstSegment.match(/^(\d+)/);
+    if (!chapterMatch) return null;
+    return `https://www.bible.com/bible/${NRSVUE_VERSION_ID}/${usfm}.${chapterMatch[1]}.NRSVUE`;
+  }
+
   if (!/^\d+(\.\d+(-\d+(\.\d+)?)?)?$/.test(firstSegment)) {
     const chapterMatch = firstSegment.match(/^(\d+)/);
     if (!chapterMatch) return null;
@@ -167,13 +179,21 @@ export function bibleUrlSegments(reference: string): BibleSegment[] {
 
   for (const part of parts) {
     // Cross-chapter range "7:14-8:2" → two segments (chapter 7 from
-    // v14, then chapter 8 vv1-2). Bible.com can't span chapters in
-    // one URL, so the reader gets a pill for each side.
+    // v14 through the chapter end, then chapter 8 vv1-2). Bible.com
+    // can't span chapters in one URL, and a verse range whose upper
+    // bound exceeds the chapter ("1.18-99") returns "No Available
+    // Verses" rather than clamping, so we can't synthesize a precise
+    // end-of-chapter range without a per-chapter verse-count table.
+    // Instead, the first pill opens the whole starting chapter with
+    // a label that names the actual reading range; the reader lands
+    // on the right chapter and the relevant verses are right there.
+    // The second pill is a clean inside-chapter range that Bible.com
+    // resolves normally.
     const cross = part.match(/^(\d+):(\d+)-(\d+):(\d+)$/);
     if (cross) {
       const [, c1, v1, c2, v2] = cross;
       currentChapter = c2;
-      segs.push({ url: `${BIBLE_BASE}/${usfm}.${c1}.${v1}.NRSVUE`, label: `${rawBook} ${c1}:${v1}` });
+      segs.push({ url: `${BIBLE_BASE}/${usfm}.${c1}.NRSVUE`, label: `${rawBook} ${c1}:${v1}-end` });
       segs.push({ url: `${BIBLE_BASE}/${usfm}.${c2}.1-${v2}.NRSVUE`, label: `${rawBook} ${c2}:1-${v2}` });
       continue;
     }
