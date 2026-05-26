@@ -11,6 +11,7 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
+import { NCMP_URL, getNcmpState } from "@/lib/officePrefs";
 import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, markCacRead,
   FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, markFddRead,
@@ -2603,6 +2604,90 @@ function FddHomeCard() {
   );
 }
 
+// National Cathedral Morning Prayer home card — live YouTube
+// broadcast Mon–Fri 7:00 AM ET. Self-hides on weekends (the cathedral
+// doesn't broadcast Sat/Sun), and the CTA pill flips between
+// "Live now" / "Live in N min" / "Watch today's" based on
+// getNcmpState() which computes everything in America/New_York so a
+// PT user opening at 5 AM local sees the broadcast as "Live in 2 hr"
+// rather than the cathedral's wall-clock 7 AM.
+//
+// Tap opens NCMP_URL (the cathedral's YouTube /live deep link, which
+// auto-redirects to the current livestream during the broadcast
+// window and to the most-recent stream's video page afterward) AND
+// logs a prayer session via /api/prayer-sessions with surface
+// "national-cathedral" + a fixed 20-min duration — the cathedral
+// page is external so we can't observe watch time directly, but
+// engaging with the broadcast should count toward the user's daily
+// prayer tracker. Server's floor-bypass list permits this surface
+// so tap-style logs aren't dropped.
+function NcmpHomeCard() {
+  const state = getNcmpState();
+  // Weekends + outside the broadcast window with no recording → no
+  // card. The customize-home toggle stays on, but the card just
+  // disappears from the home until the next broadcast cycle.
+  if (!state.show) return null;
+  const ctaLabel =
+    state.kind === "live"
+      ? "Live now"
+      : state.kind === "upcoming"
+        ? `Live in ${state.minutesUntil} min`
+        : "Watch today's";
+  const onClick = () => {
+    // Best-effort prayer-session log. Fire-and-forget — opening the
+    // cathedral video is what the user wants; the credit is
+    // bookkeeping. 20-minute duration approximates the broadcast.
+    const now = new Date();
+    const startedAt = now.toISOString();
+    const durationSeconds = 20 * 60;
+    const endedAt = new Date(now.getTime() + durationSeconds * 1000).toISOString();
+    apiRequest("POST", "/api/prayer-sessions", {
+      surface: "national-cathedral",
+      durationSeconds,
+      startedAt,
+      endedAt,
+    }).catch(() => { /* non-fatal — don't block the navigation */ });
+    openExternal(NCMP_URL);
+  };
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+      className="relative flex rounded-xl overflow-hidden cursor-pointer"
+      // Slate-blue tint distinguishes it from the brand-forest CAC
+      // card and the sea-teal FDD card — three "Read/Watch external"
+      // anchors that should be visually separable when stacked.
+      style={{ background: "rgba(90,120,180,0.12)", border: "1px solid rgba(90,120,180,0.38)" }}
+    >
+      <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
+        <p
+          className="font-semibold min-w-0 truncate"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
+        >
+          National Cathedral 📺
+        </p>
+        <div
+          className="rounded-full text-center shrink-0"
+          style={{
+            background: "rgba(90,120,180,0.28)",
+            color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 13,
+            fontWeight: 500,
+            padding: "6px 14px",
+            border: "1px solid rgba(90,120,180,0.48)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {ctaLabel} <span aria-hidden>→</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── PrayerOfficeCard — always-visible "pray with your community" anchor ──
 //
 // The home-screen invitation to pray the appropriate office for the
@@ -4661,7 +4746,7 @@ export default function Dashboard() {
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ncmp", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // Prayer requests always leads — never hidden. For users who've
   // never customized (no homeLayout row) we hide the secondary practices
@@ -4677,20 +4762,22 @@ export default function Dashboard() {
   const homeHidden = (() => {
     const savedHidden = user?.homeLayout?.hidden;
     const savedOrder = user?.homeLayout?.order;
-    const s = new Set<string>(savedHidden ?? ["contemplation", "gratitude", "examen", "cac", "fdd"]);
-    // CAC + FDD are opt-in for everyone; if a user's saved order
-    // pre-dates either module (it isn't in their savedOrder), keep
-    // it hidden until they explicitly toggle it via /customize-home.
+    const s = new Set<string>(savedHidden ?? ["contemplation", "gratitude", "examen", "cac", "fdd", "ncmp"]);
+    // CAC + FDD + NCMP are opt-in for everyone; if a user's saved
+    // order pre-dates the module (it isn't in their savedOrder),
+    // keep it hidden until they explicitly toggle it via
+    // /customize-home.
     if (savedOrder && !savedOrder.includes("cac")) s.add("cac");
     if (savedOrder && !savedOrder.includes("fdd")) s.add("fdd");
+    if (savedOrder && !savedOrder.includes("ncmp")) s.add("ncmp");
     s.delete("requests");
     return s;
   })();
   const homeOrder: HomeModule[] = (() => {
     const saved = user?.homeLayout?.order ?? null;
     const fallback: HomeModule[] = featuredFeed
-      ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac", "fdd"]
-      : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd"];
+      ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac", "fdd", "ncmp"]
+      : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ncmp"];
     // Keep known keys in saved order, then append any missing modules so
     // a newly-added module always has a place.
     const seen = new Set<string>();
@@ -5602,6 +5689,11 @@ export default function Dashboard() {
                   return <CacHomeCard />;
                 case "fdd":
                   return <FddHomeCard />;
+                case "ncmp":
+                  // Self-hides on weekends + outside the broadcast
+                  // window; returns null in those cases so the
+                  // filter below drops the slot from the layout.
+                  return <NcmpHomeCard />;
                 default:
                   return null;
               }

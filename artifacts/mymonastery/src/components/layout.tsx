@@ -9,7 +9,6 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { openExternal } from "@/lib/openExternal";
 import { FDD_TODAY_URL, markFddRead } from "@/lib/cacReadState";
-import { NCMP_URL, getNcmpState } from "@/lib/officePrefs";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -90,56 +89,11 @@ function MenuSection({
 
 // ─── Hamburger Drawer ─────────────────────────────────────────────────────────
 
-// Drawer row for National Cathedral Morning Prayer. Pulled out of the
-// MenuSection JSX because it has two pieces of conditional behavior
-// the simple MenuRow component doesn't carry:
-//
-//   1. Time-aware label — shows "Live now" / "Live in N min" /
-//      "Today's recording" when the cathedral is broadcasting, and
-//      hides entirely on weekends (no broadcast Sat/Sun). State is
-//      derived in lib/officePrefs.getNcmpState() against
-//      America/New_York so a PT user opening the drawer at 5 AM
-//      local sees "Live in 2 hours" (the broadcast is at 4 AM PT).
-//   2. Prayer-session logging — opening the cathedral page is the
-//      engagement event (we can't observe how long the user watches
-//      the external stream), so we POST to /api/prayer-sessions on
-//      tap with surface "national-cathedral" and a fixed
-//      ~20-minute duration. Server's floor-bypass list permits this
-//      surface so tap-style logs aren't dropped. Fire-and-forget —
-//      a logging failure must not block the user from opening the
-//      page they tapped on.
-function NcmpResourceRow({ onClose, t }: { onClose: () => void; t: (k: string, opts?: Record<string, unknown>) => string }) {
-  const state = getNcmpState();
-  if (!state.show) return null;
-  const liveLabel =
-    state.kind === "live" ? t("menu.ncmp_live")
-    : state.kind === "upcoming" ? t("menu.ncmp_live_in_min", { count: state.minutesUntil })
-    : t("menu.ncmp_recording");
-  const onTap = () => {
-    onClose();
-    // Best-effort prayer-session log. We don't await — opening the
-    // cathedral page is what the user wants; the credit is
-    // bookkeeping. 20-minute duration approximates the broadcast.
-    const now = new Date();
-    const startedAt = now.toISOString();
-    const durationSeconds = 20 * 60;
-    const endedAt = new Date(now.getTime() + durationSeconds * 1000).toISOString();
-    apiRequest("POST", "/api/prayer-sessions", {
-      surface: "national-cathedral",
-      durationSeconds,
-      startedAt,
-      endedAt,
-    }).catch(() => { /* non-fatal — don't block the navigation */ });
-    openExternal(NCMP_URL);
-  };
-  return (
-    <MenuRow
-      emoji="📺"
-      label={`${t("menu.ncmp")} · ${liveLabel}`}
-      onClick={onTap}
-    />
-  );
-}
+// (NcmpResourceRow used to live here, surfacing National Cathedral
+// Morning Prayer as a Resources drawer entry. The cathedral broadcast
+// is now an opt-in home card (NcmpHomeCard in pages/dashboard.tsx)
+// the user enables from /customize-home, so the drawer entry was
+// removed.)
 
 function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
@@ -422,14 +376,10 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   label={t("menu.fdd_daily")}
                   onClick={() => { onClose(); markFddRead(); openExternal(FDD_TODAY_URL); }}
                 />
-                {/* National Cathedral Morning Prayer — live broadcast
-                    Mon–Fri 7 AM ET; the cathedral.org page handles
-                    live-vs-recording itself, we just deep-link.
-                    Hidden on weekends (no broadcast). Tap also logs
-                    a prayer session via /api/prayer-sessions so the
-                    user's daily prayer tracker credits the
-                    engagement — same model as opening an office. */}
-                <NcmpResourceRow onClose={onClose} t={t} />
+                {/* National Cathedral Morning Prayer used to live
+                    here as a drawer row; moved to a home-screen card
+                    (NcmpHomeCard in dashboard.tsx) the user opts
+                    into from /customize-home. */}
                 {rawIsBeta && (
                   <MenuRow emoji="😇" label={t("menu.saints")} badge={t("menu.beta")} onClick={() => navigate("/saints")} />
                 )}

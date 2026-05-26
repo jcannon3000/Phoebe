@@ -102,7 +102,15 @@ export function useOfficePrefs(): {
 // local clock — a PT user opening the office at 5:00 AM local should
 // see "Live in 2 hours" since the broadcast is at 7 AM ET = 4 AM PT,
 // which already passed.
-export const NCMP_URL = "https://cathedral.org/worship/weekly-services/morning-prayer/";
+// Direct deep-link to the cathedral's YouTube channel's "/live" path —
+// YouTube auto-redirects to the current live stream during the broadcast
+// window (Mon–Fri 7:00–7:30 ET) and to the most-recent stream's video
+// page afterward. The cathedral.org `/worship/weekly-services/morning-
+// prayer/` page we used to point at is a marketing index that lists the
+// service but doesn't autoplay anything; this URL drops the user
+// directly onto the actual video so they're praying with the
+// broadcast in one tap, not two.
+export const NCMP_URL = "https://www.youtube.com/@WashingtonNationalCathedral/live";
 
 // Today's National Cathedral Morning Prayer state, computed in ET.
 // `kind` drives the pill label; `show` is false on weekends so the

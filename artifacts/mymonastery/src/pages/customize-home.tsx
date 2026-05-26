@@ -21,7 +21,7 @@ const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 // Keep this list in sync with HOME_MODULES in dashboard.tsx AND
 // HOME_MODULE_KEYS in api-server/src/routes/prayer.ts — keys not in
 // the server's allowlist are silently dropped from saved layouts.
-const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "requests"] as const;
+const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ncmp", "requests"] as const;
 type HomeModule = typeof HOME_MODULES[number];
 
 // Prayer requests always leads the home — it can't be hidden or reordered.
@@ -47,6 +47,13 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     // product name from Forward Movement; we leave the label in
     // English regardless of i18n locale.
     fdd: { label: "Forward Day by Day", emoji: "📖", sub: "Today's meditation from Forward Movement" },
+    // National Cathedral Morning Prayer — live YouTube broadcast
+    // Mon–Fri 7:00 AM ET, with the same URL serving the recording
+    // afterward. Proper-noun service name; not localized. The card
+    // self-hides on weekends (no broadcast) and label flips between
+    // "Live now" / "Live in N min" / "Today's recording" at the
+    // home-card render site (see NcmpHomeCard in dashboard.tsx).
+    ncmp: { label: "National Cathedral Morning Prayer", emoji: "📺", sub: "Weekday live broadcast · 7 AM ET" },
     requests: { label: t("customize_home.module_requests"), emoji: "🙏🏽", sub: t("customize_home.module_requests_sub") },
   };
 }
@@ -97,8 +104,8 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
   // fields directly so it doesn't wait on the feeds query.
   const feedLed = !!(user?.feedFirstHome && user?.homeFeedId != null);
   const fallbackOrder: HomeModule[] = feedLed
-    ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac", "fdd"]
-    : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd"];
+    ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac", "fdd", "ncmp"]
+    : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ncmp"];
 
   const [order, setOrder] = useState<HomeModule[]>(() => buildOrder(user?.homeLayout?.order, fallbackOrder));
   const [hidden, setHidden] = useState<Set<string>>(() => {
@@ -110,20 +117,24 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
     // order pre-dated the new module.
     const savedHidden = user?.homeLayout?.hidden;
     const savedOrder = user?.homeLayout?.order;
-    const s = new Set<string>(savedHidden ?? ["contemplation", "gratitude", "examen", "cac", "fdd"]);
-    // CAC + FDD daily-reflection cards are opt-in for EVERYONE (new
-    // and existing users) per product decision — optional Resources
-    // surfaces, not default-on practices. For new users this is
-    // covered by the default-hidden array above; for existing users
-    // whose saved layout pre-dates either module, we add it to
-    // hidden if it's not already in their saved order (i.e. they've
-    // never explicitly toggled it on). Once they enable via the eye,
-    // the key appears in savedOrder and this guard becomes a no-op.
+    const s = new Set<string>(savedHidden ?? ["contemplation", "gratitude", "examen", "cac", "fdd", "ncmp"]);
+    // CAC + FDD + NCMP daily-reflection / broadcast cards are opt-in
+    // for EVERYONE (new and existing users) per product decision —
+    // optional external surfaces, not default-on practices. For new
+    // users this is covered by the default-hidden array above; for
+    // existing users whose saved layout pre-dates either module, we
+    // add it to hidden if it's not already in their saved order (i.e.
+    // they've never explicitly toggled it on). Once they enable via
+    // the eye, the key appears in savedOrder and this guard becomes
+    // a no-op.
     if (savedOrder && !savedOrder.includes("cac")) {
       s.add("cac");
     }
     if (savedOrder && !savedOrder.includes("fdd")) {
       s.add("fdd");
+    }
+    if (savedOrder && !savedOrder.includes("ncmp")) {
+      s.add("ncmp");
     }
     s.delete(PINNED); // Prayer requests can never be hidden.
     return s;
