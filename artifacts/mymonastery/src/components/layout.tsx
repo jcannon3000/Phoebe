@@ -403,10 +403,18 @@ export function Layout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { isBeta } = useBetaStatus();
+  const [location] = useLocation();
   // Offices-only tier: no personal prayer requests + no garden. The
   // header "Prayer list" pill links into a surface they can't use, so
   // we hide it for that tier. Drawer filtering happens above.
   const officesOnly = user?.accessTier === "offices-only";
+  // On the communities surface (/communities + any /communities/...
+  // subpath like /communities/browse) the People pill swaps to "Home"
+  // and routes back to the dashboard. The reader is already inside
+  // navigation; giving them a one-tap exit beats sending them deeper
+  // into People-find.
+  const onCommunitiesPage =
+    location === "/communities" || location.startsWith("/communities/");
 
   // Personal streak = consecutive days I've finished a prayer-list slideshow.
   const { data: streakData } = useQuery<{ streak: number; lastPrayedDate: string | null }>({
@@ -460,10 +468,14 @@ export function Layout({ children }: { children: ReactNode }) {
             )}
             {/* People pill — sits between Prayer list and Menu. Same
                 gating as the drawer entry it replaces: hidden for the
-                offices-only tier, who have no community. */}
+                offices-only tier, who have no community. On the
+                communities surface this slot becomes "Home" instead
+                so the reader has a one-tap exit back to the dashboard
+                (the page they're on already IS the People-adjacent
+                surface, so doubling up was redundant). */}
             {!officesOnly && (
               <Link
-                href="/people"
+                href={onCommunitiesPage ? "/dashboard" : "/people"}
                 className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
                 style={{
                   fontFamily: "'Space Grotesk', sans-serif",
@@ -473,7 +485,7 @@ export function Layout({ children }: { children: ReactNode }) {
                   border: "1px solid rgba(46,107,64,0.3)",
                 }}
               >
-                People
+                {onCommunitiesPage ? "Home" : "People"}
               </Link>
             )}
             <button
