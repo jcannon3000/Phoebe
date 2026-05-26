@@ -13,6 +13,7 @@
 let _audioCtx: AudioContext | null = null;
 let _unlockHookInstalled = false;
 let _visibilityHookInstalled = false;
+let _stateChangeHookInstalled = false;
 // Queue of audio attempts that fired before the AudioContext was
 // allowed to leave its "suspended" state. Replayed verbatim once the
 // first user gesture unlocks the context. Without this, the FIRST
@@ -22,6 +23,71 @@ let _visibilityHookInstalled = false;
 // onto a deaf context. This is the bug users report as "swells don't
 // go on web sometimes."
 const _pendingAudio: Array<() => void> = [];
+
+// Returns a live AudioContext. If the cached one is in the terminal
+// "closed" state (iOS WKWebView occasionally closes contexts on
+// aggressive memory pressure or audio-route changes), drop it and
+// rebuild — otherwise every subsequent call would silently no-op
+// onto a dead reference. This is one of the failure modes users
+// see as "the swell doesn't always play."
+function getOrCreateAudioCtx(): AudioContext | null {
+  type WindowWithWebkitAudio = Window &
+    typeof globalThis & { webkitAudioContext?: typeof AudioContext };
+  const w = window as WindowWithWebkitAudio;
+  const Ctx = w.AudioContext || w.webkitAudioContext;
+  if (!Ctx) return null;
+  if (_audioCtx && _audioCtx.state === "closed") {
+    _audioCtx = null;
+    _stateChangeHookInstalled = false;
+  }
+  if (!_audioCtx) _audioCtx = new Ctx();
+  // Install a one-shot statechange listener so we drain pending audio
+  // whenever the context becomes "running" — regardless of WHO woke it
+  // up (a user-gesture unlock, a visibility resume, a programmatic
+  // resume(), or even the OS deciding to wake a backgrounded audio
+  // process on app foreground). The earlier code only drained on the
+  // paths it controlled, which missed the (common on iOS) case where
+  // the context wakes on its own after a focus event the JS layer
+  // never sees.
+  if (!_stateChangeHookInstalled && _audioCtx) {
+    _stateChangeHookInstalled = true;
+    _audioCtx.addEventListener?.("statechange", () => {
+      if (_audioCtx && _audioCtx.state === "running") {
+        drainPendingAudio();
+      }
+    });
+  }
+  return _audioCtx;
+}
+
+/**
+ * Prime the audio subsystem during a real user gesture.
+ *
+ * Call this from a click/tap handler that LEADS INTO a screen which
+ * will play sound from a useEffect (e.g. the prayer-list "Begin"
+ * button before navigating to the slideshow). Without a prime, the
+ * AudioContext is created fresh on first play, lands in "suspended"
+ * state, and the unlock has to wait for the user's NEXT gesture —
+ * which on the slideshow page is the first Amen tap, by which time
+ * the opening swell has already silently failed.
+ *
+ * Idempotent and safe to call from anywhere; on web without
+ * AudioContext support it's a no-op.
+ */
+export function primeAudio() {
+  try {
+    const ctx = getOrCreateAudioCtx();
+    if (!ctx) return;
+    ensureAudioUnlock();
+    ensureVisibilityResume();
+    ensureAppActiveResume();
+    if (ctx.state === "suspended") {
+      void ctx.resume().then(drainPendingAudio).catch(() => { /* next gesture retries */ });
+    }
+  } catch {
+    /* non-fatal — audio is best-effort everywhere */
+  }
+}
 
 // Replay every queued audio attempt. Called whenever the context leaves
 // the "suspended" state — from the unlock gesture, a visibility resume,
@@ -45,23 +111,47 @@ function drainPendingAudio() {
 // that's running because of a real user gesture. We install one-shot
 // listeners for the next user interaction; in the unlock handler we
 // resume the context AND drain any audio attempts that arrived before
-// the unlock. Once unlocked the context stays unlocked for the page's
-// lifetime so the listeners self-remove on first fire.
+// the unlock.
+//
+// Subtle: the listeners only self-remove AFTER we've successfully
+// transitioned a context to "running". The earlier version self-removed
+// on the first fire regardless — which meant a tap before any
+// AudioContext had been built (e.g. the dashboard's Begin button)
+// consumed the unlock event without anchoring it to a context, leaving
+// the next page's freshly-built context permanently suspended. Now we
+// keep the listeners armed until an actual unlock lands, so the
+// gesture's audio-policy permission carries over to the first context
+// that's actually constructed.
 function ensureAudioUnlock() {
   if (_unlockHookInstalled || typeof window === "undefined") return;
   _unlockHookInstalled = true;
   const unlock = async () => {
-    try {
-      if (_audioCtx && _audioCtx.state === "suspended") {
-        await _audioCtx.resume();
-      }
-    } catch { /* ignore */ }
-    // Drain any swells that tried to fire while we were locked.
+    // If no context exists yet, build one inside the user-gesture
+    // scope so we have something to resume. iOS treats the resulting
+    // resume() as gesture-authorized.
+    let ctx = _audioCtx;
+    if (!ctx) {
+      ctx = getOrCreateAudioCtx();
+    }
+    if (ctx) {
+      try {
+        if (ctx.state === "suspended") {
+          await ctx.resume();
+        }
+      } catch { /* ignore */ }
+    }
     drainPendingAudio();
-    document.removeEventListener("touchend", unlock);
-    document.removeEventListener("pointerdown", unlock);
-    document.removeEventListener("click", unlock);
-    document.removeEventListener("keydown", unlock);
+    if (ctx && ctx.state === "running") {
+      // Real unlock landed — listeners can retire.
+      document.removeEventListener("touchend", unlock);
+      document.removeEventListener("pointerdown", unlock);
+      document.removeEventListener("click", unlock);
+      document.removeEventListener("keydown", unlock);
+    }
+    // Otherwise leave the listeners armed so the next gesture gets
+    // another shot at unlocking. (Removing them after a failed unlock
+    // was the old bug — first tap consumed the gesture without anchoring
+    // to a context, every subsequent play silently failed.)
   };
   document.addEventListener("touchend", unlock, { passive: true });
   document.addEventListener("pointerdown", unlock, { passive: true });
@@ -99,17 +189,40 @@ function ensureVisibilityResume() {
   document.addEventListener("resume", tryResume);
 }
 
+// Native-shell-specific resume signal. The DOM visibility/focus/pageshow
+// events fire INCONSISTENTLY in WKWebView — some iOS versions deliver
+// only one, some deliver none, and the order is unpredictable. The
+// Capacitor shell dispatches `phoebe:appactive` from App.addListener
+// "appStateChange" → isActive=true, which is the most reliable signal
+// available that the app has come back to the foreground. Wiring it as
+// an additional resume trigger covers the case where the user backgrounded
+// during a sit/slideshow and none of the standard web events fired.
+let _appActiveHookInstalled = false;
+function ensureAppActiveResume() {
+  if (_appActiveHookInstalled || typeof window === "undefined") return;
+  _appActiveHookInstalled = true;
+  window.addEventListener("phoebe:appactive", () => {
+    if (!_audioCtx) return;
+    if (_audioCtx.state === "closed") {
+      // Closed context can't be resumed; drop it so the next play call
+      // builds a fresh one via getOrCreateAudioCtx.
+      _audioCtx = null;
+      _stateChangeHookInstalled = false;
+      return;
+    }
+    if (_audioCtx.state === "suspended") {
+      _audioCtx.resume().then(drainPendingAudio).catch(() => { /* ignore */ });
+    }
+  });
+}
+
 function playChurchBell() {
   try {
-    type WindowWithWebkitAudio = Window &
-      typeof globalThis & { webkitAudioContext?: typeof AudioContext };
-    const w = window as WindowWithWebkitAudio;
-    const Ctx = w.AudioContext || w.webkitAudioContext;
-    if (!Ctx) return;
-    if (!_audioCtx) _audioCtx = new Ctx();
-    const ctx = _audioCtx;
+    const ctx = getOrCreateAudioCtx();
+    if (!ctx) return;
     ensureAudioUnlock();
     ensureVisibilityResume();
+    ensureAppActiveResume();
     if (ctx.state === "suspended") void ctx.resume();
 
     const now = ctx.currentTime;
@@ -205,15 +318,11 @@ export function triggerSubmitFeedback() {
     /* non-fatal */
   }
   try {
-    type WindowWithWebkitAudio = Window &
-      typeof globalThis & { webkitAudioContext?: typeof AudioContext };
-    const w = window as WindowWithWebkitAudio;
-    const Ctx = w.AudioContext || w.webkitAudioContext;
-    if (!Ctx) return;
-    if (!_audioCtx) _audioCtx = new Ctx();
-    const ctx = _audioCtx;
+    const ctx = getOrCreateAudioCtx();
+    if (!ctx) return;
     ensureAudioUnlock();
     ensureVisibilityResume();
+    ensureAppActiveResume();
     if (isAudioStillLocked()) {
       void ctx.resume().then(drainPendingAudio).catch(() => { /* ignore */ });
       _pendingAudio.push(() => triggerSubmitFeedback());
@@ -296,28 +405,25 @@ export function triggerSubmitFeedback() {
  */
 export function playOpeningSwell(octaveStep: number = 0) {
   try {
-    type WindowWithWebkitAudio = Window &
-      typeof globalThis & { webkitAudioContext?: typeof AudioContext };
-    const w = window as WindowWithWebkitAudio;
-    const Ctx = w.AudioContext || w.webkitAudioContext;
-    if (!Ctx) return;
-    // Build the context up front so we can detect a locked state even
-    // before any oscillators are scheduled. If we're locked, defer the
-    // whole call until the unlock listener fires — at which point we'll
-    // re-enter this function with the same args and the AudioContext
-    // will be alive enough to actually make sound.
-    if (!_audioCtx) _audioCtx = new Ctx();
+    // Build (or revive) the context up front so we can detect a locked
+    // state even before any oscillators are scheduled. If we're locked,
+    // defer the whole call until the unlock listener fires — at which
+    // point we'll re-enter this function with the same args and the
+    // AudioContext will be alive enough to actually make sound. The
+    // getOrCreateAudioCtx helper also recovers from a "closed" context
+    // — a state iOS WKWebView occasionally drops into on memory pressure
+    // or audio-route changes, where every subsequent play call would
+    // otherwise silently no-op.
+    const ctx = getOrCreateAudioCtx();
+    if (!ctx) return;
     ensureAudioUnlock();
     ensureVisibilityResume();
+    ensureAppActiveResume();
     if (isAudioStillLocked()) {
-      void _audioCtx.resume().then(drainPendingAudio).catch(() => { /* ignore */ });
+      void ctx.resume().then(drainPendingAudio).catch(() => { /* ignore */ });
       _pendingAudio.push(() => playOpeningSwell(octaveStep));
       return;
     }
-    if (!_audioCtx) _audioCtx = new Ctx();
-    const ctx = _audioCtx;
-    ensureAudioUnlock();
-    ensureVisibilityResume();
     if (ctx.state === "suspended") void ctx.resume();
 
     const now = ctx.currentTime;
@@ -398,20 +504,16 @@ export function playOpeningSwell(octaveStep: number = 0) {
  */
 export function playOfficeChime(octaveStep: number = 0) {
   try {
-    type WindowWithWebkitAudio = Window &
-      typeof globalThis & { webkitAudioContext?: typeof AudioContext };
-    const w = window as WindowWithWebkitAudio;
-    const Ctx = w.AudioContext || w.webkitAudioContext;
-    if (!Ctx) return;
-    if (!_audioCtx) _audioCtx = new Ctx();
+    const ctx = getOrCreateAudioCtx();
+    if (!ctx) return;
     ensureAudioUnlock();
     ensureVisibilityResume();
+    ensureAppActiveResume();
     if (isAudioStillLocked()) {
-      void _audioCtx.resume().then(drainPendingAudio).catch(() => { /* ignore */ });
+      void ctx.resume().then(drainPendingAudio).catch(() => { /* ignore */ });
       _pendingAudio.push(() => playOfficeChime(octaveStep));
       return;
     }
-    const ctx = _audioCtx;
     if (ctx.state === "suspended") void ctx.resume();
 
     const now = ctx.currentTime;

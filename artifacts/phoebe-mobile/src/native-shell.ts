@@ -911,18 +911,48 @@ function wireLocalNotifications() {
 //     UIApplication.isIdleTimerDisabled via the keep-awake plugin, so the
 //     screen doesn't auto-lock while the countdown runs (the web
 //     navigator.wakeLock the app also calls is unreliable in WKWebView).
-//   • phoebe:contemplation-schedule-end { at: ISO } — schedules a ONE-SHOT
-//     local notification at the sit's end time. This is the fallback for the
-//     case keep-awake can't cover: the user manually locks the phone or
-//     switches apps, so the in-app Web Audio bell never fires. A fixed id
-//     gives upsert/cancel semantics.
-//   • phoebe:contemplation-cancel-end — cancels that pending one-shot (fired
+//   • phoebe:contemplation-schedule-end { at: ISO } — schedules the closing
+//     bell via TWO mechanisms in parallel:
+//       1. PhoebeAudio (native plugin) — primary path. Owns an AVAudioSession
+//          with .playback category (ignores the silent switch), loops a
+//          near-silent buffer to keep iOS honoring our UIBackgroundModes:audio
+//          declaration through screen-lock, and fires the bell precisely at
+//          the target moment via AVAudioPlayer.play(atTime:). This is what
+//          Insight Timer / Calm use to ring while locked even under Focus
+//          modes or with the silent switch on.
+//       2. LocalNotifications — fallback for the case iOS suspends our
+//          process anyway (low-power mode, OS pressure, app crashed mid-sit).
+//          Silent switch may still suppress this sound but it's better than
+//          nothing.
+//   • phoebe:contemplation-cancel-end — cancels both mechanisms (fired
 //     when the sit ends in-app so a foregrounded finish doesn't double-bell).
 const CONTEMPLATION_BELL_ID = 880_001;
+const CONTEMPLATION_BELL_FILE = "PhoebeRising-high.caf";
+
+// Typed handle to the PhoebeAudio native plugin. Falls back to undefined
+// on web builds and on iOS bundles that pre-date the plugin (defense in
+// depth — a stale TestFlight build shouldn't crash).
+function getPhoebeAudio(): {
+  prime?: () => Promise<void>;
+  playNow?: (opts: { sound: string }) => Promise<void>;
+  scheduleBellAt?: (opts: { at: number; sound: string }) => Promise<void>;
+  cancelScheduled?: () => Promise<void>;
+} | undefined {
+  const cap = (window as {
+    Capacitor?: { Plugins?: Record<string, unknown> };
+  }).Capacitor;
+  return cap?.Plugins?.["PhoebeAudio"] as ReturnType<typeof getPhoebeAudio>;
+}
 
 function wireContemplation() {
   window.addEventListener("phoebe:contemplation-keep-awake", async () => {
     try { await KeepAwake.keepAwake(); } catch { /* unsupported — web wakeLock still tries */ }
+    // Prime the native audio session opportunistically when the sit starts.
+    // Doing this here (rather than only at schedule-end time) means the
+    // session is already .playback by the time the timer ticks, so the
+    // first scheduleBellAt call is instant and we shave off any first-use
+    // category-switch latency that could swallow the bell.
+    try { await getPhoebeAudio()?.prime?.(); } catch { /* best-effort */ }
   });
   window.addEventListener("phoebe:contemplation-allow-sleep", async () => {
     try { await KeepAwake.allowSleep(); } catch { /* non-fatal */ }
@@ -932,11 +962,28 @@ function wireContemplation() {
     const detail = (e as CustomEvent).detail as { at?: string } | undefined;
     const at = detail?.at ? new Date(detail.at) : null;
     if (!at || Number.isNaN(at.getTime()) || at.getTime() <= Date.now()) return;
+
+    // Primary path: native AVAudioPlayer keep-alive + scheduled play. This
+    // is the path that survives a locked screen because it doesn't depend
+    // on the notification system delivering an audible alert.
+    try {
+      await getPhoebeAudio()?.scheduleBellAt?.({
+        at: at.getTime(),
+        sound: CONTEMPLATION_BELL_FILE,
+      });
+    } catch {
+      /* fall through to the LocalNotification fallback */
+    }
+
+    // Fallback path: LocalNotification. Still useful if iOS suspends the
+    // audio session or the user is on an older app build without the
+    // plugin. The audible part may be muted by silent switch / Focus,
+    // but the banner+vibration is a reasonable second line.
     try {
       const perm = await LocalNotifications.checkPermissions();
       if (perm.display !== "granted") {
         const req = await LocalNotifications.requestPermissions();
-        if (req.display !== "granted") return; // in-app bell still rings if foregrounded
+        if (req.display !== "granted") return;
       }
       await LocalNotifications.schedule({
         notifications: [
@@ -947,25 +994,33 @@ function wireContemplation() {
             schedule: { at, allowWhileIdle: true },
             smallIcon: "phoebe_bell",
             iconColor: "#2E6B40",
-            // Closing bell that rings even on the lock screen (the whole
-            // point of this fallback). PhoebeRising-high.caf is the same
-            // bright chapel-exhale the in-app close plays, bundled in the
-            // iOS app as a notification sound resource.
-            sound: "PhoebeRising-high.caf",
+            sound: CONTEMPLATION_BELL_FILE,
           },
         ],
       });
     } catch {
-      /* best-effort — the foreground in-app bell is the primary path */
+      /* best-effort */
     }
   });
 
   window.addEventListener("phoebe:contemplation-cancel-end", async () => {
+    // Cancel both mechanisms so a foregrounded finish doesn't double-bell
+    // (in-app Web Audio bell PLUS the native scheduled bell PLUS the
+    // local notification all firing within milliseconds of each other).
+    try { await getPhoebeAudio()?.cancelScheduled?.(); } catch { /* best-effort */ }
     try {
       await LocalNotifications.cancel({ notifications: [{ id: CONTEMPLATION_BELL_ID }] });
     } catch {
       /* best-effort */
     }
+  });
+
+  // Foreground in-app close bell — when the sit finishes while the app is
+  // open, we play the same bell through the native session so the silent
+  // switch doesn't mute it. Falls back to whatever the web layer plays.
+  window.addEventListener("phoebe:contemplation-play-bell", async () => {
+    try { await getPhoebeAudio()?.playNow?.({ sound: CONTEMPLATION_BELL_FILE }); }
+    catch { /* best-effort — web layer also plays its synthesized bell */ }
   });
 }
 

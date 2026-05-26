@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
-import { playOpeningSwell } from "@/lib/amenFeedback";
+import { playOpeningSwell, primeAudio } from "@/lib/amenFeedback";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 // Silent contemplation timer — Insight-Timer-style. The slideshow's
@@ -224,6 +224,13 @@ export function ContemplationTimer({
   }
 
   function begin(minutes: number) {
+    // Warm up the Web Audio context inside the Begin tap's user-gesture
+    // scope so the opening swell at line ~244 lands on a "running" context
+    // instead of a suspended one. Without this, the swell often silently
+    // fails on the first sit after a cold launch because resume() runs
+    // outside the gesture by the time playOpeningSwell schedules its
+    // oscillators.
+    primeAudio();
     const total = Math.max(1, Math.round(minutes)) * 60;
     setTotalSeconds(total);
     setRemaining(total);

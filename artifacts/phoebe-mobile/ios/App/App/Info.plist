@@ -56,11 +56,18 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Phoebe uses your photos so you can choose a profile picture.</string>
 
-	<!-- Background modes — push needs "remote-notification" for silent
-	     wake-up on data pushes. Bell scheduling uses it too. -->
+	<!-- Background modes:
+	     • remote-notification — silent push wake-up; bell scheduling uses it.
+	     • audio — keeps AVAudioSession alive while the phone is locked
+	       so the contemplation closing bell rings reliably mid-sit, the
+	       same model Insight Timer / Calm use for end-of-session sounds.
+	       PhoebeAudioPlugin.swift owns the session (category .playback,
+	       ignores the silent switch) and loops a near-zero-volume silent
+	       buffer to keep iOS from suspending us between schedule + bell. -->
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>audio</string>
 	</array>
 
 	<!-- iOS 17+ asks for permission to use non-public APIs even for
