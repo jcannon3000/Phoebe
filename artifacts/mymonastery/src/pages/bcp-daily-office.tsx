@@ -2353,8 +2353,17 @@ export default function BcpDailyOfficePage() {
     const search = new URLSearchParams(window.location.search);
     const mode = search.get("mode");
     if (mode === "compline") {
-      if (rawIsBeta) setShowMode("compline");
-      // else: silently fall through to the chooser
+      if (rawIsBeta) {
+        setShowMode("compline");
+      } else {
+        // Drop the stale ?mode=compline so a non-beta user landing
+        // on this URL (shared link / bookmark from a beta friend)
+        // doesn't see "?mode=compline" lingering in the URL bar
+        // while the chooser is rendered, and so a later effect
+        // re-read can't accidentally remount the viewer if deps
+        // change.
+        window.history.replaceState(null, "", window.location.pathname);
+      }
       return;
     }
     if (
