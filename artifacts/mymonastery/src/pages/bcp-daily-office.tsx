@@ -2384,7 +2384,11 @@ export default function BcpDailyOfficePage() {
 
   const hour = new Date().getHours();
   const isMorning = hour < 14;
-  const isEvening = hour >= 14;
+  const isNight = hour >= 20;
+  // Evening = the afternoon window 14:00–20:00; Compline owns the
+  // 20:00+ block so the two don't both highlight "Available now" at
+  // the same time.
+  const isEvening = hour >= 14 && !isNight;
 
   type OfficeOption = {
     mode: LiturgyMode;
@@ -2401,6 +2405,15 @@ export default function BcpDailyOfficePage() {
     { mode: "morning-devotion", emoji: "🌿", label: "Morning Devotion", sub: "A short devotion · BCP p. 137", now: isMorning },
     { mode: "early-evening-devotion", emoji: "🌆", label: "Early Evening Devotion", sub: "A short devotion · BCP p. 139", now: isEvening },
   ];
+  // Compline — beta-only. Stays in the list anytime so an early-bedder
+  // can pray it before 8 PM; "Available now" highlights only after 20:00.
+  const compline: OfficeOption = {
+    mode: "compline",
+    emoji: "🌌",
+    label: "Compline",
+    sub: "The night office · BCP p. 127",
+    now: isNight,
+  };
 
   const OptionButton = ({ opt }: { opt: OfficeOption }) => (
     <button
@@ -2486,6 +2499,18 @@ export default function BcpDailyOfficePage() {
         <div className="space-y-3">
           {devotions.map((opt) => <OptionButton key={opt.mode} opt={opt} />)}
         </div>
+
+        {/* Compline — beta-only. The server endpoint also 403s for
+            non-beta callers (see office.ts), so this is the visual
+            mirror of that gate. */}
+        {rawIsBeta && (
+          <>
+            <SectionLabel>At night</SectionLabel>
+            <div className="space-y-3">
+              <OptionButton opt={compline} />
+            </div>
+          </>
+        )}
       </div>
     </Layout>
   );
