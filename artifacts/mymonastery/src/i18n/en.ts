@@ -162,7 +162,7 @@ export const en = {
     short_bcp_form: "Short BCP form",
     reminder_time: "Reminder time",
     confession_of_sin: "Confession of Sin",
-    confession_blurb: "The BCP allows the Daily Office to begin with a Confession of Sin. Off by default — turn this on to include it at the top of Morning and Evening Prayer.",
+    confession_blurb: "Morning and Evening Prayer open with the BCP Confession of Sin and Absolution by default. Turn this off to begin straight at the Opening Sentence instead.",
     language: "Language",
     language_english: "English",
     language_english_sub: "Default",
@@ -246,6 +246,18 @@ export const en = {
     available_now: "Available now",
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
+  },
+  // Prayer list page (pages/prayer-list.tsx) — page chrome + section labels.
+  prayer_list: {
+    title: "Prayer List",
+    subtitle: "Carrying what your community is carrying.",
+    pray_through_all: "Pray through the whole list →",
+    all_prayers: "All prayers",
+    past: "Past",
+    section_requests: "Prayer Requests",
+    section_my_prayers_for: "My Prayers for Others",
+    section_prayers_for_you: "Prayers for You",
+    section_community: "Community intercessions",
   },
   // Prayer feed detail (pages/prayer-feed-detail.tsx).
   prayer_feed_detail: {

@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, X as CloseIcon, MessageCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
@@ -1144,6 +1145,7 @@ function DetailModal({
 
 export default function PrayerListPage() {
   const { user, isLoading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
@@ -1423,7 +1425,7 @@ export default function PrayerListPage() {
           style={{ color: "#8FAF96" }}
         >
           <ChevronLeft size={14} />
-          Back
+          {t("common.back")}
         </Link>
 
         {/* Header */}
@@ -1432,10 +1434,10 @@ export default function PrayerListPage() {
             className="text-2xl font-bold"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            Prayer List 🙏🏽
+            {t("prayer_list.title")} 🙏🏽
           </h1>
           <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
-            Carrying what your community is carrying.
+            {t("prayer_list.subtitle")}
           </p>
         </div>
 
@@ -1459,7 +1461,7 @@ export default function PrayerListPage() {
               fontWeight: 600,
             }}
           >
-            🕯️ Pray through the whole list →
+            🕯️ {t("prayer_list.pray_through_all")}
           </Link>
         )}
 
@@ -1478,7 +1480,7 @@ export default function PrayerListPage() {
             style={{ color: "#A8C5A0" }}
           >
             <ChevronLeft size={16} />
-            <span className="text-[12px] font-medium">All prayers</span>
+            <span className="text-[12px] font-medium">{t("prayer_list.all_prayers")}</span>
           </button>
         )}
 
@@ -1489,7 +1491,7 @@ export default function PrayerListPage() {
         {hasAnyRequests && (focused === null || focused === "requests") && (
           <SectionShell
             id="requests"
-            label="Prayer Requests"
+            label={t("prayer_list.section_requests")}
             count={activeRequests.length + pastRequests.length}
             focused={focused}
             onFocus={setFocused}
@@ -1517,7 +1519,7 @@ export default function PrayerListPage() {
                   className="text-[10px] font-semibold uppercase"
                   style={{ color: "rgba(143,175,150,0.5)", letterSpacing: "0.14em" }}
                 >
-                  Past
+                  {t("prayer_list.past")}
                 </span>
                 <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.1)" }} />
               </div>
@@ -1543,7 +1545,7 @@ export default function PrayerListPage() {
         {activePrayersFor.length > 0 && (focused === null || focused === "prayers-for") && (
           <SectionShell
             id="prayers-for"
-            label="My Prayers for Others"
+            label={t("prayer_list.section_my_prayers_for")}
             count={activePrayersFor.length}
             focused={focused}
             onFocus={setFocused}
@@ -1562,7 +1564,7 @@ export default function PrayerListPage() {
         {(prayersForMe.length > 0 || pastPrayersForMe.length > 0) && (focused === null || focused === "prayers-from") && (
           <SectionShell
             id="prayers-from"
-            label="Prayers for You"
+            label={t("prayer_list.section_prayers_for_you")}
             count={prayersForMe.length + pastPrayersForMe.length}
             focused={focused}
             onFocus={setFocused}
@@ -1600,7 +1602,7 @@ export default function PrayerListPage() {
           && (focused === null || focused === "intercessions") && (
           <SectionShell
             id="intercessions"
-            label="Community intercessions"
+            label={t("prayer_list.section_community")}
             count={intercessionsSorted.length + feedsToday.length + pastIntercessions.length}
             focused={focused}
             onFocus={setFocused}
