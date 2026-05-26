@@ -29,14 +29,15 @@ const BORDER = "rgba(200,212,192,0.15)";
 const BUTTON_BG = "#2D5E3F";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 
-// Mode covers the four liturgies this viewer can render. The Daily
-// Office's full Morning / Evening Prayer come from /api/office/* and
+// Mode covers the five liturgies this viewer can render. The Daily
+// Office's Morning / Evening / Compline come from /api/office/* and
 // the abbreviated Daily Devotions (BCP pp. 137 / 139) come from
-// /api/devotion/* — both use the same Slide schema, so the renderer
+// /api/devotion/* — all use the same Slide schema, so the renderer
 // is identical apart from the title and endpoint.
 export type LiturgyMode =
   | "morning"
   | "evening"
+  | "compline"
   | "morning-devotion"
   | "early-evening-devotion";
 
@@ -337,6 +338,7 @@ function IntercessionHead({
 const MODE_CONFIG: Record<LiturgyMode, { endpoint: string; title: string }> = {
   morning: { endpoint: "/api/office/morning", title: "Morning Prayer" },
   evening: { endpoint: "/api/office/evening", title: "Evening Prayer" },
+  compline: { endpoint: "/api/office/compline", title: "Compline" },
   "morning-devotion": { endpoint: "/api/devotion/morning", title: "Morning Devotion" },
   "early-evening-devotion": { endpoint: "/api/devotion/early-evening", title: "Early Evening Devotion" },
 };
@@ -346,9 +348,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
   const { endpoint, title: officeTitle } = MODE_CONFIG[resolvedMode];
   // Which half of the day this office belongs to. Threaded onto the
   // closing redirect (?side=) so the prayer-rhythm habit slide can
-  // show an evening-only "Pray the Examen" pill.
+  // show an evening-only "Pray the Examen" pill. Compline counts as
+  // evening — it's the close-of-day office.
   const officeSide: "morning" | "evening" =
-    resolvedMode === "evening" || resolvedMode === "early-evening-devotion"
+    resolvedMode === "evening" ||
+    resolvedMode === "compline" ||
+    resolvedMode === "early-evening-devotion"
       ? "evening"
       : "morning";
 

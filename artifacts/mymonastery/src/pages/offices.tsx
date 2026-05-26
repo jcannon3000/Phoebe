@@ -37,10 +37,13 @@ export default function OfficesPage() {
   if (isLoading || !user) return null;
 
   // Time-of-day highlight. Anything before 14:00 reads as morning,
-  // anything after as evening. Both sides keep both options visible —
-  // the highlight just nudges toward the time-appropriate one.
+  // 14:00–20:00 reads as evening, 20:00+ reads as night (Compline's
+  // window). Every option stays visible — the highlight just nudges
+  // toward the time-appropriate one.
   const hour = new Date().getHours();
   const isMorning = hour < 14;
+  const isNight = hour >= 20;
+  const isEvening = !isMorning && !isNight;
 
   const morningOffice: CardSpec = {
     emoji: "🌅",
@@ -61,14 +64,24 @@ export default function OfficesPage() {
     title: t("offices.evening_prayer"),
     sub: t("offices.full_office_115"),
     href: "/bcp/daily-office?mode=evening",
-    available: !isMorning,
+    available: isEvening,
   };
   const eveningDevotion: CardSpec = {
     emoji: "🌆",
     title: t("offices.early_evening_devotion"),
     sub: t("offices.short_form_139"),
     href: "/bcp/daily-devotions?mode=early-evening-devotion",
-    available: !isMorning,
+    available: isEvening,
+  };
+  // Compline — the night office. Short, contemplative, BCP pp. 127-135.
+  // Available-flag flips on after 8 PM; the card stays visible
+  // anytime so a user can pray it earlier if they're heading to bed.
+  const compline: CardSpec = {
+    emoji: "🌌",
+    title: t("offices.compline", { defaultValue: "Compline" }),
+    sub: t("offices.compline_sub", { defaultValue: "The night office · BCP p. 127" }),
+    href: "/bcp/daily-office?mode=compline",
+    available: isNight,
   };
 
   return (
@@ -98,9 +111,14 @@ export default function OfficesPage() {
         </div>
 
         <SectionLabel>{t("offices.in_the_evening")}</SectionLabel>
-        <div className="space-y-6 mb-12">
+        <div className="space-y-6 mb-10">
           <OfficeOption spec={eveningOffice} />
           <OfficeOption spec={eveningDevotion} />
+        </div>
+
+        <SectionLabel>{t("offices.at_night", { defaultValue: "At night" })}</SectionLabel>
+        <div className="space-y-6 mb-12">
+          <OfficeOption spec={compline} />
         </div>
 
         {/* Reminders entry point. The actual pickers live on /settings

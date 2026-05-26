@@ -9,6 +9,7 @@ import { Router } from "express";
 import { assembleMorningPrayer } from "../lib/assembleMorningPrayer";
 import { assembleEveningPrayer } from "../lib/assembleEveningPrayer";
 import { assembleDevotion, type DevotionKind } from "../lib/assembleDevotion";
+import { assembleCompline } from "../lib/assembleCompline";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
 import { seedBcpTexts } from "../seeds/bcpTexts";
 import { PSALTER } from "../seeds/bcpPsalter";
@@ -182,6 +183,82 @@ router.get("/office/evening", async (req, res) => {
         isCallAndResponse: false, callAndResponseLines: null,
         bcpReference: null, isScrollable: false, scrollHint: null,
         metadata: { date: date.toISOString(), office: "evening" },
+      },
+    ];
+
+    return res.json({
+      slides: emergencySlides,
+      officeDay: {
+        season: officeDay.season, liturgicalYear: officeDay.liturgicalYear,
+        sundayLabel: officeDay.sundayLabel, weekdayLabel: officeDay.weekdayLabel,
+        properNumber: officeDay.properNumber, feastName: officeDay.feastName,
+        isMajorFeast: officeDay.isMajorFeast, useAlleluia: officeDay.useAlleluia,
+        totalSlides: emergencySlides.length,
+      },
+      fromCache: false,
+      cacheDate: date.toISOString().slice(0, 10),
+      isEmergency: true,
+    });
+  }
+});
+
+// GET /office/compline — public, no auth required. Same shape as
+// /office/morning and /office/evening; the assembler returns a complete
+// slide deck for the night office (BCP pp. 127-135). No date-based
+// cache because the deck is built from a single psalm SELECT plus
+// in-memory string constants — cheaper than the cache machinery would
+// be. We still return `fromCache: false` for parity with the other
+// office endpoints so the client doesn't have to branch on the shape.
+router.get("/office/compline", async (req, res) => {
+  let date: Date;
+  try {
+    date = req.query.date ? new Date(req.query.date as string) : new Date();
+    if (isNaN(date.getTime())) throw new Error("Invalid date");
+  } catch {
+    date = new Date();
+  }
+
+  try {
+    const userId = (req.user as { id: number } | undefined)?.id ?? 0;
+    const { slides, officeDay } = await assembleCompline(date, userId);
+    return res.json({
+      slides,
+      officeDay: { ...officeDay, totalSlides: slides.length },
+      fromCache: false,
+      cacheDate: date.toISOString().slice(0, 10),
+    });
+  } catch (err) {
+    console.error("Compline assembly failed:", err);
+
+    // Emergency fallback — keep the office reachable even if the DB
+    // hiccups on the psalm lookup. Renders the Nunc Dimittis +
+    // blessing so a visitor at least gets a complete short
+    // contemplative beat rather than a 500.
+    const officeDay = getOfficeDay(date);
+    const emergencySlides = [
+      {
+        id: "compline_emergency_0", type: "office_intro", emoji: "🌌", eyebrow: "Before you begin",
+        title: "Compline", content: "Compline is the Church's prayer at the close of day.",
+        isCallAndResponse: false, callAndResponseLines: null,
+        bcpReference: null, isScrollable: false, scrollHint: null,
+        metadata: { date: date.toISOString(), office: "compline" },
+      },
+      {
+        id: "compline_emergency_1", type: "canticle", emoji: "🌌",
+        eyebrow: "NUNC DIMITTIS · LUKE 2:29-32", title: "The Song of Simeon",
+        content:
+          "Lord, you now have set your servant free *\n  to go in peace as you have promised;\nFor these eyes of mine have seen the Savior, *\n  whom you have prepared for all the world to see:\nA Light to enlighten the nations, *\n  and the glory of your people Israel.",
+        isCallAndResponse: false, callAndResponseLines: null,
+        bcpReference: "BCP p. 135", isScrollable: true,
+        scrollHint: "↓ continue · tap when ready", metadata: {},
+      },
+      {
+        id: "compline_emergency_2", type: "closing", emoji: "🌌", eyebrow: "BLESSING",
+        title: null,
+        content: "The almighty and merciful Lord,\nFather, Son, and Holy Spirit,\nbless us and keep us. Amen.",
+        isCallAndResponse: false, callAndResponseLines: null,
+        bcpReference: "BCP p. 135", isScrollable: false, scrollHint: null,
+        metadata: { date: date.toISOString(), office: "compline" },
       },
     ];
 
