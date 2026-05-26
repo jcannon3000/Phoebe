@@ -42,7 +42,11 @@ const LEARN_RESOURCES: LearnResource[] = [
     kind: "article",
     title: "Daily Meditations",
     source: "Center for Action & Contemplation",
-    url: "https://cac.org",
+    // CAC's Daily Meditations index — today's reflection sits at the
+    // top of this page with the full text behind "Read full
+    // meditation". The bare cac.org homepage we used to point at is
+    // a marketing landing that buries the daily under three clicks.
+    url: "https://cac.org/daily-meditations/",
   },
 ];
 

@@ -246,6 +246,29 @@ export const en = {
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
   },
+  // BCP Psalter (pages/bcp-psalter.tsx).
+  psalter: {
+    back_dashboard: "← Dashboard",
+    title: "Psalter",
+    subtitle: "The 1979 Book of Common Prayer Psalter — all 150 psalms",
+    search_placeholder: "Search psalms by number, title, or text…",
+    couldnt_load: "Couldn't load the Psalter ({{error}}).",
+    loading: "Loading the Psalter…",
+    no_results: 'No psalms found for "{{query}}"',
+    psalm_n: "Psalm {{n}}",
+    modal_footer: "From the 1979 Book of Common Prayer Psalter (public domain)",
+  },
+  // BCP Intercessions index (pages/bcp-intercessions.tsx).
+  bcp_intercessions: {
+    back_dashboard: "← Dashboard",
+    title: "Intercessions",
+    subtitle: "Prayers from the Book of Common Prayer",
+    search_placeholder: "Search prayers…",
+    no_results: 'No prayers found for "{{query}}"',
+    prayers_count_one: "{{count}} prayer",
+    prayers_count_other: "{{count}} prayers",
+    from_bcp: "From the Book of Common Prayer",
+  },
   // Saints index (pages/Saints/SaintsIndex.tsx).
   saints: {
     back_dashboard: "← Dashboard",

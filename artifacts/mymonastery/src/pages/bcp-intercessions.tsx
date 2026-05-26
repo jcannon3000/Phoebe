@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { BCP_PRAYERS, type BcpPrayer } from "@/lib/bcp-prayers";
@@ -37,6 +38,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
 
 export default function BcpIntercessionsPage() {
   const { user, isLoading } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [selectedPrayer, setSelectedPrayer] = useState<BcpPrayer | null>(null);
@@ -62,16 +64,16 @@ export default function BcpIntercessionsPage() {
         {/* Header */}
         <div className="mb-6">
           <Link href="/dashboard" className="text-sm mb-3 inline-block" style={{ color: "#8FAF96" }}>
-            ← Dashboard
+            {t("bcp_intercessions.back_dashboard")}
           </Link>
           <h1
             className="text-2xl font-bold mb-1"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            Intercessions 🙏🏽
+            {t("bcp_intercessions.title")} 🙏🏽
           </h1>
           <p className="text-sm" style={{ color: "#8FAF96" }}>
-            Prayers from the Book of Common Prayer
+            {t("bcp_intercessions.subtitle")}
           </p>
         </div>
 
@@ -81,7 +83,7 @@ export default function BcpIntercessionsPage() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search prayers…"
+            placeholder={t("bcp_intercessions.search_placeholder")}
             className="w-full text-sm px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/30 focus:border-[#8FAF96]/60 transition-all"
             style={{
               backgroundColor: "#091A10",
@@ -111,12 +113,12 @@ export default function BcpIntercessionsPage() {
           );
           return results.length === 0 ? (
             <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.5)" }}>
-              No prayers found for "{query}"
+              {t("bcp_intercessions.no_results", { query })}
             </p>
           ) : (
             <div className="space-y-1">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-3" style={{ color: "rgba(143,175,150,0.4)" }}>
-                {results.length} {results.length === 1 ? "result" : "results"}
+                {t("saints.results_count", { count: results.length })}
               </p>
               {results.map((prayer) => (
                 <button
@@ -163,7 +165,7 @@ export default function BcpIntercessionsPage() {
                             {category}
                           </p>
                           <p className="text-xs mt-0.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-                            {prayers.length} {prayers.length === 1 ? "prayer" : "prayers"}
+                            {t("bcp_intercessions.prayers_count", { count: prayers.length })}
                           </p>
                         </div>
                       </div>
@@ -257,7 +259,7 @@ export default function BcpIntercessionsPage() {
                 {selectedPrayer.text}
               </p>
               <p className="text-[11px] mt-6 pt-4 italic" style={{ color: "rgba(143,175,150,0.4)", borderTop: "1px solid rgba(46,107,64,0.12)" }}>
-                From the Book of Common Prayer
+                {t("bcp_intercessions.from_bcp")}
               </p>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -59,6 +60,7 @@ function firstVerseTeaser(content: string): string {
 
 export default function BcpPsalterPage() {
   const { user, isLoading } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [psalms, setPsalms] = useState<Psalm[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -116,16 +118,16 @@ export default function BcpPsalterPage() {
         {/* Header */}
         <div className="mb-6">
           <Link href="/dashboard" className="text-sm mb-3 inline-block" style={{ color: "#8FAF96" }}>
-            ← Dashboard
+            {t("psalter.back_dashboard")}
           </Link>
           <h1
             className="text-2xl font-bold mb-1"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            Psalter 📜
+            {t("psalter.title")} 📜
           </h1>
           <p className="text-sm" style={{ color: "#8FAF96" }}>
-            The 1979 Book of Common Prayer Psalter — all 150 psalms
+            {t("psalter.subtitle")}
           </p>
         </div>
 
@@ -135,7 +137,7 @@ export default function BcpPsalterPage() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search psalms by number, title, or text…"
+            placeholder={t("psalter.search_placeholder")}
             className="w-full text-sm px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/30 focus:border-[#8FAF96]/60 transition-all"
             style={{
               backgroundColor: "#091A10",
@@ -156,13 +158,13 @@ export default function BcpPsalterPage() {
 
         {loadError && (
           <p className="text-sm text-center py-8" style={{ color: "rgba(218,112,124,0.8)" }}>
-            Couldn't load the Psalter ({loadError}).
+            {t("psalter.couldnt_load", { error: loadError })}
           </p>
         )}
 
         {!loadError && psalms.length === 0 && (
           <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.5)" }}>
-            Loading the Psalter…
+            {t("psalter.loading")}
           </p>
         )}
 
@@ -173,12 +175,12 @@ export default function BcpPsalterPage() {
                 className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-3"
                 style={{ color: "rgba(143,175,150,0.4)" }}
               >
-                {filtered.length} {filtered.length === 1 ? "result" : "results"}
+                {t("saints.results_count", { count: filtered.length })}
               </p>
             )}
             {filtered.length === 0 ? (
               <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.5)" }}>
-                No psalms found for "{query}"
+                {t("psalter.no_results", { query })}
               </p>
             ) : (
               <div className="space-y-1">
@@ -198,7 +200,7 @@ export default function BcpPsalterPage() {
                           className="text-sm font-semibold"
                           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
                         >
-                          Psalm {psalm.number}
+                          {t("psalter.psalm_n", { n: psalm.number })}
                         </p>
                         <p
                           className="text-[13px] mt-1 line-clamp-2 italic"
@@ -263,7 +265,7 @@ export default function BcpPsalterPage() {
                   className="text-[10px] font-bold uppercase tracking-[0.14em] mb-1.5"
                   style={{ color: "rgba(143,175,150,0.5)" }}
                 >
-                  Psalm {selectedPsalm.number} · {selectedPsalm.bcpRef}
+                  {t("psalter.psalm_n", { n: selectedPsalm.number })} · {selectedPsalm.bcpRef}
                 </p>
                 <h2
                   className="text-lg font-bold leading-snug"
@@ -334,7 +336,7 @@ export default function BcpPsalterPage() {
                   borderTop: "1px solid rgba(46,107,64,0.12)",
                 }}
               >
-                From the 1979 Book of Common Prayer Psalter (public domain)
+                {t("psalter.modal_footer")}
               </p>
             </div>
           </div>
