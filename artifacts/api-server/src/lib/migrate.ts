@@ -1595,6 +1595,55 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_events_feed_starts ON prayer_feed_events (feed_id, starts_at)`);
 
+    // ── Group daily reflections (beta) ───────────────────────────────────
+    // A community pins a daily-reflection source (CAC or Forward Day by
+    // Day), members tap out to read it, then write a short reflection
+    // shared with the community. Comments are open to any group member.
+    // Idempotent DDL — runs on every boot.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_reflection_sources (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL UNIQUE REFERENCES groups(id) ON DELETE CASCADE,
+        source TEXT NOT NULL,
+        set_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_reflections (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        reflection_date DATE NOT NULL,
+        source TEXT NOT NULL,
+        body TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE UNIQUE INDEX IF NOT EXISTS group_reflections_unique_per_day
+      ON group_reflections (group_id, user_id, reflection_date, source)
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS group_reflections_by_group_date
+      ON group_reflections (group_id, reflection_date)
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_reflection_comments (
+        id SERIAL PRIMARY KEY,
+        reflection_id INTEGER NOT NULL REFERENCES group_reflections(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        body TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS group_reflection_comments_by_reflection
+      ON group_reflection_comments (reflection_id, created_at)
+    `);
+
     // Backfill: every existing climate-enrolled user gets a subscription
     // to phoebe-climate so they pick up feed-scoped intercessions on
     // their dashboard and slideshow without a manual opt-in step.

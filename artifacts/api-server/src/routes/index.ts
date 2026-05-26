@@ -35,6 +35,7 @@ import adminMetricsRouter from "./admin-metrics";
 import meetupsRouter from "./meetups";
 import cacRouter from "./cac";
 import ncmpRouter from "./ncmp";
+import groupReflectionsRouter from "./group-reflections";
 
 const router: IRouter = Router();
 
@@ -145,5 +146,6 @@ router.use(adminMetricsRouter);
 router.use(meetupsRouter);
 router.use(cacRouter);
 router.use(ncmpRouter);
+router.use(groupReflectionsRouter);
 
 export default router;

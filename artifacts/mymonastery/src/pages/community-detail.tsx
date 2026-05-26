@@ -468,6 +468,99 @@ function PrayerInviteCard({ slug }: { slug: string }) {
   );
 }
 
+// Daily-reflection entry card — beta-only. Surfaces today's source
+// (CAC Daily Reflection or Forward Day by Day) + how many community
+// members have already posted a reflection, and routes to
+// /communities/:slug/reflection on tap. When the community hasn't
+// picked a source yet, we still render the card for admins (with a
+// "Pick a source" sub) so they have a discoverable doorway in;
+// non-admin members see nothing until the source is set.
+function ReflectionEntryCard({ slug }: { slug: string }) {
+  const [, setLocation] = useLocation();
+  const today = (() => new Date().toLocaleDateString("en-CA"))();
+  const { data } = useQuery<{
+    source: "cac" | "fdd" | null;
+    memberCount: number;
+    isAdmin: boolean;
+    reflections: { id: number }[];
+  }>({
+    queryKey: [`/api/groups/${slug}/reflections`, today],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/reflections?date=${today}`),
+  });
+  if (!data) return null;
+  // Source-off + non-admin viewer → hide the card entirely so the
+  // community page doesn't show an empty-looking module to people
+  // who can't act on it.
+  if (!data.source && !data.isAdmin) return null;
+
+  const sourceLabel = data.source === "fdd"
+    ? "Forward Day by Day"
+    : data.source === "cac"
+      ? "CAC Daily Reflection"
+      : null;
+  const emoji = data.source === "fdd" ? "📖" : "🌅";
+  const count = data.reflections.length;
+  return (
+    <div
+      onClick={() => setLocation(`/communities/${slug}/reflection`)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setLocation(`/communities/${slug}/reflection`);
+        }
+      }}
+      className="relative flex rounded-xl overflow-hidden cursor-pointer mb-3"
+      style={{
+        background: "rgba(46,107,64,0.10)",
+        border: "1px solid rgba(46,107,64,0.30)",
+      }}
+    >
+      <div className="w-1 flex-shrink-0" style={{ background: "#5C8A5F" }} />
+      <div className="flex-1 px-4 py-3">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl" aria-hidden>{emoji}</span>
+          <div className="flex-1 min-w-0">
+            <p
+              className="text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: "rgba(143,175,150,0.6)" }}
+            >
+              Today's reflection
+              <span
+                className="ml-2 inline-flex items-center px-1.5 py-0 rounded-full text-[8px]"
+                style={{
+                  background: "rgba(46,107,64,0.25)",
+                  color: "#A8C5A0",
+                  letterSpacing: "0.1em",
+                }}
+              >
+                BETA
+              </span>
+            </p>
+            <p
+              className="text-sm font-semibold mt-0.5"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              {sourceLabel ?? "Pick a daily reflection"}
+            </p>
+            <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>
+              {data.source
+                ? (count === 0
+                    ? "No reflections yet today"
+                    : count === 1
+                      ? "1 reflection shared"
+                      : `${count} reflections shared`)
+                : "Choose CAC or Forward Day by Day for your community"}
+            </p>
+          </div>
+          <span className="text-sm shrink-0" style={{ color: "#8FAF96" }}>→</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // an auto-scroll ticker so the pills stay legible instead of wrapping or
 // clipping. Mirrors the dashboard's ServiceTimesPillRow verbatim so the
 // card looks identical to the one on the home screen.
@@ -1522,6 +1615,12 @@ export default function CommunityDetailPage() {
             Sends a push + email to every joined member; rate-limited
             to once per 7 days server-side. Hidden for non-admins. */}
         {isAdmin && <PrayerInviteCard slug={slug} />}
+
+        {/* Beta-only — daily reflection entry (CAC / Forward Day by
+            Day). Renders for every joined member of a beta-gated
+            community; the page itself handles the "not enabled"
+            empty state when the admin hasn't picked a source yet. */}
+        {rawIsBeta && <ReflectionEntryCard slug={slug} />}
 
         {/* ── Prayer Circle intentions ──────────────────────────────────
             For circle groups, surface every active intention as its own card

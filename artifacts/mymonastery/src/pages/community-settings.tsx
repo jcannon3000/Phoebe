@@ -382,6 +382,14 @@ export default function CommunitySettingsPage() {
 
         <div className="h-px mb-6" style={{ background: "rgba(200,212,192,0.12)" }} />
 
+        {/* ── Daily reflection (beta) ──────────────────────────────────────
+            Admins pick a daily-reflection source for the community — CAC
+            Daily Reflection or Forward Day by Day. Members then get a
+            card on /communities/:slug with an "Open today's reading"
+            button + a write-and-share composer. Off by default; the
+            admin can set, change, or clear it any time. */}
+        {isBeta && <ReflectionSourcePicker slug={slug ?? ""} />}
+
         {/* ── Prayer Circle (beta) ──────────────────────────────────────────
             Admins can turn any community into a prayer circle here, or toggle
             an existing circle back to a normal community. When on, the
@@ -758,6 +766,118 @@ export default function CommunitySettingsPage() {
         </>)}
       </div>
     </Layout>
+  );
+}
+
+// ─── Reflection source picker (beta) ──────────────────────────────────────
+// Lets a community admin choose the daily-reflection source (CAC Daily
+// Reflection or Forward Day by Day), or clear it. Backed by the
+// /api/groups/:slug/reflection-source endpoint pair. Each tap saves
+// immediately — reads as a setting, not a form, matching the office-
+// reminder picker pattern on the user settings page.
+function ReflectionSourcePicker({ slug }: { slug: string }) {
+  const queryClient = useQueryClient();
+  const { data } = useQuery<{
+    source: "cac" | "fdd" | null;
+    isAdmin: boolean;
+  }>({
+    queryKey: [`/api/groups/${slug}/reflection-source`],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/reflection-source`),
+    enabled: !!slug,
+  });
+  const save = useMutation({
+    mutationFn: (source: "cac" | "fdd" | null) =>
+      apiRequest("PUT", `/api/groups/${slug}/reflection-source`, { source }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/groups/${slug}/reflection-source`] });
+      queryClient.invalidateQueries({
+        // The detail-page ReflectionEntryCard reads the same `/reflections`
+        // endpoint that returns `source`, so we have to invalidate any
+        // date-stamped variant — predicate matches the partial key.
+        predicate: (q) =>
+          Array.isArray(q.queryKey)
+          && typeof q.queryKey[0] === "string"
+          && q.queryKey[0] === `/api/groups/${slug}/reflections`,
+      });
+    },
+  });
+  const current = data?.source ?? null;
+  const options: Array<{ value: "cac" | "fdd" | null; label: string; sub: string }> = [
+    {
+      value: null,
+      label: "Off",
+      sub: "No daily reflection card on this community",
+    },
+    {
+      value: "cac",
+      label: "CAC Daily Reflection",
+      sub: "Center for Action & Contemplation · daily",
+    },
+    {
+      value: "fdd",
+      label: "Forward Day by Day",
+      sub: "Forward Movement · Episcopal daily devotional",
+    },
+  ];
+  return (
+    <>
+      <label
+        className="text-[11px] font-semibold uppercase tracking-widest block mb-2"
+        style={{ color: "rgba(143,175,150,0.6)" }}
+      >
+        Daily reflection
+        <span
+          className="ml-2 inline-flex items-center px-1.5 py-0 rounded-full text-[8px]"
+          style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", letterSpacing: "0.1em" }}
+        >
+          BETA
+        </span>
+      </label>
+      <p className="text-xs leading-relaxed mb-3" style={{ color: "rgba(168,197,160,0.7)" }}>
+        Pick a daily reading the community taps to open each morning. After
+        they read it, they're prompted to write a reflection shared with the
+        whole community — others can comment on each one.
+      </p>
+      <div
+        className="rounded-xl px-4 py-2 mb-6"
+        style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+      >
+        {options.map((opt, i) => {
+          const isSelected = current === opt.value;
+          return (
+            <button
+              key={String(opt.value ?? "off")}
+              type="button"
+              onClick={() => save.mutate(opt.value)}
+              disabled={save.isPending}
+              className="w-full flex items-center gap-3 py-2.5 text-left disabled:opacity-50"
+              style={{
+                borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.10)",
+                background: "transparent",
+                cursor: save.isPending ? "wait" : "pointer",
+              }}
+            >
+              <div
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+                  background: isSelected ? "#A8C5A0" : "transparent",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                  {opt.label}
+                </p>
+                <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+                  {opt.sub}
+                </p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
