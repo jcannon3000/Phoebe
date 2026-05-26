@@ -21,6 +21,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
@@ -71,15 +72,28 @@ const SLOT_LABEL: Record<number, string> = { 1: "First", 2: "Second", 3: "Third"
 export default function ParishDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
+  // Beta-preview mode: a beta user is full-tier by derivation (beta
+  // wins in parishGate.ts), but should still be able to walk the
+  // Parish surface end-to-end. We treat them as parish-only for the
+  // purpose of redirects + data fetches when they have a parishFeedId,
+  // and route them to /parish/onboarding to pick one when they don't.
+  const isParishPreviewer = !!user && user.accessTier === "full" && rawIsBeta;
+  const showParishContent = !!user && (user.accessTier === "parish-only" || isParishPreviewer);
 
   // Sanity-redirect: if the user landed here but isn't actually in the
   // parish-only tier, send them where they belong. The router-level
   // gate covers the same case but a direct URL hit shouldn't hang on
   // a blank page.
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || betaLoading) return;
     if (!user) { setLocation("/"); return; }
-    if (user.accessTier === "full") setLocation("/dashboard");
+    if (user.accessTier === "full" && !rawIsBeta) setLocation("/dashboard");
+    // Beta previewers without a parishFeedId belong on the picker, not
+    // a blank dashboard. parish-only users without one shouldn't exist
+    // (the tier is derived from parishFeedId being set), but the same
+    // bounce handles them just in case.
+    if (isParishPreviewer && user.parishFeedId == null) setLocation("/parish/onboarding");
     if (user.accessTier === "unassigned") setLocation("/parish/onboarding");
     // Walk every signed-in user through the user-onboarding slideshow
     // (profile pic → Daily Office intro → daily-habit → safe-space →
@@ -89,12 +103,12 @@ export default function ParishDashboard() {
     if (user.accessTier !== "unassigned" && !user.onboardingCompleted) {
       setLocation("/onboarding");
     }
-  }, [user, authLoading, setLocation]);
+  }, [user, authLoading, betaLoading, rawIsBeta, isParishPreviewer, setLocation]);
 
   const todayQuery = useQuery<ParishToday>({
     queryKey: ["/api/parish/today"],
     queryFn: () => apiRequest("GET", "/api/parish/today"),
-    enabled: !!user && user.accessTier === "parish-only",
+    enabled: showParishContent,
     staleTime: 60_000,
   });
 
@@ -488,8 +502,10 @@ export default function ParishDashboard() {
         ) : null}
 
         {/* Today's parish intercessions — parish-only; an offices-only
-            account has no parish slate of its own. */}
-        {user.accessTier === "parish-only" && (
+            account has no parish slate of its own. (Beta previewers
+            are shown the same content so they can see the surface
+            end-to-end.) */}
+        {showParishContent && (
         <>
         <p
           style={{

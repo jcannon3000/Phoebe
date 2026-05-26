@@ -431,8 +431,16 @@ export function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10" }}>
       <header
-        className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pt-5 pb-2 md:pt-6 md:pb-5 flex justify-between items-center"
-        style={{ background: "#091A10" }}
+        className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pb-2 md:pb-5 flex justify-between items-center"
+        style={{
+          background: "#091A10",
+          // Pad the top by the iPhone notch height plus a little so the
+          // "Phoebe" wordmark sits below the system clock / camera
+          // housing on notched devices. Falls back to the old 20px/24px
+          // padding on devices without a safe-area inset (web, older
+          // iPhones, Android).
+          paddingTop: "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))",
+        }}
       >
         <div className="flex items-center gap-6">
           <Link

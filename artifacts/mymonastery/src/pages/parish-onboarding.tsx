@@ -18,6 +18,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { apiRequest } from "@/lib/queryClient";
 
 const BG = "#091A10";
@@ -40,16 +41,20 @@ export default function ParishOnboarding() {
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
   const [selected, setSelected] = useState<number | null>(null);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || betaLoading) return;
     if (!user) { setLocation("/"); return; }
-    // Already has a parish or is a full-app user — they don't belong
-    // here. Bounce to the right surface.
+    // Already has a parish — they don't belong on the picker.
     if (user.accessTier === "parish-only") { setLocation("/parish"); return; }
-    if (user.accessTier === "full") { setLocation("/dashboard"); return; }
-  }, [user, authLoading, setLocation]);
+    // Full-app users get bounced UNLESS they're in the beta — beta
+    // users are full-tier (beta wins the tier derivation) but should
+    // still be able to walk the parish picker as a preview, and
+    // POST /api/parish/subscribe is itself beta-gated on the server.
+    if (user.accessTier === "full" && !rawIsBeta) { setLocation("/dashboard"); return; }
+  }, [user, authLoading, betaLoading, rawIsBeta, setLocation]);
 
   const parishesQuery = useQuery<{ parishes: ParishCard[] }>({
     queryKey: ["/api/parishes/public"],

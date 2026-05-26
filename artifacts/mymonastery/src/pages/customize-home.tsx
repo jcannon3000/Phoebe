@@ -81,13 +81,14 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
 
   const [order, setOrder] = useState<HomeModule[]>(() => buildOrder(user?.homeLayout?.order, fallbackOrder));
   const [hidden, setHidden] = useState<Set<string>>(() => {
+    // First customization (no homeLayout row) hides the secondary
+    // practices by default so the home doesn't feel cluttered out of
+    // the gate. Once savedHidden exists, trust it — we used to ALSO
+    // re-hide every module missing from saved order, which silently
+    // un-did the user's "show Gratitude" toggle whenever their saved
+    // order pre-dated the new module.
     const savedHidden = user?.homeLayout?.hidden;
-    const savedOrder = user?.homeLayout?.order;
-    // Modules the user has never seen (not in their saved order) default to
-    // hidden, so adding Gratitude / Examen doesn't suddenly populate the
-    // homes of users who already customized.
-    const newlyAdded = savedOrder ? HOME_MODULES.filter((k) => !savedOrder.includes(k)) : [];
-    const s = new Set<string>([...(savedHidden ?? ["contemplation", "gratitude", "examen"]), ...newlyAdded]);
+    const s = new Set<string>(savedHidden ?? ["contemplation", "gratitude", "examen"]);
     s.delete(PINNED); // Prayer requests can never be hidden.
     return s;
   });

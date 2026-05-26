@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { triggerAmenFeedback, playOpeningSwell } from "@/lib/amenFeedback";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 // ── Public, no-login prayer-feed landing ─────────────────────────────────────
 //
@@ -277,8 +278,15 @@ function PrayingScreen({
   //   • optional body card in italic Space Grotesk
   //   • "Take action" / "Learn more" link (matching prayer-mode's card)
   //   • centered Amen pill + "Not today" skip + "N of M" progress
+  // The subtle animated gradient backdrop matches the logged-in
+  // prayer-mode + bcp-daily-office surfaces — visitors who land on
+  // /feed/:slug get the same breathing-green ambience the app uses.
   return (
-    <div className="min-h-screen flex flex-col relative" style={{ background: BG, fontFamily: SPACE_GROTESK }}>
+    <div
+      className="min-h-screen flex flex-col relative"
+      style={{ background: BG, fontFamily: SPACE_GROTESK, isolation: "isolate" }}
+    >
+      <AnimatedBackground base={BG} variant="subtle" fadeTop />
       <button
         onClick={onClose}
         aria-label="Close"

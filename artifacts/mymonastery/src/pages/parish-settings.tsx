@@ -22,6 +22,7 @@ import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth, useLogout } from "@/hooks/useAuth";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { apiRequest } from "@/lib/queryClient";
 
 const BG = "#091A10";
@@ -72,24 +73,32 @@ export default function ParishSettings() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const logout = useLogout();
+  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
+  // Beta-preview mode: same carve-out as parish-dashboard. Beta users
+  // are "full" tier (beta wins) but should see the parish surface.
+  const isParishPreviewer = !!user && user.accessTier === "full" && rawIsBeta && user.parishFeedId != null;
+  const showParishContent = !!user && (user.accessTier === "parish-only" || isParishPreviewer);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || betaLoading) return;
     if (!user) { setLocation("/"); return; }
-    if (user.accessTier === "full") { setLocation("/settings"); return; }
+    // Full-tier users go to the regular settings, UNLESS they're a
+    // beta previewer with a parishFeedId — they get to see parish
+    // settings too.
+    if (user.accessTier === "full" && !isParishPreviewer) { setLocation("/settings"); return; }
     if (user.accessTier === "unassigned") { setLocation("/parish/onboarding"); return; }
-  }, [user, authLoading, setLocation]);
+  }, [user, authLoading, betaLoading, isParishPreviewer, setLocation]);
 
   const prefsQuery = useQuery<ParishPrefs>({
     queryKey: ["/api/parish/prefs"],
     queryFn: () => apiRequest("GET", "/api/parish/prefs"),
-    enabled: !!user && user.accessTier === "parish-only",
+    enabled: showParishContent,
   });
 
   const todayQuery = useQuery<ParishToday>({
     queryKey: ["/api/parish/today"],
     queryFn: () => apiRequest("GET", "/api/parish/today"),
-    enabled: !!user && user.accessTier === "parish-only",
+    enabled: showParishContent,
     staleTime: 60_000,
   });
 

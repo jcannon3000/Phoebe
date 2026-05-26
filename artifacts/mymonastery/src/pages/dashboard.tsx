@@ -4531,14 +4531,17 @@ export default function Dashboard() {
   // anchor — it gets the full office card / the feed hero card.
   const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
-  // Prayer requests always leads — never hidden. Newly-added modules
-  // (Gratitude / Examen) default to hidden so they don't suddenly populate
-  // the homes of users who already customized.
+  // Prayer requests always leads — never hidden. For users who've
+  // never customized (no homeLayout row) we hide the secondary practices
+  // (Contemplation / Gratitude / Examen) by default so the home doesn't
+  // feel cluttered out of the gate. Once savedHidden exists, it IS the
+  // source of truth — we used to ALSO add "modules missing from saved
+  // order" back to hidden, which silently un-did a user's toggle if
+  // their saved order pre-dated the new module (e.g. they customized
+  // before Gratitude existed and then later toggled it visible).
   const homeHidden = (() => {
     const savedHidden = user?.homeLayout?.hidden;
-    const savedOrder = user?.homeLayout?.order;
-    const newlyAdded = savedOrder ? HOME_MODULES.filter((k) => !savedOrder.includes(k)) : [];
-    const s = new Set<string>([...(savedHidden ?? ["contemplation", "gratitude", "examen"]), ...newlyAdded]);
+    const s = new Set<string>(savedHidden ?? ["contemplation", "gratitude", "examen"]);
     s.delete("requests");
     return s;
   })();

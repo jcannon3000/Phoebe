@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -20,20 +21,25 @@ import {
 const SANS = "'Space Grotesk', sans-serif";
 const SERIF = "Georgia, 'Times New Roman', serif";
 
-const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+// Month names — keyed by t() so they localize. Indexed 0–11 to match
+// JS Date conventions, even though the calling code passes 1-based
+// month numbers (we subtract 1 at the lookup site).
+const MONTH_KEYS = [
+  "saints.month_january", "saints.month_february", "saints.month_march", "saints.month_april",
+  "saints.month_may", "saints.month_june", "saints.month_july", "saints.month_august",
+  "saints.month_september", "saints.month_october", "saints.month_november", "saints.month_december",
 ];
 
 // Saints grouped by feast month (calendar order), days sorted within.
-// Computed once — the seed is static.
+// Computed once — the seed is static. Month name is now resolved at
+// render time via t() so it localizes.
 const BY_MONTH = (() => {
-  const groups: { month: number; name: string; saints: Saint[] }[] = [];
+  const groups: { month: number; nameKey: string; saints: Saint[] }[] = [];
   for (let m = 1; m <= 12; m++) {
     const saints = SAINTS.filter((s) => s.feastDate.month === m).sort(
       (a, b) => a.feastDate.day - b.feastDate.day,
     );
-    if (saints.length) groups.push({ month: m, name: MONTH_NAMES[m - 1], saints });
+    if (saints.length) groups.push({ month: m, nameKey: MONTH_KEYS[m - 1], saints });
   }
   return groups;
 })();
@@ -44,6 +50,7 @@ function cap(s: string): string {
 
 export default function SaintsIndex() {
   const { user, isLoading } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Saint | null>(null);
@@ -95,13 +102,13 @@ export default function SaintsIndex() {
         {/* Header */}
         <div className="mb-6">
           <Link href="/dashboard" className="text-sm mb-3 inline-block" style={{ color: "#8FAF96" }}>
-            ← Dashboard
+            {t("saints.back_dashboard")}
           </Link>
           <h1 className="text-2xl font-bold mb-1" style={{ color: "#F0EDE6", fontFamily: SANS }}>
-            Saints 📿
+            {t("saints.title")} 📿
           </h1>
           <p className="text-sm" style={{ color: "#8FAF96" }}>
-            The Episcopal calendar of commemorations — search by name, need, or vocation
+            {t("saints.subtitle")}
           </p>
         </div>
 
@@ -111,7 +118,7 @@ export default function SaintsIndex() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search saints by name, need, or vocation…"
+            placeholder={t("saints.search_placeholder")}
             className="w-full text-sm px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/30 focus:border-[#8FAF96]/60 transition-all"
             style={{ backgroundColor: "#091A10", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6" }}
           />
@@ -129,12 +136,12 @@ export default function SaintsIndex() {
         {query.trim() ? (
           results.length === 0 ? (
             <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.5)" }}>
-              No saints found for "{query}"
+              {t("saints.no_results", { query })}
             </p>
           ) : (
             <div className="space-y-1">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-3" style={{ color: "rgba(143,175,150,0.4)" }}>
-                {results.length} {results.length === 1 ? "result" : "results"}
+                {t("saints.results_count", { count: results.length })}
               </p>
               {results.map((s) => <Row key={s.id} s={s} />)}
             </div>
@@ -142,7 +149,7 @@ export default function SaintsIndex() {
         ) : (
           /* Month accordion — shown when not searching */
           <div className="space-y-2">
-            {BY_MONTH.map(({ month, name, saints }) => {
+            {BY_MONTH.map(({ month, nameKey, saints }) => {
               const isOpen = openMonth === month;
               return (
                 <div key={month}>
@@ -157,10 +164,10 @@ export default function SaintsIndex() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-semibold text-sm" style={{ color: "#F0EDE6", fontFamily: SANS }}>
-                          {name}
+                          {t(nameKey)}
                         </p>
                         <p className="text-xs mt-0.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-                          {saints.length} {saints.length === 1 ? "commemoration" : "commemorations"}
+                          {t("saints.commemorations_count", { count: saints.length })}
                         </p>
                       </div>
                       <span className="text-sm" style={{ color: "#8FAF96", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.2s" }}>
@@ -181,7 +188,7 @@ export default function SaintsIndex() {
         )}
 
         <p className="text-[11px] text-center mt-8" style={{ color: "rgba(143,175,150,0.4)", fontFamily: SANS }}>
-          {SAINTS.length} commemorations · Lesser Feasts &amp; Fasts (2022) and A Great Cloud of Witnesses
+          {t("saints.footer", { count: SAINTS.length })}
         </p>
       </div>
 
@@ -248,7 +255,7 @@ export default function SaintsIndex() {
               {selected.knownFor && (
                 <>
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2" style={{ color: "rgba(143,175,150,0.5)" }}>
-                    Known for
+                    {t("saints.known_for")}
                   </p>
                   <p className="text-[15px] leading-relaxed" style={{ color: "#C8D4C0", fontFamily: SERIF }}>
                     {selected.knownFor}
@@ -259,7 +266,7 @@ export default function SaintsIndex() {
               {selected.patronOf.length > 0 && (
                 <>
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] mt-6 mb-2" style={{ color: "rgba(143,175,150,0.5)" }}>
-                    Traditionally invoked for
+                    {t("saints.traditionally_invoked")}
                   </p>
                   <p className="text-[15px] leading-relaxed" style={{ color: "#C8D4C0", fontFamily: SERIF }}>
                     {selected.patronOf.join(", ")}
@@ -270,7 +277,7 @@ export default function SaintsIndex() {
               {selected.collectExcerpt && (
                 <>
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] mt-6 mb-2" style={{ color: "rgba(143,175,150,0.5)" }}>
-                    From the collect
+                    {t("saints.from_the_collect")}
                   </p>
                   <p className="text-[16px] leading-relaxed pl-3 italic" style={{ color: "rgba(168,197,160,0.95)", fontFamily: SERIF, borderLeft: "2px solid rgba(46,107,64,0.5)" }}>
                     {selected.collectExcerpt}
@@ -281,7 +288,7 @@ export default function SaintsIndex() {
               {selected.anglicanNote && (
                 <>
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] mt-6 mb-2" style={{ color: "rgba(143,175,150,0.5)" }}>
-                    In the Anglican tradition
+                    {t("saints.anglican_tradition")}
                   </p>
                   <p className="text-[14px] leading-relaxed" style={{ color: "rgba(200,212,192,0.82)", fontFamily: SERIF }}>
                     {selected.anglicanNote}
@@ -292,7 +299,7 @@ export default function SaintsIndex() {
               {selected.intercedesFor.length > 0 && (
                 <>
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] mt-6 mb-2" style={{ color: "rgba(143,175,150,0.5)" }}>
-                    A companion in
+                    {t("saints.companion_in")}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {selected.intercedesFor.map((i) => (
@@ -309,7 +316,7 @@ export default function SaintsIndex() {
               )}
 
               <p className="text-[11px] mt-7 pt-4 italic" style={{ color: "rgba(143,175,150,0.4)", borderTop: "1px solid rgba(46,107,64,0.12)" }}>
-                From Lesser Feasts &amp; Fasts (2022) and A Great Cloud of Witnesses. Collect excerpts from the 1979 Book of Common Prayer (public domain).
+                {t("saints.modal_footer")}
               </p>
             </div>
           </div>
