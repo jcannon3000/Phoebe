@@ -126,6 +126,7 @@ import GratitudePage from "./pages/gratitude";
 import BcpIntercessionsPage from "./pages/bcp-intercessions";
 import BcpDailyOfficePage from "./pages/bcp-daily-office";
 import BcpDailyDevotionPage from "./pages/bcp-daily-devotion";
+import OfficeSettingsPage from "./pages/office-settings";
 import BcpPsalterPage from "./pages/bcp-psalter";
 import BcpCollectsPage from "./pages/bcp-collects";
 import PublicPrayerPage from "./pages/public-prayer";
@@ -488,6 +489,13 @@ function Router() {
       <Route path="/gratitude" component={GratitudePage} />
       <Route path="/bcp" component={BcpPage} />
       <Route path="/bcp/intercessions" component={BcpIntercessionsPage} />
+      {/* Office-only Settings — focused subset of /settings that
+          only carries the office-relevant prefs (daily reminder,
+          Confession of Sin, closing pills, Gratitude slide).
+          Reached from the Settings pill on the Daily Offices chooser.
+          MUST come BEFORE /bcp/daily-office so wouter's first-match
+          Switch doesn't swallow it as the picker route. */}
+      <Route path="/bcp/daily-office/settings" component={OfficeSettingsPage} />
       <Route path="/bcp/daily-office" component={BcpDailyOfficePage} />
       <Route path="/bcp/daily-devotions" component={BcpDailyDevotionPage} />
       <Route path="/bcp/psalter" component={BcpPsalterPage} />

@@ -2441,12 +2441,40 @@ export default function BcpDailyOfficePage() {
           <Link href="/bcp" className="text-sm mb-3 inline-block" style={{ color: "#8FAF96" }}>
             ← Book of Common Prayer
           </Link>
-          <h1 className="text-2xl font-bold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-            Daily Offices 📖
-          </h1>
-          <p className="text-sm" style={{ color: "#8FAF96" }}>
-            The full Morning &amp; Evening Prayer, or the short Daily Devotions
-          </p>
+          {/* Header row: title + subtitle on the left, a "Settings"
+              pill on the right that opens the focused office-prefs
+              page (/bcp/daily-office/settings). The Layout's own
+              top-right pill group (Prayer list · People · Menu) sits
+              above this in the chrome — this pill lives inside the
+              page body so it's clearly scoped to the office. */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <h1
+                className="text-2xl font-bold mb-1"
+                style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+              >
+                Daily Offices 📖
+              </h1>
+              <p className="text-sm" style={{ color: "#8FAF96" }}>
+                The full Morning &amp; Evening Prayer, or the short Daily Devotions
+              </p>
+            </div>
+            <Link
+              href="/bcp/daily-office/settings"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80 shrink-0 mt-1"
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                letterSpacing: "-0.01em",
+                background: "rgba(46,107,64,0.18)",
+                color: "#C8D4C0",
+                border: "1px solid rgba(46,107,64,0.4)",
+              }}
+              aria-label="Office settings"
+            >
+              <span aria-hidden style={{ fontSize: 13 }}>⚙️</span>
+              Settings
+            </Link>
+          </div>
         </div>
 
         <SectionLabel>The full office</SectionLabel>
