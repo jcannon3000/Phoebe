@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest, ApiError } from "@/lib/queryClient";
 
@@ -52,6 +53,7 @@ export default function WriteLetter() {
   const [isComposeRoute] = useRoute("/letters/compose");
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { t } = useTranslation();
   // Offices-only accounts can't open /people (ParishGate blocks it), so
   // the "back to the person's profile" target in new/compose mode would
   // bounce them. Send them back to the new-letter flow instead.
@@ -425,14 +427,14 @@ export default function WriteLetter() {
         <p className="text-4xl mb-4">📮</p>
         <p className="text-base mb-2" style={{ color: "#2C1810" }}>{errorState.message}</p>
         {errorState.nextPeriodStart && (
-          <p className="text-sm mb-6" style={{ color: "#9a9390" }}>Next period starts {errorState.nextPeriodStart}.</p>
+          <p className="text-sm mb-6" style={{ color: "#9a9390" }}>{t("write_letter.next_period", { date: errorState.nextPeriodStart })}</p>
         )}
         <button
           onClick={() => setLocation(isNewMode ? (officesOnly ? "/letters/new" : `/people/${encodeURIComponent(newRecipientEmail)}`) : `/letters/${correspondenceId}${tokenParam}`)}
           className="text-sm font-medium"
           style={{ color: "#5C7A5F" }}
         >
-          ← Back
+          {t("common.back")}
         </button>
       </div>
     );
@@ -458,34 +460,34 @@ export default function WriteLetter() {
         <div className="text-center">
           <p className="text-[13px]" style={{ color: "#9a9390" }}>
             {isNewMode
-              ? `A letter to ${newRecipientName || newRecipientEmail.split("@")[0]}`
+              ? t("write_letter.a_letter_to", { name: newRecipientName || newRecipientEmail.split("@")[0] })
               : isOneToOne && otherMembers
-                ? `Letters with ${otherMembers}`
+                ? t("write_letter.letters_with", { name: otherMembers })
                 : correspondence?.name}
           </p>
           {isNewMode && (
             <p className="text-[13px] font-medium" style={{ color: "#5C7A5F" }}>
-              Letter 1
+              {t("letters.letter_n", { n: 1 })}
             </p>
           )}
           {correspondence?.currentPeriod && (
             <p className="text-[13px] font-medium" style={{ color: "#5C7A5F" }}>
-              {isOneToOne ? `Letter ${(correspondence.letters?.length ?? 0) + 1}` : `Round ${correspondence.currentPeriod.periodNumber}`}
+              {isOneToOne ? t("letters.letter_n", { n: (correspondence.letters?.length ?? 0) + 1 }) : t("correspondence.round_n", { n: correspondence.currentPeriod.periodNumber })}
             </p>
           )}
           {isFollowUp && (
             <p className="text-[12px] mt-0.5 font-medium" style={{ color: "#5C7A5F" }}>
-              Follow-up · no reply in 14 days 🕊️
+              {t("correspondence.follow_up_subtitle")}
             </p>
           )}
           {isOverdue && waitingDays > 0 && (
             <p className="text-[12px] mt-0.5" style={{ color: "#C17F24" }}>
-              {otherMembers} has been waiting {waitingDays} days 🌿
+              {t("write_letter.has_been_waiting", { name: otherMembers, count: waitingDays })}
             </p>
           )}
           {isWaitingForWindow && windowOpenAt && (
             <p className="text-[12px] mt-0.5" style={{ color: "#9a9390" }}>
-              Draft ahead — window opens {windowOpenAt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+              {t("write_letter.draft_ahead", { date: windowOpenAt.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) })}
             </p>
           )}
         </div>
@@ -497,7 +499,7 @@ export default function WriteLetter() {
         {!user && confirmSend ? (
           <div>
             <p className="text-sm mb-3" style={{ color: "#6b6460" }}>
-              Sign in to send your letter. Your draft is saved.
+              {t("write_letter.sign_in_to_send")}
             </p>
             <div className="flex items-center gap-3 flex-wrap">
               {(() => {
@@ -514,20 +516,20 @@ export default function WriteLetter() {
                       className="px-4 py-2.5 rounded-xl text-sm font-semibold"
                       style={{ background: "#5C7A5F", color: "#fff" }}
                     >
-                      Log in →
+                      {t("write_letter.log_in")}
                     </a>
                     <a
                       href={`/?signup=1&redirect=${encodeURIComponent(returnPath)}`}
                       className="px-4 py-2.5 rounded-xl text-sm font-semibold"
                       style={{ background: "transparent", border: "1px solid #C8BFB0", color: "#5C7A5F" }}
                     >
-                      Create account →
+                      {t("write_letter.create_account")}
                     </a>
                   </>
                 );
               })()}
               <button onClick={() => setConfirmSend(false)} className="text-sm" style={{ color: "#9a9390" }}>
-                Keep writing
+                {t("write_letter.keep_writing")}
               </button>
             </div>
           </div>
@@ -542,27 +544,27 @@ export default function WriteLetter() {
               </span>
               {wordCount >= cap_visible_at ? (
                 <span className="text-[13px]" style={{ color: "#9a9390" }}>
-                  / {maxWords} words
+                  {t("write_letter.of_n_words", { count: maxWords })}
                 </span>
               ) : (
                 <span className="text-[13px]" style={{ color: "#9a9390" }}>
-                  words
+                  {t("write_letter.words")}
                 </span>
               )}
               {!wordCountMet && (
                 <span className="text-[12px]" style={{ color: "#C17F24" }}>
-                  · {minWords - wordCount} to go
+                  {t("write_letter.to_go", { count: minWords - wordCount })}
                 </span>
               )}
               {wordCount > maxWords && (
                 <span className="text-[12px]" style={{ color: "#C47A65" }}>
-                  · {wordCount - maxWords} over
+                  {t("write_letter.over", { count: wordCount - maxWords })}
                 </span>
               )}
             </div>
             <div className="flex items-center gap-3">
               {showSaved && (
-                <span className="text-[12px]" style={{ color: "#5C7A5F" }}>Saved 🌿</span>
+                <span className="text-[12px]" style={{ color: "#5C7A5F" }}>{t("write_letter.saved")}</span>
               )}
               <button
                 onClick={handleSendClick}
@@ -571,15 +573,15 @@ export default function WriteLetter() {
                 style={{ background: "#5C7A5F", color: "#fff" }}
               >
                 {isWaitingForWindow
-                  ? `Send in ${daysUntilOpen}d`
-                  : "Send ✉️"}
+                  ? t("write_letter.send_in_n_d", { count: daysUntilOpen })
+                  : t("write_letter.send")}
               </button>
             </div>
           </div>
         ) : (
           <div>
             <p className="text-sm mb-3" style={{ color: "#6b6460" }}>
-              Send your {isOneToOne ? "letter" : "update"}? Can't be edited after.
+              {isOneToOne ? t("write_letter.send_confirm_letter") : t("write_letter.send_confirm_update")}
             </p>
             <div className="flex items-center gap-4">
               <button
@@ -588,10 +590,10 @@ export default function WriteLetter() {
                 className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
                 style={{ background: "#5C7A5F", color: "#fff" }}
               >
-                {sendMutation.isPending ? "Sending..." : "Send ✉️"}
+                {sendMutation.isPending ? t("write_letter.sending") : t("write_letter.send")}
               </button>
               <button onClick={() => setConfirmSend(false)} className="text-sm" style={{ color: "#9a9390" }}>
-                Keep writing
+                {t("write_letter.keep_writing")}
               </button>
             </div>
           </div>
@@ -619,7 +621,7 @@ export default function WriteLetter() {
                 className="text-[11px] font-semibold uppercase tracking-[0.14em]"
                 style={{ color: "#9a9390" }}
               >
-                You're responding to
+                {t("write_letter.responding_to")}
               </p>
               <p className="text-[11px]" style={{ color: "#9a9390" }}>
                 {new Date(respondingTo.sentAt).toLocaleDateString(undefined, {
@@ -648,7 +650,7 @@ export default function WriteLetter() {
             className="flex items-center justify-center mt-4 mb-2 text-[12px]"
             style={{ color: "#9a9390" }}
           >
-            <span>↓ Write your reply below ↓</span>
+            <span>{t("write_letter.write_reply_below")}</span>
           </div>
         </div>
       )}
@@ -664,10 +666,7 @@ export default function WriteLetter() {
           ref={textareaRef}
           value={content}
           onChange={(e) => { setContent(e.target.value); setConfirmSend(false); }}
-          placeholder={isOneToOne
-            ? `What's been happening these past two weeks?\n\nWhat do you want them to know?\nWhat are you carrying?\nWhat made you laugh?\n\nWrite as much or as little as feels right. 🌿`
-            : `What's been happening these past two weeks?\n\nA moment, a thought, something you noticed.\n50 words or more. 🌿`
-          }
+          placeholder={isOneToOne ? t("write_letter.placeholder_one_to_one") : t("write_letter.placeholder_group")}
           rows={8}
           className="w-full resize-none focus:outline-none placeholder:italic block"
           style={{
