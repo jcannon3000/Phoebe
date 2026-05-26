@@ -88,21 +88,23 @@ export default function ParishDashboard() {
   useEffect(() => {
     if (authLoading || betaLoading) return;
     if (!user) { setLocation("/"); return; }
-    if (user.accessTier === "full" && !rawIsBeta) setLocation("/dashboard");
+    // Onboarding takes priority over every other bounce: an
+    // assigned-tier user who hasn't walked the post-signup slideshow
+    // does that first, then comes back to whatever surface they were
+    // headed for. Used to be the LAST setLocation in this effect and
+    // worked by "last call wins" — explicit early return makes the
+    // priority order obvious and mutually exclusive with the other
+    // bounces.
+    if (user.accessTier !== "unassigned" && !user.onboardingCompleted) {
+      setLocation("/onboarding"); return;
+    }
     // Beta previewers without a parishFeedId belong on the picker, not
     // a blank dashboard. parish-only users without one shouldn't exist
     // (the tier is derived from parishFeedId being set), but the same
     // bounce handles them just in case.
-    if (isParishPreviewer && user.parishFeedId == null) setLocation("/parish/onboarding");
-    if (user.accessTier === "unassigned") setLocation("/parish/onboarding");
-    // Walk every signed-in user through the user-onboarding slideshow
-    // (profile pic → Daily Office intro → daily-habit → safe-space →
-    // first request) the first time they land here. Same gate the full
-    // /dashboard uses, applied to offices-only + parish-only so the
-    // intro doesn't get skipped for non-beta tiers.
-    if (user.accessTier !== "unassigned" && !user.onboardingCompleted) {
-      setLocation("/onboarding");
-    }
+    if (isParishPreviewer && user.parishFeedId == null) { setLocation("/parish/onboarding"); return; }
+    if (user.accessTier === "unassigned") { setLocation("/parish/onboarding"); return; }
+    if (user.accessTier === "full" && !rawIsBeta) { setLocation("/dashboard"); return; }
   }, [user, authLoading, betaLoading, rawIsBeta, isParishPreviewer, setLocation]);
 
   const todayQuery = useQuery<ParishToday>({
