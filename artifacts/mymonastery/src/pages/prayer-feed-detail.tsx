@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useLocation, useParams, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
@@ -64,6 +65,7 @@ interface FeedIntercession {
 
 export default function PrayerFeedDetailPage() {
   const { user, isLoading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
@@ -136,7 +138,7 @@ export default function PrayerFeedDetailPage() {
     return (
       <Layout>
         <div className="max-w-lg mx-auto w-full py-12 text-sm" style={{ color: "#8FAF96" }}>
-          Loading…
+          {t("common.loading")}
         </div>
       </Layout>
     );
@@ -145,7 +147,7 @@ export default function PrayerFeedDetailPage() {
     return (
       <Layout>
         <div className="max-w-lg mx-auto w-full py-12 text-sm" style={{ color: "#8FAF96" }}>
-          This feed isn't available.
+          {t("prayer_feed_detail.not_available")}
         </div>
       </Layout>
     );
@@ -162,7 +164,7 @@ export default function PrayerFeedDetailPage() {
           className="text-xs mb-4 flex items-center gap-1 transition-opacity hover:opacity-70"
           style={{ color: "#8FAF96" }}
         >
-          ← Back
+          {t("common.back")}
         </button>
 
         {/* Feed header */}
@@ -184,7 +186,7 @@ export default function PrayerFeedDetailPage() {
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{feed.tagline}</p>
             )}
             <p className="text-[11px] mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
-              {feed.subscriberCount} praying along
+              {t("prayer_feed_detail.praying_along", { count: feed.subscriberCount })}
             </p>
           </div>
           {isCreator && (
@@ -193,7 +195,7 @@ export default function PrayerFeedDetailPage() {
                 className="text-[11px] font-semibold px-3 py-1.5 rounded-full cursor-pointer transition-opacity hover:opacity-85"
                 style={{ background: "rgba(62,124,122,0.2)", border: "1px solid rgba(62,124,122,0.4)", color: "#F0EDE6" }}
               >
-                Manage
+                {t("prayer_feed_detail.manage")}
               </span>
             </Link>
           )}
@@ -209,7 +211,7 @@ export default function PrayerFeedDetailPage() {
                 className="text-[11px] font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80 disabled:opacity-50"
                 style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.2)", color: "#8FAF96" }}
               >
-                ✓ Subscribed · tap to unsubscribe
+                {t("prayer_feed_detail.subscribed_tap")}
               </button>
             ) : (
               <button
@@ -218,7 +220,7 @@ export default function PrayerFeedDetailPage() {
                 className="text-sm font-semibold px-5 py-2.5 rounded-full transition-opacity hover:opacity-90 disabled:opacity-50"
                 style={{ background: "#3E7C7A", color: "#F0EDE6" }}
               >
-                {feed.state === "live" ? "Subscribe" : "Coming soon"}
+                {feed.state === "live" ? t("prayer_feed_detail.subscribe") : t("prayer_feed_detail.coming_soon")}
               </button>
             )}
           </div>
@@ -239,11 +241,10 @@ export default function PrayerFeedDetailPage() {
             <div className="w-1 flex-shrink-0" style={{ background: "#2E6B40" }} />
             <div className="flex-1 px-4 py-3.5 min-w-0">
               <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
-                🕯️ Pray with {feed.title}
+                🕯️ {t("prayer_feed_detail.pray_with_feed", { feed: feed.title })}
               </p>
               <p className="text-sm mt-0.5 mb-3" style={{ color: "#8FAF96" }}>
-                {intercessions.length} ongoing{" "}
-                {intercessions.length === 1 ? "intercession" : "intercessions"} to carry in prayer.
+                {t("prayer_feed_detail.ongoing_intercessions", { count: intercessions.length })}
               </p>
               {/* "Pray the full list" routes to /prayer-mode's
                   shared intercession-slideshow with queue=feed so the
@@ -257,7 +258,7 @@ export default function PrayerFeedDetailPage() {
                 className="w-full text-sm font-semibold rounded-full py-2.5 transition-opacity hover:opacity-90"
                 style={{ background: "#2E6B40", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
               >
-                🕯️ Pray the full list →
+                🕯️ {t("prayer_feed_detail.pray_full_list")}
               </button>
             </div>
           </div>
@@ -270,7 +271,7 @@ export default function PrayerFeedDetailPage() {
               className="text-[10px] font-semibold uppercase tracking-widest mb-2"
               style={{ color: "rgba(200,212,192,0.45)" }}
             >
-              Upcoming events
+              {t("prayer_feed_detail.upcoming_events")}
             </p>
             <div className="flex flex-col gap-2">
               {events.map((ev) => (
@@ -287,13 +288,13 @@ export default function PrayerFeedDetailPage() {
           className="text-[10px] font-semibold uppercase tracking-widest mb-2"
           style={{ color: "rgba(200,212,192,0.45)" }}
         >
-          Prayers
+          {t("prayer_feed_detail.prayers")}
         </p>
         {intercessions.length === 0 ? (
           <p className="text-sm italic" style={{ color: "rgba(143,175,150,0.6)" }}>
             {isCreator
-              ? "No intercessions yet — add the first from Manage."
-              : "No intercessions in this feed yet."}
+              ? t("prayer_feed_detail.empty_creator")
+              : t("prayer_feed_detail.empty_subscriber")}
           </p>
         ) : (
           <div className="space-y-2">
@@ -333,7 +334,7 @@ export default function PrayerFeedDetailPage() {
                       <div onClick={(e) => e.stopPropagation()} className="shrink-0">
                         <ExternalLinkPill
                           url={it.learnMoreUrl}
-                          label={isAction ? "Take action →" : "Learn more →"}
+                          label={isAction ? t("prayer_feed_detail.take_action") : t("prayer_feed_detail.learn_more")}
                           size="small"
                         />
                       </div>
