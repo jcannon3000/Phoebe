@@ -258,6 +258,24 @@ export const en = {
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
   },
+  // Correspondence thread page (pages/Letters/CorrespondencePage.tsx).
+  correspondence: {
+    follow_up_chip: "Follow-up",
+    follow_up_subtitle: "Follow-up · no reply in 14 days 🕊️",
+    send_follow_up: "Send a follow-up 🖋️",
+    calendar_prompt_title: "📅 Get a calendar reminder when it's your turn?",
+    calendar_prompt_body: "We'll drop an all-day event on your Google Calendar the Friday your writing window opens — a gentle nudge, nothing more.",
+    calendar_yes: "Yes, remind me",
+    calendar_no: "No thanks",
+    no_letters_yet: "No letters yet.",
+    waiting_for_first: "Waiting for {{name}} to write the first letter.",
+    round_n: "Round {{n}}",
+    waiting_days_one: "{{name}} has been waiting 1 day · no rush 🌿",
+    waiting_days_other: "{{name}} has been waiting {{count}} days · no rush 🌿",
+    window_opens_today: "Window opens today · your draft will wait",
+    your_turn_to_share: "Your turn to share",
+    update_in_for_round: "Your update is in for this round 🌿",
+  },
   // Contemplation timer overlay (components/ContemplationTimer.tsx).
   contemplation_timer: {
     how_long: "How long would you like to pray?",

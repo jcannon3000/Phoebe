@@ -3,6 +3,7 @@ import { Link, useRoute, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { differenceInCalendarDays } from "date-fns";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
@@ -72,6 +73,7 @@ export default function CorrespondencePage() {
   const [, params] = useRoute("/letters/:id");
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const correspondenceId = params?.id;
   const token = new URLSearchParams(window.location.search).get("token");
   const tokenParam = token ? `?token=${token}` : "";
@@ -156,8 +158,8 @@ export default function CorrespondencePage() {
     .join(", ");
 
   const periodLabel = isOneToOne
-    ? `Letter ${letters.length + 1}`
-    : `Round ${currentPeriod.periodNumber}`;
+    ? t("letters.letter_n", { n: letters.length + 1 })
+    : t("correspondence.round_n", { n: currentPeriod.periodNumber });
 
   const turnState: TurnState | undefined = data.turnState;
   // Server computes the window in UTC; if a letter was sent late-evening in
@@ -203,17 +205,17 @@ export default function CorrespondencePage() {
         {/* Back row */}
         <div className="flex items-center justify-between mb-4">
           <button onClick={() => setLocation("/letters")} className="text-sm" style={{ color: "#8FAF96" }}>
-            ← Letters
+            ← {t("letters_page.title")}
           </button>
           {!showArchiveConfirm ? (
             <button onClick={() => setShowArchiveConfirm(true)} className="text-xs" style={{ color: "#8FAF96" }}>
-              Archive
+              {t("letters.archive")}
             </button>
           ) : (
             <div className="flex items-center gap-3">
-              <span className="text-xs" style={{ color: "#8FAF96" }}>Archive this?</span>
-              <button onClick={() => archiveMutation.mutate()} className="text-xs font-medium" style={{ color: "#C8D4C0" }}>Yes</button>
-              <button onClick={() => setShowArchiveConfirm(false)} className="text-xs" style={{ color: "#8FAF96" }}>Cancel</button>
+              <span className="text-xs" style={{ color: "#8FAF96" }}>{t("letters.archive_this")}</span>
+              <button onClick={() => archiveMutation.mutate()} className="text-xs font-medium" style={{ color: "#C8D4C0" }}>{t("common.yes")}</button>
+              <button onClick={() => setShowArchiveConfirm(false)} className="text-xs" style={{ color: "#8FAF96" }}>{t("common.cancel")}</button>
             </div>
           )}
         </div>
@@ -225,8 +227,8 @@ export default function CorrespondencePage() {
         <div className="flex items-start justify-between gap-3 mb-1">
           <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
             {isOneToOne && otherMembers
-              ? `Dialogue with ${otherMembers}`
-              : (data.name?.replace(/^Letters with\b/, "Dialogue with")) || `Sharing with ${otherMembers}`}
+              ? t("letters.dialogue_with", { name: otherMembers })
+              : (data.name?.replace(/^Letters with\b/, "Dialogue with")) || t("letters.sharing_with", { names: otherMembers })}
           </h1>
           {(() => {
             const recipients = members.filter((m) => (m.email || "").toLowerCase() !== me).slice(0, 3);
@@ -265,7 +267,7 @@ export default function CorrespondencePage() {
           })()}
         </div>
         {isOneToOne && otherMembers && (
-          <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>with {otherMembers}</p>
+          <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>{t("letters.with", { names: otherMembers })}</p>
         )}
         <div className="mb-5" />
 
@@ -303,33 +305,35 @@ export default function CorrespondencePage() {
 
             if (isOpen) {
               if (isFollowUp) {
-                subtitle = "Follow-up · no reply in 14 days 🕊️";
-                ctaLabel = "Send a follow-up 🖋️";
+                subtitle = t("correspondence.follow_up_subtitle");
+                ctaLabel = t("correspondence.send_follow_up");
               } else {
                 subtitle = isOverdue && lastLetterByOther
-                  ? `${otherMembers} has been waiting ${daysSince(lastLetterByOther.sentAt)} days · no rush 🌿`
-                  : "Your turn to write 🖋️";
-                ctaLabel = "Write your letter 🖋️";
+                  ? t("correspondence.waiting_days", { name: otherMembers, count: daysSince(lastLetterByOther.sentAt) })
+                  : t("letters.your_turn_to_write");
+                ctaLabel = t("letters.write_your_letter");
               }
               ctaHref = writeUrl;
             } else if (isWaitingForWindow) {
               subtitle = daysUntilOpen === 0
-                ? "Window opens today · your draft will wait"
-                : `Window opens in ${daysUntilOpen} ${daysUntilOpen === 1 ? "day" : "days"} · your draft will wait`;
-              ctaLabel = "Start drafting 🖋️";
+                ? t("correspondence.window_opens_today")
+                : (daysUntilOpen === 1
+                    ? t("letters.window_opens_in_one_day")
+                    : t("letters.window_opens_in_n_days", { count: daysUntilOpen }));
+              ctaLabel = t("letters.start_drafting");
               ctaHref = writeUrl;
               ctaFilled = false;
             } else if (letters.length > 0 && !nextIsMine) {
-              subtitle = `Your letter is sent · waiting for ${otherMembers} 🌿`;
+              subtitle = t("letters.your_letter_is_sent", { name: otherMembers });
             } else {
-              subtitle = `Waiting for ${otherMembers} to write… 🌿`;
+              subtitle = t("letters.waiting_for_to_write", { name: otherMembers });
             }
           } else if (data.myTurn && !currentPeriod.hasWrittenThisPeriod) {
-            subtitle = "Your turn to share";
-            ctaLabel = "Share your update 📮";
+            subtitle = t("correspondence.your_turn_to_share");
+            ctaLabel = t("read_letter.share_your_update");
             ctaHref = writeUrl;
           } else if (currentPeriod.hasWrittenThisPeriod) {
-            subtitle = "Your update is in for this round 🌿";
+            subtitle = t("correspondence.update_in_for_round");
           }
 
           // Use ctaFilled to vary outline vs solid — but the pill itself
@@ -373,7 +377,7 @@ export default function CorrespondencePage() {
                         fontFamily: "'Space Grotesk', sans-serif",
                       }}
                     >
-                      Follow-up
+                      {t("correspondence.follow_up_chip")}
                     </span>
                   ) : isOverdue ? (
                     <span
@@ -386,7 +390,7 @@ export default function CorrespondencePage() {
                         fontFamily: "'Space Grotesk', sans-serif",
                       }}
                     >
-                      Overdue
+                      {t("letters.overdue")}
                     </span>
                   ) : null}
                 </div>
@@ -436,10 +440,10 @@ export default function CorrespondencePage() {
             style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}
           >
             <p className="text-sm font-semibold mb-1" style={{ color: "#F0EDE6" }}>
-              📅 Get a calendar reminder when it's your turn?
+              {t("correspondence.calendar_prompt_title")}
             </p>
             <p className="text-xs mb-4 leading-relaxed" style={{ color: "#8FAF96" }}>
-              We'll drop an all-day event on your Google Calendar the Friday your writing window opens — a gentle nudge, nothing more.
+              {t("correspondence.calendar_prompt_body")}
             </p>
             <div className="flex gap-3">
               <button
@@ -448,7 +452,7 @@ export default function CorrespondencePage() {
                 className="flex-1 py-2 rounded-xl text-sm font-semibold"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                Yes, remind me
+                {t("correspondence.calendar_yes")}
               </button>
               <button
                 onClick={() => calendarPromptMutation.mutate("dismissed")}
@@ -456,7 +460,7 @@ export default function CorrespondencePage() {
                 className="flex-1 py-2 rounded-xl text-sm"
                 style={{ background: "transparent", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
               >
-                No thanks
+                {t("correspondence.calendar_no")}
               </button>
             </div>
           </div>
@@ -468,12 +472,12 @@ export default function CorrespondencePage() {
         {letters.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-base mb-2" style={{ color: "#8FAF96" }}>
-              {data.myTurn ? "No letters yet." : `Waiting for ${otherMembers} to write the first letter.`}
+              {data.myTurn ? t("correspondence.no_letters_yet") : t("correspondence.waiting_for_first", { name: otherMembers })}
             </p>
             {data.myTurn && (
               <Link href={writeUrl}>
                 <button className="px-6 py-3 rounded-xl font-semibold text-sm" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                  Write first 🖋️
+                  {t("letters.write_first")}
                 </button>
               </Link>
             )}
