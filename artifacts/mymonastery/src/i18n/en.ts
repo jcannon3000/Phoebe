@@ -183,6 +183,13 @@ export const en = {
 } as const;
 
 // Type used by both en + es so a missing key in es.ts fails at compile
-// time — keeps the Spanish file from drifting silently. The cast is
-// load-bearing: the typeof captures the literal-string structure of en.
-export type Translations = typeof en;
+// time — keeps the Spanish file from drifting silently. We DeepStringify
+// the literal-typed `en` object so leaf values widen to `string`, letting
+// es.ts use different translations (e.g. "Continuar" for "Continue")
+// while still preserving the structure (key paths). Without the widen,
+// es.ts strings would have to literally equal the English ones, which
+// defeats the point.
+type DeepStringify<T> = {
+  [K in keyof T]: T[K] extends Record<string, unknown> ? DeepStringify<T[K]> : string;
+};
+export type Translations = DeepStringify<typeof en>;

@@ -51,6 +51,10 @@ export interface AuthUser {
   homeLayout: { order: string[]; hidden: string[] } | null;
   // Master notifications switch (Settings → Notifications).
   pushEnabled: boolean;
+  // BCP-47 locale code driving i18next. "en" default; "es" is beta-only.
+  // Settings → Language toggle PATCHes /api/auth/me/locale; an effect in
+  // App.tsx mirrors the change to localStorage + i18n.changeLanguage.
+  locale: "en" | "es";
 }
 
 async function fetchMe(): Promise<AuthUser | null> {

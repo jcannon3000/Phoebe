@@ -6,6 +6,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
+import i18n from "@/i18n";
 import { LogOut, Camera, Pencil, Trash2, Download } from "lucide-react";
 
 
@@ -93,6 +94,89 @@ function ReminderTimeRow({
 // the reorder / show-hide handles for the rest of the home modules so
 // every home-screen knob lives in one place. The server endpoint
 // (PUT /api/me/feed-first-home) is unchanged; only the surface is.)
+
+// Language toggle — beta-only. Phoebe is rolling out a Spanish locale
+// incrementally: the i18n scaffolding + ~180 common keys are translated
+// today, and more surfaces gain Spanish coverage as we wire `t()` through
+// each view. The toggle persists to `users.locale` via PATCH
+// /api/auth/me/locale and switches i18next + localStorage immediately so
+// the UI flips without waiting for the /me refetch.
+function LanguageSettings() {
+  const { isBeta } = useBetaStatus();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const save = useMutation({
+    mutationFn: (locale: "en" | "es") =>
+      apiRequest("PATCH", "/api/auth/me/locale", { locale }),
+    onSuccess: (_data, locale) => {
+      // Flip the language in-memory + on disk immediately. LocaleSync will
+      // also reconcile when /api/auth/me refetches, but doing it here
+      // keeps the settings card responsive — the radio fills, the rest of
+      // the visible UI re-renders in the new language on the next tick.
+      try { localStorage.setItem("phoebe:locale", locale); } catch { /* private mode */ }
+      void i18n.changeLanguage(locale);
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+  });
+
+  if (!isBeta) return null;
+
+  const current: "en" | "es" = user?.locale ?? "en";
+  const options: Array<{ value: "en" | "es"; label: string; sub: string }> = [
+    { value: "en", label: "English", sub: "Default" },
+    { value: "es", label: "Español", sub: "Beta — coverage is expanding" },
+  ];
+
+  return (
+    <>
+      <SectionHeader label="Language" />
+      <p
+        className="text-[13px] mb-3"
+        style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}
+      >
+        Switch the app's language. Spanish is in beta — common UI is translated; some prayer content still shows in English.
+      </p>
+      <SettingsCard>
+        {options.map((opt, i) => {
+          const isSelected = current === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => save.mutate(opt.value)}
+              disabled={save.isPending}
+              className="w-full flex items-center gap-3 py-2.5 text-left disabled:opacity-50"
+              style={{
+                borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)",
+                background: "transparent",
+                cursor: save.isPending ? "wait" : "pointer",
+              }}
+            >
+              <div
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+                  background: isSelected ? "#A8C5A0" : "transparent",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                  {opt.label}
+                </p>
+                {opt.sub && (
+                  <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+                    {opt.sub}
+                  </p>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </SettingsCard>
+    </>
+  );
+}
 
 function WeeklyDigestSettings() {
   const { isBeta } = useBetaStatus();
@@ -1153,6 +1237,9 @@ export default function SettingsPage() {
 
         {/* ── Office reminders ── */}
         <OfficeReminderSettings />
+
+        {/* ── Language (beta) ── */}
+        <LanguageSettings />
 
         {/* ── Offices-only extras ──
             Two tier-specific toggles that only render for the
