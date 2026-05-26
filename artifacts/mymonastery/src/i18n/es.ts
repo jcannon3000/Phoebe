@@ -272,6 +272,17 @@ export const es: Translations = {
     sign_in_blurb: "¿Ya estás en Phoebe? Continúa donde lo dejaste.",
     footer: "Una app relacional que cultiva la conexión entre domingos.",
   },
+  community_join: {
+    back_to_phoebe: "Volver a Phoebe",
+    joining: "Uniéndote a {{name}}...",
+    welcome_to: "Bienvenido a {{name}}",
+    already_member: "Ya eres miembro de {{name}}",
+    youve_joined: "Te has unido a la comunidad.",
+    already_part: "Ya eres parte de esta comunidad.",
+    go_to_community: "Ir a la comunidad →",
+    couldnt_join: "No se pudo unir",
+    something_wrong: "Algo salió mal. Por favor intenta el enlace de nuevo.",
+  },
   write_letter: {
     next_period: "El próximo período comienza {{date}}.",
     a_letter_to: "Una carta para {{name}}",

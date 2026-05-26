@@ -270,6 +270,18 @@ export const en = {
     sign_in_blurb: "Already with Phoebe? Pick up where you left off.",
     footer: "A relational app that cultivates connections between Sundays.",
   },
+  // Community join landing (pages/community-join.tsx) — the post-tap surface.
+  community_join: {
+    back_to_phoebe: "Back to Phoebe",
+    joining: "Joining {{name}}...",
+    welcome_to: "Welcome to {{name}}",
+    already_member: "Already a member of {{name}}",
+    youve_joined: "You've joined the community.",
+    already_part: "You're already part of this community.",
+    go_to_community: "Go to community →",
+    couldnt_join: "Couldn't join",
+    something_wrong: "Something went wrong. Please try the link again.",
+  },
   // Write letter (pages/Letters/WriteLetter.tsx) — the compose surface.
   write_letter: {
     next_period: "Next period starts {{date}}.",

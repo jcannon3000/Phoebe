@@ -3,6 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff, ArrowRight, MessageCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
@@ -218,6 +219,7 @@ function iconForPractice(templateType: string | null): { emoji: string; label: s
 export default function CommunityJoinPage() {
   const { slug, token } = useParams<{ slug: string; token: string }>();
   const { user, isLoading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
@@ -539,7 +541,7 @@ export default function CommunityJoinPage() {
             className="px-6 py-3 rounded-xl text-sm font-semibold"
             style={{ background: "#2D5E3F", color: "#F0EDE6" }}
           >
-            Back to Phoebe
+            {t("community_join.back_to_phoebe")}
           </button>
         </div>
       </div>
@@ -553,23 +555,23 @@ export default function CommunityJoinPage() {
       <Layout>
         <div className="max-w-md mx-auto w-full text-center py-16">
           {(autoJoinStatus === "loading" || autoJoinStatus === "idle") && (
-            <p className="text-sm" style={{ color: "#8FAF96" }}>Joining {groupName}...</p>
+            <p className="text-sm" style={{ color: "#8FAF96" }}>{t("community_join.joining", { name: groupName })}</p>
           )}
           {(autoJoinStatus === "success" || autoJoinStatus === "already") && (
             <>
               <div className="text-5xl mb-4">{autoJoinStatus === "already" ? "✓" : "🏘️"}</div>
               <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                {autoJoinStatus === "already" ? `Already a member of ${groupName}` : `Welcome to ${groupName}`}
+                {autoJoinStatus === "already" ? t("community_join.already_member", { name: groupName }) : t("community_join.welcome_to", { name: groupName })}
               </h1>
               <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-                {autoJoinStatus === "already" ? "You're already part of this community." : "You've joined the community."}
+                {autoJoinStatus === "already" ? t("community_join.already_part") : t("community_join.youve_joined")}
               </p>
               <button
                 onClick={() => setLocation(`/communities/${slug}`)}
                 className="px-6 py-3 rounded-xl text-sm font-semibold"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                Go to community →
+                {t("community_join.go_to_community")}
               </button>
             </>
           )}
@@ -577,10 +579,10 @@ export default function CommunityJoinPage() {
             <>
               <div className="text-5xl mb-4">😕</div>
               <h1 className="text-xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                Couldn't join
+                {t("community_join.couldnt_join")}
               </h1>
               <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-                Something went wrong. Please try the link again.
+                {t("community_join.something_wrong")}
               </p>
             </>
           )}
