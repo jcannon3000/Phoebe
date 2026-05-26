@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Plus, X, Camera, Sliders } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
@@ -2479,8 +2480,9 @@ function ExamenHomeCard() {
 // alternate. Time threshold is noon — same threshold the Daily
 // Office picker uses for "today's office."
 export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}) {
+  const { t } = useTranslation();
   const isMorning = new Date().getHours() < 12;
-  const eyebrow = "Book of Common Prayer";
+  const eyebrow = t("dashboard.book_of_common_prayer");
   // Office-streak pill above the CTA. Same data source as before,
   // just the prefs lookup — no longer used to pick a "big" CTA.
   const { data: officePrefs } = useQuery<{
@@ -2636,7 +2638,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
                 whiteSpace: "nowrap",
               }}
             >
-              {prayedToday ? <>Completed <span aria-hidden>✓</span></> : <>Begin prayer <span aria-hidden>→</span></>}
+              {prayedToday ? <>{t("dashboard.completed")} <span aria-hidden>✓</span></> : <>{t("dashboard.begin_prayer")} <span aria-hidden>→</span></>}
             </div>
           </div>
         </div>
@@ -2672,7 +2674,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
                 fontFamily: "'Space Grotesk', sans-serif",
               }}
             >
-              Reminders
+              {t("dashboard.reminders")}
             </Link>
           </div>
           {/* LEFT  column = title + "N people prayed with you this week"
@@ -2696,9 +2698,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
             const withAvatars = communityPrayed.filter((p) => !!p.avatarUrl);
             const countCopy = totalCount === 0
               ? null
-              : totalCount === 1
-                ? "1 person prayed with you this week"
-                : `${totalCount} people prayed with you this week`;
+              : t("dashboard.prayed_with_you_week", { count: totalCount });
             return (
               // Title sits tight to the eyebrow above, with breathing
               // room below before the "N people prayed with you this
@@ -2710,7 +2710,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
                     className="text-2xl font-semibold"
                     style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}
                   >
-                    {isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙"}
+                    {isMorning ? `${t("offices.morning_prayer")} 🌅` : `${t("offices.evening_prayer")} 🌙`}
                   </p>
                   {countCopy && (
                     <p
@@ -2980,6 +2980,7 @@ export function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
   const { feed, prayedToday, unprayedCount } = row;
   const upcomingEvents = row.upcomingEvents ?? [];
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const newCount = unprayedCount ?? 0;
   // "New prayers" trumps "Prayer completed" — even if the viewer has
   // walked today's deck, a fresh intercession added afterwards still
@@ -2991,13 +2992,13 @@ export function FeedPrayerCard({ feed: row }: { feed: SubscribedFeed }) {
   const listPath = `/prayer-feeds/${feed.slug}`;
   const cta = showsNewCallout
     ? {
-        label: newCount === 1 ? "1 New Prayer" : `${newCount} New Prayers`,
+        label: t("dashboard.new_prayers_cta", { count: newCount }),
         href: slidePath,
         emphasized: true,
       }
     : prayedToday
-    ? { label: "View list", href: listPath, emphasized: false }
-    : { label: "Begin praying", href: slidePath, emphasized: false };
+    ? { label: t("dashboard.view_list_short"), href: listPath, emphasized: false }
+    : { label: t("dashboard.begin_praying"), href: slidePath, emphasized: false };
   return (
     <div className="flex flex-col gap-2">
     {/* The whole card is tappable → opens the feed detail page. The CTA
