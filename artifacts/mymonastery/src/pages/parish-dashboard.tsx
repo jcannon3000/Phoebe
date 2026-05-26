@@ -157,7 +157,7 @@ export default function ParishDashboard() {
   // than the section silently truncating at 5.
   const feedIntercessions = feedIntercessionsQuery.data?.intercessions ?? [];
 
-  if (authLoading || !user) return null;
+  if (authLoading || betaLoading || !user) return null;
 
   const data = todayQuery.data;
   const subscribedFeeds = subscribedFeedsQuery.data?.subscriptions ?? [];

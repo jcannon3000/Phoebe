@@ -71,7 +71,7 @@ export default function ParishOnboarding() {
     },
   });
 
-  if (authLoading || !user) return null;
+  if (authLoading || betaLoading || !user) return null;
 
   const parishes = parishesQuery.data?.parishes ?? [];
   const canSubmit = selected !== null && !subscribeMutation.isPending;

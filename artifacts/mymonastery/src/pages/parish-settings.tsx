@@ -118,7 +118,7 @@ export default function ParishSettings() {
     },
   });
 
-  if (authLoading || !user) return null;
+  if (authLoading || betaLoading || !user) return null;
 
   const prefs = prefsQuery.data;
   const parish = todayQuery.data?.parish;
