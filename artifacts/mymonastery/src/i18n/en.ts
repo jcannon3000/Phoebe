@@ -270,6 +270,21 @@ export const en = {
     sign_in_blurb: "Already with Phoebe? Pick up where you left off.",
     footer: "A relational app that cultivates connections between Sundays.",
   },
+  // Gratitude composer (components/GratitudeComposer.tsx) — inline + overlay.
+  gratitude_composer: {
+    placeholder: "Today I'm grateful for…",
+    minimum_count: "{{count}}/5 words",
+    keep_under_50: "Keep it under 50 words",
+    word_count_one: "1 word",
+    word_count_other: "{{count}} words",
+    give_thanks: "Give thanks",
+    giving_thanks: "Giving thanks…",
+    couldnt_save: "Couldn't save that. Try again.",
+    thanks_be_to_god: "Thanks be to God.",
+    before_you_go: "Before you go",
+    name_one_thing: "Name one thing you're grateful for.",
+    maybe_later: "Maybe later",
+  },
   // Communities browse (pages/communities-browse.tsx).
   communities_browse: {
     title: "Find a community",

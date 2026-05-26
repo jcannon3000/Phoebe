@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 
 // Shared gratitude composer — "name what you're grateful for." Private by
@@ -24,6 +25,7 @@ export function GratitudeComposer({
   autoFocus?: boolean;
 }) {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const [text, setText] = useState("");
   const [shared, setShared] = useState(false);
   const wc = words(text);
@@ -47,7 +49,7 @@ export function GratitudeComposer({
         value={text}
         onChange={(e) => setText(e.target.value)}
         rows={3}
-        placeholder="Today I'm grateful for…"
+        placeholder={t("gratitude_composer.placeholder")}
         className="w-full rounded-2xl px-4 py-3 resize-none"
         style={{
           background: "rgba(15,40,24,0.6)",
@@ -60,7 +62,11 @@ export function GratitudeComposer({
       />
       <div className="flex items-center justify-between mt-2">
         <span className="text-[11px]" style={{ color: wc > 50 ? "#E8B872" : "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
-          {wc < 5 ? `${wc}/5 words` : wc > 50 ? "Keep it under 50 words" : `${wc} words`}
+          {wc < 5
+            ? t("gratitude_composer.minimum_count", { count: wc })
+            : wc > 50
+              ? t("gratitude_composer.keep_under_50")
+              : t("gratitude_composer.word_count", { count: wc })}
         </span>
         <button
           type="button"
@@ -79,7 +85,7 @@ export function GratitudeComposer({
           >
             {shared ? "✓" : ""}
           </span>
-          Share with the community
+          {t("gratitude.share_with_community")}
         </button>
       </div>
       <button
@@ -95,11 +101,11 @@ export function GratitudeComposer({
           fontFamily: SPACE_GROTESK,
         }}
       >
-        {save.isPending ? "Giving thanks…" : "Give thanks"}
+        {save.isPending ? t("gratitude_composer.giving_thanks") : t("gratitude_composer.give_thanks")}
       </button>
       {save.isError && (
         <p className="text-[12px] mt-2 text-center" style={{ color: "#E8B872", fontFamily: SPACE_GROTESK }}>
-          Couldn’t save that. Try again.
+          {t("gratitude_composer.couldnt_save")}
         </p>
       )}
     </div>
@@ -109,6 +115,7 @@ export function GratitudeComposer({
 // Full-screen overlay version — the Daily Office close offers this so a
 // gratitude beat folds into the daily rhythm without leaving the office.
 export function GratitudeNudge({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { t } = useTranslation();
   const [done, setDone] = useState(false);
   if (!open) return null;
   return (
@@ -138,7 +145,7 @@ export function GratitudeNudge({ open, onClose }: { open: boolean; onClose: () =
           {done ? (
             <div className="text-center">
               <p className="text-[26px] leading-[1.3] font-medium italic mb-2" style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif" }}>
-                Thanks be to God.
+                {t("gratitude_composer.thanks_be_to_god")}
               </p>
               <button
                 type="button"
@@ -146,16 +153,16 @@ export function GratitudeNudge({ open, onClose }: { open: boolean; onClose: () =
                 className="mt-6 rounded-full px-10 py-3.5 text-sm font-medium transition-opacity hover:opacity-90"
                 style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", cursor: "pointer", fontFamily: SPACE_GROTESK }}
               >
-                Amen →
+                {t("contemplation_timer.amen")}
               </button>
             </div>
           ) : (
             <>
               <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3 text-center" style={{ color: "rgba(143,175,150,0.55)" }}>
-                Before you go
+                {t("gratitude_composer.before_you_go")}
               </p>
               <p className="text-[22px] leading-[1.4] font-medium italic mb-6 text-center" style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif" }}>
-                Name one thing you&rsquo;re grateful for.
+                {t("gratitude_composer.name_one_thing")}
               </p>
               <GratitudeComposer autoFocus onSubmitted={() => setDone(true)} />
               <button
@@ -164,7 +171,7 @@ export function GratitudeNudge({ open, onClose }: { open: boolean; onClose: () =
                 className="w-full mt-3 text-[13px] transition-opacity hover:opacity-80"
                 style={{ color: "rgba(143,175,150,0.6)", background: "none", border: "none", cursor: "pointer", fontFamily: SPACE_GROTESK }}
               >
-                Maybe later
+                {t("gratitude_composer.maybe_later")}
               </button>
             </>
           )}
