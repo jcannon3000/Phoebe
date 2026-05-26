@@ -246,6 +246,27 @@ export const en = {
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
   },
+  // Find Friends page (pages/find-friends.tsx).
+  find_friends: {
+    back: "← Back",
+    title: "Find friends on Phoebe",
+    blurb: "We'll check your contacts against people who've added their phone number to Phoebe. Numbers never leave your device unhashed.",
+    scan: "Scan my contacts",
+    reading_contacts: "Reading your contacts…",
+    hashing: "Hashing {{count}} contacts…",
+    looking: "Looking for friends on Phoebe…",
+    denied: "Phoebe doesn't have permission to read your contacts. Open Settings → Phoebe → Contacts and turn it on, then come back.",
+    no_native: "Contact discovery only works in the Phoebe app on your phone. Open Phoebe on iOS to find your friends.",
+    something_wrong: "Something went wrong.",
+    try_again: "Try again",
+    nobody_yet: "Nobody yet",
+    nobody_yet_body: "None of your contacts have added their phone number to Phoebe. Invite them — when they sign up and add theirs, they'll show up here.",
+    matches_count_one: "1 friend on Phoebe",
+    matches_count_other: "{{count}} friends on Phoebe",
+    someone: "Someone",
+    on_phoebe: "On Phoebe",
+    scan_again: "Scan again",
+  },
   // BCP Psalter (pages/bcp-psalter.tsx).
   psalter: {
     back_dashboard: "← Dashboard",

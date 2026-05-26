@@ -23,6 +23,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -67,6 +68,7 @@ async function sha256Hex(text: string): Promise<string> {
 
 export default function FindFriendsPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [stage, setStage] = useState<"idle" | "requesting" | "hashing" | "matching" | "done" | "denied" | "no-native" | "error">("idle");
   const [matches, setMatches] = useState<Match[]>([]);
@@ -170,7 +172,7 @@ export default function FindFriendsPage() {
           className="text-sm"
           style={{ color: "#8FAF96" }}
         >
-          ← Back
+          {t("find_friends.back")}
         </button>
       </div>
 
@@ -179,11 +181,10 @@ export default function FindFriendsPage() {
           className="text-2xl font-bold mb-2"
           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
         >
-          Find friends on Phoebe 🌿
+          {t("find_friends.title")} 🌿
         </h1>
         <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-          We'll check your contacts against people who've added their phone
-          number to Phoebe. Numbers never leave your device unhashed.
+          {t("find_friends.blurb")}
         </p>
 
         {stage === "idle" && (
@@ -192,7 +193,7 @@ export default function FindFriendsPage() {
             className="w-full py-4 rounded-2xl text-base font-semibold transition-opacity hover:opacity-90"
             style={{ background: "#2D5E3F", color: "#F0EDE6" }}
           >
-            Scan my contacts
+            {t("find_friends.scan")}
           </button>
         )}
 
@@ -201,9 +202,9 @@ export default function FindFriendsPage() {
             className="w-full py-4 px-4 rounded-2xl text-sm"
             style={{ background: "rgba(46,107,64,0.12)", color: "#A8C5A0" }}
           >
-            {stage === "requesting" && "Reading your contacts…"}
-            {stage === "hashing" && `Hashing ${contactCount} contacts…`}
-            {stage === "matching" && "Looking for friends on Phoebe…"}
+            {stage === "requesting" && t("find_friends.reading_contacts")}
+            {stage === "hashing" && t("find_friends.hashing", { count: contactCount })}
+            {stage === "matching" && t("find_friends.looking")}
           </div>
         )}
 
@@ -212,8 +213,7 @@ export default function FindFriendsPage() {
             className="w-full py-4 px-4 rounded-2xl text-sm"
             style={{ background: "rgba(196,122,101,0.10)", color: "#C47A65", border: "1px solid rgba(196,122,101,0.3)" }}
           >
-            Phoebe doesn't have permission to read your contacts. Open
-            Settings → Phoebe → Contacts and turn it on, then come back.
+            {t("find_friends.denied")}
           </div>
         )}
 
@@ -222,8 +222,7 @@ export default function FindFriendsPage() {
             className="w-full py-4 px-4 rounded-2xl text-sm"
             style={{ background: "rgba(46,107,64,0.10)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.3)" }}
           >
-            Contact discovery only works in the Phoebe app on your phone.
-            Open Phoebe on iOS to find your friends.
+            {t("find_friends.no_native")}
           </div>
         )}
 
@@ -232,13 +231,13 @@ export default function FindFriendsPage() {
             className="w-full py-4 px-4 rounded-2xl text-sm"
             style={{ background: "rgba(196,122,101,0.10)", color: "#C47A65", border: "1px solid rgba(196,122,101,0.3)" }}
           >
-            {errorMsg ?? "Something went wrong."}
+            {errorMsg ?? t("find_friends.something_wrong")}
             <button
               onClick={start}
               className="block mt-3 text-sm underline"
               style={{ color: "#C8D4C0" }}
             >
-              Try again
+              {t("find_friends.try_again")}
             </button>
           </div>
         )}
@@ -251,11 +250,9 @@ export default function FindFriendsPage() {
                 style={{ background: "rgba(46,107,64,0.10)", color: "#A8C5A0" }}
               >
                 <p className="mb-2 text-base" style={{ color: "#F0EDE6" }}>
-                  Nobody yet 🌱
+                  {t("find_friends.nobody_yet")} 🌱
                 </p>
-                None of your contacts have added their phone number to Phoebe.
-                Invite them — when they sign up and add theirs, they'll show
-                up here.
+                {t("find_friends.nobody_yet_body")}
               </div>
             ) : (
               <>
@@ -263,7 +260,7 @@ export default function FindFriendsPage() {
                   className="text-[10px] uppercase tracking-[0.18em] mb-3"
                   style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
                 >
-                  {matches.length === 1 ? "1 friend on Phoebe" : `${matches.length} friends on Phoebe`}
+                  {t("find_friends.matches_count", { count: matches.length })}
                 </p>
                 <div className="space-y-2">
                   {matches.map((m) => (
@@ -291,10 +288,10 @@ export default function FindFriendsPage() {
                         )}
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-sm truncate" style={{ color: "#F0EDE6" }}>
-                            {m.name ?? "Someone"}
+                            {m.name ?? t("find_friends.someone")}
                           </p>
                           <p className="text-xs" style={{ color: "#8FAF96" }}>
-                            On Phoebe
+                            {t("find_friends.on_phoebe")}
                           </p>
                         </div>
                         <span className="text-sm" style={{ color: "rgba(168,197,160,0.6)" }}>→</span>
@@ -310,7 +307,7 @@ export default function FindFriendsPage() {
               className="block mt-6 mx-auto text-xs underline"
               style={{ color: "#8FAF96" }}
             >
-              Scan again
+              {t("find_friends.scan_again")}
             </button>
           </div>
         )}
