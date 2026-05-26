@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { playOpeningSwell, primeAudio } from "@/lib/amenFeedback";
@@ -68,6 +69,7 @@ export function ContemplationTimer({
   onClose: (result?: { completed: boolean }) => void;
   startMinutes?: number;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [phase, setPhase] = useState<Phase>("picker");
   const [customMode, setCustomMode] = useState(false);
@@ -379,10 +381,10 @@ export function ContemplationTimer({
           {phase === "picker" && (
             <>
               <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: "rgba(143,175,150,0.55)" }}>
-                Contemplation
+                {t("contemplation.title")}
               </p>
               <p className="text-[22px] leading-[1.4] font-medium italic mb-8" style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif" }}>
-                How long would you like to pray?
+                {t("contemplation_timer.how_long")}
               </p>
 
               {!customMode ? (
@@ -402,7 +404,7 @@ export function ContemplationTimer({
                       >
                         {m}
                         <span className="block text-[11px] font-normal mt-0.5" style={{ color: SAGE }}>
-                          {m === 1 ? "minute" : "minutes"}
+                          {m === 1 ? t("contemplation.minute") : t("contemplation.minutes")}
                         </span>
                       </button>
                     ))}
@@ -413,7 +415,7 @@ export function ContemplationTimer({
                     className="mt-5 text-[13px] transition-opacity hover:opacity-80"
                     style={{ color: "rgba(143,175,150,0.8)", background: "none", border: "none", cursor: "pointer", fontFamily: SPACE_GROTESK }}
                   >
-                    Custom length →
+                    {t("contemplation_timer.custom_length")}
                   </button>
                 </>
               ) : (
@@ -434,7 +436,7 @@ export function ContemplationTimer({
                         color: WARM, fontFamily: SPACE_GROTESK,
                       }}
                     />
-                    <span style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>minutes</span>
+                    <span style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{t("contemplation.minutes")}</span>
                   </div>
                   <button
                     type="button"
@@ -445,7 +447,7 @@ export function ContemplationTimer({
                     className="w-full max-w-xs rounded-full py-3.5 text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
                     style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", cursor: "pointer", fontFamily: SPACE_GROTESK }}
                   >
-                    Begin →
+                    {t("examen.begin")}
                   </button>
                   <button
                     type="button"
@@ -453,7 +455,7 @@ export function ContemplationTimer({
                     className="text-[13px] transition-opacity hover:opacity-80"
                     style={{ color: "rgba(143,175,150,0.7)", background: "none", border: "none", cursor: "pointer", fontFamily: SPACE_GROTESK }}
                   >
-                    ← Back to presets
+                    {t("contemplation_timer.back_to_presets")}
                   </button>
                 </div>
               )}
@@ -503,7 +505,7 @@ export function ContemplationTimer({
                   marginTop: 20,
                 }}
               >
-                {reachedGoal ? "Stay as long as you like." : "Be still, and know."}
+                {reachedGoal ? t("contemplation_timer.stay_as_long") : t("contemplation_timer.be_still")}
               </p>
             </>
           )}
@@ -511,15 +513,15 @@ export function ContemplationTimer({
           {phase === "complete" && (
             <>
               <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: "rgba(143,175,150,0.55)" }}>
-                {endedEarly ? "Contemplation ended" : "Contemplation complete"}
+                {endedEarly ? t("contemplation_timer.contemplation_ended") : t("contemplation_timer.contemplation_complete")}
               </p>
               <p className="text-[26px] leading-[1.3] font-medium italic mb-2" style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif" }}>
                 {/* Always name the exact time prayed — important on an early
                     end so the user sees what they actually did. */}
-                {formatDone(satSeconds)} of contemplative prayer
+                {t("contemplation_timer.of_contemplative_prayer", { time: formatDone(satSeconds) })}
               </p>
               <p className="text-[13px] mb-8" style={{ color: "rgba(143,175,150,0.65)", fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 300 }}>
-                Carry the quiet with you.
+                {t("contemplation_timer.carry_the_quiet")}
               </p>
               <button
                 type="button"
@@ -527,7 +529,7 @@ export function ContemplationTimer({
                 className="rounded-full px-10 py-3.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
                 style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", cursor: "pointer", fontFamily: SPACE_GROTESK }}
               >
-                Amen →
+                {t("contemplation_timer.amen")}
               </button>
             </>
           )}
@@ -558,7 +560,7 @@ export function ContemplationTimer({
                 cursor: "pointer",
               }}
             >
-              {reachedGoal ? "Done" : "End"}
+              {reachedGoal ? t("common.done") : t("contemplation_timer.end")}
             </button>
             <button
               type="button"
@@ -573,7 +575,7 @@ export function ContemplationTimer({
                 cursor: "pointer",
               }}
             >
-              Discard session
+              {t("contemplation_timer.discard_session")}
             </button>
           </div>
         )}

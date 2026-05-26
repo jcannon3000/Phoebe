@@ -258,6 +258,21 @@ export const en = {
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
   },
+  // Contemplation timer overlay (components/ContemplationTimer.tsx).
+  contemplation_timer: {
+    how_long: "How long would you like to pray?",
+    custom_length: "Custom length →",
+    back_to_presets: "← Back to presets",
+    be_still: "Be still, and know.",
+    stay_as_long: "Stay as long as you like.",
+    end: "End",
+    discard_session: "Discard session",
+    contemplation_ended: "Contemplation ended",
+    contemplation_complete: "Contemplation complete",
+    of_contemplative_prayer: "{{time}} of contemplative prayer",
+    carry_the_quiet: "Carry the quiet with you.",
+    amen: "Amen →",
+  },
   // Read letter (pages/Letters/ReadLetter.tsx) — paper-style letter viewer.
   read_letter: {
     letter_n: "Letter {{n}}",
