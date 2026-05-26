@@ -110,6 +110,7 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
           WHERE ps.surface IN (
               'morning-prayer',
               'evening-prayer',
+              'compline',
               'morning-devotion',
               'early-evening-devotion'
             )
@@ -140,8 +141,8 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
       ),
       -- Offices: (user, day, side) tuples. Side is "morning"
       -- (morning-prayer + morning-devotion) or "evening"
-      -- (evening-prayer + early-evening-devotion). Max 2 per
-      -- person per day.
+      -- (evening-prayer + early-evening-devotion + compline).
+      -- Max 2 per person per day.
       office_session_candidates AS (
         SELECT
           ps.user_id,
@@ -154,6 +155,7 @@ router.get("/admin/metrics", async (req, res): Promise<void> => {
         WHERE ps.surface IN (
             'morning-prayer',
             'evening-prayer',
+            'compline',
             'morning-devotion',
             'early-evening-devotion'
           )

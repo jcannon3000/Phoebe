@@ -737,6 +737,7 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
             AND ps.surface IN (
               'morning-prayer',
               'evening-prayer',
+              'compline',
               'morning-devotion',
               'early-evening-devotion'
             )
@@ -793,13 +794,13 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
       ),
       -- Offices: one session per (user, day, side). A side is
       -- "morning" (morning-prayer + morning-devotion) or "evening"
-      -- (evening-prayer + early-evening-devotion) so the max count
-      -- for any one person per day is 2 — once for the morning
-      -- office, once for the evening. Same ≥3-slides + 15-min-dedup
-      -- semantics as the unified prayer event above (the dedup is
-      -- folded into the DISTINCT at the day+side grain). Surfaces
-      -- a "Offices" row in the metrics dashboard separate from
-      -- the broader Times prayed count.
+      -- (evening-prayer + early-evening-devotion + compline) so the
+      -- max count for any one person per day is 2 — once for the
+      -- morning office, once for the evening. Same ≥3-slides +
+      -- 15-min-dedup semantics as the unified prayer event above
+      -- (the dedup is folded into the DISTINCT at the day+side
+      -- grain). Surfaces a "Offices" row in the metrics dashboard
+      -- separate from the broader Times prayed count.
       office_session_candidates AS (
         SELECT
           ps.user_id,
@@ -813,6 +814,7 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
           AND ps.surface IN (
             'morning-prayer',
             'evening-prayer',
+            'compline',
             'morning-devotion',
             'early-evening-devotion'
           )

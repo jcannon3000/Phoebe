@@ -376,7 +376,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
   // slideIdx advances (effect below).
   const slidesReachedRef = useRef(0);
   // Map LiturgyMode → PrayerSurface: "morning"→"morning-prayer",
-  // "evening"→"evening-prayer". The devotion modes already match.
+  // "evening"→"evening-prayer". The devotion modes and "compline"
+  // already match the PrayerSurface union directly.
   const officeSurface: PrayerSurface =
     resolvedMode === "morning" ? "morning-prayer"
     : resolvedMode === "evening" ? "evening-prayer"
@@ -462,7 +463,17 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch(endpoint);
+        // Pass the viewer's *local* date so the server resolves the
+        // liturgical day from their wall clock rather than UTC. This
+        // matters most for Compline (whose psalm + lesson rotate by
+        // day-of-week, and whose framing is "the day that's ending")
+        // — without this an LA user praying at 11pm Sunday would get
+        // Monday's office because the server sees UTC's Monday 07:00.
+        // The endpoint already accepts ?date= as YYYY-MM-DD.
+        const now = new Date();
+        const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        const sep = endpoint.includes("?") ? "&" : "?";
+        const res = await fetch(`${endpoint}${sep}date=${localDate}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (cancelled) return;
@@ -1224,6 +1235,73 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
                 </div>
               );
             })()
+          ) : currentSlide.type === "lesson" && currentSlide.metadata?.compline ? (
+            // Compline short lesson — full scripture text rendered
+            // inline. The four BCP-appointed Compline lessons are
+            // 1–3 verses each (Jer 14:9, Matt 11:28-30, Heb 13:20-21,
+            // 1 Pet 5:8-9), short enough to read on the slide rather
+            // than tap out to Bible.com. The default lesson template
+            // above this branch ships the body as a small grey
+            // subtitle assuming the reader will tap a Bible.com pill;
+            // that's wrong for Compline's read-here passages.
+            (() => {
+              const ref = String(currentSlide.title ?? currentSlide.metadata?.lessonRef ?? "").trim();
+              return (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "100%",
+                    maxWidth: 560,
+                    margin: "0 auto",
+                    textAlign: "center",
+                    gap: 18,
+                  }}
+                >
+                  <p
+                    style={{
+                      color: FAINT_GREEN,
+                      fontSize: 11,
+                      letterSpacing: "0.18em",
+                      textTransform: "uppercase",
+                      margin: 0,
+                      fontWeight: 600,
+                    }}
+                  >
+                    The Lesson
+                  </p>
+                  {ref && (
+                    <p
+                      style={{
+                        fontFamily: SPACE_GROTESK,
+                        fontSize: 13,
+                        letterSpacing: "0.02em",
+                        color: SAGE,
+                        margin: 0,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {ref}
+                    </p>
+                  )}
+                  <p
+                    style={{
+                      fontFamily: "Georgia, 'Times New Roman', serif",
+                      fontStyle: "italic",
+                      fontSize: "clamp(18px, 3.4vw, 22px)",
+                      lineHeight: 1.55,
+                      color: WARM_TEXT,
+                      margin: 0,
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {currentSlide.content}
+                  </p>
+                </div>
+              );
+            })()
           ) : currentSlide.type === "lesson" ? (
             // Plain lesson slide — same centered template as the
             // psalm title page: a contextual eyebrow, the big
@@ -1912,6 +1990,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
             // URL (the old single-link build silently dropped every
             // range after the first). A plain single-range reference
             // keeps the simple "Read on Bible.com →" pill.
+            //
+            // Compline lesson BODY slides render the scripture text
+            // inline (the four BCP short lessons are 1-3 verses) so
+            // a Bible.com pill below them is redundant. The title
+            // card keeps the pill as a discoverable jump-out.
+            if (currentSlide.type === "lesson" && currentSlide.metadata?.compline) {
+              return null;
+            }
             const segments = currentSlide.title
               ? bibleUrlSegments(currentSlide.title)
               : [];
@@ -2260,7 +2346,13 @@ export default function BcpDailyOfficePage() {
   useEffect(() => {
     const search = new URLSearchParams(window.location.search);
     const mode = search.get("mode");
-    if (mode === "morning" || mode === "evening" || mode === "morning-devotion" || mode === "early-evening-devotion") {
+    if (
+      mode === "morning" ||
+      mode === "evening" ||
+      mode === "compline" ||
+      mode === "morning-devotion" ||
+      mode === "early-evening-devotion"
+    ) {
       setShowMode(mode);
     }
   }, []);

@@ -32,6 +32,12 @@ export type PrayerSurface =
   | "slideshow"
   | "morning-prayer"
   | "evening-prayer"
+  // Compline — the night office (BCP pp. 127-135). Counts as an
+  // evening-side office for the admin-metrics "morning vs evening"
+  // rollup; the SQL surface list in admin-metrics.ts and the parish
+  // session enums must also include this value for the session to
+  // be picked up by the prayed-today calculations.
+  | "compline"
   | "morning-devotion"
   | "early-evening-devotion"
   // "examen" — the Ignatian Daily Examen, a guided five-movement
