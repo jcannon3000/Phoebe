@@ -9,6 +9,12 @@ import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
 import i18n from "@/i18n";
 import { LogOut, Camera, Pencil, Trash2, Download } from "lucide-react";
+import {
+  useOfficePrefs,
+  setShowCacClose,
+  setShowFddClose,
+  setIncludeGratitudeSlide,
+} from "@/lib/officePrefs";
 
 
 function SectionHeader({ label }: { label: string }) {
@@ -491,6 +497,116 @@ function OfficeReminderSettings() {
             </p>
             <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
               {data?.showConfession ? "Shown before the Opening Sentence." : "The office begins with the Opening Sentence."}
+            </p>
+          </div>
+        </button>
+      </SettingsCard>
+    </>
+  );
+}
+
+// ─── Office close-up extras ────────────────────────────────────────────────
+//
+// Three independent toggles that shape how Morning + Evening Prayer
+// end. All localStorage-backed (see lib/officePrefs.ts) — these are
+// per-device preferences, not yet worth a server column.
+//
+//   • Read CAC reflection at the close — adds a "🌅 Read CAC
+//     reflection →" pill on the office closing slide. Opens today's
+//     CAC daily meditation externally + marks it read so the home
+//     screen's CAC card flips to "Read again."
+//   • Read Forward Day by Day at the close — sibling toggle pointing
+//     at Forward Movement's prayer.forwardmovement.org/fdd. Both can
+//     be on; both pills appear stacked on the closing slide.
+//   • Include a gratitude slide — splices a "Personal Thanksgiving"
+//     slide in before the closing on both Morning and Evening Prayer.
+//     A contemplative prompt; not interactive (the dedicated
+//     /gratitude surface is where journal entries live).
+function OfficeCloseExtrasSettings() {
+  const prefs = useOfficePrefs();
+  return (
+    <>
+      <SectionHeader label="After the office" />
+      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+        Add a daily reflection to the end of Morning and Evening Prayer.
+      </p>
+      <SettingsCard>
+        <button
+          type="button"
+          onClick={() => setShowCacClose(!prefs.showCacClose)}
+          className="w-full flex items-center gap-3 py-2.5 text-left"
+          style={{ background: "transparent", cursor: "pointer" }}
+        >
+          <div
+            style={{
+              width: 18, height: 18, borderRadius: "50%",
+              border: `2px solid ${prefs.showCacClose ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+              background: prefs.showCacClose ? "#A8C5A0" : "transparent",
+              flexShrink: 0,
+            }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+              CAC Daily Reflection 🌅
+            </p>
+            <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+              From the Center for Action &amp; Contemplation.
+            </p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setShowFddClose(!prefs.showFddClose)}
+          className="w-full flex items-center gap-3 py-2.5 text-left"
+          style={{ background: "transparent", cursor: "pointer", borderTop: "1px solid rgba(200,212,192,0.12)" }}
+        >
+          <div
+            style={{
+              width: 18, height: 18, borderRadius: "50%",
+              border: `2px solid ${prefs.showFddClose ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+              background: prefs.showFddClose ? "#A8C5A0" : "transparent",
+              flexShrink: 0,
+            }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+              Forward Day by Day 📖
+            </p>
+            <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+              From Forward Movement.
+            </p>
+          </div>
+        </button>
+      </SettingsCard>
+
+      <SectionHeader label="Gratitude in the office" />
+      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+        Add a moment to name what you're grateful for, before the office closes.
+      </p>
+      <SettingsCard>
+        <button
+          type="button"
+          onClick={() => setIncludeGratitudeSlide(!prefs.includeGratitudeSlide)}
+          className="w-full flex items-center gap-3 py-2.5 text-left"
+          style={{ background: "transparent", cursor: "pointer" }}
+        >
+          <div
+            style={{
+              width: 18, height: 18, borderRadius: "50%",
+              border: `2px solid ${prefs.includeGratitudeSlide ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+              background: prefs.includeGratitudeSlide ? "#A8C5A0" : "transparent",
+              flexShrink: 0,
+            }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+              Include a gratitude slide 🌾
+            </p>
+            <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+              {prefs.includeGratitudeSlide
+                ? "Shown before the closing slide, in both Morning and Evening Prayer."
+                : "The office closes straight from the General Thanksgiving."}
             </p>
           </div>
         </button>
@@ -1243,6 +1359,13 @@ export default function SettingsPage() {
 
         {/* ── Office reminders ── */}
         <OfficeReminderSettings />
+
+        {/* ── Office close-up extras ──
+            Three localStorage-backed toggles that shape how Morning
+            and Evening Prayer end. See OfficeCloseExtrasSettings
+            above for the rationale on each. Right after the office
+            reminders because they're conceptually office settings. */}
+        <OfficeCloseExtrasSettings />
 
         {/* ── Language (beta) ── */}
         <LanguageSettings />

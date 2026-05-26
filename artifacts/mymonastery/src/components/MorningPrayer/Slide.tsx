@@ -4,7 +4,8 @@ import { CallAndResponse } from "./CallAndResponse";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { openExternal } from "@/lib/openExternal";
-import { CAC_TODAY_URL, markCacRead } from "@/lib/cacReadState";
+import { CAC_TODAY_URL, FDD_TODAY_URL, markCacRead, markFddRead } from "@/lib/cacReadState";
+import { useOfficePrefs } from "@/lib/officePrefs";
 
 interface SlideProps {
   slide: SlideData;
@@ -73,6 +74,10 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
   ) => {
     const isEvening = theme === "evening";
     const isOpenClose = slide.type === "opening" || slide.type === "closing";
+    // Office-close prefs drive the daily-reflection pills (CAC / FDD)
+    // rendered on the closing slide. Hook is safe outside the render
+    // branch — it's only read inside the closing block below.
+    const officePrefs = useOfficePrefs();
 
     // Color scheme
     const bg = isEvening ? EP_BG : (isOpenClose ? SOIL : CREAM);
@@ -307,34 +312,61 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
               )}
             </div>
 
-            {/* CAC Daily Reflection pill — morning-only, the
-                contemplative "what to read after Morning Prayer" slot
-                that mirrors how Evening Prayer / the slideshow leads
-                into the Examen. Opens externally via SFSafariView
-                (Browser.open) and stamps today as read so the home
-                card's pill flips to "Read again" on return. */}
-            {!isEvening && (
-              <button
-                type="button"
-                onClick={() => {
-                  markCacRead();
-                  openExternal(CAC_TODAY_URL);
-                }}
-                style={{
-                  background: "rgba(196,131,73,0.20)",
-                  color: CREAM,
-                  border: "1px solid rgba(196,131,73,0.45)",
-                  borderRadius: 999,
-                  padding: "10px 18px",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  fontFamily: "Space Grotesk, sans-serif",
-                  cursor: "pointer",
-                  alignSelf: "flex-start",
-                }}
-              >
-                🌅 Read CAC reflection →
-              </button>
+            {/* Daily-reflection pills — opt-in per office pref
+                (Settings → After the office). Either, both, or
+                neither can render. Applies to BOTH morning and
+                evening since the user picks once and the choice
+                applies every day. Each opens externally via
+                SFSafariView (Browser.open) and stamps today as read
+                so the corresponding home card flips to "Read
+                again." */}
+            {(officePrefs.showCacClose || officePrefs.showFddClose) && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
+                {officePrefs.showCacClose && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      markCacRead();
+                      openExternal(CAC_TODAY_URL);
+                    }}
+                    style={{
+                      background: "rgba(196,131,73,0.20)",
+                      color: isEvening ? EP_TEXT : CREAM,
+                      border: "1px solid rgba(196,131,73,0.45)",
+                      borderRadius: 999,
+                      padding: "10px 18px",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      fontFamily: "Space Grotesk, sans-serif",
+                      cursor: "pointer",
+                    }}
+                  >
+                    🌅 Read CAC reflection →
+                  </button>
+                )}
+                {officePrefs.showFddClose && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      markFddRead();
+                      openExternal(FDD_TODAY_URL);
+                    }}
+                    style={{
+                      background: "rgba(74,158,132,0.18)",
+                      color: isEvening ? EP_TEXT : CREAM,
+                      border: "1px solid rgba(74,158,132,0.45)",
+                      borderRadius: 999,
+                      padding: "10px 18px",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      fontFamily: "Space Grotesk, sans-serif",
+                      cursor: "pointer",
+                    }}
+                  >
+                    📖 Read Forward Day by Day →
+                  </button>
+                )}
+              </div>
             )}
 
             {onBack && (
@@ -354,6 +386,75 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                 ← Back to practice
               </button>
             )}
+          </div>
+        </div>
+      );
+    }
+
+    // ── PERSONAL THANKSGIVING ──────────────────────────────────────────────────
+    // Opt-in gratitude slide spliced in just before the closing when
+    // the "Include a gratitude slide" office pref is on (Settings →
+    // Gratitude in the office). Reflective: a centered prompt the
+    // user dwells on for a beat, then taps forward. Same eyebrow
+    // styling as opening / closing so it reads as "a held moment"
+    // rather than a content slide.
+    if (slide.type === "personal_thanksgiving") {
+      return (
+        <div style={{ ...containerStyle, background: isEvening ? EP_BG : SOIL }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 20,
+              maxWidth: 520,
+            }}
+          >
+            <p
+              style={{
+                fontSize: 11,
+                color: accentColor,
+                textTransform: "uppercase",
+                letterSpacing: "0.12em",
+                fontFamily: "Space Grotesk, sans-serif",
+                margin: 0,
+              }}
+            >
+              {slide.eyebrow} 🌾
+            </p>
+            <h1
+              style={{
+                fontSize: 28,
+                fontWeight: 700,
+                color: isEvening ? EP_TEXT : CREAM,
+                fontFamily: "Space Grotesk, sans-serif",
+                margin: 0,
+                lineHeight: 1.25,
+              }}
+            >
+              What are you grateful for today?
+            </h1>
+            <p
+              style={{
+                fontSize: 17,
+                lineHeight: 1.7,
+                fontStyle: "italic",
+                color: isEvening ? EP_ACCENT : AMBER,
+                fontFamily: "Georgia, 'Times New Roman', serif",
+                margin: 0,
+              }}
+            >
+              {slide.content}
+            </p>
+            <p
+              style={{
+                fontSize: 13,
+                color: mutedColor,
+                fontFamily: "Space Grotesk, sans-serif",
+                margin: 0,
+              }}
+            >
+              Tap to continue when you're ready.
+            </p>
           </div>
         </div>
       );

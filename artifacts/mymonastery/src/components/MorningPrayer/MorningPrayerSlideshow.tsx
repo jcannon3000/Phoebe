@@ -6,11 +6,44 @@
  * lessons and psalms.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Slide, OfficeDayInfo, MemberPresence } from "./types";
 import { SlideView } from "./Slide";
 import { ProgressBar } from "./ProgressBar";
 import { useSlideshow } from "./useSlideshow";
+import { useOfficePrefs } from "@/lib/officePrefs";
+
+// Build a synthetic gratitude slide that sits between the General
+// Thanksgiving and the closing. Reflective (prompt + Continue), not
+// interactive — actual journal entries belong on /gratitude.
+function makeGratitudeSlide(): Slide {
+  return {
+    id: "personal-thanksgiving",
+    type: "personal_thanksgiving",
+    emoji: "🌾",
+    eyebrow: "Personal Thanksgiving",
+    title: null,
+    // The slide renderer in Slide.tsx looks at slide.type to choose
+    // its layout, so this body text is the contemplative prompt
+    // surfaced inside that custom layout.
+    content: "What are you grateful for today? Name three things — out loud or in silence.",
+    isCallAndResponse: false,
+    callAndResponseLines: null,
+    bcpReference: null,
+    isScrollable: false,
+    scrollHint: null,
+    metadata: {},
+  };
+}
+
+// Splice the gratitude slide in just before the closing slide. If the
+// closing slide is missing (a malformed office payload), append.
+function spliceGratitudeBeforeClose(slides: Slide[]): Slide[] {
+  const closingIdx = slides.findIndex((s) => s.type === "closing");
+  const insertAt = closingIdx === -1 ? slides.length : closingIdx;
+  const gratitude = makeGratitudeSlide();
+  return [...slides.slice(0, insertAt), gratitude, ...slides.slice(insertAt)];
+}
 
 interface MorningPrayerSlideshowProps {
   momentId: number;
@@ -35,8 +68,30 @@ export function MorningPrayerSlideshow({
   const [logError, setLogError] = useState<string | null>(null);
   const [presenceData, setPresenceData] = useState<MemberPresence[]>([]);
 
-  // Determine which slides are scrollable by index
+  // Office-close prefs: drives whether we splice in a gratitude slide
+  // before the closing.
+  const officePrefs = useOfficePrefs();
+
+  // Derived slide list — raw fetched slides + optional gratitude
+  // slide before the closing. Done via useMemo so flipping the pref
+  // mid-session re-derives without a re-fetch. Keep this above
+  // useSlideshow so the slideshow sees the corrected total.
+  const displaySlides = useMemo(
+    () => (officePrefs.includeGratitudeSlide ? spliceGratitudeBeforeClose(slides) : slides),
+    [slides, officePrefs.includeGratitudeSlide],
+  );
+
+  // Determine which slides are scrollable by index. Recomputed from
+  // displaySlides so an inserted gratitude slide doesn't shift the
+  // scrollable-set offsets.
   const scrollableSet = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    const set = new Set<number>();
+    displaySlides.forEach((s, i) => {
+      if (s.isScrollable) set.add(i);
+    });
+    scrollableSet.current = set;
+  }, [displaySlides]);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,13 +116,9 @@ export function MorningPrayerSlideshow({
         const fetchedSlides: Slide[] = data.slides ?? [];
         setSlides(fetchedSlides);
         setOfficeDay(data.officeDay ?? null);
-
-        // Build scrollable index set
-        const set = new Set<number>();
-        fetchedSlides.forEach((s, i) => {
-          if (s.isScrollable) set.add(i);
-        });
-        scrollableSet.current = set;
+        // Note: scrollableSet is recomputed by the useEffect on
+        // displaySlides above — no need to seed it here, otherwise a
+        // pref change between fetch and that effect would race.
 
         // Load presence data
         if (logsRes?.ok) {
@@ -113,7 +164,7 @@ export function MorningPrayerSlideshow({
     handleTouchMove,
     handleScroll,
   } = useSlideshow({
-    total: slides.length,
+    total: displaySlides.length,
     scrollableSlides: scrollableSet.current,
   });
 
@@ -193,7 +244,7 @@ export function MorningPrayerSlideshow({
   }
 
   // ── Error ─────────────────────────────────────────────────────────────────────
-  if (error || slides.length === 0) {
+  if (error || displaySlides.length === 0) {
     return (
       <div
         style={{
@@ -228,7 +279,7 @@ export function MorningPrayerSlideshow({
   }
 
   // ── Slideshow ─────────────────────────────────────────────────────────────────
-  const currentSlide = slides[currentIndex];
+  const currentSlide = displaySlides[currentIndex];
   const isForward = direction === "forward";
 
   return (
@@ -250,7 +301,7 @@ export function MorningPrayerSlideshow({
       {/* Progress bar */}
       <ProgressBar
         current={currentIndex}
-        total={slides.length}
+        total={displaySlides.length}
         currentType={currentSlide.type}
       />
 

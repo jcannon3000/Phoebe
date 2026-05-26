@@ -46,6 +46,14 @@ export type SlideType =
   // navigation thereafter.
   | "intercessions_portal"
   | "general_thanksgiving"
+  // Optional personal-thanksgiving prompt, spliced in client-side
+  // before the closing when the "include gratitude slide" office
+  // pref is on. Not produced by the server's assembleMorningPrayer
+  // — see MorningPrayerSlideshow's slide-list assembly. Reflective
+  // rather than interactive: prompts the user to name what they're
+  // grateful for and tap Continue. The dedicated /gratitude surface
+  // remains the place for actual journal entries.
+  | "personal_thanksgiving"
   | "closing";
 
 export interface CallAndResponseLine {
