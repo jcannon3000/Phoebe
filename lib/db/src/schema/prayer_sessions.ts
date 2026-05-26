@@ -31,6 +31,13 @@ export const prayerSurfaces = [
   // ended-early) sit; durationSeconds is the actual time spent, which
   // backs the "time in contemplation" stat on the Contemplation page.
   "contemplation",
+  // Tap-out to the National Cathedral's live Morning Prayer broadcast
+  // (cathedral.org, weekdays at 7 AM Eastern). We log a fixed
+  // ~20-minute session on tap — same shape as the office "visit"
+  // surfaces — because once the user opens the external page they're
+  // engaging with Morning Prayer at the cathedral; we can't observe
+  // how long they actually watch.
+  "national-cathedral",
 ] as const;
 export type PrayerSurface = (typeof prayerSurfaces)[number];
 

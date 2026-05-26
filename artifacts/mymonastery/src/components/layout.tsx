@@ -8,6 +8,8 @@ import { X, LogOut, ChevronRight, ChevronDown } from "lucide-react";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { openExternal } from "@/lib/openExternal";
+import { FDD_TODAY_URL, markFddRead } from "@/lib/cacReadState";
+import { NCMP_URL, getNcmpState } from "@/lib/officePrefs";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -87,6 +89,57 @@ function MenuSection({
 }
 
 // ─── Hamburger Drawer ─────────────────────────────────────────────────────────
+
+// Drawer row for National Cathedral Morning Prayer. Pulled out of the
+// MenuSection JSX because it has two pieces of conditional behavior
+// the simple MenuRow component doesn't carry:
+//
+//   1. Time-aware label — shows "Live now" / "Live in N min" /
+//      "Today's recording" when the cathedral is broadcasting, and
+//      hides entirely on weekends (no broadcast Sat/Sun). State is
+//      derived in lib/officePrefs.getNcmpState() against
+//      America/New_York so a PT user opening the drawer at 5 AM
+//      local sees "Live in 2 hours" (the broadcast is at 4 AM PT).
+//   2. Prayer-session logging — opening the cathedral page is the
+//      engagement event (we can't observe how long the user watches
+//      the external stream), so we POST to /api/prayer-sessions on
+//      tap with surface "national-cathedral" and a fixed
+//      ~20-minute duration. Server's floor-bypass list permits this
+//      surface so tap-style logs aren't dropped. Fire-and-forget —
+//      a logging failure must not block the user from opening the
+//      page they tapped on.
+function NcmpResourceRow({ onClose, t }: { onClose: () => void; t: (k: string, opts?: Record<string, unknown>) => string }) {
+  const state = getNcmpState();
+  if (!state.show) return null;
+  const liveLabel =
+    state.kind === "live" ? t("menu.ncmp_live")
+    : state.kind === "upcoming" ? t("menu.ncmp_live_in_min", { count: state.minutesUntil })
+    : t("menu.ncmp_recording");
+  const onTap = () => {
+    onClose();
+    // Best-effort prayer-session log. We don't await — opening the
+    // cathedral page is what the user wants; the credit is
+    // bookkeeping. 20-minute duration approximates the broadcast.
+    const now = new Date();
+    const startedAt = now.toISOString();
+    const durationSeconds = 20 * 60;
+    const endedAt = new Date(now.getTime() + durationSeconds * 1000).toISOString();
+    apiRequest("POST", "/api/prayer-sessions", {
+      surface: "national-cathedral",
+      durationSeconds,
+      startedAt,
+      endedAt,
+    }).catch(() => { /* non-fatal — don't block the navigation */ });
+    openExternal(NCMP_URL);
+  };
+  return (
+    <MenuRow
+      emoji="📺"
+      label={`${t("menu.ncmp")} · ${liveLabel}`}
+      onClick={onTap}
+    />
+  );
+}
 
 function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
@@ -338,22 +391,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             <div className="px-5 py-4 space-y-1" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
               {/* Daily Offices — the 4 liturgies live behind one picker. */}
               <MenuRow emoji="🌅" label={t("menu.daily_offices")} onClick={() => navigate("/bcp/daily-office")} />
-              {/* Phoebe Parish — beta-only preview entry. Parish is in
-                  private beta and the ParishGate normally bounces full-
-                  tier users (which all beta users are, since beta wins
-                  the tier derivation) back to /dashboard. The drawer
-                  surfaces this entry only for beta_users so they can
-                  walk the picker + dashboard end-to-end before we open
-                  signup to everyone. Routes to /parish/onboarding if
-                  the user hasn't subscribed yet, else /parish. */}
-              {rawIsBeta && (
-                <MenuRow
-                  emoji="🏛️"
-                  label={t("menu.phoebe_parish")}
-                  badge={t("menu.beta")}
-                  onClick={() => navigate(user?.parishFeedId ? "/parish" : "/parish/onboarding")}
-                />
-              )}
               <MenuSection emoji="🕯️" label={t("menu.practices")}>
                 <MenuRow emoji="🕯️" label={t("menu.contemplation")} onClick={() => navigate("/contemplation")} />
                 <MenuRow emoji="🌾" label={t("menu.gratitude")} onClick={() => navigate("/gratitude")} />
@@ -375,6 +412,24 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   label={t("menu.cac_daily")}
                   onClick={() => { onClose(); openExternal("https://withphoebe.app/api/cac/today"); }}
                 />
+                {/* Forward Day by Day — Forward Movement's SPA at
+                    prayer.forwardmovement.org/fdd resolves "today"
+                    client-side, so a bare URL works every day. Tap
+                    marks the FDD daily-read tracker so the home card
+                    (if enabled) flips to "Read again" on return. */}
+                <MenuRow
+                  emoji="📔"
+                  label={t("menu.fdd_daily")}
+                  onClick={() => { onClose(); markFddRead(); openExternal(FDD_TODAY_URL); }}
+                />
+                {/* National Cathedral Morning Prayer — live broadcast
+                    Mon–Fri 7 AM ET; the cathedral.org page handles
+                    live-vs-recording itself, we just deep-link.
+                    Hidden on weekends (no broadcast). Tap also logs
+                    a prayer session via /api/prayer-sessions so the
+                    user's daily prayer tracker credits the
+                    engagement — same model as opening an office. */}
+                <NcmpResourceRow onClose={onClose} t={t} />
                 {rawIsBeta && (
                   <MenuRow emoji="😇" label={t("menu.saints")} badge={t("menu.beta")} onClick={() => navigate("/saints")} />
                 )}
@@ -389,6 +444,24 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               <MenuRow emoji="⚙️" label={t("menu.settings")} onClick={() => navigate("/settings")} />
               {showAdminTools && (
                 <MenuRow emoji="🔧" label={t("menu.admin_tools")} onClick={() => navigate("/admin/tools")} />
+              )}
+              {/* Phoebe Parish — moved here from the main nav so it
+                  sits alongside Admin Tools as a privileged/preview
+                  entry rather than competing with the daily-prayer
+                  surfaces above. Still gated on rawIsBeta: Parish is
+                  in private beta and the ParishGate normally bounces
+                  full-tier users back to /dashboard, so the drawer
+                  only surfaces it for beta_users who can walk the
+                  picker + dashboard end-to-end. Routes to
+                  /parish/onboarding if the user hasn't subscribed
+                  yet, else /parish. */}
+              {rawIsBeta && (
+                <MenuRow
+                  emoji="🏛️"
+                  label={t("menu.phoebe_parish")}
+                  badge={t("menu.beta")}
+                  onClick={() => navigate(user?.parishFeedId ? "/parish" : "/parish/onboarding")}
+                />
               )}
               <MenuRow emoji="ℹ️" label={t("menu.about")} onClick={() => navigate("/church-deck")} />
             </div>

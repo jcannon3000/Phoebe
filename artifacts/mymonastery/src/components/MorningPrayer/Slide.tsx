@@ -5,7 +5,7 @@ import { triggerAmenFeedback } from "@/lib/amenFeedback";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { openExternal } from "@/lib/openExternal";
 import { CAC_TODAY_URL, FDD_TODAY_URL, markCacRead, markFddRead } from "@/lib/cacReadState";
-import { useOfficePrefs, getNcmpState, NCMP_URL } from "@/lib/officePrefs";
+import { useOfficePrefs } from "@/lib/officePrefs";
 
 interface SlideProps {
   slide: SlideData;
@@ -74,23 +74,14 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
   ) => {
     const isEvening = theme === "evening";
     const isOpenClose = slide.type === "opening" || slide.type === "closing";
-    // Office-close prefs drive the daily-reflection pills (CAC / FDD
-    // / NCMP) rendered on the closing slide. Hook is safe outside the
-    // render branch — it's only read inside the closing block below.
+    // Office-close prefs drive the daily-reflection pills (CAC / FDD)
+    // rendered on the closing slide. Hook is safe outside the render
+    // branch — it's only read inside the closing block below.
+    // NCMP is intentionally NOT a closing-pill option: it's a live
+    // weekday broadcast that IS Morning Prayer at the National
+    // Cathedral, not a post-office reflection. It's reachable via
+    // the drawer Resources entry instead.
     const officePrefs = useOfficePrefs();
-    // National Cathedral Morning Prayer is a live weekday broadcast,
-    // so the pill is gated on (a) the pref being on, (b) Morning
-    // Prayer (not Evening), and (c) NcmpState.show. The label
-    // changes based on broadcast window (live now / live in N min /
-    // today's recording) — recomputed once per render, no interval.
-    const ncmpState = officePrefs.showNcmpClose && !isEvening ? getNcmpState() : null;
-    const ncmpLabel = ncmpState && ncmpState.show
-      ? ncmpState.kind === "live"
-        ? "Live now"
-        : ncmpState.kind === "upcoming"
-          ? `Live in ${ncmpState.minutesUntil} min`
-          : "Today's recording"
-      : null;
 
     // Color scheme
     const bg = isEvening ? EP_BG : (isOpenClose ? SOIL : CREAM);
@@ -333,7 +324,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                 SFSafariView (Browser.open) and stamps today as read
                 so the corresponding home card flips to "Read
                 again." */}
-            {(officePrefs.showCacClose || officePrefs.showFddClose || ncmpLabel) && (
+            {(officePrefs.showCacClose || officePrefs.showFddClose) && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
                 {officePrefs.showCacClose && (
                   <button
@@ -377,35 +368,6 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                     }}
                   >
                     📖 Read Forward Day by Day →
-                  </button>
-                )}
-                {ncmpLabel && (
-                  <button
-                    type="button"
-                    onClick={() => openExternal(NCMP_URL)}
-                    // Live broadcast pill — the small caption beneath
-                    // the label tells the reader whether they're
-                    // catching the live stream or a recording. Tinted
-                    // pine green (a third distinct green from CAC's
-                    // forest and FDD's teal) to keep the three pills
-                    // visually distinguishable when all three are on.
-                    style={{
-                      background: "rgba(62,124,122,0.20)",
-                      color: isEvening ? EP_TEXT : CREAM,
-                      border: "1px solid rgba(62,124,122,0.48)",
-                      borderRadius: 999,
-                      padding: "10px 18px",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      fontFamily: "Space Grotesk, sans-serif",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <span>📺 National Cathedral Morning Prayer</span>
-                    <span style={{ opacity: 0.7, fontWeight: 500 }}>· {ncmpLabel} →</span>
                   </button>
                 )}
               </div>

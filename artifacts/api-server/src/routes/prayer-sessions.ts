@@ -85,6 +85,12 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
     "evening-prayer",
     "morning-devotion",
     "early-evening-devotion",
+    // Tapping the National Cathedral Morning Prayer link in the
+    // drawer Resources is itself the engagement event — same model
+    // as opening an office. We can't observe how long they watch
+    // the external stream, so we credit a fixed broadcast-length
+    // duration on tap.
+    "national-cathedral",
   ]);
   if (!FLOOR_BYPASS_SURFACES.has(surface) && durationSeconds < MIN_SESSION_SECONDS) {
     // Drop silently — too short to count as a real prayer session.

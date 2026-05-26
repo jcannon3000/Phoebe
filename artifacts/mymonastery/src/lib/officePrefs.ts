@@ -23,7 +23,6 @@ import { useEffect, useState } from "react";
 // fallbacks easier to reason about than JSON.parse.
 const KEY_SHOW_CAC_CLOSE = "phoebe:office:show-cac-close";
 const KEY_SHOW_FDD_CLOSE = "phoebe:office:show-fdd-close";
-const KEY_SHOW_NCMP_CLOSE = "phoebe:office:show-ncmp-close";
 const KEY_INCLUDE_GRATITUDE_SLIDE = "phoebe:office:include-gratitude-slide";
 
 // ── Events ─────────────────────────────────────────────────────────
@@ -56,19 +55,10 @@ export function setShowCacClose(v: boolean): void { writeBool(KEY_SHOW_CAC_CLOSE
 export function getShowFddClose(): boolean { return readBool(KEY_SHOW_FDD_CLOSE); }
 export function setShowFddClose(v: boolean): void { writeBool(KEY_SHOW_FDD_CLOSE, v); }
 
-// ── National Cathedral Morning Prayer pill ──
-// Live-streamed weekdays at 7 AM ET from cathedral.org. The page
-// itself is the same URL every day; the broadcast goes live during
-// the window and a recording stays up afterward. We only render the
-// pill on MORNING Prayer's closing slide (the broadcast is morning;
-// surfacing it after Evening Prayer would point users at a stale
-// stream, except we add a tiny "Live in N min" / "Live now" / "View
-// today's recording" label that's time-aware so a 6:50 AM user sees
-// it framed as "about to start" and a 9 AM user sees "today's
-// recording." Outside weekdays, we drop the pill entirely — the
-// cathedral doesn't broadcast on weekends.
-export function getShowNcmpClose(): boolean { return readBool(KEY_SHOW_NCMP_CLOSE); }
-export function setShowNcmpClose(v: boolean): void { writeBool(KEY_SHOW_NCMP_CLOSE, v); }
+// (No NCMP close pill — NCMP is a live weekday broadcast that IS
+// Morning Prayer at the National Cathedral, not a post-office
+// reflection. The Resources entry surfaces it as its own thing,
+// not as a CAC/FDD-style follow-on.)
 
 // ── Gratitude slide in the office ──
 // When on, MorningPrayerSlideshow splices a "Personal Thanksgiving"
@@ -85,20 +75,17 @@ export function setIncludeGratitudeSlide(v: boolean): void { writeBool(KEY_INCLU
 export function useOfficePrefs(): {
   showCacClose: boolean;
   showFddClose: boolean;
-  showNcmpClose: boolean;
   includeGratitudeSlide: boolean;
 } {
   const [state, setState] = useState(() => ({
     showCacClose: getShowCacClose(),
     showFddClose: getShowFddClose(),
-    showNcmpClose: getShowNcmpClose(),
     includeGratitudeSlide: getIncludeGratitudeSlide(),
   }));
   useEffect(() => {
     const refresh = () => setState({
       showCacClose: getShowCacClose(),
       showFddClose: getShowFddClose(),
-      showNcmpClose: getShowNcmpClose(),
       includeGratitudeSlide: getIncludeGratitudeSlide(),
     });
     window.addEventListener(OFFICE_PREFS_EVENT, refresh);
