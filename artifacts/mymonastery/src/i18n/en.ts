@@ -270,6 +270,19 @@ export const en = {
     sign_in_blurb: "Already with Phoebe? Pick up where you left off.",
     footer: "A relational app that cultivates connections between Sundays.",
   },
+  // Communities browse (pages/communities-browse.tsx).
+  communities_browse: {
+    title: "Find a community",
+    subtitle: "Pick a community on Phoebe. A leader will let you in.",
+    loading: "Loading communities…",
+    empty_title: "No public communities yet.",
+    empty_body: "Check back as more parishes join Phoebe.",
+    open: "OPEN",
+    pending: "PENDING",
+    request: "REQUEST",
+    requesting: "REQUESTING…",
+    footer: "Requests are reviewed by a community leader. You'll get a notification when you're in.",
+  },
   // Community join landing (pages/community-join.tsx) — the post-tap surface.
   community_join: {
     back_to_phoebe: "Back to Phoebe",

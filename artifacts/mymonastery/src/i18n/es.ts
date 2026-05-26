@@ -272,6 +272,18 @@ export const es: Translations = {
     sign_in_blurb: "¿Ya estás en Phoebe? Continúa donde lo dejaste.",
     footer: "Una app relacional que cultiva la conexión entre domingos.",
   },
+  communities_browse: {
+    title: "Encuentra una comunidad",
+    subtitle: "Elige una comunidad en Phoebe. Un líder te admitirá.",
+    loading: "Cargando comunidades…",
+    empty_title: "Aún no hay comunidades públicas.",
+    empty_body: "Vuelve cuando más parroquias se unan a Phoebe.",
+    open: "ABRIR",
+    pending: "PENDIENTE",
+    request: "SOLICITAR",
+    requesting: "SOLICITANDO…",
+    footer: "Las solicitudes son revisadas por un líder de la comunidad. Recibirás una notificación cuando entres.",
+  },
   community_join: {
     back_to_phoebe: "Volver a Phoebe",
     joining: "Uniéndote a {{name}}...",

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -26,6 +27,7 @@ interface PublicGroupsResponse {
 // they accept, the requester gets a push back.
 export default function CommunitiesBrowsePage() {
   const { user, isLoading } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
@@ -73,10 +75,10 @@ export default function CommunitiesBrowsePage() {
                 letterSpacing: "-0.03em",
               }}
             >
-              Find a community 🤝🏽
+              {t("communities_browse.title")} 🤝🏽
             </h1>
             <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
-              Pick a community on Phoebe. A leader will let you in.
+              {t("communities_browse.subtitle")}
             </p>
           </div>
           <Link
@@ -84,13 +86,13 @@ export default function CommunitiesBrowsePage() {
             className="text-xs font-semibold whitespace-nowrap pt-2"
             style={{ color: "#A8C5A0" }}
           >
-            ← Dashboard
+            {t("communities.back_dashboard")}
           </Link>
         </div>
 
         {groupsLoading ? (
           <p className="text-sm" style={{ color: "rgba(143,175,150,0.5)" }}>
-            Loading communities…
+            {t("communities_browse.loading")}
           </p>
         ) : groups.length === 0 ? (
           <div
@@ -101,10 +103,10 @@ export default function CommunitiesBrowsePage() {
             }}
           >
             <p className="text-sm" style={{ color: "#8FAF96" }}>
-              No public communities yet.
+              {t("communities_browse.empty_title")}
             </p>
             <p className="text-xs mt-1" style={{ color: "rgba(143,175,150,0.5)" }}>
-              Check back as more parishes join Phoebe.
+              {t("communities_browse.empty_body")}
             </p>
           </div>
         ) : (
@@ -141,7 +143,7 @@ export default function CommunitiesBrowsePage() {
                         </p>
                       )}
                       <p className="text-[11px] mt-1.5" style={{ color: "rgba(143,175,150,0.55)" }}>
-                        {g.memberCount} {g.memberCount === 1 ? "member" : "members"}
+                        {t("menu.members", { count: g.memberCount })}
                       </p>
                     </div>
                     <div className="flex-shrink-0 self-center">
@@ -155,7 +157,7 @@ export default function CommunitiesBrowsePage() {
                             letterSpacing: "0.06em",
                           }}
                         >
-                          OPEN
+                          {t("communities_browse.open")}
                         </Link>
                       ) : pending ? (
                         <span
@@ -167,7 +169,7 @@ export default function CommunitiesBrowsePage() {
                             letterSpacing: "0.06em",
                           }}
                         >
-                          PENDING
+                          {t("communities_browse.pending")}
                         </span>
                       ) : (
                         <button
@@ -182,7 +184,7 @@ export default function CommunitiesBrowsePage() {
                             fontFamily: "'Space Grotesk', sans-serif",
                           }}
                         >
-                          {requesting ? "REQUESTING…" : "REQUEST"}
+                          {requesting ? t("communities_browse.requesting") : t("communities_browse.request")}
                         </button>
                       )}
                     </div>
@@ -194,7 +196,7 @@ export default function CommunitiesBrowsePage() {
         )}
 
         <p className="text-[11px] text-center" style={{ color: "rgba(143,175,150,0.5)" }}>
-          Requests are reviewed by a community leader. You'll get a notification when you're in.
+          {t("communities_browse.footer")}
         </p>
       </div>
     </Layout>
