@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { differenceInCalendarDays } from "date-fns";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
@@ -248,6 +249,7 @@ function CorrespondenceCard({ item, userEmail }: { item: CorrespondenceItem; use
 export default function LettersPage() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
+  const { t } = useTranslation();
 
   const { data: correspondences, isLoading } = useQuery<CorrespondenceItem[]>({
     queryKey: ["/api/phoebe/correspondences"],
@@ -280,17 +282,17 @@ export default function LettersPage() {
         <div className="mb-6">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              Letters
+              {t("letters_page.title")}
             </h1>
             <span
               className="text-[9px] font-semibold uppercase tracking-widest self-start mt-2"
               style={{ color: "rgba(143,175,150,0.45)", fontFamily: "'Space Grotesk', sans-serif" }}
             >
-              beta
+              {t("menu.beta")}
             </span>
           </div>
           <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
-            An experimental way to stay close to people you care about.
+            {t("letters_page.subtitle")}
           </p>
         </div>
 
@@ -310,17 +312,17 @@ export default function LettersPage() {
           >
             <div className="text-5xl mb-6">📮</div>
             <p className="text-sm mb-4" style={{ color: "#C8D4C0", lineHeight: 1.6 }}>
-              Most friendships fade not because we stop caring, but because we never find the time. Letters gives that a simple structure: you and a friend each write one letter every two weeks. It doesn't have to be long or profound — it just has to be sent. Over time you build a real shared history.
+              {t("letters_page.empty_p1")}
             </p>
             <p className="text-sm mb-8" style={{ color: "#8FAF96", lineHeight: 1.6 }}>
-              This is an early experiment and we're still learning what makes it feel meaningful. If you try it, we'd love to hear what you think.
+              {t("letters_page.empty_p2")}
             </p>
             <Link href="/letters/new">
               <button
                 className="px-6 py-3.5 rounded-2xl text-base font-semibold"
                 style={{ backgroundColor: "#2D5E3F", color: "#F0EDE6" }}
               >
-                Start a correspondence
+                {t("letters_page.start_correspondence")}
               </button>
             </Link>
           </motion.div>
@@ -363,7 +365,7 @@ export default function LettersPage() {
                 <>
                   {yourTurn.length > 0 && (
                     <div>
-                      <SectionHeader label="Your Turn To Write" />
+                      <SectionHeader label={t("letters_page.section_your_turn")} />
                       <div className="space-y-3">
                         {yourTurn.map(item => <CorrespondenceCard key={item.id} item={item} userEmail={user.email} />)}
                       </div>
@@ -371,7 +373,7 @@ export default function LettersPage() {
                   )}
                   {waiting.length > 0 && (
                     <div>
-                      <SectionHeader label="Waiting for Response" />
+                      <SectionHeader label={t("letters_page.section_waiting")} />
                       <div className="space-y-3">
                         {waiting.map(item => <CorrespondenceCard key={item.id} item={item} userEmail={user.email} />)}
                       </div>

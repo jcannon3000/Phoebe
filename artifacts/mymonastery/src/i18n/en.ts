@@ -228,6 +228,7 @@ export const en = {
     examen: "Ignatian Examen",
     resources: "Resources",
     bcp_prayers: "BCP Prayers",
+    bcp_collects: "BCP Collects",
     psalter: "Psalter",
     saints: "Saints",
     cac_daily: "CAC Daily Reflection",
@@ -256,6 +257,16 @@ export const en = {
     available_now: "Available now",
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
+  },
+  // Letters index page (pages/Letters/LettersPage.tsx) — chrome + empty state.
+  letters_page: {
+    title: "Letters",
+    subtitle: "An experimental way to stay close to people you care about.",
+    empty_p1: "Most friendships fade not because we stop caring, but because we never find the time. Letters gives that a simple structure: you and a friend each write one letter every two weeks. It doesn't have to be long or profound — it just has to be sent. Over time you build a real shared history.",
+    empty_p2: "This is an early experiment and we're still learning what makes it feel meaningful. If you try it, we'd love to hear what you think.",
+    start_correspondence: "Start a correspondence",
+    section_your_turn: "Your Turn To Write",
+    section_waiting: "Waiting for Response",
   },
   // Prayer list page (pages/prayer-list.tsx) — page chrome + section labels.
   prayer_list: {
@@ -362,6 +373,17 @@ export const en = {
     prayers_count_one: "{{count}} prayer",
     prayers_count_other: "{{count}} prayers",
     from_bcp: "From the Book of Common Prayer",
+  },
+  // BCP Collects index (pages/bcp-collects.tsx).
+  bcp_collects: {
+    back_dashboard: "← Dashboard",
+    title: "Collects",
+    subtitle: "Collects from the Book of Common Prayer — Morning and Evening Prayer, Daily Devotions, and other loved prayers",
+    search_placeholder: "Search collects…",
+    no_results: 'No collects found for "{{query}}"',
+    collects_count_one: "{{count}} collect",
+    collects_count_other: "{{count}} collects",
+    from_bcp: "From the 1979 Book of Common Prayer (public domain)",
   },
   // Saints index (pages/Saints/SaintsIndex.tsx).
   saints: {
