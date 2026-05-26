@@ -333,6 +333,16 @@ function pickConcludingBlessing(date: Date): { ref: string; text: string } {
   return CONCLUDING_BLESSINGS[day % CONCLUDING_BLESSINGS.length];
 }
 
+// Prayer for Mission — BCP MP pp. 100–101 appoints three options.
+// Phoebe rotates between them by day-of-year so a daily reader hears all
+// three across a typical week (same cadence as the concluding blessing).
+const MP_PRAYER_FOR_MISSION_KEYS = ["prayer_mission_1", "prayer_mission_2", "prayer_mission_3"];
+function pickPrayerForMissionKey(date: Date): string {
+  const start = Date.UTC(date.getUTCFullYear(), 0, 0);
+  const day = Math.floor((date.getTime() - start) / 86_400_000);
+  return MP_PRAYER_FOR_MISSION_KEYS[day % MP_PRAYER_FOR_MISSION_KEYS.length];
+}
+
 // ── Invitatory rotation ─────────────────────────────────────────────────────────
 //
 // BCP 1979, Morning Prayer Rite II (pp. 80-83): after "Lord, open our
@@ -459,6 +469,7 @@ export async function assembleMorningPrayer(
   );
 
   const suffragesKey = pickSuffragesKey(liturgicalDay.weekInSeason);
+  const prayerForMissionKey = pickPrayerForMissionKey(date);
   const keysNeeded = [
     openingSentenceKey,
     "confession_text",
@@ -471,6 +482,7 @@ export async function assembleMorningPrayer(
     "lords_prayer_contemporary",
     suffragesKey,
     liturgicalDay.collectKey,
+    prayerForMissionKey,
     "general_thanksgiving",
   ];
 
@@ -768,18 +780,11 @@ export async function assembleMorningPrayer(
     }
 
     allChunks.forEach((c, i) => {
-      const isLast = i === allChunks.length - 1;
       const eyebrow = psalmEyebrow(c.psalmRef);
       const psalmNum = c.psalmRef.number;
       const psalmData = texts[`psalm_${psalmNum}`];
-      // Append the Gloria Patri as a doxology block to the LAST
-      // chunk's body. The renderer's parser already detects the
-      // "Glory to the Father" pattern via gloriaMatch and emits it
-      // as a {kind:"doxology"} entry — we just need the text in
-      // the body, separated by a blank line so the regex anchors.
-      const body = isLast ? `${c.content}\n\n${gloriaPatri}` : c.content;
       slides.push(
-        slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, body, {
+        slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, c.content, {
           title: psalmData?.title ?? null,
           isScrollable: false,
           scrollHint: null,
@@ -790,14 +795,26 @@ export async function assembleMorningPrayer(
             psalmRef: c.psalmRef.raw,
             psalmChunkIndex: i,
             psalmChunkTotal: allChunks.length,
-            // Marker for the renderer: "this slide's doxology block
-            // (parsed from the body) is the Gloria for the whole
-            // appointed-psalms reading — render it bottom-right."
-            ...(isLast ? { gloryBottomRight: true } : {}),
           },
         }),
       );
     });
+
+    // Gloria Patri — its own slide, sealing the whole appointed-psalms
+    // reading (matches the invitatory's standalone Doxology card). One
+    // Gloria for the appointed portion is permitted by the BCP rubric
+    // (the Gloria "may be sung or said at the end of each Psalm or at
+    // the end of the whole Portion" — BCP p. 141 / p. 583).
+    const combinedTitleEyebrow = appointedPsalms.length === 1
+      ? psalmEyebrow(appointedPsalms[0])
+      : combinedEyebrow;
+    slides.push(
+      slide(id(), "psalm_gloria", "🎶", combinedTitleEyebrow, gloriaPatri, {
+        isScrollable: false,
+        scrollHint: null,
+        metadata: { appointed: true },
+      }),
+    );
   }
 
   // BCP marks empty lesson slots with dashes ("----------") on major
@@ -889,16 +906,27 @@ export async function assembleMorningPrayer(
     }),
   );
 
-  // Collect of the Day — the single closing collect. The BCP allows
-  // additional collects ("A Collect for Grace", "A Prayer for
-  // Mission", etc.) at this point in the office, but per user
-  // direction Phoebe surfaces only the proper Collect of the Day so
-  // the office stays a single, focused closing prayer.
+  // Collect of the Day — the BCP rubric (p. 98) says "one or more of the
+  // following Collects, the Collect of the Day being first." Phoebe
+  // surfaces the proper Collect of the Day to satisfy the "one or more"
+  // minimum; the other collects (for Grace, Renewal of Life, etc.) are
+  // intentionally not surfaced to keep the closing prayer single and
+  // focused. A Prayer for Mission follows below as the BCP appoints.
   const collectData = texts[liturgicalDay.collectKey];
   slides.push(
     slide(id(), "collect", "📅", "COLLECT OF THE DAY", getText(liturgicalDay.collectKey), {
       title: liturgicalDay.sundayLabel,
       bcpReference: collectData?.bcpReference ?? "BCP p. 211",
+    }),
+  );
+
+  // A Prayer for Mission — BCP MP pp. 100–101. Three options are
+  // appointed; we rotate by day-of-year so a daily reader hears all
+  // three across the week (same cadence as the concluding blessing).
+  const prayerForMissionData = texts[prayerForMissionKey];
+  slides.push(
+    slide(id(), "prayer_for_mission", "🌍", "A PRAYER FOR MISSION", getText(prayerForMissionKey), {
+      bcpReference: prayerForMissionData?.bcpReference ?? "BCP p. 100",
     }),
   );
 

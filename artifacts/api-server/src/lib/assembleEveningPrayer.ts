@@ -154,6 +154,15 @@ function pickConcludingBlessing(date: Date): { ref: string; text: string } {
   return CONCLUDING_BLESSINGS[day % CONCLUDING_BLESSINGS.length];
 }
 
+// Prayer for Mission — BCP EP p. 124 appoints three options. Rotate
+// by day-of-year, matching the MP cadence and the concluding blessing.
+const EP_PRAYER_FOR_MISSION_KEYS = ["prayer_mission_1", "prayer_mission_2", "prayer_mission_3"];
+function pickPrayerForMissionKey(date: Date): string {
+  const start = Date.UTC(date.getUTCFullYear(), 0, 0);
+  const day = Math.floor((date.getTime() - start) / 86_400_000);
+  return EP_PRAYER_FOR_MISSION_KEYS[day % EP_PRAYER_FOR_MISSION_KEYS.length];
+}
+
 // All BCP texts now come from ../data/bcpEveningPrayerTexts.ts (EP_BCP_TEXTS)
 
 // ── Main Assembly ────────────────────────────────────────────────────────────
@@ -346,13 +355,11 @@ export async function assembleEveningPrayer(
     }
 
     allChunks.forEach((c, i) => {
-      const isLast = i === allChunks.length - 1;
       const eyebrow = psalmEyebrow(c.psalmRef);
       const psalmNum = c.psalmRef.number;
       const psalmData = psalmTexts[`psalm_${psalmNum}`];
-      const body = isLast ? `${c.content}\n\n${epGloriaPatri}` : c.content;
       slides.push(
-        slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, body, {
+        slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, c.content, {
           title: psalmData?.title ?? null,
           bcpReference: psalmData?.bcpReference ?? null,
           isScrollable: false,
@@ -363,11 +370,25 @@ export async function assembleEveningPrayer(
             psalmRef: c.psalmRef.raw,
             psalmChunkIndex: i,
             psalmChunkTotal: allChunks.length,
-            ...(isLast ? { gloryBottomRight: true } : {}),
           },
         }),
       );
     });
+
+    // Gloria Patri — its own slide, sealing the whole appointed-psalms
+    // reading (mirrors MP). One Gloria for the appointed portion is
+    // permitted by the BCP rubric (Gloria "may be sung or said at the
+    // end of each Psalm or at the end of the whole Portion").
+    const combinedTitleEyebrow = appointedPsalms.length === 1
+      ? psalmEyebrow(appointedPsalms[0])
+      : combinedEyebrow;
+    slides.push(
+      slide(id(), "psalm_gloria", "🎶", combinedTitleEyebrow, epGloriaPatri, {
+        isScrollable: false,
+        scrollHint: null,
+        metadata: { appointed: true },
+      }),
+    );
   }
 
   // 8. The Gospel — reference only.
@@ -495,13 +516,25 @@ export async function assembleEveningPrayer(
     }),
   );
 
-  // 15. Collect of the Day
+  // 15. Collect of the Day — satisfies the BCP rubric's "one or more
+  // of the following Collects, the Collect of the Day being first."
+  // A Prayer for Mission follows below as the BCP appoints.
   const collectContent = getText(liturgicalDay.collectKey) || getText("collect_fallback");
   const collectRef = getTextData(liturgicalDay.collectKey).bcpReference || getTextData("collect_fallback").bcpReference;
   slides.push(
     slide(id(), "collect", "📅", "COLLECT OF THE DAY", collectContent, {
       title: liturgicalDay.sundayLabel,
       bcpReference: collectRef,
+    }),
+  );
+
+  // 15b. A Prayer for Mission — BCP EP p. 124. Three options, rotated
+  // by day-of-year (same cadence as MP).
+  const epPmKey = pickPrayerForMissionKey(date);
+  const epPmData = getTextData(epPmKey);
+  slides.push(
+    slide(id(), "prayer_for_mission", "🌍", "A PRAYER FOR MISSION", getText(epPmKey), {
+      bcpReference: epPmData.bcpReference || "BCP p. 124",
     }),
   );
 
