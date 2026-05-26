@@ -258,6 +258,23 @@ export const en = {
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
   },
+  // Feedback page (pages/feedback.tsx).
+  feedback: {
+    title: "Feedback",
+    subtitle: "Share a thought, report a bug, or suggest something. We read every message.",
+    placeholder: "What's on your mind?",
+    sending: "Sending…",
+    send: "Send feedback",
+    thanks_toast: "Thanks for your feedback!",
+    error_toast: "Something went wrong. Please try again.",
+  },
+  // Invitations page (pages/invitations.tsx).
+  invitations: {
+    title: "Invitations",
+    subtitle: "Practices and gatherings you've been invited to.",
+    empty_title: "No pending invitations",
+    empty_body: "When someone invites you to a practice or gathering, it will appear here.",
+  },
   // Community ask page (pages/community-ask.tsx).
   community_ask: {
     community_fallback: "Community",

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -28,6 +29,7 @@ export default function FeedbackPage() {
   const { user } = useAuth();
   const { rawIsAdmin } = useBetaStatus();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
 
@@ -35,10 +37,10 @@ export default function FeedbackPage() {
     mutationFn: () => apiRequest("POST", "/api/feedback", { message }),
     onSuccess: () => {
       setMessage("");
-      toast({ title: "Thanks for your feedback!" });
+      toast({ title: t("feedback.thanks_toast") });
     },
     onError: () => {
-      toast({ title: "Something went wrong. Please try again.", variant: "destructive" });
+      toast({ title: t("feedback.error_toast"), variant: "destructive" });
     },
   });
 
@@ -58,16 +60,16 @@ export default function FeedbackPage() {
             className="text-2xl font-bold mb-1"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            Feedback
+            {t("feedback.title")}
           </h1>
           <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-            Share a thought, report a bug, or suggest something. We read every message.
+            {t("feedback.subtitle")}
           </p>
 
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="What's on your mind?"
+            placeholder={t("feedback.placeholder")}
             rows={5}
             className="w-full rounded-xl px-4 py-3 text-sm resize-none outline-none focus:ring-1"
             style={{
@@ -88,7 +90,7 @@ export default function FeedbackPage() {
               className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-40"
               style={{ background: "#4a7c59", color: "#ffffff" }}
             >
-              {submit.isPending ? "Sending…" : "Send feedback"}
+              {submit.isPending ? t("feedback.sending") : t("feedback.send")}
             </button>
           </div>
         </div>

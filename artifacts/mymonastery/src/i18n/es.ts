@@ -261,6 +261,21 @@ export const es: Translations = {
     daily_reminders: "🔔 Recordatorios diarios",
     daily_reminders_sub: "Elige una hora para la mañana y la tarde.",
   },
+  feedback: {
+    title: "Comentarios",
+    subtitle: "Comparte una idea, reporta un error o sugiere algo. Leemos todos los mensajes.",
+    placeholder: "¿Qué tienes en mente?",
+    sending: "Enviando…",
+    send: "Enviar comentarios",
+    thanks_toast: "¡Gracias por tus comentarios!",
+    error_toast: "Algo salió mal. Por favor intenta de nuevo.",
+  },
+  invitations: {
+    title: "Invitaciones",
+    subtitle: "Prácticas y encuentros a los que te han invitado.",
+    empty_title: "No hay invitaciones pendientes",
+    empty_body: "Cuando alguien te invite a una práctica o un encuentro, aparecerá aquí.",
+  },
   community_ask: {
     community_fallback: "Comunidad",
     eyebrow: "Pregúntale a tu comunidad",
