@@ -45,6 +45,7 @@ type OfficePrefs = {
   evening: OfficePref;
   morningTime: string | null;
   eveningTime: string | null;
+  showConfession?: boolean;
 };
 
 // Small inline row used by OfficeReminderSettings. Renders a labeled
@@ -87,102 +88,11 @@ function ReminderTimeRow({
   );
 }
 
-// Feed-first home picker. Shown to ANY user who follows at least one
-// prayer feed (not just portal sign-ups). Lists the Daily Office plus
-// one row per subscribed feed; picking a feed makes it lead the home
-// screen with the tall hero card, picking the Office reverts to the
-// default. Server-backed via PUT /api/me/feed-first-home { feedId };
-// on save we invalidate /api/auth/me (so the dashboard re-reads
-// homeFeedId + feedFirstHome) and the subscribed-feeds list.
-function HomeScreenSettings() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const { data: subsData } = useQuery<{ subscriptions: Array<{ feed: { id: number; title: string; coverEmoji: string | null } }> }>({
-    queryKey: ["/api/prayer-feeds/subscribed"],
-    queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed") as Promise<{ subscriptions: Array<{ feed: { id: number; title: string; coverEmoji: string | null } }> }>,
-    enabled: !!user,
-  });
-  const save = useMutation({
-    // feedId === null → office-led; a number → that feed leads.
-    mutationFn: (feedId: number | null) =>
-      apiRequest("PUT", "/api/me/feed-first-home", { feedId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
-    },
-  });
-
-  const feeds = subsData?.subscriptions.map((s) => s.feed) ?? [];
-  // Nothing to feature → no picker (the Daily Office is the only option).
-  if (feeds.length === 0) return null;
-
-  // Selected = the featured feed when feed-first is on AND that feed is
-  // still followed; otherwise the Daily Office.
-  const selectedFeedId = (user?.feedFirstHome && user?.homeFeedId != null
-    && feeds.some((f) => f.id === user.homeFeedId))
-    ? user.homeFeedId
-    : null;
-
-  type Row = { key: string; feedId: number | null; label: string; sub: string };
-  const rows: Row[] = [
-    { key: "office", feedId: null, label: "Lead with the Daily Office", sub: "Morning & Evening Prayer takes the top spot" },
-    ...feeds.map((f): Row => ({
-      key: `feed-${f.id}`,
-      feedId: f.id,
-      label: `Lead with ${`${f.title} ${f.coverEmoji ?? "🌿"}`.trim()}`,
-      sub: "This feed gets the big card; the Daily Office moves to the menu",
-    })),
-  ];
-
-  return (
-    <>
-      <SectionHeader label="Home screen" />
-      <p
-        className="text-[13px] mb-3"
-        style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}
-      >
-        Choose what greets you when you open Phoebe.
-      </p>
-      <SettingsCard>
-        {rows.map((row, i) => {
-          const isSelected = selectedFeedId === row.feedId;
-          return (
-            <button
-              key={row.key}
-              type="button"
-              onClick={() => save.mutate(row.feedId)}
-              className="w-full flex items-center gap-3 py-2.5 text-left"
-              style={{
-                borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)",
-                background: "transparent",
-                cursor: "pointer",
-              }}
-            >
-              <div
-                style={{
-                  width: 18, height: 18, borderRadius: "50%",
-                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
-                  background: isSelected ? "#A8C5A0" : "transparent",
-                  flexShrink: 0,
-                }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-                  {row.label}
-                </p>
-                {row.sub && (
-                  <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
-                    {row.sub}
-                  </p>
-                )}
-              </div>
-            </button>
-          );
-        })}
-      </SettingsCard>
-    </>
-  );
-}
+// (The feed-first-home picker that used to live here moved to the
+// dedicated /customize-home page — the same control now sits next to
+// the reorder / show-hide handles for the rest of the home modules so
+// every home-screen knob lives in one place. The server endpoint
+// (PUT /api/me/feed-first-home) is unchanged; only the surface is.)
 
 function WeeklyDigestSettings() {
   const { isBeta } = useBetaStatus();
@@ -461,6 +371,41 @@ function OfficeReminderSettings() {
           />
         )}
       </SettingsCard>
+
+      {/* Confession of Sin — opt-in. Off by default so the office begins
+          with the Opening Sentence; turn this on to begin Morning and
+          Evening Prayer with the BCP confession + absolution (p. 79–80
+          / p. 116–117, "may be said"). Renders below the daily-reminder
+          cards because it shares the same office-prefs query/mutation. */}
+      <SectionHeader label="Confession of Sin" />
+      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+        The BCP allows the Daily Office to begin with a Confession of Sin. Off by default — turn this on to include it at the top of Morning and Evening Prayer.
+      </p>
+      <SettingsCard>
+        <button
+          type="button"
+          onClick={() => save.mutate({ showConfession: !data?.showConfession })}
+          className="w-full flex items-center gap-3 py-2.5 text-left"
+          style={{ background: "transparent", cursor: "pointer" }}
+        >
+          <div
+            style={{
+              width: 18, height: 18, borderRadius: "50%",
+              border: `2px solid ${data?.showConfession ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+              background: data?.showConfession ? "#A8C5A0" : "transparent",
+              flexShrink: 0,
+            }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+              Include Confession of Sin
+            </p>
+            <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+              {data?.showConfession ? "Shown before the Opening Sentence." : "The office begins with the Opening Sentence."}
+            </p>
+          </div>
+        </button>
+      </SettingsCard>
     </>
   );
 }
@@ -481,10 +426,11 @@ const PREVIEW_HEIGHT = 182;
 //      the toggle now means the preference is captured the moment a
 //      user is interested.
 // The old "Hide offices on home" toggle that used to live here is gone
-// — the server-backed "Home screen" picker (HomeScreenSettings) is now
-// the single control for what leads the home. Keeping both meant a
-// creation-feed sign-up saw the office hidden by feed_first_home while
-// this localStorage toggle still read "off," which was contradictory.
+// — the server-backed feed-first-home picker (now on /customize-home,
+// alongside the rest of the home-module controls) is the single control
+// for what leads the home. Keeping both meant a creation-feed sign-up
+// saw the office hidden by feed_first_home while this localStorage
+// toggle still read "off," which was contradictory.
 // The toggle below read/writes localStorage on render so it always
 // reflects the current persisted state.
 const FEED_REMINDER_LS_KEY = "phoebe:offices-only:feed-reminder-enabled";
@@ -1219,10 +1165,6 @@ export default function SettingsPage() {
                 office. Both preferences are read by the offices-
                 only home (parish-dashboard) on next paint. */}
         {user.accessTier === "offices-only" && <OfficesOnlyExtras />}
-
-        {/* ── Home screen ── (feed-first toggle; only for users with a
-            featured feed set at signup) */}
-        <HomeScreenSettings />
 
         {/* ── Weekly prayer-feed digest ── (beta-only for now) */}
         <WeeklyDigestSettings />

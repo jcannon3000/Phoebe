@@ -96,6 +96,12 @@ export const usersTable = pgTable("users", {
   // api-server/src/routes/index.ts. Joining a community later still
   // upgrades them to full (the tier is derived; full wins).
   officesOnly: boolean("offices_only").notNull().default(false),
+  // ── BCP Daily Office customisation ───────────────────────────────────────
+  // Whether to include the BCP Confession of Sin + Absolution at the top
+  // of Morning and Evening Prayer. Default OFF — the office begins with
+  // the Opening Sentence and the user can opt in from Settings if they
+  // want the penitential opening (BCP p. 79–80 / p. 116–117, "may be said").
+  bcpShowConfession: boolean("bcp_show_confession").notNull().default(false),
   // ── Phoebe Parish: office reminder preferences ───────────────────────────
   // Each side of the day picks one of three values:
   //   "none"     — do not push at the morning/evening reminder hour

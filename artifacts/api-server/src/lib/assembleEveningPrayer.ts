@@ -25,6 +25,7 @@ import { EP_BCP_TEXTS } from "../data/bcpEveningPrayerTexts";
 import { buildIntercessionSlides } from "./assembleIntercessions";
 import { buildLessonSlides } from "./assembleLesson";
 import type { Slide, SlideType, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
+import { applyConfessionPref } from "./assembleMorningPrayer";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -621,6 +622,9 @@ export async function assembleEveningPrayer(
   // one more empty card to finish. The final blessing now closes
   // the office; the bottom pill's "Done" button signals the end.)
 
+  // Per-user: hide the Confession + Absolution unless the user opted in.
+  const slidesForUser = await applyConfessionPref(slides, userId);
+
   const officeDay: OfficeDayInfo = {
     season: liturgicalDay.season,
     liturgicalYear: liturgicalDay.liturgicalYear,
@@ -630,8 +634,8 @@ export async function assembleEveningPrayer(
     feastName: liturgicalDay.feastName,
     isMajorFeast: liturgicalDay.isMajorFeast,
     useAlleluia: liturgicalDay.useAlleluia,
-    totalSlides: slides.length,
+    totalSlides: slidesForUser.length,
   };
 
-  return { slides, officeDay, fromCache: false };
+  return { slides: slidesForUser, officeDay, fromCache: false };
 }

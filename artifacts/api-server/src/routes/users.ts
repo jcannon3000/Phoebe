@@ -277,6 +277,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
         evening: usersTable.parishOfficeEveningPref,
         morningTime: usersTable.parishOfficeMorningTime,
         eveningTime: usersTable.parishOfficeEveningTime,
+        showConfession: usersTable.bcpShowConfession,
       })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
@@ -353,6 +354,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
       evening: u?.evening ?? "none",
       morningTime: u?.morningTime ?? null,
       eveningTime: u?.eveningTime ?? null,
+      showConfession: u?.showConfession ?? false,
       lastPrayedMorning,
       lastPrayedEvening,
       officeStreak,
@@ -384,6 +386,9 @@ router.put("/me/office-prefs", async (req, res): Promise<void> => {
     update.parishOfficeEveningTime = null;
   } else if (typeof body.eveningTime === "string" && /^\d{2}:\d{2}$/.test(body.eveningTime)) {
     update.parishOfficeEveningTime = body.eveningTime;
+  }
+  if (typeof body.showConfession === "boolean") {
+    update.bcpShowConfession = body.showConfession;
   }
   if (Object.keys(update).length === 0) { res.json({ ok: true }); return; }
   try {

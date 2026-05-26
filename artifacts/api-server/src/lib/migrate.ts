@@ -1403,6 +1403,9 @@ export async function migrate() {
     // per side of the day ("none" / "office" / "devotion"), with
     // optional time overrides. Morning DEFAULT is now 'devotion'
     // (see backfill block below); evening DEFAULT stays 'none'.
+    // BCP Daily Office: include the Confession of Sin + Absolution at
+    // the top of MP/EP? Default OFF — opt-in from Settings.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS bcp_show_confession BOOLEAN NOT NULL DEFAULT FALSE`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_pref TEXT NOT NULL DEFAULT 'none'`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_pref TEXT NOT NULL DEFAULT 'none'`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_time TEXT`);

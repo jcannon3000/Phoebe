@@ -11,6 +11,7 @@ import {
   db,
   bcpTextsTable,
   morningPrayerCacheTable,
+  usersTable,
 } from "@workspace/db";
 import { getOfficeDay } from "./liturgicalCalendar";
 import { getCanticles } from "./canticleSelector";
@@ -421,7 +422,9 @@ export async function assembleMorningPrayer(
     // Splice the per-user intercessions slide in BEFORE general
     // thanksgiving — the cached slides don't include it (caching it
     // would cross-contaminate users with each other's prayer lists).
-    const slides = await injectIntercessions(cachedSlides, userId, cacheDate);
+    const withIntercessions = await injectIntercessions(cachedSlides, userId, cacheDate);
+    // Per-user: hide the Confession + Absolution unless the user opted in.
+    const slides = await applyConfessionPref(withIntercessions, userId);
     // Derive officeDay fresh from the date instead of fishing fields
     // out of slide[0]'s metadata. The cached opening slide is gone now
     // (the office begins with the Opening Sentence), so the metadata
@@ -1014,7 +1017,9 @@ export async function assembleMorningPrayer(
   }
 
   // Per-user intercessions slide — built fresh, never cached.
-  const slidesWithIntercessions = await injectIntercessions(slides, userId, cacheDate);
+  const withIntercessions = await injectIntercessions(slides, userId, cacheDate);
+  // Per-user: hide the Confession + Absolution unless the user opted in.
+  const slidesForUser = await applyConfessionPref(withIntercessions, userId);
 
   const officeDay: OfficeDayInfo = {
     season: liturgicalDay.season,
@@ -1025,10 +1030,10 @@ export async function assembleMorningPrayer(
     feastName: liturgicalDay.feastName,
     isMajorFeast: liturgicalDay.isMajorFeast,
     useAlleluia: liturgicalDay.useAlleluia,
-    totalSlides: slidesWithIntercessions.length,
+    totalSlides: slidesForUser.length,
   };
 
-  return { slides: slidesWithIntercessions, officeDay, fromCache: false };
+  return { slides: slidesForUser, officeDay, fromCache: false };
 }
 
 // Inject the intercessions slide into a slide array between Prayer for
@@ -1085,4 +1090,20 @@ async function injectIntercessions(
     portalSlide,
     ...slides.slice(insertBefore),
   ];
+}
+
+// Drop the Confession of Sin + Absolution slides unless the user opted in.
+// Default for `bcp_show_confession` is FALSE, so the office begins with the
+// Opening Sentence; users who want the penitential opening can switch it on
+// from Settings (PUT /api/me/office-prefs { showConfession: true }).
+// Applied per-user AFTER the cache step, so the canonical cached deck
+// remains the same for everyone — only the slices a user sees differ.
+export async function applyConfessionPref(slides: Slide[], userId: number): Promise<Slide[]> {
+  const [u] = await db
+    .select({ showConfession: usersTable.bcpShowConfession })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  if (u?.showConfession) return slides;
+  return slides.filter((s) => s.type !== "confession" && s.type !== "absolution");
 }
