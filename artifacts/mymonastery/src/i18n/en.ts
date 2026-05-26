@@ -270,6 +270,11 @@ export const en = {
     sign_in_blurb: "Already with Phoebe? Pick up where you left off.",
     footer: "A relational app that cultivates connections between Sundays.",
   },
+  // Feed event card (components/FeedEventCard.tsx).
+  feed_event: {
+    cancelled: "Cancelled",
+    join: "Join →",
+  },
   // Gratitude composer (components/GratitudeComposer.tsx) — inline + overlay.
   gratitude_composer: {
     placeholder: "Today I'm grateful for…",

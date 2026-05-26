@@ -272,6 +272,10 @@ export const es: Translations = {
     sign_in_blurb: "¿Ya estás en Phoebe? Continúa donde lo dejaste.",
     footer: "Una app relacional que cultiva la conexión entre domingos.",
   },
+  feed_event: {
+    cancelled: "Cancelado",
+    join: "Unirse →",
+  },
   gratitude_composer: {
     placeholder: "Hoy doy gracias por…",
     minimum_count: "{{count}}/5 palabras",

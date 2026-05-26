@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { openExternal } from "@/lib/openExternal";
 
 // An event a prayer-feed manager attached to their feed (vigil, day of
@@ -18,19 +19,20 @@ export type FeedEvent = {
 const SPACE_GROTESK = "'Space Grotesk', sans-serif";
 
 // Human day/time label for an event's start. "Today · 7:00 PM",
-// "Tomorrow · 9:00 AM", "Wed, Jun 4 · 7:00 PM".
-function formatWhen(iso: string): string {
+// "Tomorrow · 9:00 AM", "Wed, Jun 4 · 7:00 PM". Caller passes t() and
+// the active locale so today/tomorrow + the date formatting localize.
+function formatWhen(iso: string, t: (k: string) => string, locale?: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const now = new Date();
   const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
   const days = Math.round((startOf(d).getTime() - startOf(now).getTime()) / 86_400_000);
-  const time = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const time = d.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
   let day: string;
-  if (days === 0) day = "Today";
-  else if (days === 1) day = "Tomorrow";
-  else if (days > 1 && days < 7) day = d.toLocaleDateString(undefined, { weekday: "long" });
-  else day = d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  if (days === 0) day = t("common.today");
+  else if (days === 1) day = t("common.tomorrow");
+  else if (days > 1 && days < 7) day = d.toLocaleDateString(locale, { weekday: "long" });
+  else day = d.toLocaleDateString(locale, { weekday: "short", month: "short", day: "numeric" });
   return `${day} · ${time}`;
 }
 
@@ -40,6 +42,7 @@ function formatWhen(iso: string): string {
 // Built fresh rather than reusing GatheringCard, which reads community
 // fields (groupId, RSVP) feed events don't have.
 export function FeedEventCard({ event, compact = false }: { event: FeedEvent; compact?: boolean }) {
+  const { t, i18n } = useTranslation();
   const cancelled = event.state === "cancelled";
   const BAR = "#6FAF85"; // CATEGORY_COLORS.gatherings.bar
 
@@ -62,7 +65,7 @@ export function FeedEventCard({ event, compact = false }: { event: FeedEvent; co
           className="text-[10px] uppercase tracking-[0.14em] font-semibold mb-0.5"
           style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}
         >
-          {cancelled ? "Cancelled" : formatWhen(event.startsAt)}
+          {cancelled ? t("feed_event.cancelled") : formatWhen(event.startsAt, t, i18n.language)}
         </p>
         <p
           className="text-sm font-semibold leading-snug"
@@ -101,7 +104,7 @@ export function FeedEventCard({ event, compact = false }: { event: FeedEvent; co
                   fontFamily: SPACE_GROTESK,
                 }}
               >
-                📹 Join →
+                📹 {t("feed_event.join")}
               </button>
             )}
           </div>
