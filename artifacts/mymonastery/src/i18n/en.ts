@@ -258,6 +258,22 @@ export const en = {
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
   },
+  // Letter splash (pages/Letters/LetterSplash.tsx) — landing for a letter share link.
+  letter_splash: {
+    not_active: "This letter link is no longer active.",
+    maybe_archived: "The correspondence may have been archived.",
+    wrote_you: "{{name}} wrote you a letter.",
+    waiting: "A letter is waiting for you.",
+    sign_in_to_read: "Sign in to read it.",
+    sign_in_to_phoebe: "Sign in to Phoebe",
+    tagline: "Be together with Phoebe.",
+    your_correspondent: "Your correspondent",
+    intro_p1: "Phoebe Letters is a slow correspondence practice. You write one letter every two weeks, sitting down to say what matters.",
+    intro_p2: "You read. You write back. You wait. A conversation with room to breathe.",
+    monks_quote: "Monks have written this way for centuries.",
+    read_letter: "Read your letter →",
+    opening: "Opening…",
+  },
   // Feedback page (pages/feedback.tsx).
   feedback: {
     title: "Feedback",

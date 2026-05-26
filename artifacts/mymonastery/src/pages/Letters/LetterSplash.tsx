@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 
 interface LetterPreview {
@@ -16,6 +17,7 @@ export default function LetterSplash() {
   const [, params] = useRoute("/letter/:id");
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const correspondenceId = params?.id;
   const token = new URLSearchParams(window.location.search).get("token");
   const tokenParam = token ? `?token=${token}` : "";
@@ -60,8 +62,8 @@ export default function LetterSplash() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center" style={{ background: bg }}>
         <p className="text-5xl mb-4">📮</p>
-        <p className="text-base mb-1" style={{ color: "#F0EDE6" }}>This letter link is no longer active.</p>
-        <p className="text-sm" style={{ color: "#8FAF96" }}>The correspondence may have been archived.</p>
+        <p className="text-base mb-1" style={{ color: "#F0EDE6" }}>{t("letter_splash.not_active")}</p>
+        <p className="text-sm" style={{ color: "#8FAF96" }}>{t("letter_splash.maybe_archived")}</p>
       </div>
     );
   }
@@ -89,20 +91,20 @@ export default function LetterSplash() {
           <div className="text-5xl mb-6">📮</div>
           <h1 className="text-[22px] font-bold mb-3" style={{ color: "#F0EDE6" }}>
             {preview.latestAuthorName
-              ? `${preview.latestAuthorName} wrote you a letter.`
-              : "A letter is waiting for you."}
+              ? t("letter_splash.wrote_you", { name: preview.latestAuthorName })
+              : t("letter_splash.waiting")}
           </h1>
           <p className="text-base mb-8 leading-relaxed" style={{ color: "#8FAF96" }}>
-            Sign in to read it.
+            {t("letter_splash.sign_in_to_read")}
           </p>
           <a
             href={signInUrl}
             className="inline-flex items-center justify-center w-full py-4 rounded-2xl font-semibold text-base"
             style={{ background: "#2D5E3F", color: "#F0EDE6" }}
           >
-            Sign in to Phoebe
+            {t("letter_splash.sign_in_to_phoebe")}
           </a>
-          <p className="text-xs mt-10" style={{ color: "#8FAF96" }}>Be together with Phoebe.</p>
+          <p className="text-xs mt-10" style={{ color: "#8FAF96" }}>{t("letter_splash.tagline")}</p>
         </motion.div>
       </div>
     );
@@ -110,7 +112,7 @@ export default function LetterSplash() {
 
   // Variant A — new user (full intro).
   if (isNewUser) {
-    const waitingName = preview.latestAuthorName || preview.memberNames[0] || "Your correspondent";
+    const waitingName = preview.latestAuthorName || preview.memberNames[0] || t("letter_splash.your_correspondent");
     return (
       <div
         className="min-h-screen flex flex-col items-center justify-center px-6 py-12 text-center"
@@ -124,32 +126,32 @@ export default function LetterSplash() {
         >
           <div className="text-6xl mb-8">📮</div>
           <h1 className="text-[28px] font-bold mb-5 leading-tight" style={{ color: "#F0EDE6" }}>
-            {waitingName} wrote you a letter.
+            {t("letter_splash.wrote_you", { name: waitingName })}
           </h1>
           <p className="text-base mb-4 leading-relaxed" style={{ color: "#C8D4C0" }}>
-            Phoebe Letters is a slow correspondence practice. You write one letter every two weeks, sitting down to say what matters.
+            {t("letter_splash.intro_p1")}
           </p>
           <p className="text-base mb-8 leading-relaxed" style={{ color: "#C8D4C0" }}>
-            You read. You write back. You wait. A conversation with room to breathe.
+            {t("letter_splash.intro_p2")}
           </p>
           <p className="text-sm italic mb-10" style={{ color: "#8FAF96" }}>
-            Monks have written this way for centuries.
+            {t("letter_splash.monks_quote")}
           </p>
           <button
             onClick={() => setLocation(threadUrl)}
             className="w-full py-4 rounded-2xl font-semibold text-base"
             style={{ background: "#2D5E3F", color: "#F0EDE6" }}
           >
-            Read your letter →
+            {t("letter_splash.read_letter")}
           </button>
-          <p className="text-xs mt-12" style={{ color: "#8FAF96" }}>Be together with Phoebe.</p>
+          <p className="text-xs mt-12" style={{ color: "#8FAF96" }}>{t("letter_splash.tagline")}</p>
         </motion.div>
       </div>
     );
   }
 
   // Variant B — existing user, quiet transition (auto-advances above).
-  const waitingName = preview.latestAuthorName || preview.memberNames[0] || "Your correspondent";
+  const waitingName = preview.latestAuthorName || preview.memberNames[0] || t("letter_splash.your_correspondent");
   return (
     <div className="min-h-screen flex items-center justify-center px-6" style={{ background: bg, fontFamily: "'Space Grotesk', sans-serif" }}>
       <motion.div
@@ -160,9 +162,9 @@ export default function LetterSplash() {
       >
         <div className="text-5xl mb-6">📮</div>
         <p className="text-xl font-semibold mb-2" style={{ color: "#F0EDE6" }}>
-          {waitingName} wrote you a letter.
+          {t("letter_splash.wrote_you", { name: waitingName })}
         </p>
-        <p className="text-sm" style={{ color: "#8FAF96" }}>Opening…</p>
+        <p className="text-sm" style={{ color: "#8FAF96" }}>{t("letter_splash.opening")}</p>
       </motion.div>
     </div>
   );
