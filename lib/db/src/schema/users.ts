@@ -98,10 +98,13 @@ export const usersTable = pgTable("users", {
   officesOnly: boolean("offices_only").notNull().default(false),
   // ── BCP Daily Office customisation ───────────────────────────────────────
   // Whether to include the BCP Confession of Sin + Absolution at the top
-  // of Morning and Evening Prayer. Default OFF — the office begins with
-  // the Opening Sentence and the user can opt in from Settings if they
-  // want the penitential opening (BCP p. 79–80 / p. 116–117, "may be said").
-  bcpShowConfession: boolean("bcp_show_confession").notNull().default(false),
+  // of Morning and Evening Prayer. Default ON — the office opens with the
+  // penitential rite (Confession → Absolution → Opening Sentence) the way
+  // most parishes pray it (BCP p. 79–80 / p. 116–117, "may be said"). The
+  // user can flip the Settings toggle if they'd rather begin at the
+  // Opening Sentence. (Migration at the bottom of migrate.ts flips both
+  // the default and existing rows from FALSE to TRUE.)
+  bcpShowConfession: boolean("bcp_show_confession").notNull().default(true),
   // ── Phoebe Parish: office reminder preferences ───────────────────────────
   // Each side of the day picks one of three values:
   //   "none"     — do not push at the morning/evening reminder hour

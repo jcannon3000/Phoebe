@@ -1854,6 +1854,27 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_tags_user ON prayer_request_tags (tagged_user_id) WHERE removed_at IS NULL`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_tags_request ON prayer_request_tags (request_id) WHERE removed_at IS NULL`);
 
+    // BCP Daily Office — flip the Confession of Sin default from
+    // opt-in to opt-out. The original column (added at line 1408
+    // above) defaulted to FALSE, so the office began with the
+    // Opening Sentence and the penitential opening was a hidden
+    // preference. We now ship Confession + Absolution as part of
+    // the default office, in line with how most parishes pray it,
+    // and the Settings toggle lets a user skip it.
+    //
+    // Two steps, both idempotent / safe to re-run:
+    //   1. Change the column default so a fresh signup gets TRUE.
+    //   2. Flip every existing FALSE row to TRUE. The vast majority
+    //      of those rows are users who never opened the Settings
+    //      toggle (it was hidden in a section most never browse),
+    //      so treating them as "wants the default" matches intent.
+    //      The handful who explicitly turned it OFF can flip it
+    //      back from Settings — a one-tap recovery, and a much
+    //      smaller cohort than the silently-defaulting majority
+    //      we're trying to serve.
+    await run(client, `ALTER TABLE users ALTER COLUMN bcp_show_confession SET DEFAULT TRUE`);
+    await run(client, `UPDATE users SET bcp_show_confession = TRUE WHERE bcp_show_confession = FALSE`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

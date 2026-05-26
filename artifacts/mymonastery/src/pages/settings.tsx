@@ -460,11 +460,12 @@ function OfficeReminderSettings() {
         )}
       </SettingsCard>
 
-      {/* Confession of Sin — opt-in. Off by default so the office begins
-          with the Opening Sentence; turn this on to begin Morning and
-          Evening Prayer with the BCP confession + absolution (p. 79–80
-          / p. 116–117, "may be said"). Renders below the daily-reminder
-          cards because it shares the same office-prefs query/mutation. */}
+      {/* Confession of Sin — opt-out. On by default so the office opens
+          with the BCP confession + absolution (p. 79–80 / p. 116–117,
+          "may be said"), the way most parishes pray it; turn it off to
+          begin Morning and Evening Prayer at the Opening Sentence
+          instead. Renders below the daily-reminder cards because it
+          shares the same office-prefs query/mutation. */}
       <SectionHeader label={t("settings.confession_of_sin")} />
       <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
         {t("settings.confession_blurb")}

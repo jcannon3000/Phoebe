@@ -1092,10 +1092,12 @@ async function injectIntercessions(
   ];
 }
 
-// Drop the Confession of Sin + Absolution slides unless the user opted in.
-// Default for `bcp_show_confession` is FALSE, so the office begins with the
-// Opening Sentence; users who want the penitential opening can switch it on
-// from Settings (PUT /api/me/office-prefs { showConfession: true }).
+// Drop the Confession of Sin + Absolution slides if the user opted out.
+// Default for `bcp_show_confession` is TRUE, so the office opens with
+// the penitential rite (Confession → Absolution → Opening Sentence)
+// the way most parishes pray it. Users who'd rather begin straight at
+// the Opening Sentence can flip the toggle in Settings (PUT
+// /api/me/office-prefs { showConfession: false }).
 // Applied per-user AFTER the cache step, so the canonical cached deck
 // remains the same for everyone — only the slices a user sees differ.
 export async function applyConfessionPref(slides: Slide[], userId: number): Promise<Slide[]> {
