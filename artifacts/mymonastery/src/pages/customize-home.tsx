@@ -136,10 +136,36 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
   });
   const feeds = subsData?.subscriptions.map((s) => s.feed) ?? [];
 
+  // Optimistic cache update so the dashboard renders the new
+  // homeLayout the moment the user navigates back — no stale-data
+  // flash while the network round-trip + invalidate-then-refetch
+  // lands. Without this, a user who toggled a module visible and
+  // immediately tapped Home / the back arrow would see the OLD
+  // hidden set briefly on the dashboard and reasonably conclude
+  // "my change didn't save" — even though it did, and the refetch
+  // would correct the UI half a second later.
   const saveLayout = useMutation({
     mutationFn: (layout: { order: string[]; hidden: string[] }) =>
       apiRequest("PUT", "/api/me/home-layout", layout),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }),
+    onMutate: async (vars) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/auth/me"] });
+      const prev = queryClient.getQueryData(["/api/auth/me"]);
+      queryClient.setQueryData(["/api/auth/me"], (curr: unknown) => {
+        if (!curr || typeof curr !== "object") return curr;
+        return { ...(curr as Record<string, unknown>), homeLayout: { order: vars.order, hidden: vars.hidden } };
+      });
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      // Roll back on failure so we don't leave the dashboard reading
+      // a phantom layout that the server didn't actually accept.
+      if (ctx && typeof ctx === "object" && "prev" in ctx) {
+        queryClient.setQueryData(["/api/auth/me"], (ctx as { prev: unknown }).prev);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
   });
   const persist = (nextOrder: HomeModule[], nextHidden: Set<string>) => {
     setOrder(nextOrder);
@@ -327,13 +353,25 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
           </>
         )}
 
+        {/* Bottom escape — pure navigation, not a save action. Every
+            toggle / drag / feed pick fires saveLayout immediately, so
+            this link is just the easy way back from the bottom of the
+            page (mirrors the back-arrow at the top). Renamed from
+            "Done" because "Done" implied the user had to click it to
+            persist their changes. */}
         <Link
           href="/dashboard"
           className="block text-center mt-8 text-sm font-semibold transition-opacity hover:opacity-80"
           style={{ color: "#A8C5A0", fontFamily: SPACE_GROTESK }}
         >
-          {t("customize_home.done")}
+          {t("customize_home.back_to_home", { defaultValue: "← Back to home" })}
         </Link>
+        <p
+          className="block text-center mt-2 text-[11px]"
+          style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}
+        >
+          {t("customize_home.auto_save_hint", { defaultValue: "Changes save automatically." })}
+        </p>
       </div>
     </Layout>
   );
