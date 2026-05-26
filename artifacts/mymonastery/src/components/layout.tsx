@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight, ChevronDown } from "lucide-react";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
+import { openExternal } from "@/lib/openExternal";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
 const SECTION_COLORS = {
@@ -360,7 +361,20 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               </MenuSection>
               <MenuSection emoji="📚" label={t("menu.resources")}>
                 <MenuRow emoji="📖" label={t("menu.bcp_prayers")} onClick={() => navigate("/bcp/intercessions")} />
+                <MenuRow emoji="✝️" label={t("menu.bcp_collects")} onClick={() => navigate("/bcp/collects")} />
                 <MenuRow emoji="📜" label={t("menu.psalter")} onClick={() => navigate("/bcp/psalter")} />
+                {/* CAC Daily Reflection — opens externally because CAC
+                    is the canonical reader (paywalled formatting on the
+                    article page). The /api/cac/today server route 302s
+                    to today's permalink, cache-keyed to a 9 AM ET
+                    publish day so users always land on the current
+                    meditation. Close the drawer first so the SFSafari
+                    presentation isn't fighting it for the screen. */}
+                <MenuRow
+                  emoji="🌅"
+                  label={t("menu.cac_daily")}
+                  onClick={() => { onClose(); openExternal("https://withphoebe.app/api/cac/today"); }}
+                />
                 {rawIsBeta && (
                   <MenuRow emoji="😇" label={t("menu.saints")} badge={t("menu.beta")} onClick={() => navigate("/saints")} />
                 )}

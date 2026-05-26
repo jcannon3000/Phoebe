@@ -38,16 +38,11 @@ const LEARN_RESOURCES: LearnResource[] = [
     source: "World Community for Christian Meditation",
     url: "https://wccm.org",
   },
-  {
-    kind: "article",
-    title: "Daily Meditations",
-    source: "Center for Action & Contemplation",
-    // CAC's Daily Meditations index — today's reflection sits at the
-    // top of this page with the full text behind "Read full
-    // meditation". The bare cac.org homepage we used to point at is
-    // a marketing landing that buries the daily under three clicks.
-    url: "https://cac.org/daily-meditations/",
-  },
+  // (The CAC Daily Reflection that used to live here moved to the
+  // drawer's Resources section — it's a daily reading resource and
+  // belongs alongside BCP Prayers / Psalter / Saints, not buried
+  // behind the Contemplation > Learn tab. /api/cac/today on the
+  // server still resolves the permalink; the drawer row links to it.)
 ];
 
 // Contemplation home — reachable from the side menu. Shows the viewer's

@@ -33,6 +33,7 @@ import actionsRouter from "./actions";
 import newsletterRouter from "./newsletter";
 import adminMetricsRouter from "./admin-metrics";
 import meetupsRouter from "./meetups";
+import cacRouter from "./cac";
 
 const router: IRouter = Router();
 
@@ -141,5 +142,6 @@ router.use(actionsRouter);
 router.use(newsletterRouter);
 router.use(adminMetricsRouter);
 router.use(meetupsRouter);
+router.use(cacRouter);
 
 export default router;
