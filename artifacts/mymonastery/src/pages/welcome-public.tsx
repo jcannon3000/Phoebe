@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 
 // ── First-open chooser ───────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ function isMorningNow(): boolean {
 
 export default function WelcomePublicPage() {
   const { user, isLoading } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
 
   // Already-signed-in visitor goes straight to the dashboard. Same
@@ -53,11 +55,11 @@ export default function WelcomePublicPage() {
   if (isLoading || user) return null;
 
   const morning = isMorningNow();
-  const officeLabel = morning ? "Morning Prayer" : "Evening Prayer";
+  const officeLabel = morning ? t("offices.morning_prayer") : t("offices.evening_prayer");
   const officeEmoji = morning ? "🌅" : "🌙";
   const officeBlurb = morning
-    ? "Begin the day with the psalms, lessons, and prayers from the Book of Common Prayer."
-    : "Close the day with the psalms, lessons, and prayers from the Book of Common Prayer.";
+    ? t("welcome_public.office_blurb_morning")
+    : t("welcome_public.office_blurb_evening");
 
   return (
     <div
@@ -77,7 +79,7 @@ export default function WelcomePublicPage() {
           Phoebe
         </span>
         <Link href="/signin" className="text-sm font-medium" style={{ color: SAGE }}>
-          Sign in
+          {t("welcome_public.sign_in")}
         </Link>
       </header>
 
@@ -92,10 +94,10 @@ export default function WelcomePublicPage() {
             className="text-[28px] font-bold leading-tight mb-2"
             style={{ color: WARM_TEXT, letterSpacing: "-0.02em" }}
           >
-            Try praying together.
+            {t("welcome_public.title")}
           </h1>
           <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
-            Pick a place to start — no account needed.
+            {t("welcome_public.subtitle")}
           </p>
         </motion.div>
 
@@ -114,8 +116,8 @@ export default function WelcomePublicPage() {
           <ChoiceCard
             href="/feed/phoebe-climate"
             emoji="🌿"
-            title="Prayer for the climate"
-            blurb="Pray today's intercession alongside the wider community caring for creation."
+            title={t("welcome_public.climate_title")}
+            blurb={t("welcome_public.climate_blurb")}
             delay={0.12}
           />
 
@@ -123,8 +125,8 @@ export default function WelcomePublicPage() {
           <ChoiceCard
             href="/signin"
             emoji="🔑"
-            title="Sign in"
-            blurb="Already with Phoebe? Pick up where you left off."
+            title={t("welcome_public.sign_in")}
+            blurb={t("welcome_public.sign_in_blurb")}
             delay={0.19}
             muted
           />
@@ -134,7 +136,7 @@ export default function WelcomePublicPage() {
           className="text-[12px] text-center mt-8"
           style={{ color: FAINT }}
         >
-          A relational app that cultivates connections between Sundays.
+          {t("welcome_public.footer")}
         </p>
       </main>
     </div>

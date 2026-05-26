@@ -258,6 +258,18 @@ export const en = {
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
   },
+  // Welcome public — the first-open chooser for unsigned visitors (pages/welcome-public.tsx).
+  welcome_public: {
+    sign_in: "Sign in",
+    title: "Try praying together.",
+    subtitle: "Pick a place to start — no account needed.",
+    office_blurb_morning: "Begin the day with the psalms, lessons, and prayers from the Book of Common Prayer.",
+    office_blurb_evening: "Close the day with the psalms, lessons, and prayers from the Book of Common Prayer.",
+    climate_title: "Prayer for the climate",
+    climate_blurb: "Pray today's intercession alongside the wider community caring for creation.",
+    sign_in_blurb: "Already with Phoebe? Pick up where you left off.",
+    footer: "A relational app that cultivates connections between Sundays.",
+  },
   // Reset password page (pages/reset-password.tsx).
   reset_password: {
     invalid_link: "This reset link is invalid or has expired.",

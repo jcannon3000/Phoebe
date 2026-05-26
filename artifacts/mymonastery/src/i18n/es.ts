@@ -261,6 +261,17 @@ export const es: Translations = {
     daily_reminders: "🔔 Recordatorios diarios",
     daily_reminders_sub: "Elige una hora para la mañana y la tarde.",
   },
+  welcome_public: {
+    sign_in: "Iniciar sesión",
+    title: "Prueba orar juntos.",
+    subtitle: "Elige por dónde empezar — sin necesidad de cuenta.",
+    office_blurb_morning: "Comienza el día con los salmos, lecturas y oraciones del Libro de Oración Común.",
+    office_blurb_evening: "Cierra el día con los salmos, lecturas y oraciones del Libro de Oración Común.",
+    climate_title: "Oración por el clima",
+    climate_blurb: "Ora la intercesión de hoy junto con la comunidad que cuida la creación.",
+    sign_in_blurb: "¿Ya estás en Phoebe? Continúa donde lo dejaste.",
+    footer: "Una app relacional que cultiva la conexión entre domingos.",
+  },
   reset_password: {
     invalid_link: "Este enlace de restablecimiento no es válido o ha expirado.",
     back_to_sign_in: "Volver a iniciar sesión",
