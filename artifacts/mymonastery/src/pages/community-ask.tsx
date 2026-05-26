@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -13,14 +14,19 @@ import { apiRequest } from "@/lib/queryClient";
 
 const FONT = "'Space Grotesk', sans-serif";
 
-// Preset prompts. The first is the default; the rest give the ask a
-// specific angle. "custom" is a sentinel — the admin types their own.
-const PRAYER_PROMPT_PRESETS = [
-  "How can we pray for you?",
-  "What's a big life event this week we can pray for?",
-  "Is there a friend or family member we can pray for?",
-  "What justice issue is close to your heart?",
-] as const;
+// Preset prompts. Built inside the component via usePresets() so the
+// labels localize live — a module-level const would freeze on load.
+// The first preset is the default; the rest give the ask a specific
+// angle. "custom" is a sentinel — the admin types their own.
+function usePresets(): readonly string[] {
+  const { t } = useTranslation();
+  return [
+    t("community_ask.preset_general"),
+    t("community_ask.preset_life_event"),
+    t("community_ask.preset_family"),
+    t("community_ask.preset_justice"),
+  ];
+}
 
 type GroupEnvelope = {
   group?: { name?: string; emoji?: string | null };
@@ -32,6 +38,8 @@ export default function CommunityAskPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug ?? "";
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
+  const PRAYER_PROMPT_PRESETS = usePresets();
 
   const [promptChoice, setPromptChoice] = useState<string>(PRAYER_PROMPT_PRESETS[0]);
   const [customPrompt, setCustomPrompt] = useState("");
@@ -73,7 +81,7 @@ export default function CommunityAskPage() {
       setLocation(`/communities/${slug}?invited=1`);
     },
     onError: (err) => {
-      setError(err.message || "Couldn't send the prompt. Try again?");
+      setError(err.message || t("community_ask.couldnt_send"));
     },
   });
 
@@ -92,28 +100,26 @@ export default function CommunityAskPage() {
           className="text-xs mb-5 flex items-center gap-1 transition-opacity hover:opacity-70"
           style={{ color: "#8FAF96", background: "none", border: "none", cursor: "pointer", fontFamily: FONT }}
         >
-          ← {group?.name ?? "Community"}
+          ← {group?.name ?? t("community_ask.community_fallback")}
         </button>
 
         <p
           className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-1"
           style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
         >
-          Ask your community
+          {t("community_ask.eyebrow")}
         </p>
         <h1
           className="text-2xl font-bold mb-1.5"
           style={{ color: "#F0EDE6", fontFamily: FONT }}
         >
-          Choose a prompt
+          {t("community_ask.title")}
         </h1>
         <p
           className="text-sm mb-6 leading-relaxed"
           style={{ color: "rgba(168,197,160,0.8)", fontFamily: FONT }}
         >
-          Every member gets a push notification + email with the question you
-          choose, and a simple slide to answer it. You can send this once
-          every 7 days.
+          {t("community_ask.blurb")}
         </p>
 
         {onCooldown ? (
@@ -126,8 +132,7 @@ export default function CommunityAskPage() {
               fontFamily: FONT,
             }}
           >
-            You've already sent an ask this week. You can send another in{" "}
-            {daysLeft} {daysLeft === 1 ? "day" : "days"}.
+            {t("community_ask.cooldown", { count: daysLeft })}
           </div>
         ) : (
           <>
@@ -161,7 +166,7 @@ export default function CommunityAskPage() {
                   fontFamily: FONT,
                 }}
               >
-                ✍🏽 Write your own…
+                {t("community_ask.write_your_own")}
               </button>
             </div>
 
@@ -170,7 +175,7 @@ export default function CommunityAskPage() {
                 type="text"
                 value={customPrompt}
                 onChange={(e) => setCustomPrompt(e.target.value.slice(0, 160))}
-                placeholder="e.g. What's weighing on you this week?"
+                placeholder={t("community_ask.custom_placeholder")}
                 autoFocus
                 className="w-full px-4 py-3 rounded-xl text-sm mb-4 outline-none"
                 style={{
@@ -197,7 +202,7 @@ export default function CommunityAskPage() {
               className="w-full px-6 py-3.5 rounded-full text-sm font-semibold transition-opacity disabled:opacity-40"
               style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: FONT }}
             >
-              {sendMutation.isPending ? "Sending…" : "Send to your community 🙏🏽"}
+              {sendMutation.isPending ? t("community_ask.sending") : t("community_ask.send")}
             </button>
           </>
         )}

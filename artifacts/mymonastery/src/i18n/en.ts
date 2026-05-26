@@ -258,6 +258,24 @@ export const en = {
     daily_reminders: "🔔 Daily reminders",
     daily_reminders_sub: "Pick a morning + evening reminder time.",
   },
+  // Community ask page (pages/community-ask.tsx).
+  community_ask: {
+    community_fallback: "Community",
+    eyebrow: "Ask your community",
+    title: "Choose a prompt",
+    blurb: "Every member gets a push notification + email with the question you choose, and a simple slide to answer it. You can send this once every 7 days.",
+    cooldown_one: "You've already sent an ask this week. You can send another in 1 day.",
+    cooldown_other: "You've already sent an ask this week. You can send another in {{count}} days.",
+    preset_general: "How can we pray for you?",
+    preset_life_event: "What's a big life event this week we can pray for?",
+    preset_family: "Is there a friend or family member we can pray for?",
+    preset_justice: "What justice issue is close to your heart?",
+    write_your_own: "✍🏽 Write your own…",
+    custom_placeholder: "e.g. What's weighing on you this week?",
+    couldnt_send: "Couldn't send the prompt. Try again?",
+    sending: "Sending…",
+    send: "Send to your community 🙏🏽",
+  },
   // Customize home page (pages/customize-home.tsx).
   customize_home: {
     title: "Customize home",
