@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Reorder } from "framer-motion";
 import { ChevronLeft, Eye, EyeOff, GripVertical } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth, type AuthUser } from "@/hooks/useAuth";
@@ -23,14 +24,20 @@ type HomeModule = typeof HOME_MODULES[number];
 // Prayer requests always leads the home — it can't be hidden or reordered.
 const PINNED: HomeModule = "requests";
 
-const MODULE_META: Record<HomeModule, { label: string; emoji: string; sub: string }> = {
-  office: { label: "Daily Office", emoji: "📖", sub: "Morning & Evening Prayer" },
-  feeds: { label: "Prayer feeds", emoji: "🌿", sub: "The feeds you follow" },
-  contemplation: { label: "Contemplation", emoji: "🕯️", sub: "A timer for silent prayer" },
-  gratitude: { label: "Gratitude", emoji: "🌾", sub: "A daily thanksgiving journal" },
-  examen: { label: "Ignatian Examen", emoji: "🤔", sub: "End-of-day reflective prayer" },
-  requests: { label: "Prayer requests", emoji: "🙏🏽", sub: "New requests from your community" },
-};
+// Module display metadata. Built inside the component via useModuleMeta()
+// so the labels/subs localize live; a module-level const would freeze the
+// language at module load.
+function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub: string }> {
+  const { t } = useTranslation();
+  return {
+    office: { label: t("customize_home.module_office"), emoji: "📖", sub: t("customize_home.module_office_sub") },
+    feeds: { label: t("customize_home.module_feeds"), emoji: "🌿", sub: t("customize_home.module_feeds_sub") },
+    contemplation: { label: t("menu.contemplation"), emoji: "🕯️", sub: t("customize_home.module_contemplation_sub") },
+    gratitude: { label: t("gratitude.title"), emoji: "🌾", sub: t("customize_home.module_gratitude_sub") },
+    examen: { label: t("menu.examen"), emoji: "🤔", sub: t("customize_home.module_examen_sub") },
+    requests: { label: t("customize_home.module_requests"), emoji: "🙏🏽", sub: t("customize_home.module_requests_sub") },
+  };
+}
 
 // Build a complete, valid order from a saved one (or a fallback),
 // keeping known keys in order then appending any missing modules.
@@ -69,6 +76,8 @@ export default function CustomizeHomePage() {
 
 function CustomizeHomeInner({ user }: { user: AuthUser }) {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const MODULE_META = useModuleMeta();
   const [, setLocation] = useLocation();
 
   // Feed-led default mirrors the dashboard: feed-led users lead with
@@ -154,14 +163,14 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
           style={{ color: SAGE, background: "transparent", cursor: "pointer" }}
         >
           <ChevronLeft size={14} />
-          Home
+          {t("header.home")}
         </button>
 
         <h1 className="text-2xl font-bold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-          Customize home 🪟
+          {t("customize_home.title")} 🪟
         </h1>
         <p className="text-sm mt-1 mb-5" style={{ color: SAGE }}>
-          Reorder, show or hide the cards on your home screen. The top one leads.
+          {t("customize_home.subtitle")}
         </p>
 
         {/* Pinned lead — Prayer requests always sits at the top, set apart
@@ -183,7 +192,7 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
                     className="text-[9px] font-semibold uppercase rounded-full px-2 py-0.5"
                     style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", letterSpacing: "0.1em" }}
                   >
-                    Leads
+                    {t("customize_home.leads")}
                   </span>
                 </div>
                 <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>
@@ -196,7 +205,7 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
 
         {/* Draggable rows — everything below the pinned lead. */}
         <p className="text-[11px] mt-4 mb-2" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}>
-          Drag to reorder · tap the eye to show or hide
+          {t("customize_home.drag_hint")}
         </p>
         <Reorder.Group as="div" axis="y" values={movable} onReorder={reorder} className="flex flex-col gap-2">
           {movable.map((key) => {
@@ -230,7 +239,7 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
                     the eye doesn't begin a drag. */}
                 <button
                   type="button"
-                  aria-label={isHidden ? "Show" : "Hide"}
+                  aria-label={isHidden ? t("customize_home.show") : t("customize_home.hide")}
                   onPointerDown={(e) => e.stopPropagation()}
                   onClick={() => toggleHidden(key)}
                   className="transition-opacity hover:opacity-80"
@@ -251,17 +260,17 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
               className="text-[10px] uppercase tracking-[0.16em] font-semibold mt-8 mb-2"
               style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}
             >
-              Featured feed
+              {t("customize_home.featured_feed")}
             </h2>
             <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-              When Prayer feeds lead, this one gets the big card.
+              {t("customize_home.featured_feed_blurb")}
             </p>
             <div
               className="rounded-xl px-3"
               style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
             >
-              {[{ id: null as number | null, label: "No featured feed", sub: "Every feed shows as a card" },
-                ...feeds.map((f) => ({ id: f.id as number | null, label: `${f.title} ${f.coverEmoji ?? "🌿"}`.trim(), sub: "Gets the tall hero card" }))]
+              {[{ id: null as number | null, label: t("customize_home.no_featured"), sub: t("customize_home.no_featured_sub") },
+                ...feeds.map((f) => ({ id: f.id as number | null, label: `${f.title} ${f.coverEmoji ?? "🌿"}`.trim(), sub: t("customize_home.featured_sub") }))]
                 .map((row, idx) => {
                   const isSel = selectedFeedId === row.id;
                   return (
@@ -296,7 +305,7 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
           className="block text-center mt-8 text-sm font-semibold transition-opacity hover:opacity-80"
           style={{ color: "#A8C5A0", fontFamily: SPACE_GROTESK }}
         >
-          Done →
+          {t("customize_home.done")}
         </Link>
       </div>
     </Layout>

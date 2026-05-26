@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
@@ -14,6 +15,7 @@ type Group = {
 
 export default function CommunitiesPage() {
   const { user, isLoading } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
 
   const { data: groupsData } = useQuery<{ groups: Group[] }>({
@@ -37,22 +39,22 @@ export default function CommunitiesPage() {
       <div className="max-w-2xl mx-auto w-full">
         <div className="mb-6">
           <Link href="/dashboard" className="text-xs mb-3 flex items-center gap-1 transition-opacity hover:opacity-70" style={{ color: "#8FAF96" }}>
-            ← Dashboard
+            {t("communities.back_dashboard")}
           </Link>
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                Communities 🏘️
+                {t("communities.title")} 🏘️
               </h1>
               <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
-                Parishes, groups, and places that carry each other.
+                {t("communities.subtitle")}
               </p>
             </div>
             {isBuilder && (
               <Link href="/communities/new">
                 <span className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold"
                   style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                  <Plus size={14} /> New
+                  <Plus size={14} /> {t("communities.new")}
                 </span>
               </Link>
             )}
@@ -71,16 +73,16 @@ export default function CommunitiesPage() {
           >
             <div className="text-5xl mb-4">🏘️</div>
             <p className="text-lg font-semibold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              No communities yet
+              {t("communities.empty_title")}
             </p>
             <p className="text-sm mb-5" style={{ color: "#8FAF96" }}>
-              {isBuilder ? "Create your first community to get started." : "You haven't joined any communities yet."}
+              {isBuilder ? t("communities.empty_builder") : t("communities.empty_member")}
             </p>
             {isBuilder && (
               <Link href="/communities/new">
                 <span className="inline-flex items-center gap-1.5 px-5 py-3 rounded-xl text-sm font-semibold"
                   style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                  <Plus size={16} /> Create a Community
+                  <Plus size={16} /> {t("communities.create_community")}
                 </span>
               </Link>
             )}
@@ -98,8 +100,8 @@ export default function CommunitiesPage() {
                       <p className="text-xs mt-0.5 truncate" style={{ color: "#8FAF96" }}>{g.description}</p>
                     )}
                     <p className="text-[10px] mt-1" style={{ color: "rgba(143,175,150,0.5)" }}>
-                      {g.memberCount} {g.memberCount === 1 ? "member" : "members"}
-                      {g.myRole === "admin" && " · admin"}
+                      {t("menu.members", { count: g.memberCount })}
+                      {g.myRole === "admin" && ` · ${t("communities.admin")}`}
                     </p>
                   </div>
                   <span className="text-sm shrink-0 ml-3" style={{ color: "rgba(200,212,192,0.3)" }}>→</span>
