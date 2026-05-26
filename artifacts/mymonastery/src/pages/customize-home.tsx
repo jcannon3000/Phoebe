@@ -21,7 +21,7 @@ const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 // Keep this list in sync with HOME_MODULES in dashboard.tsx AND
 // HOME_MODULE_KEYS in api-server/src/routes/prayer.ts — keys not in
 // the server's allowlist are silently dropped from saved layouts.
-const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "requests"] as const;
+const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "requests"] as const;
 type HomeModule = typeof HOME_MODULES[number];
 
 // Prayer requests always leads the home — it can't be hidden or reordered.
@@ -43,6 +43,10 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     // Contemplation publishes in English. We can localize the
     // description sub later if/when CAC offers a Spanish edition.
     cac: { label: "CAC Daily Reflection", emoji: "🌅", sub: "Today's reflection from the Center for Action & Contemplation" },
+    // Same rationale as CAC — "Forward Day by Day" is a proper-noun
+    // product name from Forward Movement; we leave the label in
+    // English regardless of i18n locale.
+    fdd: { label: "Forward Day by Day", emoji: "📖", sub: "Today's meditation from Forward Movement" },
     requests: { label: t("customize_home.module_requests"), emoji: "🙏🏽", sub: t("customize_home.module_requests_sub") },
   };
 }
@@ -93,8 +97,8 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
   // fields directly so it doesn't wait on the feeds query.
   const feedLed = !!(user?.feedFirstHome && user?.homeFeedId != null);
   const fallbackOrder: HomeModule[] = feedLed
-    ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac"]
-    : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac"];
+    ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac", "fdd"]
+    : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd"];
 
   const [order, setOrder] = useState<HomeModule[]>(() => buildOrder(user?.homeLayout?.order, fallbackOrder));
   const [hidden, setHidden] = useState<Set<string>>(() => {
@@ -106,17 +110,20 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
     // order pre-dated the new module.
     const savedHidden = user?.homeLayout?.hidden;
     const savedOrder = user?.homeLayout?.order;
-    const s = new Set<string>(savedHidden ?? ["contemplation", "gratitude", "examen", "cac"]);
-    // CAC reflection is opt-in for EVERYONE (new and existing users)
-    // per product decision — it's an optional Resources surface, not
-    // a default-on practice. For new users this is covered by the
-    // default-hidden array above; for existing users whose saved
-    // layout pre-dates CAC, we add it to hidden if it's not already
-    // in their saved order (i.e. they've never explicitly toggled it
-    // on). Once they enable it via the eye, "cac" appears in
-    // savedOrder and this guard becomes a no-op.
+    const s = new Set<string>(savedHidden ?? ["contemplation", "gratitude", "examen", "cac", "fdd"]);
+    // CAC + FDD daily-reflection cards are opt-in for EVERYONE (new
+    // and existing users) per product decision — optional Resources
+    // surfaces, not default-on practices. For new users this is
+    // covered by the default-hidden array above; for existing users
+    // whose saved layout pre-dates either module, we add it to
+    // hidden if it's not already in their saved order (i.e. they've
+    // never explicitly toggled it on). Once they enable via the eye,
+    // the key appears in savedOrder and this guard becomes a no-op.
     if (savedOrder && !savedOrder.includes("cac")) {
       s.add("cac");
+    }
+    if (savedOrder && !savedOrder.includes("fdd")) {
+      s.add("fdd");
     }
     s.delete(PINNED); // Prayer requests can never be hidden.
     return s;

@@ -11,7 +11,10 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
-import { CAC_TODAY_URL, hasReadCacToday, markCacRead } from "@/lib/cacReadState";
+import {
+  CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, markCacRead,
+  FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, markFddRead,
+} from "@/lib/cacReadState";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
 import { ParishWeeklyCard } from "@/components/ParishWeeklyCard";
@@ -2486,12 +2489,12 @@ function CacHomeCard() {
   const [hasRead, setHasRead] = useState(() => hasReadCacToday());
   useEffect(() => {
     const refresh = () => setHasRead(hasReadCacToday());
-    window.addEventListener("phoebe:cac-read", refresh);
+    window.addEventListener(CAC_READ_EVENT, refresh);
     // Also refresh on tab-focus so opening the link in SFSafariView,
     // reading, and returning flips the card label automatically.
     document.addEventListener("visibilitychange", refresh);
     return () => {
-      window.removeEventListener("phoebe:cac-read", refresh);
+      window.removeEventListener(CAC_READ_EVENT, refresh);
       document.removeEventListener("visibilitychange", refresh);
     };
   }, []);
@@ -2530,6 +2533,66 @@ function CacHomeCard() {
             fontWeight: 500,
             padding: "6px 14px",
             border: "1px solid rgba(46,107,64,0.50)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {hasRead ? "Read again" : "Read"} <span aria-hidden>→</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Forward Day by Day home card. Mirrors CacHomeCard: opens
+// prayer.forwardmovement.org/fdd externally (their SPA resolves
+// "today" client-side, so the same URL every day works), tracks
+// "read today" in localStorage via the fdd-tracker in
+// lib/cacReadState, and flips the pill to "Read again" once tapped.
+//
+// Sea-teal palette (rgba(74,158,132, …)) distinguishes it from the
+// brand-forest CAC card next to it — both reading "green" but
+// visually separable when stacked on the home.
+function FddHomeCard() {
+  const [hasRead, setHasRead] = useState(() => hasReadFddToday());
+  useEffect(() => {
+    const refresh = () => setHasRead(hasReadFddToday());
+    window.addEventListener(FDD_READ_EVENT, refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener(FDD_READ_EVENT, refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
+  const onClick = () => {
+    markFddRead();
+    openExternal(FDD_TODAY_URL);
+  };
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+      className="relative flex rounded-xl overflow-hidden cursor-pointer"
+      style={{ background: "rgba(74,158,132,0.12)", border: "1px solid rgba(74,158,132,0.38)" }}
+    >
+      <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
+        <p
+          className="font-semibold min-w-0 truncate"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
+        >
+          Forward Day by Day 📖
+        </p>
+        <div
+          className="rounded-full text-center shrink-0"
+          style={{
+            background: "rgba(74,158,132,0.28)",
+            color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 13,
+            fontWeight: 500,
+            padding: "6px 14px",
+            border: "1px solid rgba(74,158,132,0.48)",
             whiteSpace: "nowrap",
           }}
         >
@@ -4598,7 +4661,7 @@ export default function Dashboard() {
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // Prayer requests always leads — never hidden. For users who've
   // never customized (no homeLayout row) we hide the secondary practices
@@ -4614,19 +4677,20 @@ export default function Dashboard() {
   const homeHidden = (() => {
     const savedHidden = user?.homeLayout?.hidden;
     const savedOrder = user?.homeLayout?.order;
-    const s = new Set<string>(savedHidden ?? ["contemplation", "gratitude", "examen", "cac"]);
-    // CAC is opt-in for everyone; if a user's saved order pre-dates
-    // the module (it isn't in their savedOrder), keep it hidden until
-    // they explicitly toggle it via /customize-home.
+    const s = new Set<string>(savedHidden ?? ["contemplation", "gratitude", "examen", "cac", "fdd"]);
+    // CAC + FDD are opt-in for everyone; if a user's saved order
+    // pre-dates either module (it isn't in their savedOrder), keep
+    // it hidden until they explicitly toggle it via /customize-home.
     if (savedOrder && !savedOrder.includes("cac")) s.add("cac");
+    if (savedOrder && !savedOrder.includes("fdd")) s.add("fdd");
     s.delete("requests");
     return s;
   })();
   const homeOrder: HomeModule[] = (() => {
     const saved = user?.homeLayout?.order ?? null;
     const fallback: HomeModule[] = featuredFeed
-      ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac"]
-      : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac"];
+      ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac", "fdd"]
+      : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd"];
     // Keep known keys in saved order, then append any missing modules so
     // a newly-added module always has a place.
     const seen = new Set<string>();
@@ -5536,6 +5600,8 @@ export default function Dashboard() {
                   return <ExamenHomeCard />;
                 case "cac":
                   return <CacHomeCard />;
+                case "fdd":
+                  return <FddHomeCard />;
                 default:
                   return null;
               }
