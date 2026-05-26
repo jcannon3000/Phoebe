@@ -42,6 +42,11 @@ export type SlideType =
   | "psalm_title"
   | "psalm"
   | "psalm_gloria"
+  // Antiphon on its own slide — the antiphon appointed "with the Invitatory
+  // Psalm" (BCP p. 80) is now a standalone slide before AND after the
+  // psalm body, with the Gloria sitting between the verses and the closing
+  // antiphon so the doxology seals the psalm before the antiphon repeats.
+  | "antiphon"
   | "lesson"
   // Title slide for a lesson — big "Romans 14:1-12" headline +
   // "The First Lesson Appointed For This Morning" subtitle. Mirrors
@@ -632,21 +637,27 @@ export async function assembleMorningPrayer(
     }),
   );
 
+  // Opening antiphon — its own slide BEFORE the verses, per BCP rubric
+  // p. 80. Standalone so the verses read clean (no "ANTIPHON" header
+  // riding above the first chunk) and the rhythm reads: antiphon → psalm
+  // verses → Gloria → antiphon.
+  if (hasAntiphon) {
+    slides.push(
+      slide(id(), "antiphon", "🎶", "ANTIPHON", antiphonText, {
+        bcpReference: invitBcpRef,
+        isScrollable: false,
+        scrollHint: null,
+        metadata: { invitatory: true, invitPsalmKey, antiphonPosition: "open" },
+      }),
+    );
+  }
+
   // Chunk the body. Invitatory text in bcp_texts uses canticle-shape
   // (no numeric verse markers — non-indented line + indented
   // continuation), so splitCanticleIntoChunks is the right splitter.
   // 4 verses per chunk matches the appointed-psalm cadence.
   const { chunks: invitChunks } = splitCanticleIntoChunks(psalmBody, 4);
-  const lastInvitIdx = invitChunks.length - 1;
   invitChunks.forEach((chunk, i) => {
-    // Antiphons travel via metadata (not concatenated into the body)
-    // so the renderer can prefix each with a small "ANTIPHON" header
-    // instead of letting the antiphon read as if it were the
-    // psalm's own opening/closing line. Per BCP rubric p. 80 the
-    // antiphon bookends the invitatory: open antiphon goes on the
-    // first chunk, close antiphon on the last.
-    const isFirst = i === 0;
-    const isLast = i === lastInvitIdx;
     slides.push(
       slide(id(), "invitatory_psalm", "🎶", invitEyebrow, chunk, {
         bcpReference: invitBcpRef,
@@ -658,16 +669,13 @@ export async function assembleMorningPrayer(
           psalmHeadline: invitHeadline,
           invitatoryChunkIndex: i,
           invitatoryChunkTotal: invitChunks.length,
-          ...(hasAntiphon && isFirst ? { antiphonOpen: antiphonText } : {}),
-          ...(hasAntiphon && isLast ? { antiphonClose: antiphonText } : {}),
         },
       }),
     );
   });
-  // Gloria Patri — its own slide, sealing the invitatory psalm. Uses
-  // psalm_gloria so it shares the appointed-psalm doxology renderer
-  // for visual consistency. Skipped for Pascha Nostrum since the
-  // paschal anthem doesn't end with the standard doxology.
+  // Gloria Patri — its own slide, sealing the invitatory psalm BEFORE
+  // the closing antiphon. Skipped for Pascha Nostrum since the paschal
+  // anthem doesn't end with the standard doxology.
   if (invitPsalmKey !== "pascha_nostrum") {
     const invitGloriaPatri =
       "Glory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
@@ -680,6 +688,19 @@ export async function assembleMorningPrayer(
           invitatory: true,
           invitPsalmKey,
         },
+      }),
+    );
+  }
+  // Closing antiphon — its own slide AFTER the Gloria. Together with the
+  // opening antiphon it bookends the invitatory: antiphon → verses →
+  // Gloria → antiphon.
+  if (hasAntiphon) {
+    slides.push(
+      slide(id(), "antiphon", "🎶", "ANTIPHON", antiphonText, {
+        bcpReference: invitBcpRef,
+        isScrollable: false,
+        scrollHint: null,
+        metadata: { invitatory: true, invitPsalmKey, antiphonPosition: "close" },
       }),
     );
   }

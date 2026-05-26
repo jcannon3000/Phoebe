@@ -123,6 +123,7 @@ const SECTION_LABEL: Record<string, string> = {
   psalm: "Psalm",
   psalm_title: "Psalm",
   psalm_gloria: "Doxology",
+  antiphon: "Antiphon",
   lesson_title: "Lesson",
   lesson_verses: "Lesson",
   lesson: "Lesson",

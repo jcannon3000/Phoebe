@@ -3072,8 +3072,14 @@ export default function PrayerModePage() {
   // the very thing the seamless flow is meant to defer to the end
   // of the whole liturgy.
   useEffect(() => {
+    // Functional setPhase: only transition "prayer" → "closing". Once the
+    // user advances to "habit" from the closing slide's Continue button,
+    // a background query refetch (coPrayers, streak, etc.) re-fires this
+    // effect — without the guard, it'd reset phase back to "closing" and
+    // flash the user out of the habit slide they just opened.
+    const toClosing = () => setPhase((p) => (p === "prayer" ? "closing" : p));
     if (closingOnly) {
-      setPhase("closing");
+      toClosing();
       return;
     }
     // Offices-only viewers have momentsData permanently undefined
@@ -3090,7 +3096,7 @@ export default function PrayerModePage() {
         // just return to where the user came from.
         setLocation(finishHref);
       } else {
-        setPhase("closing");
+        toClosing();
       }
     }
   }, [displaySlides.length, momentsData, prayerRequests, myPrayersFor, officesOnly, dataReady, seamlessFlow, queueMode, closingOnly, finishHref, setLocation]);
