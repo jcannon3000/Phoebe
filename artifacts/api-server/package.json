@@ -4,13 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "export NODE_ENV=development && export PATH=/Applications/Postgres.app/Contents/Versions/latest/bin:/Users/jeremycannon/.local/bin:$PATH && pnpm --filter @workspace/mymonastery run build && BASE_PATH=/mail pnpm --filter @workspace/letters-app run build && pnpm run build && pnpm run start",
+    "dev": "export NODE_ENV=development && export RUN_SCHEDULERS_IN_WEB=true && export PATH=/Applications/Postgres.app/Contents/Versions/latest/bin:/Users/jeremycannon/.local/bin:$PATH && pnpm --filter @workspace/mymonastery run build && BASE_PATH=/mail pnpm --filter @workspace/letters-app run build && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "build:all": "pnpm --filter @workspace/mymonastery run build && BASE_PATH=/mail pnpm --filter @workspace/letters-app run build && node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
+    "start:worker": "node --enable-source-maps ./dist/worker.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@sentry/node": "^8.55.2",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/integrations-anthropic-ai": "workspace:*",

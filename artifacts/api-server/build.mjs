@@ -22,7 +22,17 @@ async function buildAll() {
   );
 
   await esbuild({
-    entryPoints: [path.resolve(artifactDir, "src/index.ts")],
+    // Two entry points so the worker process gets its own bundle:
+    //   dist/index.mjs  → web (Express + HTTP server)
+    //   dist/worker.mjs → background schedulers, no HTTP
+    // Both share the underlying libs (drizzle, push, scheduler funcs)
+    // so esbuild does the heavy lifting once and emits a slim shim
+    // per entry. Railway points its web service at index.mjs and the
+    // worker service at worker.mjs.
+    entryPoints: [
+      path.resolve(artifactDir, "src/index.ts"),
+      path.resolve(artifactDir, "src/worker.ts"),
+    ],
     platform: "node",
     bundle: true,
     format: "esm",

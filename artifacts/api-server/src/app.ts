@@ -6,6 +6,13 @@ import connectPgSimple from "connect-pg-simple";
 import passport from "passport";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { initSentry, captureError } from "./lib/sentry";
+
+// Initialize Sentry before any Express middleware so errors in cold-
+// start code (DB connect, session store wiring, route registration)
+// get reported. No-op when SENTRY_DSN is unset, so dev / preview
+// deploys aren't affected. See lib/sentry.ts.
+initSentry();
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
@@ -138,20 +145,32 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Start the daily bell scheduler unless explicitly disabled (dev flag).
-// The scheduler runs inside the same process as the web server — Railway
-// deploys are single-instance today so there's no worry about multiple
-// workers double-firing. DISABLE_BELL_SCHEDULER=true turns it off for
-// local dev when you don't want the 45s post-boot bell tick.
-if (process.env["DISABLE_BELL_SCHEDULER"] !== "true") {
-  // Lazy import so importing app.ts in tests doesn't start the scheduler.
+// Scheduler ownership: by default in production the schedulers run
+// in the dedicated worker process (src/worker.ts → Railway "worker"
+// service) so the web service can scale horizontally without every
+// replica firing the same 15-min ticks. For local dev — and as a
+// safety hatch if the worker service is ever down — we keep the
+// in-web boot path available, gated by RUN_SCHEDULERS_IN_WEB=true.
+//
+//   • Production with the worker service deployed: leave
+//     RUN_SCHEDULERS_IN_WEB unset on the WEB service. Schedulers run
+//     only in the worker.
+//   • Local dev (single process): set RUN_SCHEDULERS_IN_WEB=true
+//     (or just run `pnpm dev`, which sets it for you).
+//   • Disable everything: DISABLE_BELL_SCHEDULER=true (legacy flag,
+//     overrides RUN_SCHEDULERS_IN_WEB).
+const runInWeb =
+  process.env["DISABLE_BELL_SCHEDULER"] !== "true" &&
+  process.env["RUN_SCHEDULERS_IN_WEB"] === "true";
+if (runInWeb) {
+  logger.warn(
+    "[bell-scheduler] running INSIDE web process (RUN_SCHEDULERS_IN_WEB=true). Disable this in prod once the worker service is live."
+  );
+  // Lazy imports so importing app.ts in tests doesn't start the
+  // scheduler.
   import("./lib/bellSender").then(({ startBellScheduler }) => startBellScheduler()).catch((err) => {
     logger.error({ err }, "[bell-scheduler] failed to boot");
   });
-  // Letter-window push scheduler — same gating env var (one switch
-  // turns off all background work for local dev). Sweeps every 15
-  // minutes for new periods opening (small_group) and 2-day-overdue
-  // respond reminders (one_to_one).
   import("./lib/letterWindowSender").then(({ startLetterWindowScheduler }) => startLetterWindowScheduler()).catch((err) => {
     logger.error({ err }, "[letter-window-scheduler] failed to boot");
   });
@@ -425,16 +444,28 @@ if (fs.existsSync(frontendDist)) {
 // showing a "Cannot GET /api/…" HTML dump. The 4-arg signature is how
 // Express recognises error middleware.
 app.use((err: unknown, req: Request, res: Response, _next: NextFunction): void => {
-  logger.error({ err, path: req.path, method: req.method }, "[api] unhandled error");
-  if (res.headersSent) return;
   // body-parser throws PayloadTooLargeError with a .type discriminator;
   // surface that distinctly so the client can show "image too large"
-  // copy rather than a generic 500.
+  // copy rather than a generic 500. Not Sentry-worthy — it's an
+  // expected client problem, not a server bug.
   const typed = err as { type?: string; status?: number };
   if (typed?.type === "entity.too.large") {
-    res.status(413).json({ error: "That file is too big. Try a smaller image." });
+    logger.warn({ path: req.path, method: req.method }, "[api] payload too large");
+    if (!res.headersSent) {
+      res.status(413).json({ error: "That file is too big. Try a smaller image." });
+    }
     return;
   }
+  // Real 500 — log locally AND forward to Sentry (no-op if DSN unset).
+  // captureError attaches the request route + method as tags so the
+  // Sentry issue lands grouped by surface, not as a generic catch-all.
+  const userId = (req.user as { id?: number } | undefined)?.id;
+  captureError(err, {
+    path: req.path,
+    method: req.method,
+    userId: userId ?? null,
+  });
+  if (res.headersSent) return;
   res.status(500).json({ error: "Something went wrong. Please try again." });
 });
 
