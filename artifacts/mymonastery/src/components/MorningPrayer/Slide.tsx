@@ -4,7 +4,11 @@ import { CallAndResponse } from "./CallAndResponse";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { openExternal } from "@/lib/openExternal";
-import { CAC_TODAY_URL, FDD_TODAY_URL, SSJE_TODAY_URL, markCacRead, markFddRead, markSsjeRead } from "@/lib/cacReadState";
+// FDD/SSJE moved to the embedded reflection slide (bcp-daily-office
+// appends a reflection_embed at the end when the source picks one).
+// Only CAC still uses the closing-slide pill because cac.org blocks
+// iframe embedding (X-Frame-Options: SAMEORIGIN).
+import { CAC_TODAY_URL, markCacRead } from "@/lib/cacReadState";
 import { useOfficePrefs } from "@/lib/officePrefs";
 
 interface SlideProps {
@@ -318,18 +322,23 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
 
             {/* Single daily-reflection pill — the user picks ONE
                 source in Office Settings → After the office (CAC /
-                FDD / SSJE / none). Opens externally via SFSafariView
-                (Browser.open) and stamps today as read so the
-                matching home card flips to "Read again." When the
-                user picks "none" the entire pill disappears. */}
+                FDD / SSJE / none). For FDD/SSJE the reading is
+                embedded as the slide that follows the closing
+                (bcp-daily-office appends a reflection_embed slide
+                whenever the source is FDD or SSJE), so the pill
+                here would be redundant — the user just taps Next
+                to keep reading. CAC blocks iframe embedding
+                (X-Frame-Options: SAMEORIGIN), so for CAC the pill
+                stays and opens externally via SFSafariView, marking
+                today as read so the home card flips. When the user
+                picks "none" the entire pill disappears. */}
             {(() => {
               const src = officePrefs.reflectionSource;
               if (src === "none") return null;
-              const cfg = src === "cac"
-                ? { label: "🌅 Read today's reflection →", bg: "rgba(46,107,64,0.22)", border: "rgba(46,107,64,0.50)", url: CAC_TODAY_URL, mark: markCacRead }
-                : src === "fdd"
-                  ? { label: "📖 Read today's reflection →", bg: "rgba(74,158,132,0.18)", border: "rgba(74,158,132,0.45)", url: FDD_TODAY_URL, mark: markFddRead }
-                  : { label: "✍🏽 Read today's reflection →", bg: "rgba(193,127,36,0.18)", border: "rgba(193,127,36,0.50)", url: SSJE_TODAY_URL, mark: markSsjeRead };
+              // FDD/SSJE: hidden — the embedded reflection slide
+              // appended after this one is the read-it surface now.
+              if (src === "fdd" || src === "ssje") return null;
+              const cfg = { label: "🌅 Read today's reflection →", bg: "rgba(46,107,64,0.22)", border: "rgba(46,107,64,0.50)", url: CAC_TODAY_URL, mark: markCacRead };
               return (
                 <button
                   type="button"
