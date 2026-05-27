@@ -395,8 +395,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   to the canonical reader). Find a Church links to the
                   Episcopal Church's national parish finder — a flat
                   URL, no redirect needed because the finder picks the
-                  user's location client-side. Saints stays beta-gated
-                  because the index isn't fully fleshed out yet. */}
+                  user's location client-side. Saints is now visible
+                  to everyone; the "Beta" badge stays so readers know
+                  the index is still growing. */}
               <MenuSection emoji="📚" label={t("menu.resources", { defaultValue: "Resources" })}>
                 <MenuRow
                   emoji="📅"
@@ -408,9 +409,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   label={t("menu.find_a_church", { defaultValue: "Find a Church" })}
                   onClick={() => { onClose(); openExternal("https://www.episcopalchurch.org/find-a-church/"); }}
                 />
-                {rawIsBeta && (
-                  <MenuRow emoji="😇" label={t("menu.saints")} badge={t("menu.beta")} onClick={() => navigate("/saints")} />
-                )}
+                <MenuRow emoji="😇" label={t("menu.saints")} badge={t("menu.beta")} onClick={() => navigate("/saints")} />
               </MenuSection>
               {showLetters && (
                 <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
