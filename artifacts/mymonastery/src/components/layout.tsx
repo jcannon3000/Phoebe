@@ -244,99 +244,133 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               {/* Pilot view / community admin toggles moved to Admin Tools page */}
             </div>
 
-            {/* ── Communities ── collapsible; lists the user's
-                communities. Offices-only tier has none, so it's hidden. */}
+            {/* ── Communities ── lists the user's communities.
+                Offices-only tier has none, so the whole block is
+                hidden. Rendering branches on count:
+                  • 0 → empty-state card prompting to create one
+                  • 1 → flat row at the top of the section (no
+                    collapsible header — opening a folder for a
+                    single item is unnecessary tap friction)
+                  • 2+ → the original collapsible "Communities"
+                    section with a scroll-clamped list inside.
+                Single-community rendering still routes admins
+                straight to the requests panel when there are
+                pending joins waiting on them — same logic as the
+                multi-community case. */}
             {!officesOnly && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-                <MenuSection emoji="🏘️" label={t("menu.communities")}>
-                {(groupsData?.groups ?? []).length > 0 ? (
-                  // Clamp to ~3.5 rows with a bottom fade once there
-                  // are more than 3 communities — mirrors the Prayer
-                  // List carousel on the dashboard so "scroll for
-                  // more" reads the same everywhere. Each row is
-                  // ~52px + 6px gap; 196px lands at 3 full + a half
-                  // peek. Fade fades to the drawer bg (#040D06).
-                  <div style={{ position: "relative" }}>
-                    <div
-                      className="space-y-1.5"
-                      style={
-                        (groupsData?.groups ?? []).length > 3
-                          ? {
-                              maxHeight: 196,
-                              overflowY: "auto",
-                              WebkitOverflowScrolling: "touch",
-                              paddingBottom: 8,
-                            }
-                          : undefined
-                      }
-                    >
-                    {groupsData!.groups.map((g) => {
-                      const pendingCount = pendingCounts?.byGroup[g.id] ?? 0;
-                      const isAdminOfThis = g.myRole === "admin" || g.myRole === "hidden_admin";
-                      return (
-                        <button
-                          key={g.slug}
-                          // Tap straight into the requests panel when there are
-                          // pending join requests waiting on this admin —
-                          // saves them a hop through community detail.
-                          onClick={() => navigate(
-                            isAdminOfThis && pendingCount > 0
-                              ? `/communities/${g.slug}/requests`
-                              : `/communities/${g.slug}`,
+                {(() => {
+                  const groups = groupsData?.groups ?? [];
+                  if (groups.length === 1) {
+                    const g = groups[0]!;
+                    const pendingCount = pendingCounts?.byGroup[g.id] ?? 0;
+                    const isAdminOfThis = g.myRole === "admin" || g.myRole === "hidden_admin";
+                    return (
+                      <button
+                        onClick={() => navigate(
+                          isAdminOfThis && pendingCount > 0
+                            ? `/communities/${g.slug}/requests`
+                            : `/communities/${g.slug}`,
+                        )}
+                        className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors"
+                        onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
+                        onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-base leading-none">{g.emoji ?? "🏘️"}</span>
+                          <div className="text-left">
+                            <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{g.name}</p>
+                            <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.55)" }}>{t("menu.members", { count: g.memberCount })}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isAdminOfThis && pendingCount > 0 && (
+                            <span
+                              className="inline-flex items-center justify-center text-[10px] font-bold rounded-full"
+                              style={{ background: "#C58A2A", color: "#1A1208", minWidth: 18, height: 18, padding: "0 5px" }}
+                            >
+                              {pendingCount}
+                            </span>
                           )}
-                          className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors"
-                          onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
-                          onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <span className="text-base leading-none">{g.emoji ?? "🏘️"}</span>
-                            <div className="text-left">
-                              <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{g.name}</p>
-                              <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.55)" }}>{t("menu.members", { count: g.memberCount })}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {isAdminOfThis && pendingCount > 0 && (
-                              <span
-                                className="inline-flex items-center justify-center text-[10px] font-bold rounded-full"
-                                style={{
-                                  background: "#C58A2A",
-                                  color: "#1A1208",
-                                  minWidth: 18,
-                                  height: 18,
-                                  padding: "0 5px",
-                                }}
-                              >
-                                {pendingCount}
-                              </span>
-                            )}
-                            <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
-                          </div>
-                        </button>
-                      );
-                    })}
-                    </div>
-                    {/* Bottom fade — only when the list scrolls.
-                        Fades to the drawer panel bg so the partial
-                        row reads as "more below". */}
-                    {(groupsData?.groups ?? []).length > 3 && (
-                      <div
-                        className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none"
-                        style={{ background: "linear-gradient(to bottom, transparent 10%, #040D06)" }}
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
-                    <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>{t("menu.no_communities")}</p>
-                    {rawIsAdmin && (
-                      <button onClick={() => navigate("/communities/new")} className="text-xs font-semibold mt-1" style={{ color: "#A8C5A0" }}>
-                        {t("menu.create_one")}
+                          <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
+                        </div>
                       </button>
-                    )}
-                  </div>
-                )}
-                </MenuSection>
+                    );
+                  }
+                  return (
+                    <MenuSection emoji="🏘️" label={t("menu.communities")}>
+                      {groups.length > 0 ? (
+                        <div style={{ position: "relative" }}>
+                          <div
+                            className="space-y-1.5"
+                            style={
+                              groups.length > 3
+                                ? {
+                                    maxHeight: 196,
+                                    overflowY: "auto",
+                                    WebkitOverflowScrolling: "touch",
+                                    paddingBottom: 8,
+                                  }
+                                : undefined
+                            }
+                          >
+                            {groups.map((g) => {
+                              const pendingCount = pendingCounts?.byGroup[g.id] ?? 0;
+                              const isAdminOfThis = g.myRole === "admin" || g.myRole === "hidden_admin";
+                              return (
+                                <button
+                                  key={g.slug}
+                                  onClick={() => navigate(
+                                    isAdminOfThis && pendingCount > 0
+                                      ? `/communities/${g.slug}/requests`
+                                      : `/communities/${g.slug}`,
+                                  )}
+                                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl transition-colors"
+                                  onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
+                                  onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <span className="text-base leading-none">{g.emoji ?? "🏘️"}</span>
+                                    <div className="text-left">
+                                      <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{g.name}</p>
+                                      <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.55)" }}>{t("menu.members", { count: g.memberCount })}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {isAdminOfThis && pendingCount > 0 && (
+                                      <span
+                                        className="inline-flex items-center justify-center text-[10px] font-bold rounded-full"
+                                        style={{ background: "#C58A2A", color: "#1A1208", minWidth: 18, height: 18, padding: "0 5px" }}
+                                      >
+                                        {pendingCount}
+                                      </span>
+                                    )}
+                                    <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {groups.length > 3 && (
+                            <div
+                              className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none"
+                              style={{ background: "linear-gradient(to bottom, transparent 10%, #040D06)" }}
+                            />
+                          )}
+                        </div>
+                      ) : (
+                        <div className="rounded-xl px-4 py-3 text-center" style={{ background: "rgba(200,212,192,0.04)", border: "1px dashed rgba(46,107,64,0.2)" }}>
+                          <p className="text-sm mb-1" style={{ color: "#8FAF96" }}>{t("menu.no_communities")}</p>
+                          {rawIsAdmin && (
+                            <button onClick={() => navigate("/communities/new")} className="text-xs font-semibold mt-1" style={{ color: "#A8C5A0" }}>
+                              {t("menu.create_one")}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </MenuSection>
+                  );
+                })()}
               </div>
             )}
 
