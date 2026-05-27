@@ -246,6 +246,85 @@ export const PRAYERS = {
     en: "↓ continue · tap when ready",
     es: "↓ continúa · toca cuando estés listo",
   },
+
+  // Morning Prayer invitatory opening (BCP p. 80 / LOC).
+  versicle_open_lips_off: {
+    en: "Lord, open our lips.",
+    es: "Señor, abre nuestros labios.",
+  },
+  versicle_open_lips_peo: {
+    en: "And our mouth shall proclaim your praise.",
+    es: "Y nuestra boca proclamará tu alabanza.",
+  },
+
+  // Evening Prayer opening dialogue (BCP p. 117 / LOC).
+  versicle_evening_off: {
+    en: "O God, make speed to save us.",
+    es: "Oh Dios, ven en nuestro auxilio.",
+  },
+  versicle_evening_peo: {
+    en: "O Lord, make haste to help us.",
+    es: "Señor, apresúrate a socorrernos.",
+  },
+
+  // The dismissal that closes MP/EP after the General Thanksgiving.
+  dismissal_off: {
+    en: "Let us bless the Lord.",
+    es: "Bendigamos al Señor.",
+  },
+  dismissal_peo: {
+    en: "Thanks be to God.",
+    es: "Demos gracias a Dios.",
+  },
+  dismissal_off_easter: {
+    en: "Let us bless the Lord. Alleluia, alleluia.",
+    es: "Bendigamos al Señor. Aleluya, aleluya.",
+  },
+  dismissal_peo_easter: {
+    en: "Thanks be to God. Alleluia, alleluia.",
+    es: "Demos gracias a Dios. Aleluya, aleluya.",
+  },
+
+  // Closing grace (2 Cor 13:14) — appointed at the end of MP/EP.
+  closing_grace: {
+    en: "The grace of our Lord Jesus Christ, and the love of God, and the fellowship of the Holy Spirit, be with us all evermore. Amen.",
+    es: "La gracia de nuestro Señor Jesucristo, el amor de Dios, y la comunión del Espíritu Santo sean con todos nosotros para siempre. Amén.",
+  },
+
+  // The Apostles' Creed (contemporary form) — BCP p. 96 / LOC.
+  apostles_creed: {
+    en: "I believe in God, the Father almighty,\ncreator of heaven and earth.\n\nI believe in Jesus Christ, his only Son, our Lord.\nHe was conceived by the power of the Holy Spirit\n  and born of the Virgin Mary.\nHe suffered under Pontius Pilate,\n  was crucified, died, and was buried.\nHe descended to the dead.\nOn the third day he rose again.\nHe ascended into heaven,\n  and is seated at the right hand of the Father.\nHe will come again to judge the living and the dead.\n\nI believe in the Holy Spirit,\nthe holy catholic Church,\nthe communion of saints,\nthe forgiveness of sins,\nthe resurrection of the body,\nand the life everlasting. Amen.",
+    es: "Creo en Dios, Padre todopoderoso,\ncreador del cielo y de la tierra.\n\nCreo en Jesucristo, su único Hijo, nuestro Señor.\nFue concebido por obra del Espíritu Santo\n  y nació de la Virgen María.\nPadeció bajo el poder de Poncio Pilato,\n  fue crucificado, muerto y sepultado.\nDescendió a los muertos.\nAl tercer día resucitó.\nSubió a los cielos,\n  y está sentado a la derecha del Padre.\nVolverá para juzgar a los vivos y a los muertos.\n\nCreo en el Espíritu Santo,\nla santa Iglesia católica,\nla comunión de los santos,\nel perdón de los pecados,\nla resurrección del cuerpo,\ny la vida eterna. Amén.",
+  },
+
+  // Suffrages A — the more-prayed of the two MP/EP suffrage sets
+  // (BCP p. 97 / LOC). Officiant + people lines fold into a single
+  // body string because the slide renders them as call-and-response
+  // already; embedded \n separates lines.
+  suffrages_a: {
+    en: "V. Show us your mercy, O Lord;\nR. And grant us your salvation.\n\nV. Clothe your ministers with righteousness;\nR. Let your people sing with joy.\n\nV. Give peace, O Lord, in all the world;\nR. For only in you can we live in safety.\n\nV. Lord, keep this nation under your care;\nR. And guide us in the way of justice and truth.\n\nV. Let your way be known upon earth;\nR. Your saving health among all nations.\n\nV. Let not the needy, O Lord, be forgotten;\nR. Nor the hope of the poor be taken away.\n\nV. Create in us clean hearts, O God;\nR. And sustain us with your Holy Spirit.",
+    es: "V. Muéstranos tu misericordia, Señor;\nR. Y concédenos tu salvación.\n\nV. Reviste a tus ministros de justicia;\nR. Que tu pueblo cante con alegría.\n\nV. Concede la paz, Señor, en todo el mundo;\nR. Pues sólo en ti podemos vivir seguros.\n\nV. Señor, guarda a esta nación bajo tu cuidado;\nR. Y guíanos por el camino de la justicia y la verdad.\n\nV. Que tu camino sea conocido en la tierra;\nR. Tu salvación entre todas las naciones.\n\nV. Que los necesitados, Señor, no sean olvidados;\nR. Ni la esperanza de los pobres sea quitada.\n\nV. Crea en nosotros corazones limpios, oh Dios;\nR. Y sostennos con tu Santo Espíritu.",
+  },
+
+  // Suffrages B — the alternate MP/EP set (BCP p. 98 / LOC).
+  suffrages_b: {
+    en: "V. Save your people, Lord, and bless your inheritance;\nR. Govern and uphold them, now and always.\n\nV. Day by day we bless you;\nR. We praise your Name for ever.\n\nV. Lord, keep us from all sin today;\nR. Have mercy upon us, Lord, have mercy.\n\nV. Lord, show us your love and mercy;\nR. For we put our trust in you.\n\nV. In you, Lord, is our hope;\nR. And we shall never hope in vain.",
+    es: "V. Salva a tu pueblo, Señor, y bendice a tu heredad;\nR. Gobiérnalos y sosténlos, ahora y siempre.\n\nV. Día tras día te bendecimos;\nR. Alabamos tu Nombre por siempre.\n\nV. Señor, guárdanos hoy de todo pecado;\nR. Ten misericordia de nosotros, Señor, ten misericordia.\n\nV. Señor, muéstranos tu amor y misericordia;\nR. Pues en ti hemos puesto nuestra confianza.\n\nV. En ti, Señor, está nuestra esperanza;\nR. Y nunca esperaremos en vano.",
+  },
+
+  // Prayer for Mission — three options rotate (BCP p. 100 / LOC).
+  prayer_for_mission_1: {
+    en: "Almighty and everlasting God,\nby whose Spirit the whole body of your faithful people is governed and sanctified:\nReceive our supplications and prayers,\nwhich we offer before you for all members of your holy Church,\nthat in their vocation and ministry they may truly and devoutly serve you;\nthrough our Lord and Savior Jesus Christ. Amen.",
+    es: "Dios todopoderoso y eterno,\npor cuyo Espíritu todo el cuerpo de tu pueblo fiel es gobernado y santificado:\nRecibe las súplicas y oraciones que te ofrecemos por todos los miembros de tu santa Iglesia,\npara que en su vocación y ministerio te sirvan verdadera y devotamente;\npor nuestro Señor y Salvador Jesucristo. Amén.",
+  },
+  prayer_for_mission_2: {
+    en: "O God, you have made of one blood all the peoples of the earth,\nand sent your blessed Son to preach peace to those who are far off and to those who are near:\nGrant that people everywhere may seek after you and find you;\nbring the nations into your fold;\npour out your Spirit upon all flesh;\nand hasten the coming of your kingdom;\nthrough Jesus Christ our Lord. Amen.",
+    es: "Oh Dios, que de una sola sangre has hecho a todos los pueblos de la tierra,\ny enviaste a tu bendito Hijo a anunciar la paz a los que están lejos y a los que están cerca:\nConcede que en todas partes te busquen y te encuentren;\ntrae a las naciones a tu redil;\nderrama tu Espíritu sobre toda carne;\ny apresura la venida de tu reino;\npor Jesucristo nuestro Señor. Amén.",
+  },
+  prayer_for_mission_3: {
+    en: "Lord Jesus Christ, you stretched out your arms of love on the hard wood of the cross\nthat everyone might come within the reach of your saving embrace:\nSo clothe us in your Spirit\nthat we, reaching forth our hands in love,\nmay bring those who do not know you to the knowledge and love of you;\nfor the honor of your Name. Amen.",
+    es: "Señor Jesucristo, que extendiste tus brazos de amor sobre el duro madero de la cruz\npara que todos pudieran alcanzar el abrazo de tu salvación:\nRevístenos así de tu Espíritu\nque, extendiendo nuestras manos en amor,\ntraigamos a los que no te conocen al conocimiento y amor tuyos;\npor el honor de tu Nombre. Amén.",
+  },
 } as const satisfies Record<string, Bilingual>;
 
 // ── Helpers ─────────────────────────────────────────────────────────

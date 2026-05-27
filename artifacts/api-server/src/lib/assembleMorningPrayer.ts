@@ -26,6 +26,7 @@ import {
 } from "./psalmRange";
 import { buildIntercessionSlides } from "./assembleIntercessions";
 import { buildLessonSlides } from "./assembleLesson";
+import { EYEBROWS, PRAYERS, TITLES, pick, type Locale } from "./officeI18n";
 // Lessons render as references only (e.g. "John 2:1-7") — readers
 // open scripture in their own bible/app. No scripture-text lookup.
 
@@ -101,6 +102,25 @@ export interface OfficeDayInfo {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+
+// Map bcp_texts text_keys → PRAYERS i18n keys. When locale=es the
+// MP / EP assemblers look up the Spanish translation here instead of
+// fetching from bcp_texts, which is English-only today. Any key not
+// in this map keeps using bcp_texts (so the Psalter, canticles,
+// collects of the day, and opening sentences fall through to their
+// seeded English content until a future Spanish seed pass).
+const SPANISH_OVERRIDES: Record<string, keyof typeof PRAYERS> = {
+  confession_text: "confession_mp_ep",
+  confession_absolution: "absolution_lay",
+  apostles_creed: "apostles_creed",
+  lords_prayer_contemporary: "lords_prayer_contemporary",
+  suffrages_a: "suffrages_a",
+  suffrages_b: "suffrages_b",
+  general_thanksgiving: "general_thanksgiving",
+  prayer_for_mission_1: "prayer_for_mission_1",
+  prayer_for_mission_2: "prayer_for_mission_2",
+  prayer_for_mission_3: "prayer_for_mission_3",
+};
 
 function startOfDay(d: Date): Date {
   return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -401,13 +421,20 @@ function pickInvitatoryKey(
 export async function assembleMorningPrayer(
   date: Date,
   userId: number,
+  locale: Locale = "en",
 ): Promise<{
   slides: Slide[];
   officeDay: OfficeDayInfo;
   fromCache: boolean;
 }> {
   const cacheDate = startOfDay(date);
-  const cacheDateStr = cacheDate.toISOString().slice(0, 10);
+  // Suffix the cache key with the locale so English and Spanish
+  // viewers don't poison each other's cached decks. Backward-
+  // compatible: English keeps the bare date string so existing
+  // cached rows still resolve.
+  const cacheDateStr = locale === "es"
+    ? `${cacheDate.toISOString().slice(0, 10)}_es`
+    : cacheDate.toISOString().slice(0, 10);
 
   // 1. Check cache
   const cached = await db
@@ -528,6 +555,19 @@ export async function assembleMorningPrayer(
     return texts[key]?.content ?? `[${key} — see BCP]`;
   }
 
+  // Locale-aware override for embedded prayers. When locale=es we
+  // serve the Spanish constant from officeI18n (sourced from El
+  // Libro de Oración Común); otherwise the existing bcp_texts lookup
+  // is unchanged. Psalter / canticles / collects of the day / opening
+  // sentences stay on bcp_texts in either locale — those rows are
+  // English-only today; a Spanish seed pass will add Spanish bodies.
+  function localized(key: string): string {
+    if (locale !== "es") return getText(key);
+    const esKey = SPANISH_OVERRIDES[key];
+    if (esKey) return pick(locale, PRAYERS[esKey]);
+    return getText(key);
+  }
+
   // ── Build slide array ──────────────────────────────────────────────────────
 
   const slides: Slide[] = [];
@@ -542,9 +582,11 @@ export async function assembleMorningPrayer(
       id(),
       "office_intro",
       "🕊️",
-      "Before you begin",
-      "For centuries the Church has prayed the Daily Office — psalms, Scripture, and prayer at the hinges of the morning and evening. Monks and laypeople alike have kept this rhythm, letting a fixed pattern bring stability to ordinary days. You are joining a prayer the Church has never stopped praying.",
-      { title: "Morning Prayer" },
+      locale === "es" ? "Antes de comenzar" : "Before you begin",
+      locale === "es"
+        ? "Por siglos la Iglesia ha rezado el Oficio Diario — salmos, Escritura y oración en las bisagras de la mañana y de la tarde. Monjes y laicos por igual han guardado este ritmo, dejando que un patrón fijo dé estabilidad a los días corrientes. Te unes a una oración que la Iglesia nunca ha dejado de rezar."
+        : "For centuries the Church has prayed the Daily Office — psalms, Scripture, and prayer at the hinges of the morning and evening. Monks and laypeople alike have kept this rhythm, letting a fixed pattern bring stability to ordinary days. You are joining a prayer the Church has never stopped praying.",
+      { title: pick(locale, TITLES.morning_prayer) },
     ),
   );
 
@@ -554,7 +596,7 @@ export async function assembleMorningPrayer(
   // in the chrome's reference label, so the office begins with the
   // BCP's actual first element: the seasonal Opening Sentence.
   slides.push(
-    slide(id(), "opening_sentence", "📖", "OPENING SENTENCE", getText(openingSentenceKey), {
+    slide(id(), "opening_sentence", "📖", pick(locale, EYEBROWS.opening_sentence), getText(openingSentenceKey), {
       bcpReference: "BCP p. 75",
     }),
   );
@@ -564,32 +606,29 @@ export async function assembleMorningPrayer(
   // priest's declaration of forgiveness in reply. Per user direction
   // they're separate cards so each beat lands on its own.
   slides.push(
-    slide(id(), "confession", "🙏🏽", "CONFESSION OF SIN", getText("confession_text").trim(), {
+    slide(id(), "confession", "🙏🏽", pick(locale, EYEBROWS.confession_of_sin), localized("confession_text").trim(), {
       bcpReference: "BCP p. 79",
-      metadata: { prompt: "Pause. Bring what you carry. 🌿" },
+      metadata: { prompt: locale === "es" ? "Pausa. Trae lo que llevas. 🌿" : "Pause. Bring what you carry. 🌿" },
     }),
   );
   slides.push(
-    slide(id(), "absolution", "🕊️", "ABSOLUTION", getText("confession_absolution").trim(), {
+    slide(id(), "absolution", "🕊️", pick(locale, EYEBROWS.absolution), localized("confession_absolution").trim(), {
       bcpReference: "BCP p. 80",
     }),
   );
 
   // SLIDE 5: Invitatory versicle
   const invitatoryLines: CallAndResponseLine[] = [
-    { speaker: "officiant", text: "Lord, open our lips." },
-    { speaker: "people", text: "And our mouth shall proclaim your praise." },
-    {
-      speaker: "both",
-      text: "Glory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.",
-    },
+    { speaker: "officiant", text: pick(locale, PRAYERS.versicle_open_lips_off) },
+    { speaker: "people", text: pick(locale, PRAYERS.versicle_open_lips_peo) },
+    { speaker: "both", text: pick(locale, PRAYERS.gloria_patri) },
   ];
   if (liturgicalDay.useAlleluia) {
-    invitatoryLines.push({ speaker: "both", text: "Alleluia." });
+    invitatoryLines.push({ speaker: "both", text: pick(locale, PRAYERS.alleluia) });
   }
 
   slides.push(
-    slide(id(), "invitatory", "🔔", "INVITATORY", "", {
+    slide(id(), "invitatory", "🔔", pick(locale, EYEBROWS.invitatory), "", {
       isCallAndResponse: true,
       callAndResponseLines: invitatoryLines,
       bcpReference: "BCP p. 80",
@@ -658,7 +697,7 @@ export async function assembleMorningPrayer(
   // verses → Gloria → antiphon.
   if (hasAntiphon) {
     slides.push(
-      slide(id(), "antiphon", "🎶", "ANTIPHON", antiphonText, {
+      slide(id(), "antiphon", "🎶", pick(locale, EYEBROWS.antiphon), antiphonText, {
         bcpReference: invitBcpRef,
         isScrollable: false,
         scrollHint: null,
@@ -711,7 +750,7 @@ export async function assembleMorningPrayer(
   // Gloria → antiphon.
   if (hasAntiphon) {
     slides.push(
-      slide(id(), "antiphon", "🎶", "ANTIPHON", antiphonText, {
+      slide(id(), "antiphon", "🎶", pick(locale, EYEBROWS.antiphon), antiphonText, {
         bcpReference: invitBcpRef,
         isScrollable: false,
         scrollHint: null,
@@ -873,12 +912,12 @@ export async function assembleMorningPrayer(
   // in the Holy Spirit…"). Slide 1 is the Father + the Son; slide 2
   // is the Holy Spirit and the Church. Falls back to one slide if
   // the split phrase isn't found.
-  const mpCreed = getText("apostles_creed");
+  const mpCreed = localized("apostles_creed");
   const mpCreedSplit = mpCreed.indexOf("I believe in the Holy Spirit");
   const mpCreed1 = mpCreedSplit > 0 ? mpCreed.slice(0, mpCreedSplit).trimEnd() : mpCreed;
   const mpCreed2 = mpCreedSplit > 0 ? mpCreed.slice(mpCreedSplit).trimStart() : "";
   slides.push(
-    slide(id(), "creed", "✝️", "THE APOSTLES' CREED", mpCreed1, {
+    slide(id(), "creed", "✝️", pick(locale, EYEBROWS.apostles_creed), mpCreed1, {
       bcpReference: "BCP p. 96",
       metadata: { prompt: "We say together what we believe." },
     }),
@@ -893,16 +932,16 @@ export async function assembleMorningPrayer(
 
   // Lord's Prayer
   slides.push(
-    slide(id(), "lords_prayer", "🙏🏽", "THE LORD'S PRAYER", getText("lords_prayer_contemporary"), {
+    slide(id(), "lords_prayer", "🙏🏽", pick(locale, EYEBROWS.the_lords_prayer), localized("lords_prayer_contemporary"), {
       bcpReference: "BCP p. 97",
     }),
   );
 
   // Suffrages
-  const suffrageText = getText(suffragesKey);
+  const suffrageText = localized(suffragesKey);
   const suffrageLabel = suffragesKey === "suffrages_a" ? "A" : "B";
   slides.push(
-    slide(id(), "suffrages", "🕊️", `THE PRAYERS · SUFFRAGES ${suffrageLabel}`, suffrageText, {
+    slide(id(), "suffrages", "🕊️", `${pick(locale, EYEBROWS.suffrages)} ${suffrageLabel}`, suffrageText, {
       bcpReference: "BCP p. 97",
       isCallAndResponse: true,
       callAndResponseLines: parseSuffrages(suffrageText),
@@ -917,7 +956,7 @@ export async function assembleMorningPrayer(
   // focused. A Prayer for Mission follows below as the BCP appoints.
   const collectData = texts[liturgicalDay.collectKey];
   slides.push(
-    slide(id(), "collect", "📅", "COLLECT OF THE DAY", getText(liturgicalDay.collectKey), {
+    slide(id(), "collect", "📅", pick(locale, EYEBROWS.the_collect_of_the_day), getText(liturgicalDay.collectKey), {
       title: liturgicalDay.sundayLabel,
       bcpReference: collectData?.bcpReference ?? "BCP p. 211",
     }),
@@ -928,7 +967,7 @@ export async function assembleMorningPrayer(
   // three across the week (same cadence as the concluding blessing).
   const prayerForMissionData = texts[prayerForMissionKey];
   slides.push(
-    slide(id(), "prayer_for_mission", "🌍", "A PRAYER FOR MISSION", getText(prayerForMissionKey), {
+    slide(id(), "prayer_for_mission", "🌍", pick(locale, EYEBROWS.prayer_for_mission), localized(prayerForMissionKey), {
       bcpReference: prayerForMissionData?.bcpReference ?? "BCP p. 100",
     }),
   );
@@ -938,19 +977,19 @@ export async function assembleMorningPrayer(
   // preservation, the blessings of this life, redemption); slide 2
   // is the petition that flows from it ("And, we pray, give us such
   // an awareness…"). Falls back to one slide if the phrase is absent.
-  const mpGt = getText("general_thanksgiving");
+  const mpGt = localized("general_thanksgiving");
   const mpGtSplit = mpGt.indexOf("And, we pray, give us such an awareness");
   const mpGt1 = mpGtSplit > 0 ? mpGt.slice(0, mpGtSplit).trimEnd() : mpGt;
   const mpGt2 = mpGtSplit > 0 ? mpGt.slice(mpGtSplit).trimStart() : "";
   slides.push(
-    slide(id(), "general_thanksgiving", "🌾", "THE GENERAL THANKSGIVING", mpGt1, {
+    slide(id(), "general_thanksgiving", "🌾", pick(locale, EYEBROWS.general_thanksgiving), mpGt1, {
       bcpReference: "BCP p. 101",
       metadata: { prompt: "This is often said aloud together." },
     }),
   );
   if (mpGt2) {
     slides.push(
-      slide(id(), "general_thanksgiving", "🌾", "THE GENERAL THANKSGIVING", mpGt2, {
+      slide(id(), "general_thanksgiving", "🌾", pick(locale, EYEBROWS.general_thanksgiving), mpGt2, {
         bcpReference: "BCP p. 101",
       }),
     );

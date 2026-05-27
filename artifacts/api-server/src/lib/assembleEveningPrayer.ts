@@ -26,6 +26,27 @@ import { buildIntercessionSlides } from "./assembleIntercessions";
 import { buildLessonSlides } from "./assembleLesson";
 import type { Slide, SlideType, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
 import { applyConfessionPref } from "./assembleMorningPrayer";
+import { EYEBROWS, PRAYERS, TITLES, pick, type Locale } from "./officeI18n";
+
+// Locale override map for EP (mirror of the one in
+// assembleMorningPrayer). When locale=es the assembler serves these
+// Spanish constants instead of bcp_texts. Keys not present here fall
+// through to the seeded English bcp_texts content (psalter, canticles,
+// collects of the day, opening sentences are still English-only until
+// a Spanish seed pass lands).
+const SPANISH_OVERRIDES: Record<string, keyof typeof PRAYERS> = {
+  confession_text: "confession_mp_ep",
+  confession_absolution: "absolution_lay",
+  apostles_creed: "apostles_creed",
+  lords_prayer_contemporary: "lords_prayer_contemporary",
+  suffrages_a: "suffrages_a",
+  suffrages_b: "suffrages_b",
+  general_thanksgiving: "general_thanksgiving",
+  prayer_for_mission_1: "prayer_for_mission_1",
+  prayer_for_mission_2: "prayer_for_mission_2",
+  prayer_for_mission_3: "prayer_for_mission_3",
+  phos_hilaron: "phos_hilaron",
+};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -171,6 +192,7 @@ function pickPrayerForMissionKey(date: Date): string {
 export async function assembleEveningPrayer(
   date: Date,
   userId: number,
+  locale: Locale = "en",
 ): Promise<{
   slides: Slide[];
   officeDay: OfficeDayInfo;
@@ -223,6 +245,15 @@ export async function assembleEveningPrayer(
   function getTextData(key: string) {
     return EP_BCP_TEXTS[key] ?? { content: "", title: key, bcpReference: "" };
   }
+  // Locale-aware variant of getText — when locale=es and the key has
+  // a SPANISH_OVERRIDES entry, return the Spanish constant; otherwise
+  // fall through to the existing English EP_BCP_TEXTS lookup.
+  function localized(key: string): string {
+    if (locale !== "es") return getText(key);
+    const esKey = SPANISH_OVERRIDES[key];
+    if (esKey) return pick(locale, PRAYERS[esKey]);
+    return getText(key);
+  }
 
   // ── Build slides ────────────────────────────────────────────────────────────
 
@@ -238,9 +269,11 @@ export async function assembleEveningPrayer(
       id(),
       "office_intro",
       "🕊️",
-      "Before you begin",
-      "For centuries the Church has prayed the Daily Office — psalms, Scripture, and prayer at the hinges of the morning and evening. Monks and laypeople alike have kept this rhythm, letting a fixed pattern bring stability to ordinary days. You are joining a prayer the Church has never stopped praying.",
-      { title: "Evening Prayer" },
+      locale === "es" ? "Antes de comenzar" : "Before you begin",
+      locale === "es"
+        ? "Por siglos la Iglesia ha rezado el Oficio Diario — salmos, Escritura y oración en las bisagras de la mañana y de la tarde. Monjes y laicos por igual han guardado este ritmo, dejando que un patrón fijo dé estabilidad a los días corrientes. Te unes a una oración que la Iglesia nunca ha dejado de rezar."
+        : "For centuries the Church has prayed the Daily Office — psalms, Scripture, and prayer at the hinges of the morning and evening. Monks and laypeople alike have kept this rhythm, letting a fixed pattern bring stability to ordinary days. You are joining a prayer the Church has never stopped praying.",
+      { title: pick(locale, TITLES.evening_prayer) },
     ),
   );
 
@@ -250,7 +283,7 @@ export async function assembleEveningPrayer(
   //    reference label, so EP begins with the BCP's actual first
   //    element: the seasonal Opening Sentence.
   slides.push(
-    slide(id(), "opening_sentence", "📖", "OPENING SENTENCE", getText(openingSentenceKey), {
+    slide(id(), "opening_sentence", "📖", pick(locale, EYEBROWS.opening_sentence), getText(openingSentenceKey), {
       bcpReference: "BCP p. 115",
     }),
   );
@@ -260,32 +293,29 @@ export async function assembleEveningPrayer(
   // declaration of forgiveness in reply. Per user direction they're
   // separate cards so each beat lands on its own.
   slides.push(
-    slide(id(), "confession", "🙏🏽", "CONFESSION OF SIN", getText("confession_text").trim(), {
+    slide(id(), "confession", "🙏🏽", pick(locale, EYEBROWS.confession_of_sin), localized("confession_text").trim(), {
       bcpReference: "BCP p. 116",
-      metadata: { prompt: "Pause. Bring what you carry. 🌿" },
+      metadata: { prompt: locale === "es" ? "Pausa. Trae lo que llevas. 🌿" : "Pause. Bring what you carry. 🌿" },
     }),
   );
   slides.push(
-    slide(id(), "absolution", "🕊️", "ABSOLUTION", getText("confession_absolution").trim(), {
+    slide(id(), "absolution", "🕊️", pick(locale, EYEBROWS.absolution), localized("confession_absolution").trim(), {
       bcpReference: "BCP p. 117",
     }),
   );
 
   // 5. Invitatory — EP uses different versicle
   const invitatoryLines: CallAndResponseLine[] = [
-    { speaker: "officiant", text: "O God, make speed to save us." },
-    { speaker: "people", text: "O Lord, make haste to help us." },
-    {
-      speaker: "both",
-      text: "Glory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.",
-    },
+    { speaker: "officiant", text: pick(locale, PRAYERS.versicle_evening_off) },
+    { speaker: "people", text: pick(locale, PRAYERS.versicle_evening_peo) },
+    { speaker: "both", text: pick(locale, PRAYERS.gloria_patri) },
   ];
   if (liturgicalDay.useAlleluia) {
-    invitatoryLines.push({ speaker: "both", text: "Alleluia." });
+    invitatoryLines.push({ speaker: "both", text: pick(locale, PRAYERS.alleluia) });
   }
 
   slides.push(
-    slide(id(), "invitatory", "🔔", "INVITATORY", "", {
+    slide(id(), "invitatory", "🔔", pick(locale, EYEBROWS.invitatory), "", {
       isCallAndResponse: true,
       callAndResponseLines: invitatoryLines,
       bcpReference: "BCP p. 117",
@@ -295,7 +325,7 @@ export async function assembleEveningPrayer(
   // 6. O Gracious Light (Phos hilaron) — unique to Evening Prayer
   const phosData = getTextData("phos_hilaron");
   slides.push(
-    slide(id(), "invitatory_psalm", "🕯️", "O GRACIOUS LIGHT", phosData.content, {
+    slide(id(), "invitatory_psalm", "🕯️", pick(locale, EYEBROWS.phos_hilaron), localized("phos_hilaron"), {
       bcpReference: phosData.bcpReference,
       isScrollable: true,
       scrollHint: "↓ continue · tap when ready",
@@ -481,18 +511,20 @@ export async function assembleEveningPrayer(
   // article ("I believe in the Holy Spirit…"). Slide 1 is the
   // Father + the Son; slide 2 is the Holy Spirit and the Church.
   const creedData = getTextData("apostles_creed");
-  const epCreedSplit = creedData.content.indexOf("I believe in the Holy Spirit");
-  const epCreed1 = epCreedSplit > 0 ? creedData.content.slice(0, epCreedSplit).trimEnd() : creedData.content;
-  const epCreed2 = epCreedSplit > 0 ? creedData.content.slice(epCreedSplit).trimStart() : "";
+  const creedBody = localized("apostles_creed");
+  const epCreedSplitMarker = locale === "es" ? "Creo en el Espíritu Santo" : "I believe in the Holy Spirit";
+  const epCreedSplit = creedBody.indexOf(epCreedSplitMarker);
+  const epCreed1 = epCreedSplit > 0 ? creedBody.slice(0, epCreedSplit).trimEnd() : creedBody;
+  const epCreed2 = epCreedSplit > 0 ? creedBody.slice(epCreedSplit).trimStart() : "";
   slides.push(
-    slide(id(), "creed", "✝️", creedData.title.toUpperCase(), epCreed1, {
+    slide(id(), "creed", "✝️", pick(locale, EYEBROWS.apostles_creed), epCreed1, {
       bcpReference: creedData.bcpReference,
-      metadata: { prompt: "We say together what we believe." },
+      metadata: { prompt: locale === "es" ? "Decimos juntos lo que creemos." : "We say together what we believe." },
     }),
   );
   if (epCreed2) {
     slides.push(
-      slide(id(), "creed", "✝️", creedData.title.toUpperCase(), epCreed2, {
+      slide(id(), "creed", "✝️", pick(locale, EYEBROWS.apostles_creed), epCreed2, {
         bcpReference: creedData.bcpReference,
       }),
     );
@@ -501,16 +533,16 @@ export async function assembleEveningPrayer(
   // 13. The Lord's Prayer
   const lpData = getTextData("lords_prayer_contemporary");
   slides.push(
-    slide(id(), "lords_prayer", "🙏🏽", lpData.title.toUpperCase(), lpData.content, {
+    slide(id(), "lords_prayer", "🙏🏽", pick(locale, EYEBROWS.the_lords_prayer), localized("lords_prayer_contemporary"), {
       bcpReference: lpData.bcpReference,
     }),
   );
 
   // 14. Suffrages
-  const suffrageText = getText(suffragesKey);
+  const suffrageText = localized(suffragesKey);
   const suffrageData = getTextData(suffragesKey);
   slides.push(
-    slide(id(), "suffrages", "🕊️", `SUFFRAGES ${suffragesKey === "suffrages_a" ? "A" : "B"}`, suffrageText, {
+    slide(id(), "suffrages", "🕊️", `${pick(locale, EYEBROWS.suffrages)} ${suffragesKey === "suffrages_a" ? "A" : "B"}`, suffrageText, {
       bcpReference: suffrageData.bcpReference,
       isCallAndResponse: true,
       callAndResponseLines: parseSuffrages(suffrageText),
@@ -523,7 +555,7 @@ export async function assembleEveningPrayer(
   const collectContent = getText(liturgicalDay.collectKey) || getText("collect_fallback");
   const collectRef = getTextData(liturgicalDay.collectKey).bcpReference || getTextData("collect_fallback").bcpReference;
   slides.push(
-    slide(id(), "collect", "📅", "COLLECT OF THE DAY", collectContent, {
+    slide(id(), "collect", "📅", pick(locale, EYEBROWS.the_collect_of_the_day), collectContent, {
       title: liturgicalDay.sundayLabel,
       bcpReference: collectRef,
     }),
@@ -534,7 +566,7 @@ export async function assembleEveningPrayer(
   const epPmKey = pickPrayerForMissionKey(date);
   const epPmData = getTextData(epPmKey);
   slides.push(
-    slide(id(), "prayer_for_mission", "🌍", "A PRAYER FOR MISSION", getText(epPmKey), {
+    slide(id(), "prayer_for_mission", "🌍", pick(locale, EYEBROWS.prayer_for_mission), localized(epPmKey), {
       bcpReference: epPmData.bcpReference || "BCP p. 124",
     }),
   );
@@ -570,18 +602,20 @@ export async function assembleEveningPrayer(
   // petition that flows from it ("And, we pray, give us such an
   // awareness…"). Each half fits a card, so no scroll is needed.
   const gtData = getTextData("general_thanksgiving");
-  const epGtSplit = gtData.content.indexOf("And, we pray, give us such an awareness");
-  const epGt1 = epGtSplit > 0 ? gtData.content.slice(0, epGtSplit).trimEnd() : gtData.content;
-  const epGt2 = epGtSplit > 0 ? gtData.content.slice(epGtSplit).trimStart() : "";
+  const gtBody = localized("general_thanksgiving");
+  const gtSplitMarker = locale === "es" ? "Y te suplicamos" : "And, we pray, give us such an awareness";
+  const epGtSplit = gtBody.indexOf(gtSplitMarker);
+  const epGt1 = epGtSplit > 0 ? gtBody.slice(0, epGtSplit).trimEnd() : gtBody;
+  const epGt2 = epGtSplit > 0 ? gtBody.slice(epGtSplit).trimStart() : "";
   slides.push(
-    slide(id(), "general_thanksgiving", "🌾", gtData.title.toUpperCase(), epGt1, {
+    slide(id(), "general_thanksgiving", "🌾", pick(locale, EYEBROWS.general_thanksgiving), epGt1, {
       bcpReference: gtData.bcpReference,
-      metadata: { prompt: "This is often said aloud together." },
+      metadata: { prompt: locale === "es" ? "Esto suele decirse en voz alta juntos." : "This is often said aloud together." },
     }),
   );
   if (epGt2) {
     slides.push(
-      slide(id(), "general_thanksgiving", "🌾", gtData.title.toUpperCase(), epGt2, {
+      slide(id(), "general_thanksgiving", "🌾", pick(locale, EYEBROWS.general_thanksgiving), epGt2, {
         bcpReference: gtData.bcpReference,
       }),
     );
@@ -592,15 +626,15 @@ export async function assembleEveningPrayer(
   //     Pentecost). BCP p. 126.
   const concludingLines: CallAndResponseLine[] = liturgicalDay.useAlleluia
     ? [
-        { speaker: "officiant", text: "Let us bless the Lord. Alleluia, alleluia." },
-        { speaker: "people", text: "Thanks be to God. Alleluia, alleluia." },
+        { speaker: "officiant", text: pick(locale, PRAYERS.dismissal_off_easter) },
+        { speaker: "people", text: pick(locale, PRAYERS.dismissal_peo_easter) },
       ]
     : [
-        { speaker: "officiant", text: "Let us bless the Lord." },
-        { speaker: "people", text: "Thanks be to God." },
+        { speaker: "officiant", text: pick(locale, PRAYERS.dismissal_off) },
+        { speaker: "people", text: pick(locale, PRAYERS.dismissal_peo) },
       ];
   slides.push(
-    slide(id(), "suffrages", "🔔", "LET US BLESS THE LORD", "", {
+    slide(id(), "suffrages", "🔔", locale === "es" ? "BENDIGAMOS AL SEÑOR" : "LET US BLESS THE LORD", "", {
       isCallAndResponse: true,
       callAndResponseLines: concludingLines,
       bcpReference: "BCP p. 126",

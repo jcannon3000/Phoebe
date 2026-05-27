@@ -32,9 +32,11 @@ router.get("/office/morning", async (req, res) => {
 
   try {
     const userId = (req.user as { id: number } | undefined)?.id ?? 0;
+    const locale = resolveLocale(req.query.locale);
     const { slides, officeDay, fromCache } = await assembleMorningPrayer(
       date,
       userId,
+      locale,
     );
 
     return res.json({
@@ -144,7 +146,8 @@ router.get("/office/evening", async (req, res) => {
 
   try {
     const userId = (req.user as { id: number } | undefined)?.id ?? 0;
-    const { slides, officeDay, fromCache } = await assembleEveningPrayer(date, userId);
+    const locale = resolveLocale(req.query.locale);
+    const { slides, officeDay, fromCache } = await assembleEveningPrayer(date, userId, locale);
 
     return res.json({
       slides,
