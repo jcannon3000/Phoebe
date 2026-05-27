@@ -344,11 +344,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 Practices and Resources group their members; Letters shows
                 when the viewer has access. */}
             <div className="px-5 py-4 space-y-1" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-              <MenuSection emoji="🕯️" label={t("menu.practices")}>
-                <MenuRow emoji="🕯️" label={t("menu.contemplation")} onClick={() => navigate("/contemplation")} />
-                <MenuRow emoji="🌾" label={t("menu.gratitude")} onClick={() => navigate("/gratitude")} />
-                <MenuRow emoji="🤔" label={t("menu.examen")} onClick={() => navigate("/examen")} />
-              </MenuSection>
               {/* Book of Common Prayer — Phoebe-authored prayer-book
                   surfaces, all in-app. Daily Offices sits at the top
                   because the four liturgies are the primary entry
@@ -356,12 +351,20 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   Collects are reference texts they reach for less
                   often. The "BCP" prefix on the child labels is
                   redundant now that they live inside the BCP
-                  section, so the i18n strings drop it. */}
+                  section, so the i18n strings drop it. Promoted
+                  above Practices since the office is the spine of
+                  the daily rhythm — users open it first, the
+                  contemplative practices are supplemental. */}
               <MenuSection emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })}>
                 <MenuRow emoji="🌅" label={t("menu.daily_offices")} onClick={() => navigate("/bcp/daily-office")} />
                 <MenuRow emoji="📖" label={t("menu.bcp_prayers")} onClick={() => navigate("/bcp/intercessions")} />
                 <MenuRow emoji="📜" label={t("menu.psalter")} onClick={() => navigate("/bcp/psalter")} />
                 <MenuRow emoji="🙏" label={t("menu.bcp_collects")} onClick={() => navigate("/bcp/collects")} />
+              </MenuSection>
+              <MenuSection emoji="🕯️" label={t("menu.practices")}>
+                <MenuRow emoji="🕯️" label={t("menu.contemplation")} onClick={() => navigate("/contemplation")} />
+                <MenuRow emoji="🌾" label={t("menu.gratitude")} onClick={() => navigate("/gratitude")} />
+                <MenuRow emoji="🤔" label={t("menu.examen")} onClick={() => navigate("/examen")} />
               </MenuSection>
               {/* Reflections — daily external readings. All three open
                   via SFSafariView (Browser.open) and stamp today as
@@ -389,13 +392,21 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   surfaces. Sunday Lectionary opens externally to
                   lectionarypage.net via /api/lectionary/today (the
                   server resolves "this Sunday" from the seed and 302s
-                  to the canonical reader). Saints stays beta-gated
+                  to the canonical reader). Find a Church links to the
+                  Episcopal Church's national parish finder — a flat
+                  URL, no redirect needed because the finder picks the
+                  user's location client-side. Saints stays beta-gated
                   because the index isn't fully fleshed out yet. */}
               <MenuSection emoji="📚" label={t("menu.resources", { defaultValue: "Resources" })}>
                 <MenuRow
                   emoji="📅"
                   label={t("menu.sunday_lectionary", { defaultValue: "Sunday Lectionary" })}
                   onClick={() => { onClose(); openExternal("https://withphoebe.app/api/lectionary/today"); }}
+                />
+                <MenuRow
+                  emoji="⛪"
+                  label={t("menu.find_a_church", { defaultValue: "Find a Church" })}
+                  onClick={() => { onClose(); openExternal("https://www.episcopalchurch.org/find-a-church/"); }}
                 />
                 {rawIsBeta && (
                   <MenuRow emoji="😇" label={t("menu.saints")} badge={t("menu.beta")} onClick={() => navigate("/saints")} />
