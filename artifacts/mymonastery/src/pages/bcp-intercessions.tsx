@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
-import { BCP_PRAYERS, type BcpPrayer } from "@/lib/bcp-prayers";
+import { BCP_PRAYERS, type BcpPrayer, localizeBcpPrayer } from "@/lib/bcp-prayers";
 
 
 // Group prayers by category
@@ -38,7 +38,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
 
 export default function BcpIntercessionsPage() {
   const { user, isLoading } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [selectedPrayer, setSelectedPrayer] = useState<BcpPrayer | null>(null);
@@ -105,11 +105,16 @@ export default function BcpIntercessionsPage() {
         {/* Search results — flat list */}
         {query.trim() ? (() => {
           const needle = query.trim().toLowerCase();
+          // Match against BOTH English and Spanish fields so a Spanish
+          // reader's search lands on the right prayer regardless of
+          // which locale the underlying data was originally written in.
           const results = BCP_PRAYERS.filter(
             (p) =>
               p.title.toLowerCase().includes(needle) ||
               p.category.toLowerCase().includes(needle) ||
-              p.text.toLowerCase().includes(needle),
+              p.text.toLowerCase().includes(needle) ||
+              (p.titleEs ?? "").toLowerCase().includes(needle) ||
+              (p.textEs ?? "").toLowerCase().includes(needle),
           );
           return results.length === 0 ? (
             <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.5)" }}>
@@ -120,24 +125,27 @@ export default function BcpIntercessionsPage() {
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-3" style={{ color: "rgba(143,175,150,0.4)" }}>
                 {t("saints.results_count", { count: results.length })}
               </p>
-              {results.map((prayer) => (
-                <button
-                  key={prayer.title}
-                  onClick={() => setSelectedPrayer(prayer)}
-                  className="w-full text-left px-4 py-3 rounded-xl transition-all hover:bg-white/5 active:scale-[0.99]"
-                  style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(46,107,64,0.12)" }}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>{prayer.title}</p>
-                      <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.5)" }}>
-                        {CATEGORY_EMOJI[prayer.category] ?? "🙏🏽"} {prayer.category}
-                      </p>
+              {results.map((prayer) => {
+                const loc = localizeBcpPrayer(prayer, i18n.language);
+                return (
+                  <button
+                    key={prayer.title}
+                    onClick={() => setSelectedPrayer(prayer)}
+                    className="w-full text-left px-4 py-3 rounded-xl transition-all hover:bg-white/5 active:scale-[0.99]"
+                    style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(46,107,64,0.12)" }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>{loc.title}</p>
+                        <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.5)" }}>
+                          {CATEGORY_EMOJI[prayer.category] ?? "🙏🏽"} {loc.category}
+                        </p>
+                      </div>
+                      <span className="text-xs shrink-0 mt-0.5" style={{ color: "#8FAF96" }}>›</span>
                     </div>
-                    <span className="text-xs shrink-0 mt-0.5" style={{ color: "#8FAF96" }}>›</span>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           );
         })() : (
@@ -146,6 +154,11 @@ export default function BcpIntercessionsPage() {
             {CATEGORIES.map(({ category, prayers }) => {
               const isOpen = openCategory === category;
               const emoji = CATEGORY_EMOJI[category] ?? "🙏🏽";
+              // Localize the category label (the grouping key stays in
+              // English; only the display string flips).
+              const localizedCategory = prayers[0]
+                ? localizeBcpPrayer(prayers[0], i18n.language).category
+                : category;
 
               return (
                 <div key={category}>
@@ -162,7 +175,7 @@ export default function BcpIntercessionsPage() {
                         <span className="text-xl">{emoji}</span>
                         <div>
                           <p className="font-semibold text-sm" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                            {category}
+                            {localizedCategory}
                           </p>
                           <p className="text-xs mt-0.5" style={{ color: "rgba(143,175,150,0.6)" }}>
                             {t("bcp_intercessions.prayers_count", { count: prayers.length })}
@@ -177,18 +190,21 @@ export default function BcpIntercessionsPage() {
 
                   {isOpen && (
                     <div className="mt-1 ml-4 space-y-1">
-                      {prayers.map((prayer) => (
-                        <button
-                          key={prayer.title}
-                          onClick={() => setSelectedPrayer(prayer)}
-                          className="w-full text-left px-4 py-3 rounded-lg transition-all hover:bg-white/5 active:scale-[0.99]"
-                        >
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>{prayer.title}</p>
-                            <span className="text-xs" style={{ color: "#8FAF96" }}>›</span>
-                          </div>
-                        </button>
-                      ))}
+                      {prayers.map((prayer) => {
+                        const loc = localizeBcpPrayer(prayer, i18n.language);
+                        return (
+                          <button
+                            key={prayer.title}
+                            onClick={() => setSelectedPrayer(prayer)}
+                            className="w-full text-left px-4 py-3 rounded-lg transition-all hover:bg-white/5 active:scale-[0.99]"
+                          >
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>{loc.title}</p>
+                              <span className="text-xs" style={{ color: "#8FAF96" }}>›</span>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -225,17 +241,22 @@ export default function BcpIntercessionsPage() {
               }
             `}</style>
 
-            {/* Modal header */}
+            {/* Modal header — localized via IIFE so we resolve once
+                and reuse for header + body. */}
+            {(() => {
+              const loc = localizeBcpPrayer(selectedPrayer, i18n.language);
+              return (
+                <>
             <div className="px-6 pt-6 pb-4 flex items-start justify-between gap-4" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-1.5" style={{ color: "rgba(143,175,150,0.5)" }}>
-                  {selectedPrayer.category}
+                  {loc.category}
                 </p>
                 <h2
                   className="text-lg font-bold leading-snug"
                   style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
                 >
-                  {selectedPrayer.title}
+                  {loc.title}
                 </h2>
               </div>
               <button
@@ -256,12 +277,15 @@ export default function BcpIntercessionsPage() {
                   fontFamily: "Georgia, 'Times New Roman', serif",
                 }}
               >
-                {selectedPrayer.text}
+                {loc.text}
               </p>
               <p className="text-[11px] mt-6 pt-4 italic" style={{ color: "rgba(143,175,150,0.4)", borderTop: "1px solid rgba(46,107,64,0.12)" }}>
                 {t("bcp_intercessions.from_bcp")}
               </p>
             </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
