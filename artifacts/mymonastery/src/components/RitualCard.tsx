@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { format, parseISO } from "date-fns";
 import { Calendar, ArrowRight, Sprout, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Ritual } from "@workspace/api-client-react";
 import { StreakBadge } from "./StreakBadge";
 
@@ -11,6 +12,7 @@ interface RitualCardProps {
 }
 
 export function RitualCard({ ritual, onDelete }: RitualCardProps) {
+  const { t } = useTranslation();
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -25,9 +27,9 @@ export function RitualCard({ ritual, onDelete }: RitualCardProps) {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case "on_track": return "Blooming";
-      case "overdue": return "Needs tending";
-      case "needs_scheduling": return "Just planted";
+      case "on_track": return t("ritual_card.status_on_track");
+      case "overdue": return t("ritual_card.status_overdue");
+      case "needs_scheduling": return t("ritual_card.status_needs_scheduling");
       default: return "";
     }
   };
@@ -81,12 +83,12 @@ export function RitualCard({ ritual, onDelete }: RitualCardProps) {
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
             <div className="flex items-center gap-1.5">
               <Calendar size={14} />
-              <span className="capitalize">{ritual.frequency === "once" ? "Just once" : ritual.frequency}</span>
+              <span className="capitalize">{ritual.frequency === "once" ? t("ritual_card.just_once") : ritual.frequency}</span>
             </div>
             {ritual.nextMeetupDate && (
               <div className="flex items-center gap-1.5">
                 <span className="w-1 h-1 rounded-full bg-border" />
-                <span>Next: {format(parseISO(ritual.nextMeetupDate), "MMM d")}</span>
+                <span>{t("ritual_card.next_label", { date: format(parseISO(ritual.nextMeetupDate), "MMM d") })}</span>
               </div>
             )}
           </div>
@@ -120,7 +122,7 @@ export function RitualCard({ ritual, onDelete }: RitualCardProps) {
         <button
           onClick={handleDeleteClick}
           className="absolute top-4 right-4 w-7 h-7 rounded-full bg-background border border-border flex items-center justify-center text-muted-foreground hover:text-destructive hover:border-destructive/40 opacity-0 group-hover:opacity-100 transition-all duration-200 shadow-sm z-10"
-          title="Delete ritual"
+          title={t("ritual_card.delete_aria")}
         >
           <Trash2 size={13} />
         </button>
@@ -133,24 +135,25 @@ export function RitualCard({ ritual, onDelete }: RitualCardProps) {
         >
           <div className="text-3xl">🌿</div>
           <p className="text-foreground font-medium text-center text-sm leading-snug">
-            Archive <span className="font-semibold">{ritual.name}</span>?
+            {t("ritual_card.archive_question_prefix")}{" "}
+            <span className="font-semibold">{ritual.name}</span>?
           </p>
           <p className="text-muted-foreground text-xs text-center">
-            This will permanently remove the ritual and all its history.
+            {t("ritual_card.archive_body")}
           </p>
           <div className="flex gap-3 w-full">
             <button
               onClick={handleCancelDelete}
               className="flex-1 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              Keep it
+              {t("ritual_card.keep_it")}
             </button>
             <button
               onClick={handleConfirmDelete}
               disabled={deleting}
               className="flex-1 py-2 rounded-xl bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 disabled:opacity-60 transition-colors"
             >
-              {deleting ? "Removing..." : "Yes, remove"}
+              {deleting ? t("ritual_card.removing") : t("ritual_card.yes_remove")}
             </button>
           </div>
         </div>

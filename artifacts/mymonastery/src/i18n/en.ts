@@ -479,6 +479,31 @@ export const en = {
     body: "Daily prayer notifications, smoother slideshow.",
     download: "Download",
   },
+  // RSVP block (components/RsvpBlock.tsx) — gathering RSVP picker + summary.
+  rsvp: {
+    are_you_coming: "Are you coming?",
+    going: "Going",
+    interested: "Interested",
+    clear: "Clear",
+    going_count: "🌿 Going ({{count}})",
+    interested_count: "🤔 Interested ({{count}})",
+    n_going: "{{count}} going",
+    n_interested: "{{count}} interested",
+  },
+  // Ritual card (components/RitualCard.tsx) — community-ritual list row.
+  ritual_card: {
+    status_on_track: "Blooming",
+    status_overdue: "Needs tending",
+    status_needs_scheduling: "Just planted",
+    just_once: "Just once",
+    next_label: "Next: {{date}}",
+    delete_aria: "Delete ritual",
+    archive_question_prefix: "Archive",
+    archive_body: "This will permanently remove the ritual and all its history.",
+    keep_it: "Keep it",
+    removing: "Removing...",
+    yes_remove: "Yes, remove",
+  },
   // Web push permission prompt (components/WebPushPermissionPrompt.tsx).
   // The pre-frame banner shown to signed-in web users before the
   // browser's native notification dialog fires.

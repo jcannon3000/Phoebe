@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 
 // ─── Meetup RSVP block ───────────────────────────────────────────────────────
@@ -36,6 +37,7 @@ const SOFT_TEXT = "#C8D4C0";
 const FAINT = "rgba(143,175,150,0.55)";
 
 export function RsvpBlock({ meetupId }: { meetupId: number }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data, isLoading } = useQuery<RsvpsResponse>({
     queryKey: [`/api/meetups/${meetupId}/rsvps`],
@@ -79,25 +81,25 @@ export function RsvpBlock({ meetupId }: { meetupId: number }) {
           className="text-[10px] font-semibold uppercase tracking-widest mb-2"
           style={{ color: FAINT }}
         >
-          Are you coming?
+          {t("rsvp.are_you_coming")}
         </p>
         <div className="grid grid-cols-3 gap-2">
           <PillButton
-            label="Going"
+            label={t("rsvp.going")}
             emoji="🌿"
             active={yourStatus === "going"}
             disabled={setStatus.isPending || clearStatus.isPending || isLoading}
             onClick={() => setStatus.mutate("going")}
           />
           <PillButton
-            label="Interested"
+            label={t("rsvp.interested")}
             emoji="🤔"
             active={yourStatus === "maybe"}
             disabled={setStatus.isPending || clearStatus.isPending || isLoading}
             onClick={() => setStatus.mutate("maybe")}
           />
           <PillButton
-            label="Clear"
+            label={t("rsvp.clear")}
             emoji="—"
             active={false}
             dim
@@ -115,10 +117,10 @@ export function RsvpBlock({ meetupId }: { meetupId: number }) {
       {(going.length > 0 || maybe.length > 0) && (
         <div className="flex flex-col gap-3">
           {going.length > 0 && (
-            <AttendeeRowBlock title={`🌿 Going (${going.length})`} rows={going} />
+            <AttendeeRowBlock title={t("rsvp.going_count", { count: going.length })} rows={going} />
           )}
           {maybe.length > 0 && (
-            <AttendeeRowBlock title={`🤔 Interested (${maybe.length})`} rows={maybe} />
+            <AttendeeRowBlock title={t("rsvp.interested_count", { count: maybe.length })} rows={maybe} />
           )}
         </div>
       )}
@@ -164,6 +166,7 @@ function PillButton({
 }
 
 function AttendeeRowBlock({ title, rows }: { title: string; rows: AttendeeRow[] }) {
+  const { t } = useTranslation();
   return (
     <div>
       <p
@@ -177,7 +180,7 @@ function AttendeeRowBlock({ title, rows }: { title: string; rows: AttendeeRow[] 
           <li key={r.userId} className="flex items-center gap-2.5">
             <Avatar name={r.name} avatarUrl={r.avatarUrl} size={26} />
             <span className="text-[13px]" style={{ color: SOFT_TEXT }}>
-              {r.name || "Someone"}
+              {r.name || t("find_friends.someone")}
             </span>
           </li>
         ))}
@@ -267,6 +270,7 @@ export function RsvpSummaryStrip({
   meetupId: number;
   align?: "left" | "right";
 }) {
+  const { t } = useTranslation();
   // Pull from the cached dashboard query. If the dashboard hasn't
   // primed it yet, render nothing — no fetch trip from the card.
   const qc = useQueryClient();
@@ -276,8 +280,8 @@ export function RsvpSummaryStrip({
   if (slot.goingCount === 0 && slot.maybeCount === 0) return null;
 
   const parts: string[] = [];
-  if (slot.goingCount > 0) parts.push(`${slot.goingCount} going`);
-  if (slot.maybeCount > 0) parts.push(`${slot.maybeCount} interested`);
+  if (slot.goingCount > 0) parts.push(t("rsvp.n_going", { count: slot.goingCount }));
+  if (slot.maybeCount > 0) parts.push(t("rsvp.n_interested", { count: slot.maybeCount }));
 
   // Stack the going-previews first, fall back to maybe-previews when
   // there are no goings (so a gathering with only "maybe" RSVPs still
