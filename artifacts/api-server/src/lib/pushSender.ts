@@ -1303,6 +1303,29 @@ export async function sendNewFeedIntercessionPush(
   });
 }
 
+// Sunday-evening invitation to reflect on this week's service. Fired
+// from the bell scanner (runSundayReflectionPushSender) once per
+// community per Sunday — deduped via groups.sunday_reflection_notified_at.
+// Tap lands on /communities/:slug/sunday-reflection.
+//
+// We don't try to exclude already-reflected members — the push goes to
+// the full member roster of the group. If someone already wrote, the
+// page just shows their reflection at the top of the list.
+export async function sendSundayReflectionPush(
+  userIds: number[],
+  opts: { groupSlug: string; groupName: string },
+): Promise<void> {
+  if (userIds.length === 0) return;
+  await sendPushToUsers(userIds, {
+    title: `Reflect on Sunday with ${opts.groupName}`,
+    body: "How did it land? Share a sentence with your community.",
+    path: `/communities/${opts.groupSlug}/sunday-reflection`,
+    threadId: `sunday-reflection-${opts.groupSlug}`,
+    collapseId: `sunday-reflection-${opts.groupSlug}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
 // Day-before reminder for a feed event. Fired once per event by the
 // bell scanner, deduped via prayer_feed_events.reminder_sent_at.
 export async function sendFeedEventTomorrowPush(

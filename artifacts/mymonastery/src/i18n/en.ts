@@ -457,6 +457,26 @@ export const en = {
     not_enabled_title: "Not enabled yet",
     not_enabled_body: "Your community hasn't picked a daily reflection. An admin can turn this on in community settings.",
   },
+  // Sunday-service reflection page (pages/community-sunday-reflection.tsx).
+  // Mirrors the group_reflection block one key at a time so the shared
+  // SundayReflectionCard / composer copy doesn't have to switch between
+  // namespaces depending on which page mounted it. The keys here are the
+  // *Sunday-specific* surfaces (the three landing states + the header);
+  // composer + comment chrome reuses group_reflection.* directly.
+  sunday_reflection: {
+    eyebrow: "This week's service",
+    subtitle: "Reflect on Sunday with your community",
+    n_of_m_reflected_one: "1 of {{m}} reflected this week",
+    n_of_m_reflected_other: "{{n}} of {{m}} reflected this week",
+    your_reflection: "Your reflection",
+    write_yours: "Write your reflection",
+    placeholder: "What stayed with you from Sunday?",
+    admin_enable_title: "Sunday reflections are off",
+    admin_enable_body: "Turn this on to send your community a Sunday-evening push inviting them to share a sentence about the service.",
+    open_settings: "Open community settings →",
+    not_enabled_title: "Not enabled yet",
+    not_enabled_body: "Your community hasn't turned on Sunday reflections. An admin can enable this in community settings.",
+  },
   // Home-screen Parish Weekly card (components/ParishWeeklyCard.tsx) —
   // the "This week's prayer list 🌿" hero card on the parish home.
   // Desktop "get the app" prompt (components/DesktopAppPrompt.tsx).

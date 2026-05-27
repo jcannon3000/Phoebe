@@ -83,7 +83,24 @@ async function requireMember(groupSlug: string, userId: number) {
 
 // Supported reflection sources. Adding a third source = add to this set
 // + ship a client-side URL + label. No schema change required.
-const VALID_SOURCES = new Set(["cac", "fdd"]);
+//
+// "sunday" is the weekly Sunday-service reflection (see the "Sunday
+// Service Reflections" block at the bottom of this file). It shares
+// the `group_reflections` table with the daily flow but with a
+// reflection_date pinned to the most recent Sunday — so a member's
+// reflection sorts under the same week-anchor for the whole week.
+const VALID_SOURCES = new Set(["cac", "fdd", "sunday"]);
+
+// Compute the most recent Sunday (inclusive — if today is Sunday, return
+// today) as YYYY-MM-DD in UTC. The Sunday-service reflection feature
+// pins each week's reflections to this anchor so a member who writes
+// Monday evening still files under Sunday's date.
+function currentSundayISO(now: Date = new Date()): string {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const dow = d.getUTCDay(); // 0 = Sunday
+  d.setUTCDate(d.getUTCDate() - dow);
+  return d.toISOString().slice(0, 10);
+}
 
 // ── GET /api/groups/:slug/reflection-source ──────────────────────────────
 // Returns the community's pinned source (or null when the feature isn't
@@ -430,6 +447,193 @@ router.delete("/group-reflections/:rid/comments/:cid", requireBeta, async (req, 
   }
   await db.delete(groupReflectionCommentsTable).where(eq(groupReflectionCommentsTable.id, cid));
   res.json({ ok: true });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Sunday Service Reflections (beta)
+// ─────────────────────────────────────────────────────────────────────────
+//
+// Different cadence than the daily reflection — once per week, anchored
+// to the most recent Sunday's service. Sunday evening a push goes out
+// to every joined member of an opted-in community inviting them to
+// write a short reflection. The composer stays open the whole week.
+//
+// Storage piggybacks on `group_reflections` via `source = 'sunday'`,
+// with `reflection_date` set to the Sunday ISO string. The same
+// uniqueness constraint (group_id, user_id, reflection_date, source)
+// gives us upsert semantics so a member who writes Monday and edits
+// Wednesday lands on the same row.
+//
+// Settings flag lives on `groups.sunday_reflections_enabled`. The
+// bell scanner (lib/bellSender.ts → runSundayReflectionPushSender)
+// reads this column to decide who to push on Sunday evenings.
+
+// ── GET /api/groups/:slug/sunday-reflection ──────────────────────────────
+// Returns the current week's reflections (all members) + the
+// enabled/admin status the page needs to render its three states
+// (off / off-as-admin / on). Any joined member may read.
+router.get("/groups/:slug/sunday-reflection", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const result = await requireMember(String(req.params.slug ?? ""), user.id);
+  if (!result) { res.status(403).json({ error: "Not a member of this community" }); return; }
+
+  const sunday = currentSundayISO();
+  const enabled = !!result.group.sundayReflectionsEnabled;
+
+  // Reflections for this group + Sunday + source='sunday'. Newest first
+  // so a just-posted reflection lands at the top.
+  const reflections = await db.select({
+    id: groupReflectionsTable.id,
+    userId: groupReflectionsTable.userId,
+    source: groupReflectionsTable.source,
+    body: groupReflectionsTable.body,
+    createdAt: groupReflectionsTable.createdAt,
+    updatedAt: groupReflectionsTable.updatedAt,
+    authorName: usersTable.name,
+    authorEmail: usersTable.email,
+    authorAvatarUrl: usersTable.avatarUrl,
+  })
+    .from(groupReflectionsTable)
+    .innerJoin(usersTable, eq(usersTable.id, groupReflectionsTable.userId))
+    .where(and(
+      eq(groupReflectionsTable.groupId, result.group.id),
+      eq(groupReflectionsTable.reflectionDate, sunday),
+      eq(groupReflectionsTable.source, "sunday"),
+    ))
+    .orderBy(desc(groupReflectionsTable.createdAt));
+
+  // Batch comments query — same N+1 avoidance pattern as the daily route.
+  const ids = reflections.map(r => r.id);
+  const comments = ids.length === 0 ? [] : await db.select({
+    id: groupReflectionCommentsTable.id,
+    reflectionId: groupReflectionCommentsTable.reflectionId,
+    userId: groupReflectionCommentsTable.userId,
+    body: groupReflectionCommentsTable.body,
+    createdAt: groupReflectionCommentsTable.createdAt,
+    authorName: usersTable.name,
+    authorEmail: usersTable.email,
+    authorAvatarUrl: usersTable.avatarUrl,
+  })
+    .from(groupReflectionCommentsTable)
+    .innerJoin(usersTable, eq(usersTable.id, groupReflectionCommentsTable.userId))
+    .where(inArray(groupReflectionCommentsTable.reflectionId, ids));
+
+  const byRefl = new Map<number, typeof comments>();
+  for (const c of comments) {
+    const arr = byRefl.get(c.reflectionId) ?? [];
+    arr.push(c);
+    byRefl.set(c.reflectionId, arr);
+  }
+
+  const [memberCountRow] = await db.select({ count: sql<number>`COUNT(*)::int` })
+    .from(groupMembersTable)
+    .where(and(
+      eq(groupMembersTable.groupId, result.group.id),
+      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+    ));
+  const memberCount = memberCountRow?.count ?? 0;
+
+  res.json({
+    enabled,
+    sunday,
+    memberCount,
+    isAdmin: isAdminRole(result.member.role),
+    reflections: reflections.map(r => ({
+      id: r.id,
+      userId: r.userId,
+      authorName: r.authorName,
+      authorEmail: r.authorEmail,
+      authorAvatarUrl: r.authorAvatarUrl,
+      source: r.source,
+      body: r.body,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      isMine: r.userId === user.id,
+      comments: (byRefl.get(r.id) ?? []).map(c => ({
+        id: c.id,
+        userId: c.userId,
+        authorName: c.authorName,
+        authorEmail: c.authorEmail,
+        authorAvatarUrl: c.authorAvatarUrl,
+        body: c.body,
+        createdAt: c.createdAt,
+        isMine: c.userId === user.id,
+      })),
+    })),
+  });
+});
+
+// ── PUT /api/groups/:slug/sunday-reflection/enabled ──────────────────────
+// Admin-only toggle. Body: { enabled: boolean }. Flipping off does NOT
+// delete past Sunday reflections — they remain readable as history if
+// the admin flips back on later.
+router.put("/groups/:slug/sunday-reflection/enabled", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const result = await requireMember(String(req.params.slug ?? ""), user.id);
+  if (!result) { res.status(403).json({ error: "Not a member of this community" }); return; }
+  if (!isAdminRole(result.member.role)) {
+    res.status(403).json({ error: "Only community admins can enable Sunday reflections." });
+    return;
+  }
+  const schema = z.object({ enabled: z.boolean() });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid body", details: parsed.error.flatten() });
+    return;
+  }
+  await db.update(groupsTable)
+    .set({ sundayReflectionsEnabled: parsed.data.enabled })
+    .where(eq(groupsTable.id, result.group.id));
+  res.json({ enabled: parsed.data.enabled });
+});
+
+// ── POST /api/groups/:slug/sunday-reflection ─────────────────────────────
+// Write / update this member's reflection for the current Sunday.
+// Server pins reflection_date to currentSundayISO() — clients don't get
+// to override that, so a member who writes from a timezone where it's
+// already Monday still files under Sunday's ISO.
+router.post("/groups/:slug/sunday-reflection", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const result = await requireMember(String(req.params.slug ?? ""), user.id);
+  if (!result) { res.status(403).json({ error: "Not a member of this community" }); return; }
+  if (!result.group.sundayReflectionsEnabled) {
+    res.status(409).json({ error: "Sunday reflections aren't enabled for this community." });
+    return;
+  }
+
+  const schema = z.object({
+    body: z.string().trim().min(1, "Reflection cannot be empty").max(2000),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid reflection", details: parsed.error.flatten() });
+    return;
+  }
+
+  const sunday = currentSundayISO();
+  const [row] = await db.insert(groupReflectionsTable)
+    .values({
+      groupId: result.group.id,
+      userId: user.id,
+      reflectionDate: sunday,
+      source: "sunday",
+      body: parsed.data.body.trim(),
+    })
+    .onConflictDoUpdate({
+      target: [
+        groupReflectionsTable.groupId,
+        groupReflectionsTable.userId,
+        groupReflectionsTable.reflectionDate,
+        groupReflectionsTable.source,
+      ],
+      set: {
+        body: parsed.data.body.trim(),
+        updatedAt: new Date(),
+      },
+    })
+    .returning();
+
+  res.status(201).json({ reflection: row });
 });
 
 export default router;

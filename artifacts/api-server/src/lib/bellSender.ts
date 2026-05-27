@@ -30,6 +30,7 @@ import {
   sendParishEveningRecapPush,
   sendGatheringTomorrowPush,
   sendFeedEventTomorrowPush,
+  sendSundayReflectionPush,
   sendNewFeedIntercessionPush,
   sendActionReminderPush,
   sendWeeklyDigestPush,
@@ -1508,6 +1509,74 @@ export async function runParishWeeklyRecapSender(opts: { forceNow?: boolean } = 
   }
 }
 
+// ─── Sunday Service Reflection push ─────────────────────────────────────────
+//
+// Sunday-evening push inviting every joined member of an opted-in
+// community to write a reflection on this week's service. Fires once
+// per community per Sunday — deduped via groups.sunday_reflection_notified_at.
+//
+// Timing: fires when the SERVER's local clock reads Sunday 18:00–23:00.
+// We use the server clock (not per-user timezone) because a community
+// has many members across many zones and the natural anchor is "Sunday
+// evening as the community publishes it." The push body is calm enough
+// that a member in a different zone seeing it as Monday morning is fine.
+//
+// The 5-hour window is wide so the 15-min interval has plenty of chances
+// to fire if the bell scheduler restarts mid-evening. The dedup column
+// stops it from re-firing the same week — the column gets reset
+// implicitly when the next Sunday rolls over since we only fire when
+// notified_at is older than this week's Sunday.
+export async function runSundayReflectionPushSender(): Promise<void> {
+  try {
+    const now = new Date();
+    if (now.getDay() !== 0) return; // 0 = Sunday in server local time
+    const hour = now.getHours();
+    if (hour < 18 || hour >= 23) return;
+
+    // Find this week's Sunday anchor (UTC midnight of today's date).
+    const sundayAnchor = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+
+    // Communities opted-in to the feature and not yet notified for THIS
+    // Sunday. The < sundayAnchor check works because the column gets
+    // stamped with `now` which is always > the Sunday-midnight anchor
+    // we set after the first notification.
+    const groups = await db.select({
+      id: groupsTable.id,
+      slug: groupsTable.slug,
+      name: groupsTable.name,
+    }).from(groupsTable).where(and(
+      eq(groupsTable.sundayReflectionsEnabled, true),
+      sql`(${groupsTable.sundayReflectionNotifiedAt} IS NULL OR ${groupsTable.sundayReflectionNotifiedAt} < ${sundayAnchor})`,
+    ));
+
+    for (const g of groups) {
+      // Joined-member roster for the push.
+      const members = await db.select({ userId: groupMembersTable.userId })
+        .from(groupMembersTable)
+        .where(and(
+          eq(groupMembersTable.groupId, g.id),
+          isNotNull(groupMembersTable.joinedAt),
+          isNotNull(groupMembersTable.userId),
+        ));
+      const userIds = members.map(m => m.userId).filter((id): id is number => id !== null);
+
+      await sendSundayReflectionPush(userIds, {
+        groupSlug: g.slug,
+        groupName: g.name,
+      });
+
+      await db.update(groupsTable)
+        .set({ sundayReflectionNotifiedAt: new Date() })
+        .where(eq(groupsTable.id, g.id));
+
+      logger.info({ groupId: g.id, slug: g.slug, recipients: userIds.length },
+        "[sunday-reflection] sent Sunday-evening push");
+    }
+  } catch (err) {
+    logger.error({ err }, "[sunday-reflection] sender failed");
+  }
+}
+
 let bellInterval: ReturnType<typeof setInterval> | null = null;
 
 export function startBellScheduler(): void {
@@ -1541,6 +1610,9 @@ export function startBellScheduler(): void {
     );
     runFeedEventReminderSender().catch((err) =>
       logger.error({ err }, "[feed-event-reminder] initial run failed"),
+    );
+    runSundayReflectionPushSender().catch((err) =>
+      logger.error({ err }, "[sunday-reflection] initial run failed"),
     );
     runFeedIntercessionPushSender().catch((err) =>
       logger.error({ err }, "[feed-intercession-push] initial run failed"),
@@ -1584,6 +1656,9 @@ export function startBellScheduler(): void {
       );
       runFeedEventReminderSender().catch((err) =>
         logger.error({ err }, "[feed-event-reminder] scheduled run failed"),
+      );
+      runSundayReflectionPushSender().catch((err) =>
+        logger.error({ err }, "[sunday-reflection] scheduled run failed"),
       );
       runFeedIntercessionPushSender().catch((err) =>
         logger.error({ err }, "[feed-intercession-push] scheduled run failed"),

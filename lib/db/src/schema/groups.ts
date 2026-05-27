@@ -44,6 +44,18 @@ export const groupsTable = pgTable("groups", {
   // it so the slide asks the same question the push / email did.
   // Null = never sent, or sent with the default question.
   prayerInvitePrompt: text("prayer_invite_prompt"),
+  // ── Sunday Service Reflections (beta) ─────────────────────────────────
+  // When true, the bell scanner fires a Sunday-evening push inviting
+  // every joined member to write a reflection on this week's service.
+  // The composer stays open the whole week — members can edit until the
+  // next Sunday rolls over. Reflections themselves live in the shared
+  // `group_reflections` table with `source = 'sunday'`. Default false
+  // because the feature is opt-in per community.
+  sundayReflectionsEnabled: boolean("sunday_reflections_enabled").notNull().default(false),
+  // Timestamp of the most recent Sunday-evening push fan-out. Used by
+  // the bell scanner to dedup — without it a Sun 18:00–23:00 window
+  // would re-push every 15-minute tick.
+  sundayReflectionNotifiedAt: timestamp("sunday_reflection_notified_at", { withTimezone: true }),
 });
 
 // ── Group join requests ────────────────────────────────────────────────────

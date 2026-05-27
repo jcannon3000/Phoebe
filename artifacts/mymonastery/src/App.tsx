@@ -142,6 +142,7 @@ import CommunityNewPage from "./pages/community-new";
 import CommunityDetailPage from "./pages/community-detail";
 import CommunityAskPage from "./pages/community-ask";
 import CommunityReflectionPage from "./pages/community-reflection";
+import CommunitySundayReflectionPage from "./pages/community-sunday-reflection";
 import SharePrayerPage from "./pages/share-prayer";
 import CommunitySettingsPage from "./pages/community-settings";
 import CommunityJoinPage from "./pages/community-join";
@@ -530,6 +531,7 @@ function Router() {
       <Route path="/communities/:slug/share-prayer" component={SharePrayerPage} />
       <Route path="/communities/:slug/ask" component={CommunityAskPage} />
       <Route path="/communities/:slug/reflection" component={CommunityReflectionPage} />
+      <Route path="/communities/:slug/sunday-reflection" component={CommunitySundayReflectionPage} />
       <Route path="/communities/:slug" component={CommunityDetailPage} />
       <Route path="/beta" component={BetaAdminPage} />
       <Route path="/waitlist" component={WaitlistAdminPage} />

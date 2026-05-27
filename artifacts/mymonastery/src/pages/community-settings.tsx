@@ -390,6 +390,14 @@ export default function CommunitySettingsPage() {
             admin can set, change, or clear it any time. */}
         {isBeta && <ReflectionSourcePicker slug={slug ?? ""} />}
 
+        {/* ── Sunday Service Reflections (beta) ────────────────────────────
+            Admin-flipped toggle. When on, the bell scanner sends every
+            joined member a Sunday-evening push inviting a short
+            reflection on this week's service. The composer page lives at
+            /communities/:slug/sunday-reflection and stays open the whole
+            week — members edit until the next Sunday rolls over. */}
+        {isBeta && <SundayReflectionsToggle slug={slug ?? ""} />}
+
         {/* ── Prayer Circle (beta) ──────────────────────────────────────────
             Admins can turn any community into a prayer circle here, or toggle
             an existing circle back to a normal community. When on, the
@@ -876,6 +884,85 @@ function ReflectionSourcePicker({ slug }: { slug: string }) {
             </button>
           );
         })}
+      </div>
+    </>
+  );
+}
+
+// ─── Sunday reflections toggle (beta) ────────────────────────────────────
+// Single on/off control mirrored on the groups.sundayReflectionsEnabled
+// column. Flipping on does NOT instantly fire a push — the bell scanner
+// dispatches at the next Sunday-evening window (server local 18:00–23:00).
+// Flipping off doesn't delete past reflections; they survive in
+// group_reflections as history if the admin turns the feature back on.
+function SundayReflectionsToggle({ slug }: { slug: string }) {
+  const queryClient = useQueryClient();
+  // Reuses the sunday-reflection feed endpoint — its response carries
+  // `enabled` so we don't need a separate settings GET. (Reads against
+  // the same key as the reflection page so flipping here invalidates
+  // there with no extra plumbing.)
+  const { data } = useQuery<{ enabled: boolean; isAdmin: boolean }>({
+    queryKey: [`/api/groups/${slug}/sunday-reflection`],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/sunday-reflection`),
+    enabled: !!slug,
+  });
+  const save = useMutation({
+    mutationFn: (enabled: boolean) =>
+      apiRequest("PUT", `/api/groups/${slug}/sunday-reflection/enabled`, { enabled }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/groups/${slug}/sunday-reflection`] });
+    },
+  });
+  const enabled = !!data?.enabled;
+  return (
+    <>
+      <label
+        className="text-[11px] font-semibold uppercase tracking-widest block mb-2"
+        style={{ color: "rgba(143,175,150,0.6)" }}
+      >
+        Sunday service reflection
+        <span
+          className="ml-2 inline-flex items-center px-1.5 py-0 rounded-full text-[8px]"
+          style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", letterSpacing: "0.1em" }}
+        >
+          BETA
+        </span>
+      </label>
+      <p className="text-xs leading-relaxed mb-3" style={{ color: "rgba(168,197,160,0.7)" }}>
+        Send the community a Sunday-evening push to reflect on this week's
+        service. The composer stays open the whole week so anyone who didn't
+        write Sunday can still share a sentence later.
+      </p>
+      <div
+        className="rounded-xl px-4 py-3 mb-6 flex items-center justify-between gap-3"
+        style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+      >
+        <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+          {enabled ? "On — push fires Sunday evening" : "Off"}
+        </p>
+        <button
+          type="button"
+          onClick={() => save.mutate(!enabled)}
+          disabled={save.isPending}
+          aria-label={enabled ? "Turn off Sunday reflections" : "Turn on Sunday reflections"}
+          className="rounded-full transition-colors"
+          style={{
+            width: 44, height: 26,
+            background: enabled ? "#A8C5A0" : "rgba(143,175,150,0.25)",
+            border: "none",
+            cursor: save.isPending ? "wait" : "pointer",
+            position: "relative",
+            opacity: save.isPending ? 0.6 : 1,
+          }}
+        >
+          <span
+            style={{
+              position: "absolute", top: 3, left: enabled ? 21 : 3,
+              width: 20, height: 20, borderRadius: "50%", background: "#0F2818",
+              transition: "left 0.18s ease",
+            }}
+          />
+        </button>
       </div>
     </>
   );

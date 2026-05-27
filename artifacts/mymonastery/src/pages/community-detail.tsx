@@ -561,6 +561,88 @@ function ReflectionEntryCard({ slug }: { slug: string }) {
   );
 }
 
+// Sunday-service reflection entry card — beta-only. Pinned to the most
+// recent Sunday, the card surfaces "how many of your community have
+// reflected this week" and routes to /communities/:slug/sunday-reflection
+// on tap. Hidden for non-admin members when the feature isn't enabled;
+// admins still see it (with a "Turn on in settings" sub) so they have a
+// discoverable way in.
+function SundayReflectionEntryCard({ slug }: { slug: string }) {
+  const [, setLocation] = useLocation();
+  const { data } = useQuery<{
+    enabled: boolean;
+    sunday: string;
+    memberCount: number;
+    isAdmin: boolean;
+    reflections: { id: number }[];
+  }>({
+    queryKey: [`/api/groups/${slug}/sunday-reflection`],
+    queryFn: () => apiRequest("GET", `/api/groups/${slug}/sunday-reflection`),
+  });
+  if (!data) return null;
+  if (!data.enabled && !data.isAdmin) return null;
+  const count = data.reflections.length;
+  return (
+    <div
+      onClick={() => setLocation(`/communities/${slug}/sunday-reflection`)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          setLocation(`/communities/${slug}/sunday-reflection`);
+        }
+      }}
+      className="relative flex rounded-xl overflow-hidden cursor-pointer mb-3"
+      style={{
+        background: "rgba(62,124,122,0.10)",
+        border: "1px solid rgba(62,124,122,0.30)",
+      }}
+    >
+      <div className="w-1 flex-shrink-0" style={{ background: "#3E7C7A" }} />
+      <div className="flex-1 px-4 py-3">
+        <div className="flex items-start gap-3">
+          <span className="text-2xl" aria-hidden>⛪</span>
+          <div className="flex-1 min-w-0">
+            <p
+              className="text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: "rgba(143,175,150,0.6)" }}
+            >
+              This Sunday's service
+              <span
+                className="ml-2 inline-flex items-center px-1.5 py-0 rounded-full text-[8px]"
+                style={{
+                  background: "rgba(46,107,64,0.25)",
+                  color: "#A8C5A0",
+                  letterSpacing: "0.1em",
+                }}
+              >
+                BETA
+              </span>
+            </p>
+            <p
+              className="text-sm font-semibold mt-0.5"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              {data.enabled ? "Reflect with your community" : "Turn on Sunday reflections"}
+            </p>
+            <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>
+              {data.enabled
+                ? (count === 0
+                    ? "No reflections this week — be the first"
+                    : count === 1
+                      ? "1 reflection shared this week"
+                      : `${count} reflections shared this week`)
+                : "Send a Sunday-evening invitation to reflect"}
+            </p>
+          </div>
+          <span className="text-sm shrink-0" style={{ color: "#8FAF96" }}>→</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // an auto-scroll ticker so the pills stay legible instead of wrapping or
 // clipping. Mirrors the dashboard's ServiceTimesPillRow verbatim so the
 // card looks identical to the one on the home screen.
@@ -1621,6 +1703,13 @@ export default function CommunityDetailPage() {
             community; the page itself handles the "not enabled"
             empty state when the admin hasn't picked a source yet. */}
         {rawIsBeta && <ReflectionEntryCard slug={slug} />}
+
+        {/* Beta-only — Sunday-service reflection entry. Mirrors the
+            daily card pattern: hidden for non-admin members when the
+            feature isn't enabled, visible to admins (with an "Enable
+            in settings" sub) so they have a discoverable doorway in.
+            Members see it once the admin turns it on. */}
+        {rawIsBeta && <SundayReflectionEntryCard slug={slug} />}
 
         {/* ── Prayer Circle intentions ──────────────────────────────────
             For circle groups, surface every active intention as its own card
