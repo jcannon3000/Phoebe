@@ -469,6 +469,7 @@ function BarCard({
 // same animated rotation on tap.
 
 export function HomeAuthoringFAB() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
   // Same admin probe HomeFAB() uses below — admin in *any* group earns
@@ -495,32 +496,32 @@ export function HomeAuthoringFAB() {
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
               style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 Prayer request</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Something on your heart, big or small</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 {t("home_fab.prayer_request")}</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.prayer_request_sub")}</p>
             </button>
             <button
               onClick={() => { setOpen(false); setLocation("/pray-request/new?kind=life-event"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
               style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🌱 Life event</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>A milestone, a change, a hard week</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🌱 {t("home_fab.life_event")}</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.life_event_sub")}</p>
             </button>
             <button
               onClick={() => { setOpen(false); setLocation("/pray-request/new?kind=justice"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
               style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>⚖️ Justice concern</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>An ache the world is holding</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>⚖️ {t("home_fab.justice")}</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.justice_sub")}</p>
             </button>
             <button
               onClick={() => { setOpen(false); setLocation("/pray-for/new"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
               style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
             >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🤝 Prayer for other</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Carry someone else for a few days</p>
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🤝 {t("home_fab.prayer_for_other")}</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.prayer_for_other_sub")}</p>
             </button>
             {isAdminOfAny && (
               <button
@@ -528,8 +529,8 @@ export function HomeAuthoringFAB() {
                 className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
                 style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
               >
-                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕯️ Community intercession</p>
-                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>An intention for the whole community to carry</p>
+                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕯️ {t("home_fab.community_intercession")}</p>
+                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.community_intercession_sub")}</p>
               </button>
             )}
             {isAdminOfAny && (
@@ -538,8 +539,8 @@ export function HomeAuthoringFAB() {
                 className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
                 style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
               >
-                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📣 Community action</p>
-                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Call your community to show up together</p>
+                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📣 {t("home_fab.community_action")}</p>
+                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.community_action_sub")}</p>
               </button>
             )}
           </motion.div>
@@ -549,7 +550,7 @@ export function HomeAuthoringFAB() {
         onClick={() => setOpen(o => !o)}
         className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
         style={{ background: "#1A4A2E", color: "#F0EDE6" }}
-        aria-label={open ? "Close menu" : "New prayer"}
+        aria-label={open ? t("home_fab.close_menu") : t("home_fab.new_prayer")}
       >
         <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }}>
           {open
@@ -564,6 +565,7 @@ export function HomeAuthoringFAB() {
 // ─── FAB ─────────────────────────────────────────────────────────────────────
 
 function FAB() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
   const [communityAdminView] = useCommunityAdminToggle();
@@ -604,24 +606,24 @@ function FAB() {
                   className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
                   style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
                 >
-                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📜 Start a Lectio Divina group</p>
-                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Read Sunday's gospel together, unhurried</p>
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📜 {t("home_fab.start_lectio")}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.start_lectio_sub")}</p>
                 </button>
                 <button
                   onClick={() => { setOpen(false); setLocation("/moment/new?template=intercession"); }}
                   className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
                   style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
                 >
-                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 Start a group intercession</p>
-                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Build a rhythm of prayer together</p>
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 {t("home_fab.start_group_intercession")}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.start_group_intercession_sub")}</p>
                 </button>
                 <button
                   onClick={() => { setOpen(false); setLocation("/moment/new?template=fasting"); }}
                   className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
                   style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
                 >
-                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🌿 Start a group fast</p>
-                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Keep a shared discipline on the same day</p>
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🌿 {t("home_fab.start_group_fast")}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.start_group_fast_sub")}</p>
                 </button>
               </>
             )}
@@ -631,8 +633,8 @@ function FAB() {
                 className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
                 style={{ background: "#193F2A", border: `1px solid ${CATEGORY_COLORS.practices.border}`, minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
               >
-                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕊️ Start a prayer feed</p>
-                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>A cause with a new intention every day</p>
+                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕊️ {t("home_fab.start_prayer_feed")}</p>
+                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.start_prayer_feed_sub")}</p>
               </button>
             )}
           </motion.div>
@@ -909,6 +911,7 @@ function LetterCard({
   userName: string;
   keyPrefix: string;
 }) {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const isOneToOne = c.groupType === "one_to_one";
   const otherMembers = c.members
@@ -2795,16 +2798,23 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
     }
   })();
 
-  // CTA copy + destination. The button used to open an inline modal
-  // chooser; per user direction it now navigates to a dedicated
-  // /prayer-chooser screen so the depth options live on a proper
-  // route (back-button behaviour, deep-linkable, sound effect on
-  // entry). The single CTA shows when the user hasn't prayed yet
-  // today ("Begin prayer →"). Once they've prayed something the pill
-  // splits into a side-by-side pair below — a "Prayer completed ✓"
-  // status pill + a "Pray again" action pill — so the win is visible
-  // without losing the way back in.
-  const ctaCopy = "Begin prayer";
+  // CTA shape (per user direction): Devotion is the default — the
+  // big sage button drops you straight into the side-appropriate
+  // Daily Devotion (BCP short form), bypassing the /prayer-chooser
+  // intermediary that was here briefly. Below the main CTA sit two
+  // smaller skip-pills for the other depths:
+  //   • Community Intercessions → /prayer-mode (your prayer list)
+  //   • Full Office            → /bcp/daily-office (BCP long form)
+  // Once the user has prayed today the main CTA flips to "Pray
+  // again →" (?reset=1 on the devotion route) and a "Prayer
+  // completed ✓" status pill sits beside it; the skip-pills stay
+  // visible so a re-pray of a different depth is one tap away.
+  const devotionLabel = isMorning ? "Morning Devotion" : "Evening Devotion";
+  const devotionMode = isMorning ? "morning-devotion" : "early-evening-devotion";
+  const officeMode = isMorning ? "morning" : "evening";
+  const devotionHref = `/bcp/daily-devotions?mode=${devotionMode}${prayedToday ? "&reset=1" : ""}`;
+  const officeHref = `/bcp/daily-office?mode=${officeMode}`;
+  const ctaCopy = prayedToday ? "Pray again" : `Pray the ${devotionLabel}`;
 
   // Compact one-line variant — used when feed-first home promotes a
   // feed to the hero slot and the office becomes a secondary anchor.
@@ -2957,10 +2967,12 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
           {prayedToday ? (
             // Two-pill split: a non-tappable "Prayer completed ✓"
             // status on the left, the tappable "Pray again" action on
-            // the right. Equal width via flex-1 so the row balances on
-            // any phone size. Status pill has the lighter sage fill
-            // and no border lift so it reads as a settled win; the
-            // action pill keeps the standard sage-accent + arrow.
+            // the right. The Pray again pill now sends them straight
+            // back into the Devotion (with ?reset=1) instead of
+            // bouncing through /prayer-chooser — matches the new
+            // direct-to-devotion default. The Intercessions / Full
+            // Office skip-pills below still let them pick a different
+            // depth without losing this card's "completed" affordance.
             <div className="mt-[12px] flex items-stretch gap-2">
               <div
                 aria-label="Prayer completed today"
@@ -2977,7 +2989,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
               >
                 Prayer completed <span aria-hidden>✓</span>
               </div>
-              <Link href="/prayer-chooser" className="flex-1">
+              <Link href={devotionHref} className="flex-1">
                 <div
                   role="button"
                   tabIndex={0}
@@ -2997,7 +3009,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
               </Link>
             </div>
           ) : (
-            <Link href="/prayer-chooser">
+            <Link href={devotionHref}>
               <div
                 role="button"
                 tabIndex={0}
@@ -3016,6 +3028,51 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
               </div>
             </Link>
           )}
+          {/* Skip-pills: alternate depths for users who'd rather pray
+              the longer office or jump straight to the community
+              intercession slideshow. Two equal-width pills mirror the
+              "Prayer completed / Pray again" pair above so the card
+              has a consistent 2-pill row beneath the main CTA in
+              every state. Quieter sage tint than the main CTA so the
+              Devotion stays the default eye-target. */}
+          <div className="mt-2 flex items-stretch gap-2">
+            <Link href="/prayer-mode" className="flex-1">
+              <div
+                role="button"
+                tabIndex={0}
+                className="rounded-full text-center cursor-pointer"
+                style={{
+                  background: "rgba(46,107,64,0.10)",
+                  color: "rgba(168,197,160,0.95)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  padding: "6px 12px",
+                  border: "1px solid rgba(46,107,64,0.28)",
+                }}
+              >
+                Community Intercessions
+              </div>
+            </Link>
+            <Link href={officeHref} className="flex-1">
+              <div
+                role="button"
+                tabIndex={0}
+                className="rounded-full text-center cursor-pointer"
+                style={{
+                  background: "rgba(46,107,64,0.10)",
+                  color: "rgba(168,197,160,0.95)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  padding: "6px 12px",
+                  border: "1px solid rgba(46,107,64,0.28)",
+                }}
+              >
+                Full Office
+              </div>
+            </Link>
+          </div>
       </div>
     </div>
   );
@@ -3590,6 +3647,7 @@ function PrayerListCard({
   // section underneath.
   newPrayersCount?: number;
 }) {
+  const { t } = useTranslation();
   const colors = CATEGORY_COLORS.practices;
   // "Continue praying" only shows when the user hasn't yet completed
   // today's slideshow. Once they've finished a pass (prayedToday=true),
@@ -3601,17 +3659,15 @@ function PrayerListCard({
   // explicitly closed the loop earlier in the day.
   const isPartial = partialRemaining > 0 && !prayedToday;
   const primarySubtitle = prayedToday
-    ? (pendingCount === 1 ? "1 prayer prayed today" : `${pendingCount} prayers prayed today`)
+    ? t("dashboard.prayed_today", { count: pendingCount })
     : isPartial
-      ? (partialRemaining === 1 ? "1 more prayer" : `${partialRemaining} more prayers`)
-      : (pendingCount === 1 ? "1 prayer waiting for you" : `${pendingCount} prayers waiting for you`);
+      ? t("dashboard.more_prayers", { count: partialRemaining })
+      : t("dashboard.pending_prayers", { count: pendingCount });
   const gardenSubtitle = gardenPrayedTodayCount > 0
-    ? (gardenPrayedTodayCount === 1
-        ? "1 person prayed with you today"
-        : `${gardenPrayedTodayCount} people prayed with you today`)
+    ? t("dashboard.prayed_with_you_today", { count: gardenPrayedTodayCount })
     : null;
   const newPrayersSubtitle = newPrayersCount > 0
-    ? (newPrayersCount === 1 ? "1 new prayer" : `${newPrayersCount} new prayers`)
+    ? t("dashboard.new_prayers", { count: newPrayersCount })
     : null;
   // Build the rotation list. The primary subtitle is always slot 0;
   // additional slots are appended only when their data exists, so the
@@ -3683,7 +3739,7 @@ function PrayerListCard({
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
             >
-              🕯️ Daily Prayer List
+              🕯️ {t("dashboard.daily_prayer_list")}
             </span>
             {streak > 0 && (
               <span
@@ -3794,7 +3850,7 @@ function PrayerListCard({
                   border: "1px solid rgba(111,175,133,0.45)",
                 }}
               >
-                {isPartial ? "Continue" : "Pray for your community"}
+                {isPartial ? t("dashboard.continue_short") : t("dashboard.pray_for_community")}
                 <span aria-hidden> →</span>
               </div>
             </div>
@@ -3814,7 +3870,7 @@ function PrayerListCard({
                   border: "1px solid rgba(111,175,133,0.35)",
                 }}
               >
-                Pray again
+                {t("dashboard.pray_again_short")}
                 <span aria-hidden> →</span>
               </div>
               <Link
@@ -3833,7 +3889,7 @@ function PrayerListCard({
                   textDecoration: "none",
                 }}
               >
-                View list
+                {t("dashboard.view_list_short")}
                 <span aria-hidden> →</span>
                 {newPrayersCount > 0 && (
                   <span
@@ -4445,6 +4501,7 @@ function GoalReachedModal({
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const [filter, setFilter] = useState<"practices" | null>(null);
@@ -5921,14 +5978,14 @@ export default function Dashboard() {
                 fontWeight: 600,
               }}
             >
-              <Sliders size={14} /> Customize
+              <Sliders size={14} /> {t("dashboard.customize")}
             </Link>
           </div>
         )}
 
         {/* Footer */}
         <p className="text-center text-xs mt-8 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
-          Inspired by Monastic Wisdom
+          {t("dashboard.inspired_by")}
         </p>
         {/* The "About" pill that lived here (linking to /church-deck)
             has been removed from the home surface. The deck is still
