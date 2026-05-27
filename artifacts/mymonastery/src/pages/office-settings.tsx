@@ -42,12 +42,20 @@ const FAINT_GREEN = "rgba(143,175,150,0.55)";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 
 type OfficePref = "none" | "office" | "devotion";
+// Default prayer "depth" — picks which surface the home-screen office
+// card's "Begin prayer" CTA jumps to in a single tap. The picker
+// below writes the column via the same /me/office-prefs endpoint;
+// the home card reads user.defaultPrayerLevel from /auth/me. Default
+// is "devotion" (the gentlest entry point) when the user hasn't
+// chosen one.
+type DefaultPrayerLevel = "devotion" | "office" | "intercessions";
 type OfficePrefs = {
   morning: OfficePref;
   evening: OfficePref;
   morningTime: string | null;
   eveningTime: string | null;
   showConfession?: boolean;
+  defaultPrayerLevel?: DefaultPrayerLevel;
 };
 
 // ── shared chrome ───────────────────────────────────────────────────
@@ -251,6 +259,13 @@ export default function OfficeSettingsPage() {
   const evening = data?.evening ?? "none";
   const morningTime = data?.morningTime ?? "07:00";
   const eveningTime = data?.eveningTime ?? "18:00";
+  const defaultPrayerLevel: DefaultPrayerLevel = data?.defaultPrayerLevel ?? "devotion";
+
+  const defaultLevelOptions: Array<{ value: DefaultPrayerLevel; label: string; sub: string }> = [
+    { value: "devotion", label: "Daily Devotion", sub: "The short BCP form (~5 min). The gentlest entry point." },
+    { value: "office", label: "Full Daily Office", sub: "Morning or Evening Prayer (~15-20 min). The fuller liturgy." },
+    { value: "intercessions", label: "Community Intercessions", sub: "The slideshow of prayer requests your community is holding." },
+  ];
 
   // Read the local-only office prefs (CAC / FDD / NCMP closing pills,
   // Gratitude slide). useOfficePrefs subscribes to the custom event
@@ -293,8 +308,25 @@ export default function OfficeSettingsPage() {
           Customize your office ⚙️
         </h1>
         <p className="text-sm mb-2" style={{ color: SAGE }}>
-          Daily reminders, the penitential opening, and the closing pills.
+          Default prayer, daily reminders, the penitential opening, and the closing pills.
         </p>
+
+        <SectionHeader label="Default prayer" />
+        <Blurb>
+          When you tap "Begin prayer" on the home screen, this is the surface that opens. You can still pick anything else from /offices anytime.
+        </Blurb>
+        <Card>
+          {defaultLevelOptions.map((opt, i) => (
+            <RadioRow
+              key={opt.value}
+              label={opt.label}
+              sub={opt.sub}
+              selected={defaultPrayerLevel === opt.value}
+              onSelect={() => save.mutate({ defaultPrayerLevel: opt.value })}
+              first={i === 0}
+            />
+          ))}
+        </Card>
 
         <SectionHeader label="Daily reminders" />
         <Blurb>
