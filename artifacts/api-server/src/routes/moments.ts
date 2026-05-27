@@ -16,6 +16,7 @@ import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
 import { reconcileGroupPracticeMembers, reconcileFeedPracticeMembers } from "./groups";
 import { getGardenUserIds } from "../lib/garden";
 import { sendNewGroupMomentPush, sendIntercessionGoalReachedPush } from "../lib/pushSender";
+import { perUserRateLimit } from "../lib/rate-limit";
 import crypto from "crypto";
 import { broadcastLog } from "../lib/ws";
 
@@ -756,7 +757,14 @@ const StandalonePlantSchema = z.object({
   additionalGroupIds: z.array(z.number().int().positive()).max(10).optional(),
 });
 
-router.post("/moments", async (req, res): Promise<void> => {
+router.post("/moments", perUserRateLimit("moments_create", {
+  // Practice creation fan-outs to every member of the chosen group(s)
+  // — emails + (potentially) pushes. 15/hour per user means a power
+  // user adding a few practices to multiple communities is fine; a
+  // script trying to mass-create gets cut off quickly.
+  max: 15, windowMs: 60 * 60 * 1000,
+  message: "You've created a lot of practices in the last hour. Please try again later.",
+}), async (req, res): Promise<void> => {
   try {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -3283,7 +3291,16 @@ const AmenSchema = z.object({
   photoUrl: z.string().optional(),
 });
 
-router.post("/moment/:momentToken/amen", async (req, res): Promise<void> => {
+// Amen tap is the most-fired user mutation in the app, but it's also
+// the easiest to spam — one tap = one POST. The push side already
+// dedups via the 2-hour coalescing scanner, but we still want to
+// protect the DB write path. 300/hour per user is generous (an
+// "amen storm" through 20 intercessions in 5 minutes is well under)
+// but it caps replay attacks / runaway clients.
+router.post("/moment/:momentToken/amen", perUserRateLimit("moment_amen", {
+  max: 300, windowMs: 60 * 60 * 1000,
+  message: "You've sent a lot of amens. Slow down — take a breath.",
+}), async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
 

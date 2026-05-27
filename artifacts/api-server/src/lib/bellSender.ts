@@ -42,6 +42,7 @@ import { logger } from "./logger";
 import { PHOEBE_PARISH_ENABLED } from "./parishFlag";
 import { loadFeedDigest } from "./feedDigest";
 import { sendWeeklyDigestEmail } from "./email";
+import { withSchedulerLog } from "./schedulerHeartbeat";
 
 // ─── Timezone helpers ───────────────────────────────────────────────────────
 
@@ -1582,100 +1583,48 @@ export async function runSundayReflectionPushSender(): Promise<void> {
 
 let bellInterval: ReturnType<typeof setInterval> | null = null;
 
+// Each sender wrapped via withSchedulerLog: insert a "running" row in
+// scheduler_runs at start, update to "completed" or "failed" at end.
+// Failures also push to Sentry tagged with the sender name so issues
+// land per-sender (not in one giant "scheduler error" bucket).
+//
+// To audit "did the bell sender run today?":
+//   SELECT sender_name, started_at, duration_ms, status, error_message
+//   FROM scheduler_runs
+//   WHERE sender_name = 'bell' AND started_at::date = CURRENT_DATE
+//   ORDER BY started_at DESC;
+const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
+  { name: "bell",                  run: runBellSender },
+  { name: "bell-evening",          run: runEveningNudgeSender },
+  { name: "lectio-reminder",       run: runLectioReminderSender },
+  { name: "lectio-evening",        run: runLectioEveningReminderSender },
+  { name: "renewal-nudge",         run: runPrayerRenewalNudgeSender },
+  { name: "parish-office",         run: runParishOfficeReminderSender },
+  { name: "parish-evening",        run: runParishEveningRecapSender },
+  { name: "gathering-reminder",    run: runGatheringReminderSender },
+  { name: "feed-event-reminder",   run: runFeedEventReminderSender },
+  { name: "sunday-reflection",     run: runSundayReflectionPushSender },
+  { name: "feed-intercession-push", run: runFeedIntercessionPushSender },
+  { name: "action-reminder",       run: runActionReminderSender },
+  { name: "digest",                run: runWeeklyDigestSender },
+  { name: "parish-weekly",         run: runParishWeeklyRecapSender },
+];
+
+function fireAllSenders(): void {
+  for (const sender of SCHEDULER_SENDERS) {
+    // withSchedulerLog already swallows exceptions internally so a
+    // failure in one sender doesn't break the others. We still
+    // attach a tail .catch as belt-and-suspenders for the case
+    // where the heartbeat insert itself throws synchronously.
+    void withSchedulerLog(sender.name, sender.run).catch(() => {
+      /* unreachable — withSchedulerLog never rejects */
+    });
+  }
+}
+
 export function startBellScheduler(): void {
   if (bellInterval) return;
   logger.info("[bell-scheduler] started — first run in 45s, then every 15 min");
-
-  setTimeout(() => {
-    runBellSender().catch((err) =>
-      logger.error({ err }, "[bell] initial run failed"),
-    );
-    runEveningNudgeSender().catch((err) =>
-      logger.error({ err }, "[bell-evening] initial run failed"),
-    );
-    runLectioReminderSender().catch((err) =>
-      logger.error({ err }, "[lectio-reminder] initial run failed"),
-    );
-    runLectioEveningReminderSender().catch((err) =>
-      logger.error({ err }, "[lectio-evening] initial run failed"),
-    );
-    runPrayerRenewalNudgeSender().catch((err) =>
-      logger.error({ err }, "[renewal-nudge] initial run failed"),
-    );
-    runParishOfficeReminderSender().catch((err) =>
-      logger.error({ err }, "[parish-office] initial run failed"),
-    );
-    runParishEveningRecapSender().catch((err) =>
-      logger.error({ err }, "[parish-evening] initial run failed"),
-    );
-    runGatheringReminderSender().catch((err) =>
-      logger.error({ err }, "[gathering-reminder] initial run failed"),
-    );
-    runFeedEventReminderSender().catch((err) =>
-      logger.error({ err }, "[feed-event-reminder] initial run failed"),
-    );
-    runSundayReflectionPushSender().catch((err) =>
-      logger.error({ err }, "[sunday-reflection] initial run failed"),
-    );
-    runFeedIntercessionPushSender().catch((err) =>
-      logger.error({ err }, "[feed-intercession-push] initial run failed"),
-    );
-    runActionReminderSender().catch((err) =>
-      logger.error({ err }, "[action-reminder] initial run failed"),
-    );
-    runWeeklyDigestSender().catch((err) =>
-      logger.error({ err }, "[digest] initial run failed"),
-    );
-    runParishWeeklyRecapSender().catch((err) =>
-      logger.error({ err }, "[parish-weekly] initial run failed"),
-    );
-  }, 45_000);
-
-  bellInterval = setInterval(
-    () => {
-      runBellSender().catch((err) =>
-        logger.error({ err }, "[bell] scheduled run failed"),
-      );
-      runEveningNudgeSender().catch((err) =>
-        logger.error({ err }, "[bell-evening] scheduled run failed"),
-      );
-      runLectioReminderSender().catch((err) =>
-        logger.error({ err }, "[lectio-reminder] scheduled run failed"),
-      );
-      runLectioEveningReminderSender().catch((err) =>
-        logger.error({ err }, "[lectio-evening] scheduled run failed"),
-      );
-      runPrayerRenewalNudgeSender().catch((err) =>
-        logger.error({ err }, "[renewal-nudge] scheduled run failed"),
-      );
-      runParishOfficeReminderSender().catch((err) =>
-        logger.error({ err }, "[parish-office] scheduled run failed"),
-      );
-      runParishEveningRecapSender().catch((err) =>
-        logger.error({ err }, "[parish-evening] scheduled run failed"),
-      );
-      runGatheringReminderSender().catch((err) =>
-        logger.error({ err }, "[gathering-reminder] scheduled run failed"),
-      );
-      runFeedEventReminderSender().catch((err) =>
-        logger.error({ err }, "[feed-event-reminder] scheduled run failed"),
-      );
-      runSundayReflectionPushSender().catch((err) =>
-        logger.error({ err }, "[sunday-reflection] scheduled run failed"),
-      );
-      runFeedIntercessionPushSender().catch((err) =>
-        logger.error({ err }, "[feed-intercession-push] scheduled run failed"),
-      );
-      runActionReminderSender().catch((err) =>
-        logger.error({ err }, "[action-reminder] scheduled run failed"),
-      );
-      runWeeklyDigestSender().catch((err) =>
-        logger.error({ err }, "[digest] scheduled run failed"),
-      );
-      runParishWeeklyRecapSender().catch((err) =>
-        logger.error({ err }, "[parish-weekly] scheduled run failed"),
-      );
-    },
-    15 * 60 * 1000,
-  );
+  setTimeout(fireAllSenders, 45_000);
+  bellInterval = setInterval(fireAllSenders, 15 * 60 * 1000);
 }

@@ -1964,6 +1964,35 @@ export async function migrate() {
     // level.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS default_prayer_level TEXT NOT NULL DEFAULT 'devotion'`);
 
+    // Scheduler heartbeat / audit log — one row per scheduler tick per
+    // sender so we can answer "did the bell sender actually run this
+    // morning?" from the DB without relying on ephemeral Railway logs.
+    //
+    // Insert at tick start (status = 'running'), update at the end
+    // with completed_at + duration_ms + status ('completed' or
+    // 'failed'). On failure we ALSO push to Sentry — this table is
+    // the long-term audit trail, Sentry is the realtime alert.
+    //
+    // Tail with: SELECT sender_name, started_at, duration_ms, status
+    // FROM scheduler_runs ORDER BY started_at DESC LIMIT 50;
+    //
+    // The retention story is "trim manually if it grows past
+    // ~1M rows" — at 15 sender invocations every 15 min that's
+    // ~1.4k rows/day, ~500k rows/year. Fine for years before
+    // pruning matters.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS scheduler_runs (
+        id              SERIAL PRIMARY KEY,
+        sender_name     TEXT        NOT NULL,
+        started_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        completed_at    TIMESTAMPTZ,
+        duration_ms     INTEGER,
+        status          TEXT        NOT NULL DEFAULT 'running',
+        error_message   TEXT
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_scheduler_runs_name_started ON scheduler_runs (sender_name, started_at DESC)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

@@ -28,7 +28,7 @@ import { z } from "zod/v4";
 import crypto from "crypto";
 import { sendAnnouncementEmail, sendPrayerInviteEmail } from "../lib/email";
 import { getInviteBaseUrl } from "../lib/urls";
-import { rateLimit, getClientIp } from "../lib/rate-limit";
+import { rateLimit, perUserRateLimit, getClientIp } from "../lib/rate-limit";
 import { createCalendarEvent, deleteCalendarEvent, getCalendarEventAttendees } from "../lib/calendar";
 import {
   sendPushToUsers,
@@ -371,8 +371,14 @@ async function isBetaUser(userId: number): Promise<boolean> {
 
 // ─── Group CRUD ─────────────────────────────────────────────────────────────
 
-// POST /api/groups — create a group (builders only)
-router.post("/groups", async (req, res): Promise<void> => {
+// POST /api/groups — create a group (builders only). Rate-limited
+// because community creation triggers downstream fan-outs (calendar
+// scaffolding, member invites). 10/day is comfortably more than any
+// legitimate user would create in a day.
+router.post("/groups", perUserRateLimit("groups_create", {
+  max: 10, windowMs: 24 * 60 * 60 * 1000,
+  message: "You've created a lot of communities today. Please try again tomorrow.",
+}), async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }

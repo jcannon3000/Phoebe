@@ -45,6 +45,7 @@ import {
   sendLetterFollowUpPush,
 } from "./pushSender";
 import { logger } from "./logger";
+import { withSchedulerLog } from "./schedulerHeartbeat";
 
 export async function runLetterWindowSweep(): Promise<void> {
   const now = new Date();
@@ -411,14 +412,14 @@ let interval: ReturnType<typeof setInterval> | null = null;
 export function startLetterWindowScheduler(): void {
   if (interval) return;
   logger.info("[letter-window-scheduler] started — first run in 60s, then every 15 min");
-  setTimeout(() => {
-    runLetterWindowSweep().catch((err) =>
-      logger.error({ err }, "[letter-window] initial run failed"),
-    );
-  }, 60_000);
-  interval = setInterval(() => {
-    runLetterWindowSweep().catch((err) =>
-      logger.error({ err }, "[letter-window] scheduled run failed"),
-    );
-  }, 15 * 60 * 1000);
+  // withSchedulerLog records start/complete to scheduler_runs and
+  // forwards failures to Sentry — same audit trail as the senders in
+  // bellSender's startBellScheduler.
+  const fire = () => {
+    void withSchedulerLog("letter-window", runLetterWindowSweep).catch(() => {
+      /* unreachable — withSchedulerLog never rejects */
+    });
+  };
+  setTimeout(fire, 60_000);
+  interval = setInterval(fire, 15 * 60 * 1000);
 }

@@ -3,6 +3,7 @@ import { eq, and, desc, isNull, gt, notInArray } from "drizzle-orm";
 import { db, prayersForTable, usersTable, userMutesTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sendPrayerForYouPush } from "../lib/pushSender";
+import { perUserRateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -150,7 +151,15 @@ router.get("/prayers-for/for-me/history", async (req, res): Promise<void> => {
 
 // ─── POST /api/prayers-for ──────────────────────────────────────────────────
 // Create a new private prayer for someone, for 3 or 7 days.
-router.post("/prayers-for", async (req, res): Promise<void> => {
+// Create-prayer-for sends a push to the recipient. Rate-limited per
+// user because a hostile or buggy client could otherwise spam any
+// other user's lock screen with private-prayer pushes. 20/hour is
+// generous for normal usage (you don't write 20 private prayers an
+// hour) but cuts off the abuse curve sharply.
+router.post("/prayers-for", perUserRateLimit("prayers_for_create", {
+  max: 20, windowMs: 60 * 60 * 1000,
+  message: "You've started a lot of prayers in the last hour. Please try again later.",
+}), async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
 

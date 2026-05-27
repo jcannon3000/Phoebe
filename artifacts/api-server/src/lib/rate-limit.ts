@@ -83,6 +83,32 @@ export function getClientIp(req: Request): string {
   return req.ip ?? req.socket.remoteAddress ?? "unknown";
 }
 
+// Convenience wrapper for authenticated write endpoints. Keys by user
+// id (so two users on the same WiFi don't share a bucket), and falls
+// back to IP for unauthenticated callers. Use this whenever a route
+// already runs after passport / session middleware — i.e. anything
+// where req.user is populated.
+//
+// Example:
+//   router.post("/prayer-requests", perUserRateLimit("prayer_requests_create", {
+//     max: 20, windowMs: 60 * 60 * 1000,
+//   }), async (req, res) => { ... });
+export function perUserRateLimit(
+  name: string,
+  opts: { max: number; windowMs: number; message?: string },
+) {
+  return rateLimit({
+    name,
+    max: opts.max,
+    windowMs: opts.windowMs,
+    message: opts.message,
+    keyFn: (req) => {
+      const uid = (req.user as { id?: number } | undefined)?.id;
+      return uid ? `u:${uid}` : `ip:${getClientIp(req)}`;
+    },
+  });
+}
+
 // Periodic cleanup of expired buckets so memory doesn't grow unbounded when
 // many unique keys hit a limiter and then never come back.
 const CLEANUP_INTERVAL_MS = 60_000;

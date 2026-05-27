@@ -32,6 +32,7 @@ import {
   cancelLetterCalendarEvent,
 } from "../lib/letterCalendar";
 import { getInviteBaseUrl } from "../lib/urls";
+import { perUserRateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -133,6 +134,12 @@ function isWritable(state: OneToOneTurnState): boolean {
 
 router.post(
   "/phoebe/correspondences",
+  // Same shape as /phoebe/correspondences/start — sends invitation
+  // emails to each member. 10/hour cuts off bulk-invite abuse.
+  perUserRateLimit("letters_create_correspondence", {
+    max: 10, windowMs: 60 * 60 * 1000,
+    message: "You've created a lot of correspondences in the last hour. Please try again later.",
+  }),
   requireSessionAuth(async (req, res, auth) => {
     const { type, name, members } = req.body as {
       type: "one_to_one" | "group";
@@ -242,6 +249,14 @@ router.post(
 // the writer goes straight to composing.
 router.post(
   "/phoebe/correspondences/start",
+  // Letter creation sends an invitation email + (if recipient has an
+  // account) a push. 10/hour per user — letter writing is inherently
+  // slow, so a normal user is well under this; bursts past it are
+  // almost always test/abuse traffic.
+  perUserRateLimit("letters_start_correspondence", {
+    max: 10, windowMs: 60 * 60 * 1000,
+    message: "You've started a lot of letters in the last hour. Please try again later.",
+  }),
   requireSessionAuth(async (req, res, auth) => {
     const { memberEmail, memberName, content } = req.body as {
       memberEmail?: string;
@@ -707,6 +722,14 @@ router.get(
 
 router.post(
   "/phoebe/correspondences/:id/letters",
+  // Actual letter writes — fire a push to every other joined member.
+  // 30/hour per user: an extremely active letter-writer might send
+  // 5-10 a day across multiple correspondences; 30 in an hour is
+  // outside normal usage and starts to look like automation.
+  perUserRateLimit("letters_send", {
+    max: 30, windowMs: 60 * 60 * 1000,
+    message: "You've sent a lot of letters in the last hour. Please try again later.",
+  }),
   requireAuth(async (req, res, auth) => {
     const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
     console.log(
