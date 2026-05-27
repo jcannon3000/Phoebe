@@ -1279,7 +1279,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
                         fontFamily: SPACE_GROTESK,
                         fontSize: 13,
                         letterSpacing: "0.02em",
-                        color: SAGE,
+                        // MUTED_GREEN is the file's own sage-green token —
+                        // there's no top-level SAGE const here, and the
+                        // earlier reference to one was a typo that crashed
+                        // every Compline lesson render with ReferenceError.
+                        color: MUTED_GREEN,
                         margin: 0,
                         fontWeight: 600,
                       }}
@@ -1540,26 +1544,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
                   fontWeight: 600,
                 }}
               >
-                {(() => {
-                  // Lesson slides get a contextual eyebrow that
-                  // mirrors the psalm slide's "The Psalm Appointed
-                  // For This Morning" treatment. We tailor it to the
-                  // existing eyebrow value so an MP First Lesson and
-                  // an EP Gospel each read true to themselves while
-                  // staying in the same voice.
-                  if (currentSlide.type === "lesson") {
-                    const isEvening =
-                      resolvedMode === "evening" ||
-                      resolvedMode === "early-evening-devotion";
-                    const tod = isEvening ? "Evening" : "Morning";
-                    const e = (currentSlide.eyebrow ?? "").toUpperCase();
-                    if (e.includes("FIRST")) return `The First Lesson Appointed For This ${tod}`;
-                    if (e.includes("SECOND")) return `The Second Lesson Appointed For This ${tod}`;
-                    if (e.includes("GOSPEL")) return `The Gospel Appointed For This ${tod}`;
-                    return `The Lesson Appointed For This ${tod}`;
-                  }
-                  return currentSlide.eyebrow || sectionLabel;
-                })()}
+                {/* Lesson slides take their own branches above (the
+                    inline-Compline one at 1239 and the centered title
+                    at 1306), so by the time we reach this fallback
+                    eyebrow the slide is never a lesson — TypeScript's
+                    type narrowing already proved it dead. We render
+                    the slide's literal eyebrow / fallback label
+                    instead. */}
+                {currentSlide.eyebrow || sectionLabel}
               </p>
               {/* Title slot. Intercession + psalm slides took
                   earlier branches (above), so we know currentSlide
