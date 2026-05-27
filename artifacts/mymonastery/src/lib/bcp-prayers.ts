@@ -1,4 +1,36 @@
-export type BcpPrayer = { category: string; title: string; text: string };
+export type BcpPrayer = {
+  category: string;
+  title: string;
+  text: string;
+  // Spanish (Libro de Oración Común). Optional so the file stays
+  // valid while we incrementally add translations; `localizeBcpPrayer`
+  // falls back to English when these are missing. Eventually every
+  // prayer should ship with an ES translation.
+  titleEs?: string;
+  textEs?: string;
+};
+
+// English category → Spanish category. Categories are used as the
+// grouping key in `bcp-intercessions.tsx`, so we keep the English
+// string as the key and look up the display label here.
+export const BCP_CATEGORY_ES: Record<string, string> = {
+  "For the Church": "Por la Iglesia",
+  "For the Mission of the Church": "Por la Misión de la Iglesia",
+  "For the Nation": "Por la Nación",
+  "For the World": "Por el Mundo",
+  "For the Natural Order": "Por el Orden Natural",
+  "For Cities and Towns": "Por las Ciudades y Pueblos",
+  "For Vocation and Work": "Por la Vocación y el Trabajo",
+  "For the Poor and Neglected": "Por los Pobres y los Olvidados",
+  "For the Sick": "Por los Enfermos",
+  "For the Sorrowing": "Por los Afligidos",
+  "For Those in Need": "Por los Necesitados",
+  "For Social Justice": "Por la Justicia Social",
+  "For the Environment": "Por el Medio Ambiente",
+  "Personal Prayers": "Oraciones Personales",
+  "For Families": "Por las Familias",
+  "Thanksgivings": "Acciones de Gracias",
+};
 
 export const BCP_PRAYERS: BcpPrayer[] = [
   // FOR THE CHURCH
@@ -203,8 +235,32 @@ export const BCP_PRAYERS: BcpPrayer[] = [
     text: "Almighty God and heavenly Father, we give thee humble thanks because thou hast been graciously pleased to deliver from his sickness thy servant N., in whose behalf we bless and praise thy Name. Grant, O gracious Father, that he, through thy help, may live in this world according to thy will, and also be partaker of everlasting glory in the life to come; through Jesus Christ our Lord. Amen." },
 ];
 
-/** Look up a BCP prayer by title (case-insensitive, trimmed). */
+/** Look up a BCP prayer by title (case-insensitive, trimmed).
+ * Matches against EITHER the English or Spanish title so saved prayer
+ * references survive a user's locale switch.
+ */
 export function findBcpPrayer(topic: string): BcpPrayer | undefined {
   const needle = topic.trim().toLowerCase();
-  return BCP_PRAYERS.find((p) => p.title.toLowerCase() === needle);
+  return BCP_PRAYERS.find(
+    (p) =>
+      p.title.toLowerCase() === needle ||
+      (p.titleEs ?? "").toLowerCase() === needle,
+  );
+}
+
+/** Resolve a prayer's display fields for the active locale. Falls back
+ * to the English text when the Spanish translation isn't filled in yet.
+ */
+export function localizeBcpPrayer(
+  p: BcpPrayer,
+  lang: string | undefined,
+): { category: string; title: string; text: string } {
+  if (lang?.startsWith("es")) {
+    return {
+      category: BCP_CATEGORY_ES[p.category] ?? p.category,
+      title: p.titleEs || p.title,
+      text: p.textEs || p.text,
+    };
+  }
+  return { category: p.category, title: p.title, text: p.text };
 }
