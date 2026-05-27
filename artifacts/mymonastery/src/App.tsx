@@ -102,6 +102,7 @@ import MomentsDashboard from "./pages/moments-dashboard";
 import MomentRedirect from "./pages/moment-redirect";
 import PrayerListPage from "./pages/prayer-list";
 import PrayerModePage from "./pages/prayer-mode";
+import BeginPrayerPage from "./pages/begin-prayer";
 import PrayerStartPage from "./pages/prayer-start";
 import PrayerRequestDetailPage from "./pages/prayer-request-detail";
 import ActionDetailPage from "./pages/action-detail";
@@ -467,6 +468,7 @@ function Router() {
       <Route path="/my-prayer-requests" component={MyPrayerRequestsPage} />
       <Route path="/prayers-for-me" component={PrayersForMePage} />
       <Route path="/prayer-mode" component={PrayerModePage} />
+      <Route path="/begin-prayer" component={BeginPrayerPage} />
       <Route path="/prayer-start" component={PrayerStartPage} />
       <Route path="/prayer-requests/:id" component={PrayerRequestDetailPage} />
       <Route path="/actions/new" component={ActionNewPage} />

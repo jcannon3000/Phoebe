@@ -87,14 +87,33 @@
 	<key>UIApplicationShortcutItems</key>
 	<array>
 		<dict>
+			<!-- Mirror of the home dashboard's "Begin prayer" CTA.
+			     The shortcut points at /begin-prayer which runs the
+			     same time-of-day + defaultPrayerLevel + prayedToday
+			     logic the home card runs and replaces history with
+			     the resolved destination. Type identifier is the
+			     legacy "prayer-list" name so devices that cached the
+			     old shortcut from a prior install keep working — the
+			     Swift mapping below now points it at /begin-prayer. -->
 			<key>UIApplicationShortcutItemType</key>
 			<string>app.withphoebe.mobile.shortcut.prayer-list</string>
 			<key>UIApplicationShortcutItemTitle</key>
-			<string>Begin prayer list</string>
+			<string>Begin prayer</string>
 			<key>UIApplicationShortcutItemSubtitle</key>
-			<string>Walk through today's prayers</string>
+			<string>Today's next rhythm</string>
 			<key>UIApplicationShortcutItemIconType</key>
 			<string>UIApplicationShortcutIconTypeFavorite</string>
+		</dict>
+		<dict>
+			<!-- Lands on /contemplation — the silent-sit timer. -->
+			<key>UIApplicationShortcutItemType</key>
+			<string>app.withphoebe.mobile.shortcut.contemplation</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Start contemplation</string>
+			<key>UIApplicationShortcutItemSubtitle</key>
+			<string>Sit in silence</string>
+			<key>UIApplicationShortcutItemIconType</key>
+			<string>UIApplicationShortcutIconTypePause</string>
 		</dict>
 		<dict>
 			<key>UIApplicationShortcutItemType</key>

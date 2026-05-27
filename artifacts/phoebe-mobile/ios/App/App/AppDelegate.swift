@@ -18,10 +18,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     // Map an iOS UIApplicationShortcutItem.type to the in-app path the
     // web router knows. Keep these literal — Wouter's routes are the
     // canonical source of truth and this list mirrors them.
+    //
+    // The "prayer-list" identifier is a legacy name kept for back-compat
+    // with devices that cached the old shortcut (when the title was
+    // "Begin prayer list" and the target was /prayer-mode). It now
+    // routes to /begin-prayer, a tiny JS landing page that runs the
+    // same time-of-day + defaultPrayerLevel + prayedToday logic the
+    // home dashboard's "Begin prayer" CTA runs and replaces history
+    // with the resolved destination. Keeping the type name stable
+    // means we never need to chase down stale cached shortcuts on
+    // upgraded installs.
     private func pathForShortcut(_ type: String) -> String? {
         switch type {
         case "app.withphoebe.mobile.shortcut.prayer-list":
-            return "/prayer-mode"
+            return "/begin-prayer"
+        case "app.withphoebe.mobile.shortcut.contemplation":
+            return "/contemplation"
         case "app.withphoebe.mobile.shortcut.prayer-request-new":
             return "/pray-request/new"
         case "app.withphoebe.mobile.shortcut.letter-new":
