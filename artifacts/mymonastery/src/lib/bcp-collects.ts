@@ -24,7 +24,24 @@
 //   day's office or the liturgical-date header. If we ever want a flat
 //   "every Sunday's collect" browser, that's a separate data source.
 
-export type BcpCollect = { category: string; title: string; text: string };
+export type BcpCollect = {
+  category: string;
+  title: string;
+  text: string;
+  // Spanish (Libro de Oración Común). Optional during incremental
+  // translation; localizeBcpCollect() falls back to English when missing.
+  titleEs?: string;
+  textEs?: string;
+};
+
+// English category → Spanish category. The English string remains the
+// grouping key in bcp-collects.tsx — only the display label flips.
+export const BCP_COLLECT_CATEGORY_ES: Record<string, string> = {
+  "Morning Prayer": "Oración Matutina",
+  "Evening Prayer": "Oración Vespertina",
+  "Daily Devotions": "Devociones Diarias",
+  "Other Loved Collects": "Otras Colectas Queridas",
+};
 
 export const BCP_COLLECTS: BcpCollect[] = [
   // ── Morning Prayer ────────────────────────────────────────────────
@@ -140,3 +157,20 @@ export const BCP_COLLECTS: BcpCollect[] = [
     text: "Almighty God, you have given us grace at this time with one accord to make our common supplication to you; and you have promised through your well-beloved Son that when two or three are gathered together in his Name you will be in the midst of them: Fulfill now, O Lord, our desires and petitions as may be best for us; granting us in this world knowledge of your truth, and in the age to come life everlasting. Amen.",
   },
 ];
+
+/** Resolve a collect's display fields for the active locale. Falls
+ * back to English when the Spanish translation isn't filled in yet.
+ */
+export function localizeBcpCollect(
+  c: BcpCollect,
+  lang: string | undefined,
+): { category: string; title: string; text: string } {
+  if (lang?.startsWith("es")) {
+    return {
+      category: BCP_COLLECT_CATEGORY_ES[c.category] ?? c.category,
+      title: c.titleEs || c.title,
+      text: c.textEs || c.text,
+    };
+  }
+  return { category: c.category, title: c.title, text: c.text };
+}
