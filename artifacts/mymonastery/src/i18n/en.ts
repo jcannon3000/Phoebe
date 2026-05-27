@@ -71,6 +71,39 @@ export const en = {
     pray_again_short: "Pray again",
     customize: "Customize",
   },
+  // Create-a-Community page (pages/community-new.tsx).
+  community_new: {
+    back: "← Communities",
+    title: "Create a Community",
+    subtitle: "A shared space for prayer, practice, and connection.",
+    icon_label: "Icon",
+    name_label: "Name",
+    name_placeholder: "e.g. St. Mary's Parish",
+    description_label: "Description (optional)",
+    description_placeholder: "What is this community about?",
+    prayer_circle_toggle: "Make this a prayer circle",
+    prayer_circle_blurb: "A prayer circle is a group bound by a shared intention. You will name what you are praying for together, and it will surface in each member's daily bell.",
+    intention_label: "Intention",
+    intention_placeholder: "What does this circle pray for?",
+    intention_example_sick: "For the sick in our parish.",
+    intention_example_gun_violence: "For an end to gun violence.",
+    intention_example_neighbors: "For our neighbors who are new to this country.",
+    intention_example_left_church: "For those who have left the church.",
+    about_circle_label: "About the circle (optional)",
+    about_circle_placeholder: "Say more about what this circle is for.",
+    beta_note: "Prayer circles are a beta feature. We are learning what makes them flourish — we would love your feedback.",
+    create_community_button: "Create Community",
+    create_circle_button: "Create Prayer Circle",
+    creating: "Creating...",
+    generic_error: "Something went wrong. Try again.",
+  },
+  // My Prayer Requests index (pages/my-prayer-requests.tsx).
+  my_prayer_requests: {
+    back: "Back",
+    title: "Your Prayer Requests 🙏🏽",
+    subtitle: "What your community is holding for you.",
+    empty: "You haven't shared anything with your community yet.",
+  },
   // Prayers-for-Me index (pages/prayers-for-me.tsx).
   prayers_for_me: {
     back: "Back",
@@ -369,6 +402,20 @@ export const en = {
     pick_source: "Open community settings →",
     not_enabled_title: "Not enabled yet",
     not_enabled_body: "Your community hasn't picked a daily reflection. An admin can turn this on in community settings.",
+  },
+  // Home-screen Parish Weekly card (components/ParishWeeklyCard.tsx) —
+  // the "This week's prayer list 🌿" hero card on the parish home.
+  parish_weekly: {
+    this_weeks_list: "This week's prayer list 🌿",
+    held_community: "You've held your community this week 🌿",
+    pray_for: "Pray for {{name}}",
+    prayers_waiting_one: "1 prayer waiting this week",
+    prayers_waiting_other: "{{count}} prayers waiting this week",
+    all_prayed_sub: "Everything your community is carrying has been prayed for.",
+    asking_prayers: "Your community is asking your prayers.",
+    prayed_n_this_week_one: "You have prayed for 1 this week.",
+    prayed_n_this_week_other: "You have prayed for {{count}} this week.",
+    begin: "Begin →",
   },
   // Home-screen + prayer-list page compose input (PrayerListComposeBar).
   prayer_list_compose: {

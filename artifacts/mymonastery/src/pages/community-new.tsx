@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 
 export default function CommunityNewPage() {
+  const { t } = useTranslation();
   const { user, isLoading } = useAuth();
   const { rawIsAdmin: isBuilder } = useBetaStatus();
   const [, setLocation] = useLocation();
@@ -22,11 +24,16 @@ export default function CommunityNewPage() {
   const [circleDescription, setCircleDescription] = useState("");
 
   const EMOJI_OPTIONS = ["🏘️","⛪","✝️","🕊️","🙏🏽","🌿","🌱","🕯️","📖","🫂","💒","🌾","🔔","🫙","🌻","🍃","🏔️","🌊","☀️","🌙"];
+  // Localized example intentions for the prayer-circle composer.
+  // Kept as a t()-pulled array so each language can riff on what
+  // feels natural (the gun-violence framing reads as US-specific in
+  // English — Spanish-speaking communities may want different
+  // examples eventually).
   const INTENTION_EXAMPLES = [
-    "For the sick in our parish.",
-    "For an end to gun violence.",
-    "For our neighbors who are new to this country.",
-    "For those who have left the church.",
+    t("community_new.intention_example_sick"),
+    t("community_new.intention_example_gun_violence"),
+    t("community_new.intention_example_neighbors"),
+    t("community_new.intention_example_left_church"),
   ];
 
   useEffect(() => {
@@ -63,24 +70,24 @@ export default function CommunityNewPage() {
           className="text-xs mb-4 flex items-center gap-1 transition-opacity hover:opacity-70"
           style={{ color: "#8FAF96" }}
         >
-          ← Communities
+          {t("community_new.back")}
         </button>
 
         <h1
           className="text-2xl font-bold mb-1"
           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
         >
-          Create a Community
+          {t("community_new.title")}
         </h1>
         <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-          A shared space for prayer, practice, and connection.
+          {t("community_new.subtitle")}
         </p>
 
         <div className="space-y-4">
           {/* Emoji picker */}
           <div>
             <label className="text-xs font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>
-              Icon
+              {t("community_new.icon_label")}
             </label>
             <div className="flex items-center gap-3 mb-3">
               <div className="text-4xl w-14 h-14 flex items-center justify-center rounded-2xl flex-shrink-0"
@@ -104,13 +111,13 @@ export default function CommunityNewPage() {
 
           <div>
             <label className="text-xs font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>
-              Name
+              {t("community_new.name_label")}
             </label>
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="e.g. St. Mary's Parish"
+              placeholder={t("community_new.name_placeholder")}
               maxLength={100}
               className="w-full px-4 py-3 rounded-xl border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
               style={{ color: "#F0EDE6" }}
@@ -119,12 +126,12 @@ export default function CommunityNewPage() {
 
           <div>
             <label className="text-xs font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>
-              Description (optional)
+              {t("community_new.description_label")}
             </label>
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="What is this community about?"
+              placeholder={t("community_new.description_placeholder")}
               maxLength={500}
               rows={3}
               className="w-full px-4 py-3 rounded-xl border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm resize-none"
@@ -147,10 +154,10 @@ export default function CommunityNewPage() {
               />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
-                  Make this a prayer circle
+                  {t("community_new.prayer_circle_toggle")}
                 </p>
                 <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
-                  A prayer circle is a group bound by a shared intention. You will name what you are praying for together, and it will surface in each member's daily bell.
+                  {t("community_new.prayer_circle_blurb")}
                 </p>
               </div>
             </label>
@@ -160,13 +167,13 @@ export default function CommunityNewPage() {
             <>
               <div>
                 <label className="text-xs font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>
-                  Intention
+                  {t("community_new.intention_label")}
                 </label>
                 <input
                   type="text"
                   value={intention}
                   onChange={e => setIntention(e.target.value)}
-                  placeholder="What does this circle pray for?"
+                  placeholder={t("community_new.intention_placeholder")}
                   maxLength={500}
                   className="w-full px-4 py-3 rounded-xl border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
                   style={{
@@ -196,12 +203,12 @@ export default function CommunityNewPage() {
 
               <div>
                 <label className="text-xs font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>
-                  About the circle (optional)
+                  {t("community_new.about_circle_label")}
                 </label>
                 <textarea
                   value={circleDescription}
                   onChange={e => setCircleDescription(e.target.value)}
-                  placeholder="Say more about what this circle is for."
+                  placeholder={t("community_new.about_circle_placeholder")}
                   maxLength={2000}
                   rows={3}
                   className="w-full px-4 py-3 rounded-xl border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm resize-none"
@@ -210,7 +217,7 @@ export default function CommunityNewPage() {
               </div>
 
               <p className="text-[11px] italic" style={{ color: "rgba(143,175,150,0.65)" }}>
-                Prayer circles are a beta feature. We are learning what makes them flourish — we would love your feedback.
+                {t("community_new.beta_note")}
               </p>
             </>
           )}
@@ -226,13 +233,13 @@ export default function CommunityNewPage() {
             }}
           >
             {createMutation.isPending
-              ? "Creating..."
-              : isPrayerCircle ? "Create Prayer Circle" : "Create Community"}
+              ? t("community_new.creating")
+              : isPrayerCircle ? t("community_new.create_circle_button") : t("community_new.create_community_button")}
           </button>
 
           {createMutation.isError && (
             <p className="text-sm text-center" style={{ color: "#E57373" }}>
-              Something went wrong. Try again.
+              {t("community_new.generic_error")}
             </p>
           )}
         </div>
