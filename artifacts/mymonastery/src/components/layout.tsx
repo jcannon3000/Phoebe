@@ -385,16 +385,22 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   onClick={() => { onClose(); markSsjeRead(); openExternal(SSJE_TODAY_URL); }}
                 />
               </MenuSection>
-              {/* Saints — beta-only, lived in Resources alongside BCP /
-                  reflections. Promoted to its own row so the BCP and
-                  Reflections sections stay focused on their core
-                  contents. National Cathedral Morning Prayer used to
-                  live in Resources too; moved to a home-screen card
-                  (NcmpHomeCard in dashboard.tsx) the user opts into
-                  from /customize-home. */}
-              {rawIsBeta && (
-                <MenuRow emoji="😇" label={t("menu.saints")} badge={t("menu.beta")} onClick={() => navigate("/saints")} />
-              )}
+              {/* Resources — non-prayer, non-reflection reference
+                  surfaces. Sunday Lectionary opens externally to
+                  lectionarypage.net via /api/lectionary/today (the
+                  server resolves "this Sunday" from the seed and 302s
+                  to the canonical reader). Saints stays beta-gated
+                  because the index isn't fully fleshed out yet. */}
+              <MenuSection emoji="📚" label={t("menu.resources", { defaultValue: "Resources" })}>
+                <MenuRow
+                  emoji="📅"
+                  label={t("menu.sunday_lectionary", { defaultValue: "Sunday Lectionary" })}
+                  onClick={() => { onClose(); openExternal("https://withphoebe.app/api/lectionary/today"); }}
+                />
+                {rawIsBeta && (
+                  <MenuRow emoji="😇" label={t("menu.saints")} badge={t("menu.beta")} onClick={() => navigate("/saints")} />
+                )}
+              </MenuSection>
               {showLetters && (
                 <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
               )}

@@ -34,6 +34,7 @@ import newsletterRouter from "./newsletter";
 import adminMetricsRouter from "./admin-metrics";
 import meetupsRouter from "./meetups";
 import cacRouter from "./cac";
+import lectionaryRouter from "./lectionary";
 import ncmpRouter from "./ncmp";
 import groupReflectionsRouter from "./group-reflections";
 
@@ -145,6 +146,7 @@ router.use(newsletterRouter);
 router.use(adminMetricsRouter);
 router.use(meetupsRouter);
 router.use(cacRouter);
+router.use(lectionaryRouter);
 router.use(ncmpRouter);
 router.use(groupReflectionsRouter);
 
