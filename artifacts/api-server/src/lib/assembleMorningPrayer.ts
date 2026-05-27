@@ -120,6 +120,28 @@ const SPANISH_OVERRIDES: Record<string, keyof typeof PRAYERS> = {
   prayer_for_mission_1: "prayer_for_mission_1",
   prayer_for_mission_2: "prayer_for_mission_2",
   prayer_for_mission_3: "prayer_for_mission_3",
+  // Canticles — the most-prayed ones get Spanish text. Anything not
+  // listed here falls back to the English bcp_texts row (8+ canticle
+  // rows are seeded; only the ones below have LOC translations
+  // available so far).
+  canticle_15: "canticle_15",
+  canticle_16: "canticle_16",
+  canticle_18: "canticle_18",
+  canticle_19: "canticle_19",
+  canticle_20: "canticle_20",
+  canticle_21: "canticle_21",
+  // Opening sentences — coverage of the most-cited per season. Other
+  // seeded sentences (~30 rows) keep their English content until a
+  // dedicated Spanish seed pass lands.
+  opening_sentence_advent_1: "opening_sentence_advent_1",
+  opening_sentence_advent_3: "opening_sentence_advent_3",
+  opening_sentence_christmas_1: "opening_sentence_christmas_1",
+  opening_sentence_epiphany_1: "opening_sentence_epiphany_1",
+  opening_sentence_lent_1: "opening_sentence_lent_1",
+  opening_sentence_easter_1: "opening_sentence_easter_1",
+  opening_sentence_trinity_1: "opening_sentence_trinity_1",
+  opening_sentence_anytime_4: "opening_sentence_anytime_4",
+  opening_sentence_evening_1: "opening_sentence_evening_1",
 };
 
 function startOfDay(d: Date): Date {
@@ -596,7 +618,7 @@ export async function assembleMorningPrayer(
   // in the chrome's reference label, so the office begins with the
   // BCP's actual first element: the seasonal Opening Sentence.
   slides.push(
-    slide(id(), "opening_sentence", "📖", pick(locale, EYEBROWS.opening_sentence), getText(openingSentenceKey), {
+    slide(id(), "opening_sentence", "📖", pick(locale, EYEBROWS.opening_sentence), localized(openingSentenceKey), {
       bcpReference: "BCP p. 75",
     }),
   );
@@ -882,7 +904,7 @@ export async function assembleMorningPrayer(
   pushCanticle(slides, {
     id,
     canticleKey: afterOT,
-    text: getText(afterOT),
+    text: localized(afterOT),
     emoji: CANTICLE_EMOJI[afterOT] ?? "🌟",
     title: afterOTData?.title ?? null,
     bcpReference: afterOTData?.bcpReference ?? null,
@@ -902,7 +924,7 @@ export async function assembleMorningPrayer(
   pushCanticle(slides, {
     id,
     canticleKey: afterNT,
-    text: getText(afterNT),
+    text: localized(afterNT),
     emoji: CANTICLE_EMOJI[afterNT] ?? "🌟",
     title: afterNTData?.title ?? null,
     bcpReference: afterNTData?.bcpReference ?? null,

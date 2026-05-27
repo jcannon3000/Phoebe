@@ -46,6 +46,27 @@ const SPANISH_OVERRIDES: Record<string, keyof typeof PRAYERS> = {
   prayer_for_mission_2: "prayer_for_mission_2",
   prayer_for_mission_3: "prayer_for_mission_3",
   phos_hilaron: "phos_hilaron",
+  // Canticles — Magnificat (15) is the most-prayed EP canticle, but
+  // the EP rubric allows any post-OT canticle to swap in, so cover
+  // the full evening-eligible set we have Spanish text for.
+  canticle_15: "canticle_15",
+  canticle_16: "canticle_16",
+  canticle_18: "canticle_18",
+  canticle_19: "canticle_19",
+  canticle_20: "canticle_20",
+  canticle_21: "canticle_21",
+  // Opening sentences — same set as MP. The seasonal opener at EP is
+  // selected from the same bcp_texts rows, just keyed off the
+  // evening sentinel set.
+  opening_sentence_advent_1: "opening_sentence_advent_1",
+  opening_sentence_advent_3: "opening_sentence_advent_3",
+  opening_sentence_christmas_1: "opening_sentence_christmas_1",
+  opening_sentence_epiphany_1: "opening_sentence_epiphany_1",
+  opening_sentence_lent_1: "opening_sentence_lent_1",
+  opening_sentence_easter_1: "opening_sentence_easter_1",
+  opening_sentence_trinity_1: "opening_sentence_trinity_1",
+  opening_sentence_anytime_4: "opening_sentence_anytime_4",
+  opening_sentence_evening_1: "opening_sentence_evening_1",
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -283,7 +304,7 @@ export async function assembleEveningPrayer(
   //    reference label, so EP begins with the BCP's actual first
   //    element: the seasonal Opening Sentence.
   slides.push(
-    slide(id(), "opening_sentence", "📖", pick(locale, EYEBROWS.opening_sentence), getText(openingSentenceKey), {
+    slide(id(), "opening_sentence", "📖", pick(locale, EYEBROWS.opening_sentence), localized(openingSentenceKey), {
       bcpReference: "BCP p. 115",
     }),
   );
@@ -472,14 +493,15 @@ export async function assembleEveningPrayer(
   // Long canticles get a title slide + 4-verse-per-slide chunking;
   // short ones (≤4 verses, e.g. Nunc Dimittis) ship as a single slide.
   const afterNTData = getTextData(afterNT);
+  const afterNTBody = localized(afterNT);
   const epEyebrow = afterNTData.title.toUpperCase();
   const epEmoji = CANTICLE_EMOJI[afterNT] ?? "🌟";
   const numMatch = afterNT.match(/canticle_(\d+)/);
   const epHeadlineNum = numMatch ? `Canticle ${numMatch[1]}` : afterNTData.title;
-  const { verses: epVerseCount, chunks: epChunks } = splitCanticleIntoChunks(afterNTData.content, 4);
+  const { verses: epVerseCount, chunks: epChunks } = splitCanticleIntoChunks(afterNTBody, 4);
   if (epVerseCount <= 4) {
     slides.push(
-      slide(id(), "canticle", epEmoji, epEyebrow, afterNTData.content, {
+      slide(id(), "canticle", epEmoji, epEyebrow, afterNTBody, {
         title: afterNTData.title,
         bcpReference: afterNTData.bcpReference,
       }),
