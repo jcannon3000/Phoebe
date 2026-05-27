@@ -151,21 +151,29 @@ export const BCP_COLLECTS: BcpCollect[] = [
     category: "Daily Devotions",
     title: "In the Early Morning",
     text: "O God, the King eternal, who divides the day from the night and turns the shadow of death into the morning: Drive far from us all wrong desires, incline our hearts to keep your law, and guide our feet into the way of peace; that, having done your will with cheerfulness while it was day, we may, when night comes, rejoice to give you thanks; through Jesus Christ our Lord. Amen.",
+    titleEs: "Al Despuntar el Día",
+    textEs: "Oh Dios, Rey eterno, que separas el día de la noche y vuelves en mañana la sombra de muerte: Aleja de nosotros todo mal deseo, inclina nuestros corazones a guardar tu ley, y guía nuestros pasos por el camino de la paz; para que, habiendo hecho tu voluntad con alegría mientras era de día, nos regocijemos al darte gracias cuando llegue la noche; por Jesucristo nuestro Señor. Amén.",
   },
   {
     category: "Daily Devotions",
     title: "At Noon",
     text: "Blessed Savior, at this hour you hung upon the cross, stretching out your loving arms: Grant that all the peoples of the earth may look to you and be saved; for your tender mercies' sake. Amen.",
+    titleEs: "Al Mediodía",
+    textEs: "Bendito Salvador, a esta hora estuviste pendiente de la cruz, extendiendo tus brazos amorosos: Concede que todos los pueblos de la tierra te miren y sean salvos; por tus tiernas misericordias. Amén.",
   },
   {
     category: "Daily Devotions",
     title: "In the Early Evening",
     text: "Lord Jesus Christ, you stretched out your arms of love on the hard wood of the cross that everyone might come within the reach of your saving embrace: So clothe us in your Spirit that we, reaching forth our hands in love, may bring those who do not know you to the knowledge and love of you; for the honor of your Name. Amen.",
+    titleEs: "Al Caer la Tarde",
+    textEs: "Señor Jesucristo, extendiste tus brazos de amor sobre el duro madero de la cruz para que todos pudieran venir al alcance de tu abrazo salvador: Revístenos de tal modo con tu Espíritu, que, extendiendo nuestras manos en amor, llevemos a quienes no te conocen al conocimiento y amor de ti; por el honor de tu Nombre. Amén.",
   },
   {
     category: "Daily Devotions",
     title: "At the Close of Day",
     text: "Visit this place, O Lord, and drive far from it all snares of the enemy; let your holy angels dwell with us to preserve us in peace; and let your blessing be upon us always; through Jesus Christ our Lord. Amen.",
+    titleEs: "Al Cierre del Día",
+    textEs: "Visita este lugar, oh Señor, y aleja de él todas las asechanzas del enemigo; que tus santos ángeles habiten con nosotros para preservarnos en paz; y que tu bendición sea siempre sobre nosotros; por Jesucristo nuestro Señor. Amén.",
   },
 
   // ── Other Loved Collects ──────────────────────────────────────────
@@ -173,16 +181,22 @@ export const BCP_COLLECTS: BcpCollect[] = [
     category: "Other Loved Collects",
     title: "The Collect for Purity",
     text: "Almighty God, to you all hearts are open, all desires known, and from you no secrets are hid: Cleanse the thoughts of our hearts by the inspiration of your Holy Spirit, that we may perfectly love you, and worthily magnify your holy Name; through Christ our Lord. Amen.",
+    titleEs: "La Colecta por la Pureza",
+    textEs: "Dios omnipotente, para quien todos los corazones están manifiestos, todos los deseos conocidos, y a quien ningún secreto es oculto: Purifica los pensamientos de nuestros corazones por la inspiración de tu Espíritu Santo, para que perfectamente te amemos y dignamente engrandezcamos tu santo Nombre; por Cristo nuestro Señor. Amén.",
   },
   {
     category: "Other Loved Collects",
     title: "The General Thanksgiving",
     text: "Almighty God, Father of all mercies, we your unworthy servants give you humble thanks for all your goodness and loving-kindness to us and to all whom you have made. We bless you for our creation, preservation, and all the blessings of this life; but above all for your immeasurable love in the redemption of the world by our Lord Jesus Christ; for the means of grace, and for the hope of glory. And, we pray, give us such an awareness of your mercies, that with truly thankful hearts we may show forth your praise, not only with our lips, but in our lives, by giving up ourselves to your service, and by walking before you in holiness and righteousness all our days; through Jesus Christ our Lord, to whom, with you and the Holy Spirit, be honor and glory throughout all ages. Amen.",
+    titleEs: "Acción de Gracias General",
+    textEs: "Dios omnipotente, Padre de todas las misericordias, nosotros, indignos siervos tuyos, te damos humildes gracias por toda tu bondad y amorosa benignidad para con nosotros y para con todos los que has creado. Te bendecimos por nuestra creación, preservación y todas las bendiciones de esta vida; pero sobre todo por tu inconmensurable amor en la redención del mundo por nuestro Señor Jesucristo; por los medios de gracia y por la esperanza de gloria. Y te rogamos que nos des tal conciencia de tus misericordias, que con corazones verdaderamente agradecidos manifestemos tu alabanza, no sólo con nuestros labios, sino con nuestras vidas, entregándonos a tu servicio, y caminando delante de ti en santidad y justicia todos nuestros días; por Jesucristo nuestro Señor, a quien, contigo y el Espíritu Santo, sea honor y gloria por los siglos de los siglos. Amén.",
   },
   {
     category: "Other Loved Collects",
     title: "A Prayer of St. Chrysostom",
     text: "Almighty God, you have given us grace at this time with one accord to make our common supplication to you; and you have promised through your well-beloved Son that when two or three are gathered together in his Name you will be in the midst of them: Fulfill now, O Lord, our desires and petitions as may be best for us; granting us in this world knowledge of your truth, and in the age to come life everlasting. Amen.",
+    titleEs: "Oración de San Crisóstomo",
+    textEs: "Dios omnipotente, nos has dado en este momento la gracia de hacerte unánimemente nuestra súplica común; y has prometido por tu Hijo muy amado que cuando dos o tres se reúnan en su Nombre, tú estarás en medio de ellos: Cumple ahora, oh Señor, nuestros deseos y peticiones del modo que más nos convenga; concediéndonos en este mundo el conocimiento de tu verdad, y en el venidero la vida eterna. Amén.",
   },
 ];
 
