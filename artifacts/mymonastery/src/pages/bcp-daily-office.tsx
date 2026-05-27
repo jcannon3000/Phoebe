@@ -2606,18 +2606,12 @@ export default function BcpDailyOfficePage() {
             <button
               type="button"
               onClick={() => {
-                const url = ncmpMeta?.url ?? "https://www.youtube.com/playlist?list=PL1nLVw6M_fPisN8Gfk_tRsjTXqSexemlK";
-                const now = new Date();
-                const seconds = ncmpMeta?.durationSeconds && ncmpMeta.durationSeconds > 0
-                  ? ncmpMeta.durationSeconds
-                  : 20 * 60;
-                apiRequest("POST", "/api/prayer-sessions", {
-                  surface: "national-cathedral",
-                  durationSeconds: seconds,
-                  startedAt: now.toISOString(),
-                  endedAt: new Date(now.getTime() + seconds * 1000).toISOString(),
-                }).catch(() => { /* non-fatal */ });
-                openExternal(url);
+                // Navigate to the in-app embed page; that page
+                // handles the prayer-session log on mount + renders
+                // the YouTube iframe inline. ncmpMeta stays in scope
+                // because the duration badge below still reads from
+                // it for the chooser-style preview.
+                setViewerLocation("/ncmp/watch");
               }}
               className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
               style={{

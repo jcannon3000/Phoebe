@@ -11,7 +11,7 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
-import { NCMP_URL, getNcmpState } from "@/lib/officePrefs";
+import { getNcmpState } from "@/lib/officePrefs";
 import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, markCacRead,
   FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, markFddRead,
@@ -2679,16 +2679,14 @@ function SsjeHomeCard() {
 // PT user opening at 5 AM local sees the broadcast as "Live in 2 hr"
 // rather than the cathedral's wall-clock 7 AM.
 //
-// Tap opens NCMP_URL (the cathedral's YouTube /live deep link, which
-// auto-redirects to the current livestream during the broadcast
-// window and to the most-recent stream's video page afterward) AND
-// logs a prayer session via /api/prayer-sessions with surface
-// "national-cathedral" + a fixed 20-min duration — the cathedral
-// page is external so we can't observe watch time directly, but
-// engaging with the broadcast should count toward the user's daily
-// prayer tracker. Server's floor-bypass list permits this surface
-// so tap-style logs aren't dropped.
+// Tap navigates to /ncmp/watch (the in-app YouTube iframe wrapper)
+// instead of opening the cathedral's /live page in SFSafariView —
+// the broadcast plays inline under a Phoebe header. The prayer-
+// session log fires on the embed page's mount, so the metrics
+// surface ("national-cathedral") stays identical. Server's floor-
+// bypass list permits this surface so tap-style logs aren't dropped.
 function NcmpHomeCard() {
+  const [, setLocation] = useLocation();
   const state = getNcmpState();
   // Weekends + outside the broadcast window with no recording → no
   // card. The customize-home toggle stays on, but the card just
@@ -2701,20 +2699,11 @@ function NcmpHomeCard() {
         ? `Live in ${state.minutesUntil} min`
         : "Watch today's";
   const onClick = () => {
-    // Best-effort prayer-session log. Fire-and-forget — opening the
-    // cathedral video is what the user wants; the credit is
-    // bookkeeping. 20-minute duration approximates the broadcast.
-    const now = new Date();
-    const startedAt = now.toISOString();
-    const durationSeconds = 20 * 60;
-    const endedAt = new Date(now.getTime() + durationSeconds * 1000).toISOString();
-    apiRequest("POST", "/api/prayer-sessions", {
-      surface: "national-cathedral",
-      durationSeconds,
-      startedAt,
-      endedAt,
-    }).catch(() => { /* non-fatal — don't block the navigation */ });
-    openExternal(NCMP_URL);
+    // Navigation only — the embed page handles the prayer-session
+    // log on mount. Keeping the side effect inside the destination
+    // means we don't double-log when the user retraces via the
+    // prayer-chooser or office picker (which now route the same way).
+    setLocation("/ncmp/watch");
   };
   return (
     <div

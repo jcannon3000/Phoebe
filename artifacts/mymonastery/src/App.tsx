@@ -91,6 +91,7 @@ import LetterSplash from "./pages/Letters/LetterSplash";
 import ForgotPassword from "./pages/forgot-password";
 import ResetPassword from "./pages/reset-password";
 import PrayerChooserPage from "./pages/prayer-chooser";
+import NcmpWatchPage from "./pages/ncmp-watch";
 import GatheringsPage from "./pages/gatherings";
 import GatheringSettings from "./pages/gathering-settings";
 import MomentNew from "./pages/moment-new";
@@ -412,6 +413,7 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/prayer-chooser" component={PrayerChooserPage} />
+      <Route path="/ncmp/watch" component={NcmpWatchPage} />
       <Route path="/dashboard" component={Dashboard} />
       {/* Phoebe Parish — simplified tier. /parish is the dashboard
           for parish-only users; /parish/onboarding is the parish

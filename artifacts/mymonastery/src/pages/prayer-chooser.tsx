@@ -292,21 +292,13 @@ export default function PrayerChooserPage() {
                   role="button"
                   tabIndex={0}
                   onClick={() => {
-                    const url = ncmpMeta?.url ?? "https://www.youtube.com/playlist?list=PL1nLVw6M_fPisN8Gfk_tRsjTXqSexemlK";
-                    // Fire-and-forget prayer-session log — engagement
-                    // event is opening the page; we credit a fixed
-                    // ~20-minute (or actual length if known) duration.
-                    const now = new Date();
-                    const seconds = ncmpMeta?.durationSeconds && ncmpMeta.durationSeconds > 0
-                      ? ncmpMeta.durationSeconds
-                      : 20 * 60;
-                    apiRequest("POST", "/api/prayer-sessions", {
-                      surface: "national-cathedral",
-                      durationSeconds: seconds,
-                      startedAt: now.toISOString(),
-                      endedAt: new Date(now.getTime() + seconds * 1000).toISOString(),
-                    }).catch(() => { /* non-fatal */ });
-                    openExternal(url);
+                    // Navigate to the in-app embed page (/ncmp/watch).
+                    // That page handles the prayer-session log on
+                    // mount + renders the YouTube iframe inline —
+                    // replaces the prior SFSafariView hop. Keeping
+                    // ncmpMeta around because the duration badge
+                    // below still reads from it.
+                    setLocation("/ncmp/watch");
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") (e.currentTarget as HTMLDivElement).click();
