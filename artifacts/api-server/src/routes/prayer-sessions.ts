@@ -56,6 +56,12 @@ const schema = z.object({
   // Office viewer passes it through so metrics can distinguish
   // "actually prayed" (≥3 slides) from "tap-and-bail".
   slidesCompleted: z.number().int().min(0).max(10000).optional(),
+  // Optional per-session visibility. When true the row is hidden from
+  // other users' "who sat with me" lookups. Omitted = public (the
+  // default), which is how every existing surface that hits this
+  // endpoint behaves today; the contemplation summary toggle is the
+  // only caller that sets it.
+  isPrivate: z.boolean().optional(),
 });
 
 router.post("/prayer-sessions", async (req, res): Promise<void> => {
@@ -64,7 +70,7 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
 
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
-  const { surface, durationSeconds, startedAt, endedAt, slidesCompleted } = parsed.data;
+  const { surface, durationSeconds, startedAt, endedAt, slidesCompleted, isPrivate } = parsed.data;
 
   if (!SURFACE_SET.has(surface)) {
     res.status(400).json({ error: "Unknown surface" });
@@ -109,16 +115,20 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
     return;
   }
 
-  await db.insert(prayerSessionsTable).values({
+  const [inserted] = await db.insert(prayerSessionsTable).values({
     userId: sessionUserId,
     surface,
     durationSeconds: capped,
     slidesCompleted: typeof slidesCompleted === "number" ? slidesCompleted : null,
     startedAt: startedAtDate,
     endedAt: endedAtDate,
-  });
+    isPrivate: isPrivate === true,
+  }).returning({ id: prayerSessionsTable.id });
 
-  res.json({ ok: true, recorded: true, durationSeconds: capped });
+  // Return the new row id so the client can PATCH it later (e.g. the
+  // contemplation summary toggle flipping public ↔ private after the
+  // session has been recorded).
+  res.json({ ok: true, recorded: true, durationSeconds: capped, id: inserted?.id ?? null });
 });
 
 // GET /api/me/contemplation-stats — the viewer's own contemplation
@@ -244,6 +254,8 @@ router.get("/me/contemplation-sessions", async (req, res): Promise<void> => {
           .from(prayerSessionsTable)
           .where(and(
             eq(prayerSessionsTable.surface, "contemplation"),
+            // Hide private sessions from anyone else's overlap row.
+            eq(prayerSessionsTable.isPrivate, false),
             inArray(prayerSessionsTable.userId, gardenIds),
             // Only sessions that could overlap the viewer's overall span.
             gt(prayerSessionsTable.endedAt, minStart),
@@ -327,12 +339,14 @@ router.get("/me/contemplation-companions", async (req, res): Promise<void> => {
     // All non-viewer contemplation sessions overlapping the window. We
     // pull userId only — names/avatars come in a separate fetch for the
     // garden subset so we don't drag avatar URLs for the "other" tally
-    // we never display.
+    // we never display. Private sessions are filtered out here so they
+    // never leak into anyone else's companions view.
     const overlapping = await db
       .select({ userId: prayerSessionsTable.userId })
       .from(prayerSessionsTable)
       .where(and(
         eq(prayerSessionsTable.surface, "contemplation"),
+        eq(prayerSessionsTable.isPrivate, false),
         gt(prayerSessionsTable.endedAt, startedAt),
         lt(prayerSessionsTable.startedAt, endedAt),
       ));
@@ -413,6 +427,34 @@ router.post("/me/contemplation-sessions", async (req, res): Promise<void> => {
     res.json({ ok: true, id: created?.id ?? null });
   } catch (err) {
     console.error("[/me/contemplation-sessions POST] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// PATCH /api/me/contemplation-sessions/:id/visibility — flip a sit's
+// is_private flag. Used by the contemplation summary's public/private
+// toggle, which records the sit with an initial value and then PATCHes
+// when the user changes their mind. Scoped to the owner + contemplation
+// surface for the same reason DELETE below is — so it can never touch
+// another user's row or a non-contemplation session.
+router.patch("/me/contemplation-sessions/:id/visibility", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const parsed = z.object({ isPrivate: z.boolean() }).safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
+  try {
+    await db.update(prayerSessionsTable)
+      .set({ isPrivate: parsed.data.isPrivate })
+      .where(and(
+        eq(prayerSessionsTable.id, id),
+        eq(prayerSessionsTable.userId, sessionUserId),
+        eq(prayerSessionsTable.surface, "contemplation"),
+      ));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[/me/contemplation-sessions/:id/visibility PATCH] failed:", err);
     res.status(500).json({ error: "internal_error" });
   }
 });
