@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
 
@@ -21,6 +22,7 @@ export function RequestWordField({
   requestId: number;
   initialWord: string | null;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [word, setWord] = useState<string | null>(initialWord);
   const [draft, setDraft] = useState("");
@@ -60,12 +62,12 @@ export function RequestWordField({
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : String(err);
       const friendly = /closed|expired|answered/i.test(raw)
-        ? "This prayer is closed — can't leave a word."
+        ? t("word_of_comfort.prayer_closed")
         : /unauthorized|401/i.test(raw)
-          ? "Please sign in and try again."
+          ? t("word_of_comfort.sign_in_again")
           : /network|failed to fetch|offline/i.test(raw)
-            ? "No connection — try again in a moment."
-            : "Couldn't send your word. Tap again?";
+            ? t("word_of_comfort.no_connection")
+            : t("word_of_comfort.cant_send");
       setError(friendly);
       console.warn("[RequestWordField] submit failed:", raw);
     } finally {
@@ -132,7 +134,7 @@ export function RequestWordField({
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : String(err);
-      setError("Couldn't remove your word. Tap × to try again.");
+      setError(t("word_of_comfort.couldnt_remove"));
       console.warn("[RequestWordField] delete failed:", raw);
     } finally {
       setSubmitting(false);
@@ -153,7 +155,7 @@ export function RequestWordField({
           className="text-[10px] uppercase tracking-[0.14em] mb-1 pr-7"
           style={{ color: "rgba(143,175,150,0.5)" }}
         >
-          Your word
+          {t("word_of_comfort.your_word")}
         </p>
         <p
           className="text-[14px] italic pr-7"
@@ -164,7 +166,7 @@ export function RequestWordField({
         <button
           onClick={deleteWord}
           disabled={submitting}
-          aria-label="Remove your word"
+          aria-label={t("word_of_comfort.remove_aria")}
           className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-opacity disabled:opacity-30 hover:opacity-80"
           style={{
             background: "rgba(46,107,64,0.18)",
@@ -203,7 +205,7 @@ export function RequestWordField({
             border: `1px solid ${!isPrivate ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.18)"}`,
           }}
         >
-          Public
+          {t("word_of_comfort.public")}
         </button>
         <button
           type="button"
@@ -215,7 +217,7 @@ export function RequestWordField({
             border: `1px solid ${isPrivate ? "rgba(193,154,58,0.45)" : "rgba(46,107,64,0.18)"}`,
           }}
         >
-          🔒 Private
+          {t("word_of_comfort.private")}
         </button>
       </div>
       <div
@@ -251,7 +253,7 @@ export function RequestWordField({
               void submitContent(pending, isPrivate);
             }
           }}
-          placeholder="Leave a word of comfort…"
+          placeholder={t("word_of_comfort.placeholder")}
           maxLength={120}
           className="word-of-comfort-input flex-1 bg-transparent outline-none text-[14px] py-1.5"
           style={{
@@ -266,11 +268,11 @@ export function RequestWordField({
         <button
           onClick={submit}
           disabled={!draft.trim() || submitting}
-          aria-label="Send word"
+          aria-label={t("word_of_comfort.send_aria")}
           className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-opacity disabled:opacity-30"
           style={{ background: "#2D5E3F", color: "#F0EDE6" }}
         >
-          {submitting ? "…" : "→"}
+          {submitting ? t("word_of_comfort.sending_dots") : t("word_of_comfort.send_arrow")}
         </button>
       </div>
       {error && (
