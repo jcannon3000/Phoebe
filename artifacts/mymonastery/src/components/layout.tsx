@@ -344,19 +344,21 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 Practices and Resources group their members; Letters shows
                 when the viewer has access. */}
             <div className="px-5 py-4 space-y-1" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-              {/* Daily Offices — the 4 liturgies live behind one picker. */}
-              <MenuRow emoji="🌅" label={t("menu.daily_offices")} onClick={() => navigate("/bcp/daily-office")} />
               <MenuSection emoji="🕯️" label={t("menu.practices")}>
                 <MenuRow emoji="🕯️" label={t("menu.contemplation")} onClick={() => navigate("/contemplation")} />
                 <MenuRow emoji="🌾" label={t("menu.gratitude")} onClick={() => navigate("/gratitude")} />
                 <MenuRow emoji="🤔" label={t("menu.examen")} onClick={() => navigate("/examen")} />
               </MenuSection>
-              {/* Book of Common Prayer — the prayer-book texts (Phoebe-
-                  authored surfaces, all in-app). Split off from the
-                  former monolithic "Resources" section so users can
-                  see the canon clearly without scrolling past the
-                  external reflection feeds. */}
+              {/* Book of Common Prayer — Phoebe-authored prayer-book
+                  surfaces, all in-app. Daily Offices sits at the top
+                  because the four liturgies are the primary entry
+                  point users come back to; Prayers / Psalter /
+                  Collects are reference texts they reach for less
+                  often. The "BCP" prefix on the child labels is
+                  redundant now that they live inside the BCP
+                  section, so the i18n strings drop it. */}
               <MenuSection emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })}>
+                <MenuRow emoji="🌅" label={t("menu.daily_offices")} onClick={() => navigate("/bcp/daily-office")} />
                 <MenuRow emoji="📖" label={t("menu.bcp_prayers")} onClick={() => navigate("/bcp/intercessions")} />
                 <MenuRow emoji="📜" label={t("menu.psalter")} onClick={() => navigate("/bcp/psalter")} />
                 <MenuRow emoji="🙏" label={t("menu.bcp_collects")} onClick={() => navigate("/bcp/collects")} />
