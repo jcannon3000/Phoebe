@@ -7,6 +7,7 @@ import passport from "passport";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { initSentry, captureError } from "./lib/sentry";
+import { buildCsrfMiddleware } from "./lib/csrf";
 
 // Initialize Sentry before any Express middleware so errors in cold-
 // start code (DB connect, session store wiring, route registration)
@@ -102,6 +103,14 @@ app.use(cors({
   },
   credentials: true,
 }));
+
+// CSRF guard: rejects state-changing requests whose Origin (or
+// Referer fallback) isn't in the allowlist. Sits alongside CORS — CORS
+// covers fetch/XHR, this covers cross-origin <form action="…"
+// method="POST"> which CORS waves through as a "simple request."
+// Method-gated to POST/PUT/PATCH/DELETE; GET/HEAD/OPTIONS pass
+// untouched. Same allowedOrigins set as CORS so the two stay in sync.
+app.use(buildCsrfMiddleware(allowedOrigins));
 
 // Baseline security headers (defense-in-depth). No Content-Security-
 // Policy here — the SPA leans on inline styles, and a default CSP would
