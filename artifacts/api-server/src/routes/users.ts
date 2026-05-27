@@ -278,6 +278,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
         morningTime: usersTable.parishOfficeMorningTime,
         eveningTime: usersTable.parishOfficeEveningTime,
         showConfession: usersTable.bcpShowConfession,
+        defaultPrayerLevel: usersTable.defaultPrayerLevel,
       })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
@@ -355,6 +356,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
       morningTime: u?.morningTime ?? null,
       eveningTime: u?.eveningTime ?? null,
       showConfession: u?.showConfession ?? false,
+      defaultPrayerLevel: u?.defaultPrayerLevel ?? "devotion",
       lastPrayedMorning,
       lastPrayedEvening,
       officeStreak,
@@ -389,6 +391,12 @@ router.put("/me/office-prefs", async (req, res): Promise<void> => {
   }
   if (typeof body.showConfession === "boolean") {
     update.bcpShowConfession = body.showConfession;
+  }
+  // Default prayer level — Settings picker. Strict allowlist so an
+  // arbitrary string can't be written.
+  const allowedLevels = new Set(["devotion", "office", "intercessions"]);
+  if (typeof body.defaultPrayerLevel === "string" && allowedLevels.has(body.defaultPrayerLevel)) {
+    update.defaultPrayerLevel = body.defaultPrayerLevel;
   }
   if (Object.keys(update).length === 0) { res.json({ ok: true }); return; }
   try {

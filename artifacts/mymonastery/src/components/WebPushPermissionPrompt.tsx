@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -34,6 +35,7 @@ import { isNativeShell } from "@/lib/isNativeShell";
  */
 export function WebPushPermissionPrompt() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [show, setShow] = useState(false);
   const [working, setWorking] = useState(false);
 
@@ -145,7 +147,7 @@ export function WebPushPermissionPrompt() {
           letterSpacing: "-0.01em",
         }}
       >
-        Get a daily prayer reminder
+        {t("web_push_prompt.title")}
       </p>
       <p
         style={{
@@ -155,8 +157,7 @@ export function WebPushPermissionPrompt() {
           color: "rgba(200,212,192,0.75)",
         }}
       >
-        We'll send a gentle morning bell — same time every day, in your timezone.
-        You can change the time or turn it off in Settings.
+        {t("web_push_prompt.body")}
       </p>
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
         <button
@@ -173,7 +174,7 @@ export function WebPushPermissionPrompt() {
             fontFamily: "inherit",
           }}
         >
-          Not now
+          {t("desktop_prompt.not_now")}
         </button>
         <button
           type="button"
@@ -192,7 +193,7 @@ export function WebPushPermissionPrompt() {
             fontFamily: "inherit",
           }}
         >
-          {working ? "Enabling…" : "Enable reminders"}
+          {working ? t("web_push_prompt.enabling") : t("web_push_prompt.enable")}
         </button>
       </div>
     </div>

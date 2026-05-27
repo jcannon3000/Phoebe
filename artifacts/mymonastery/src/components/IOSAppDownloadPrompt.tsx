@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
 
@@ -51,6 +52,7 @@ function isIOSWeb(): boolean {
 
 export function IOSAppDownloadPrompt() {
   const { user, isLoading } = useAuth();
+  const { t } = useTranslation();
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -80,7 +82,7 @@ export function IOSAppDownloadPrompt() {
         animation: "phoebe-ios-prompt-slide 360ms ease-out",
       }}
       role="dialog"
-      aria-label="Download the Phoebe app"
+      aria-label={t("ios_prompt.aria_label")}
     >
       <style>{`
         @keyframes phoebe-ios-prompt-slide {
@@ -107,13 +109,13 @@ export function IOSAppDownloadPrompt() {
             className="text-[14px] font-semibold leading-tight"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            Get the Phoebe app
+            {t("ios_prompt.title")}
           </p>
           <p
             className="text-[12px] mt-0.5 leading-snug"
             style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            Daily prayer notifications, smoother slideshow.
+            {t("ios_prompt.body")}
           </p>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0 self-center">
@@ -129,7 +131,7 @@ export function IOSAppDownloadPrompt() {
             className="text-[12px] font-semibold rounded-full px-3.5 py-1.5 whitespace-nowrap"
             style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            Download
+            {t("ios_prompt.download")}
           </a>
           <button
             type="button"
@@ -137,7 +139,7 @@ export function IOSAppDownloadPrompt() {
             className="text-[10px] uppercase tracking-[0.12em]"
             style={{ color: "rgba(143,175,150,0.55)" }}
           >
-            Not now
+            {t("desktop_prompt.not_now")}
           </button>
         </div>
       </div>

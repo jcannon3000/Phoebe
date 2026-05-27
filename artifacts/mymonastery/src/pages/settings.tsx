@@ -48,12 +48,17 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
 // form. Backed by /api/me/office-prefs which writes to the
 // parish_office_* user columns under the hood.
 type OfficePref = "none" | "office" | "devotion";
+// Default prayer level — Settings picker decides which depth the
+// home-screen office card's CTA jumps to. Mirrors the server-side
+// allowlist in /api/me/office-prefs (PUT).
+type DefaultPrayerLevel = "devotion" | "office" | "intercessions";
 type OfficePrefs = {
   morning: OfficePref;
   evening: OfficePref;
   morningTime: string | null;
   eveningTime: string | null;
   showConfession?: boolean;
+  defaultPrayerLevel?: DefaultPrayerLevel;
 };
 
 // Small inline row used by OfficeReminderSettings. Renders a labeled
@@ -322,6 +327,88 @@ function NotificationsSettings() {
                     {opt.sub}
                   </p>
                 )}
+              </div>
+            </button>
+          );
+        })}
+      </SettingsCard>
+    </>
+  );
+}
+
+// ── DefaultPrayerLevelSettings ─────────────────────────────────────────────
+// Three-way radio for which depth the home-screen office card's "Begin
+// prayer" CTA drops the user into. Mirrors the visual rhythm of the
+// OfficeReminderSettings options below. Shares the same /api/me/office-prefs
+// endpoint so the picker save is a single round-trip with the rest of
+// the office prefs.
+function DefaultPrayerLevelSettings() {
+  const queryClient = useQueryClient();
+  const { data } = useQuery<OfficePrefs>({
+    queryKey: ["/api/me/office-prefs"],
+    queryFn: () => apiRequest("GET", "/api/me/office-prefs") as Promise<OfficePrefs>,
+  });
+  const save = useMutation({
+    mutationFn: (patch: Partial<OfficePrefs>) =>
+      apiRequest("PUT", "/api/me/office-prefs", patch),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/me/office-prefs"] }),
+  });
+  const value: DefaultPrayerLevel = data?.defaultPrayerLevel ?? "devotion";
+
+  const options: Array<{ value: DefaultPrayerLevel; label: string; sub: string }> = [
+    {
+      value: "devotion",
+      label: "Daily Devotion",
+      sub: "Short BCP form — gentle daily rhythm",
+    },
+    {
+      value: "office",
+      label: "Daily Office",
+      sub: "Full Morning or Evening Prayer",
+    },
+    {
+      value: "intercessions",
+      label: "Community Intercessions",
+      sub: "Your prayer list slideshow",
+    },
+  ];
+
+  return (
+    <>
+      <SectionHeader label="Default prayer" />
+      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+        When you tap "Begin prayer" on the home screen, this is where you'll land. You can still jump to the other depths from inside the prayer.
+      </p>
+      <SettingsCard>
+        {options.map((opt, i) => {
+          const isSelected = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => save.mutate({ defaultPrayerLevel: opt.value })}
+              className="w-full flex items-center gap-3 py-2.5 text-left"
+              style={{
+                borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)",
+                background: "transparent",
+                cursor: "pointer",
+              }}
+            >
+              <div
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+                  background: isSelected ? "#A8C5A0" : "transparent",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                  {opt.label}
+                </p>
+                <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+                  {opt.sub}
+                </p>
               </div>
             </button>
           );
@@ -1357,6 +1444,13 @@ export default function SettingsPage() {
             </button>
           </SettingsCard>
         </div>
+
+        {/* ── Default prayer depth ──
+            Picker for which of the three depths the home-screen
+            "Begin prayer" CTA jumps into. Sits right above the
+            reminder settings since both groups read as "how you
+            engage with the office." */}
+        <DefaultPrayerLevelSettings />
 
         {/* ── Office reminders ── */}
         <OfficeReminderSettings />

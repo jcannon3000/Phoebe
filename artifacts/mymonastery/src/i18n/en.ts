@@ -466,6 +466,28 @@ export const en = {
     get_app: "Get the app →",
     not_now: "Not now",
   },
+  // iOS-on-mobile-web download prompt (components/IOSAppDownloadPrompt.tsx).
+  // Visible only when a signed-in user opens Phoebe on iOS Safari /
+  // Chrome (not inside the Capacitor shell). Mirrors the existing
+  // `ios_download_prompt` block — kept under its own key because that
+  // older block is referenced elsewhere too and we don't want to break
+  // it. (The fallback chain pulls from this one first; if a future
+  // page wants the legacy text, it can still reach for that block.)
+  ios_prompt: {
+    aria_label: "Download the Phoebe app",
+    title: "Get the Phoebe app",
+    body: "Daily prayer notifications, smoother slideshow.",
+    download: "Download",
+  },
+  // Web push permission prompt (components/WebPushPermissionPrompt.tsx).
+  // The pre-frame banner shown to signed-in web users before the
+  // browser's native notification dialog fires.
+  web_push_prompt: {
+    title: "Get a daily prayer reminder",
+    body: "We'll send a gentle morning bell — same time every day, in your timezone. You can change the time or turn it off in Settings.",
+    enable: "Enable reminders",
+    enabling: "Enabling…",
+  },
   // Network banner (components/NetworkBanner.tsx) — top-of-app banner
   // for offline + flaky connectivity states.
   network: {

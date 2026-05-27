@@ -2835,7 +2835,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
   if (compact) {
     const title = isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙";
     return (
-      <Link href="/prayer-chooser" className="block">
+      <Link href={ctaHref} className="block">
         <div
           role="button"
           tabIndex={0}

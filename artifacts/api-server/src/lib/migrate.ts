@@ -1644,6 +1644,15 @@ export async function migrate() {
       ON group_reflection_comments (reflection_id, created_at)
     `);
 
+    // ── Sunday service reflections (beta) ────────────────────────────────
+    // Per-group flag + last-notified stamp. Reuses the existing
+    // group_reflections + group_reflection_comments tables — Sunday
+    // reflections are stored with source='sunday' and
+    // reflection_date = the Sunday of the service week, so a member's
+    // upsert during the week edits in place.
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS sunday_reflections_enabled BOOLEAN NOT NULL DEFAULT FALSE`);
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS sunday_reflection_notified_at TIMESTAMPTZ`);
+
     // Backfill: every existing climate-enrolled user gets a subscription
     // to phoebe-climate so they pick up feed-scoped intercessions on
     // their dashboard and slideshow without a manual opt-in step.
@@ -1938,6 +1947,15 @@ export async function migrate() {
     //      we're trying to serve.
     await run(client, `ALTER TABLE users ALTER COLUMN bcp_show_confession SET DEFAULT TRUE`);
     await run(client, `UPDATE users SET bcp_show_confession = TRUE WHERE bcp_show_confession = FALSE`);
+
+    // Default prayer level — Settings picker decides which depth the
+    // home-screen office card's CTA jumps to. Values: "devotion" (BCP
+    // short form, the established default), "office" (full Morning/
+    // Evening Prayer), or "intercessions" (the community prayer-mode
+    // slideshow). Existing users inherit "devotion" via the column
+    // default so behavior is unchanged until they opt into a different
+    // level.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS default_prayer_level TEXT NOT NULL DEFAULT 'devotion'`);
 
     // Verify shared_moments columns exist
     const colCheck = await client.query(`

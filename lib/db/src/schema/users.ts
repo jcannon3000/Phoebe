@@ -105,6 +105,18 @@ export const usersTable = pgTable("users", {
   // Opening Sentence. (Migration at the bottom of migrate.ts flips both
   // the default and existing rows from FALSE to TRUE.)
   bcpShowConfession: boolean("bcp_show_confession").notNull().default(true),
+  // The user's preferred default prayer "depth" — drives where the
+  // home-screen office card's CTA sends them when they tap "Begin
+  // prayer." Settings has a picker that writes this column. Values:
+  //   "devotion"      — Daily Devotion (BCP short form). DEFAULT.
+  //   "office"        — Full Morning/Evening Prayer (BCP long form).
+  //   "intercessions" — Community Intercessions slideshow (/prayer-mode).
+  // Other surfaces (the chooser screen, the office's first-slide
+  // skip-pills) stay available; this just picks which one the home
+  // card jumps to in a single tap. Defaults to "devotion" — the
+  // gentler entry point that's been the implicit default on the home
+  // card since we removed the chooser intermediary.
+  defaultPrayerLevel: text("default_prayer_level").notNull().default("devotion"),
   // ── Phoebe Parish: office reminder preferences ───────────────────────────
   // Each side of the day picks one of three values:
   //   "none"     — do not push at the morning/evening reminder hour

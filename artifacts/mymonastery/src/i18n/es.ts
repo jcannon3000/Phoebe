@@ -454,6 +454,18 @@ export const es: Translations = {
     get_app: "Obtener la app →",
     not_now: "Ahora no",
   },
+  ios_prompt: {
+    aria_label: "Descarga la app de Phoebe",
+    title: "Obtén la app de Phoebe",
+    body: "Notificaciones diarias de oración, presentación más fluida.",
+    download: "Descargar",
+  },
+  web_push_prompt: {
+    title: "Recibe un recordatorio diario de oración",
+    body: "Te enviaremos una campana suave por la mañana — a la misma hora todos los días, en tu zona horaria. Puedes cambiar la hora o desactivarlo en Ajustes.",
+    enable: "Activar recordatorios",
+    enabling: "Activando…",
+  },
   network: {
     offline: "📡 Estás sin conexión. Algunas cosas pueden no cargar hasta que vuelvas a conectarte.",
     flaky: "📡 Tenemos problemas para alcanzar el servidor. Si estás en Wi-Fi público, toca para aceptar los términos del portal, o prueba con datos móviles.",
