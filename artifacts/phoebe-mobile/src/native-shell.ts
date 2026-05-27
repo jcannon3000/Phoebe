@@ -324,6 +324,20 @@ function wireClearNotifications() {
     try {
       const list = await PushNotifications.getDeliveredNotifications();
       const items = list.notifications ?? [];
+
+      // "prayer-request-N" used to be the per-request thread-id, but
+      // it's now collapsed into the shared "prayer-requests" thread
+      // so iOS can stack pending asks into one group on the lock
+      // screen. The per-request identity lives in `data.prayerRequestId`
+      // instead. When a caller asks to clear "prayer-request-42", we
+      // extract the 42 and match against that field. Legacy
+      // notifications sent before the change still carry the
+      // per-request thread-id, so the old match path is kept as a
+      // fallback (no-op for new sends, still works for stale
+      // pre-deploy banners).
+      const requestIdMatch = threadId?.match(/^prayer-request-(\d+)$/);
+      const targetRequestId = requestIdMatch ? Number(requestIdMatch[1]) : null;
+
       // Match against either of the iOS thread fields the plugin
       // surfaces. Different Capacitor versions / iOS releases populate
       // one or the other; matching both is belt-and-suspenders.
@@ -334,7 +348,19 @@ function wireClearNotifications() {
               (anyN["threadIdentifier"] as string | undefined)
               ?? (anyN["thread-id"] as string | undefined)
               ?? ((anyN["data"] as Record<string, unknown> | undefined)?.["thread-id"] as string | undefined);
-            return tid === threadId;
+            if (tid === threadId) return true;
+
+            // Per-request fallback: when targeting "prayer-request-N",
+            // also match notifications whose data carries that id.
+            // Covers the new shared-thread layout where one banner
+            // amongst N stacked siblings needs to be picked out.
+            if (targetRequestId !== null) {
+              const data = anyN["data"] as Record<string, unknown> | undefined;
+              const idFromData = data?.["prayerRequestId"];
+              if (typeof idFromData === "number" && idFromData === targetRequestId) return true;
+              if (typeof idFromData === "string" && Number(idFromData) === targetRequestId) return true;
+            }
+            return false;
           })
         : items;
       if (matches.length === 0) return;

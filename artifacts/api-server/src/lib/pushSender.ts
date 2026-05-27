@@ -112,6 +112,16 @@ export interface PushPayload {
   // user who's gone heads-down still gets the appointed prompt,
   // matching the Duolingo-style "your streak depends on this" feel.
   interruptionLevel?: "passive" | "active" | "time-sensitive";
+  // Arbitrary custom fields merged into the APNs JSON body alongside
+  // `path`, and into the web-push JSON. Read by the native shell when
+  // filtering delivered notifications for removal. Use this when a
+  // group of pushes shares one APNs thread-id (so iOS auto-stacks
+  // them on the lock screen) but each push still needs a per-record
+  // identifier we can target for individual clearing — e.g. all
+  // prayer-request pushes share `thread-id: "prayer-requests"` to
+  // stack, but each carries `data.prayerRequestId` so the per-amen
+  // sweep can remove only the matching banner.
+  data?: Record<string, string | number | boolean>;
 }
 
 interface SendResult {
@@ -302,6 +312,9 @@ async function sendOneWebPush(
     path: payload.path ?? "/",
     tag: payload.collapseId ?? payload.threadId ?? undefined,
     threadId: payload.threadId ?? undefined,
+    // Same merge as the APNs path — keeps web + iOS payloads in sync
+    // for downstream consumers that key off custom fields.
+    ...(payload.data ?? {}),
   });
 
   try {
@@ -377,8 +390,11 @@ async function sendOneApns(deviceToken: string, payload: PushPayload): Promise<A
   const body = JSON.stringify({
     aps: apsPayload,
     // Custom fields below `aps` — read by the native shell's
-    // `pushNotificationActionPerformed` listener to deep-link in-app.
+    // `pushNotificationActionPerformed` listener to deep-link in-app,
+    // and by the clear-notifications matcher to identify which
+    // delivered push to remove (see PushPayload.data).
     ...(payload.path ? { path: payload.path } : {}),
+    ...(payload.data ?? {}),
   });
 
   const headers: Record<string, string> = {
@@ -860,7 +876,21 @@ export async function sendNewPrayerRequestPush(
     body: "Open Phoebe to pray for them.",
     path: `/prayer-requests/${opts.prayerRequestId}`,
     badge,
-    threadId: `prayer-request-${opts.prayerRequestId}`,
+    // Shared thread-id across ALL pending prayer-request pushes — iOS
+    // auto-groups same-thread notifications into a single stack on
+    // the lock screen, so a user with three or four unprayed asks
+    // sees one "Phoebe • N notifications" stack instead of N
+    // separate banners. The first one or two still render as full
+    // cards; from the third onward iOS collapses them under the
+    // app's group header. The grouping is automatic — nothing to
+    // configure on the device.
+    threadId: "prayer-requests",
+    // Per-request identifier in the data payload. The shared thread-id
+    // above means the clear-notifications matcher can't use thread-id
+    // alone to identify which delivered banner belongs to which
+    // request — so we carry the id explicitly and the native shell
+    // matches on it (see native-shell.ts wireClearNotifications).
+    data: { prayerRequestId: opts.prayerRequestId },
     collapseId: `new-prayer-request-${opts.prayerRequestId}`,
     sound: PHOEBE_SOUND_MID,
   });
