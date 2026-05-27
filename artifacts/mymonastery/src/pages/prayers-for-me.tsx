@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { ChevronLeft } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -37,6 +38,7 @@ function writeViewedIds(ids: Set<number>) {
 }
 
 export default function PrayersForMePage() {
+  const { t } = useTranslation();
   const { data = [], isLoading } = useQuery<PrayerForMe[]>({
     queryKey: ["/api/prayers-for/for-me"],
     queryFn: () => apiRequest("GET", "/api/prayers-for/for-me"),
@@ -76,17 +78,17 @@ export default function PrayersForMePage() {
           style={{ color: "#8FAF96" }}
         >
           <ChevronLeft size={14} />
-          Back
+          {t("prayers_for_me.back")}
         </Link>
 
         <h1
           className="text-2xl font-bold mb-2"
           style={{ color: "#F0EDE6", letterSpacing: "-0.02em", fontFamily: "'Space Grotesk', sans-serif" }}
         >
-          Prayers for You 🙏🏽
+          {t("prayers_for_me.title")}
         </h1>
         <p className="text-sm mb-6" style={{ color: "rgba(200,212,192,0.6)" }}>
-          People in your community are praying for you.
+          {t("prayers_for_me.subtitle")}
         </p>
 
         {isLoading && (
@@ -103,7 +105,7 @@ export default function PrayersForMePage() {
 
         {!isLoading && data.length === 0 && (
           <p className="text-sm text-center mt-12" style={{ color: "#8FAF96" }}>
-            No active prayers right now. The quiet itself is a gift. 🌿
+            {t("prayers_for_me.empty")}
           </p>
         )}
 
@@ -139,7 +141,7 @@ export default function PrayersForMePage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>
-                          {p.prayerName ?? "Someone"}
+                          {p.prayerName ?? t("prayers_for_me.someone")}
                         </p>
                         <span
                           className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full shrink-0"
@@ -149,7 +151,7 @@ export default function PrayersForMePage() {
                             border: `1px solid ${days <= 1 ? "rgba(217,140,74,0.3)" : "rgba(46,107,64,0.2)"}`,
                           }}
                         >
-                          {days === 0 ? "today" : `${days}d left`}
+                          {days === 0 ? t("prayers_for_me.today") : t("prayers_for_me.days_left", { count: days })}
                         </span>
                       </div>
                       {p.prayerText && (
