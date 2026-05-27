@@ -2710,12 +2710,14 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
     lastPrayedMorning: "office" | "devotion" | null;
     lastPrayedEvening: "office" | "devotion" | null;
     officeStreak: number;
+    defaultPrayerLevel?: "devotion" | "office" | "intercessions";
   }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     staleTime: 60_000,
   });
   const officeStreak = officePrefs?.officeStreak ?? 0;
+  const defaultPrayerLevel = officePrefs?.defaultPrayerLevel ?? "devotion";
 
   const { data: communityPrayedData } = useQuery<{ people: { id: number; name: string; avatarUrl: string | null }[] }>({
     queryKey: ["/api/prayer-streak/community-prayed-week"],
@@ -2800,19 +2802,27 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
     }
   })();
 
-  // CTA goes directly to the side-appropriate Daily Devotion — per
-  // user direction the Devotion is the default depth. The two heavier
-  // alternatives (Community Intercessions, full Daily Office) are
-  // surfaced as pills on the Devotion's first slide; the dashboard
-  // card stays a single sage CTA so the choice doesn't compete here.
-  // The single CTA shows when the user hasn't prayed yet today
-  // ("Begin prayer →"). Once they've prayed something the pill splits
-  // into a side-by-side pair below — a "Prayer completed ✓" status
-  // pill + a "Pray again" action pill — so the win is visible without
-  // losing the way back in. Pray again carries ?reset=1 so the
-  // viewer starts the Devotion fresh rather than resuming.
+  // CTA destination respects the user's Settings → Default prayer
+  // picker. Three levels:
+  //   • devotion      — BCP short form (default; gentle daily rhythm).
+  //   • office        — full Morning/Evening Prayer (BCP long form).
+  //   • intercessions — community prayer-mode slideshow.
+  // Within the chosen surface the alternates remain reachable (first-
+  // slide pills on the Devotion + Office, the dashboard's own
+  // chooser route at /prayer-chooser, etc.); this just picks the
+  // single-tap default. "Pray again" carries ?reset=1 so re-tapping
+  // after a completed pass starts fresh rather than resuming — only
+  // applies to the office/devotion routes (prayer-mode has its own
+  // reset semantics).
   const devotionMode = isMorning ? "morning-devotion" : "early-evening-devotion";
+  const officeModeForLink = isMorning ? "morning" : "evening";
   const devotionHref = `/bcp/daily-devotions?mode=${devotionMode}${prayedToday ? "&reset=1" : ""}`;
+  const officeHref = `/bcp/daily-office?mode=${officeModeForLink}${prayedToday ? "&reset=1" : ""}`;
+  const intercessionsHref = prayedToday ? "/prayer-mode?reset=1" : "/prayer-mode";
+  const ctaHref =
+    defaultPrayerLevel === "office" ? officeHref
+    : defaultPrayerLevel === "intercessions" ? intercessionsHref
+    : devotionHref;
   const ctaCopy = "Begin prayer";
 
   // Compact one-line variant — used when feed-first home promotes a
@@ -2986,7 +2996,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
               >
                 Prayer completed <span aria-hidden>✓</span>
               </div>
-              <Link href={devotionHref} className="flex-1">
+              <Link href={ctaHref} className="flex-1">
                 <div
                   role="button"
                   tabIndex={0}
@@ -3006,7 +3016,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
               </Link>
             </div>
           ) : (
-            <Link href={devotionHref}>
+            <Link href={ctaHref}>
               <div
                 role="button"
                 tabIndex={0}
