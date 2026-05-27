@@ -325,6 +325,104 @@ export const PRAYERS = {
     en: "Lord Jesus Christ, you stretched out your arms of love on the hard wood of the cross\nthat everyone might come within the reach of your saving embrace:\nSo clothe us in your Spirit\nthat we, reaching forth our hands in love,\nmay bring those who do not know you to the knowledge and love of you;\nfor the honor of your Name. Amen.",
     es: "Señor Jesucristo, que extendiste tus brazos de amor sobre el duro madero de la cruz\npara que todos pudieran alcanzar el abrazo de tu salvación:\nRevístenos así de tu Espíritu\nque, extendiendo nuestras manos en amor,\ntraigamos a los que no te conocen al conocimiento y amor tuyos;\npor el honor de tu Nombre. Amén.",
   },
+
+  // ── Canticles ─────────────────────────────────────────────────────
+  // Bilingual versions of the most-prayed BCP canticles. Spanish from
+  // El Libro de Oración Común. The bcp_texts row's English content
+  // stays unchanged; SPANISH_OVERRIDES in each assembler swaps in the
+  // Spanish text below when locale=es.
+
+  // Canticle 15 — Magnificat (Song of Mary). BCP p. 91 / LOC.
+  // Appointed after the NT reading at Evening Prayer almost every
+  // day, so this is the single most-prayed canticle in EP.
+  canticle_15: {
+    en: "My soul proclaims the greatness of the Lord, *\n  my spirit rejoices in God my Savior;\nfor he has looked with favor on his lowly servant. *\n  From this day all generations will call me blessed:\nthe Almighty has done great things for me, *\n  and holy is his Name.\nHe has mercy on those who fear him *\n  in every generation.\nHe has shown the strength of his arm, *\n  he has scattered the proud in their conceit.\nHe has cast down the mighty from their thrones, *\n  and has lifted up the lowly.\nHe has filled the hungry with good things, *\n  and the rich he has sent away empty.\nHe has come to the help of his servant Israel, *\n  for he has remembered his promise of mercy,\nThe promise he made to our fathers, *\n  to Abraham and his children for ever.\n\nGlory to the Father, and to the Son, and to the Holy Spirit: *\n  as it was in the beginning, is now, and will be for ever. Amen.",
+    es: "Mi alma proclama la grandeza del Señor, *\n  mi espíritu se regocija en Dios mi Salvador;\nporque ha mirado con bondad la condición humilde de su sierva. *\n  Desde ahora me llamarán dichosa todas las generaciones,\nporque el Poderoso ha hecho grandes cosas por mí, *\n  y santo es su Nombre.\nSu misericordia llega a sus fieles *\n  de generación en generación.\nÉl hace proezas con su brazo; *\n  dispersa a los soberbios de corazón.\nDerriba a los poderosos de sus tronos, *\n  y enaltece a los humildes;\na los hambrientos los colma de bienes, *\n  y a los ricos los despide vacíos.\nAcoge a Israel, su siervo, *\n  acordándose de la misericordia\n—como lo había prometido a nuestros padres— *\n  en favor de Abrahán y su descendencia para siempre.\n\nGloria al Padre, y al Hijo, y al Espíritu Santo: *\n  como era en el principio, ahora y siempre, por los siglos de los siglos. Amén.",
+  },
+
+  // Canticle 16 — Benedictus (Song of Zechariah). BCP p. 92 / LOC.
+  // Appointed after the NT reading at Morning Prayer almost every
+  // day, so this is the single most-prayed canticle in MP.
+  canticle_16: {
+    en: "Blessed be the Lord, the God of Israel; *\n  he has come to his people and set them free.\nHe has raised up for us a mighty savior, *\n  born of the house of his servant David.\nThrough his holy prophets he promised of old,\n  that he would save us from our enemies, *\n  from the hands of all who hate us.\nHe promised to show mercy to our fathers *\n  and to remember his holy covenant.\nThis was the oath he swore to our father Abraham, *\n  to set us free from the hands of our enemies,\nFree to worship him without fear, *\n  holy and righteous in his sight\n  all the days of our life.\nYou, my child, shall be called the prophet of the Most High, *\n  for you will go before the Lord to prepare his way,\nTo give his people knowledge of salvation *\n  by the forgiveness of their sins.\nIn the tender compassion of our God *\n  the dawn from on high shall break upon us,\nTo shine on those who dwell in darkness and the shadow of death, *\n  and to guide our feet into the way of peace.",
+    es: "Bendito sea el Señor, Dios de Israel; *\n  porque ha visitado a su pueblo y le ha redimido.\nNos ha suscitado una fuerza de salvación *\n  en la casa de su siervo David,\ncomo lo había prometido desde antiguo *\n  por boca de sus santos profetas,\npara librarnos de nuestros enemigos *\n  y de la mano de todos los que nos aborrecen;\npara hacer misericordia a nuestros padres, *\n  y acordarse de su santa alianza,\ndel juramento que juró a nuestro padre Abrahán *\n  de concedernos que, libres de temor,\n  arrancados de la mano de los enemigos,\nle sirvamos con santidad y justicia, *\n  en su presencia, todos nuestros días.\nY a ti, niño, te llamarán profeta del Altísimo, *\n  porque irás delante del Señor a preparar sus caminos,\nanunciando a su pueblo la salvación, *\n  el perdón de sus pecados.\nPor la entrañable misericordia de nuestro Dios, *\n  nos visitará el sol que nace de lo alto,\npara iluminar a los que viven en tinieblas y sombra de muerte, *\n  para guiar nuestros pasos por el camino de la paz.",
+  },
+
+  // Canticle 18 — A Song to the Lamb (Dignus es). BCP p. 93 / LOC.
+  canticle_18: {
+    en: "Splendor and honor and kingly power *\n  are yours by right, O Lord our God,\nFor you created everything that is, *\n  and by your will they were created and have their being;\nAnd yours by right, O Lamb that was slain, *\n  for with your blood you have redeemed for God,\nFrom every family, language, people, and nation, *\n  a kingdom of priests to serve our God.\nAnd so, to him who sits upon the throne, *\n  and to Christ the Lamb,\nBe worship and praise, dominion and splendor, *\n  for ever and for ever more.",
+    es: "Esplendor y honra y reino *\n  por derecho son tuyos, Señor Dios nuestro,\nporque tú creaste todas las cosas, *\n  y por tu voluntad fueron creadas y existen.\nY digno por derecho eres tú, Cordero que fuiste inmolado, *\n  porque con tu sangre redimiste para Dios,\nde toda familia, lengua, pueblo y nación, *\n  un reino de sacerdotes para servir a nuestro Dios.\nY así, al que está sentado en el trono, *\n  y a Cristo el Cordero,\nsea la alabanza y la honra, el dominio y el esplendor, *\n  por los siglos de los siglos.",
+  },
+
+  // Canticle 19 — The Song of the Redeemed (Magna et mirabilia).
+  // BCP p. 94 / LOC.
+  canticle_19: {
+    en: "O ruler of the universe, Lord God,\n  great deeds are they that you have done, *\n  surpassing human understanding.\nYour ways are ways of righteousness and truth, *\n  O King of all the ages.\nWho can fail to do you homage, Lord,\n  and sing the praises of your Name? *\n  for you only are the Holy One.\nAll nations will draw near and fall down before you, *\n  because your just and holy works have been revealed.",
+    es: "Oh Soberano del universo, Señor Dios,\n  grandes son las obras que has hecho, *\n  sobrepasando todo entendimiento humano.\nTus caminos son caminos de justicia y verdad, *\n  oh Rey de todos los siglos.\n¿Quién no te rendirá homenaje, Señor,\n  y cantará las alabanzas de tu Nombre? *\n  pues sólo tú eres el Santo.\nTodas las naciones vendrán y se postrarán delante de ti, *\n  porque tus obras justas y santas han sido reveladas.",
+  },
+
+  // Canticle 20 — Glory to God (Gloria in Excelsis). BCP p. 94 / LOC.
+  canticle_20: {
+    en: "Glory to God in the highest,\n  and peace to his people on earth.\n\nLord God, heavenly King,\nalmighty God and Father,\n  we worship you, we give you thanks,\n  we praise you for your glory.\n\nLord Jesus Christ, only Son of the Father,\nLord God, Lamb of God,\nyou take away the sin of the world:\n  have mercy on us;\nyou are seated at the right hand of the Father:\n  receive our prayer.\n\nFor you alone are the Holy One,\nyou alone are the Lord,\nyou alone are the Most High,\n  Jesus Christ,\n  with the Holy Spirit,\n  in the glory of God the Father. Amen.",
+    es: "Gloria a Dios en lo más alto,\n  y en la tierra paz a su pueblo.\n\nSeñor Dios, Rey celestial,\nDios Padre todopoderoso,\n  te adoramos, te damos gracias,\n  te alabamos por tu gloria.\n\nSeñor Jesucristo, Hijo único del Padre,\nSeñor Dios, Cordero de Dios,\ntú que quitas el pecado del mundo:\n  ten piedad de nosotros;\ntú que estás sentado a la derecha del Padre:\n  recibe nuestra súplica.\n\nPorque sólo tú eres el Santo,\nsólo tú eres el Señor,\nsólo tú el Altísimo,\n  Jesucristo,\n  con el Espíritu Santo,\n  en la gloria de Dios Padre. Amén.",
+  },
+
+  // Canticle 21 — You Are God (Te Deum Laudamus). BCP p. 95 / LOC.
+  canticle_21: {
+    en: "You are God: we praise you;\nYou are the Lord: we acclaim you;\nYou are the eternal Father:\n  All creation worships you.\nTo you all angels, all the powers of heaven,\n  Cherubim and Seraphim, sing in endless praise:\n  Holy, holy, holy Lord, God of power and might,\n  heaven and earth are full of your glory.\nThe glorious company of apostles praise you.\nThe noble fellowship of prophets praise you.\nThe white-robed army of martyrs praise you.\nThroughout the world the holy Church acclaims you;\n  Father, of majesty unbounded,\n  your true and only Son, worthy of all worship,\n  and the Holy Spirit, advocate and guide.\nYou, Christ, are the king of glory,\n  the eternal Son of the Father.\nWhen you became man to set us free\n  you did not shun the Virgin's womb.\nYou overcame the sting of death\n  and opened the kingdom of heaven to all believers.\nYou are seated at God's right hand in glory.\nWe believe that you will come and be our judge.\nCome then, Lord, and help your people,\n  bought with the price of your own blood,\n  and bring us with your saints\n  to glory everlasting.",
+    es: "A ti, oh Dios, te alabamos:\nA ti, Señor, te aclamamos:\nA ti, Padre eterno:\n  toda la creación te adora.\nA ti los ángeles, todas las potestades del cielo,\n  los querubines y serafines, te cantan sin cesar:\n  Santo, santo, santo, Señor Dios de los ejércitos,\n  los cielos y la tierra están llenos de tu gloria.\nTe alaba el glorioso coro de los apóstoles.\nTe alaba la noble compañía de los profetas.\nTe alaba la blanca legión de los mártires.\nA ti te aclama la santa Iglesia extendida por toda la tierra;\n  Padre, de inmensa majestad;\n  tu Hijo único y verdadero, digno de toda adoración,\n  y el Espíritu Santo, defensor y guía.\nTú, oh Cristo, eres Rey de la gloria,\n  Hijo eterno del Padre.\nAl hacerte hombre para librarnos,\n  no rehusaste el seno de la Virgen.\nVencido el aguijón de la muerte,\n  abriste el reino de los cielos a todos los creyentes.\nEstás sentado a la diestra de Dios\n  en la gloria del Padre.\nCreemos que has de venir como juez.\nTe suplicamos, pues, que vengas en ayuda de tu pueblo,\n  a quien redimiste con tu preciosa sangre,\n  y que nos lleves con tus santos\n  a la gloria eterna.",
+  },
+
+  // ── Common Opening Sentences (most-cited per season) ──────────────
+  // BCP pp. 75-78 / LOC. Tag each season's most-quoted sentence so
+  // MP/EP have a sane Spanish opener for every liturgical season
+  // without seeding the full ~30-row Spanish opening-sentence set.
+
+  // Advent — "Behold, your king is coming" (Zech 9:9) is the most-
+  // cited Advent sentence in MP.
+  opening_sentence_advent_1: {
+    en: "Watch, for you do not know when the master of the house will come, in the evening, or at midnight, or at cockcrow, or in the morning; lest he come suddenly and find you asleep. — Mark 13:35,36",
+    es: "Velen, pues, porque no saben cuándo viene el dueño de la casa: al anochecer, a medianoche, al canto del gallo o al amanecer; no sea que llegue de repente y los encuentre dormidos. — Marcos 13:35-36",
+  },
+  opening_sentence_advent_3: {
+    en: "In the wilderness prepare the way of the Lord, make straight in the desert a highway for our God. — Isaiah 40:3",
+    es: "En el desierto preparen el camino del Señor; allanen una calzada en la estepa para nuestro Dios. — Isaías 40:3",
+  },
+  // Christmas
+  opening_sentence_christmas_1: {
+    en: "Behold, I bring you good tidings of great joy, which shall be to all people; for unto you is born this day in the city of David, a Savior, which is Christ the Lord. — Luke 2:10,11",
+    es: "He aquí, les traigo buenas nuevas de gran gozo, que será para todo el pueblo: que les ha nacido hoy, en la ciudad de David, un Salvador, que es Cristo el Señor. — Lucas 2:10-11",
+  },
+  // Epiphany
+  opening_sentence_epiphany_1: {
+    en: "From the rising of the sun to its setting my name is great among the nations, and in every place incense is offered to my name, and a pure offering. — Malachi 1:11",
+    es: "Desde donde sale el sol hasta donde se pone, grande es mi Nombre entre las naciones; y en todo lugar se ofrece a mi Nombre incienso y oblación pura. — Malaquías 1:11",
+  },
+  // Lent
+  opening_sentence_lent_1: {
+    en: "If we say that we have no sin, we deceive ourselves, and the truth is not in us. If we confess our sins, he is faithful and just to forgive us our sins, and to cleanse us from all unrighteousness. — 1 John 1:8,9",
+    es: "Si decimos que no tenemos pecado, nos engañamos a nosotros mismos, y la verdad no está en nosotros. Si confesamos nuestros pecados, él es fiel y justo para perdonarnos los pecados y limpiarnos de toda maldad. — 1 Juan 1:8-9",
+  },
+  // Easter
+  opening_sentence_easter_1: {
+    en: "Alleluia! Christ our Passover has been sacrificed for us; therefore let us keep the feast. Alleluia! — 1 Corinthians 5:7,8",
+    es: "¡Aleluya! Cristo, nuestra Pascua, ya ha sido sacrificado por nosotros; celebremos, pues, la fiesta. ¡Aleluya! — 1 Corintios 5:7-8",
+  },
+  // Trinity / Pentecost
+  opening_sentence_trinity_1: {
+    en: "Holy, holy, holy is the Lord of hosts; the whole earth is full of his glory. — Isaiah 6:3",
+    es: "Santo, santo, santo es el Señor de los ejércitos; toda la tierra está llena de su gloria. — Isaías 6:3",
+  },
+  // Anytime — Hab 2:20, used widely.
+  opening_sentence_anytime_4: {
+    en: "The Lord is in his holy temple; let all the earth keep silence before him. — Habakkuk 2:20",
+    es: "El Señor está en su santo templo; calle ante él toda la tierra. — Habacuc 2:20",
+  },
+  // Evening Prayer — Psalm 141:2 (the classic EP opening).
+  opening_sentence_evening_1: {
+    en: "Let my prayer be set forth in your sight as incense, and let the lifting up of my hands be an evening sacrifice. — Psalm 141:2",
+    es: "Que mi oración suba a tu presencia como incienso, y el levantamiento de mis manos como ofrenda de la tarde. — Salmo 141:2",
+  },
 } as const satisfies Record<string, Bilingual>;
 
 // ── Helpers ─────────────────────────────────────────────────────────

@@ -722,26 +722,33 @@ router.get("/prayer-feeds/subscribed", requireAuth, async (req, res): Promise<vo
   }
 
   // Feeds are a flat ongoing list now — there is no per-day entry, so
-  // the dashboard card previews the feed's newest intercession.
+  // the dashboard card previews the intercession the VIEWER is "due"
+  // next per their personal rotation (least-recently-prayed first,
+  // never-prayed cards leading). Previously we just took `list[0]`,
+  // which was newest-by-createdAt — meaning the card stuck on the
+  // same intercession after the user prayed it until a newer one
+  // landed on the feed. The slideshow path always rotated; this is
+  // the parity fix so the dashboard preview matches.
   const out = subs.map(({ feed }) => {
     const list = byFeed.get(feed.id) ?? [];
-    const newest = list[0] ?? null;
+    const rotated = rotateForUser(list);
+    const upNext = rotated[0] ?? null;
     // Intercessions the viewer has NEVER prayed (no check-in row on
     // any date). Drives the "X New Prayers" pulse on FeedPrayerCard.
     const unprayedCount = list.reduce((n, it) => n + (it.everPrayed ? 0 : 1), 0);
     return {
       feed,
-      todayEntry: newest
+      todayEntry: upNext
         ? {
-            id: newest.id,
+            id: upNext.id,
             entryDate: todayInZone(feed.timezone),
-            title: newest.title,
-            body: newest.body,
+            title: upNext.title,
+            body: upNext.body,
             scriptureRef: null as string | null,
-            prayCount: newest.prayCount,
+            prayCount: upNext.prayCount,
           }
         : null,
-      prayedToday: newest?.prayedToday ?? false,
+      prayedToday: upNext?.prayedToday ?? false,
       weekPrayers: weekPrayersByFeed.get(feed.id) ?? [],
       weekPrayerCount: weekPrayerIdsByFeed.get(feed.id)?.size ?? 0,
       unprayedCount,
