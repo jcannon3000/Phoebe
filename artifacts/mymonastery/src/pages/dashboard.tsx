@@ -15,6 +15,7 @@ import { NCMP_URL, getNcmpState } from "@/lib/officePrefs";
 import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, markCacRead,
   FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, markFddRead,
+  SSJE_TODAY_URL, SSJE_READ_EVENT, hasReadSsjeToday, markSsjeRead,
 } from "@/lib/cacReadState";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
@@ -2609,6 +2610,67 @@ function FddHomeCard() {
   );
 }
 
+// SSJE Words home card. Mirrors CacHomeCard / FddHomeCard: opens
+// web.ssje.org/listen-brother-give-us-a-word externally (their page
+// loads today's word client-side, so the same URL every day works),
+// tracks "read today" in localStorage via the ssje-tracker in
+// lib/cacReadState, and flips the pill to "Read again" once tapped.
+//
+// Warm amber palette (rgba(193,127,36, …)) — matches the SSJE pill in
+// the office closing slide so the visual identity is consistent
+// across surfaces, and stays distinct from the forest-green CAC card
+// and the sea-teal FDD card when all three stack on the home.
+function SsjeHomeCard() {
+  const [hasRead, setHasRead] = useState(() => hasReadSsjeToday());
+  useEffect(() => {
+    const refresh = () => setHasRead(hasReadSsjeToday());
+    window.addEventListener(SSJE_READ_EVENT, refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener(SSJE_READ_EVENT, refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
+  const onClick = () => {
+    markSsjeRead();
+    openExternal(SSJE_TODAY_URL);
+  };
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+      className="relative flex rounded-xl overflow-hidden cursor-pointer"
+      style={{ background: "rgba(193,127,36,0.13)", border: "1px solid rgba(193,127,36,0.42)" }}
+    >
+      <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
+        <p
+          className="font-semibold min-w-0 truncate"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
+        >
+          SSJE Words ✍🏽
+        </p>
+        <div
+          className="rounded-full text-center shrink-0"
+          style={{
+            background: "rgba(193,127,36,0.28)",
+            color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 13,
+            fontWeight: 500,
+            padding: "6px 14px",
+            border: "1px solid rgba(193,127,36,0.52)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {hasRead ? "Read again" : "Read"} <span aria-hidden>→</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // National Cathedral Morning Prayer home card — live YouTube
 // broadcast Mon–Fri 7:00 AM ET. Self-hides on weekends (the cathedral
 // doesn't broadcast Sat/Sun), and the CTA pill flips between
@@ -4790,7 +4852,7 @@ export default function Dashboard() {
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ncmp", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // Prayer requests always leads — never hidden. For users who've
   // never customized (no homeLayout row) we hide the secondary practices
@@ -4806,13 +4868,14 @@ export default function Dashboard() {
   const homeHidden = (() => {
     const savedHidden = user?.homeLayout?.hidden;
     const savedOrder = user?.homeLayout?.order;
-    const s = new Set<string>(savedHidden ?? ["contemplation", "gratitude", "examen", "cac", "fdd", "ncmp"]);
-    // CAC + FDD + NCMP are opt-in for everyone; if a user's saved
-    // order pre-dates the module (it isn't in their savedOrder),
-    // keep it hidden until they explicitly toggle it via
-    // /customize-home.
+    const s = new Set<string>(savedHidden ?? ["contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp"]);
+    // CAC + FDD + SSJE + NCMP are opt-in for everyone; if a user's
+    // saved order pre-dates the module (it isn't in their
+    // savedOrder), keep it hidden until they explicitly toggle it
+    // via /customize-home.
     if (savedOrder && !savedOrder.includes("cac")) s.add("cac");
     if (savedOrder && !savedOrder.includes("fdd")) s.add("fdd");
+    if (savedOrder && !savedOrder.includes("ssje")) s.add("ssje");
     if (savedOrder && !savedOrder.includes("ncmp")) s.add("ncmp");
     s.delete("requests");
     return s;
@@ -4820,8 +4883,8 @@ export default function Dashboard() {
   const homeOrder: HomeModule[] = (() => {
     const saved = user?.homeLayout?.order ?? null;
     const fallback: HomeModule[] = featuredFeed
-      ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac", "fdd", "ncmp"]
-      : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ncmp"];
+      ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp"]
+      : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp"];
     // Keep known keys in saved order, then append any missing modules so
     // a newly-added module always has a place.
     const seen = new Set<string>();
@@ -5733,6 +5796,8 @@ export default function Dashboard() {
                   return <CacHomeCard />;
                 case "fdd":
                   return <FddHomeCard />;
+                case "ssje":
+                  return <SsjeHomeCard />;
                 case "ncmp":
                   // Self-hides on weekends + outside the broadcast
                   // window; returns null in those cases so the

@@ -4,7 +4,7 @@ import { CallAndResponse } from "./CallAndResponse";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { openExternal } from "@/lib/openExternal";
-import { CAC_TODAY_URL, FDD_TODAY_URL, markCacRead, markFddRead } from "@/lib/cacReadState";
+import { CAC_TODAY_URL, FDD_TODAY_URL, SSJE_TODAY_URL, markCacRead, markFddRead, markSsjeRead } from "@/lib/cacReadState";
 import { useOfficePrefs } from "@/lib/officePrefs";
 
 interface SlideProps {
@@ -324,7 +324,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                 SFSafariView (Browser.open) and stamps today as read
                 so the corresponding home card flips to "Read
                 again." */}
-            {(officePrefs.showCacClose || officePrefs.showFddClose) && (
+            {(officePrefs.showCacClose || officePrefs.showFddClose || officePrefs.showSsjeClose) && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
                 {officePrefs.showCacClose && (
                   <button
@@ -368,6 +368,32 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
                     }}
                   >
                     📖 Read Forward Day by Day →
+                  </button>
+                )}
+                {officePrefs.showSsjeClose && (
+                  // SSJE "Brother, Give Us a Word". Warm amber palette
+                  // distinguishes it from the forest-green CAC pill and
+                  // the sea-teal FDD pill so the three reflection sources
+                  // remain visually separable when stacked.
+                  <button
+                    type="button"
+                    onClick={() => {
+                      markSsjeRead();
+                      openExternal(SSJE_TODAY_URL);
+                    }}
+                    style={{
+                      background: "rgba(193,127,36,0.18)",
+                      color: isEvening ? EP_TEXT : CREAM,
+                      border: "1px solid rgba(193,127,36,0.50)",
+                      borderRadius: 999,
+                      padding: "10px 18px",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      fontFamily: "Space Grotesk, sans-serif",
+                      cursor: "pointer",
+                    }}
+                  >
+                    ✍🏽 Read SSJE Word →
                   </button>
                 )}
               </div>

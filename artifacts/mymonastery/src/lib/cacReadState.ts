@@ -15,9 +15,11 @@
 // "what's today's content" on their side. For the label, local-day
 // is what feels like "today" to the reader.
 //
-// Two daily-reflection sources today share this module:
+// Three daily-reflection sources share this module:
 //   • CAC Daily Reflection (Center for Action & Contemplation)
 //   • Forward Day by Day (Forward Movement)
+//   • SSJE Words (Society of Saint John the Evangelist —
+//     "Brother, Give Us a Word")
 // Each gets its own storage key + custom event so the dashboard
 // cards don't ghost-update each other when only one is tapped.
 
@@ -65,6 +67,7 @@ function makeDailyReadTracker(storageKey: string, eventName: string) {
 
 const cacTracker = makeDailyReadTracker("phoebe:cac:last-read-day", "phoebe:cac-read");
 const fddTracker = makeDailyReadTracker("phoebe:fdd:last-read-day", "phoebe:fdd-read");
+const ssjeTracker = makeDailyReadTracker("phoebe:ssje:last-read-day", "phoebe:ssje-read");
 
 // ── CAC Daily Reflection (Center for Action & Contemplation) ──
 // /api/cac/today on the server 302-redirects to today's permalink with
@@ -85,3 +88,14 @@ export const FDD_READ_EVENT = fddTracker.eventName;
 export function getFddReadDay(): string | null { return fddTracker.getLastReadDay(); }
 export function hasReadFddToday(): boolean { return fddTracker.hasReadToday(); }
 export function markFddRead(): void { fddTracker.markRead(); }
+
+// ── SSJE Words (Society of Saint John the Evangelist) ──
+// "Brother, Give Us a Word" is a daily one-paragraph reflection from
+// the Cambridge MA Episcopal monastery. The page itself loads today's
+// word client-side, so the same URL every day resolves to "today" —
+// matching FDD's pattern. No server-side route on our end.
+export const SSJE_TODAY_URL = "https://web.ssje.org/listen-brother-give-us-a-word";
+export const SSJE_READ_EVENT = ssjeTracker.eventName;
+export function getSsjeReadDay(): string | null { return ssjeTracker.getLastReadDay(); }
+export function hasReadSsjeToday(): boolean { return ssjeTracker.hasReadToday(); }
+export function markSsjeRead(): void { ssjeTracker.markRead(); }

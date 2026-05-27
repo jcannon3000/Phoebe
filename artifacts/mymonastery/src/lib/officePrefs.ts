@@ -23,6 +23,7 @@ import { useEffect, useState } from "react";
 // fallbacks easier to reason about than JSON.parse.
 const KEY_SHOW_CAC_CLOSE = "phoebe:office:show-cac-close";
 const KEY_SHOW_FDD_CLOSE = "phoebe:office:show-fdd-close";
+const KEY_SHOW_SSJE_CLOSE = "phoebe:office:show-ssje-close";
 const KEY_INCLUDE_GRATITUDE_SLIDE = "phoebe:office:include-gratitude-slide";
 
 // ── Events ─────────────────────────────────────────────────────────
@@ -42,18 +43,44 @@ function writeBool(key: string, value: boolean): void {
   }
 }
 
+// Tri-state reader for prefs that default ON rather than OFF. Unset /
+// malformed → returns the default; "1" → true; "0" → false. Lets us
+// add "default true" prefs without losing the user's explicit opt-out
+// (a plain readBool would have to be flipped, which we'd rather avoid
+// so other prefs keep their "off until you ask" semantics).
+function readBoolDefault(key: string, fallback: boolean): boolean {
+  try {
+    const v = localStorage.getItem(key);
+    if (v === "1") return true;
+    if (v === "0") return false;
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 // ── CAC pill at office close ──
 // Show a "Read CAC reflection" pill at the end of Morning and Evening
 // Prayer. The pill opens today's CAC daily meditation externally and
 // marks it read (so the home CacHomeCard flips to "Read again").
-export function getShowCacClose(): boolean { return readBool(KEY_SHOW_CAC_CLOSE); }
+// Default ON — most users want a one-tap follow-on reading after the
+// office; the Settings toggle lets them opt out per device.
+export function getShowCacClose(): boolean { return readBoolDefault(KEY_SHOW_CAC_CLOSE, true); }
 export function setShowCacClose(v: boolean): void { writeBool(KEY_SHOW_CAC_CLOSE, v); }
 
 // ── FDD pill at office close ──
 // Same, for Forward Day by Day (Forward Movement). Independent of
-// the CAC pref — both can be on, neither, or just one.
-export function getShowFddClose(): boolean { return readBool(KEY_SHOW_FDD_CLOSE); }
+// the CAC pref — both can be on, neither, or just one. Default ON
+// for the same reason as CAC above.
+export function getShowFddClose(): boolean { return readBoolDefault(KEY_SHOW_FDD_CLOSE, true); }
 export function setShowFddClose(v: boolean): void { writeBool(KEY_SHOW_FDD_CLOSE, v); }
+
+// ── SSJE pill at office close ──
+// Same, for SSJE Words ("Brother, Give Us a Word" from the Society of
+// Saint John the Evangelist). Third optional daily reflection
+// alongside CAC and FDD; default ON.
+export function getShowSsjeClose(): boolean { return readBoolDefault(KEY_SHOW_SSJE_CLOSE, true); }
+export function setShowSsjeClose(v: boolean): void { writeBool(KEY_SHOW_SSJE_CLOSE, v); }
 
 // (No NCMP close pill — NCMP is a live weekday broadcast that IS
 // Morning Prayer at the National Cathedral, not a post-office
@@ -75,17 +102,20 @@ export function setIncludeGratitudeSlide(v: boolean): void { writeBool(KEY_INCLU
 export function useOfficePrefs(): {
   showCacClose: boolean;
   showFddClose: boolean;
+  showSsjeClose: boolean;
   includeGratitudeSlide: boolean;
 } {
   const [state, setState] = useState(() => ({
     showCacClose: getShowCacClose(),
     showFddClose: getShowFddClose(),
+    showSsjeClose: getShowSsjeClose(),
     includeGratitudeSlide: getIncludeGratitudeSlide(),
   }));
   useEffect(() => {
     const refresh = () => setState({
       showCacClose: getShowCacClose(),
       showFddClose: getShowFddClose(),
+      showSsjeClose: getShowSsjeClose(),
       includeGratitudeSlide: getIncludeGratitudeSlide(),
     });
     window.addEventListener(OFFICE_PREFS_EVENT, refresh);

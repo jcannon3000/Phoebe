@@ -33,6 +33,7 @@ import {
   useOfficePrefs,
   setShowCacClose,
   setShowFddClose,
+  setShowSsjeClose,
   setIncludeGratitudeSlide,
 } from "@/lib/officePrefs";
 
@@ -264,6 +265,7 @@ export default function OfficeSettingsPage() {
   // smoother than waiting one render cycle.)
   const [cacOn, setCacOn] = useState(local.showCacClose);
   const [fddOn, setFddOn] = useState(local.showFddClose);
+  const [ssjeOn, setSsjeOn] = useState(local.showSsjeClose);
   const [gratitudeOn, setGratitudeOn] = useState(local.includeGratitudeSlide);
 
   const morningOptions: Array<{ value: OfficePref; label: string; sub: string }> = [
@@ -391,6 +393,16 @@ export default function OfficeSettingsPage() {
             onChange={(next) => {
               setFddOn(next);
               setShowFddClose(next);
+            }}
+          />
+          <ToggleRow
+            label="SSJE Words"
+            subOn="Today's “Brother, Give Us a Word” at the close."
+            subOff="No SSJE Words pill at the close."
+            value={ssjeOn}
+            onChange={(next) => {
+              setSsjeOn(next);
+              setShowSsjeClose(next);
             }}
           />
           <ToggleRow
