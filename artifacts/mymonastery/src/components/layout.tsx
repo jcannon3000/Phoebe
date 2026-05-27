@@ -8,7 +8,7 @@ import { X, LogOut, ChevronRight, ChevronDown } from "lucide-react";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { openExternal } from "@/lib/openExternal";
-import { FDD_TODAY_URL, markFddRead } from "@/lib/cacReadState";
+import { FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, CAC_TODAY_URL, markCacRead } from "@/lib/cacReadState";
 import { isNativeShell } from "@/lib/isNativeShell";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
@@ -353,7 +353,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               </MenuSection>
               <MenuSection emoji="📚" label={t("menu.resources")}>
                 <MenuRow emoji="📖" label={t("menu.bcp_prayers")} onClick={() => navigate("/bcp/intercessions")} />
-                <MenuRow emoji="✝️" label={t("menu.bcp_collects")} onClick={() => navigate("/bcp/collects")} />
+                <MenuRow emoji="🙏" label={t("menu.bcp_collects")} onClick={() => navigate("/bcp/collects")} />
                 <MenuRow emoji="📜" label={t("menu.psalter")} onClick={() => navigate("/bcp/psalter")} />
                 {/* CAC Daily Reflection — opens externally because CAC
                     is the canonical reader (paywalled formatting on the
