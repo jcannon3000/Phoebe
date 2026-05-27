@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import ImprintSlideshow, {
-  correspondenceSlides,
-  gatheringSlides,
+  useCorrespondenceSlides,
+  useGatheringSlides,
   type ImprintSlide,
 } from "@/components/ImprintSlideshow";
 
@@ -19,33 +20,38 @@ interface LearnTopic {
   border: string;
 }
 
-const TOPICS: LearnTopic[] = [
-  {
-    id: "gatherings",
-    title: "Recurring gatherings",
-    emoji: "🤝🏽",
-    blurb: "Small groups, showing up, and the difference between being around people and being known by them.",
-    slides: gatheringSlides,
-    accent: "#7AAF7D",
-    background: "rgba(122,175,125,0.10)",
-    border: "rgba(122,175,125,0.30)",
-  },
-  {
-    id: "letters",
-    title: "On letters",
-    emoji: "📮",
-    blurb: "The unhurried practice of writing to the people who matter most.",
-    slides: correspondenceSlides,
-    accent: "#8E9E42",
-    background: "rgba(142,158,66,0.10)",
-    border: "rgba(142,158,66,0.30)",
-  },
-];
-
 export default function LearnPage() {
   const { user, isLoading } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [activeTopic, setActiveTopic] = useState<LearnTopic | null>(null);
+  // Slides are read through hooks now so they react to the live
+  // language. Keep them outside the topic array so the array itself
+  // can carry the resolved arrays without re-running hooks on render.
+  const gatheringSlides = useGatheringSlides();
+  const correspondenceSlides = useCorrespondenceSlides();
+  const TOPICS: LearnTopic[] = [
+    {
+      id: "gatherings",
+      title: t("learn.gatherings_title"),
+      emoji: "🤝🏽",
+      blurb: t("learn.gatherings_blurb"),
+      slides: gatheringSlides,
+      accent: "#7AAF7D",
+      background: "rgba(122,175,125,0.10)",
+      border: "rgba(122,175,125,0.30)",
+    },
+    {
+      id: "letters",
+      title: t("learn.letters_title"),
+      emoji: "📮",
+      blurb: t("learn.letters_blurb"),
+      slides: correspondenceSlides,
+      accent: "#8E9E42",
+      background: "rgba(142,158,66,0.10)",
+      border: "rgba(142,158,66,0.30)",
+    },
+  ];
 
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
@@ -57,7 +63,7 @@ export default function LearnPage() {
     return (
       <ImprintSlideshow
         slides={activeTopic.slides}
-        ctaLabel="Done 🌿"
+        ctaLabel={t("learn.done_cta")}
         onComplete={() => setActiveTopic(null)}
       />
     );
@@ -68,13 +74,13 @@ export default function LearnPage() {
       <div className="max-w-2xl mx-auto w-full">
         <div className="mb-6">
           <Link href="/dashboard" className="text-xs mb-3 flex items-center gap-1 transition-opacity hover:opacity-70" style={{ color: "#8FAF96" }}>
-            ← Dashboard
+            {t("saints.back_dashboard")}
           </Link>
           <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-            Learn 📖
+            {t("learn.title")} 📖
           </h1>
           <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
-            The wisdom Phoebe draws on, in a few slides.
+            {t("learn.subtitle")}
           </p>
         </div>
 
@@ -101,7 +107,7 @@ export default function LearnPage() {
                     {topic.blurb}
                   </p>
                   <p className="text-[11px] mt-2 font-semibold uppercase tracking-widest" style={{ color: topic.accent }}>
-                    {topic.slides.length} slides →
+                    {t("learn.n_slides", { count: topic.slides.length })}
                   </p>
                 </div>
               </div>
@@ -110,7 +116,7 @@ export default function LearnPage() {
         </div>
 
         <p className="text-xs italic text-center mt-8" style={{ color: "rgba(143,175,150,0.5)" }}>
-          More to come 🌱
+          {t("learn.more_to_come")}
         </p>
       </div>
     </Layout>

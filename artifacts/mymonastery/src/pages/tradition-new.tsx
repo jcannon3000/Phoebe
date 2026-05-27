@@ -4,7 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
-import ImprintSlideshow, { gatheringSlides } from "@/components/ImprintSlideshow";
+import ImprintSlideshow, { useGatheringSlides } from "@/components/ImprintSlideshow";
+import { useTranslation } from "react-i18next";
 import { useCommunityAdminToggle } from "@/hooks/useDemo";
 
 const TEMPLATE_OPTIONS = [
@@ -34,6 +35,8 @@ export default function TraditionNew() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const qc = useQueryClient();
+  const { t } = useTranslation();
+  const gatheringSlides = useGatheringSlides();
 
   const [imprintDone, setImprintDone] = useState(false);
   const [step, setStep] = useState<Step>(0);
@@ -286,7 +289,7 @@ export default function TraditionNew() {
     return (
       <ImprintSlideshow
         slides={gatheringSlides}
-        ctaLabel="Start a tradition →"
+        ctaLabel={t("imprint_gathering.cta_start")}
         imprintType="gathering"
         onComplete={() => setImprintDone(true)}
       />

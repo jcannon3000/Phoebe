@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 
 export interface ImprintSlide {
@@ -18,39 +19,61 @@ interface ImprintSlideshowProps {
   onComplete: () => void;
 }
 
-export const correspondenceSlides: ImprintSlide[] = [
-  {
-    headline: "For centuries, monks cultivated relationships through writing letters.",
-    body: "Steady, unhurried, faithful. Letters caused them to be intentional about what they were sharing in their lives, and enter into dialogues that blossomed into meaningful connection.",
-  },
-  {
-    headline: "One letter. One person. Once every two weeks.",
-    body: "Because you only get one, it means something. You have to slow down and ask: what actually happened this week? What do I want them to know? The limitation is the gift. Sacred because it is set apart from everything else.",
-  },
-  {
-    headline: "A letter is not a message. It is a record.",
-    body: "Every time you write, you are adding to something. A shared history. A running account of two lives in honest contact. Directed, deliberate, yours. Years from now you will be able to read it back. That is something worth building.",
-  },
-  {
-    headline: "The strength of our relationships is what makes life most vibrant.",
-    body: "When something hard happens, there are already people who know you. Who have been reading your words. Who have been writing theirs. Who will show up. That is what a correspondence builds. That is what Phoebe is for.",
-  },
-];
+// Static slide arrays were inlined here as English-only literals. We
+// switched to hooks (`useCorrespondenceSlides`, `useGatheringSlides`)
+// so the slides re-read through t() on every render — Spanish
+// toggles update them without page reload. The exported names stay
+// the same so callers don't have to change. Hooks are valid here
+// because every caller (LetterNew, tradition-new, learn) renders
+// inside a component body, never in a top-level const.
+export function useCorrespondenceSlides(): ImprintSlide[] {
+  const { t } = useTranslation();
+  return [
+    {
+      headline: t("imprint_correspondence.s1_head"),
+      body: t("imprint_correspondence.s1_body"),
+    },
+    {
+      headline: t("imprint_correspondence.s2_head"),
+      body: t("imprint_correspondence.s2_body"),
+    },
+    {
+      headline: t("imprint_correspondence.s3_head"),
+      body: t("imprint_correspondence.s3_body"),
+    },
+    {
+      headline: t("imprint_correspondence.s4_head"),
+      body: t("imprint_correspondence.s4_body"),
+    },
+  ];
+}
 
-export const gatheringSlides: ImprintSlide[] = [
-  {
-    headline: "Showing up is the practice.",
-    body: "Repeatedly. In the same room, with the same people, on a rhythm you committed to together. The early church built community by returning to each other, again and again, until the relationships had weight.",
-  },
-  {
-    headline: "To be known takes time and repetition.",
-    body: "Vivek Murthy found that loneliness has almost nothing to do with how many people are in your life. It has everything to do with whether any of them truly know you. A tradition is a practice of being known, slowly, over time, in the same room.",
-  },
-  {
-    headline: "Most tools give you a calendar invite. Phoebe gives you a commitment.",
-    body: "You set an intention to meet — weekly, fortnightly, monthly. Then Phoebe works around everyone's actual schedule to find the times that make it possible. The goal is the gathering. The calendar is just how you get there.",
-  },
-];
+export function useGatheringSlides(): ImprintSlide[] {
+  const { t } = useTranslation();
+  return [
+    {
+      headline: t("imprint_gathering.s1_head"),
+      body: t("imprint_gathering.s1_body"),
+    },
+    {
+      headline: t("imprint_gathering.s2_head"),
+      body: t("imprint_gathering.s2_body"),
+    },
+    {
+      headline: t("imprint_gathering.s3_head"),
+      body: t("imprint_gathering.s3_body"),
+    },
+  ];
+}
+
+// Back-compat const exports — kept as empty arrays so the old import
+// names still type-check while callers migrate to the hooks. Slowly
+// removable; for now any direct const consumer simply renders no
+// slides until they switch to the hook. The known callers
+// (LetterNew, tradition-new, learn) are updated alongside this
+// change so the visible flow always reads from the hooks.
+export const correspondenceSlides: ImprintSlide[] = [];
+export const gatheringSlides: ImprintSlide[] = [];
 
 const slideVariants = {
   enter: { opacity: 0, x: 40 },
@@ -64,6 +87,7 @@ export default function ImprintSlideshow({
   imprintType,
   onComplete,
 }: ImprintSlideshowProps) {
+  const { t } = useTranslation();
   const [index, setIndex] = useState(0);
   const queryClient = useQueryClient();
 
@@ -114,7 +138,7 @@ export default function ImprintSlideshow({
           className="text-sm"
           style={{ color: "#8FAF96" }}
         >
-          Skip
+          {t("common.skip")}
         </button>
       </div>
 
@@ -171,7 +195,7 @@ export default function ImprintSlideshow({
             className="w-full max-w-sm py-4 rounded-2xl text-base font-semibold disabled:opacity-50 transition-opacity"
             style={{ background: "#2D5E3F", color: "#F0EDE6" }}
           >
-            {completeMutation.isPending ? "Starting…" : ctaLabel}
+            {completeMutation.isPending ? t("imprint_correspondence.starting") : ctaLabel}
           </button>
         ) : (
           <button
@@ -179,7 +203,7 @@ export default function ImprintSlideshow({
             className="w-full max-w-sm py-4 rounded-2xl text-base font-semibold"
             style={{ background: "transparent", color: "#C8D4C0", border: "1.5px solid rgba(46,107,64,0.5)" }}
           >
-            Continue →
+            {t("pause_slide.continue")}
           </button>
         )}
       </div>

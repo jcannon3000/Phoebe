@@ -479,6 +479,44 @@ export const en = {
     body: "Daily prayer notifications, smoother slideshow.",
     download: "Download",
   },
+  // Imprint slideshows — the four-slide intro to Letters
+  // (components/ImprintSlideshow.tsx, shown the first time a user enters
+  // /letters/new before they're allowed to write).
+  imprint_correspondence: {
+    cta_start: "Start writing →",
+    starting: "Starting…",
+    s1_head: "For centuries, monks cultivated relationships through writing letters.",
+    s1_body: "Steady, unhurried, faithful. Letters caused them to be intentional about what they were sharing in their lives, and enter into dialogues that blossomed into meaningful connection.",
+    s2_head: "One letter. One person. Once every two weeks.",
+    s2_body: "Because you only get one, it means something. You have to slow down and ask: what actually happened this week? What do I want them to know? The limitation is the gift. Sacred because it is set apart from everything else.",
+    s3_head: "A letter is not a message. It is a record.",
+    s3_body: "Every time you write, you are adding to something. A shared history. A running account of two lives in honest contact. Directed, deliberate, yours. Years from now you will be able to read it back. That is something worth building.",
+    s4_head: "The strength of our relationships is what makes life most vibrant.",
+    s4_body: "When something hard happens, there are already people who know you. Who have been reading your words. Who have been writing theirs. Who will show up. That is what a correspondence builds. That is what Phoebe is for.",
+  },
+  // The three-slide intro to community gatherings (tradition-new.tsx).
+  imprint_gathering: {
+    cta_start: "Start a tradition →",
+    s1_head: "Showing up is the practice.",
+    s1_body: "Repeatedly. In the same room, with the same people, on a rhythm you committed to together. The early church built community by returning to each other, again and again, until the relationships had weight.",
+    s2_head: "To be known takes time and repetition.",
+    s2_body: "Vivek Murthy found that loneliness has almost nothing to do with how many people are in your life. It has everything to do with whether any of them truly know you. A tradition is a practice of being known, slowly, over time, in the same room.",
+    s3_head: "Most tools give you a calendar invite. Phoebe gives you a commitment.",
+    s3_body: "You set an intention to meet — weekly, fortnightly, monthly. Then Phoebe works around everyone's actual schedule to find the times that make it possible. The goal is the gathering. The calendar is just how you get there.",
+  },
+  // Learn page (pages/learn.tsx) — directory of topic slideshows.
+  learn: {
+    title: "Learn",
+    subtitle: "The wisdom Phoebe draws on, in a few slides.",
+    gatherings_title: "Recurring gatherings",
+    gatherings_blurb: "Small groups, showing up, and the difference between being around people and being known by them.",
+    letters_title: "On letters",
+    letters_blurb: "The unhurried practice of writing to the people who matter most.",
+    n_slides_one: "1 slide →",
+    n_slides_other: "{{count}} slides →",
+    done_cta: "Done 🌿",
+    more_to_come: "More to come 🌱",
+  },
   // RSVP block (components/RsvpBlock.tsx) — gathering RSVP picker + summary.
   rsvp: {
     are_you_coming: "Are you coming?",

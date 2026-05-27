@@ -2,9 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import ImprintSlideshow, { correspondenceSlides } from "@/components/ImprintSlideshow";
+import ImprintSlideshow, { useCorrespondenceSlides } from "@/components/ImprintSlideshow";
 
 type CorrespondenceType = "one_to_one" | "group";
 
@@ -34,6 +35,8 @@ export default function LetterNew() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { t } = useTranslation();
+  const correspondenceSlides = useCorrespondenceSlides();
 
   const [imprintDone, setImprintDone] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -199,7 +202,7 @@ export default function LetterNew() {
     return (
       <ImprintSlideshow
         slides={correspondenceSlides}
-        ctaLabel="Start writing →"
+        ctaLabel={t("imprint_correspondence.cta_start")}
         imprintType="correspondence"
         onComplete={() => setImprintDone(true)}
       />
