@@ -1768,6 +1768,7 @@ export default function PrayerListPage() {
 // and prayer-for-someone-else lives behind its own FAB entry point.
 export function PrayerListComposeBar() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const [value, setValue] = useState("");
 
   const createOwnRequest = useMutation({
@@ -1794,7 +1795,7 @@ export function PrayerListComposeBar() {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
-          placeholder="Share a prayer request... 🌿"
+          placeholder={t("prayer_list_compose.placeholder")}
           maxLength={1000}
           className="flex-1 text-sm px-4 py-2.5 rounded-xl border placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/40 focus:border-[#8FAF96] transition-all"
           style={{ backgroundColor: "#091A10", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6" }}

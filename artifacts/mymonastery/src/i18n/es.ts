@@ -77,6 +77,15 @@ export const es: Translations = {
     pray_again_short: "Orar de nuevo",
     customize: "Personalizar",
   },
+  prayers_for_me: {
+    back: "Atrás",
+    title: "Oraciones por ti 🙏🏽",
+    subtitle: "Personas de tu comunidad están orando por ti.",
+    empty: "No hay oraciones activas ahora. El silencio mismo es un regalo. 🌿",
+    someone: "Alguien",
+    today: "hoy",
+    days_left: "{{count}} d restantes",
+  },
   prayer_request_detail: {
     close: "Cerrar",
     amen: "Amén",
@@ -356,6 +365,18 @@ export const es: Translations = {
     pick_source: "Abrir ajustes de la comunidad →",
     not_enabled_title: "Aún no está activado",
     not_enabled_body: "Tu comunidad aún no ha elegido una reflexión diaria. Un admin puede activarla en los ajustes.",
+  },
+  prayer_list_compose: {
+    placeholder: "Comparte una petición de oración... 🌿",
+  },
+  active_requests: {
+    headline: "¿Cómo puede orar tu comunidad por ti?",
+  },
+  prayer_list_carousel: {
+    view_all: "Ver todo",
+    anonymous: "Anónimo",
+    your_request: "Tu petición",
+    from_name: "De {{name}}",
   },
   letter_card: {
     wrote_to_you: "{{name}} escribió 🌿",

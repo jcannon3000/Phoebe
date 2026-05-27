@@ -71,6 +71,16 @@ export const en = {
     pray_again_short: "Pray again",
     customize: "Customize",
   },
+  // Prayers-for-Me index (pages/prayers-for-me.tsx).
+  prayers_for_me: {
+    back: "Back",
+    title: "Prayers for You 🙏🏽",
+    subtitle: "People in your community are praying for you.",
+    empty: "No active prayers right now. The quiet itself is a gift. 🌿",
+    someone: "Someone",
+    today: "today",
+    days_left: "{{count}}d left",
+  },
   // Prayer-request deep-link page (pages/prayer-request-detail.tsx).
   // Visible whenever a user taps a prayer-request push or opens a
   // request from the prayer-list. Covers both viewer-classes:
@@ -359,6 +369,22 @@ export const en = {
     pick_source: "Open community settings →",
     not_enabled_title: "Not enabled yet",
     not_enabled_body: "Your community hasn't picked a daily reflection. An admin can turn this on in community settings.",
+  },
+  // Home-screen + prayer-list page compose input (PrayerListComposeBar).
+  prayer_list_compose: {
+    placeholder: "Share a prayer request... 🌿",
+  },
+  // Home-screen "How can your community pray for you?" composer
+  // (pages/dashboard.tsx ActiveRequestsCard).
+  active_requests: {
+    headline: "How can your community pray for you?",
+  },
+  // Home-screen Prayer List carousel (pages/dashboard.tsx).
+  prayer_list_carousel: {
+    view_all: "View all",
+    anonymous: "Anonymous",
+    your_request: "Your request",
+    from_name: "From {{name}}",
   },
   // Home-screen LetterCard (pages/dashboard.tsx) — per-correspondence row
   // on the home letters section. Reuses keys from `letters.*` for shared

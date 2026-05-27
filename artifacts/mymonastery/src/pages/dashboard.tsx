@@ -919,8 +919,8 @@ function LetterCard({
     .map(m => m.name || m.email.split("@")[0])
     .join(", ");
   const displayName = isOneToOne && otherMembers
-    ? `Dialogue with ${otherMembers}`
-    : (c.name?.replace(/^Letters with\b/, "Dialogue with")) || `Sharing with ${otherMembers}`;
+    ? t("letters.dialogue_with", { name: otherMembers })
+    : (c.name?.replace(/^Letters with\b/, "Dialogue with")) || t("letters.sharing_with", { names: otherMembers });
 
   // Local-TZ override of the OPEN verdict. The server computes windowOpen
   // in UTC; a letter sent late-evening in the user's local time lands on
@@ -977,25 +977,27 @@ function LetterCard({
 
   let statusText = "";
   if (hasUnread) {
-    statusText = `${otherMembers} wrote 🌿`;
+    statusText = t("letter_card.wrote_to_you", { name: otherMembers });
   } else if (isOneToOne) {
-    if (ts === "OVERDUE") statusText = `Overdue · write when you're ready 🌿`;
-    else if (ts === "OPEN") statusText = `Your turn to write 🖋️`;
-    else if (daysUntilOpen === 0) statusText = `Opens today 🖋️`;
-    else if (daysUntilOpen) statusText = `Reply opens in ${daysUntilOpen} day${daysUntilOpen !== 1 ? "s" : ""}`;
-    else statusText = `Waiting for ${otherMembers}`;
+    if (ts === "OVERDUE") statusText = t("letters.overdue_message");
+    else if (ts === "OPEN") statusText = t("letters.your_turn_to_write");
+    else if (daysUntilOpen === 0) statusText = t("letter_card.opens_today");
+    else if (daysUntilOpen) statusText = t("letter_card.reply_opens_in", { count: daysUntilOpen });
+    else statusText = t("letter_card.waiting_for", { name: otherMembers });
   } else if (iWrote && !theyWrote) {
-    statusText = `Your update is in 🌿`;
+    statusText = t("letter_card.your_update_is_in");
   } else if (needsWrite) {
-    statusText = `Share your update 🖋️`;
+    statusText = t("read_letter.share_update_prompt");
   } else {
-    statusText = "All written 🌿";
+    statusText = t("letter_card.all_written");
   }
 
   const lastLetter = c.recentLetters?.[0] ?? null;
   const lastLetterFromMe = lastLetter?.authorName === userName;
   const lastLetterDateLine = lastLetter?.sentAt
-    ? `Letter ${lastLetterFromMe ? "sent" : "received"} on ${format(parseISO(lastLetter.sentAt), "MMMM d")}`
+    ? (lastLetterFromMe
+        ? t("letter_card.letter_sent_on", { date: format(parseISO(lastLetter.sentAt), "MMMM d") })
+        : t("letter_card.letter_received_on", { date: format(parseISO(lastLetter.sentAt), "MMMM d") }))
     : null;
   const flapLines = [statusText, ...(lastLetterDateLine ? [lastLetterDateLine] : [])].filter(Boolean);
   // When it's the user's turn to write the next letter, label the chip
@@ -1003,8 +1005,8 @@ function LetterCard({
   // the count of already-sent ones. Otherwise show the count of letters
   // already in the dialogue.
   const letterLabel = isOneToOne
-    ? `Letter ${needsWrite ? c.letterCount + 1 : Math.max(1, c.letterCount)}`
-    : `Week ${c.currentPeriod.periodNumber}`;
+    ? t("letters.letter_n", { n: needsWrite ? c.letterCount + 1 : Math.max(1, c.letterCount) })
+    : t("letters.week_n", { n: c.currentPeriod.periodNumber });
 
   return (
     <BarCard key={`${keyPrefix}-${c.id}`} href={`/letters/${c.id}`} pulse={shouldPulse} category="letters">
@@ -1032,7 +1034,7 @@ function LetterCard({
             className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 cursor-pointer whitespace-nowrap"
             style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0" }}
           >
-            Read 📮
+            {t("letter_card.read_pill")}
           </span>
         )}
         {needsWrite && (
@@ -1059,7 +1061,7 @@ function LetterCard({
             className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 cursor-pointer whitespace-nowrap"
             style={{ background: "#2D5E3F", color: "#F0EDE6" }}
           >
-            Write 🖋️
+            {t("letter_card.write_pill")}
           </span>
         )}
         {!hasUnread && !needsWrite && (
@@ -1071,7 +1073,7 @@ function LetterCard({
             className="text-xs font-semibold rounded-full px-3 py-1.5 shrink-0 cursor-pointer whitespace-nowrap"
             style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0" }}
           >
-            View
+            {t("letter_card.view_pill")}
           </span>
         )}
       </div>
@@ -2798,23 +2800,16 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
     }
   })();
 
-  // CTA shape (per user direction): Devotion is the default — the
-  // big sage button drops you straight into the side-appropriate
-  // Daily Devotion (BCP short form), bypassing the /prayer-chooser
-  // intermediary that was here briefly. Below the main CTA sit two
-  // smaller skip-pills for the other depths:
-  //   • Community Intercessions → /prayer-mode (your prayer list)
-  //   • Full Office            → /bcp/daily-office (BCP long form)
-  // Once the user has prayed today the main CTA flips to "Pray
-  // again →" (?reset=1 on the devotion route) and a "Prayer
-  // completed ✓" status pill sits beside it; the skip-pills stay
-  // visible so a re-pray of a different depth is one tap away.
-  const devotionLabel = isMorning ? "Morning Devotion" : "Evening Devotion";
-  const devotionMode = isMorning ? "morning-devotion" : "early-evening-devotion";
-  const officeMode = isMorning ? "morning" : "evening";
-  const devotionHref = `/bcp/daily-devotions?mode=${devotionMode}${prayedToday ? "&reset=1" : ""}`;
-  const officeHref = `/bcp/daily-office?mode=${officeMode}`;
-  const ctaCopy = prayedToday ? "Pray again" : `Pray the ${devotionLabel}`;
+  // CTA copy + destination. The button used to open an inline modal
+  // chooser; per user direction it now navigates to a dedicated
+  // /prayer-chooser screen so the depth options live on a proper
+  // route (back-button behaviour, deep-linkable, sound effect on
+  // entry). The single CTA shows when the user hasn't prayed yet
+  // today ("Begin prayer →"). Once they've prayed something the pill
+  // splits into a side-by-side pair below — a "Prayer completed ✓"
+  // status pill + a "Pray again" action pill — so the win is visible
+  // without losing the way back in.
+  const ctaCopy = "Begin prayer";
 
   // Compact one-line variant — used when feed-first home promotes a
   // feed to the hero slot and the office becomes a secondary anchor.
@@ -2967,12 +2962,10 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
           {prayedToday ? (
             // Two-pill split: a non-tappable "Prayer completed ✓"
             // status on the left, the tappable "Pray again" action on
-            // the right. The Pray again pill now sends them straight
-            // back into the Devotion (with ?reset=1) instead of
-            // bouncing through /prayer-chooser — matches the new
-            // direct-to-devotion default. The Intercessions / Full
-            // Office skip-pills below still let them pick a different
-            // depth without losing this card's "completed" affordance.
+            // the right. Equal width via flex-1 so the row balances on
+            // any phone size. Status pill has the lighter sage fill
+            // and no border lift so it reads as a settled win; the
+            // action pill keeps the standard sage-accent + arrow.
             <div className="mt-[12px] flex items-stretch gap-2">
               <div
                 aria-label="Prayer completed today"
@@ -2989,7 +2982,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
               >
                 Prayer completed <span aria-hidden>✓</span>
               </div>
-              <Link href={devotionHref} className="flex-1">
+              <Link href="/prayer-chooser" className="flex-1">
                 <div
                   role="button"
                   tabIndex={0}
@@ -3009,7 +3002,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
               </Link>
             </div>
           ) : (
-            <Link href={devotionHref}>
+            <Link href="/prayer-chooser">
               <div
                 role="button"
                 tabIndex={0}
@@ -3028,51 +3021,6 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
               </div>
             </Link>
           )}
-          {/* Skip-pills: alternate depths for users who'd rather pray
-              the longer office or jump straight to the community
-              intercession slideshow. Two equal-width pills mirror the
-              "Prayer completed / Pray again" pair above so the card
-              has a consistent 2-pill row beneath the main CTA in
-              every state. Quieter sage tint than the main CTA so the
-              Devotion stays the default eye-target. */}
-          <div className="mt-2 flex items-stretch gap-2">
-            <Link href="/prayer-mode" className="flex-1">
-              <div
-                role="button"
-                tabIndex={0}
-                className="rounded-full text-center cursor-pointer"
-                style={{
-                  background: "rgba(46,107,64,0.10)",
-                  color: "rgba(168,197,160,0.95)",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  padding: "6px 12px",
-                  border: "1px solid rgba(46,107,64,0.28)",
-                }}
-              >
-                Community Intercessions
-              </div>
-            </Link>
-            <Link href={officeHref} className="flex-1">
-              <div
-                role="button"
-                tabIndex={0}
-                className="rounded-full text-center cursor-pointer"
-                style={{
-                  background: "rgba(46,107,64,0.10)",
-                  color: "rgba(168,197,160,0.95)",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  padding: "6px 12px",
-                  border: "1px solid rgba(46,107,64,0.28)",
-                }}
-              >
-                Full Office
-              </div>
-            </Link>
-          </div>
       </div>
     </div>
   );
@@ -3398,11 +3346,12 @@ function ActiveRequestsCard({
 }: {
   activeCount: number;
 }) {
+  const { t } = useTranslation();
   // Per user direction: the headline always asks the open question
   // rather than reporting the user's own count. The count rolls up
   // into the View pill (which deep-links into /my-prayer-requests
   // where the count + state of each ask is visible).
-  const headline = "How can your community pray for you?";
+  const headline = t("active_requests.headline");
   // activeCount is part of the public component API but no longer
   // surfaced — the View pill that used to deep-link into
   // /my-prayer-requests was removed per user direction.
@@ -3453,6 +3402,7 @@ function PrayerListCarousel({
    *  the carousel doesn't drift to the bottom of an empty page. */
   tight?: boolean;
 }) {
+  const { t } = useTranslation();
   if (requests.length === 0) return null;
 
   // ~3.5 card rows. Each card is roughly 72-80px tall with vertical
@@ -3475,7 +3425,7 @@ function PrayerListCarousel({
           className="text-lg font-semibold"
           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
         >
-          Prayer List
+          {t("prayer_list.title")}
         </h3>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
         <Link
@@ -3487,7 +3437,7 @@ function PrayerListCarousel({
             fontFamily: "'Space Grotesk', sans-serif",
           }}
         >
-          View all
+          {t("prayer_list_carousel.view_all")}
         </Link>
       </div>
 
@@ -3507,12 +3457,12 @@ function PrayerListCarousel({
         >
           {requests.map((req) => {
             const displayName = req.isAnonymous
-              ? "Anonymous"
-              : (req.isOwnRequest ? (viewerName ?? "You") : (req.ownerName ?? "Someone"));
+              ? t("prayer_list_carousel.anonymous")
+              : (req.isOwnRequest ? (viewerName ?? t("gratitude.you")) : (req.ownerName ?? t("find_friends.someone")));
             const displayAvatar = req.isAnonymous
               ? null
               : (req.isOwnRequest ? viewerAvatarUrl : (req.ownerAvatarUrl ?? null));
-            const eyebrow = req.isOwnRequest ? "Your request" : `From ${displayName}`;
+            const eyebrow = req.isOwnRequest ? t("prayer_list_carousel.your_request") : t("prayer_list_carousel.from_name", { name: displayName });
             return (
               <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
                 <motion.div
@@ -5812,7 +5762,7 @@ export default function Dashboard() {
                     no longer carries a trailing PrayerListCard — it's
                     just the day's practice/gathering items. */}
                 <TimeSection
-                  label="Today"
+                  label={t("dashboard.today_section")}
                   items={fToday}
                   userEmail={userEmail}
                   userName={userName}
@@ -5828,7 +5778,7 @@ export default function Dashboard() {
                     practices, etc.) still land here. Empty sections
                     stay hidden. */}
                 <TimeSection
-                  label="Tomorrow"
+                  label={t("dashboard.tomorrow_section")}
                   items={fTomorrow}
                   userEmail={userEmail}
                   userName={userName}
@@ -5840,10 +5790,10 @@ export default function Dashboard() {
                 {/* 3. This week — events from after Tomorrow through
                     end-of-day on the upcoming Sunday. Items past
                     Sunday fall into Upcoming. */}
-                <TimeSection label="This week" items={fWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
+                <TimeSection label={t("dashboard.this_week_section")} items={fWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
 
                 {/* 4. Upcoming — everything past the upcoming Sunday. */}
-                <TimeSection label="Upcoming" items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
+                <TimeSection label={t("dashboard.upcoming_section")} items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
 
                 {/* Prayer request compose — only the field moves
                     down here, below the events sections. The count
