@@ -450,20 +450,24 @@ export async function assembleMorningPrayer(
   fromCache: boolean;
 }> {
   const cacheDate = startOfDay(date);
-  // Suffix the cache key with the locale so English and Spanish
-  // viewers don't poison each other's cached decks. Backward-
-  // compatible: English keeps the bare date string so existing
-  // cached rows still resolve.
-  const cacheDateStr = locale === "es"
-    ? `${cacheDate.toISOString().slice(0, 10)}_es`
-    : cacheDate.toISOString().slice(0, 10);
+  const cacheDateStr = cacheDate.toISOString().slice(0, 10);
+  // Cache is keyed by the morning_prayer_cache.cache_date DATE column
+  // — Postgres DATE can't accept a "_es"-suffixed string, so we can't
+  // smuggle the locale into the key without a schema change. Until a
+  // compound unique on (cache_date, locale) lands, skip the cache
+  // entirely for non-English locales: re-assemble on every request
+  // for those users (correct, just slower than English; no emergency
+  // fallback). English is unchanged — same cache hits, same speed.
+  const cacheEnabled = locale === "en";
 
   // 1. Check cache
-  const cached = await db
-    .select()
-    .from(morningPrayerCacheTable)
-    .where(eq(morningPrayerCacheTable.cacheDate, cacheDateStr))
-    .limit(1);
+  const cached = cacheEnabled
+    ? await db
+        .select()
+        .from(morningPrayerCacheTable)
+        .where(eq(morningPrayerCacheTable.cacheDate, cacheDateStr))
+        .limit(1)
+    : [];
 
   if (cached.length > 0) {
     const row = cached[0];
@@ -1060,21 +1064,25 @@ export async function assembleMorningPrayer(
   //    that slide is per-user. We splice the user's intercessions in
   //    after caching, so cache hits and cache misses both end up with
   //    the canonical liturgy + the requesting user's named asks.
-  try {
-    await db
-      .insert(morningPrayerCacheTable)
-      .values({
-        cacheDate: cacheDateStr,
-        liturgicalYear: liturgicalDay.liturgicalYear,
-        liturgicalSeason: liturgicalDay.season,
-        properNumber: liturgicalDay.properNumber,
-        feastName: liturgicalDay.feastName,
-        slidesJson: slides as unknown as Record<string, unknown>[],
-        assembledByUserId: userId,
-      })
-      .onConflictDoNothing();
-  } catch (err) {
-    console.error("Failed to cache morning prayer:", err);
+  //    Skip caching for non-English locales — see cacheEnabled
+  //    comment above for the schema-key explanation.
+  if (cacheEnabled) {
+    try {
+      await db
+        .insert(morningPrayerCacheTable)
+        .values({
+          cacheDate: cacheDateStr,
+          liturgicalYear: liturgicalDay.liturgicalYear,
+          liturgicalSeason: liturgicalDay.season,
+          properNumber: liturgicalDay.properNumber,
+          feastName: liturgicalDay.feastName,
+          slidesJson: slides as unknown as Record<string, unknown>[],
+          assembledByUserId: userId,
+        })
+        .onConflictDoNothing();
+    } catch (err) {
+      console.error("Failed to cache morning prayer:", err);
+    }
   }
 
   // Per-user intercessions slide — built fresh, never cached.
