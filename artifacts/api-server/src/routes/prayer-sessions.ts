@@ -291,6 +291,91 @@ router.get("/me/contemplation-sessions", async (req, res): Promise<void> => {
   }
 });
 
+// GET /api/me/contemplation-companions?startedAt=…&endedAt=… —
+// "who was sitting with me?" for a SINGLE contemplation window, used by
+// the ContemplationTimer summary screen the moment a sit ends. Two
+// returned slices:
+//   • `companions` — garden members (group peers + correspondents +
+//     fellows) whose own contemplation prayer_session overlapped this
+//     window. Up to 6 entries (id + name + avatarUrl) — the closing
+//     screen renders their faces.
+//   • `otherCount` — count of any OTHER Phoebe users (not garden, not
+//     the viewer) whose contemplation overlapped. The summary reports
+//     this as a plain "N other people were in contemplation" line.
+//
+// Overlap: a.start < b.end && a.end > b.start, matching the History
+// endpoint above. Distinct by userId so a person with two adjacent
+// sits in the same window isn't double-counted.
+router.get("/me/contemplation-companions", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const startedAtRaw = typeof req.query.startedAt === "string" ? req.query.startedAt : "";
+  const endedAtRaw = typeof req.query.endedAt === "string" ? req.query.endedAt : "";
+  const startedAt = new Date(startedAtRaw);
+  const endedAt = new Date(endedAtRaw);
+  if (Number.isNaN(startedAt.getTime()) || Number.isNaN(endedAt.getTime()) || endedAt <= startedAt) {
+    res.status(400).json({ error: "Invalid window" });
+    return;
+  }
+  // Cap the window at 12 hours to bound the DB scan in case a client
+  // sends absurd timestamps (long-locked phone, manual log).
+  if (endedAt.getTime() - startedAt.getTime() > 12 * 60 * 60 * 1000) {
+    res.status(400).json({ error: "Window too large" });
+    return;
+  }
+  try {
+    // All non-viewer contemplation sessions overlapping the window. We
+    // pull userId only — names/avatars come in a separate fetch for the
+    // garden subset so we don't drag avatar URLs for the "other" tally
+    // we never display.
+    const overlapping = await db
+      .select({ userId: prayerSessionsTable.userId })
+      .from(prayerSessionsTable)
+      .where(and(
+        eq(prayerSessionsTable.surface, "contemplation"),
+        gt(prayerSessionsTable.endedAt, startedAt),
+        lt(prayerSessionsTable.startedAt, endedAt),
+      ));
+    const otherUserIds = new Set<number>();
+    for (const row of overlapping) {
+      if (row.userId !== sessionUserId) otherUserIds.add(row.userId);
+    }
+    if (otherUserIds.size === 0) {
+      res.json({ companions: [], otherCount: 0 });
+      return;
+    }
+
+    const gardenIds = new Set(await getGardenUserIds(sessionUserId));
+    const gardenCompanionIds: number[] = [];
+    let otherCount = 0;
+    for (const uid of otherUserIds) {
+      if (gardenIds.has(uid)) gardenCompanionIds.push(uid);
+      else otherCount += 1;
+    }
+
+    // Hydrate the garden subset with name + avatar; cap at 6 since the
+    // summary screen only shows a few faces.
+    type Companion = { userId: number; name: string | null; avatarUrl: string | null };
+    let companions: Companion[] = [];
+    if (gardenCompanionIds.length > 0) {
+      const userRows = await db
+        .select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+        .from(usersTable)
+        .where(inArray(usersTable.id, gardenCompanionIds));
+      companions = userRows.slice(0, 6).map((u) => ({
+        userId: u.id,
+        name: u.name ?? null,
+        avatarUrl: u.avatarUrl ?? null,
+      }));
+    }
+
+    res.json({ companions, otherCount });
+  } catch (err) {
+    console.error("[/me/contemplation-companions GET] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // POST /api/me/contemplation-sessions — manually log a sit that wasn't
 // timed in-app (e.g. you sat away from your phone). Body: how long it was
 // and when it happened. Stored as an ordinary contemplation session so it
