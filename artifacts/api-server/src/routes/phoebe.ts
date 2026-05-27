@@ -201,41 +201,52 @@ router.post(
       }
     }
 
-    const [correspondence] = await db
-      .insert(correspondencesTable)
-      .values({ name, createdByUserId: auth.userId, groupType: type })
-      .returning();
-
+    // Atomic create: correspondence + creator member + every invited
+    // member, all-or-nothing. Without this transaction, a failure
+    // mid-loop would leave an orphan correspondence with a partial
+    // member roster — the creator could see the dialogue but some
+    // invitees would silently be missing and no UI would surface the
+    // partial state. The same pattern is used by
+    // /phoebe/correspondences/start (which also inserts the first
+    // letter in the same tx).
     const creatorToken = randomUUID();
-    await db.insert(correspondenceMembersTable).values({
-      correspondenceId: correspondence.id,
-      userId: auth.userId,
-      email: auth.email.toLowerCase(),
-      name: auth.name,
-      inviteToken: creatorToken,
-      joinedAt: new Date(),
+    const allMembers = await db.transaction(async (tx) => {
+      const [insertedCorrespondence] = await tx
+        .insert(correspondencesTable)
+        .values({ name, createdByUserId: auth.userId, groupType: type })
+        .returning();
+
+      await tx.insert(correspondenceMembersTable).values({
+        correspondenceId: insertedCorrespondence.id,
+        userId: auth.userId,
+        email: auth.email.toLowerCase(),
+        name: auth.name,
+        inviteToken: creatorToken,
+        joinedAt: new Date(),
+      });
+
+      // Create member rows for invited participants — invitations
+      // are NOT sent until the creator writes the first letter (so
+      // the recipient has something to read when they click
+      // through).
+      for (const m of members) {
+        await tx.insert(correspondenceMembersTable).values({
+          correspondenceId: insertedCorrespondence.id,
+          userId: null,
+          email: m.email.toLowerCase(),
+          name: m.name || null,
+          inviteToken: randomUUID(),
+        });
+      }
+
+      const rows = await tx
+        .select()
+        .from(correspondenceMembersTable)
+        .where(eq(correspondenceMembersTable.correspondenceId, insertedCorrespondence.id));
+      return { correspondence: insertedCorrespondence, members: rows };
     });
 
-    // Create member rows for invited participants — invitations are NOT sent
-    // until the creator writes the first letter (so the recipient has
-    // something to read when they click through).
-    for (const m of members) {
-      const inviteToken = randomUUID();
-      await db.insert(correspondenceMembersTable).values({
-        correspondenceId: correspondence.id,
-        userId: null,
-        email: m.email.toLowerCase(),
-        name: m.name || null,
-        inviteToken,
-      });
-    }
-
-    const allMembers = await db
-      .select()
-      .from(correspondenceMembersTable)
-      .where(eq(correspondenceMembersTable.correspondenceId, correspondence.id));
-
-    res.json({ ...correspondence, members: allMembers });
+    res.json({ ...allMembers.correspondence, members: allMembers.members });
   }),
 );
 
@@ -848,26 +859,103 @@ router.post(
     const resolvedAuthorName =
       (auth.name && auth.name.trim()) || auth.email.split("@")[0] || "Anonymous";
 
-    const [letter] = await db
-      .insert(lettersTable)
-      .values({
-        correspondenceId,
-        authorUserId: auth.userId,
-        authorEmail: auth.email,
-        authorName: resolvedAuthorName,
-        content: content.trim(),
-        letterNumber,
-        periodNumber: periodInfo.periodNumber,
-        periodStartDate: periodInfo.periodStartStr,
-      })
-      .returning();
+    // Atomic write sequence — the letter insert, membership stamp,
+    // draft cleanup, and (conditionally) the firstExchangeComplete
+    // flip must all commit together. Previously these ran as four
+    // separate top-level statements: a process death after the letter
+    // insert but before the membership update left an orphan letter
+    // visible to readers while the author's row still said "hasn't
+    // written this period," producing wrong turn state in the UI.
+    //
+    // Pushes + calendar event cancellations stay OUTSIDE the
+    // transaction — they're fire-and-forget side effects with no
+    // useful rollback semantics (you can't un-send a push to APNs).
+    // We fire them only AFTER the transaction commits so a failed
+    // transaction never leaks a notification about a non-existent
+    // letter.
+    const txResult = await db.transaction(async (tx) => {
+      const [insertedLetter] = await tx
+        .insert(lettersTable)
+        .values({
+          correspondenceId,
+          authorUserId: auth.userId,
+          authorEmail: auth.email,
+          authorName: resolvedAuthorName,
+          content: content.trim(),
+          letterNumber,
+          periodNumber: periodInfo.periodNumber,
+          periodStartDate: periodInfo.periodStartStr,
+        })
+        .returning();
 
-    // Push to every joined correspondence member except the author. We
-    // filter on `userId != null` so invited-but-not-signed-up members
-    // (whose device_tokens row wouldn't exist anyway) are naturally
-    // skipped. One_to_one only — small_group members get a single
-    // "your write window opened" push at period start instead, so a
-    // community feed doesn't ping you per-letter. Fire-and-forget.
+      await tx
+        .update(correspondenceMembersTable)
+        .set({
+          lastLetterAt: now,
+          // The author just wrote — cancel any pending calendar reminders for them.
+          lastCalendarEventId: null,
+          overdueCalendarEventId: null,
+        })
+        .where(eq(correspondenceMembersTable.id, member.id));
+
+      await tx
+        .delete(letterDraftsTable)
+        .where(
+          and(
+            eq(letterDraftsTable.correspondenceId, correspondenceId),
+            eq(letterDraftsTable.authorEmail, auth.email),
+            eq(letterDraftsTable.periodStartDate, periodInfo.periodStartStr),
+          ),
+        );
+
+      // Flip firstExchangeComplete for one_to_one when Letter 2 arrives
+      // (two distinct authors now have letters in the correspondence).
+      let firstExchangeJustCompleted = false;
+      if (type === "one_to_one" && !correspondence.firstExchangeComplete) {
+        const authorsAfter = await tx
+          .select({ authorEmail: lettersTable.authorEmail })
+          .from(lettersTable)
+          .where(eq(lettersTable.correspondenceId, correspondenceId));
+        const distinctAuthors = new Set(authorsAfter.map((r) => r.authorEmail.toLowerCase()));
+        if (distinctAuthors.size >= 2) {
+          await tx
+            .update(correspondencesTable)
+            .set({ firstExchangeComplete: true })
+            .where(eq(correspondencesTable.id, correspondenceId));
+          firstExchangeJustCompleted = true;
+        }
+      }
+
+      return { letter: insertedLetter, firstExchangeJustCompleted };
+    });
+    const letter = txResult.letter;
+    const firstExchangeJustCompleted = txResult.firstExchangeJustCompleted;
+    if (firstExchangeJustCompleted) {
+      // Mirror the flag onto the in-memory correspondence object so
+      // the rest of this handler (which reads correspondence.first
+      // ExchangeComplete to decide whether to schedule the next
+      // window-open calendar reminder) sees the freshly-flipped
+      // state.
+      correspondence.firstExchangeComplete = true;
+    }
+
+    // Post-commit side effects — pushes + calendar cancellations.
+    // None of these can roll back, none of them are required for the
+    // letter to be considered "sent," and all of them log their own
+    // errors. Calendar cancellation is best-effort: a stale reminder
+    // is a UX paper cut, not a data integrity issue.
+    if (member.lastCalendarEventId) {
+      cancelLetterCalendarEvent(member.lastCalendarEventId).catch(() => {});
+    }
+    if (member.overdueCalendarEventId) {
+      cancelLetterCalendarEvent(member.overdueCalendarEventId).catch(() => {});
+    }
+
+    // Push to every joined correspondence member except the author.
+    // Same filter as before: skip un-joined invitees (no device
+    // tokens to receive on) and the author themselves. One_to_one
+    // only — small_group members get a single "your write window
+    // opened" push at period start instead.
     if (type === "one_to_one") {
       for (const m of members) {
         if (m.userId == null) continue;
@@ -880,53 +968,6 @@ router.post(
           correspondenceName: correspondence.name,
           authorName: resolvedAuthorName,
         }).catch((err) => console.warn("[phoebe] letter push dispatch failed:", err));
-      }
-    }
-
-    await db
-      .update(correspondenceMembersTable)
-      .set({
-        lastLetterAt: now,
-        // The author just wrote — cancel any pending calendar reminders for them.
-        lastCalendarEventId: null,
-        overdueCalendarEventId: null,
-      })
-      .where(eq(correspondenceMembersTable.id, member.id));
-
-    // Cancel (best-effort) any pending calendar reminders the author had.
-    if (member.lastCalendarEventId) {
-      cancelLetterCalendarEvent(member.lastCalendarEventId).catch(() => {});
-    }
-    if (member.overdueCalendarEventId) {
-      cancelLetterCalendarEvent(member.overdueCalendarEventId).catch(() => {});
-    }
-
-    await db
-      .delete(letterDraftsTable)
-      .where(
-        and(
-          eq(letterDraftsTable.correspondenceId, correspondenceId),
-          eq(letterDraftsTable.authorEmail, auth.email),
-          eq(letterDraftsTable.periodStartDate, periodInfo.periodStartStr),
-        ),
-      );
-
-    // Flip firstExchangeComplete for one_to_one when Letter 2 arrives
-    // (two distinct authors now have letters in the correspondence).
-    let firstExchangeJustCompleted = false;
-    if (type === "one_to_one" && !correspondence.firstExchangeComplete) {
-      const authorsAfter = await db
-        .select({ authorEmail: lettersTable.authorEmail })
-        .from(lettersTable)
-        .where(eq(lettersTable.correspondenceId, correspondenceId));
-      const distinctAuthors = new Set(authorsAfter.map((r) => r.authorEmail.toLowerCase()));
-      if (distinctAuthors.size >= 2) {
-        await db
-          .update(correspondencesTable)
-          .set({ firstExchangeComplete: true })
-          .where(eq(correspondencesTable.id, correspondenceId));
-        correspondence.firstExchangeComplete = true;
-        firstExchangeJustCompleted = true;
       }
     }
 

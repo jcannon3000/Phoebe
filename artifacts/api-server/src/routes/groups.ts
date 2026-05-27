@@ -408,46 +408,58 @@ router.post("/groups", perUserRateLimit("groups_create", {
     const slug = await uniqueSlug(parsed.data.name);
 
     const isCircle = parsed.data.isPrayerCircle === true;
-    const [group] = await db.insert(groupsTable).values({
-      name: parsed.data.name,
-      description: parsed.data.description ?? null,
-      emoji: parsed.data.emoji ?? null,
-      slug,
-      // Generate the community-wide invite token up front. Without this
-      // the Share-invite modal on the community detail page reads
-      // "Invite link not available" until an admin taps Rotate, because
-      // the legacy flow only set per-member invite tokens.
-      inviteToken: generateToken(),
-      isPrayerCircle: isCircle,
-      intention: isCircle ? (parsed.data.intention?.trim() ?? null) : null,
-      circleDescription: isCircle ? (parsed.data.circleDescription?.trim() || null) : null,
-      createdByUserId: user.id,
-    }).returning();
 
-    // Creator becomes admin member
-    await db.insert(groupMembersTable).values({
-      groupId: group.id,
-      userId: user.id,
-      email: user.email,
-      name: user.name,
-      role: "admin",
-      inviteToken: generateToken(),
-      joinedAt: new Date(),
-    });
-
-    // Seed the first intention from the create-form `intention` field so the
-    // community page has something to render immediately. Subsequent additions
-    // flow through POST /groups/:slug/intentions. The legacy groups.intention
-    // column is also written for migration safety / older read paths.
-    if (isCircle && parsed.data.intention && parsed.data.intention.trim().length > 0) {
-      await db.insert(circleIntentionsTable).values({
-        groupId: group.id,
-        title: parsed.data.intention.trim(),
-        description: parsed.data.circleDescription?.trim() || null,
+    // Atomic create: group row, admin member, and (for circles) the
+    // initial intention all commit together. Without the transaction,
+    // a failure between the groupsTable insert and the
+    // groupMembersTable insert would leave an orphan community that
+    // nobody — including its creator — could access (no admin row
+    // means even the creator's UI sees "you're not a member").
+    const group = await db.transaction(async (tx) => {
+      const [insertedGroup] = await tx.insert(groupsTable).values({
+        name: parsed.data.name,
+        description: parsed.data.description ?? null,
+        emoji: parsed.data.emoji ?? null,
+        slug,
+        // Generate the community-wide invite token up front. Without this
+        // the Share-invite modal on the community detail page reads
+        // "Invite link not available" until an admin taps Rotate, because
+        // the legacy flow only set per-member invite tokens.
+        inviteToken: generateToken(),
+        isPrayerCircle: isCircle,
+        intention: isCircle ? (parsed.data.intention?.trim() ?? null) : null,
+        circleDescription: isCircle ? (parsed.data.circleDescription?.trim() || null) : null,
         createdByUserId: user.id,
-        sortOrder: 0,
+      }).returning();
+
+      // Creator becomes admin member.
+      await tx.insert(groupMembersTable).values({
+        groupId: insertedGroup.id,
+        userId: user.id,
+        email: user.email,
+        name: user.name,
+        role: "admin",
+        inviteToken: generateToken(),
+        joinedAt: new Date(),
       });
-    }
+
+      // Seed the first intention from the create-form `intention` field
+      // so the community page has something to render immediately.
+      // Subsequent additions flow through POST /groups/:slug/intentions.
+      // The legacy groups.intention column is also written for migration
+      // safety / older read paths.
+      if (isCircle && parsed.data.intention && parsed.data.intention.trim().length > 0) {
+        await tx.insert(circleIntentionsTable).values({
+          groupId: insertedGroup.id,
+          title: parsed.data.intention.trim(),
+          description: parsed.data.circleDescription?.trim() || null,
+          createdByUserId: user.id,
+          sortOrder: 0,
+        });
+      }
+
+      return insertedGroup;
+    });
 
     res.json({ group });
   } catch (err) {
