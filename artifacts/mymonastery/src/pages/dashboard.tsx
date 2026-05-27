@@ -5055,6 +5055,34 @@ export default function Dashboard() {
     }).length;
   }, [dashPrayerRequests]);
 
+  // Sweep stale lock-screen "X is asking for your prayers" notifications
+  // whenever the dashboard data settles. The amen flows already fire a
+  // per-request `phoebe:clear-notifications` event the moment the user
+  // prays on THIS device — but a user who prayed via a different device,
+  // or a request the server marked amened after the original push, can
+  // leave the banner orphaned on the lock screen. This effect catches
+  // both: any request the server now reports as amenedEver gets a clear
+  // dispatched. Native shell removes the matching delivered notification
+  // (no-op if it's already gone, no-op on web).
+  //
+  // We use myAmenedEver, not myAmenedToday, because once a user has
+  // prayed for a request (ever), the original "asking for your prayers"
+  // ask has been answered — re-summoning it tomorrow as "still asking"
+  // would be the same staleness bug.
+  useEffect(() => {
+    if (!dashPrayerRequests) return;
+    for (const r of dashPrayerRequests) {
+      if (!r.myAmenedEver) continue;
+      try {
+        window.dispatchEvent(
+          new CustomEvent("phoebe:clear-notifications", {
+            detail: { threadId: `prayer-request-${r.id}` },
+          })
+        );
+      } catch { /* non-fatal */ }
+    }
+  }, [dashPrayerRequests]);
+
   // Sync the iOS app-icon badge to the live unprayed count whenever
   // the dashboard's data settles. Without this the badge could only
   // grow (via APNs pushes) and never shrink after the user prays —

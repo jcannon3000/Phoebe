@@ -872,6 +872,15 @@ function OnboardingPrayerSlide({
   function recordAmen() {
     if (payload.kind === "request") {
       const rid = payload.requestId;
+      // Clear the "X is asking for your prayers" push for this specific
+      // request — onboarding amens count the same as prayer-mode amens
+      // toward streaks + dedup, so the corresponding lock-screen
+      // notification should clear too. No-op on web.
+      try {
+        window.dispatchEvent(
+          new CustomEvent("phoebe:clear-notifications", { detail: { threadId: `prayer-request-${rid}` } })
+        );
+      } catch { /* non-fatal */ }
       apiRequest("POST", `/api/prayer-requests/${rid}/amen`)
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });

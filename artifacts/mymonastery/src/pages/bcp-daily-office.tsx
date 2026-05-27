@@ -759,6 +759,19 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
     const source = typeof meta?.source === "string" ? meta.source : null;
     if (source === "request" && typeof meta?.requestId === "number") {
       const rid = meta.requestId;
+      // Clear the "X is asking for your prayers" push for this specific
+      // request — the amen IS the user's response, so leaving the
+      // notification on the lock screen would be a stale ask. Mirrors
+      // prayer-mode's per-request clear (the office's own clear above
+      // only targets thread "bell", not the per-request threads of
+      // intercessions interleaved into the office). Same dispatch path
+      // as the rest of the app; native shell removes the matching
+      // delivered notification, no-op on web.
+      try {
+        window.dispatchEvent(
+          new CustomEvent("phoebe:clear-notifications", { detail: { threadId: `prayer-request-${rid}` } })
+        );
+      } catch { /* non-fatal */ }
       apiRequest("POST", `/api/prayer-requests/${rid}/amen`)
         .then(() => {
           // Two invalidations:
