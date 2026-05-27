@@ -863,14 +863,22 @@ router.get("/groups/:slug/metrics", async (req, res): Promise<void> => {
         -- the parent surface stays mounted while SFSafariViewController
         -- is open. Anti-cheat (5s floor + 60min cap) lives in the POST
         -- route, so the sum here is already clean.
+        -- Private sits (the contemplation summary's Private toggle)
+        -- drop out of community "Time Praying" — a user who marked
+        -- their sit Private doesn't want it surfacing in any other
+        -- member's view, even as anonymous seconds. Office surfaces
+        -- never set is_private, so this is a no-op for them.
         COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
            WHERE user_id IN (SELECT user_id FROM members)
+             AND is_private = false
              AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $2), 0)::bigint AS seconds_prayed_today,
         COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
            WHERE user_id IN (SELECT user_id FROM members)
+             AND is_private = false
              AND to_char((ended_at AT TIME ZONE $4)::date, 'YYYY-MM-DD') >= $3), 0)::bigint AS seconds_prayed_week,
         COALESCE((SELECT SUM(duration_seconds) FROM prayer_sessions
-           WHERE user_id IN (SELECT user_id FROM members)), 0)::bigint AS seconds_prayed_total
+           WHERE user_id IN (SELECT user_id FROM members)
+             AND is_private = false), 0)::bigint AS seconds_prayed_total
     `, [result.group.id, todayStr, weekStartStr, tz]);
     const row = q.rows[0] ?? {};
     res.json({

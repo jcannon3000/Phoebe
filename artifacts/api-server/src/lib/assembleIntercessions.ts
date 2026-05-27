@@ -55,7 +55,12 @@ async function parishionersPrayingCount(
         eq(prayerFeedSubscriptionsTable.feedId, parishFeedId),
       ),
     )
-    .where(sql`${prayerSessionsTable.endedAt} > NOW() - (${intervalHours}::int * INTERVAL '1 hour')`);
+    // Private sits don't bump the parish solidarity count — a user who
+    // marked their sit Private on the contemplation summary doesn't
+    // want their activity showing up to other parishioners, even as a
+    // nameless +1 to the "praying with you" tally.
+    .where(sql`${prayerSessionsTable.endedAt} > NOW() - (${intervalHours}::int * INTERVAL '1 hour')
+               AND ${prayerSessionsTable.isPrivate} = false`);
   return row?.count ?? 0;
 }
 

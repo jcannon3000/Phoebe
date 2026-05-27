@@ -1475,7 +1475,10 @@ export async function runParishWeeklyRecapSender(opts: { forceNow?: boolean } = 
             eq(prayerFeedSubscriptionsTable.feedId, parish.id),
           ),
         )
-        .where(sql`${prayerSessionsTable.endedAt} > NOW() - INTERVAL '7 days'`);
+        // Private sits drop out of the solidarity count — same rule as
+        // the parish "praying with you" tally on the intercession slide.
+        .where(sql`${prayerSessionsTable.endedAt} > NOW() - INTERVAL '7 days'
+                   AND ${prayerSessionsTable.isPrivate} = false`);
       const weekCount = weekRow?.count ?? 0;
       if (weekCount === 0) continue; // empty week — skip silently.
 
