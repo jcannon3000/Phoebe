@@ -179,13 +179,57 @@ app.get("/.well-known/apple-app-site-association", (_req, res) => {
         details: [
           {
             appIDs: [appId],
+            // Components are the URL prefixes that should open the iOS
+            // app instead of Safari when the user taps a link from
+            // outside the app (Mail, Messages, an email web client, a
+            // share sheet). Apple matches longest-prefix-first and
+            // routes the tap through the app's universal-link handler
+            // (see native-shell.ts) which maps the path into a wouter
+            // route. Anything NOT listed here drops to Safari, which
+            // is the right call for unrelated landing pages.
             components: [
-              { "/": "/communities/join/*" },
-              { "/": "/m/*" },
-              { "/": "/lectio/*" },
-              { "/": "/moments/*" },
-              { "/": "/prayer-requests/*" },
+              // ── Auth + onboarding ────────────────────────────────
               { "/": "/dashboard" },
+              { "/": "/welcome" },
+              { "/": "/settings" },
+              // ── Prayer requests ──────────────────────────────────
+              // Both the public share-link (/p/:token, served as
+              // /prayer-requests/share/...) and the deep-link push
+              // landing (/prayer-requests/:id) live under this prefix.
+              { "/": "/prayer-requests/*" },
+              // ── Letters ──────────────────────────────────────────
+              // /letter/:id is the share-link landing (LetterSplash);
+              // /letters/* covers the index, correspondence detail,
+              // and write surfaces.
+              { "/": "/letter/*" },
+              { "/": "/letters/*" },
+              // ── Communities ──────────────────────────────────────
+              { "/": "/communities/join/*" },
+              { "/": "/communities/*" },
+              // ── Prayer feeds + public feed ───────────────────────
+              { "/": "/prayer-feeds/*" },
+              { "/": "/feed/*" },
+              // ── Prayer mode (digest links, intercession walks) ──
+              // The Tuesday digest + parish weekly recap email both
+              // route here with ?queue=... query params.
+              { "/": "/prayer-mode" },
+              { "/": "/prayer-mode/*" },
+              { "/": "/prayer-list" },
+              // ── BCP / Daily offices ─────────────────────────────
+              { "/": "/bcp" },
+              { "/": "/bcp/*" },
+              { "/": "/offices" },
+              // ── Standalone deep-link surfaces ───────────────────
+              { "/": "/m/*" },              // short-form moment invite
+              { "/": "/lectio/*" },         // lectio practice
+              { "/": "/moments/*" },        // practice detail
+              { "/": "/parish" },
+              { "/": "/parish/*" },
+              { "/": "/people" },
+              { "/": "/people/*" },
+              // ── Unsigned-in welcome (so a fresh tap still routes
+              //    through the app once installed) ─────────────────
+              { "/": "/pray" },
             ],
           },
         ],
