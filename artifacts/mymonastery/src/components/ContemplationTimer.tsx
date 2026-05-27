@@ -85,6 +85,12 @@ export function ContemplationTimer({
   // whether the user ended before the bell (changes the closing copy).
   const [satSeconds, setSatSeconds] = useState(0);
   const [endedEarly, setEndedEarly] = useState(false);
+  // Closing-screen "who sat with you" data. Populated by a fetch the
+  // moment the sit ends (no spinner — the screen renders instantly and
+  // the row appears below the copy when the fetch resolves).
+  type Companion = { userId: number; name: string | null; avatarUrl: string | null };
+  const [companions, setCompanions] = useState<Companion[]>([]);
+  const [otherCount, setOtherCount] = useState(0);
 
   const endAtRef = useRef<number>(0);
   const startedAtRef = useRef<Date | null>(null);
@@ -211,11 +217,12 @@ export function ContemplationTimer({
     // Server floors non-office surfaces at 5s; skip the round trip below it.
     if (sat < 5) return;
     const startedAt = startedAtRef.current ?? new Date(Date.now() - sat * 1000);
+    const endedAt = new Date();
     apiRequest("POST", "/api/prayer-sessions", {
       surface: "contemplation",
       durationSeconds: sat,
       startedAt: startedAt.toISOString(),
-      endedAt: new Date().toISOString(),
+      endedAt: endedAt.toISOString(),
     })
       .then(() => {
         queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
@@ -223,6 +230,22 @@ export function ContemplationTimer({
         queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
       })
       .catch(() => { /* best-effort — a dropped stat shouldn't break the close */ });
+
+    // Companion lookup — who else was sitting alongside this exact
+    // window? Garden members come back with avatars (rendered as a
+    // face row); anyone else is just summed into `otherCount`. We fire
+    // this in parallel with the recordSession POST so the summary
+    // screen surfaces companions as soon as the fetch returns. Failures
+    // are silent — a missing row shouldn't break the closing screen.
+    apiRequest<{ companions: Companion[]; otherCount: number }>(
+      "GET",
+      `/api/me/contemplation-companions?startedAt=${encodeURIComponent(startedAt.toISOString())}&endedAt=${encodeURIComponent(endedAt.toISOString())}`,
+    )
+      .then((data) => {
+        setCompanions(data.companions ?? []);
+        setOtherCount(data.otherCount ?? 0);
+      })
+      .catch(() => { /* non-fatal — summary just shows the existing copy */ });
   }
 
   function begin(minutes: number) {
@@ -239,6 +262,10 @@ export function ContemplationTimer({
     setSatSeconds(0);
     setReachedGoal(false);
     setOvertime(0);
+    // Clear last sit's companion data so it doesn't flash on the new
+    // summary screen before the fetch for THIS sit returns.
+    setCompanions([]);
+    setOtherCount(0);
     recordedRef.current = false;
     finishedRef.current = false;
     reachedRef.current = false;
@@ -520,9 +547,80 @@ export function ContemplationTimer({
                     end so the user sees what they actually did. */}
                 {t("contemplation_timer.of_contemplative_prayer", { time: formatDone(satSeconds) })}
               </p>
-              <p className="text-[13px] mb-8" style={{ color: "rgba(143,175,150,0.65)", fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 300 }}>
+              <p className="text-[13px] mb-6" style={{ color: "rgba(143,175,150,0.65)", fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 300 }}>
                 {t("contemplation_timer.carry_the_quiet")}
               </p>
+
+              {/* "Who sat with you?" — garden members appear as a face
+                  row (their contemplation overlapped yours); anyone
+                  else on Phoebe is summed into a plain count line. The
+                  whole block is hidden until the companions fetch
+                  returns AND there's something to show, so the screen
+                  doesn't reflow on empty results. */}
+              {(companions.length > 0 || otherCount > 0) && (
+                <div className="flex flex-col items-center mb-8" style={{ maxWidth: 320 }}>
+                  {companions.length > 0 && (
+                    <>
+                      <p
+                        className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2"
+                        style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}
+                      >
+                        {t("contemplation_timer.with_you")}
+                      </p>
+                      <div
+                        className="flex items-center -space-x-2 mb-2"
+                        title={companions.map((c) => c.name ?? "—").join(", ")}
+                      >
+                        {companions.slice(0, 6).map((c) =>
+                          c.avatarUrl ? (
+                            <img
+                              key={c.userId}
+                              src={c.avatarUrl}
+                              alt={c.name ?? ""}
+                              className="w-9 h-9 rounded-full object-cover"
+                              style={{ border: "2px solid #0E2016" }}
+                            />
+                          ) : (
+                            <div
+                              key={c.userId}
+                              className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-semibold"
+                              style={{
+                                background: "#1A4A2E",
+                                color: "#A8C5A0",
+                                border: "2px solid #0E2016",
+                                fontFamily: SPACE_GROTESK,
+                              }}
+                            >
+                              {(c.name ?? "·").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "·"}
+                            </div>
+                          )
+                        )}
+                      </div>
+                      <p
+                        className="text-[12px] text-center"
+                        style={{ color: "rgba(200,212,192,0.75)", fontFamily: SPACE_GROTESK }}
+                      >
+                        {companions
+                          .map((c) => c.name?.trim() || t("contemplation_timer.someone"))
+                          .slice(0, 3)
+                          .join(", ")}
+                        {companions.length > 3
+                          ? " " + t("contemplation_timer.and_n_more", { count: companions.length - 3 })
+                          : ""}
+                      </p>
+                    </>
+                  )}
+                  {otherCount > 0 && (
+                    <p
+                      className={`text-[12px] ${companions.length > 0 ? "mt-2" : ""}`}
+                      style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK, fontStyle: "italic" }}
+                    >
+                      {t("contemplation_timer.others_sitting", { count: otherCount })}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={handleClose}

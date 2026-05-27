@@ -786,6 +786,17 @@ export const en = {
     of_contemplative_prayer: "{{time}} of contemplative prayer",
     carry_the_quiet: "Carry the quiet with you.",
     amen: "Amen →",
+    // Summary-screen "who sat with you" section. `with_you` is the
+    // eyebrow above the avatar row; `someone` fills in when a garden
+    // companion has no name set. `and_n_more` chains after the first
+    // few named companions; `others_sitting` pluralizes the non-garden
+    // tally beneath the avatars.
+    with_you: "With you",
+    someone: "Someone",
+    and_n_more_one: "and 1 more",
+    and_n_more_other: "and {{count}} more",
+    others_sitting_one: "+1 other person was in contemplation",
+    others_sitting_other: "+{{count}} other people were in contemplation",
   },
   // Read letter (pages/Letters/ReadLetter.tsx) — paper-style letter viewer.
   read_letter: {

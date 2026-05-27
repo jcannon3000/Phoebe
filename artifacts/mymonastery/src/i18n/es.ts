@@ -730,6 +730,12 @@ export const es: Translations = {
     of_contemplative_prayer: "{{time}} de oración contemplativa",
     carry_the_quiet: "Lleva el silencio contigo.",
     amen: "Amén →",
+    with_you: "Contigo",
+    someone: "Alguien",
+    and_n_more_one: "y 1 más",
+    and_n_more_other: "y {{count}} más",
+    others_sitting_one: "+1 persona más estuvo en contemplación",
+    others_sitting_other: "+{{count}} personas más estuvieron en contemplación",
   },
   read_letter: {
     letter_n: "Carta {{n}}",
