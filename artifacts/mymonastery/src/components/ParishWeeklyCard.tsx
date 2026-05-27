@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 
 // Parish Weekly Prayer List — beta home card.
@@ -120,6 +121,7 @@ function EntryAvatar({ entry, size = 28 }: { entry: ParishWeeklyEntry; size?: nu
 // + preventDefault to suppress that and route to /prayer-list instead.
 function ViewPill() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   return (
     <button
       type="button"
@@ -137,7 +139,7 @@ function ViewPill() {
         cursor: "pointer",
       }}
     >
-      View
+      {t("letter_card.view_pill")}
     </button>
   );
 }
@@ -171,6 +173,7 @@ function AvatarStack({ entries, max = 6 }: { entries: ParishWeeklyEntry[]; max?:
 }
 
 export function ParishWeeklyCard() {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery<ParishWeeklyData>({
     queryKey: ["/api/me/parish-weekly"],
     queryFn: () => apiRequest("GET", "/api/me/parish-weekly"),
@@ -194,12 +197,12 @@ export function ParishWeeklyCard() {
   //   • Mixed sources → "N prayers waiting this week"
   const unprayedRequestsOnly = (data?.unprayed ?? []).every(e => e.kind === "request");
   const headline = (() => {
-    if (allPrayed) return "You've held your community this week 🌿";
+    if (allPrayed) return t("parish_weekly.held_community");
     const n = data?.unprayed.length ?? 0;
     if (n === 1 && unprayedRequestsOnly && next?.kind === "request") {
-      return `Pray for ${next.title}`;
+      return t("parish_weekly.pray_for", { name: next.title });
     }
-    return `${n} ${n === 1 ? "prayer" : "prayers"} waiting this week`;
+    return t("parish_weekly.prayers_waiting", { count: n });
   })();
 
   return (
@@ -216,7 +219,7 @@ export function ParishWeeklyCard() {
             className="text-[10px] font-semibold uppercase tracking-[0.14em]"
             style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT, margin: 0 }}
           >
-            This week's prayer list 🌿
+            {t("parish_weekly.this_weeks_list")}
           </p>
           <div className="flex items-center gap-2 shrink-0">
             <span
@@ -261,7 +264,7 @@ export function ParishWeeklyCard() {
                 fontFamily: FONT,
               }}
             >
-              Begin →
+              {t("parish_weekly.begin")}
             </span>
           ) : null;
           const headlineBlock = (
@@ -277,10 +280,10 @@ export function ParishWeeklyCard() {
                 style={{ color: "rgba(143,175,150,0.85)", fontFamily: FONT, margin: 0 }}
               >
                 {allPrayed
-                  ? "Everything your community is carrying has been prayed for."
+                  ? t("parish_weekly.all_prayed_sub")
                   : (data?.prayed.length ?? 0) === 0
-                    ? "Your community is asking your prayers."
-                    : `You have prayed for ${data?.prayed.length} this week.`}
+                    ? t("parish_weekly.asking_prayers")
+                    : t("parish_weekly.prayed_n_this_week", { count: data?.prayed.length ?? 0 })}
               </p>
             </>
           );

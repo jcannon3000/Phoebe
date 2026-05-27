@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 
 // Top-of-app banner that surfaces network trouble in language the user
 // can act on. Two modes:
@@ -18,6 +19,7 @@ import { useQueryClient } from "@tanstack/react-query";
 // The banner self-dismisses once a query succeeds.
 export function NetworkBanner() {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const [online, setOnline] = useState<boolean>(
     typeof navigator === "undefined" ? true : navigator.onLine,
   );
@@ -106,9 +108,7 @@ export function NetworkBanner() {
         boxShadow: "0 2px 8px rgba(0,0,0,0.35)",
       }}
     >
-      {showOffline
-        ? "📡 You're offline. Some things may not load until you reconnect."
-        : "📡 Having trouble reaching the server. If you're on public Wi-Fi, tap to accept any portal terms, or try switching to cellular data."}
+      {showOffline ? t("network.offline") : t("network.flaky")}
     </div>
   );
 }
