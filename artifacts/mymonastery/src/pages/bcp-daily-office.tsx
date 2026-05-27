@@ -2131,7 +2131,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
               so they're discoverable but don't compete with the
               opening acclamation. Only on the first slide; once the
               reader is moving through the devotion they shouldn't
-              keep seeing alternate routes. */}
+              keep seeing alternate routes. Rendered as a pair of
+              side-by-side pills (per user direction) rather than
+              underlined text links — reads as proper alternate
+              actions instead of footnote-style links. */}
           {isDevotion && slideIdx === 0 && !onComplete && !officesOnlyViewer && (
             // Offices-only users get this row hidden entirely:
             // /prayer-mode (no queue) would loading-screen for them
@@ -2146,9 +2149,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
               style={{
                 marginTop: 28,
                 display: "flex",
-                flexDirection: "column",
+                flexDirection: "row",
+                flexWrap: "wrap",
+                justifyContent: "center",
                 alignItems: "center",
-                gap: 12,
+                gap: 8,
                 paddingTop: 16,
                 borderTop: `1px solid ${BORDER}`,
               }}
@@ -2157,19 +2162,18 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
                 type="button"
                 onClick={() => setViewerLocation("/prayer-mode")}
                 style={{
-                  background: "none",
-                  border: "none",
-                  color: MUTED_GREEN,
+                  background: "rgba(46,107,64,0.10)",
+                  border: "1px solid rgba(46,107,64,0.32)",
+                  borderRadius: 999,
+                  color: "rgba(168,197,160,0.95)",
                   fontFamily: SPACE_GROTESK,
-                  fontSize: 13,
+                  fontSize: 12,
+                  fontWeight: 500,
                   cursor: "pointer",
-                  padding: 6,
-                  textDecoration: "underline",
-                  textDecorationColor: "rgba(143,175,150,0.35)",
-                  textUnderlineOffset: 4,
+                  padding: "7px 14px",
                 }}
               >
-                Skip to community prayer list →
+                Community Intercessions
               </button>
               <button
                 type="button"
@@ -2184,19 +2188,18 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
                   setViewerLocation(target);
                 }}
                 style={{
-                  background: "none",
-                  border: "none",
-                  color: MUTED_GREEN,
+                  background: "rgba(46,107,64,0.10)",
+                  border: "1px solid rgba(46,107,64,0.32)",
+                  borderRadius: 999,
+                  color: "rgba(168,197,160,0.95)",
                   fontFamily: SPACE_GROTESK,
-                  fontSize: 13,
+                  fontSize: 12,
+                  fontWeight: 500,
                   cursor: "pointer",
-                  padding: 6,
-                  textDecoration: "underline",
-                  textDecorationColor: "rgba(143,175,150,0.35)",
-                  textUnderlineOffset: 4,
+                  padding: "7px 14px",
                 }}
               >
-                Pray the full {resolvedMode === "early-evening-devotion" ? "Evening Prayer" : "Morning Prayer"} →
+                Pray the full {resolvedMode === "early-evening-devotion" ? "Evening Prayer" : "Morning Prayer"}
               </button>
             </div>
           )}

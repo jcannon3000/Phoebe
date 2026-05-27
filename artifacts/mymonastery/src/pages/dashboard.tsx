@@ -2800,15 +2800,19 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
     }
   })();
 
-  // CTA copy + destination. The button used to open an inline modal
-  // chooser; per user direction it now navigates to a dedicated
-  // /prayer-chooser screen so the depth options live on a proper
-  // route (back-button behaviour, deep-linkable, sound effect on
-  // entry). The single CTA shows when the user hasn't prayed yet
-  // today ("Begin prayer →"). Once they've prayed something the pill
-  // splits into a side-by-side pair below — a "Prayer completed ✓"
-  // status pill + a "Pray again" action pill — so the win is visible
-  // without losing the way back in.
+  // CTA goes directly to the side-appropriate Daily Devotion — per
+  // user direction the Devotion is the default depth. The two heavier
+  // alternatives (Community Intercessions, full Daily Office) are
+  // surfaced as pills on the Devotion's first slide; the dashboard
+  // card stays a single sage CTA so the choice doesn't compete here.
+  // The single CTA shows when the user hasn't prayed yet today
+  // ("Begin prayer →"). Once they've prayed something the pill splits
+  // into a side-by-side pair below — a "Prayer completed ✓" status
+  // pill + a "Pray again" action pill — so the win is visible without
+  // losing the way back in. Pray again carries ?reset=1 so the
+  // viewer starts the Devotion fresh rather than resuming.
+  const devotionMode = isMorning ? "morning-devotion" : "early-evening-devotion";
+  const devotionHref = `/bcp/daily-devotions?mode=${devotionMode}${prayedToday ? "&reset=1" : ""}`;
   const ctaCopy = "Begin prayer";
 
   // Compact one-line variant — used when feed-first home promotes a
@@ -2982,7 +2986,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
               >
                 Prayer completed <span aria-hidden>✓</span>
               </div>
-              <Link href="/prayer-chooser" className="flex-1">
+              <Link href={devotionHref} className="flex-1">
                 <div
                   role="button"
                   tabIndex={0}
@@ -3002,7 +3006,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
               </Link>
             </div>
           ) : (
-            <Link href="/prayer-chooser">
+            <Link href={devotionHref}>
               <div
                 role="button"
                 tabIndex={0}
