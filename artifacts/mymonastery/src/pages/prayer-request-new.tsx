@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
@@ -27,31 +28,33 @@ type LastMineRow = {
 // /moment/new?template=intercession and live in shared_moments, so
 // they never reach this form.
 export type RequestKind = "request" | "life-event" | "justice";
-const KIND_COPY: Record<RequestKind, {
-  emoji: string;
-  title: string;
-  subtitle: string;
-  placeholder: string;
-}> = {
-  "request": {
-    emoji: "🙏🏽",
-    title: "What are you carrying?",
-    subtitle: "Share what you'd like your community to pray about. It can be big or small.",
-    placeholder: "A big decision at work… a family member who's been on my heart…",
-  },
-  "life-event": {
-    emoji: "🌱",
-    title: "What's happening in your life?",
-    subtitle: "A milestone, a change, a hard week — share what your community can hold with you.",
-    placeholder: "Starting a new job next Monday… my dad just went into hospice…",
-  },
-  "justice": {
-    emoji: "⚖️",
-    title: "What injustice are you holding?",
-    subtitle: "Name the ache. Your community will pray with you for what's broken.",
-    placeholder: "A neighbor without housing… a hard ruling today…",
-  },
-};
+
+// Per-kind copy is built from i18n via useKindCopy() — was a frozen
+// module-level const before, which locked the labels to English at
+// load time even when the user flipped to Spanish.
+function useKindCopy(): Record<RequestKind, { emoji: string; title: string; subtitle: string; placeholder: string }> {
+  const { t } = useTranslation();
+  return {
+    "request": {
+      emoji: "🙏🏽",
+      title: t("prayer_request.title_default"),
+      subtitle: t("prayer_request.subtitle_default"),
+      placeholder: t("prayer_request.placeholder_default"),
+    },
+    "life-event": {
+      emoji: "🌱",
+      title: t("prayer_request.title_life_event"),
+      subtitle: t("prayer_request.subtitle_life_event"),
+      placeholder: t("prayer_request.placeholder_life_event"),
+    },
+    "justice": {
+      emoji: "⚖️",
+      title: t("prayer_request.title_justice"),
+      subtitle: t("prayer_request.subtitle_justice"),
+      placeholder: t("prayer_request.placeholder_justice"),
+    },
+  };
+}
 
 // Full-screen, step-by-step authoring flow for sharing your own prayer
 // request with the community. Mirrors the "gathering" and "pray-for-new"
@@ -67,10 +70,16 @@ const KIND_COPY: Record<RequestKind, {
 // On success we return to /prayer-list, where the new card will show up
 // under "Prayer Requests".
 
-const DURATION_OPTIONS = [
-  { value: 3, label: "3 days", tagline: "A short, steady watch" },
-  { value: 7, label: "7 days", tagline: "A full week of prayer" },
-] as const;
+// Built per-render inside the component so the labels follow the
+// active locale. Kept as a hook so callers don't need to thread t()
+// into the call site.
+function useDurationOptions(): ReadonlyArray<{ value: 3 | 7; label: string; tagline: string }> {
+  const { t } = useTranslation();
+  return [
+    { value: 3, label: t("prayer_request.duration_3_days"), tagline: t("prayer_request.duration_3_tagline") },
+    { value: 7, label: t("prayer_request.duration_7_days"), tagline: t("prayer_request.duration_7_tagline") },
+  ];
+}
 
 const stepVariants = {
   initial: { opacity: 0, x: 20 },
@@ -81,10 +90,13 @@ const stepVariants = {
 type Step = 0 | 1;
 
 export default function PrayerRequestNew() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const search = useSearch();
   const { user } = useAuth();
   const qc = useQueryClient();
+  const KIND_COPY = useKindCopy();
+  const DURATION_OPTIONS = useDurationOptions();
 
   const kind: RequestKind = useMemo(() => {
     const raw = new URLSearchParams(search).get("kind") ?? "";
@@ -136,7 +148,7 @@ export default function PrayerRequestNew() {
       setLocation("/prayer-list");
     },
     onError: (err: any) => {
-      setError(err?.message || "Couldn't share this request. Please try again.");
+      setError(err?.message || t("prayer_request.couldnt_share"));
     },
   });
 
@@ -150,12 +162,12 @@ export default function PrayerRequestNew() {
       setLocation("/prayer-list");
     },
     onError: (err: any) => {
-      setError(err?.message || "Couldn't renew. Please try again.");
+      setError(err?.message || t("prayer_request.couldnt_renew"));
     },
   });
 
   function handleBodyNext() {
-    if (body.trim().length === 0) { setError("Write a prayer request first."); return; }
+    if (body.trim().length === 0) { setError(t("prayer_request.write_request_first")); return; }
     setError("");
     setStep(1);
   }
@@ -180,7 +192,7 @@ export default function PrayerRequestNew() {
           className="text-sm"
           style={{ color: "#8FAF96" }}
         >
-          ← Back
+          {t("prayer_request.back")}
         </button>
         <div className="flex-1 flex gap-1.5">
           {[0, 1].map((s) => (
@@ -230,7 +242,7 @@ export default function PrayerRequestNew() {
                 }}
               />
               <p className="text-[11px] mb-6 text-right" style={{ color: "rgba(143,175,150,0.5)" }}>
-                {body.length} / 1000
+                {t("prayer_request.char_count", { count: body.length })}
               </p>
 
               {/* Tag people — the "praying for my friend Matthew"
@@ -253,7 +265,7 @@ export default function PrayerRequestNew() {
                 className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                Continue →
+                {t("prayer_request.continue_button")}
               </button>
 
               {/* Renew-instead card — only when the user has a previous
@@ -274,7 +286,7 @@ export default function PrayerRequestNew() {
                     className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2"
                     style={{ color: "rgba(143,175,150,0.6)" }}
                   >
-                    Or renew your last one
+                    {t("prayer_request.or_renew")}
                   </p>
                   <p
                     className="text-[14px] italic leading-snug mb-3"
@@ -295,7 +307,7 @@ export default function PrayerRequestNew() {
                     className="text-xs font-semibold rounded-full px-4 py-2 disabled:opacity-50"
                     style={{ background: "rgba(46,107,64,0.45)", color: "#F0EDE6" }}
                   >
-                    {renewMutation.isPending ? "Renewing…" : "Renew for 7 days"}
+                    {renewMutation.isPending ? t("prayer_request.renewing") : t("prayer_request.renew_for_7_days")}
                   </button>
                 </div>
               )}
@@ -313,10 +325,10 @@ export default function PrayerRequestNew() {
               transition={{ duration: 0.2 }}
             >
               <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                How long should we carry it? 🌿
+                {t("prayer_request.duration_question")}
               </h1>
               <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
-                Choose a watch. You can renew or release it any time.
+                {t("prayer_request.duration_subtitle")}
               </p>
 
               <div className="space-y-3 mb-8">
@@ -352,7 +364,7 @@ export default function PrayerRequestNew() {
                 className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                {createMutation.isPending ? "Sharing…" : "Share with my community →"}
+                {createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community")}
               </button>
             </motion.div>
           )}
@@ -382,6 +394,7 @@ function TagPicker({
   selectedIds: number[];
   onChange: (next: number[]) => void;
 }) {
+  const { t } = useTranslation();
   const { data: people = [] } = usePeople(ownerId);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -431,7 +444,9 @@ function TagPicker({
             fontFamily: "'Space Grotesk', sans-serif",
           }}
         >
-          🏷️  {selected.length > 0 ? `Tagged · ${selected.length}` : "Tag someone"}
+          {selected.length > 0
+            ? t("prayer_request.tagged_count_pill", { count: selected.length })
+            : t("prayer_request.tag_someone_pill")}
         </button>
         {selected.map(p => (
           <span
@@ -448,7 +463,7 @@ function TagPicker({
             <button
               type="button"
               onClick={() => toggle(p.userId)}
-              aria-label={`Untag ${p.name}`}
+              aria-label={t("prayer_request.untag_aria", { name: p.name ?? "" })}
               style={{
                 background: "transparent",
                 border: "none",
@@ -477,7 +492,7 @@ function TagPicker({
         >
           <input
             type="text"
-            placeholder="Search by name…"
+            placeholder={t("prayer_request.tag_search_placeholder")}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             className="w-full text-sm px-3 py-2 rounded-lg mb-2 outline-none"
@@ -492,8 +507,8 @@ function TagPicker({
             {filtered.length === 0 && (
               <p className="text-xs italic text-center py-2" style={{ color: "rgba(143,175,150,0.55)" }}>
                 {eligible.length === 0
-                  ? "No one in your community yet."
-                  : "No one matches that name."}
+                  ? t("prayer_request.no_one_in_community")
+                  : t("prayer_request.no_one_matches_name")}
               </p>
             )}
             {filtered.map(p => {

@@ -186,6 +186,16 @@ export const en = {
     or_renew: "Or renew your last one",
     renew_for_7_days: "Renew for 7 days",
     renewing: "Renewing…",
+    couldnt_renew: "Couldn't renew. Please try again.",
+    back: "← Back",
+    continue_button: "Continue →",
+    char_count: "{{count}} / 1000",
+    tag_someone_pill: "🏷️  Tag someone",
+    tagged_count_pill: "🏷️  Tagged · {{count}}",
+    untag_aria: "Untag {{name}}",
+    tag_search_placeholder: "Search by name…",
+    no_one_in_community: "No one in your community yet.",
+    no_one_matches_name: "No one matches that name.",
   },
   pray_for: {
     write_prayer_for: "Write a prayer for {{name}} 🌿",
@@ -405,6 +415,12 @@ export const en = {
   },
   // Home-screen Parish Weekly card (components/ParishWeeklyCard.tsx) —
   // the "This week's prayer list 🌿" hero card on the parish home.
+  // Network banner (components/NetworkBanner.tsx) — top-of-app banner
+  // for offline + flaky connectivity states.
+  network: {
+    offline: "📡 You're offline. Some things may not load until you reconnect.",
+    flaky: "📡 Having trouble reaching the server. If you're on public Wi-Fi, tap to accept any portal terms, or try switching to cellular data.",
+  },
   parish_weekly: {
     this_weeks_list: "This week's prayer list 🌿",
     held_community: "You've held your community this week 🌿",
