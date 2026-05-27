@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
 // Per-user prayer-time ledger. One row per finished session in:
@@ -62,6 +62,13 @@ export const prayerSessionsTable = pgTable(
     slidesCompleted: integer("slides_completed"),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     endedAt: timestamp("ended_at", { withTimezone: true }).notNull(),
+    // Per-session visibility. When true, the session is hidden from
+    // other users' "who sat with me" companion lists (the contemplation
+    // summary screen + history overlap row). The viewer always sees
+    // their own private sits in their own history. Default false so
+    // existing rows behave as before; the toggle on the contemplation
+    // summary screen flips this for individual sits.
+    isPrivate: boolean("is_private").notNull().default(false),
   },
   (t) => ({
     // Metrics queries filter by user + ended_at window. The composite

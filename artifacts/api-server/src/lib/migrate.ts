@@ -1213,6 +1213,13 @@ export async function migrate() {
     // Nullable on the table; the SQL treats NULL as "qualifies"
     // (legacy rows pre-dating this column).
     await run(client, `ALTER TABLE prayer_sessions ADD COLUMN IF NOT EXISTS slides_completed INTEGER`);
+    // Per-session visibility — when TRUE, the row is hidden from other
+    // users' "who sat with me" companion lookups (the contemplation
+    // summary screen and the history-overlap row). The owner always
+    // sees their own private sits in their own history. Default FALSE
+    // so existing rows behave as before; the contemplation summary
+    // toggle is the only surface that flips this today.
+    await run(client, `ALTER TABLE prayer_sessions ADD COLUMN IF NOT EXISTS is_private BOOLEAN NOT NULL DEFAULT FALSE`);
 
     // ── Sign in with Apple — add apple_id column + partial-unique index ─────
     // `sub` from a verified Apple identity token. Partial-unique so existing
