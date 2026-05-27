@@ -2368,12 +2368,18 @@ export default function BcpDailyOfficePage() {
     }
   }, [betaLoading, rawIsBeta]);
 
-  if (isLoading || betaLoading || !user) return null;
-
-  if (showMode) {
-    return <OfficeViewer mode={showMode} onBack={() => setShowMode(null)} />;
-  }
-
+  // ── National Cathedral Morning Prayer metadata ─────────────────────────
+  // Lives ABOVE the early returns. Hoisting this matters: on a fresh
+  // mount showMode is null and the picker renders + calls this hook;
+  // when the user taps an office showMode flips to "evening" /
+  // "morning" / etc. and the page short-circuits to <OfficeViewer/>.
+  // If the hook stayed below the early return, the second render
+  // would call ONE FEWER hook than the first, and React would throw
+  // "Rendered fewer hooks than expected" (minified error #300). The
+  // user originally saw this as "opening the evening office goes to
+  // an error" — the picker mounted, the useQuery ran on render 1,
+  // then setShowMode("evening") triggered render 2 which never
+  // reached the hook because the early return fired first.
   const hour = new Date().getHours();
   const isMorning = hour < 14;
   const isNight = hour >= 20;
@@ -2400,6 +2406,13 @@ export default function BcpDailyOfficePage() {
     enabled: weekday,
     staleTime: 60 * 60_000,
   });
+
+  if (isLoading || betaLoading || !user) return null;
+
+  if (showMode) {
+    return <OfficeViewer mode={showMode} onBack={() => setShowMode(null)} />;
+  }
+
   // Evening = the afternoon window 14:00–20:00; Compline owns the
   // 20:00+ block so the two don't both highlight "Available now" at
   // the same time.
