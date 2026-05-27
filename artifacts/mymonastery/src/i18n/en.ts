@@ -71,6 +71,42 @@ export const en = {
     pray_again_short: "Pray again",
     customize: "Customize",
   },
+  // PrayerSection component — surfaces the prayer-request list +
+  // composer on the dashboard, /prayer-list, /my-prayer-requests.
+  // Visible on multiple pages so it's its own namespace.
+  prayer_section: {
+    header: "Prayer Requests 🙏🏽",
+    empty_default: "Your community is here to carry what you're carrying.",
+    anonymous: "Anonymous",
+    you_fallback: "You",
+    someone_fallback: "Someone",
+    your_request: "Your request",
+    from_name: "From {{name}}",
+    correspondent_tag: "· 📮 Correspondent",
+    today: "today",
+    days_left: "{{count}}d left",
+    delete_confirm: "Delete this prayer request? This can't be undone.",
+    delete_aria: "Delete prayer request",
+    your_word_label: "Your word",
+    remove_word_aria: "Remove your word",
+    from_your_community: "From your community",
+    word_placeholder: "Leave a word alongside this… 🌿",
+    renew: "🔄 Renew",
+    renewing_dots: "…",
+    release_this: "Release this 🌿",
+    show_less: "Show less",
+    see_all_with_count: "See all ({{count}}) →",
+    modal_header: "Hold this with your community 🌿",
+    duration_question: "How long should your community hold this?",
+    duration_3_pill: "3 days 🌱",
+    duration_7_pill: "7 days 🌿",
+    duration_3_blurb: "Your community will hold this for three days. On the third day it will quietly be released. 🌿",
+    duration_7_blurb: "Your community will hold this for a full week. After seven days it will quietly be released. 🌿",
+    sharing: "Sharing…",
+    share_button: "Share with my community 🙏🏽",
+    not_yet: "Not yet",
+    generic_error: "Something went wrong. Please try again.",
+  },
   // Create-a-Community page (pages/community-new.tsx).
   community_new: {
     back: "← Communities",
@@ -415,6 +451,13 @@ export const en = {
   },
   // Home-screen Parish Weekly card (components/ParishWeeklyCard.tsx) —
   // the "This week's prayer list 🌿" hero card on the parish home.
+  // Desktop "get the app" prompt (components/DesktopAppPrompt.tsx).
+  desktop_prompt: {
+    title: "Phoebe is built for your phone",
+    body: "Daily prayer notifications, smoother slideshow — get the iOS app.",
+    get_app: "Get the app →",
+    not_now: "Not now",
+  },
   // Network banner (components/NetworkBanner.tsx) — top-of-app banner
   // for offline + flaky connectivity states.
   network: {

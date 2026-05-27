@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
@@ -57,6 +58,7 @@ export function PrayerSection({
   // maxVisible: 0 = show all, N = show N then "See all" button
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { t } = useTranslation();
   // Correspondent tag on prayer requests surfaces when the viewer shares
   // an active letter correspondence with the author.
 
@@ -98,7 +100,7 @@ export function PrayerSection({
       setShowModal(false);
     },
     onError: (err: unknown) => {
-      setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setSubmitError(err instanceof Error ? err.message : t("prayer_section.generic_error"));
     },
   });
 
@@ -195,7 +197,7 @@ export function PrayerSection({
           aria-expanded={isOpen}
         >
           <h2 className="text-lg font-semibold shrink-0" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-            Prayer Requests 🙏🏽
+            {t("prayer_section.header")}
           </h2>
           <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
           <span
@@ -258,7 +260,7 @@ export function PrayerSection({
           {/* Empty state */}
           {!isLoading && requests.length === 0 && (
             <p className="text-sm text-center" style={{ color: "#8FAF96" }}>
-              {emptyText ?? "Your community is here to carry what you're carrying."}
+              {emptyText ?? t("prayer_section.empty_default")}
             </p>
           )}
 
@@ -297,8 +299,8 @@ export function PrayerSection({
                           {(() => {
                             const isSelf = request.isOwnRequest;
                             const displayName = request.isAnonymous
-                              ? "Anonymous"
-                              : isSelf ? (user?.name ?? "You") : (request.ownerName ?? "Someone");
+                              ? t("prayer_section.anonymous")
+                              : isSelf ? (user?.name ?? t("prayer_section.you_fallback")) : (request.ownerName ?? t("prayer_section.someone_fallback"));
                             const displayAvatar = request.isAnonymous
                               ? null
                               : isSelf ? (user?.avatarUrl ?? null) : (request.ownerAvatarUrl ?? null);
@@ -327,9 +329,9 @@ export function PrayerSection({
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                                     <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50">
-                                      {isSelf ? "Your request" : `From ${displayName}`}
+                                      {isSelf ? t("prayer_section.your_request") : t("prayer_section.from_name", { name: displayName })}
                                       {request.isCorrespondent && (
-                                        <span className="ml-1.5 normal-case tracking-normal" style={{ color: "rgba(92,138,95,0.7)" }}>· 📮 Correspondent</span>
+                                        <span className="ml-1.5 normal-case tracking-normal" style={{ color: "rgba(92,138,95,0.7)" }}>{t("prayer_section.correspondent_tag")}</span>
                                       )}
                                     </p>
                                     <PrayerKindPill kind={request.kind} />
@@ -369,7 +371,7 @@ export function PrayerSection({
                                     border: `1px solid ${days <= 1 ? "rgba(217,140,74,0.3)" : "rgba(46,107,64,0.2)"}`,
                                   }}
                                 >
-                                  {days === 0 ? "today" : `${days}d left`}
+                                  {days === 0 ? t("prayer_section.today") : t("prayer_section.days_left", { count: days })}
                                 </span>
                               );
                             })()}
@@ -382,12 +384,12 @@ export function PrayerSection({
                                 type="button"
                                 onClick={e => {
                                   e.stopPropagation();
-                                  if (window.confirm("Delete this prayer request? This can't be undone.")) {
+                                  if (window.confirm(t("prayer_section.delete_confirm"))) {
                                     deleteMutation.mutate(request.id);
                                   }
                                 }}
                                 disabled={deleteMutation.isPending}
-                                aria-label="Delete prayer request"
+                                aria-label={t("prayer_section.delete_aria")}
                                 className="text-muted-foreground/40 hover:text-muted-foreground text-base leading-none disabled:opacity-30 transition-colors"
                               >
                                 ×
@@ -416,7 +418,7 @@ export function PrayerSection({
                               {request.myWord && (
                                 <div className="mb-3 mt-1 px-3 py-2 rounded-lg relative" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.2)" }}>
                                   <p className="text-[10px] font-medium uppercase tracking-widest mb-1 pr-7" style={{ color: "rgba(143,175,150,0.5)" }}>
-                                    Your word
+                                    {t("prayer_section.your_word_label")}
                                   </p>
                                   <p className="text-sm pr-7" style={{ color: "#A8C5A0" }}>
                                     {request.myWord}
@@ -424,7 +426,7 @@ export function PrayerSection({
                                   <button
                                     onClick={() => deleteWordMutation.mutate(request.id)}
                                     disabled={deleteWordMutation.isPending}
-                                    aria-label="Remove your word"
+                                    aria-label={t("prayer_section.remove_word_aria")}
                                     className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-opacity disabled:opacity-30 hover:opacity-80"
                                     style={{
                                       background: "rgba(46,107,64,0.18)",
@@ -441,7 +443,7 @@ export function PrayerSection({
                               {othersWords.length > 0 && (
                                 <>
                                   <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-2 mt-1">
-                                    From your community
+                                    {t("prayer_section.from_your_community")}
                                   </p>
                                   <div className="mb-3 space-y-1">
                                     {othersWords.map((w, i) => (
@@ -473,7 +475,7 @@ export function PrayerSection({
                               onKeyDown={e => {
                                 if (e.key === "Enter") handleWordSubmit(request.id);
                               }}
-                              placeholder="Leave a word alongside this… 🌿"
+                              placeholder={t("prayer_section.word_placeholder")}
                               maxLength={120}
                               className="flex-1 text-sm px-3 py-2 rounded-lg border placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-[#8FAF96]/30 focus:border-[#8FAF96]/40 transition-all"
                               style={{ backgroundColor: "#091A10", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6" }}
@@ -505,7 +507,7 @@ export function PrayerSection({
                                   border: "1px solid rgba(46,107,64,0.3)",
                                 }}
                               >
-                                {renewMutation.isPending ? "…" : "🔄 Renew"}
+                                {renewMutation.isPending ? t("prayer_section.renewing_dots") : t("prayer_section.renew")}
                               </button>
                               <button
                                 type="button"
@@ -514,7 +516,7 @@ export function PrayerSection({
                                 className="text-xs italic transition-opacity hover:opacity-70 disabled:opacity-40"
                                 style={{ color: "rgba(143,175,150,0.5)" }}
                               >
-                                Release this 🌿
+                                {t("prayer_section.release_this")}
                               </button>
                             </div>
                           ) : null}
@@ -531,7 +533,7 @@ export function PrayerSection({
                   className="mt-3 text-sm font-medium transition-opacity hover:opacity-80"
                   style={{ color: "#A8C5A0" }}
                 >
-                  {showAll ? "Show less" : `See all (${requests.length}) →`}
+                  {showAll ? t("prayer_section.show_less") : t("prayer_section.see_all_with_count", { count: requests.length })}
                 </button>
               )}
             </div>
@@ -556,7 +558,7 @@ export function PrayerSection({
               className="text-lg font-semibold mb-4"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
             >
-              Hold this with your community 🌿
+              {t("prayer_section.modal_header")}
             </h2>
 
             {/* Request preview */}
@@ -569,7 +571,7 @@ export function PrayerSection({
 
             {/* Duration picker */}
             <p className="text-[10px] font-medium uppercase tracking-widest mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-              How long should your community hold this?
+              {t("prayer_section.duration_question")}
             </p>
             <div className="flex gap-2 mb-4">
               {([3, 7] as const).map((d) => (
@@ -584,14 +586,14 @@ export function PrayerSection({
                     color: durationDays === d ? "#F0EDE6" : "#8FAF96",
                   }}
                 >
-                  {d === 3 ? "3 days 🌱" : "7 days 🌿"}
+                  {d === 3 ? t("prayer_section.duration_3_pill") : t("prayer_section.duration_7_pill")}
                 </button>
               ))}
             </div>
             <p className="text-xs italic mb-6" style={{ color: "#8FAF96" }}>
               {durationDays === 3
-                ? "Your community will hold this for three days. On the third day it will quietly be released. 🌿"
-                : "Your community will hold this for a full week. After seven days it will quietly be released. 🌿"}
+                ? t("prayer_section.duration_3_blurb")
+                : t("prayer_section.duration_7_blurb")}
             </p>
 
             {submitError && (
@@ -608,7 +610,7 @@ export function PrayerSection({
               className="w-full py-3.5 rounded-2xl text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ backgroundColor: "#2D5E3F", color: "#F0EDE6" }}
             >
-              {submitMutation.isPending ? "Sharing…" : "Share with my community 🙏🏽"}
+              {submitMutation.isPending ? t("prayer_section.sharing") : t("prayer_section.share_button")}
             </button>
 
             {/* Cancel */}
@@ -618,7 +620,7 @@ export function PrayerSection({
                 onClick={handleModalCancel}
                 className="text-xs text-muted-foreground/50 hover:text-muted-foreground/70 transition-colors"
               >
-                Not yet
+                {t("prayer_section.not_yet")}
               </button>
             </div>
           </div>
