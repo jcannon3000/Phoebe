@@ -21,10 +21,21 @@ import { useEffect, useState } from "react";
 // Boolean prefs serialize as "1" / "0". Empty / malformed / missing
 // → false. Keeping the format explicit makes Safari private-mode
 // fallbacks easier to reason about than JSON.parse.
+// Legacy per-source close-pill keys. Kept around so a previously
+// migrated value can still be read once during the upgrade and folded
+// into KEY_REFLECTION_SOURCE; new writes only touch the new key.
 const KEY_SHOW_CAC_CLOSE = "phoebe:office:show-cac-close";
 const KEY_SHOW_FDD_CLOSE = "phoebe:office:show-fdd-close";
 const KEY_SHOW_SSJE_CLOSE = "phoebe:office:show-ssje-close";
+// Which reflection source surfaces at the close of the office and on
+// the home card. Mutually exclusive — picking "fdd" turns off the CAC
+// pill and the CAC home card; picking "none" hides the reflection
+// surface entirely.
+const KEY_REFLECTION_SOURCE = "phoebe:office:reflection-source";
 const KEY_INCLUDE_GRATITUDE_SLIDE = "phoebe:office:include-gratitude-slide";
+
+export type ReflectionSource = "cac" | "fdd" | "ssje" | "none";
+const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "none"];
 
 // ── Events ─────────────────────────────────────────────────────────
 export const OFFICE_PREFS_EVENT = "phoebe:office-prefs";
@@ -59,28 +70,49 @@ function readBoolDefault(key: string, fallback: boolean): boolean {
   }
 }
 
-// ── CAC pill at office close ──
-// Show a "Read CAC reflection" pill at the end of Morning and Evening
-// Prayer. The pill opens today's CAC daily meditation externally and
-// marks it read (so the home CacHomeCard flips to "Read again").
-// Default ON — most users want a one-tap follow-on reading after the
-// office; the Settings toggle lets them opt out per device.
-export function getShowCacClose(): boolean { return readBoolDefault(KEY_SHOW_CAC_CLOSE, true); }
-export function setShowCacClose(v: boolean): void { writeBool(KEY_SHOW_CAC_CLOSE, v); }
+// ── Reflection source at office close ──
+// One pill, the user's choice. Replaces the three independent
+// CAC/FDD/SSJE booleans we briefly shipped. Default = "cac" (most
+// popular of the three). Reads honor an explicit value first; if the
+// new key is unset we migrate from the legacy booleans (so a user who
+// had explicitly turned FDD on / CAC off keeps FDD as their pick).
+export function getReflectionSource(): ReflectionSource {
+  try {
+    const raw = localStorage.getItem(KEY_REFLECTION_SOURCE);
+    if (raw && (REFLECTION_SOURCES as string[]).includes(raw)) {
+      return raw as ReflectionSource;
+    }
+  } catch { /* private mode */ }
+  // Legacy migration — pick the first source whose old boolean is
+  // explicitly "1". If none are explicit, fall through to the default.
+  try {
+    if (localStorage.getItem(KEY_SHOW_CAC_CLOSE) === "1") return "cac";
+    if (localStorage.getItem(KEY_SHOW_FDD_CLOSE) === "1") return "fdd";
+    if (localStorage.getItem(KEY_SHOW_SSJE_CLOSE) === "1") return "ssje";
+    // All three explicitly off → user opted out of reflections
+    if (
+      localStorage.getItem(KEY_SHOW_CAC_CLOSE) === "0" &&
+      localStorage.getItem(KEY_SHOW_FDD_CLOSE) === "0" &&
+      localStorage.getItem(KEY_SHOW_SSJE_CLOSE) === "0"
+    ) return "none";
+  } catch { /* non-fatal */ }
+  return "cac";
+}
+export function setReflectionSource(v: ReflectionSource): void {
+  try {
+    localStorage.setItem(KEY_REFLECTION_SOURCE, v);
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* private mode / quota — non-fatal */ }
+}
 
-// ── FDD pill at office close ──
-// Same, for Forward Day by Day (Forward Movement). Independent of
-// the CAC pref — both can be on, neither, or just one. Default ON
-// for the same reason as CAC above.
-export function getShowFddClose(): boolean { return readBoolDefault(KEY_SHOW_FDD_CLOSE, true); }
-export function setShowFddClose(v: boolean): void { writeBool(KEY_SHOW_FDD_CLOSE, v); }
-
-// ── SSJE pill at office close ──
-// Same, for SSJE Words ("Brother, Give Us a Word" from the Society of
-// Saint John the Evangelist). Third optional daily reflection
-// alongside CAC and FDD; default ON.
-export function getShowSsjeClose(): boolean { return readBoolDefault(KEY_SHOW_SSJE_CLOSE, true); }
-export function setShowSsjeClose(v: boolean): void { writeBool(KEY_SHOW_SSJE_CLOSE, v); }
+// Derived booleans — kept for the existing Slide / dashboard call
+// sites that branch on per-source flags. Each is true iff the user's
+// chosen source matches; they're mutually exclusive by construction.
+export function getShowCacClose(): boolean { return getReflectionSource() === "cac"; }
+export function getShowFddClose(): boolean { return getReflectionSource() === "fdd"; }
+export function getShowSsjeClose(): boolean { return getReflectionSource() === "ssje"; }
+// No public setters for the derived booleans — flipping reflection
+// source is a single-radio operation now. Callers use setReflectionSource.
 
 // (No NCMP close pill — NCMP is a live weekday broadcast that IS
 // Morning Prayer at the National Cathedral, not a post-office
@@ -100,24 +132,25 @@ export function setIncludeGratitudeSlide(v: boolean): void { writeBool(KEY_INCLU
 // instead of calling the getters in render — otherwise the component
 // won't re-render when the user flips a toggle in Settings.
 export function useOfficePrefs(): {
+  reflectionSource: ReflectionSource;
   showCacClose: boolean;
   showFddClose: boolean;
   showSsjeClose: boolean;
   includeGratitudeSlide: boolean;
 } {
-  const [state, setState] = useState(() => ({
-    showCacClose: getShowCacClose(),
-    showFddClose: getShowFddClose(),
-    showSsjeClose: getShowSsjeClose(),
-    includeGratitudeSlide: getIncludeGratitudeSlide(),
-  }));
-  useEffect(() => {
-    const refresh = () => setState({
-      showCacClose: getShowCacClose(),
-      showFddClose: getShowFddClose(),
-      showSsjeClose: getShowSsjeClose(),
+  const snapshot = () => {
+    const src = getReflectionSource();
+    return {
+      reflectionSource: src,
+      showCacClose: src === "cac",
+      showFddClose: src === "fdd",
+      showSsjeClose: src === "ssje",
       includeGratitudeSlide: getIncludeGratitudeSlide(),
-    });
+    };
+  };
+  const [state, setState] = useState(snapshot);
+  useEffect(() => {
+    const refresh = () => setState(snapshot());
     window.addEventListener(OFFICE_PREFS_EVENT, refresh);
     return () => window.removeEventListener(OFFICE_PREFS_EVENT, refresh);
   }, []);

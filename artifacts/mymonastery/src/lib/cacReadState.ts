@@ -18,7 +18,7 @@
 // Three daily-reflection sources share this module:
 //   • CAC Daily Reflection (Center for Action & Contemplation)
 //   • Forward Day by Day (Forward Movement)
-//   • SSJE Words (Society of Saint John the Evangelist —
+//   • SSJE Reflections (Society of Saint John the Evangelist —
 //     "Brother, Give Us a Word")
 // Each gets its own storage key + custom event so the dashboard
 // cards don't ghost-update each other when only one is tapped.
@@ -89,7 +89,7 @@ export function getFddReadDay(): string | null { return fddTracker.getLastReadDa
 export function hasReadFddToday(): boolean { return fddTracker.hasReadToday(); }
 export function markFddRead(): void { fddTracker.markRead(); }
 
-// ── SSJE Words (Society of Saint John the Evangelist) ──
+// ── SSJE Reflections (Society of Saint John the Evangelist) ──
 // "Brother, Give Us a Word" is a daily one-paragraph reflection from
 // the Cambridge MA Episcopal monastery. The page itself loads today's
 // word client-side, so the same URL every day resolves to "today" —

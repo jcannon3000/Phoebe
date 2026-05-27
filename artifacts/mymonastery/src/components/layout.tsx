@@ -351,40 +351,48 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 <MenuRow emoji="🌾" label={t("menu.gratitude")} onClick={() => navigate("/gratitude")} />
                 <MenuRow emoji="🤔" label={t("menu.examen")} onClick={() => navigate("/examen")} />
               </MenuSection>
-              <MenuSection emoji="📚" label={t("menu.resources")}>
+              {/* Book of Common Prayer — the prayer-book texts (Phoebe-
+                  authored surfaces, all in-app). Split off from the
+                  former monolithic "Resources" section so users can
+                  see the canon clearly without scrolling past the
+                  external reflection feeds. */}
+              <MenuSection emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })}>
                 <MenuRow emoji="📖" label={t("menu.bcp_prayers")} onClick={() => navigate("/bcp/intercessions")} />
-                <MenuRow emoji="🙏" label={t("menu.bcp_collects")} onClick={() => navigate("/bcp/collects")} />
                 <MenuRow emoji="📜" label={t("menu.psalter")} onClick={() => navigate("/bcp/psalter")} />
-                {/* CAC Daily Reflection — opens externally because CAC
-                    is the canonical reader (paywalled formatting on the
-                    article page). The /api/cac/today server route 302s
-                    to today's permalink, cache-keyed to a 9 AM ET
-                    publish day so users always land on the current
-                    meditation. Close the drawer first so the SFSafari
-                    presentation isn't fighting it for the screen. */}
-                <MenuRow
-                  emoji="🌅"
-                  label={t("menu.cac_daily")}
-                  onClick={() => { onClose(); openExternal("https://withphoebe.app/api/cac/today"); }}
-                />
-                {/* Forward Day by Day — Forward Movement's SPA at
-                    prayer.forwardmovement.org/fdd resolves "today"
-                    client-side, so a bare URL works every day. Tap
-                    marks the FDD daily-read tracker so the home card
-                    (if enabled) flips to "Read again" on return. */}
+                <MenuRow emoji="🙏" label={t("menu.bcp_collects")} onClick={() => navigate("/bcp/collects")} />
+              </MenuSection>
+              {/* Reflections — daily external readings. All three open
+                  via SFSafariView (Browser.open) and stamp today as
+                  read so each source's home card flips to "Read
+                  again." Drawer closes first so the Safari sheet
+                  isn't competing with it for the viewport. */}
+              <MenuSection emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })}>
                 <MenuRow
                   emoji="📔"
-                  label={t("menu.fdd_daily")}
+                  label={t("menu.fdd_daily", { defaultValue: "Forward Day by Day" })}
                   onClick={() => { onClose(); markFddRead(); openExternal(FDD_TODAY_URL); }}
                 />
-                {/* National Cathedral Morning Prayer used to live
-                    here as a drawer row; moved to a home-screen card
-                    (NcmpHomeCard in dashboard.tsx) the user opts
-                    into from /customize-home. */}
-                {rawIsBeta && (
-                  <MenuRow emoji="😇" label={t("menu.saints")} badge={t("menu.beta")} onClick={() => navigate("/saints")} />
-                )}
+                <MenuRow
+                  emoji="🌅"
+                  label={t("menu.cac_daily", { defaultValue: "CAC Daily Reflection" })}
+                  onClick={() => { onClose(); markCacRead(); openExternal(CAC_TODAY_URL); }}
+                />
+                <MenuRow
+                  emoji="✍🏽"
+                  label={t("menu.ssje_word", { defaultValue: "SSJE Reflections" })}
+                  onClick={() => { onClose(); markSsjeRead(); openExternal(SSJE_TODAY_URL); }}
+                />
               </MenuSection>
+              {/* Saints — beta-only, lived in Resources alongside BCP /
+                  reflections. Promoted to its own row so the BCP and
+                  Reflections sections stay focused on their core
+                  contents. National Cathedral Morning Prayer used to
+                  live in Resources too; moved to a home-screen card
+                  (NcmpHomeCard in dashboard.tsx) the user opts into
+                  from /customize-home. */}
+              {rawIsBeta && (
+                <MenuRow emoji="😇" label={t("menu.saints")} badge={t("menu.beta")} onClick={() => navigate("/saints")} />
+              )}
               {showLetters && (
                 <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
               )}

@@ -316,88 +316,40 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
               )}
             </div>
 
-            {/* Daily-reflection pills — opt-in per office pref
-                (Settings → After the office). Either, both, or
-                neither can render. Applies to BOTH morning and
-                evening since the user picks once and the choice
-                applies every day. Each opens externally via
-                SFSafariView (Browser.open) and stamps today as read
-                so the corresponding home card flips to "Read
-                again." */}
-            {(officePrefs.showCacClose || officePrefs.showFddClose || officePrefs.showSsjeClose) && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
-                {officePrefs.showCacClose && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      markCacRead();
-                      openExternal(CAC_TODAY_URL);
-                    }}
-                    style={{
-                      background: "rgba(46,107,64,0.22)",
-                      color: isEvening ? EP_TEXT : CREAM,
-                      border: "1px solid rgba(46,107,64,0.50)",
-                      borderRadius: 999,
-                      padding: "10px 18px",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      fontFamily: "Space Grotesk, sans-serif",
-                      cursor: "pointer",
-                    }}
-                  >
-                    🌅 Read CAC reflection →
-                  </button>
-                )}
-                {officePrefs.showFddClose && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      markFddRead();
-                      openExternal(FDD_TODAY_URL);
-                    }}
-                    style={{
-                      background: "rgba(74,158,132,0.18)",
-                      color: isEvening ? EP_TEXT : CREAM,
-                      border: "1px solid rgba(74,158,132,0.45)",
-                      borderRadius: 999,
-                      padding: "10px 18px",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      fontFamily: "Space Grotesk, sans-serif",
-                      cursor: "pointer",
-                    }}
-                  >
-                    📖 Read Forward Day by Day →
-                  </button>
-                )}
-                {officePrefs.showSsjeClose && (
-                  // SSJE "Brother, Give Us a Word". Warm amber palette
-                  // distinguishes it from the forest-green CAC pill and
-                  // the sea-teal FDD pill so the three reflection sources
-                  // remain visually separable when stacked.
-                  <button
-                    type="button"
-                    onClick={() => {
-                      markSsjeRead();
-                      openExternal(SSJE_TODAY_URL);
-                    }}
-                    style={{
-                      background: "rgba(193,127,36,0.18)",
-                      color: isEvening ? EP_TEXT : CREAM,
-                      border: "1px solid rgba(193,127,36,0.50)",
-                      borderRadius: 999,
-                      padding: "10px 18px",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      fontFamily: "Space Grotesk, sans-serif",
-                      cursor: "pointer",
-                    }}
-                  >
-                    ✍🏽 Read SSJE Word →
-                  </button>
-                )}
-              </div>
-            )}
+            {/* Single daily-reflection pill — the user picks ONE
+                source in Office Settings → After the office (CAC /
+                FDD / SSJE / none). Opens externally via SFSafariView
+                (Browser.open) and stamps today as read so the
+                matching home card flips to "Read again." When the
+                user picks "none" the entire pill disappears. */}
+            {(() => {
+              const src = officePrefs.reflectionSource;
+              if (src === "none") return null;
+              const cfg = src === "cac"
+                ? { label: "🌅 Read today's reflection →", bg: "rgba(46,107,64,0.22)", border: "rgba(46,107,64,0.50)", url: CAC_TODAY_URL, mark: markCacRead }
+                : src === "fdd"
+                  ? { label: "📖 Read today's reflection →", bg: "rgba(74,158,132,0.18)", border: "rgba(74,158,132,0.45)", url: FDD_TODAY_URL, mark: markFddRead }
+                  : { label: "✍🏽 Read today's reflection →", bg: "rgba(193,127,36,0.18)", border: "rgba(193,127,36,0.50)", url: SSJE_TODAY_URL, mark: markSsjeRead };
+              return (
+                <button
+                  type="button"
+                  onClick={() => { cfg.mark(); openExternal(cfg.url); }}
+                  style={{
+                    background: cfg.bg,
+                    color: isEvening ? EP_TEXT : CREAM,
+                    border: `1px solid ${cfg.border}`,
+                    borderRadius: 999,
+                    padding: "10px 18px",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    fontFamily: "Space Grotesk, sans-serif",
+                    cursor: "pointer",
+                  }}
+                >
+                  {cfg.label}
+                </button>
+              );
+            })()}
 
             {onBack && (
               <button

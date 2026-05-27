@@ -11,9 +11,9 @@ import i18n from "@/i18n";
 import { LogOut, Camera, Pencil, Trash2, Download } from "lucide-react";
 import {
   useOfficePrefs,
-  setShowCacClose,
-  setShowFddClose,
+  setReflectionSource,
   setIncludeGratitudeSlide,
+  type ReflectionSource,
 } from "@/lib/officePrefs";
 
 
@@ -611,61 +611,52 @@ function OfficeReminderSettings() {
 //     /gratitude surface is where journal entries live).
 function OfficeCloseExtrasSettings() {
   const prefs = useOfficePrefs();
+  const options: Array<{ value: ReflectionSource; label: string; sub: string; emoji: string }> = [
+    { value: "cac", label: "CAC Daily Reflection", sub: "From the Center for Action & Contemplation.", emoji: "🌅" },
+    { value: "fdd", label: "Forward Day by Day", sub: "From Forward Movement.", emoji: "📖" },
+    { value: "ssje", label: "SSJE Reflections", sub: "From the Society of Saint John the Evangelist.", emoji: "✍🏽" },
+    { value: "none", label: "No reflection", sub: "No pill at the close.", emoji: "—" },
+  ];
   return (
     <>
       <SectionHeader label="After the office" />
       <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-        Add a daily reflection to the end of Morning and Evening Prayer.
+        Pick one daily reflection to read at the close of Morning and Evening Prayer. A single pill on the last slide opens today's reading.
       </p>
       <SettingsCard>
-        <button
-          type="button"
-          onClick={() => setShowCacClose(!prefs.showCacClose)}
-          className="w-full flex items-center gap-3 py-2.5 text-left"
-          style={{ background: "transparent", cursor: "pointer" }}
-        >
-          <div
-            style={{
-              width: 18, height: 18, borderRadius: "50%",
-              border: `2px solid ${prefs.showCacClose ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
-              background: prefs.showCacClose ? "#A8C5A0" : "transparent",
-              flexShrink: 0,
-            }}
-          />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-              CAC Daily Reflection 🌅
-            </p>
-            <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
-              From the Center for Action &amp; Contemplation.
-            </p>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setShowFddClose(!prefs.showFddClose)}
-          className="w-full flex items-center gap-3 py-2.5 text-left"
-          style={{ background: "transparent", cursor: "pointer", borderTop: "1px solid rgba(200,212,192,0.12)" }}
-        >
-          <div
-            style={{
-              width: 18, height: 18, borderRadius: "50%",
-              border: `2px solid ${prefs.showFddClose ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
-              background: prefs.showFddClose ? "#A8C5A0" : "transparent",
-              flexShrink: 0,
-            }}
-          />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-              Forward Day by Day 📖
-            </p>
-            <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
-              From Forward Movement.
-            </p>
-          </div>
-        </button>
-
+        {options.map((opt, i) => {
+          const selected = prefs.reflectionSource === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setReflectionSource(opt.value)}
+              className="w-full flex items-center gap-3 py-2.5 text-left"
+              style={{
+                background: "transparent",
+                cursor: "pointer",
+                borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)",
+              }}
+            >
+              <div
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  border: `2px solid ${selected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+                  background: selected ? "#A8C5A0" : "transparent",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                  {opt.label} {opt.emoji !== "—" && <span>{opt.emoji}</span>}
+                </p>
+                <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+                  {opt.sub}
+                </p>
+              </div>
+            </button>
+          );
+        })}
       </SettingsCard>
 
       <SectionHeader label="Gratitude in the office" />

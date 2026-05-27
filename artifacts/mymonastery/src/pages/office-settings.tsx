@@ -31,10 +31,9 @@ import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import {
   useOfficePrefs,
-  setShowCacClose,
-  setShowFddClose,
-  setShowSsjeClose,
+  setReflectionSource,
   setIncludeGratitudeSlide,
+  type ReflectionSource,
 } from "@/lib/officePrefs";
 
 const WARM = "#F0EDE6";
@@ -263,9 +262,7 @@ export default function OfficeSettingsPage() {
   // settles into localStorage. (The setters fire a custom event,
   // useOfficePrefs picks it up, but immediate optimistic state is
   // smoother than waiting one render cycle.)
-  const [cacOn, setCacOn] = useState(local.showCacClose);
-  const [fddOn, setFddOn] = useState(local.showFddClose);
-  const [ssjeOn, setSsjeOn] = useState(local.showSsjeClose);
+  const [reflection, setReflection] = useState<ReflectionSource>(local.reflectionSource);
   const [gratitudeOn, setGratitudeOn] = useState(local.includeGratitudeSlide);
 
   const morningOptions: Array<{ value: OfficePref; label: string; sub: string }> = [
@@ -371,40 +368,31 @@ export default function OfficeSettingsPage() {
 
         <SectionHeader label="After the office" />
         <Blurb>
-          Optional reading pills and reflection slides surfaced at the close of Morning and Evening Prayer.
+          One daily reflection pill appears on the closing slide and as a card on the home screen. Pick the source you'd like to read each day — or turn the pill off.
         </Blurb>
         <Card>
-          <ToggleRow
-            label="Center for Action and Contemplation"
-            subOn="Today's CAC reflection at the close."
-            subOff="No CAC pill at the close."
-            value={cacOn}
-            onChange={(next) => {
-              setCacOn(next);
-              setShowCacClose(next);
-            }}
-            first
-          />
-          <ToggleRow
-            label="Forward Day by Day"
-            subOn="Today's Forward Movement meditation at the close."
-            subOff="No Forward Day by Day pill at the close."
-            value={fddOn}
-            onChange={(next) => {
-              setFddOn(next);
-              setShowFddClose(next);
-            }}
-          />
-          <ToggleRow
-            label="SSJE Words"
-            subOn="Today's “Brother, Give Us a Word” at the close."
-            subOff="No SSJE Words pill at the close."
-            value={ssjeOn}
-            onChange={(next) => {
-              setSsjeOn(next);
-              setShowSsjeClose(next);
-            }}
-          />
+          {([
+            { value: "cac" as const,  label: "Center for Action and Contemplation", sub: "Today's CAC daily reflection." },
+            { value: "fdd" as const,  label: "Forward Day by Day", sub: "Today's Forward Movement meditation." },
+            { value: "ssje" as const, label: "SSJE Reflections", sub: "Today's “Brother, Give Us a Word.”" },
+            { value: "none" as const, label: "None", sub: "No reflection pill or card." },
+          ]).map((opt, i) => (
+            <RadioRow
+              key={opt.value}
+              label={opt.label}
+              sub={opt.sub}
+              selected={reflection === opt.value}
+              onSelect={() => { setReflection(opt.value); setReflectionSource(opt.value); }}
+              first={i === 0}
+            />
+          ))}
+        </Card>
+
+        <SectionHeader label="In the office" />
+        <Blurb>
+          Optional reflective slides spliced into Morning and Evening Prayer.
+        </Blurb>
+        <Card>
           <ToggleRow
             label="Personal thanksgiving slide"
             subOn="A short gratitude prompt slides in before the closing."
@@ -414,6 +402,7 @@ export default function OfficeSettingsPage() {
               setGratitudeOn(next);
               setIncludeGratitudeSlide(next);
             }}
+            first
           />
         </Card>
 

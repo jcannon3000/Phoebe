@@ -47,11 +47,11 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     // product name from Forward Movement; we leave the label in
     // English regardless of i18n locale.
     fdd: { label: "Forward Day by Day", emoji: "📖", sub: "Today's meditation from Forward Movement" },
-    // SSJE Words — "Brother, Give Us a Word," a one-paragraph daily
-    // reflection from the Society of Saint John the Evangelist
+    // SSJE Reflections — "Brother, Give Us a Word," a one-paragraph
+    // daily reflection from the Society of Saint John the Evangelist
     // (Cambridge MA Episcopal monastery). Proper-noun product name;
     // not localized.
-    ssje: { label: "SSJE Words", emoji: "✍🏽", sub: "Today's Brother, Give Us a Word" },
+    ssje: { label: "SSJE Reflections", emoji: "✍🏽", sub: "Today's Brother, Give Us a Word" },
     // National Cathedral Morning Prayer — live YouTube broadcast
     // Mon–Fri 7:00 AM ET, with the same URL serving the recording
     // afterward. Proper-noun service name; not localized. The card

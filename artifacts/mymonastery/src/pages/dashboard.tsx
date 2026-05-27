@@ -2610,7 +2610,7 @@ function FddHomeCard() {
   );
 }
 
-// SSJE Words home card. Mirrors CacHomeCard / FddHomeCard: opens
+// SSJE Reflections home card. Mirrors CacHomeCard / FddHomeCard: opens
 // web.ssje.org/listen-brother-give-us-a-word externally (their page
 // loads today's word client-side, so the same URL every day works),
 // tracks "read today" in localStorage via the ssje-tracker in
@@ -2649,7 +2649,7 @@ function SsjeHomeCard() {
           className="font-semibold min-w-0 truncate"
           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
         >
-          SSJE Words ✍🏽
+          SSJE Reflections ✍🏽
         </p>
         <div
           className="rounded-full text-center shrink-0"
