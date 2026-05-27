@@ -91,6 +91,19 @@ export function ContemplationTimer({
   type Companion = { userId: number; name: string | null; avatarUrl: string | null };
   const [companions, setCompanions] = useState<Companion[]>([]);
   const [otherCount, setOtherCount] = useState(0);
+  // Per-session visibility — toggleable on the summary screen. The
+  // initial value comes from localStorage so the user's last choice
+  // sticks (if you always pray privately, it stays Private on the next
+  // sit). When the user flips it on the summary, we PATCH the saved
+  // session and update localStorage.
+  const PRIVACY_KEY = "phoebe.contemplation.isPrivate";
+  const initialIsPrivate = (() => {
+    try { return localStorage.getItem(PRIVACY_KEY) === "1"; } catch { return false; }
+  })();
+  const [isPrivate, setIsPrivate] = useState<boolean>(initialIsPrivate);
+  // Row id returned by the recordSession POST. Held so the toggle's
+  // PATCH knows which session to flip. Null until the POST resolves.
+  const [recordedSessionId, setRecordedSessionId] = useState<number | null>(null);
 
   const endAtRef = useRef<number>(0);
   const startedAtRef = useRef<Date | null>(null);
@@ -218,13 +231,19 @@ export function ContemplationTimer({
     if (sat < 5) return;
     const startedAt = startedAtRef.current ?? new Date(Date.now() - sat * 1000);
     const endedAt = new Date();
-    apiRequest("POST", "/api/prayer-sessions", {
+    // Capture the chosen visibility AT POST TIME — if the user later
+    // toggles, we fire a PATCH with the new value rather than waiting
+    // for them to dismiss the screen.
+    const initialPrivate = isPrivate;
+    apiRequest<{ id: number | null }>("POST", "/api/prayer-sessions", {
       surface: "contemplation",
       durationSeconds: sat,
       startedAt: startedAt.toISOString(),
       endedAt: endedAt.toISOString(),
+      isPrivate: initialPrivate,
     })
-      .then(() => {
+      .then((data) => {
+        if (data?.id) setRecordedSessionId(data.id);
         queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
         // Refresh the History list so the just-finished sit appears.
         queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
@@ -266,6 +285,10 @@ export function ContemplationTimer({
     // summary screen before the fetch for THIS sit returns.
     setCompanions([]);
     setOtherCount(0);
+    // Clear the previous row id — a stale id here would route a
+    // toggle PATCH to a different sit. Don't reset isPrivate (it
+    // persists across sits per the user's preference).
+    setRecordedSessionId(null);
     recordedRef.current = false;
     finishedRef.current = false;
     reachedRef.current = false;
@@ -361,6 +384,22 @@ export function ContemplationTimer({
     // screen); false when they backed out of the picker. The pause-slide
     // caller advances the slideshow only on a completed sit.
     onClose({ completed: phase === "complete" });
+  }
+
+  // Toggle the just-finished sit's public/private flag. Updates local
+  // state instantly (no spinner — the toggle should feel immediate)
+  // and fires a fire-and-forget PATCH. The choice is also written to
+  // localStorage so the next sit starts with the same preference.
+  // If the PATCH races ahead of the POST (recordedSessionId not yet
+  // set), we skip the network call and rely on the optimistic local
+  // state. The user can re-toggle once the id lands.
+  function togglePrivacy() {
+    const next = !isPrivate;
+    setIsPrivate(next);
+    try { localStorage.setItem(PRIVACY_KEY, next ? "1" : "0"); } catch { /* non-fatal */ }
+    if (recordedSessionId == null) return;
+    apiRequest("PATCH", `/api/me/contemplation-sessions/${recordedSessionId}/visibility`, { isPrivate: next })
+      .catch(() => { /* best-effort — UI already reflects the choice */ });
   }
 
   if (!open) return null;
@@ -547,8 +586,63 @@ export function ContemplationTimer({
                     end so the user sees what they actually did. */}
                 {t("contemplation_timer.of_contemplative_prayer", { time: formatDone(satSeconds) })}
               </p>
-              <p className="text-[13px] mb-6" style={{ color: "rgba(143,175,150,0.65)", fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 300 }}>
+              <p className="text-[13px] mb-5" style={{ color: "rgba(143,175,150,0.65)", fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 300 }}>
                 {t("contemplation_timer.carry_the_quiet")}
+              </p>
+
+              {/* Public/private toggle — pill pair, same shape as the
+                  "anyone in your garden" / "anyone else" affordances
+                  used elsewhere. Tapping flips the saved sit's
+                  is_private flag immediately (optimistic) and writes
+                  the preference to localStorage so the next sit
+                  starts with the same choice. */}
+              <div className="flex items-center gap-1.5 mb-6" role="group" aria-label={t("contemplation_timer.privacy_aria")}>
+                <button
+                  type="button"
+                  onClick={() => { if (isPrivate) togglePrivacy(); }}
+                  className="rounded-full px-3.5 py-1.5 transition-opacity"
+                  style={{
+                    background: !isPrivate ? "rgba(46,107,64,0.35)" : "transparent",
+                    border: `1px solid ${!isPrivate ? "rgba(46,107,64,0.55)" : "rgba(46,107,64,0.22)"}`,
+                    color: !isPrivate ? "#C8D4C0" : "rgba(143,175,150,0.55)",
+                    fontFamily: SPACE_GROTESK,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.14em",
+                    cursor: "pointer",
+                  }}
+                  aria-pressed={!isPrivate}
+                >
+                  {t("contemplation_timer.public")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { if (!isPrivate) togglePrivacy(); }}
+                  className="rounded-full px-3.5 py-1.5 transition-opacity"
+                  style={{
+                    background: isPrivate ? "rgba(193,154,58,0.22)" : "transparent",
+                    border: `1px solid ${isPrivate ? "rgba(193,154,58,0.5)" : "rgba(46,107,64,0.22)"}`,
+                    color: isPrivate ? "#E8D9B0" : "rgba(143,175,150,0.55)",
+                    fontFamily: SPACE_GROTESK,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.14em",
+                    cursor: "pointer",
+                  }}
+                  aria-pressed={isPrivate}
+                >
+                  {t("contemplation_timer.private")}
+                </button>
+              </div>
+              <p
+                className="text-[11px] mb-6 text-center"
+                style={{ color: "rgba(143,175,150,0.55)", fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 280 }}
+              >
+                {isPrivate
+                  ? t("contemplation_timer.privacy_private_blurb")
+                  : t("contemplation_timer.privacy_public_blurb")}
               </p>
 
               {/* "Who sat with you?" — garden members appear as a face

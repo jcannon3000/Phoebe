@@ -797,6 +797,14 @@ export const en = {
     and_n_more_other: "and {{count}} more",
     others_sitting_one: "+1 other person was in contemplation",
     others_sitting_other: "+{{count}} other people were in contemplation",
+    // Public/private toggle on the summary. The blurb beneath the
+    // pill pair makes the consequence explicit so the choice doesn't
+    // feel cryptic.
+    public: "Public",
+    private: "Private",
+    privacy_aria: "Session visibility",
+    privacy_public_blurb: "Others praying at the same time can see they sat alongside you.",
+    privacy_private_blurb: "This sit is only visible to you.",
   },
   // Read letter (pages/Letters/ReadLetter.tsx) — paper-style letter viewer.
   read_letter: {

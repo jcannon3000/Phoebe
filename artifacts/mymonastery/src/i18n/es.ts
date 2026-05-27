@@ -736,6 +736,11 @@ export const es: Translations = {
     and_n_more_other: "y {{count}} más",
     others_sitting_one: "+1 persona más estuvo en contemplación",
     others_sitting_other: "+{{count}} personas más estuvieron en contemplación",
+    public: "Pública",
+    private: "Privada",
+    privacy_aria: "Visibilidad de la sesión",
+    privacy_public_blurb: "Quienes oran al mismo tiempo pueden ver que estuvieron contigo.",
+    privacy_private_blurb: "Esta sesión solo es visible para ti.",
   },
   read_letter: {
     letter_n: "Carta {{n}}",
