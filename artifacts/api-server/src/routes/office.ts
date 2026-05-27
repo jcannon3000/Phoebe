@@ -12,6 +12,7 @@ import { assembleDevotion, type DevotionKind } from "../lib/assembleDevotion";
 import { assembleCompline } from "../lib/assembleCompline";
 import { getOfficeDay } from "../lib/liturgicalCalendar";
 import { isUserBeta } from "../lib/parishGate";
+import { resolveLocale } from "../lib/officeI18n";
 import { seedBcpTexts } from "../seeds/bcpTexts";
 import { PSALTER } from "../seeds/bcpPsalter";
 
@@ -230,7 +231,8 @@ router.get("/office/compline", async (req, res) => {
   }
 
   try {
-    const { slides, officeDay } = await assembleCompline(date, userId);
+    const locale = resolveLocale(req.query.locale);
+    const { slides, officeDay } = await assembleCompline(date, userId, locale);
     return res.json({
       slides,
       officeDay: { ...officeDay, totalSlides: slides.length },
@@ -362,7 +364,8 @@ router.get("/devotion/:kind", async (req, res) => {
 
   try {
     const userId = (req.user as { id: number } | undefined)?.id ?? 0;
-    const { slides, officeDay } = await assembleDevotion(date, userId, kind);
+    const locale = resolveLocale(req.query.locale);
+    const { slides, officeDay } = await assembleDevotion(date, userId, kind, locale);
     return res.json({
       slides,
       officeDay: { ...officeDay, totalSlides: slides.length },

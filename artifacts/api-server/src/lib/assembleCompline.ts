@@ -49,6 +49,7 @@ import {
 } from "./psalmRange";
 import { applyConfessionPref } from "./assembleMorningPrayer";
 import type { Slide, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
+import { TITLES, EYEBROWS, PRAYERS, pick, type Locale } from "./officeI18n";
 
 // ── slide helper (same shape used by the other assemblers) ──────────────────
 
@@ -184,6 +185,7 @@ const COMPLINE_BY_DOW: Record<number, ComplineDay> = {
 export async function assembleCompline(
   date: Date,
   userId: number,
+  locale: Locale = "en",
 ): Promise<{
   slides: Slide[];
   officeDay: OfficeDayInfo;
@@ -195,6 +197,67 @@ export async function assembleCompline(
     number: 4,
     range: null,
     raw: "4",
+  };
+
+  // ── Locale-resolved strings ────────────────────────────────────────
+  // Pull each user-visible string through pick(locale, …) so the same
+  // assembler emits English or Spanish slides depending on the
+  // caller's request. Spanish text comes from officeI18n.ts (sourced
+  // from El Libro de Oración Común). Psalm body still loads from
+  // bcp_texts in whatever the row's language is — those rows are
+  // currently English-only; a future seed pass will add Spanish.
+  const T = {
+    introTitle: pick(locale, TITLES.compline),
+    introEyebrow: pick(locale, TITLES.before_you_begin),
+    introBody:
+      locale === "es"
+        ? "Las Completas son la oración de la Iglesia al cierre del día — la última hora del oficio monástico, guardada por siglos como un modo de entregar el día a Dios. Ora en un lugar tranquilo; suelta el día."
+        : "Compline is the Church's prayer at the close of day — the last hour of the monastic round, kept for centuries as a way to hand the day to God. Pray it in a quiet place; let the day go.",
+    eyebrowOpening: pick(locale, EYEBROWS.opening),
+    eyebrowConfession: pick(locale, EYEBROWS.confession_of_sin),
+    eyebrowAbsolution: pick(locale, EYEBROWS.absolution),
+    eyebrowVersicle: pick(locale, EYEBROWS.versicle),
+    eyebrowLesson: pick(locale, EYEBROWS.the_lesson),
+    eyebrowLordsPrayer: pick(locale, EYEBROWS.the_lords_prayer),
+    eyebrowCollect: pick(locale, EYEBROWS.the_collect),
+    eyebrowAntiphon: pick(locale, EYEBROWS.antiphon),
+    eyebrowClosing: pick(locale, EYEBROWS.closing),
+    eyebrowBlessing: pick(locale, EYEBROWS.blessing),
+    nuncDimittisTitle: pick(locale, TITLES.song_of_simeon),
+    nuncDimittisEyebrow: locale === "es" ? "NUNC DIMITTIS · LUCAS 2:29-32" : "NUNC DIMITTIS · LUKE 2:29-32",
+    scrollHint: pick(locale, PRAYERS.scroll_hint_continue),
+    confessionBody: pick(locale, PRAYERS.confession_compline),
+    absolutionBody: pick(locale, PRAYERS.absolution_compline_lay),
+    lordsPrayer: pick(locale, PRAYERS.lords_prayer_contemporary),
+    collectVisit: pick(locale, PRAYERS.compline_collect_visit),
+    antiphonStandard: pick(locale, PRAYERS.compline_antiphon_standard),
+    antiphonEaster: pick(locale, PRAYERS.compline_antiphon_easter),
+    nuncDimittis: pick(locale, PRAYERS.nunc_dimittis),
+    finalBlessing: pick(locale, PRAYERS.compline_final_blessing),
+    gloriaPatri: pick(locale, PRAYERS.gloria_patri),
+    // Open-dialogue + into-your-hands + closing versicle call-and-
+    // response lines.
+    openDialogue: [
+      { off: pick(locale, PRAYERS.compline_opening_1_off), peo: pick(locale, PRAYERS.compline_opening_1_peo) },
+      { off: pick(locale, PRAYERS.compline_opening_2_off), peo: pick(locale, PRAYERS.compline_opening_2_peo) },
+    ],
+    intoYourHands: [
+      { off: pick(locale, PRAYERS.compline_into_your_hands_1_off), peo: pick(locale, PRAYERS.compline_into_your_hands_1_peo) },
+      { off: pick(locale, PRAYERS.compline_into_your_hands_2_off), peo: pick(locale, PRAYERS.compline_into_your_hands_2_peo) },
+    ],
+    letUsBlessOfficiant: pick(locale, PRAYERS.compline_let_us_bless_off),
+    letUsBlessPeople: pick(locale, PRAYERS.compline_let_us_bless_peo),
+    versicleMakeSpeed: {
+      off: pick(locale, PRAYERS.versicle_o_god),
+      peo: pick(locale, PRAYERS.versicle_o_lord),
+    },
+    alleluia: pick(locale, PRAYERS.alleluia),
+    lessonByRef: {
+      "Jeremiah 14:9": pick(locale, PRAYERS.lesson_jeremiah_14_9),
+      "Matthew 11:28-30": pick(locale, PRAYERS.lesson_matthew_11_28_30),
+      "Hebrews 13:20-21": pick(locale, PRAYERS.lesson_hebrews_13_20_21),
+      "1 Peter 5:8-9": pick(locale, PRAYERS.lesson_1_peter_5_8_9),
+    } as Record<string, string>,
   };
 
   // Fetch the appointed psalm body. A missing row is unlikely (the
@@ -213,26 +276,21 @@ export async function assembleCompline(
 
   // 0. Threshold intro — short framing slide before the office begins.
   slides.push(
-    slide(
-      id(),
-      "office_intro",
-      "🌌",
-      "Before you begin",
-      "Compline is the Church's prayer at the close of day — the last hour of the monastic round, kept for centuries as a way to hand the day to God. Pray it in a quiet place; let the day go.",
-      { title: "Compline" },
-    ),
+    slide(id(), "office_intro", "🌌", T.introEyebrow, T.introBody, {
+      title: T.introTitle,
+    }),
   );
 
   // 1. Opening dialogue — BCP p. 127. Two versicle pairs that frame
   //    the night ahead before the confession is invited.
   slides.push(
-    slide(id(), "invitatory", "🌙", "OPENING", "", {
+    slide(id(), "invitatory", "🌙", T.eyebrowOpening, "", {
       isCallAndResponse: true,
       callAndResponseLines: [
-        { speaker: "officiant", text: "The Lord Almighty grant us a peaceful night and a perfect end." },
-        { speaker: "people", text: "Amen." },
-        { speaker: "officiant", text: "Our help is in the Name of the Lord;" },
-        { speaker: "people", text: "The maker of heaven and earth." },
+        { speaker: "officiant", text: T.openDialogue[0]!.off },
+        { speaker: "people", text: T.openDialogue[0]!.peo },
+        { speaker: "officiant", text: T.openDialogue[1]!.off },
+        { speaker: "people", text: T.openDialogue[1]!.peo },
       ],
       bcpReference: "BCP p. 127",
     }),
@@ -242,14 +300,14 @@ export async function assembleCompline(
   //    bcpShowConfession with MP/EP). applyConfessionPref at the end
   //    drops both slides if the user has opted out.
   slides.push(
-    slide(id(), "confession", "🙏🏽", "CONFESSION OF SIN", COMPLINE_CONFESSION, {
+    slide(id(), "confession", "🙏🏽", T.eyebrowConfession, T.confessionBody, {
       bcpReference: "BCP p. 128",
       isScrollable: true,
-      scrollHint: "↓ continue · tap when ready",
+      scrollHint: T.scrollHint,
     }),
   );
   slides.push(
-    slide(id(), "absolution", "🕊️", "ABSOLUTION", COMPLINE_ABSOLUTION, {
+    slide(id(), "absolution", "🕊️", T.eyebrowAbsolution, T.absolutionBody, {
       bcpReference: "BCP p. 128",
     }),
   );
@@ -257,18 +315,15 @@ export async function assembleCompline(
   // 3. Opening versicle — BCP p. 128. The familiar "O God, make
   //    speed" pair + Gloria. Easter season appends Alleluia.
   const openingVersicleLines: CallAndResponseLine[] = [
-    { speaker: "officiant", text: "O God, make speed to save us." },
-    { speaker: "people", text: "O Lord, make haste to help us." },
-    {
-      speaker: "both",
-      text: "Glory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.",
-    },
+    { speaker: "officiant", text: T.versicleMakeSpeed.off },
+    { speaker: "people", text: T.versicleMakeSpeed.peo },
+    { speaker: "both", text: T.gloriaPatri },
   ];
   if (liturgicalDay.useAlleluia) {
-    openingVersicleLines.push({ speaker: "both", text: "Alleluia." });
+    openingVersicleLines.push({ speaker: "both", text: T.alleluia });
   }
   slides.push(
-    slide(id(), "invitatory", "🔔", "VERSICLE", "", {
+    slide(id(), "invitatory", "🔔", T.eyebrowVersicle, "", {
       isCallAndResponse: true,
       callAndResponseLines: openingVersicleLines,
       bcpReference: "BCP p. 128",
@@ -320,10 +375,8 @@ export async function assembleCompline(
     );
   });
 
-  const gloriaPatri =
-    "Glory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
   slides.push(
-    slide(id(), "psalm_gloria", "📖", psalmEyebrowText, gloriaPatri, {
+    slide(id(), "psalm_gloria", "📖", psalmEyebrowText, T.gloriaPatri, {
       title: psalmRow?.title ?? null,
       bcpReference: psalmRow?.bcpReference ?? null,
       metadata: {
@@ -340,19 +393,20 @@ export async function assembleCompline(
   //    readings, embedded inline (1–3 verses each, no chunking
   //    needed). Title slide + body slide, mirroring the shape of the
   //    full Office's lesson_title + lesson_verses pattern.
+  const lessonBody = T.lessonByRef[today.lesson.ref] ?? today.lesson.text;
   slides.push(
-    slide(id(), "lesson_title", "📖", "THE LESSON", "", {
+    slide(id(), "lesson_title", "📖", T.eyebrowLesson, "", {
       title: today.lesson.ref,
       bcpReference: "BCP p. 132",
       metadata: { compline: true, lessonRef: today.lesson.ref },
     }),
   );
   slides.push(
-    slide(id(), "lesson", "📖", today.lesson.ref.toUpperCase(), today.lesson.text, {
+    slide(id(), "lesson", "📖", today.lesson.ref.toUpperCase(), lessonBody, {
       title: today.lesson.ref,
       bcpReference: "BCP p. 132",
       isScrollable: true,
-      scrollHint: "↓ continue · tap when ready",
+      scrollHint: T.scrollHint,
       metadata: { compline: true, lessonRef: today.lesson.ref },
     }),
   );
@@ -360,13 +414,13 @@ export async function assembleCompline(
   // 6. "Into your hands" — BCP p. 132. The heart-versicle of
   //    Compline. Two paired exchanges, plus a third closing line.
   slides.push(
-    slide(id(), "suffrages", "🌙", "VERSICLE", "", {
+    slide(id(), "suffrages", "🌙", T.eyebrowVersicle, "", {
       isCallAndResponse: true,
       callAndResponseLines: [
-        { speaker: "officiant", text: "Into your hands, O Lord, I commend my spirit;" },
-        { speaker: "people", text: "For you have redeemed me, O Lord, O God of truth." },
-        { speaker: "officiant", text: "Keep us, O Lord, as the apple of your eye;" },
-        { speaker: "people", text: "Hide us under the shadow of your wings." },
+        { speaker: "officiant", text: T.intoYourHands[0]!.off },
+        { speaker: "people", text: T.intoYourHands[0]!.peo },
+        { speaker: "officiant", text: T.intoYourHands[1]!.off },
+        { speaker: "people", text: T.intoYourHands[1]!.peo },
       ],
       bcpReference: "BCP p. 132",
     }),
@@ -375,7 +429,7 @@ export async function assembleCompline(
   // 7. Lord's Prayer — contemporary form, matching the rest of
   //    Phoebe's offices.
   slides.push(
-    slide(id(), "lords_prayer", "🙏🏽", "THE LORD'S PRAYER", LORDS_PRAYER_CONTEMPORARY, {
+    slide(id(), "lords_prayer", "🙏🏽", T.eyebrowLordsPrayer, T.lordsPrayer, {
       bcpReference: "BCP p. 132",
     }),
   );
@@ -384,7 +438,7 @@ export async function assembleCompline(
   //    Compline collects are equally appointed; a future picker can
   //    let the user choose.
   slides.push(
-    slide(id(), "collect", "🌿", "THE COLLECT", COMPLINE_COLLECT_VISIT, {
+    slide(id(), "collect", "🌿", T.eyebrowCollect, T.collectVisit, {
       bcpReference: "BCP p. 133",
     }),
   );
@@ -393,11 +447,11 @@ export async function assembleCompline(
   //    two repetitions of the antiphon. Easter swaps in the alleluia
   //    variant; everywhere else uses the standard "Guide us waking".
   const antiphonText = liturgicalDay.useAlleluia
-    ? COMPLINE_ANTIPHON_EASTER
-    : COMPLINE_ANTIPHON_STANDARD;
+    ? T.antiphonEaster
+    : T.antiphonStandard;
 
   slides.push(
-    slide(id(), "antiphon", "🕊️", "ANTIPHON", antiphonText, {
+    slide(id(), "antiphon", "🕊️", T.eyebrowAntiphon, antiphonText, {
       bcpReference: "BCP p. 134",
     }),
   );
@@ -406,33 +460,33 @@ export async function assembleCompline(
   //     canticle. Title + body slides.
   slides.push(
     slide(id(), "canticle_title", "🌌", "NUNC DIMITTIS", "", {
-      title: "The Song of Simeon",
+      title: T.nuncDimittisTitle,
       bcpReference: "BCP p. 135",
     }),
   );
   slides.push(
-    slide(id(), "canticle", "🌌", "NUNC DIMITTIS · LUKE 2:29-32", NUNC_DIMITTIS, {
-      title: "The Song of Simeon",
+    slide(id(), "canticle", "🌌", T.nuncDimittisEyebrow, T.nuncDimittis, {
+      title: T.nuncDimittisTitle,
       bcpReference: "BCP p. 135",
       isScrollable: true,
-      scrollHint: "↓ continue · tap when ready",
+      scrollHint: T.scrollHint,
     }),
   );
 
   // 11. Antiphon repeated — closes the canticle the way the BCP does.
   slides.push(
-    slide(id(), "antiphon", "🕊️", "ANTIPHON", antiphonText, {
+    slide(id(), "antiphon", "🕊️", T.eyebrowAntiphon, antiphonText, {
       bcpReference: "BCP p. 134",
     }),
   );
 
   // 12. Closing versicle — "Let us bless the Lord."
   slides.push(
-    slide(id(), "invitatory", "🌙", "CLOSING", "", {
+    slide(id(), "invitatory", "🌙", T.eyebrowClosing, "", {
       isCallAndResponse: true,
       callAndResponseLines: [
-        { speaker: "officiant", text: "Let us bless the Lord." },
-        { speaker: "people", text: "Thanks be to God." },
+        { speaker: "officiant", text: T.letUsBlessOfficiant },
+        { speaker: "people", text: T.letUsBlessPeople },
       ],
       bcpReference: "BCP p. 135",
     }),
@@ -440,7 +494,7 @@ export async function assembleCompline(
 
   // 13. Final blessing — closes the office.
   slides.push(
-    slide(id(), "closing", "🌌", "BLESSING", FINAL_BLESSING, {
+    slide(id(), "closing", "🌌", T.eyebrowBlessing, T.finalBlessing, {
       bcpReference: "BCP p. 135",
     }),
   );

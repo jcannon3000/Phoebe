@@ -32,6 +32,7 @@ import {
 import { buildIntercessionSlides } from "./assembleIntercessions";
 import { buildLessonSlides } from "./assembleLesson";
 import type { Slide, CallAndResponseLine, OfficeDayInfo } from "./assembleMorningPrayer";
+import { EYEBROWS, PRAYERS, pick, type Locale } from "./officeI18n";
 
 export type DevotionKind = "morning" | "early-evening";
 
@@ -106,10 +107,41 @@ export async function assembleDevotion(
   date: Date,
   userId: number,
   kind: DevotionKind,
+  locale: Locale = "en",
 ): Promise<{
   slides: Slide[];
   officeDay: OfficeDayInfo;
 }> {
+  // Locale-resolved framing text. Same pattern as assembleCompline.
+  // Spanish sourced from El Libro de Oración Común. The lectionary
+  // psalm body + Collect of the Day still load from bcp_texts in
+  // their seeded language (English-only today; future Spanish seed
+  // pass to come).
+  const T = {
+    versicleOff: pick(locale, PRAYERS.versicle_o_god),
+    versiclePeo: pick(locale, PRAYERS.versicle_o_lord),
+    gloriaPatri: pick(locale, PRAYERS.gloria_patri),
+    alleluia: pick(locale, PRAYERS.alleluia),
+    phosHilaron: pick(locale, PRAYERS.phos_hilaron),
+    lordsPrayer: pick(locale, PRAYERS.lords_prayer_contemporary),
+    devotionCollectMorning: pick(locale, PRAYERS.devotion_collect_morning),
+    devotionCollectEarlyEvening: pick(locale, PRAYERS.devotion_collect_early_evening),
+    lightAndPeaceOff: pick(locale, PRAYERS.devotion_light_and_peace_off),
+    lightAndPeacePeo: pick(locale, PRAYERS.devotion_light_and_peace_peo),
+    eyebrowOpening: pick(locale, EYEBROWS.opening),
+    eyebrowPhosHilaron: pick(locale, EYEBROWS.phos_hilaron),
+    eyebrowLordsPrayer: pick(locale, EYEBROWS.the_lords_prayer),
+    eyebrowCollectOfTheDay: pick(locale, EYEBROWS.the_collect_of_the_day),
+    eyebrowIntercessions: pick(locale, EYEBROWS.intercessions),
+    introBefore: locale === "es" ? "Antes de comenzar" : "Before you begin",
+    introBody: locale === "es"
+      ? "Las Devociones Diarias son una forma breve de la oración diaria de la Iglesia — unos minutos sin prisa de Escritura y oración para sosegar el día. Llevan el ritmo que los monasterios han guardado por siglos, recogido en un espacio que cabe en una vida plena."
+      : "The Daily Devotions are a short form of the Church's daily prayer — a few unhurried minutes of Scripture and prayer to steady the day. They carry the rhythm the monasteries have kept for centuries, gathered into a span that fits a full life.",
+    titleMorningDevotion: locale === "es" ? "Devoción Matutina" : "Morning Devotion",
+    titleEarlyEveningDevotion: locale === "es" ? "Devoción Vespertina" : "Early Evening Devotion",
+    intercessionPraying: locale === "es" ? "Orando con tu comunidad…" : "Praying with your community…",
+    scrollHint: pick(locale, PRAYERS.scroll_hint_continue),
+  };
   const liturgicalDay = getOfficeDay(date);
   // Use the lectionary psalm for the same office (morning ↔ morning,
   // early-evening ↔ evening). The BCP Daily Devotion rubric allows
@@ -174,15 +206,11 @@ export async function assembleDevotion(
 
   // 0. Devotion intro — names the practice and the tradition it
   //    belongs to before the versicle begins.
+  const localizedTitle = isMorning ? T.titleMorningDevotion : T.titleEarlyEveningDevotion;
   slides.push(
-    slide(
-      id(),
-      "office_intro",
-      "🌿",
-      "Before you begin",
-      "The Daily Devotions are a short form of the Church's daily prayer — a few unhurried minutes of Scripture and prayer to steady the day. They carry the rhythm the monasteries have kept for centuries, gathered into a span that fits a full life.",
-      { title: titleSuffix },
-    ),
+    slide(id(), "office_intro", "🌿", T.introBefore, T.introBody, {
+      title: localizedTitle,
+    }),
   );
 
   // 1. Opening versicle. Morning uses the canonical "make speed /
@@ -190,18 +218,15 @@ export async function assembleDevotion(
   //    peace" greeting from BCP p. 139. Both add the Gloria Patri.
   if (isMorning) {
     const lines: CallAndResponseLine[] = [
-      { speaker: "officiant", text: "O God, make speed to save us." },
-      { speaker: "people", text: "O Lord, make haste to help us." },
-      {
-        speaker: "both",
-        text: "Glory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.",
-      },
+      { speaker: "officiant", text: T.versicleOff },
+      { speaker: "people", text: T.versiclePeo },
+      { speaker: "both", text: T.gloriaPatri },
     ];
     if (liturgicalDay.useAlleluia) {
-      lines.push({ speaker: "both", text: "Alleluia." });
+      lines.push({ speaker: "both", text: T.alleluia });
     }
     slides.push(
-      slide(id(), "invitatory", "🔔", "OPENING", "", {
+      slide(id(), "invitatory", "🔔", T.eyebrowOpening, "", {
         isCallAndResponse: true,
         callAndResponseLines: lines,
         bcpReference: "BCP p. 137",
@@ -209,11 +234,11 @@ export async function assembleDevotion(
     );
   } else {
     const lines: CallAndResponseLine[] = [
-      { speaker: "officiant", text: "Light and peace, in Jesus Christ our Lord." },
-      { speaker: "people", text: "Thanks be to God." },
+      { speaker: "officiant", text: T.lightAndPeaceOff },
+      { speaker: "people", text: T.lightAndPeacePeo },
     ];
     slides.push(
-      slide(id(), "invitatory", "🕯️", "OPENING", "", {
+      slide(id(), "invitatory", "🕯️", T.eyebrowOpening, "", {
         isCallAndResponse: true,
         callAndResponseLines: lines,
         bcpReference: "BCP p. 139",
@@ -223,10 +248,10 @@ export async function assembleDevotion(
     // Evening Prayer; embedded as a constant so this file stays self-
     // contained.
     slides.push(
-      slide(id(), "invitatory_psalm", "🕯️", "O GRACIOUS LIGHT", PHOS_HILARON, {
+      slide(id(), "invitatory_psalm", "🕯️", T.eyebrowPhosHilaron, T.phosHilaron, {
         bcpReference: "BCP p. 139",
         isScrollable: true,
-        scrollHint: "↓ continue · tap when ready",
+        scrollHint: T.scrollHint,
       }),
     );
   }
@@ -236,8 +261,7 @@ export async function assembleDevotion(
   // single combined title slide ("Psalms 91 & 92"), 4-verse chunks
   // for each psalm in sequence, and one Gloria Patri sealing the
   // whole set.
-  const gloriaPatri =
-    "Glory to the Father, and to the Son, and to the Holy Spirit: as it was in the beginning, is now, and will be for ever. Amen.";
+  const gloriaPatri = T.gloriaPatri;
 
   const combinedEyebrow = appointedPsalms.length === 1
     ? psalmEyebrow(appointedPsalms[0])
@@ -355,9 +379,9 @@ export async function assembleDevotion(
       id: id(),
       type: "intercessions_portal",
       emoji: "🙏🏽",
-      eyebrow: "INTERCESSIONS",
+      eyebrow: T.eyebrowIntercessions,
       title: null,
-      content: "Praying with your community…",
+      content: T.intercessionPraying,
       isCallAndResponse: false,
       callAndResponseLines: null,
       bcpReference: null,
@@ -369,7 +393,7 @@ export async function assembleDevotion(
 
   // 6. Lord's Prayer
   slides.push(
-    slide(id(), "lords_prayer", "🙏🏽", "THE LORD'S PRAYER", LORDS_PRAYER_CONTEMPORARY, {
+    slide(id(), "lords_prayer", "🙏🏽", T.eyebrowLordsPrayer, T.lordsPrayer, {
       bcpReference: isMorning ? "BCP p. 137" : "BCP p. 140",
     }),
   );
@@ -379,16 +403,19 @@ export async function assembleDevotion(
   // Office uses. Falls back to the BCP rubric's fixed devotion
   // collect (Lord God, almighty… in the morning / Lord Jesus,
   // stay with us… at early evening) if the lectionary entry is
-  // missing for any reason.
+  // missing for any reason. The fixed devotion collects are
+  // locale-aware via PRAYERS.devotion_collect_*; the lectionary
+  // Collect of the Day stays in its seeded language (English-only
+  // today; future Spanish seed pass to come).
   const collectText =
     collectOfTheDayRow?.content
       ? collectOfTheDayRow.content
-      : (isMorning ? COLLECT_MORNING : COLLECT_EARLY_EVENING);
+      : (isMorning ? T.devotionCollectMorning : T.devotionCollectEarlyEvening);
   const collectBcpRef =
     collectOfTheDayRow?.bcpReference
       ?? (isMorning ? "BCP p. 137" : "BCP p. 140");
   slides.push(
-    slide(id(), "collect", "🌿", "THE COLLECT OF THE DAY", collectText, {
+    slide(id(), "collect", "🌿", T.eyebrowCollectOfTheDay, collectText, {
       bcpReference: collectBcpRef,
     }),
   );

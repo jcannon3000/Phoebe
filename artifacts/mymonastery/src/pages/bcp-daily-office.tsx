@@ -8,6 +8,7 @@ import { openExternal } from "@/lib/openExternal";
 import { bibleUrlSegments } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import i18n from "@/i18n";
 import { playOfficeChime } from "@/lib/amenFeedback";
 import { apiRequest } from "@/lib/queryClient";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -471,10 +472,22 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
         // — without this an LA user praying at 11pm Sunday would get
         // Monday's office because the server sees UTC's Monday 07:00.
         // The endpoint already accepts ?date= as YYYY-MM-DD.
+        //
+        // Also pass the viewer's current i18n locale so the assembler
+        // can serve Spanish slide text (versicles, Confession,
+        // Lord's Prayer, antiphons, blessings — all framing text
+        // that lives in code rather than the bcp_texts seed). Psalm
+        // bodies stay in their bcp_texts language (English-only for
+        // now; a future Spanish Psalter seed will fix that).
         const now = new Date();
         const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+        // Pull from i18next at fetch time so a mid-session locale
+        // toggle (Settings → Language) reflects on the next office
+        // open without a full page reload. Anything other than "es"
+        // resolves to "en" server-side.
+        const locale = i18n.language === "es" ? "es" : "en";
         const sep = endpoint.includes("?") ? "&" : "?";
-        const res = await fetch(`${endpoint}${sep}date=${localDate}`);
+        const res = await fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (cancelled) return;
