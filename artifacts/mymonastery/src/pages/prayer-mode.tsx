@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePeople } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
-import { findBcpPrayer } from "@/lib/bcp-prayers";
+import { findBcpPrayer, localizeBcpPrayer } from "@/lib/bcp-prayers";
 import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { openExternal } from "@/lib/openExternal";
 import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
@@ -352,8 +352,13 @@ function SlideContent({
   // buttons); undefined opens the full duration picker.
   onStartContemplation: (minutes?: number) => void;
 }) {
+  const { i18n } = useTranslation();
   const [askBody, setAskBody] = useState("");
   const bcpPrayer = slide.kind === "intercession" ? findBcpPrayer(slide.text) : undefined;
+  // Resolve the locale-aware view of the BCP prayer once; the body
+  // card below picks `localizedBcp.text` so Spanish readers see the
+  // Libro de Oración Común wording.
+  const localizedBcp = bcpPrayer ? localizeBcpPrayer(bcpPrayer, i18n.language) : undefined;
 
   // ── "Pray for one of your friends?" — final slide when the viewer
   // already has an active prayer request of their own. We surface
@@ -1041,8 +1046,10 @@ function SlideContent({
         </p>
       )}
 
-      {/* BCP enrichment — show the formal prayer text from the Book of Common Prayer */}
-      {bcpPrayer && (
+      {/* BCP enrichment — show the formal prayer text from the Book
+          of Common Prayer (in the active locale's translation when
+          available). */}
+      {localizedBcp && (
         <div
           className="w-full rounded-2xl px-6 py-5 text-left mt-1 animate-turn-pulse-practices"
           style={{
@@ -1051,7 +1058,7 @@ function SlideContent({
           }}
         >
           {(() => {
-            const fit = fitPrayerText(bcpPrayer.text);
+            const fit = fitPrayerText(localizedBcp.text);
             return (
               <p
                 className="italic"
@@ -1062,7 +1069,7 @@ function SlideContent({
                   lineHeight: fit.leading,
                 }}
               >
-                {bcpPrayer.text}
+                {localizedBcp.text}
               </p>
             );
           })()}
@@ -1070,7 +1077,7 @@ function SlideContent({
             className="text-[9px] uppercase tracking-[0.14em] mt-3"
             style={{ color: "rgba(143,175,150,0.3)" }}
           >
-            From the Book of Common Prayer
+            {i18n.language?.startsWith("es") ? "Del Libro de Oración Común" : "From the Book of Common Prayer"}
           </p>
         </div>
       )}
@@ -1116,7 +1123,7 @@ function SlideContent({
               className="text-[9px] uppercase tracking-[0.14em] mt-3"
               style={{ color: "rgba(143,175,150,0.3)" }}
             >
-              From the Book of Common Prayer
+              {i18n.language?.startsWith("es") ? "Del Libro de Oración Común" : "From the Book of Common Prayer"}
             </p>
           )}
         </div>
