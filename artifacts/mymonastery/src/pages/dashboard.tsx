@@ -2702,7 +2702,18 @@ function NcmpHomeCard() {
 // Office picker uses for "today's office."
 export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}) {
   const { t } = useTranslation();
-  const isMorning = new Date().getHours() < 12;
+  // Three time-of-day buckets:
+  //   • < 12 → morning  → Morning Devotion (default depth)
+  //   • 12–19 → evening → Evening Devotion (default depth)
+  //   • ≥ 20 → night   → Compline (default depth)
+  // The user's Settings → Default prayer picker still overrides which
+  // depth they land on, but the *which-side* split is time-based.
+  // Compline is its own surface — there's no Compline Devotion, just
+  // Compline itself, so the night bucket short-circuits the
+  // devotion/office/intercessions branch below.
+  const hourNow = new Date().getHours();
+  const isMorning = hourNow < 12;
+  const isNight = hourNow >= 20;
   const eyebrow = t("dashboard.book_of_common_prayer");
   // Office-streak pill above the CTA. Same data source as before,
   // just the prefs lookup — no longer used to pick a "big" CTA.
@@ -2805,10 +2816,17 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
   // CTA destination respects the user's Settings → Default prayer
   // picker. Three levels:
   //   • devotion      — BCP short form (default; gentle daily rhythm).
+  //                     After 8pm this swaps to Compline — the BCP's
+  //                     night office, the natural "devotion-shaped"
+  //                     close to the day. No separate "Compline
+  //                     Devotion" exists; Compline is short on its own.
   //   • office        — full Morning/Evening Prayer (BCP long form).
-  //   • intercessions — community prayer-mode slideshow.
+  //                     After 8pm this also flips to Compline (same
+  //                     "the office for this hour" intuition).
+  //   • intercessions — community prayer-mode slideshow. Time-of-day
+  //                     agnostic — same queue regardless of hour.
   // Within the chosen surface the alternates remain reachable (first-
-  // slide pills on the Devotion + Office, the dashboard's own
+  // slide pills on the Devotion + Compline, the dashboard's own
   // chooser route at /prayer-chooser, etc.); this just picks the
   // single-tap default. "Pray again" carries ?reset=1 so re-tapping
   // after a completed pass starts fresh rather than resuming — only
@@ -2818,10 +2836,15 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
   const officeModeForLink = isMorning ? "morning" : "evening";
   const devotionHref = `/bcp/daily-devotions?mode=${devotionMode}${prayedToday ? "&reset=1" : ""}`;
   const officeHref = `/bcp/daily-office?mode=${officeModeForLink}${prayedToday ? "&reset=1" : ""}`;
+  const complineHref = `/bcp/daily-office?mode=compline${prayedToday ? "&reset=1" : ""}`;
   const intercessionsHref = prayedToday ? "/prayer-mode?reset=1" : "/prayer-mode";
+  // Compline wins for both the devotion and office buckets after 8pm
+  // since it's the BCP's night office and the closest thing either
+  // depth has at that hour.
   const ctaHref =
-    defaultPrayerLevel === "office" ? officeHref
-    : defaultPrayerLevel === "intercessions" ? intercessionsHref
+    defaultPrayerLevel === "intercessions" ? intercessionsHref
+    : isNight ? complineHref
+    : defaultPrayerLevel === "office" ? officeHref
     : devotionHref;
   const ctaCopy = "Begin prayer";
 

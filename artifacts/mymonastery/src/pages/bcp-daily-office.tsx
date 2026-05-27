@@ -2203,6 +2203,49 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
               </button>
             </div>
           )}
+          {/* Compline first-slide alternate. Compline is the after-8pm
+              default, but a user who'd rather pray Evening Prayer (the
+              Evening Devotion's broader option-set is the natural step
+              back into the earlier office) needs a door to it without
+              backing out to the chooser. One pill — "Evening Prayer" —
+              that lands on the Evening Devotion's first slide, where
+              the existing Intercessions + Full Office pills surface
+              the other two depths. Same gating as the devotion block
+              above (first slide only, not the closing celebration,
+              hidden for offices-only). */}
+          {resolvedMode === "compline" && slideIdx === 0 && !onComplete && !officesOnlyViewer && (
+            <div
+              style={{
+                marginTop: 28,
+                display: "flex",
+                flexDirection: "row",
+                flexWrap: "wrap",
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 8,
+                paddingTop: 16,
+                borderTop: `1px solid ${BORDER}`,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setViewerLocation("/bcp/daily-devotions?mode=early-evening-devotion")}
+                style={{
+                  background: "rgba(46,107,64,0.10)",
+                  border: "1px solid rgba(46,107,64,0.32)",
+                  borderRadius: 999,
+                  color: "rgba(168,197,160,0.95)",
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  padding: "7px 14px",
+                }}
+              >
+                Evening Prayer
+              </button>
+            </div>
+          )}
         </div>
       </main>
 
