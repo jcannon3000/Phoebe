@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useRoute, useSearch } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { playOpeningSwell, triggerAmenFeedback, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { RequestWordField } from "@/components/RequestWordField";
@@ -85,11 +86,12 @@ function initials(name: string): string {
 // timer) when slideKey changes; here that's a no-op because the
 // slide is the page itself, but we keep the prop for parity.
 function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdvance: () => void }) {
+  const { t } = useTranslation();
   const HOLD_MS = 4000;
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const t = window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
       setReady(true);
       try {
         window.dispatchEvent(
@@ -97,7 +99,7 @@ function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdva
         );
       } catch { /* non-fatal */ }
     }, HOLD_MS);
-    return () => window.clearTimeout(t);
+    return () => window.clearTimeout(timer);
   }, [slideKey]);
 
   return (
@@ -105,7 +107,7 @@ function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdva
       onClick={() => { if (ready) onAdvance(); }}
       disabled={!ready}
       aria-disabled={!ready}
-      aria-label={ready ? "Amen" : "Hold a moment"}
+      aria-label={ready ? t("prayer_request_detail.amen") : t("prayer_request_detail.amen_hold")}
       className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide active:scale-[0.98] relative overflow-hidden"
       style={{
         background: ready ? "#2D5E3F" : "rgba(46,107,64,0.18)",
@@ -138,13 +140,14 @@ function AmenButton({ slideKey, onAdvance }: { slideKey: string | number; onAdva
           display: "inline-block",
         }}
       >
-        Amen →
+        {t("prayer_request_detail.amen_button")}
       </span>
     </button>
   );
 }
 
 export default function PrayerRequestDetailPage() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/prayer-requests/:id");
   const id = params?.id ? Number(params.id) : NaN;
@@ -345,13 +348,13 @@ export default function PrayerRequestDetailPage() {
         {data?.shareToken && (
           <ShareLinkIconButton
             shareToken={data.shareToken}
-            ownerName={data.ownerName ?? "Someone"}
+            ownerName={data.ownerName ?? t("prayer_request_detail.someone")}
           />
         )}
         <button
           type="button"
           onClick={() => setLocation("/dashboard")}
-          aria-label="Close"
+          aria-label={t("prayer_request_detail.close")}
           style={{
             width: 36,
             height: 36,
@@ -389,13 +392,13 @@ export default function PrayerRequestDetailPage() {
       >
         {isLoading && (
           <p className="text-sm" style={{ color: "rgba(143,175,150,0.55)" }}>
-            Loading…
+            {t("prayer_request_detail.loading")}
           </p>
         )}
 
         {!isLoading && (error || !data) && (
           <p className="text-sm" style={{ color: "rgba(200,212,192,0.55)" }}>
-            We couldn't load this prayer request.
+            {t("prayer_request_detail.couldnt_load")}
           </p>
         )}
 
@@ -411,7 +414,7 @@ export default function PrayerRequestDetailPage() {
               {data.ownerAvatarUrl ? (
                 <img
                   src={data.ownerAvatarUrl}
-                  alt={data.ownerName ?? "Prayer author"}
+                  alt={data.ownerName ?? t("prayer_request_detail.prayer_author_alt")}
                   className="w-16 h-16 rounded-full object-cover prayer-avatar-pulse"
                 />
               ) : (
@@ -440,7 +443,7 @@ export default function PrayerRequestDetailPage() {
                   className="text-[10px] uppercase tracking-[0.18em] font-semibold"
                   style={{ color: "rgba(143,175,150,0.45)" }}
                 >
-                  Prayer Request
+                  {t("prayer_request_detail.eyebrow_request")}
                 </p>
                 <PrayerKindPill kind={data.kind} />
               </div>
@@ -491,7 +494,7 @@ export default function PrayerRequestDetailPage() {
                   minWidth: 140,
                 }}
               >
-                ✓ Amen sent
+                {t("prayer_request_detail.amen_sent")}
               </div>
             ) : (
               <AmenButton
@@ -515,7 +518,7 @@ export default function PrayerRequestDetailPage() {
                 className="text-[10px] uppercase tracking-[0.18em] font-semibold"
                 style={{ color: "rgba(143,175,150,0.45)" }}
               >
-                {showRenewSlide ? "Your prayer is wrapping up" : "Your prayer request"}
+                {showRenewSlide ? t("prayer_request_detail.eyebrow_owner_wrapping_up") : t("prayer_request_detail.eyebrow_owner")}
               </p>
             </div>
 
@@ -551,7 +554,7 @@ export default function PrayerRequestDetailPage() {
                       className="text-xs font-medium px-3 py-1.5 rounded-full transition-opacity hover:opacity-80 disabled:opacity-40"
                       style={{ color: "rgba(143,175,150,0.75)", border: "1px solid rgba(143,175,150,0.2)" }}
                     >
-                      Cancel
+                      {t("prayer_request_detail.cancel")}
                     </button>
                     <button
                       type="button"
@@ -560,7 +563,7 @@ export default function PrayerRequestDetailPage() {
                       className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity hover:opacity-80 disabled:opacity-40"
                       style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                     >
-                      {editBodyMutation.isPending ? "Saving…" : "Save"}
+                      {editBodyMutation.isPending ? t("prayer_request_detail.saving") : t("prayer_request_detail.save")}
                     </button>
                   </div>
                 </div>
@@ -599,7 +602,7 @@ export default function PrayerRequestDetailPage() {
                 count + faces row below, but no single featured amen. */}
             {fromAmenPush && data.amens.length > 0 && (() => {
               const latestAmen = data.amens[0];
-              const latestAmenName = latestAmen.userName ?? "Someone";
+              const latestAmenName = latestAmen.userName ?? t("prayer_request_detail.someone");
               return (
                 <div className="w-full flex flex-col items-center text-center gap-3 mt-2">
                   {latestAmen.userAvatarUrl ? (
@@ -620,7 +623,7 @@ export default function PrayerRequestDetailPage() {
                     className="text-[10px] uppercase tracking-[0.18em] font-semibold"
                     style={{ color: "rgba(143,175,150,0.5)" }}
                   >
-                    Amen from {latestAmenName}
+                    {t("prayer_request_detail.amen_from", { name: latestAmenName })}
                   </p>
                 </div>
               );
@@ -634,9 +637,7 @@ export default function PrayerRequestDetailPage() {
                   fontFamily: "'Space Grotesk', sans-serif",
                 }}
               >
-                {data.amenCountTotal === 1
-                  ? "Prayed 1 time so far."
-                  : `Prayed ${data.amenCountTotal} times so far.`}
+                {t("prayer_request_detail.prayed_n", { count: data.amenCountTotal })}
               </p>
             )}
 
@@ -648,7 +649,7 @@ export default function PrayerRequestDetailPage() {
                   fontFamily: "Georgia, 'Times New Roman', serif",
                 }}
               >
-                Your community has been notified. We'll let you know when the first amen lands.
+                {t("prayer_request_detail.community_notified")}
               </p>
             )}
 
@@ -662,7 +663,7 @@ export default function PrayerRequestDetailPage() {
                   className="px-8 py-3 rounded-full text-sm font-semibold disabled:opacity-50"
                   style={{ background: "#2D5E3F", color: "#F0EDE6", minWidth: 240 }}
                 >
-                  {renewMutation.isPending ? "Renewing…" : "Renew for 7 days 🌿"}
+                  {renewMutation.isPending ? t("prayer_request_detail.renewing") : t("prayer_request_detail.renew_for_7")}
                 </button>
                 <button
                   onClick={() => releaseMutation.mutate()}
@@ -670,14 +671,14 @@ export default function PrayerRequestDetailPage() {
                   className="text-[13px] transition-opacity hover:opacity-80 disabled:opacity-50"
                   style={{ color: "rgba(143,175,150,0.7)" }}
                 >
-                  {releaseMutation.isPending ? "Closing…" : "Let it close"}
+                  {releaseMutation.isPending ? t("prayer_request_detail.closing") : t("prayer_request_detail.let_it_close")}
                 </button>
                 <button
                   onClick={() => setLocation("/pray-request/new?kind=request")}
                   className="text-[13px] transition-opacity hover:opacity-80"
                   style={{ color: "rgba(143,175,150,0.7)" }}
                 >
-                  Or share something new →
+                  {t("prayer_request_detail.share_something_new")}
                 </button>
               </div>
             )}
@@ -700,12 +701,12 @@ export default function PrayerRequestDetailPage() {
                       background: "#1A4A2E",
                       color: "#A8C5A0",
                     }}
-                    title={a.userName ?? "Someone"}
+                    title={a.userName ?? t("prayer_request_detail.someone")}
                   >
                     {a.userAvatarUrl ? (
                       <img
                         src={a.userAvatarUrl}
-                        alt={a.userName ?? "Someone"}
+                        alt={a.userName ?? t("prayer_request_detail.someone")}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -733,7 +734,7 @@ export default function PrayerRequestDetailPage() {
                   className="text-[10px] uppercase tracking-[0.18em] font-semibold"
                   style={{ color: "rgba(143,175,150,0.45)" }}
                 >
-                  {data.words.length === 1 ? "Word of comfort" : "Words of comfort"}
+                  {t("prayer_request_detail.words_of_comfort", { count: data.words.length })}
                 </p>
                 {data.words.map(w => (
                   <div
@@ -762,7 +763,7 @@ export default function PrayerRequestDetailPage() {
                       className="text-[10px] uppercase tracking-[0.16em] font-semibold"
                       style={{ color: "rgba(143,175,150,0.45)" }}
                     >
-                      from {w.authorName}
+                      {t("prayer_request_detail.from_name", { name: w.authorName })}
                     </p>
                     <p
                       className="italic"
@@ -798,7 +799,7 @@ export default function PrayerRequestDetailPage() {
                 fontFamily: "'Space Grotesk', sans-serif",
               }}
             >
-              ← Back
+              {t("prayer_request_detail.back")}
             </button>
             {data.viewerIsOwner && !editing && (
               <>
@@ -812,7 +813,7 @@ export default function PrayerRequestDetailPage() {
                     fontFamily: "'Space Grotesk', sans-serif",
                   }}
                 >
-                  ✎ Edit
+                  {t("prayer_request_detail.edit")}
                 </button>
                 <button
                   onClick={() => renewMutation.mutate()}
@@ -825,7 +826,7 @@ export default function PrayerRequestDetailPage() {
                     fontFamily: "'Space Grotesk', sans-serif",
                   }}
                 >
-                  {renewMutation.isPending ? "Renewing…" : "🔄 Renew"}
+                  {renewMutation.isPending ? t("prayer_request_detail.renewing") : t("prayer_request_detail.renew")}
                 </button>
               </>
             )}
@@ -864,6 +865,7 @@ function TaggedRow({
   onRemoveSelf: (userId: number) => void;
   removingId: number | null;
 }) {
+  const { t } = useTranslation();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState("");
   // Picker draws from the owner's people garden — same set the
@@ -900,15 +902,15 @@ function TaggedRow({
           className="text-[10px] uppercase tracking-[0.18em] font-semibold"
           style={{ color: "rgba(143,175,150,0.45)" }}
         >
-          Tagged
+          {t("prayer_request_detail.tagged")}
         </p>
       )}
       <div className="flex items-center justify-center flex-wrap gap-2">
-        {tags.map((t) => {
-          const removingThis = removingId === t.id;
+        {tags.map((tag) => {
+          const removingThis = removingId === tag.id;
           return (
             <div
-              key={t.id}
+              key={tag.id}
               className="flex items-center gap-2 px-2.5 py-1 rounded-full"
               style={{
                 background: "rgba(46,107,64,0.18)",
@@ -916,10 +918,10 @@ function TaggedRow({
                 opacity: removingThis ? 0.5 : 1,
               }}
             >
-              {t.avatarUrl ? (
+              {tag.avatarUrl ? (
                 <img
-                  src={t.avatarUrl}
-                  alt={t.name ?? ""}
+                  src={tag.avatarUrl}
+                  alt={tag.name ?? ""}
                   className="w-6 h-6 rounded-full object-cover"
                 />
               ) : (
@@ -927,21 +929,21 @@ function TaggedRow({
                   className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
                   style={{ background: "#1A4A2E", color: "#A8C5A0" }}
                 >
-                  {(t.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+                  {(tag.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
                 </div>
               )}
               <span
                 className="text-[13px]"
                 style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
               >
-                {t.name ?? "Someone"}
+                {tag.name ?? t("prayer_request_detail.someone")}
               </span>
               {ownerEditing && (
                 <button
                   type="button"
-                  onClick={() => ownerRemoveTag(t.id)}
+                  onClick={() => ownerRemoveTag(tag.id)}
                   disabled={removingThis}
-                  aria-label={`Untag ${t.name ?? "this person"}`}
+                  aria-label={t("prayer_request_detail.untag_aria", { name: tag.name ?? t("prayer_request_detail.this_person") })}
                   style={{
                     background: "transparent",
                     border: "none",
@@ -971,7 +973,7 @@ function TaggedRow({
               fontFamily: "'Space Grotesk', sans-serif",
             }}
           >
-            🏷️  + Tag someone
+            {t("prayer_request_detail.tag_someone")}
           </button>
         )}
       </div>
@@ -987,7 +989,7 @@ function TaggedRow({
         >
           {eligible.length === 0 ? (
             <p className="text-xs italic text-center py-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-              Everyone in your garden is already tagged here.
+              {t("prayer_request_detail.everyone_tagged")}
             </p>
           ) : (
             <>
@@ -998,7 +1000,7 @@ function TaggedRow({
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search people…"
+                placeholder={t("prayer_request_detail.search_people_placeholder")}
                 autoFocus
                 className="w-full mb-2 px-3 py-2 rounded-lg text-sm"
                 style={{
@@ -1011,7 +1013,7 @@ function TaggedRow({
               />
               {filteredEligible.length === 0 ? (
                 <p className="text-xs italic text-center py-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-                  No one matches "{query.trim()}".
+                  {t("prayer_request_detail.no_one_matches", { query: query.trim() })}
                 </p>
               ) : (
                 <div style={{ maxHeight: 200, overflowY: "auto" }}>
@@ -1077,11 +1079,12 @@ function RemoveSelfButton({
   onRemoveSelf: (userId: number) => void;
   removingId: number | null;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const me = queryClient.getQueryData<{ id?: number }>(["/api/auth/me"]);
   const myId = me?.id;
   if (!myId) return null;
-  const myTag = tags.find(t => t.id === myId);
+  const myTag = tags.find(tag => tag.id === myId);
   if (!myTag) return null;
   const pending = removingId === myId;
   return (
@@ -1102,7 +1105,7 @@ function RemoveSelfButton({
         padding: 4,
       }}
     >
-      {pending ? "Removing…" : "Remove me from this prayer"}
+      {pending ? t("prayer_request_detail.removing") : t("prayer_request_detail.remove_me")}
     </button>
   );
 }
@@ -1127,6 +1130,7 @@ function ShareLinkIconButton({
   shareToken: string;
   ownerName: string;
 }) {
+  const { t } = useTranslation();
   const [justCopied, setJustCopied] = useState(false);
 
   async function handleShare() {
@@ -1141,8 +1145,8 @@ function ShareLinkIconButton({
     <button
       type="button"
       onClick={handleShare}
-      aria-label="Share this prayer"
-      title={justCopied ? "Link copied" : "Share this prayer"}
+      aria-label={t("prayer_request_detail.share_aria")}
+      title={justCopied ? t("prayer_request_detail.link_copied_short") : t("prayer_request_detail.share_aria")}
       style={{
         width: 36,
         height: 36,
@@ -1193,6 +1197,7 @@ function ShareLinkButton({
   shareToken: string;
   ownerName: string;
 }) {
+  const { t } = useTranslation();
   const [justCopied, setJustCopied] = useState(false);
 
   async function handleShare() {
@@ -1215,7 +1220,7 @@ function ShareLinkButton({
         fontFamily: "'Space Grotesk', sans-serif",
       }}
     >
-      {justCopied ? "Link copied ✓" : "Share this prayer →"}
+      {justCopied ? t("prayer_request_detail.link_copied_pill") : t("prayer_request_detail.share_pill")}
     </button>
   );
 }
