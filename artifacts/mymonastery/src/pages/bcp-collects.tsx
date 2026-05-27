@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
-import { BCP_COLLECTS, type BcpCollect } from "@/lib/bcp-collects";
+import { BCP_COLLECTS, type BcpCollect, localizeBcpCollect } from "@/lib/bcp-collects";
 
 // BCP Collects index — sibling to /bcp/intercessions, structured the
 // same way (category accordion + search + per-collect modal). Data
@@ -35,7 +35,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
 
 export default function BcpCollectsPage() {
   const { user, isLoading } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [selectedCollect, setSelectedCollect] = useState<BcpCollect | null>(null);
@@ -102,11 +102,14 @@ export default function BcpCollectsPage() {
         {/* Search results — flat list */}
         {query.trim() ? (() => {
           const needle = query.trim().toLowerCase();
+          // Match across both English and Spanish fields.
           const results = BCP_COLLECTS.filter(
             (c) =>
               c.title.toLowerCase().includes(needle) ||
               c.category.toLowerCase().includes(needle) ||
-              c.text.toLowerCase().includes(needle),
+              c.text.toLowerCase().includes(needle) ||
+              (c.titleEs ?? "").toLowerCase().includes(needle) ||
+              (c.textEs ?? "").toLowerCase().includes(needle),
           );
           return results.length === 0 ? (
             <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.5)" }}>
@@ -117,24 +120,27 @@ export default function BcpCollectsPage() {
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-3" style={{ color: "rgba(143,175,150,0.4)" }}>
                 {t("saints.results_count", { count: results.length })}
               </p>
-              {results.map((collect) => (
-                <button
-                  key={collect.title}
-                  onClick={() => setSelectedCollect(collect)}
-                  className="w-full text-left px-4 py-3 rounded-xl transition-all hover:bg-white/5 active:scale-[0.99]"
-                  style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(46,107,64,0.12)" }}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>{collect.title}</p>
-                      <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.5)" }}>
-                        {CATEGORY_EMOJI[collect.category] ?? "📜"} {collect.category}
-                      </p>
+              {results.map((collect) => {
+                const loc = localizeBcpCollect(collect, i18n.language);
+                return (
+                  <button
+                    key={collect.title}
+                    onClick={() => setSelectedCollect(collect)}
+                    className="w-full text-left px-4 py-3 rounded-xl transition-all hover:bg-white/5 active:scale-[0.99]"
+                    style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(46,107,64,0.12)" }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>{loc.title}</p>
+                        <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.5)" }}>
+                          {CATEGORY_EMOJI[collect.category] ?? "📜"} {loc.category}
+                        </p>
+                      </div>
+                      <span className="text-xs shrink-0 mt-0.5" style={{ color: "#8FAF96" }}>›</span>
                     </div>
-                    <span className="text-xs shrink-0 mt-0.5" style={{ color: "#8FAF96" }}>›</span>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           );
         })() : (
@@ -143,6 +149,9 @@ export default function BcpCollectsPage() {
             {CATEGORIES.map(({ category, collects }) => {
               const isOpen = openCategory === category;
               const emoji = CATEGORY_EMOJI[category] ?? "📜";
+              const localizedCategory = collects[0]
+                ? localizeBcpCollect(collects[0], i18n.language).category
+                : category;
 
               return (
                 <div key={category}>
@@ -159,7 +168,7 @@ export default function BcpCollectsPage() {
                         <span className="text-xl">{emoji}</span>
                         <div>
                           <p className="font-semibold text-sm" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                            {category}
+                            {localizedCategory}
                           </p>
                           <p className="text-xs mt-0.5" style={{ color: "rgba(143,175,150,0.6)" }}>
                             {t("bcp_collects.collects_count", { count: collects.length })}
@@ -174,18 +183,21 @@ export default function BcpCollectsPage() {
 
                   {isOpen && (
                     <div className="mt-1 ml-4 space-y-1">
-                      {collects.map((collect) => (
-                        <button
-                          key={collect.title}
-                          onClick={() => setSelectedCollect(collect)}
-                          className="w-full text-left px-4 py-3 rounded-lg transition-all hover:bg-white/5 active:scale-[0.99]"
-                        >
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>{collect.title}</p>
-                            <span className="text-xs" style={{ color: "#8FAF96" }}>›</span>
-                          </div>
-                        </button>
-                      ))}
+                      {collects.map((collect) => {
+                        const loc = localizeBcpCollect(collect, i18n.language);
+                        return (
+                          <button
+                            key={collect.title}
+                            onClick={() => setSelectedCollect(collect)}
+                            className="w-full text-left px-4 py-3 rounded-lg transition-all hover:bg-white/5 active:scale-[0.99]"
+                          >
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>{loc.title}</p>
+                              <span className="text-xs" style={{ color: "#8FAF96" }}>›</span>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -222,43 +234,50 @@ export default function BcpCollectsPage() {
               }
             `}</style>
 
-            {/* Modal header */}
-            <div className="px-6 pt-6 pb-4 flex items-start justify-between gap-4" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-1.5" style={{ color: "rgba(143,175,150,0.5)" }}>
-                  {selectedCollect.category}
-                </p>
-                <h2
-                  className="text-lg font-bold leading-snug"
-                  style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-                >
-                  {selectedCollect.title}
-                </h2>
-              </div>
-              <button
-                onClick={() => setSelectedCollect(null)}
-                className="text-xl shrink-0 w-8 h-8 flex items-center justify-center rounded-full mt-1"
-                style={{ color: "#8FAF96", background: "rgba(200,212,192,0.08)" }}
-              >
-                ×
-              </button>
-            </div>
+            {/* Modal header — IIFE so we resolve locale once for header+body */}
+            {(() => {
+              const loc = localizeBcpCollect(selectedCollect, i18n.language);
+              return (
+                <>
+                  <div className="px-6 pt-6 pb-4 flex items-start justify-between gap-4" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-1.5" style={{ color: "rgba(143,175,150,0.5)" }}>
+                        {loc.category}
+                      </p>
+                      <h2
+                        className="text-lg font-bold leading-snug"
+                        style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+                      >
+                        {loc.title}
+                      </h2>
+                    </div>
+                    <button
+                      onClick={() => setSelectedCollect(null)}
+                      className="text-xl shrink-0 w-8 h-8 flex items-center justify-center rounded-full mt-1"
+                      style={{ color: "#8FAF96", background: "rgba(200,212,192,0.08)" }}
+                    >
+                      ×
+                    </button>
+                  </div>
 
-            {/* Collect text */}
-            <div className="px-6 py-6 overflow-y-auto" style={{ maxHeight: "calc(85vh - 120px)" }}>
-              <p
-                className="text-[15px] leading-[2] italic"
-                style={{
-                  color: "#C8D4C0",
-                  fontFamily: "Georgia, 'Times New Roman', serif",
-                }}
-              >
-                {selectedCollect.text}
-              </p>
-              <p className="text-[11px] mt-6 pt-4 italic" style={{ color: "rgba(143,175,150,0.4)", borderTop: "1px solid rgba(46,107,64,0.12)" }}>
-                {t("bcp_collects.from_bcp")}
-              </p>
-            </div>
+                  {/* Collect text */}
+                  <div className="px-6 py-6 overflow-y-auto" style={{ maxHeight: "calc(85vh - 120px)" }}>
+                    <p
+                      className="text-[15px] leading-[2] italic"
+                      style={{
+                        color: "#C8D4C0",
+                        fontFamily: "Georgia, 'Times New Roman', serif",
+                      }}
+                    >
+                      {loc.text}
+                    </p>
+                    <p className="text-[11px] mt-6 pt-4 italic" style={{ color: "rgba(143,175,150,0.4)", borderTop: "1px solid rgba(46,107,64,0.12)" }}>
+                      {t("bcp_collects.from_bcp")}
+                    </p>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
