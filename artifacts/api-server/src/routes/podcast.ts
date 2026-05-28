@@ -113,6 +113,11 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     emoji: "🌎",
     showSlugs: ["fore-spotlights"],
   },
+  "yale-faith-culture": {
+    title: "Yale Center for Faith & Culture",
+    emoji: "📘",
+    showSlugs: ["for-the-life-of-the-world"],
+  },
 };
 
 // Thematic filter pills for the Discover page. Each searches episode
@@ -236,7 +241,7 @@ const SHOWS: Record<string, Show> = {
     artist: "Diocese of Washington",
     publisher: "episcopal-leaders",
     feedUrl: "https://feeds.simplecast.com/1CBZhkXf",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/9d/df/80/9ddf8035-4fd1-7234-5acf-4594adff4935/mza_18382143898364247324.jpg/600x600bb.jpg",
+    artwork: "/podcast-art/budde.jpg",
   },
   // ── The Episcopal Church — Presiding Bishop Michael Curry ───────────
   "way-of-love-curry": {
@@ -302,6 +307,15 @@ const SHOWS: Record<string, Show> = {
     publisher: "yale-fore",
     feedUrl: "https://rss.buzzsprout.com/1269704.rss",
     artwork: "https://storage.buzzsprout.com/1fuajatyj5gvhanfncdbry3iljeb?.jpg",
+  },
+  // ── Yale Center for Faith & Culture ─────────────────────────────────
+  "for-the-life-of-the-world": {
+    slug: "for-the-life-of-the-world",
+    title: "For the Life of the World",
+    artist: "Yale Center for Faith & Culture",
+    publisher: "yale-faith-culture",
+    feedUrl: "https://feeds.simplecast.com/tjI7YMGV",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/da/ab/0c/daab0c18-928d-1a9f-9fd3-c58ad1975fbd/mza_5912217182998287523.jpg/600x600bb.jpg",
   },
 };
 
