@@ -114,27 +114,22 @@ export default function WriteLetter() {
   const saveTimerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const lastSavedRef = useRef("");
 
+  // The legacy /api/letters/* fallbacks were dead code by the time
+  // we shipped the phoebe routes — /api/phoebe/* is the only path
+  // the mobile bundle has used since the cutover. Dropping the
+  // try/catch fallback so a real failure surfaces as the actual error
+  // (TanStack Query retries / error boundary) instead of double-
+  // pinging the server on every load. See routes/letters.ts deletion
+  // plan in the API audit.
   const { data: correspondence } = useQuery<CorrespondenceBasic>({
     queryKey: [`/api/phoebe/correspondences/${correspondenceId}`],
-    queryFn: async () => {
-      try {
-        return await apiRequest("GET", `/api/phoebe/correspondences/${correspondenceId}${tokenParam}`);
-      } catch {
-        return await apiRequest("GET", `/api/letters/correspondences/${correspondenceId}${tokenParam}`);
-      }
-    },
+    queryFn: () => apiRequest("GET", `/api/phoebe/correspondences/${correspondenceId}${tokenParam}`),
     enabled: !!correspondenceId && (!!user || !!token),
   });
 
   const { data: draft } = useQuery<DraftData | null>({
     queryKey: [`/api/phoebe/correspondences/${correspondenceId}/draft`],
-    queryFn: async () => {
-      try {
-        return await apiRequest("GET", `/api/phoebe/correspondences/${correspondenceId}/draft${tokenParam}`);
-      } catch {
-        return await apiRequest("GET", `/api/letters/correspondences/${correspondenceId}/draft${tokenParam}`);
-      }
-    },
+    queryFn: () => apiRequest("GET", `/api/phoebe/correspondences/${correspondenceId}/draft${tokenParam}`),
     enabled: !!correspondenceId && (!!user || !!token),
   });
 
@@ -259,8 +254,7 @@ export default function WriteLetter() {
   const saveDraft = useCallback(async () => {
     if (!correspondenceId || content === lastSavedRef.current) return;
     try {
-      await apiRequest("PUT", `/api/phoebe/correspondences/${correspondenceId}/draft${tokenParam}`, { content })
-        .catch(() => apiRequest("PUT", `/api/letters/correspondences/${correspondenceId}/draft${tokenParam}`, { content }));
+      await apiRequest("PUT", `/api/phoebe/correspondences/${correspondenceId}/draft${tokenParam}`, { content });
       lastSavedRef.current = content;
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 2000);
@@ -290,11 +284,7 @@ export default function WriteLetter() {
       }
       return apiRequest("POST", `/api/phoebe/correspondences/${correspondenceId}/letters${tokenParam}`, {
         content: content.trim(),
-      }).catch(() =>
-        apiRequest("POST", `/api/letters/correspondences/${correspondenceId}/letters${tokenParam}`, {
-          content: content.trim(),
-        })
-      );
+      });
     },
     onSuccess: (result: any) => {
       // Clear local draft state so we don't re-POST it on the way out.

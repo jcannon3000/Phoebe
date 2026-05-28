@@ -65,13 +65,7 @@ export default function ReadLetter() {
 
   const { data } = useQuery<CorrespondenceDetail>({
     queryKey: [`/api/phoebe/correspondences/${correspondenceId}`],
-    queryFn: async () => {
-      try {
-        return await apiRequest("GET", `/api/phoebe/correspondences/${correspondenceId}${tokenParam}`);
-      } catch {
-        return await apiRequest("GET", `/api/letters/correspondences/${correspondenceId}${tokenParam}`);
-      }
-    },
+    queryFn: () => apiRequest("GET", `/api/phoebe/correspondences/${correspondenceId}${tokenParam}`),
     enabled: !!correspondenceId && (!!user || !!token),
   });
 

@@ -85,13 +85,7 @@ export default function CorrespondencePage() {
   const queryKey = [`/api/phoebe/correspondences/${correspondenceId}`];
   const { data, isLoading } = useQuery<CorrespondenceDetail>({
     queryKey,
-    queryFn: async () => {
-      try {
-        return await apiRequest("GET", `/api/phoebe/correspondences/${correspondenceId}${tokenParam}`);
-      } catch {
-        return await apiRequest("GET", `/api/letters/correspondences/${correspondenceId}${tokenParam}`);
-      }
-    },
+    queryFn: () => apiRequest("GET", `/api/phoebe/correspondences/${correspondenceId}${tokenParam}`),
     enabled: !!correspondenceId && (!!user || !!token),
   });
 
@@ -99,7 +93,6 @@ export default function CorrespondencePage() {
     mutationFn: () => apiRequest("POST", `/api/phoebe/correspondences/${correspondenceId}/archive`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/phoebe/correspondences"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/letters/correspondences"] });
       setLocation("/letters");
     },
   });
@@ -117,10 +110,8 @@ export default function CorrespondencePage() {
   useEffect(() => {
     if (!correspondenceId || (!user && !token)) return;
     apiRequest("GET", `/api/phoebe/correspondences/${correspondenceId}/letters${tokenParam}`)
-      .catch(() => apiRequest("GET", `/api/letters/correspondences/${correspondenceId}/letters${tokenParam}`))
       .then(() => {
         queryClient.invalidateQueries({ queryKey: ["/api/phoebe/correspondences"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/letters/correspondences"] });
       })
       .catch(() => {});
   }, [correspondenceId, user, token]);

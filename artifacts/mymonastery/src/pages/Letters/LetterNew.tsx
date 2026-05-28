@@ -64,13 +64,7 @@ export default function LetterNew() {
     members: Array<{ email: string }>;
   }>>({
     queryKey: ["/api/phoebe/correspondences"],
-    queryFn: async () => {
-      try {
-        return await apiRequest("GET", "/api/phoebe/correspondences");
-      } catch {
-        return await apiRequest("GET", "/api/letters/correspondences");
-      }
-    },
+    queryFn: () => apiRequest("GET", "/api/phoebe/correspondences"),
     enabled: !!user,
   });
 

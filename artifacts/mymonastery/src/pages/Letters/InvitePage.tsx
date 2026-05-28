@@ -71,8 +71,7 @@ export default function LetterInvitePage() {
     if (!inviteToken) return;
     async function load() {
       try {
-        let res = await fetch(`/api/phoebe/invite/${inviteToken}`);
-        if (res.status === 404) res = await fetch(`/api/letters/invite/${inviteToken}`);
+        const res = await fetch(`/api/phoebe/invite/${inviteToken}`);
         if (res.status === 404) { setNotFound(true); return; }
         if (!res.ok) throw new Error("Failed");
         const d: InviteInfo = await res.json();
@@ -97,20 +96,12 @@ export default function LetterInvitePage() {
     setSubmitting(true);
     (async () => {
       try {
-        let res = await fetch(`/api/phoebe/invite/${inviteToken}/accept`, {
+        const res = await fetch(`/api/phoebe/invite/${inviteToken}/accept`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ name: user.name, email: user.email }),
         });
-        if (!res.ok) {
-          res = await fetch(`/api/letters/invite/${inviteToken}/accept`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({ name: user.name, email: user.email }),
-          });
-        }
         if (!res.ok) throw new Error("accept failed");
         const result = await res.json();
         setLocation(`/letters/${result.correspondenceId}`);
@@ -157,20 +148,12 @@ export default function LetterInvitePage() {
 
       // Claim the invite — links the new userId to the
       // correspondence_members row and stamps joined_at.
-      let acceptRes = await fetch(`/api/phoebe/invite/${inviteToken}/accept`, {
+      const acceptRes = await fetch(`/api/phoebe/invite/${inviteToken}/accept`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ name: name.trim(), email: data.memberEmail }),
       });
-      if (!acceptRes.ok) {
-        acceptRes = await fetch(`/api/letters/invite/${inviteToken}/accept`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ name: name.trim(), email: data.memberEmail }),
-        });
-      }
       if (!acceptRes.ok) throw new Error("accept failed");
       const result = await acceptRes.json();
       // Land on the write surface so they can reply immediately.

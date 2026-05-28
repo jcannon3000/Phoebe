@@ -133,13 +133,7 @@ export default function PersonProfile() {
   // Fetch all correspondences and filter to ones that include this person
   const { data: correspondencesData } = useQuery<CorrespondenceItem[]>({
     queryKey: ["/api/phoebe/correspondences"],
-    queryFn: async () => {
-      try {
-        return await apiRequest("GET", "/api/phoebe/correspondences");
-      } catch {
-        return await apiRequest("GET", "/api/letters/correspondences");
-      }
-    },
+    queryFn: () => apiRequest("GET", "/api/phoebe/correspondences"),
     enabled: !!user && !!email,
   });
 
