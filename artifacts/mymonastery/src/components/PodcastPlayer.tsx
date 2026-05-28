@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 // ── Global podcast player ────────────────────────────────────────────────
@@ -42,6 +43,7 @@ type PlayerCtx = {
   current: PlayingEpisode | null;
   isPlaying: boolean;
   play: (ep: PlayingEpisode) => void;
+  playQueue: (eps: PlayingEpisode[]) => void;
   toggle: () => void;
   isCurrent: (showSlug: string, episodeId: string) => boolean;
 };
@@ -77,6 +79,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [current, setCurrent] = useState<PlayingEpisode | null>(null);
@@ -91,6 +94,12 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const pendingSeekRef = useRef<number | null>(null);
   const lastSaveRef = useRef(0);
   const loggedRef = useRef<Set<string>>(new Set());
+  // Queue for listen-list playback. queueRef holds the ordered episode
+  // list; queueIndexRef is the index of the currently playing episode.
+  // Both are refs (not state) so onEndedEv can read them without a stale
+  // closure — the UI reads the list from its own query, not from here.
+  const queueRef = useRef<PlayingEpisode[]>([]);
+  const queueIndexRef = useRef(-1);
   // Prayer-session accumulator (time actually playing).
   const seg = useRef<{ start: number | null; acc: number; startedAt: Date | null }>({ start: null, acc: 0, startedAt: null });
 
@@ -119,15 +128,14 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     }
   }, [closeSeg, user]);
 
-  const play = useCallback((ep: PlayingEpisode) => {
+  // Core episode-start logic, shared by user-tap play and queue auto-advance.
+  const startEpisode = useCallback((ep: PlayingEpisode) => {
     if (!ep.audioUrl) return;
-    setExpanded(true); // tapping an episode opens the full-screen listener
     setCurrent((prev) => {
       if (prev && prev.showSlug === ep.showSlug && prev.episodeId === ep.episodeId) {
         audioRef.current?.play().catch(() => { /* gesture-gated */ });
         return prev;
       }
-      // Switching episodes — save prior position + flush its session.
       const a = audioRef.current;
       if (a && prev) savePos(prev, a.currentTime);
       commitSession();
@@ -136,6 +144,22 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       return ep;
     });
   }, [commitSession]);
+
+  const play = useCallback((ep: PlayingEpisode) => {
+    // User-initiated tap: clear any running queue and open full-screen.
+    queueRef.current = [];
+    queueIndexRef.current = -1;
+    setExpanded(true);
+    startEpisode(ep);
+  }, [startEpisode]);
+
+  const playQueue = useCallback((eps: PlayingEpisode[]) => {
+    if (eps.length === 0) return;
+    queueRef.current = eps;
+    queueIndexRef.current = 0;
+    setExpanded(true);
+    startEpisode(eps[0]);
+  }, [startEpisode]);
 
   // Point the audio at the current episode + autoplay when it changes.
   useEffect(() => {
@@ -214,6 +238,13 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     setIsPlaying(false); closeSeg();
     if (current) clearPos(current);
     commitSession();
+    // Auto-advance through the listen-list queue if one is active.
+    const nextIdx = queueIndexRef.current + 1;
+    if (nextIdx > 0 && nextIdx < queueRef.current.length) {
+      queueIndexRef.current = nextIdx;
+      const next = queueRef.current[nextIdx];
+      if (next) setTimeout(() => startEpisode(next), 400);
+    }
   };
 
   const toggle = useCallback(() => {
@@ -288,7 +319,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const art = (!artBroken && (current?.imageUrl || current?.showArtwork)) || null;
 
   return (
-    <Ctx.Provider value={{ current, isPlaying, play, toggle, isCurrent }}>
+    <Ctx.Provider value={{ current, isPlaying, play, playQueue, toggle, isCurrent }}>
       {children}
 
       {/* One persistent audio element for the whole app. */}
@@ -316,7 +347,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
             onClick={onTrackClick}
             style={{ height: 5, background: "rgba(143,175,150,0.15)", cursor: "pointer" }}
             role="slider"
-            aria-label="Seek"
+            aria-label={t("podcasts.a11y_seek")}
             aria-valuenow={Math.round(pct)}
           >
             <div style={{ width: `${pct}%`, height: "100%", background: "#A8C5A0" }} />
@@ -337,7 +368,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
               )}
               <div style={{ minWidth: 0, textAlign: "left" }}>
                 <p style={{ fontSize: 12.5, fontWeight: 600, color: "#F0EDE6", margin: 0, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "44vw" }}>
-                  {current.title ?? "Now playing"}
+                  {current.title ?? t("podcasts.now_playing_fallback")}
                 </p>
                 <p style={{ fontSize: 10.5, color: "rgba(143,175,150,0.8)", margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "44vw" }}>
                   {fmtClock(currentTime)}{duration > 0 ? ` / ${fmtClock(duration)}` : ""}{current.showTitle ? ` · ${current.showTitle}` : ""}
@@ -346,23 +377,23 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
             </button>
 
             {/* Transport */}
-            <button type="button" onClick={() => skip(-15)} aria-label="Back 15 seconds"
+            <button type="button" onClick={() => skip(-15)} aria-label={t("podcasts.a11y_back15")}
               style={{ background: "none", border: "none", color: "rgba(168,197,160,0.95)", fontSize: 11, fontWeight: 700, cursor: "pointer", padding: "4px 2px", flexShrink: 0 }}>
               ⟲15
             </button>
-            <button type="button" onClick={toggle} aria-label={isPlaying ? "Pause" : "Play"}
+            <button type="button" onClick={toggle} aria-label={isPlaying ? t("podcasts.a11y_pause") : t("podcasts.a11y_play")}
               style={{ width: 38, height: 38, borderRadius: "50%", background: "#A8C5A0", color: "#0A1A0F", border: "none", fontSize: 16, cursor: "pointer", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
               {isPlaying ? "⏸" : "▶"}
             </button>
-            <button type="button" onClick={() => skip(30)} aria-label="Forward 30 seconds"
+            <button type="button" onClick={() => skip(30)} aria-label={t("podcasts.a11y_forward30")}
               style={{ background: "none", border: "none", color: "rgba(168,197,160,0.95)", fontSize: 11, fontWeight: 700, cursor: "pointer", padding: "4px 2px", flexShrink: 0 }}>
               30⟳
             </button>
-            <button type="button" onClick={cycleRate} aria-label="Playback speed"
+            <button type="button" onClick={cycleRate} aria-label={t("podcasts.a11y_speed")}
               style={{ background: "rgba(46,107,64,0.25)", border: "1px solid rgba(46,107,64,0.4)", color: "#C8D4C0", fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "4px 8px", cursor: "pointer", flexShrink: 0 }}>
               {rate}×
             </button>
-            <button type="button" onClick={closePlayer} aria-label="Close player"
+            <button type="button" onClick={closePlayer} aria-label={t("podcasts.a11y_close")}
               style={{ background: "none", border: "none", color: "rgba(143,175,150,0.7)", fontSize: 18, cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
               ✕
             </button>
@@ -388,14 +419,14 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
           <AnimatedBackground base="#0C1F12" variant="pronounced" />
           {/* Top bar: minimize / label / close */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 16px 0", flexShrink: 0 }}>
-            <button type="button" onClick={() => setExpanded(false)} aria-label="Minimize player"
+            <button type="button" onClick={() => setExpanded(false)} aria-label={t("podcasts.a11y_minimize")}
               style={{ background: "none", border: "none", color: "rgba(168,197,160,0.95)", fontSize: 28, lineHeight: 1, cursor: "pointer", padding: 4 }}>
               ⌄
             </button>
             <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(143,175,150,0.75)" }}>
-              Now Playing
+              {t("podcasts.now_playing")}
             </span>
-            <button type="button" onClick={closePlayer} aria-label="Close player"
+            <button type="button" onClick={closePlayer} aria-label={t("podcasts.a11y_close")}
               style={{ background: "none", border: "none", color: "rgba(143,175,150,0.7)", fontSize: 20, lineHeight: 1, cursor: "pointer", padding: 4 }}>
               ✕
             </button>
@@ -410,12 +441,12 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
               <div style={{ width: "min(64vw, 288px)", aspectRatio: "1 / 1", borderRadius: 22, background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.35)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 72 }} aria-hidden>🎧</div>
             )}
             <h2 style={{ fontSize: 21, fontWeight: 800, margin: "24px 0 0", lineHeight: 1.2, maxWidth: 460 }}>
-              {current.title ?? "Now playing"}
+              {current.title ?? t("podcasts.now_playing_fallback")}
             </h2>
             <button type="button"
               onClick={() => { setExpanded(false); setLocation(`/podcasts/show/${current.showSlug}`); }}
               style={{ background: "none", border: "none", color: "#8FAF96", fontFamily: FONT, fontSize: 13.5, margin: "8px 0 0", cursor: "pointer", padding: 0 }}>
-              {current.showTitle ?? "View show"}
+              {current.showTitle ?? t("podcasts.view_show")}
             </button>
             {current.description && (
               <p style={{ fontSize: 13, color: "rgba(200,212,192,0.85)", lineHeight: 1.55, margin: "18px 0 0", maxWidth: 460, textAlign: "left", whiteSpace: "pre-line" }}>
@@ -426,7 +457,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
 
           {/* Controls pinned to the bottom */}
           <div style={{ flexShrink: 0, padding: "8px 26px 0" }}>
-            <div onClick={onTrackClick} role="slider" aria-label="Seek" aria-valuenow={Math.round(pct)}
+            <div onClick={onTrackClick} role="slider" aria-label={t("podcasts.a11y_seek")} aria-valuenow={Math.round(pct)}
               style={{ height: 6, borderRadius: 999, background: "rgba(143,175,150,0.18)", cursor: "pointer", overflow: "hidden" }}>
               <div style={{ width: `${pct}%`, height: "100%", background: "#A8C5A0" }} />
             </div>
@@ -436,18 +467,18 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 30, margin: "14px 0 0" }}>
-              <button type="button" onClick={() => skip(-15)} aria-label="Back 15 seconds"
+              <button type="button" onClick={() => skip(-15)} aria-label={t("podcasts.a11y_back15")}
                 style={{ background: "none", border: "none", color: "#C8D4C0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>⟲15</button>
-              <button type="button" onClick={toggle} aria-label={isPlaying ? "Pause" : "Play"}
+              <button type="button" onClick={toggle} aria-label={isPlaying ? t("podcasts.a11y_pause") : t("podcasts.a11y_play")}
                 style={{ width: 64, height: 64, borderRadius: "50%", background: "#A8C5A0", color: "#0A1A0F", border: "none", fontSize: 26, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {isPlaying ? "⏸" : "▶"}
               </button>
-              <button type="button" onClick={() => skip(30)} aria-label="Forward 30 seconds"
+              <button type="button" onClick={() => skip(30)} aria-label={t("podcasts.a11y_forward30")}
                 style={{ background: "none", border: "none", color: "#C8D4C0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>30⟳</button>
             </div>
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "16px 0 0" }}>
-              <button type="button" onClick={cycleRate} aria-label="Playback speed"
+              <button type="button" onClick={cycleRate} aria-label={t("podcasts.a11y_speed")}
                 style={{ background: "rgba(46,107,64,0.25)", border: "1px solid rgba(46,107,64,0.4)", color: "#C8D4C0", fontSize: 12, fontWeight: 700, borderRadius: 999, padding: "6px 12px", cursor: "pointer" }}>
                 {rate}×
               </button>
@@ -460,7 +491,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                   color: isRecommended ? "#F0DCA8" : "rgba(168,197,160,0.95)",
                   border: `1px solid ${isRecommended ? "rgba(212,160,70,0.45)" : "rgba(46,107,64,0.3)"}`,
                 }}>
-                {isRecommended ? "♥ Recommended" : "♡ Recommend"}
+                {isRecommended ? `♥ ${t("podcasts.recommended")}` : `♡ ${t("podcasts.recommend")}`}
               </button>
             </div>
           </div>

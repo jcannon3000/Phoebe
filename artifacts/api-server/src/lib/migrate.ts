@@ -1746,6 +1746,26 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS podcast_recommendations_by_episode ON podcast_recommendations (show_slug, episode_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS podcast_recommendations_by_recent ON podcast_recommendations (created_at)`);
 
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS podcast_listen_list (
+        id              SERIAL PRIMARY KEY,
+        user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        show_slug       TEXT NOT NULL,
+        episode_id      TEXT NOT NULL,
+        episode_title   TEXT,
+        episode_audio_url TEXT,
+        episode_image_url TEXT,
+        duration_seconds INTEGER,
+        published_at    TEXT,
+        show_title      TEXT,
+        show_artwork    TEXT,
+        position        INTEGER NOT NULL DEFAULT 0,
+        added_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS podcast_listen_list_unique ON podcast_listen_list (user_id, show_slug, episode_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS podcast_listen_list_by_user ON podcast_listen_list (user_id, position)`);
+
     // Backfill: every existing climate-enrolled user gets a subscription
     // to phoebe-climate so they pick up feed-scoped intercessions on
     // their dashboard and slideshow without a manual opt-in step.

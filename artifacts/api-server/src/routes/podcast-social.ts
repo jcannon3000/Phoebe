@@ -1,10 +1,11 @@
 import { Router, type IRouter, type RequestHandler } from "express";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, max, sql } from "drizzle-orm";
 import {
   db,
   usersTable,
   podcastListensTable,
   podcastRecommendationsTable,
+  podcastListenListTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
 
@@ -83,19 +84,22 @@ router.post("/podcasts/listens", requireAuth, async (req, res): Promise<void> =>
   res.json({ ok: true });
 });
 
-// ── GET /api/podcasts/me — my listened + recommended episode keys ─────────
+// ── GET /api/podcasts/me — my listened + recommended + listen-list keys ───
 // Keys are `${showSlug}:${episodeId}` — the client marks rows with these.
 router.get("/podcasts/me", requireAuth, async (req, res): Promise<void> => {
   const me = getUser(req)!;
-  const [listens, recs] = await Promise.all([
+  const [listens, recs, queue] = await Promise.all([
     db.select({ showSlug: podcastListensTable.showSlug, episodeId: podcastListensTable.episodeId })
       .from(podcastListensTable).where(eq(podcastListensTable.userId, me.id)),
     db.select({ showSlug: podcastRecommendationsTable.showSlug, episodeId: podcastRecommendationsTable.episodeId })
       .from(podcastRecommendationsTable).where(eq(podcastRecommendationsTable.userId, me.id)),
+    db.select({ showSlug: podcastListenListTable.showSlug, episodeId: podcastListenListTable.episodeId })
+      .from(podcastListenListTable).where(eq(podcastListenListTable.userId, me.id)),
   ]);
   res.json({
     listenedKeys: listens.map((l) => `${l.showSlug}:${l.episodeId}`),
     recommendedKeys: recs.map((r) => `${r.showSlug}:${r.episodeId}`),
+    listenListKeys: queue.map((q) => `${q.showSlug}:${q.episodeId}`),
   });
 });
 
@@ -201,6 +205,50 @@ router.get("/podcasts/recommendations", requireAuth, async (_req, res): Promise<
     .slice(0, 80);
 
   res.json({ recommendations });
+});
+
+// ── GET /api/podcasts/listen-list — my ordered queue ──────────────────────
+router.get("/podcasts/listen-list", requireAuth, async (req, res): Promise<void> => {
+  const me = getUser(req)!;
+  const rows = await db.select()
+    .from(podcastListenListTable)
+    .where(eq(podcastListenListTable.userId, me.id))
+    .orderBy(podcastListenListTable.position);
+  res.json({ items: rows });
+});
+
+// ── POST /api/podcasts/listen-list — add episode (appends to end) ─────────
+router.post("/podcasts/listen-list", requireAuth, async (req, res): Promise<void> => {
+  const me = getUser(req)!;
+  const parsed = snapshotSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid episode" }); return; }
+  const v = snapshotValues(parsed.data);
+
+  // Compute next position = max(position) + 1 for this user, or 0 if empty.
+  const [{ maxPos }] = await db
+    .select({ maxPos: max(podcastListenListTable.position) })
+    .from(podcastListenListTable)
+    .where(eq(podcastListenListTable.userId, me.id));
+  const position = maxPos != null ? maxPos + 1 : 0;
+
+  await db.insert(podcastListenListTable)
+    .values({ userId: me.id, ...v, position })
+    .onConflictDoNothing(); // already in list — no-op
+  res.status(201).json({ ok: true });
+});
+
+// ── DELETE /api/podcasts/listen-list — remove episode ────────────────────
+router.delete("/podcasts/listen-list", requireAuth, async (req, res): Promise<void> => {
+  const me = getUser(req)!;
+  const schema = z.object({ showSlug: z.string().min(1), episodeId: z.string().min(1) });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid body" }); return; }
+  await db.delete(podcastListenListTable).where(and(
+    eq(podcastListenListTable.userId, me.id),
+    eq(podcastListenListTable.showSlug, parsed.data.showSlug),
+    eq(podcastListenListTable.episodeId, parsed.data.episodeId),
+  ));
+  res.json({ ok: true });
 });
 
 export default router;

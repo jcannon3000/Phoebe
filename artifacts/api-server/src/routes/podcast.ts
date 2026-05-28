@@ -91,8 +91,8 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "experiencing-jesus",
       "nc-crossroads",
       "roundtables-on-race",
-      "living-church",
       "vts-love-your-neighbor",
+      "living-church",
     ],
   },
   cac: {

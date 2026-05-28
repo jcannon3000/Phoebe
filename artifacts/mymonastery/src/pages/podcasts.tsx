@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlayer";
 
 // ── /podcasts — the Discover index ──────────────────────────────────────
 //
@@ -54,6 +55,20 @@ type RecommendedEpisode = {
   recommenders: Recommender[];
 };
 type RecommendationsResponse = { recommendations: RecommendedEpisode[] };
+type ListenListItem = {
+  id: number;
+  showSlug: string;
+  episodeId: string;
+  episodeTitle: string | null;
+  episodeAudioUrl: string | null;
+  episodeImageUrl: string | null;
+  durationSeconds: number | null;
+  publishedAt: string | null;
+  showTitle: string | null;
+  showArtwork: string | null;
+  position: number;
+};
+type ListenListResponse = { items: ListenListItem[] };
 
 function fmtDuration(seconds: number | null): string | null {
   if (!seconds || seconds <= 0) return null;
@@ -247,10 +262,64 @@ function RecommendationRow({ rec, onOpen }: { rec: RecommendedEpisode; onOpen: (
   );
 }
 
+function ListenListRow({
+  item,
+  onPlay,
+  onRemove,
+}: {
+  item: ListenListItem;
+  onPlay: () => void;
+  onRemove: () => void;
+}) {
+  const art = item.episodeImageUrl ?? item.showArtwork;
+  const meta = [item.showTitle, fmtDuration(item.durationSeconds)].filter(Boolean).join(" · ");
+  return (
+    <div
+      className="w-full rounded-2xl p-3.5 flex items-center gap-3"
+      style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+    >
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onPlay}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onPlay(); } }}
+        className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer transition-opacity hover:opacity-90"
+      >
+        <div style={{ width: 46, height: 46, flexShrink: 0 }}>
+          {art ? (
+            <img src={art} alt="" loading="lazy"
+              style={{ width: 46, height: 46, borderRadius: 10, objectFit: "cover", background: "rgba(143,175,150,0.12)", display: "block" }} />
+          ) : (
+            <div style={{ width: 46, height: 46, borderRadius: 10, background: "rgba(46,107,64,0.22)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🎧</div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p style={{ fontSize: 14, fontWeight: 600, color: PALETTE.warm, margin: 0, lineHeight: 1.25,
+            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+            {item.episodeTitle ?? "Untitled episode"}
+          </p>
+          {meta && <p style={{ fontSize: 11.5, color: PALETTE.faint, margin: "3px 0 0" }}>{meta}</p>}
+        </div>
+        <span style={{ color: "rgba(143,175,150,0.5)", fontSize: 15, flexShrink: 0 }}>▶</span>
+      </div>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label="Remove from listen list"
+        style={{ flexShrink: 0, background: "none", border: "none", color: "rgba(143,175,150,0.5)", fontSize: 18, lineHeight: 1, cursor: "pointer", padding: "4px 2px", marginLeft: 2 }}
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
 export default function PodcastsPage() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
-  const [tab, setTab] = useState<"discover" | "community">("discover");
+  const [tab, setTab] = useState<"discover" | "listen-list" | "community">("discover");
+  const player = usePodcastPlayer();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -295,6 +364,23 @@ export default function PodcastsPage() {
     staleTime: 60_000,
   });
 
+  // Listen list — fetched when that tab is open.
+  const { data: listenListData, isLoading: listenListLoading } = useQuery<ListenListResponse>({
+    queryKey: ["/api/podcasts/listen-list"],
+    queryFn: () => apiRequest("GET", "/api/podcasts/listen-list"),
+    enabled: !!user && tab === "listen-list",
+    staleTime: 30_000,
+  });
+
+  const removeFromListMut = useMutation({
+    mutationFn: ({ showSlug, episodeId }: { showSlug: string; episodeId: string }) =>
+      apiRequest("DELETE", "/api/podcasts/listen-list", { showSlug, episodeId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/podcasts/listen-list"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/podcasts/me"] });
+    },
+  });
+
   if (authLoading || !user) return null;
 
   const publishers = data?.publishers ?? [];
@@ -329,31 +415,93 @@ export default function PodcastsPage() {
           Podcasts
         </h1>
 
-        {/* Discover ↔ Community tabs. Discover is the curated library +
-            search; Community is the recommendations feed. */}
+        {/* Discover ↔ Listen List ↔ Community tabs. */}
         <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
-          {(["discover", "community"] as const).map((k) => {
+          {(["discover", "listen-list", "community"] as const).map((k) => {
             const active = tab === k;
+            const label = k === "discover" ? "Discover" : k === "listen-list" ? "Listen List" : "Community";
             return (
               <button
                 key={k}
                 type="button"
                 onClick={() => setTab(k)}
                 style={{
-                  flex: 1, padding: "9px 12px", borderRadius: 12,
-                  fontSize: 14, fontWeight: 700, fontFamily: FONT, cursor: "pointer",
+                  flex: 1, padding: "9px 8px", borderRadius: 12,
+                  fontSize: 13, fontWeight: 700, fontFamily: FONT, cursor: "pointer",
                   background: active ? "#2D5E3F" : "rgba(46,107,64,0.10)",
                   color: active ? PALETTE.warm : "rgba(168,197,160,0.9)",
                   border: `1px solid ${active ? "rgba(168,197,160,0.5)" : "rgba(46,107,64,0.28)"}`,
                 }}
               >
-                {k === "discover" ? "Discover" : "Community"}
+                {label}
               </button>
             );
           })}
         </div>
 
-        {tab === "community" ? (
+        {tab === "listen-list" ? (
+          // ── Listen List ───────────────────────────────────────────────
+          listenListLoading ? (
+            <p style={{ fontSize: 14, color: PALETTE.faint, marginTop: 24, textAlign: "center" }}>Loading…</p>
+          ) : (listenListData?.items ?? []).length === 0 ? (
+            <div style={{ textAlign: "center", marginTop: 48 }}>
+              <p style={{ fontSize: 36, margin: "0 0 12px" }}>🎧</p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: PALETTE.warm, margin: "0 0 8px", fontFamily: FONT }}>
+                Your listen list is empty
+              </p>
+              <p style={{ fontSize: 13.5, color: PALETTE.sage, lineHeight: 1.5, maxWidth: 300, margin: "0 auto 20px" }}>
+                Browse shows and tap + on any episode to save it here.
+              </p>
+              <button
+                type="button"
+                onClick={() => setTab("discover")}
+                style={{ background: "#2D5E3F", color: PALETTE.warm, border: "none", borderRadius: 12, padding: "10px 20px", fontSize: 14, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}
+              >
+                Browse shows →
+              </button>
+            </div>
+          ) : (() => {
+            const items = listenListData?.items ?? [];
+            const toPlayingEpisode = (item: ListenListItem): PlayingEpisode => ({
+              showSlug: item.showSlug,
+              episodeId: item.episodeId,
+              title: item.episodeTitle,
+              audioUrl: item.episodeAudioUrl ?? "",
+              imageUrl: item.episodeImageUrl ?? item.showArtwork,
+              showTitle: item.showTitle,
+              showArtwork: item.showArtwork,
+              durationSeconds: item.durationSeconds,
+              publishedAt: item.publishedAt,
+            });
+            return (
+              <>
+                <button
+                  type="button"
+                  onClick={() => player.playQueue(items.filter((i) => !!i.episodeAudioUrl).map(toPlayingEpisode))}
+                  style={{
+                    width: "100%", padding: "12px 20px", borderRadius: 14, marginBottom: 16,
+                    background: "#2D5E3F", color: PALETTE.warm, border: "1px solid rgba(168,197,160,0.4)",
+                    fontSize: 15, fontWeight: 700, fontFamily: FONT, cursor: "pointer",
+                  }}
+                >
+                  ▶ Play All ({items.length} episode{items.length === 1 ? "" : "s"})
+                </button>
+                <div className="space-y-2.5">
+                  {items.map((item) => (
+                    <ListenListRow
+                      key={`${item.showSlug}:${item.episodeId}`}
+                      item={item}
+                      onPlay={() => {
+                        if (item.episodeAudioUrl) player.play(toPlayingEpisode(item));
+                      }}
+                      onRemove={() => removeFromListMut.mutate({ showSlug: item.showSlug, episodeId: item.episodeId })}
+                    />
+                  ))}
+                </div>
+              </>
+            );
+          })()
+        ) : tab === "community" ? (
           // ── Community recommendations feed ────────────────────────────
           recLoading ? (
             <p style={{ fontSize: 14, color: PALETTE.faint, marginTop: 24, textAlign: "center" }}>Loading recommendations…</p>

@@ -65,3 +65,29 @@ export const podcastRecommendationsTable = pgTable("podcast_recommendations", {
 }));
 
 export type PodcastRecommendation = typeof podcastRecommendationsTable.$inferSelect;
+
+// ── podcast_listen_list ────────────────────────────────────────────────────
+// Per-user ordered queue of episodes to listen to. Each row stores the
+// same episode snapshot as listens/recommendations so we can render the
+// list without re-fetching feeds. position is an integer; lower = earlier
+// in the queue. New items get max(position)+1 so they append to the end.
+export const podcastListenListTable = pgTable("podcast_listen_list", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => usersTable.id, { onDelete: "cascade" }),
+  showSlug: text("show_slug").notNull(),
+  episodeId: text("episode_id").notNull(),
+  episodeTitle: text("episode_title"),
+  episodeAudioUrl: text("episode_audio_url"),
+  episodeImageUrl: text("episode_image_url"),
+  durationSeconds: integer("duration_seconds"),
+  publishedAt: text("published_at"),
+  showTitle: text("show_title"),
+  showArtwork: text("show_artwork"),
+  position: integer("position").notNull().default(0),
+  addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  uniquePerEpisode: uniqueIndex("podcast_listen_list_unique").on(t.userId, t.showSlug, t.episodeId),
+  byUser: index("podcast_listen_list_by_user").on(t.userId, t.position),
+}));
+
+export type PodcastListenListItem = typeof podcastListenListTable.$inferSelect;

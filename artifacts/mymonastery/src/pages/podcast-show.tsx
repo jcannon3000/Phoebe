@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useParams, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlayer";
+import { useTranslation } from "react-i18next";
 
 // ── /podcasts/show/:slug — a show's episodes ────────────────────────────
 //
@@ -96,6 +97,7 @@ export default function PodcastShowPage() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const player = usePodcastPlayer();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -143,13 +145,38 @@ export default function PodcastShowPage() {
   }, [data]);
 
   // ── Listening history (drives the "✓ Listened" row markers) ──────────
-  const { data: me } = useQuery<{ listenedKeys: string[]; recommendedKeys: string[] }>({
+  const queryClient = useQueryClient();
+  const { data: me } = useQuery<{ listenedKeys: string[]; recommendedKeys: string[]; listenListKeys: string[] }>({
     queryKey: ["/api/podcasts/me"],
     queryFn: () => apiRequest("GET", "/api/podcasts/me"),
     enabled: !!user,
     staleTime: 60_000,
   });
   const listenedSet = new Set(me?.listenedKeys ?? []);
+  const listenListSet = new Set(me?.listenListKeys ?? []);
+
+  const listenListMut = useMutation({
+    mutationFn: ({ add, ep }: { add: boolean; ep: Episode }) => {
+      if (add) {
+        return apiRequest("POST", "/api/podcasts/listen-list", {
+          showSlug: slug,
+          episodeId: ep.id,
+          episodeTitle: ep.title ?? undefined,
+          episodeAudioUrl: ep.audioUrl ?? undefined,
+          episodeImageUrl: ep.imageUrl ?? showData?.artwork ?? undefined,
+          durationSeconds: ep.durationSeconds ?? undefined,
+          publishedAt: ep.publishedAt ?? undefined,
+          showTitle: showData?.title ?? undefined,
+          showArtwork: showData?.artwork ?? undefined,
+        });
+      }
+      return apiRequest("DELETE", "/api/podcasts/listen-list", { showSlug: slug, episodeId: ep.id });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/podcasts/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/podcasts/listen-list"] });
+    },
+  });
 
   // In-show episode list controls: free-text search + newest/oldest sort.
   const [query, setQuery] = useState("");
@@ -193,19 +220,19 @@ export default function PodcastShowPage() {
           }}
           style={{ background: "none", border: "none", color: PALETTE.sage, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}
         >
-          ← Back
+          ← {t("common.back")}
         </button>
       </header>
 
       <main className="w-full max-w-2xl mx-auto" style={{ padding: "8px 16px 40px" }}>
         {/* Show header — Hallow-style image-forward hero. */}
         <div className="flex flex-col items-center text-center mb-7">
-          <HeroArt url={show?.artwork ?? null} alt={show?.title ?? "Show"} />
+          <HeroArt url={show?.artwork ?? null} alt={show?.title ?? t("podcasts.show_fallback")} />
           <p style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 600, color: PALETTE.faint, margin: "18px 0 0" }}>
             {show?.emoji ? `${show.emoji} ` : ""}{show?.publisherTitle ?? ""}
           </p>
           <h1 style={{ fontSize: 26, fontWeight: 800, margin: "8px 0 0", lineHeight: 1.15, maxWidth: 420 }}>
-            {show?.title ?? "Loading…"}
+            {show?.title ?? t("common.loading")}
           </h1>
           <p style={{ fontSize: 13.5, color: PALETTE.sage, margin: "6px 0 0" }}>
             {show?.artist ?? ""}
@@ -224,10 +251,10 @@ export default function PodcastShowPage() {
         </div>
 
         {isLoading && episodes.length === 0 ? (
-          <p style={{ color: PALETTE.faint, fontSize: 13, marginTop: 24 }}>Loading episodes…</p>
+          <p style={{ color: PALETTE.faint, fontSize: 13, marginTop: 24 }}>{t("podcasts.loading_episodes")}</p>
         ) : episodes.length === 0 ? (
           <p style={{ color: PALETTE.faint, fontSize: 13, marginTop: 24, lineHeight: 1.5 }}>
-            Couldn't load episodes right now. Please try again in a little while.
+            {t("podcasts.episodes_error")}
           </p>
         ) : (
           <>
@@ -262,51 +289,73 @@ export default function PodcastShowPage() {
               const date = formatDate(ep.publishedAt);
               const dur = formatDuration(ep.durationSeconds);
               const listened = listenedSet.has(epKey(ep));
+              const inList = listenListSet.has(epKey(ep));
               return (
                 <div
                   key={ep.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => playEpisode(ep)}
-                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); playEpisode(ep); } }}
-                  className="w-full rounded-2xl p-3.5 cursor-pointer transition-opacity hover:opacity-90"
+                  className="w-full rounded-2xl p-3.5"
                   style={{
                     background: active ? "rgba(46,107,64,0.22)" : "rgba(46,107,64,0.08)",
                     border: `1px solid ${active ? "rgba(168,197,160,0.45)" : "rgba(46,107,64,0.22)"}`,
                   }}
                 >
                   <div className="flex items-start gap-3">
+                    {/* Play button + episode info — tap to play */}
                     <div
-                      style={{
-                        width: 34, height: 34, borderRadius: "50%", flexShrink: 0, marginTop: 2,
-                        background: active ? "#A8C5A0" : "rgba(46,107,64,0.35)",
-                        color: active ? "#0A1A0F" : "#F0EDE6",
-                        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
-                      }}
-                      aria-hidden
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => playEpisode(ep)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); playEpisode(ep); } }}
+                      className="flex items-start gap-3 flex-1 min-w-0 cursor-pointer transition-opacity hover:opacity-90"
                     >
-                      {active && player.isPlaying ? "♪" : "▶"}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      {listened && (
-                        <span style={{ fontSize: 10, fontWeight: 700, color: "#A8C5A0", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-                          ✓ Listened
-                        </span>
-                      )}
-                      <p style={{ fontSize: 14.5, fontWeight: 600, color: listened ? "rgba(240,237,230,0.72)" : PALETTE.warm, margin: listened ? "2px 0 0" : 0, lineHeight: 1.25 }}>
-                        {ep.title ?? "Untitled episode"}
-                      </p>
-                      <p style={{ fontSize: 11.5, color: PALETTE.faint, margin: "3px 0 0" }}>
-                        {[date, dur].filter(Boolean).join(" · ")}
-                      </p>
-                      {ep.description && (
-                        <p
-                          style={{ fontSize: 12.5, color: PALETTE.sage, margin: "6px 0 0", lineHeight: 1.45, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
-                        >
-                          {ep.description}
+                      <div
+                        style={{
+                          width: 34, height: 34, borderRadius: "50%", flexShrink: 0, marginTop: 2,
+                          background: active ? "#A8C5A0" : "rgba(46,107,64,0.35)",
+                          color: active ? "#0A1A0F" : "#F0EDE6",
+                          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
+                        }}
+                        aria-hidden
+                      >
+                        {active && player.isPlaying ? "♪" : "▶"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        {listened && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: "#A8C5A0", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                            ✓ {t("podcasts.listened")}
+                          </span>
+                        )}
+                        <p style={{ fontSize: 14.5, fontWeight: 600, color: listened ? "rgba(240,237,230,0.72)" : PALETTE.warm, margin: listened ? "2px 0 0" : 0, lineHeight: 1.25 }}>
+                          {ep.title ?? t("podcasts.untitled_episode")}
                         </p>
-                      )}
+                        <p style={{ fontSize: 11.5, color: PALETTE.faint, margin: "3px 0 0" }}>
+                          {[date, dur].filter(Boolean).join(" · ")}
+                        </p>
+                        {ep.description && (
+                          <p style={{ fontSize: 12.5, color: PALETTE.sage, margin: "6px 0 0", lineHeight: 1.45, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                            {ep.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                    {/* Add / remove from listen list */}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); listenListMut.mutate({ add: !inList, ep }); }}
+                      aria-label={inList ? "Remove from listen list" : "Add to listen list"}
+                      title={inList ? "Remove from listen list" : "Add to listen list"}
+                      style={{
+                        flexShrink: 0, marginTop: 4,
+                        width: 30, height: 30, borderRadius: "50%", border: "none",
+                        background: inList ? "rgba(168,197,160,0.22)" : "rgba(46,107,64,0.25)",
+                        color: inList ? "#A8C5A0" : "rgba(168,197,160,0.75)",
+                        fontSize: inList ? 13 : 18, lineHeight: 1,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {inList ? "✓" : "+"}
+                    </button>
                   </div>
                 </div>
               );
