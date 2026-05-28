@@ -470,7 +470,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     (display of all shows → episodes → in-app player). */}
                 <MenuRow
                   emoji="🌵"
-                  label={t("menu.podcast_cac", { defaultValue: "CAC" })}
+                  label={t("menu.podcast_cac", { defaultValue: "Center for Action and Contemplation" })}
                   onClick={() => navigate("/podcasts/cac")}
                 />
                 <MenuRow
@@ -494,7 +494,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   onClick={() => navigate("/podcasts/show/living-church")}
                 />
                 <MenuRow
-                  emoji="🤝"
+                  emoji="🫱🏽‍🫲🏿"
                   label={t("menu.podcast_roundtables", { defaultValue: "Roundtables on Race" })}
                   onClick={() => navigate("/podcasts/show/roundtables-on-race")}
                 />
@@ -520,6 +520,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   to everyone; the "Beta" badge stays so readers know
                   the index is still growing. */}
               <MenuSection emoji="📚" label={t("menu.resources", { defaultValue: "Resources" })}>
+                <MenuRow
+                  emoji="🎧"
+                  label={t("menu.podcasts", { defaultValue: "Podcasts" })}
+                  onClick={() => navigate("/podcasts")}
+                />
                 <MenuRow
                   emoji="📅"
                   label={t("menu.sunday_lectionary", { defaultValue: "Sunday Lectionary" })}

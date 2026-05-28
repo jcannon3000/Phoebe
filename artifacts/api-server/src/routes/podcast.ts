@@ -91,7 +91,7 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
   },
   "diocese-nc": {
     title: "Diocese of North Carolina",
-    emoji: "🤝",
+    emoji: "🫱🏽‍🫲🏿",
     showSlugs: ["roundtables-on-race"],
   },
   "and-also-with-you": {
@@ -429,6 +429,26 @@ router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<
     durationSeconds: ep?.durationSeconds ?? null,
     publishedAt: ep?.publishedAt ?? null,
     imageUrl: ep?.imageUrl ?? feed.feedImage ?? show.artwork ?? null,
+  });
+});
+
+// ── GET /api/podcasts — the full library, grouped by publisher ──────────
+// Powers the Discover index. Registry metadata only (no feed fetch), so
+// it's instant and long-cacheable. Order follows the PUBLISHERS object's
+// declaration order, which is intentionally curated (Forward Movement /
+// the offices first).
+router.get("/podcasts", (_req: Request, res: Response): void => {
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.json({
+    publishers: Object.entries(PUBLISHERS).map(([key, pub]) => ({
+      slug: key,
+      title: pub.title,
+      emoji: pub.emoji,
+      shows: pub.showSlugs
+        .map((s) => SHOWS[s])
+        .filter((s): s is Show => !!s)
+        .map((s) => ({ slug: s.slug, title: s.title, artist: s.artist, artwork: s.artwork })),
+    })),
   });
 });
 
