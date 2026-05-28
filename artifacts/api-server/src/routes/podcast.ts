@@ -245,7 +245,7 @@ const SHOWS: Record<string, Show> = {
     artist: "The Episcopal Church",
     publisher: "episcopal-leaders",
     feedUrl: "https://feeds.megaphone.fm/the-way-of-love",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/85/41/7e/85417eb6-f6e8-f41b-504c-d38e106de1d0/mza_12496655716183440745.jpg/600x600bb.jpg",
+    artwork: "/podcast-art/curry.jpg",
   },
   // ── Virginia Theological Seminary ───────────────────────────────────
   "vts-love-your-neighbor": {
