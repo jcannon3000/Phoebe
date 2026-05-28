@@ -484,8 +484,7 @@ export default function PodcastsPage() {
               <>
                 {multi.map((pub) => (
                   <section key={pub.slug} style={{ marginBottom: 32 }}>
-                    <div className="flex items-center gap-2.5" style={{ marginBottom: 14 }}>
-                      <span style={{ fontSize: 20 }} aria-hidden>{pub.emoji}</span>
+                    <div className="flex items-center" style={{ marginBottom: 14 }}>
                       <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, lineHeight: 1.15 }}>
                         {pub.title}
                       </h2>
@@ -499,8 +498,7 @@ export default function PodcastsPage() {
                 ))}
                 {singleShows.length > 0 && (
                   <section style={{ marginBottom: 32 }}>
-                    <div className="flex items-center gap-2.5" style={{ marginBottom: 14 }}>
-                      <span style={{ fontSize: 20 }} aria-hidden>🎙️</span>
+                    <div className="flex items-center" style={{ marginBottom: 14 }}>
                       <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, lineHeight: 1.15 }}>
                         More shows
                       </h2>

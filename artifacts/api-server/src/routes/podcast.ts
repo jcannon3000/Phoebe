@@ -118,6 +118,11 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     emoji: "📘",
     showSlugs: ["for-the-life-of-the-world"],
   },
+  sojourners: {
+    title: "Sojourners",
+    emoji: "✊",
+    showSlugs: ["jim-wallis-in-conversation"],
+  },
 };
 
 // Thematic filter pills for the Discover page. Each searches episode
@@ -316,6 +321,15 @@ const SHOWS: Record<string, Show> = {
     publisher: "yale-faith-culture",
     feedUrl: "https://feeds.simplecast.com/tjI7YMGV",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/da/ab/0c/daab0c18-928d-1a9f-9fd3-c58ad1975fbd/mza_5912217182998287523.jpg/600x600bb.jpg",
+  },
+  // ── Sojourners — Jim Wallis ─────────────────────────────────────────
+  "jim-wallis-in-conversation": {
+    slug: "jim-wallis-in-conversation",
+    title: "Jim Wallis in Conversation",
+    artist: "Sojourners",
+    publisher: "sojourners",
+    feedUrl: "https://rss.libsyn.com/shows/121755/destinations/713728.xml",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts123/v4/a8/81/f6/a881f672-8ba6-529c-46f9-b8033745dbdb/mza_8599318578385400109.jpg/600x600bb.jpg",
   },
 };
 
