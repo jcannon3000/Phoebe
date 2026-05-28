@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -74,6 +74,40 @@ function ArtTile({ url, alt, size, radius = 12 }: { url: string | null; alt: str
       🎧
     </div>
   );
+}
+
+// Large centered cover art for the show header — Hallow-style, the
+// artwork is the hero. Matches the full-bleed square art of the cover
+// grids the user taps to get here. Falls back to a calm headphones tile
+// if the feed has no artwork or the image fails to load.
+function HeroArt({ url, alt }: { url: string | null; alt: string }) {
+  const box: CSSProperties = {
+    width: "min(220px, 60vw)", aspectRatio: "1 / 1", borderRadius: 20,
+    objectFit: "cover", display: "block", boxShadow: "0 12px 34px rgba(0,0,0,0.34)",
+  };
+  const fallback: CSSProperties = {
+    ...box, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.3)",
+    alignItems: "center", justifyContent: "center", fontSize: 64,
+  };
+  if (url) {
+    return (
+      <div style={{ position: "relative" }}>
+        <img
+          src={url}
+          alt={alt}
+          style={{ ...box, background: "rgba(143,175,150,0.12)" }}
+          onError={(e) => {
+            const el = e.currentTarget as HTMLImageElement;
+            el.style.display = "none";
+            const sib = el.nextElementSibling as HTMLElement | null;
+            if (sib) sib.style.display = "flex";
+          }}
+        />
+        <div style={{ ...fallback, display: "none" }} aria-hidden>🎧</div>
+      </div>
+    );
+  }
+  return <div style={{ ...fallback, display: "flex" }} aria-hidden>🎧</div>;
 }
 
 export default function PodcastShowPage() {
@@ -182,20 +216,20 @@ export default function PodcastShowPage() {
       </header>
 
       <main className="w-full max-w-2xl mx-auto" style={{ padding: "8px 16px 40px" }}>
-        {/* Show header */}
-        <div className="flex items-center gap-4 mb-5">
-          <ArtTile url={show?.artwork ?? null} alt={show?.title ?? "Show"} size={88} radius={16} />
-          <div className="min-w-0 flex-1">
-            <p style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 600, color: PALETTE.faint, margin: 0 }}>
-              {show?.emoji ? `${show.emoji} ` : ""}{show?.publisherTitle ?? ""}
-            </p>
-            <h1 style={{ fontSize: 22, fontWeight: 700, margin: "4px 0 0", lineHeight: 1.18 }}>
-              {show?.title ?? "Loading…"}
-            </h1>
-            <p style={{ fontSize: 12.5, color: PALETTE.sage, margin: "4px 0 0" }}>
-              {show?.artist ?? ""}
-            </p>
-          </div>
+        {/* Show header — Hallow-style image-forward hero: big centered
+            cover art over the title + publisher, echoing the cover-art
+            grids the user browses to get here. */}
+        <div className="flex flex-col items-center text-center mb-7">
+          <HeroArt url={show?.artwork ?? null} alt={show?.title ?? "Show"} />
+          <p style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 600, color: PALETTE.faint, margin: "18px 0 0" }}>
+            {show?.emoji ? `${show.emoji} ` : ""}{show?.publisherTitle ?? ""}
+          </p>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: "8px 0 0", lineHeight: 1.15, maxWidth: 420 }}>
+            {show?.title ?? "Loading…"}
+          </h1>
+          <p style={{ fontSize: 13.5, color: PALETTE.sage, margin: "6px 0 0" }}>
+            {show?.artist ?? ""}
+          </p>
         </div>
 
         {isLoading && episodes.length === 0 ? (
