@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { isNativeShell } from "@/lib/isNativeShell";
 
 // ── /podcasts — the Discover index ──────────────────────────────────────
 //
@@ -17,7 +18,7 @@ import { useAuth } from "@/hooks/useAuth";
 // auto-loaded in the player (?ep=…).
 
 const PALETTE = {
-  bg: "#0C1F12",
+  bg: "#091A10",
   warm: "#F0EDE6",
   sage: "#8FAF96",
   faint: "rgba(143,175,150,0.55)",
@@ -255,7 +256,7 @@ export default function PodcastsPage() {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
 
-  const { data, isLoading } = useQuery<PodcastsResponse>({
+  const { data } = useQuery<PodcastsResponse>({
     queryKey: ["/api/podcasts"],
     queryFn: () => apiRequest("GET", "/api/podcasts"),
     enabled: !!user,
@@ -307,7 +308,10 @@ export default function PodcastsPage() {
     <div style={{ minHeight: "100dvh", background: PALETTE.bg, color: PALETTE.warm, fontFamily: FONT }}>
       <header
         style={{
-          paddingTop: "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))",
+          // Native shell sits below the system status bar already, so a
+          // small fixed pad keeps the title high; web keeps the safe-area
+          // inset. (Matches the double-count fix in layout.tsx.)
+          paddingTop: isNativeShell() ? "0.75rem" : "max(1rem, calc(env(safe-area-inset-top) + 0.5rem))",
           paddingLeft: 20, paddingRight: 20, paddingBottom: 8,
         }}
       >
@@ -321,12 +325,9 @@ export default function PodcastsPage() {
       </header>
 
       <main className="w-full max-w-2xl mx-auto" style={{ padding: "8px 16px 48px" }}>
-        <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 4px", lineHeight: 1.1 }}>
+        <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 16px", lineHeight: 1.1 }}>
           Podcasts
         </h1>
-        <p style={{ fontSize: 14, color: PALETTE.sage, margin: "0 0 14px" }}>
-          {isLoading ? "Loading the library…" : "Listen in Phoebe — the offices, contemplatives, and teachers we love."}
-        </p>
 
         {/* Discover ↔ Community tabs. Discover is the curated library +
             search; Community is the recommendations feed. */}

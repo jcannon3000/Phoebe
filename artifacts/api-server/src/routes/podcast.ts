@@ -107,7 +107,7 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     showSlugs: ["and-also-with-you"],
   },
   "yale-fore": {
-    title: "Yale Forum on Religion & Ecology",
+    title: "Forum on Religion & Ecology",
     emoji: "🌎",
     showSlugs: ["fore-spotlights"],
   },
@@ -119,7 +119,7 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
   sojourners: {
     title: "Sojourners",
     emoji: "✊",
-    showSlugs: ["jim-wallis-in-conversation"],
+    showSlugs: ["lead-us-not"],
   },
 };
 
@@ -312,7 +312,7 @@ const SHOWS: Record<string, Show> = {
   "fore-spotlights": {
     slug: "fore-spotlights",
     title: "FORE Spotlights",
-    artist: "Sam Mickey · Yale Forum on Religion & Ecology",
+    artist: "Sam Mickey · Forum on Religion & Ecology",
     publisher: "yale-fore",
     feedUrl: "https://rss.buzzsprout.com/1269704.rss",
     artwork: "https://storage.buzzsprout.com/1fuajatyj5gvhanfncdbry3iljeb?.jpg",
@@ -326,14 +326,17 @@ const SHOWS: Record<string, Show> = {
     feedUrl: "https://feeds.simplecast.com/tjI7YMGV",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/da/ab/0c/daab0c18-928d-1a9f-9fd3-c58ad1975fbd/mza_5912217182998287523.jpg/600x600bb.jpg",
   },
-  // ── Sojourners — Jim Wallis ─────────────────────────────────────────
-  "jim-wallis-in-conversation": {
-    slug: "jim-wallis-in-conversation",
-    title: "Jim Wallis in Conversation",
+  // ── Sojourners — Lead Us Not (their longform miniseries, host Jenna
+  // Barnett). Their only current self-produced feed; the old "Jim Wallis
+  // in Conversation" libsyn feed is really Wallis's own show now (he left
+  // Sojourners in 2021). ──
+  "lead-us-not": {
+    slug: "lead-us-not",
+    title: "Lead Us Not",
     artist: "Sojourners",
     publisher: "sojourners",
-    feedUrl: "https://rss.libsyn.com/shows/121755/destinations/713728.xml",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts123/v4/a8/81/f6/a881f672-8ba6-529c-46f9-b8033745dbdb/mza_8599318578385400109.jpg/600x600bb.jpg",
+    feedUrl: "https://feeds.simplecast.com/AI2Ev_T4",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts123/v4/7a/e2/14/7ae21401-83ed-130c-2cce-22168ff04c8c/mza_12546347195201606395.jpg/600x600bb.jpg",
   },
 };
 
