@@ -64,6 +64,14 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     emoji: "✝️",
     showSlugs: ["experiencing-jesus", "way-of-love-curry"],
   },
+  // Second row — Crossroads (the Cathedral) + The Living Church Podcast,
+  // grouped so they pack two-across instead of sitting alone in the
+  // stacked "More shows" grid.
+  "around-the-church": {
+    title: "Around the Church",
+    emoji: "⛪",
+    showSlugs: ["nc-crossroads", "living-church"],
+  },
   cac: {
     title: "Center for Action and Contemplation",
     emoji: "🌵",
@@ -78,11 +86,6 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "cac-homilies",
     ],
   },
-  "national-cathedral": {
-    title: "Washington National Cathedral",
-    emoji: "🟣",
-    showSlugs: ["nc-crossroads"],
-  },
   vts: {
     title: "Virginia Theological Seminary",
     emoji: "🎓",
@@ -92,11 +95,6 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     title: "The Average Episcopalian",
     emoji: "⛪",
     showSlugs: ["average-episcopalian"],
-  },
-  "living-church": {
-    title: "The Living Church",
-    emoji: "📰",
-    showSlugs: ["living-church"],
   },
   "diocese-nc": {
     title: "Diocese of North Carolina",
@@ -124,6 +122,12 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     showSlugs: ["jim-wallis-in-conversation"],
   },
 };
+
+// Shows that power the daily offices on the prayer chooser / office
+// player. They have their own home there, so we keep them OUT of the
+// Discover browse + search — the SHOWS entries stay (so
+// /podcast/:show/today still serves them), they're just not listed.
+const HIDDEN_FROM_DISCOVER = new Set<string>(["morning-office", "evening-office"]);
 
 // Thematic filter pills for the Discover page. Each searches episode
 // titles + descriptions across the whole library for ANY of its
@@ -235,7 +239,7 @@ const SHOWS: Record<string, Show> = {
     slug: "nc-crossroads",
     title: "Crossroads",
     artist: "Washington National Cathedral",
-    publisher: "national-cathedral",
+    publisher: "around-the-church",
     feedUrl: "https://feed.podbean.com/crossroadsWNC/feed.xml",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b0/ff/05/b0ff0511-10a5-d169-4e36-a204aa204768/mza_9682335394332764792.jpg/600x600bb.jpg",
   },
@@ -280,7 +284,7 @@ const SHOWS: Record<string, Show> = {
     slug: "living-church",
     title: "The Living Church Podcast",
     artist: "The Living Church",
-    publisher: "living-church",
+    publisher: "around-the-church",
     feedUrl: "https://feeds.redcircle.com/2583ed91-dcdb-44c3-b2b1-13bff24fe10c",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/ac/d5/fa/acd5fa11-17c0-999d-068d-308ca424c764/mza_9623362144424080574.jpg/600x600bb.jpg",
   },
@@ -492,11 +496,55 @@ async function loadFeed(show: Show, limit: number): Promise<ParsedFeed> {
   }
 }
 
+// Church of England — "Daily Prayer: Common Worship Morning and Evening
+// Prayer." ONE Captivate feed carries BOTH offices: two episodes a day,
+// titled "… Morning Prayer …" (published ~00:15 UK) and "… Evening
+// Prayer …" (~12:00 UK). Unlike Forward Movement (a separate feed per
+// office) we load the combined feed and filter by title to pull the
+// office the player asked for. Not browsed directly, so it isn't in
+// SHOWS / PUBLISHERS — it's only reachable via ?source=church-of-england
+// on the office /today endpoint below.
+const COE_DAILY_PRAYER_FEED = "https://feeds.captivate.fm/cofe-daily-prayer/";
+const COE_SHOW: Show = {
+  slug: "coe-daily-prayer",
+  title: "Daily Prayer",
+  artist: "Church of England",
+  publisher: "forward-movement",
+  feedUrl: COE_DAILY_PRAYER_FEED,
+  artwork: null,
+};
+
 // ── GET /api/podcast/:show/today — newest episode (offices) ──────────────
+// ?source=church-of-england swaps the Forward Movement office feed for
+// the Church of England's Common Worship audio for the same office. Any
+// other / missing source keeps the existing Forward Movement behaviour,
+// so older clients are unaffected.
 router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<void> => {
-  const show = SHOWS[String(req.params.show ?? "")];
+  const slug = String(req.params.show ?? "");
+  const show = SHOWS[slug];
   if (!show) { res.status(404).json({ error: "Unknown show" }); return; }
   res.setHeader("Cache-Control", "public, max-age=600");
+
+  const source = String(req.query.source ?? "forward-movement");
+  const isOffice = slug === "morning-office" || slug === "evening-office";
+  if (source === "church-of-england" && isOffice) {
+    // Pull a handful of the newest episodes and pick the first whose
+    // title names this office — robust to the morning/evening ordering
+    // within the day (today's evening sits above today's morning).
+    const feed = await loadFeed(COE_SHOW, 10);
+    const want = slug === "morning-office" ? "morning prayer" : "evening prayer";
+    const ep = feed.episodes.find((e) => (e.title ?? "").toLowerCase().includes(want)) ?? null;
+    res.json({
+      feedTitle: "Daily Prayer · Church of England",
+      title: ep?.title ?? null,
+      audioUrl: ep?.audioUrl ?? null,
+      durationSeconds: ep?.durationSeconds ?? null,
+      publishedAt: ep?.publishedAt ?? null,
+      imageUrl: ep?.imageUrl ?? feed.feedImage ?? null,
+    });
+    return;
+  }
+
   const feed = await loadFeed(show, 1);
   const ep = feed.episodes[0];
   res.json({
@@ -517,20 +565,43 @@ router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<
 router.get("/podcasts", (_req: Request, res: Response): void => {
   res.setHeader("Cache-Control", "public, max-age=3600");
   res.json({
-    publishers: Object.entries(PUBLISHERS).map(([key, pub]) => ({
-      slug: key,
-      title: pub.title,
-      emoji: pub.emoji,
-      shows: pub.showSlugs
-        .map((s) => SHOWS[s])
-        .filter((s): s is Show => !!s)
-        .map((s) => ({ slug: s.slug, title: s.title, artist: s.artist, artwork: s.artwork })),
-    })),
+    publishers: Object.entries(PUBLISHERS)
+      .map(([key, pub]) => ({
+        slug: key,
+        title: pub.title,
+        emoji: pub.emoji,
+        shows: pub.showSlugs
+          .map((s) => SHOWS[s])
+          .filter((s): s is Show => !!s && !HIDDEN_FROM_DISCOVER.has(s.slug))
+          .map((s) => ({ slug: s.slug, title: s.title, artist: s.artist, artwork: s.artwork })),
+      }))
+      .filter((p) => p.shows.length > 0),
     // Thematic filter pills for the Discover page. Tapping one runs an
     // episode search across the whole library (see /podcasts/search).
     themes: THEMES.map((t) => ({ key: t.key, label: t.label, emoji: t.emoji })),
   });
 });
+
+// Relevancy score for a free-text query against an episode/show. A title
+// hit outweighs a body hit; a leading/exact match outweighs a mid-string
+// one; repeated body mentions add a small capped boost. Returns 0 when q
+// is empty (theme-only search keeps its recency ordering).
+function relevance(q: string, title: string, body: string): number {
+  if (!q) return 0;
+  const t = title.toLowerCase();
+  const b = body.toLowerCase();
+  let score = 0;
+  if (t.includes(q)) {
+    score += 10;
+    if (t.startsWith(q)) score += 6;
+    if (t === q) score += 10;
+  }
+  if (b.includes(q)) {
+    score += 3;
+    if (q.length >= 3) score += Math.min(b.split(q).length - 1, 5);
+  }
+  return score;
+}
 
 // ── GET /api/podcasts/search — search SHOWS + EPISODES ───────────────────
 // `?q=` is free-text; `?theme=` is one of the THEMES keys. Either or both
@@ -549,20 +620,23 @@ router.get("/podcasts/search", async (req: Request, res: Response): Promise<void
   // Matching shows (free-text only — a theme pill is about episodes).
   const showMatches = q
     ? Object.values(SHOWS)
-        .filter((s) => s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q))
+        .filter((s) => !HIDDEN_FROM_DISCOVER.has(s.slug)
+          && (s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q)))
+        .sort((a, b) => relevance(q, b.title, b.artist) - relevance(q, a.title, a.artist))
         .map((s) => ({ slug: s.slug, title: s.title, artist: s.artist, artwork: s.artwork }))
     : [];
 
-  // Aggregate episodes across all shows (cached feeds), filtered by q
-  // AND theme (whichever are set).
-  const all = Object.values(SHOWS);
+  // Aggregate episodes across all shows (cached feeds), filtered by q AND
+  // theme (whichever are set). Office shows are excluded — they live on
+  // the office screen, not in the podcast library.
+  const all = Object.values(SHOWS).filter((s) => !HIDDEN_FROM_DISCOVER.has(s.slug));
   const feeds = await Promise.all(all.map(async (s) => {
     try { return { s, f: await loadFeed(s, 50) }; }
     catch { return { s, f: { feedTitle: null, feedImage: null, episodes: [] as EpisodeFull[] } }; }
   }));
 
   type Hit = EpisodeFull & { show: { slug: string; title: string; artist: string; artwork: string | null } };
-  const episodes: Hit[] = [];
+  const scored: Array<{ hit: Hit; score: number }> = [];
   for (const { s, f } of feeds) {
     const showArt = f.feedImage ?? s.artwork ?? null;
     for (const ep of f.episodes) {
@@ -570,15 +644,21 @@ router.get("/podcasts/search", async (req: Request, res: Response): Promise<void
       const matchesQ = !q || hay.includes(q);
       const matchesTheme = !theme || theme.keywords.some((k) => hay.includes(k));
       if (matchesQ && matchesTheme) {
-        episodes.push({ ...ep, show: { slug: s.slug, title: s.title, artist: s.artist, artwork: showArt } });
+        scored.push({
+          hit: { ...ep, show: { slug: s.slug, title: s.title, artist: s.artist, artwork: showArt } },
+          score: relevance(q, ep.title ?? "", ep.description ?? ""),
+        });
       }
     }
   }
-  // Most-recent first; cap so a broad theme doesn't return hundreds.
-  episodes.sort((a, b) =>
-    new Date(b.publishedAt ?? 0).getTime() - new Date(a.publishedAt ?? 0).getTime());
+  // Free-text: rank by relevancy, recency as tiebreaker. Theme-only (no
+  // q): pure recency. Cap so a broad theme doesn't return hundreds.
+  scored.sort((a, b) => {
+    if (q && b.score !== a.score) return b.score - a.score;
+    return new Date(b.hit.publishedAt ?? 0).getTime() - new Date(a.hit.publishedAt ?? 0).getTime();
+  });
 
-  res.json({ shows: showMatches, episodes: episodes.slice(0, 80) });
+  res.json({ shows: showMatches, episodes: scored.slice(0, 80).map((x) => x.hit) });
 });
 
 // ── GET /api/podcasts/publisher/:publisher — publisher + show list ───────
