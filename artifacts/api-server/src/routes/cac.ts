@@ -28,44 +28,22 @@ const FEED_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 " +
   "(KHTML, like Gecko) Version/17.0 Safari/605.1.15";
 
-// In-memory cache. CAC publishes once a day at ~6 AM UTC (≈2 AM ET).
-// Rather than a wall-clock TTL — which can race the morning publish
-// and serve yesterday's permalink for the first hour of the day — we
-// cache by "publish day" where the day rolls over at 9 AM ET. That
-// guarantees we only re-fetch once per day, always well after CAC's
-// daily post has gone live. Cache stays in-process; a redeploy
-// invalidates it, which is fine.
+// In-memory cache with a short wall-clock TTL. The RSS feed always
+// orders newest-first, so the first <item><link> is, by definition,
+// the latest meditation — we don't need to reason about WHEN today's
+// went live. A short TTL means: pick up today's meditation within a
+// few minutes of CAC publishing it (≈2 AM ET), without hitting their
+// RSS on every single tap.
 //
-// The publishDay key is computed in America/New_York: if it's
-// currently before 9 AM ET, we use YESTERDAY's date (still serving
-// yesterday's URL — the new one might be live but the boundary is
-// the safe choice). After 9 AM ET, we use today's date.
-function publishDayKey(at: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/New_York",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    hour12: false,
-  }).formatToParts(at);
-  const get = (t: string) => parts.find(p => p.type === t)?.value ?? "";
-  const year = get("year");
-  const month = get("month");
-  const day = get("day");
-  const hour = parseInt(get("hour"), 10);
-  // Before 9 AM ET → roll back to yesterday's key. Doing the date math
-  // through UTC midnight-noon avoids the DST surprises a naive
-  // setDate would hit on spring-forward / fall-back mornings.
-  if (hour < 9) {
-    const utcNoon = new Date(`${year}-${month}-${day}T12:00:00Z`);
-    utcNoon.setUTCDate(utcNoon.getUTCDate() - 1);
-    return utcNoon.toISOString().slice(0, 10);
-  }
-  return `${year}-${month}-${day}`;
-}
+// This replaces an earlier "publish day rolls over at 9 AM ET" scheme
+// that actively served YESTERDAY's permalink until 9 AM ET — a 7-hour
+// window of stale content every morning, since CAC publishes around
+// 2 AM ET. The newest-item-from-the-feed approach has no artificial
+// boundary: whatever's at the top of the feed right now is what we
+// serve. Cache stays in-process; a redeploy invalidates it.
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-let cached: { url: string; day: string } | null = null;
+let cached: { url: string; fetchedAt: number } | null = null;
 
 // Pull the first <item>'s <link> out of an RSS document. We
 // deliberately use a forgiving regex rather than a full XML parser
@@ -87,8 +65,7 @@ function parseFirstItemLink(xml: string): string | null {
 }
 
 async function resolveTodaysUrl(): Promise<string> {
-  const today = publishDayKey();
-  if (cached && cached.day === today) {
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
     return cached.url;
   }
   // Use AbortController so a slow / hanging RSS fetch doesn't keep
@@ -118,7 +95,7 @@ async function resolveTodaysUrl(): Promise<string> {
       logger.warn({ bytes: xml.length }, "[cac] could not parse first item link");
       return FALLBACK_URL;
     }
-    cached = { url, day: today };
+    cached = { url, fetchedAt: Date.now() };
     return url;
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, "[cac] feed fetch failed");
@@ -134,12 +111,15 @@ async function resolveTodaysUrl(): Promise<string> {
 // tomorrow's meditation doesn't get cached by intermediate proxies.
 router.get("/cac/today", async (_req: Request, res: Response): Promise<void> => {
   const url = await resolveTodaysUrl();
-  // 1 hour CDN cache: short enough that the 9 AM ET rollover
-  // propagates to all users within an hour or two of the new
-  // meditation going live, long enough that the world doesn't ping
-  // CAC every time a phone wakes up. The in-process cache above
-  // protects us from intra-deploy CAC traffic regardless.
-  res.setHeader("Cache-Control", "public, max-age=3600");
+  // 5-minute CDN/browser cache. The redirect target changes once a
+  // day (when CAC publishes), so a long cache risks pinning
+  // yesterday's permalink into this morning — exactly the staleness
+  // a user hit ("CAC loaded yesterday's"). Five minutes keeps CAC
+  // traffic negligible (the in-process 30-min cache already absorbs
+  // the bulk) while letting the daily rollover reach every client
+  // within minutes. 302 (not 301) so the redirect itself is never
+  // permanently cached.
+  res.setHeader("Cache-Control", "public, max-age=300");
   res.redirect(302, url);
 });
 
