@@ -462,25 +462,25 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   here — they're reached through the office portals
                   (/offices + the prayer chooser), which is where their
                   audio belongs. */}
+              {/* Single-line rows only — mixing sub-lines on some rows
+                  and not others looked uneven, so every podcast row is
+                  just the publisher/show name. */}
               <MenuSection emoji="🎧" label={t("menu.podcasts", { defaultValue: "Podcasts" })}>
                 {/* CAC publishes several shows — opens their browse page
                     (display of all shows → episodes → in-app player). */}
                 <MenuRow
                   emoji="🌵"
                   label={t("menu.podcast_cac", { defaultValue: "CAC" })}
-                  sub={t("menu.podcast_cac_sub", { defaultValue: "Center for Action and Contemplation" })}
                   onClick={() => navigate("/podcasts/cac")}
                 />
                 <MenuRow
                   emoji="🟣"
                   label={t("menu.podcast_national_cathedral", { defaultValue: "National Cathedral" })}
-                  sub={t("menu.podcast_nc_show", { defaultValue: "Crossroads" })}
                   onClick={() => navigate("/podcasts/show/nc-crossroads")}
                 />
                 <MenuRow
                   emoji="🎓"
                   label={t("menu.podcast_vts", { defaultValue: "Virginia Theological Seminary" })}
-                  sub={t("menu.podcast_vts_show", { defaultValue: "Love Your Neighbor" })}
                   onClick={() => navigate("/podcasts/show/vts-love-your-neighbor")}
                 />
                 <MenuRow
@@ -496,7 +496,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 <MenuRow
                   emoji="🤝"
                   label={t("menu.podcast_roundtables", { defaultValue: "Roundtables on Race" })}
-                  sub={t("menu.podcast_roundtables_sub", { defaultValue: "Diocese of North Carolina" })}
                   onClick={() => navigate("/podcasts/show/roundtables-on-race")}
                 />
                 <MenuRow
@@ -507,7 +506,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 <MenuRow
                   emoji="🌎"
                   label={t("menu.podcast_fore", { defaultValue: "Yale Religion & Ecology" })}
-                  sub={t("menu.podcast_fore_sub", { defaultValue: "FORE Spotlights" })}
                   onClick={() => navigate("/podcasts/show/fore-spotlights")}
                 />
               </MenuSection>
