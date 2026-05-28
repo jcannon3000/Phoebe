@@ -19,8 +19,14 @@ import { groupsTable } from "./groups";
 // State machine:
 //   - draft:  invisible to everyone but the creator; used before launch
 //   - live:   published and subscribable
-//   - paused: still visible to existing subscribers but hidden from
-//             discovery and daily pushes are suppressed
+//   - paused: the creator-facing "Off" switch. The feed disappears
+//             everywhere a non-creator could see it — discovery, the
+//             community/group pages it's bound to, AND the daily
+//             surface + dashboard of people already subscribed — and
+//             daily pushes are suppressed. Subscriptions and bindings
+//             are kept untouched, so flipping back to `live` restores
+//             the feed for everyone instantly. Still visible to the
+//             creator in "Manage Prayer Feeds" so they can turn it on.
 //
 // Slugs are globally unique to keep URLs clean (`/prayer-feeds/climate-justice`).
 export const prayerFeedsTable = pgTable(

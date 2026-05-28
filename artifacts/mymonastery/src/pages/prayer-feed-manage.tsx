@@ -18,6 +18,15 @@ import { apiRequest } from "@/lib/queryClient";
 
 type FeedState = "draft" | "live" | "paused";
 
+// `paused` is surfaced to creators as "Off" — the everyday "stop showing
+// this feed" switch (see the schema state-machine doc). Draft/Live keep
+// their literal names.
+const STATE_LABELS: Record<FeedState, string> = {
+  draft: "Draft",
+  live: "Live",
+  paused: "Off",
+};
+
 interface Feed {
   id: number;
   slug: string;
@@ -152,23 +161,41 @@ export default function PrayerFeedManagePage() {
           isSaving={updateFeed.isPending}
         />
 
-        {/* State toggle */}
-        <div className="flex gap-2 mb-4">
-          {(["draft", "live", "paused"] as FeedState[]).map(s => (
-            <button
-              key={s}
-              onClick={() => updateFeed.mutate({ state: s })}
-              disabled={feed.state === s || updateFeed.isPending}
-              className="text-[11px] font-semibold uppercase tracking-widest px-3 py-1.5 rounded-full transition-opacity disabled:opacity-100"
-              style={{
-                background: feed.state === s ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
-                border: `1px solid ${feed.state === s ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.2)"}`,
-                color: feed.state === s ? "#F0EDE6" : "#8FAF96",
-              }}
-            >
-              {s}
-            </button>
-          ))}
+        {/* State toggle — "Off" is the paused state: the feed vanishes
+            from discovery, its bound communities, and the feeds of people
+            already subscribed, and daily nudges stop. Subscriptions are
+            kept, so flipping back to Live restores it for everyone. */}
+        <div className="mb-6">
+          <p
+            className="text-[10px] font-semibold uppercase tracking-widest mb-1.5"
+            style={{ color: "rgba(143,175,150,0.6)" }}
+          >
+            Status
+          </p>
+          <div className="flex gap-2">
+            {(["draft", "live", "paused"] as FeedState[]).map(s => (
+              <button
+                key={s}
+                onClick={() => updateFeed.mutate({ state: s })}
+                disabled={feed.state === s || updateFeed.isPending}
+                className="text-[11px] font-semibold uppercase tracking-widest px-3 py-1.5 rounded-full transition-opacity disabled:opacity-100"
+                style={{
+                  background: feed.state === s ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                  border: `1px solid ${feed.state === s ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.2)"}`,
+                  color: feed.state === s ? "#F0EDE6" : "#8FAF96",
+                }}
+              >
+                {STATE_LABELS[s]}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] mt-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
+            {feed.state === "live"
+              ? "Published — anyone subscribed sees its prayers and it can be found and shared."
+              : feed.state === "paused"
+                ? "Off — hidden from discovery, its communities, and current subscribers' feeds. Subscriptions are kept; turn it back to Live to restore it."
+                : "Draft — only you can see this feed while you set it up."}
+          </p>
         </div>
 
         {/* Visibility toggle — a public feed is discoverable in
@@ -355,7 +382,7 @@ function FeedHeaderSection({
             <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{feed.tagline}</p>
           )}
           <p className="text-[11px] mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
-            {feed.subscriberCount} subscriber{feed.subscriberCount === 1 ? "" : "s"} · {feed.state}
+            {feed.subscriberCount} subscriber{feed.subscriberCount === 1 ? "" : "s"} · {STATE_LABELS[feed.state]}
           </p>
         </div>
       </div>

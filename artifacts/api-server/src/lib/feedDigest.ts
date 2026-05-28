@@ -79,6 +79,12 @@ export async function loadFeedDigest(
       inArray(sharedMomentsTable.prayerFeedId, feedIds),
       eq(sharedMomentsTable.templateType, "intercession"),
       sql`${sharedMomentsTable.state} <> 'archived'`,
+      // A feed turned "off" (state = paused) produces no digest — its
+      // intercessions stop counting as "new this week," so the weekly
+      // push/email and the slideshow's feed-digest go quiet for it. This
+      // is the "daily nudges stop" half of the full-off behavior; the
+      // subscription row stays, so flipping back to live resumes it.
+      eq(prayerFeedsTable.state, "live"),
       gt(sharedMomentsTable.createdAt, since),
     ))
     .orderBy(desc(sharedMomentsTable.createdAt));

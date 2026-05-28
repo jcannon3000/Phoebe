@@ -5,10 +5,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 
 // "My Prayer Feeds" — lists every feed the caller created, INCLUDING
-// drafts / archived ones that don't show in the public /prayer-feeds
-// discovery list (which is live-only). This is where the "Manage shows
-// 2 feeds but the browse page shows 1" gap gets resolved: a stray
-// draft is visible here with its state badge and a delete affordance.
+// drafts and feeds turned Off (paused) that don't show in the public
+// /prayer-feeds discovery list (which is live-only). This is where the
+// "Manage shows 2 feeds but the browse page shows 1" gap gets resolved:
+// a stray draft is visible here with its state badge and a delete
+// affordance, and an Off feed can be reopened and flipped back to Live.
 //
 // Routed from Admin Tools → Manage Prayer Feeds when the caller owns
 // 2+ feeds. Single-feed owners still deep-link straight to that one
@@ -33,9 +34,16 @@ function stateColor(state: string) {
   switch (state) {
     case "live": return { bg: "rgba(46,107,64,0.22)", fg: "#A8C5A0" };
     case "draft": return { bg: "rgba(193,154,58,0.18)", fg: "#E8B872" };
-    case "archived": return { bg: "rgba(143,175,150,0.12)", fg: "rgba(200,212,192,0.6)" };
+    // "paused" is the creator's "Off" switch — render it muted/inactive.
+    case "paused": return { bg: "rgba(143,175,150,0.12)", fg: "rgba(200,212,192,0.6)" };
     default: return { bg: "rgba(143,175,150,0.12)", fg: "rgba(200,212,192,0.6)" };
   }
+}
+
+// `paused` surfaces to creators as "Off" (see the schema state-machine
+// doc); other states keep their literal names.
+function stateLabel(state: string) {
+  return state === "paused" ? "Off" : state;
 }
 
 export default function MyPrayerFeedsPage() {
@@ -75,7 +83,7 @@ export default function MyPrayerFeedsPage() {
           My Prayer Feeds
         </h1>
         <p className="text-sm mb-6" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-          The live feeds you created.
+          Every feed you created — live, draft, or turned off.
         </p>
 
         {isLoading && <p className="text-sm" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>Loading…</p>}
@@ -111,7 +119,7 @@ export default function MyPrayerFeedsPage() {
                     className="text-[10px] uppercase tracking-[0.12em] px-2 py-0.5 rounded-full shrink-0"
                     style={{ background: colors.bg, color: colors.fg, fontFamily: SPACE_GROTESK }}
                   >
-                    {f.state}
+                    {stateLabel(f.state)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mt-3">

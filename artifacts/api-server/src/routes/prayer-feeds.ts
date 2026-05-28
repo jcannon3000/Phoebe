@@ -82,7 +82,12 @@ async function canViewFeed(
   isCreator: boolean,
 ): Promise<boolean> {
   if (isCreator) return true;
-  if (feed.state === "draft") return false;
+  // A non-live feed is creator-only: `draft` (pre-launch) and `paused`
+  // (the creator's "off" switch) both 404 for everyone else, so an off
+  // feed can't be opened by direct link or its intercessions prayed —
+  // matching the full-off rule that also hides it from discovery,
+  // groups, and existing subscribers' feeds.
+  if (feed.state !== "live") return false;
   if (feed.visibility === "public") return true;
   if (await isBetaUser(userId)) return true;
   const [sub] = await db
@@ -400,7 +405,13 @@ router.get("/prayer-feeds/today", requireBeta, async (req, res): Promise<void> =
     })
     .from(prayerFeedSubscriptionsTable)
     .innerJoin(prayerFeedsTable, eq(prayerFeedsTable.id, prayerFeedSubscriptionsTable.feedId))
-    .where(eq(prayerFeedSubscriptionsTable.userId, user.id));
+    .where(and(
+      eq(prayerFeedSubscriptionsTable.userId, user.id),
+      // A feed turned "off" (state = paused) drops out of existing
+      // subscribers' daily surface too, not just discovery. The
+      // subscription row stays, so turning it back to live restores it.
+      eq(prayerFeedsTable.state, "live"),
+    ));
 
   if (subs.length === 0) { res.json({ entries: [] }); return; }
 
@@ -560,9 +571,12 @@ router.get("/groups/:slug/prayer-feeds", requireBeta, async (req, res): Promise<
   res.json({ feeds });
 });
 
-// GET /api/prayer-feeds/mine — LIVE feeds the caller created.
-// Scoped to state = 'live' so abandoned drafts / archived feeds don't
-// inflate the "Manage Prayer Feeds" count (the symptom was "says 2
+// GET /api/prayer-feeds/mine — live + "off" feeds the caller created.
+// Includes `paused` (the creator-facing "Off" switch) so a feed the
+// creator turned off still shows in "Manage Prayer Feeds" and can be
+// flipped back on — without it the feed would vanish from the only
+// surface that can reactivate it. `draft` stays excluded so abandoned
+// drafts don't inflate the count (the original symptom was "says 2
 // feeds but there's really 1" — the 2nd was a non-live draft). The
 // admin App-Metrics feed-audit still lists every feed regardless of
 // state for cleanup purposes.
@@ -590,7 +604,7 @@ router.get("/prayer-feeds/mine", requireBeta, async (req, res): Promise<void> =>
             isNull(prayerFeedsTable.creatorUserId),
           )
         : eq(prayerFeedsTable.creatorUserId, user.id),
-      eq(prayerFeedsTable.state, "live"),
+      inArray(prayerFeedsTable.state, ["live", "paused"]),
     ))
     .orderBy(desc(prayerFeedsTable.createdAt));
   res.json({ feeds: rows });
@@ -611,7 +625,12 @@ router.get("/prayer-feeds/subscribed", requireAuth, async (req, res): Promise<vo
     })
     .from(prayerFeedSubscriptionsTable)
     .innerJoin(prayerFeedsTable, eq(prayerFeedsTable.id, prayerFeedSubscriptionsTable.feedId))
-    .where(eq(prayerFeedSubscriptionsTable.userId, user.id));
+    .where(and(
+      eq(prayerFeedSubscriptionsTable.userId, user.id),
+      // Feeds turned "off" (paused) leave the dashboard card list for
+      // existing subscribers; only live feeds surface here.
+      eq(prayerFeedsTable.state, "live"),
+    ));
 
   const viewerEmail = await viewerEmailFor(user.id);
   const byFeed = await loadFeedIntercessions(
@@ -1180,7 +1199,7 @@ router.get("/prayer-feeds/:slug/entries", requireBeta, async (req, res): Promise
   const feed = await getFeedBySlug(String(req.params.slug));
   if (!feed) { res.status(404).json({ error: "Not found" }); return; }
   const isCreator = await canEditFeed(user.id, feed);
-  if (!isCreator && feed.state === "draft") {
+  if (!isCreator && feed.state !== "live") {
     res.status(404).json({ error: "Not found" });
     return;
   }
@@ -2076,7 +2095,7 @@ router.get("/prayer-feeds/:slug/entries/:date/prayers", requireBeta, async (req,
   const feed = await getFeedBySlug(String(req.params.slug));
   if (!feed) { res.status(404).json({ error: "Not found" }); return; }
   const isCreator = feed.creatorUserId === user.id;
-  if (!isCreator && feed.state === "draft") {
+  if (!isCreator && feed.state !== "live") {
     res.status(404).json({ error: "Not found" });
     return;
   }

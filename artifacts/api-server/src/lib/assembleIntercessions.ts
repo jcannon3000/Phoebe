@@ -203,6 +203,10 @@ export async function buildIntercessionsSlide(
             inArray(sharedMomentsTable.prayerFeedId, subscribedFeedIds),
             eq(sharedMomentsTable.templateType, "intercession"),
             sql`${sharedMomentsTable.state} <> 'archived'`,
+            // A feed turned "off" (state = paused) contributes nothing to
+            // the office, even for existing subscribers — same full-off
+            // rule as discovery and the /today + /subscribed surfaces.
+            eq(prayerFeedsTable.state, "live"),
           ),
         )
         .orderBy(desc(sharedMomentsTable.createdAt))
@@ -468,6 +472,10 @@ export async function buildIntercessionSlides(
             inArray(sharedMomentsTable.prayerFeedId, subscribedFeedIds),
             eq(sharedMomentsTable.templateType, "intercession"),
             sql`${sharedMomentsTable.state} <> 'archived'`,
+            // A feed turned "off" (state = paused) contributes nothing to
+            // the office, even for existing subscribers — same full-off
+            // rule as discovery and the /today + /subscribed surfaces.
+            eq(prayerFeedsTable.state, "live"),
           ),
         )
         .orderBy(desc(sharedMomentsTable.createdAt))
