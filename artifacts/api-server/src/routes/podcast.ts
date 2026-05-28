@@ -63,6 +63,7 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "cac-turning-to-the-mystics",
       "cac-another-name",
       "cac-learning-how-to-see",
+      "cac-practices-learning-to-see",
       "cac-love-period",
       "cac-cosmic-we",
       "cac-homilies",
@@ -97,6 +98,11 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     title: "And Also With You",
     emoji: "🕊️",
     showSlugs: ["and-also-with-you"],
+  },
+  "yale-fore": {
+    title: "Yale Forum on Religion & Ecology",
+    emoji: "🌎",
+    showSlugs: ["fore-spotlights"],
   },
 };
 
@@ -150,6 +156,14 @@ const SHOWS: Record<string, Show> = {
     publisher: "cac",
     feedUrl: "https://feeds.megaphone.fm/CFAC3846301578",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cf/ff/bb/cfffbb3b-144c-743c-b707-d051eabbf59e/mza_13929123429956003752.jpg/600x600bb.jpg",
+  },
+  "cac-practices-learning-to-see": {
+    slug: "cac-practices-learning-to-see",
+    title: "Practices for Learning How to See",
+    artist: "Brian McLaren · CAC",
+    publisher: "cac",
+    feedUrl: "https://feeds.megaphone.fm/CFAC4203774721",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/bd/06/f2/bd06f237-d464-9cf7-5b5c-bec2b348ef7d/mza_16894994872515457789.jpg/600x600bb.jpg",
   },
   "cac-love-period": {
     slug: "cac-love-period",
@@ -230,6 +244,15 @@ const SHOWS: Record<string, Show> = {
     publisher: "and-also-with-you",
     feedUrl: "https://feeds.simplecast.com/2MOSOCPL",
     artwork: "https://image.simplecastcdn.com/images/8bd398a2-dfc3-4662-bb8a-b7e502e69031/8c23cf47-3ad0-4f08-b7d6-81b5b82ca030/3000x3000/aawy-artwork.jpg",
+  },
+  // ── Yale Forum on Religion & Ecology ────────────────────────────────
+  "fore-spotlights": {
+    slug: "fore-spotlights",
+    title: "FORE Spotlights",
+    artist: "Sam Mickey · Yale Forum on Religion & Ecology",
+    publisher: "yale-fore",
+    feedUrl: "https://rss.buzzsprout.com/1269704.rss",
+    artwork: "https://storage.buzzsprout.com/1fuajatyj5gvhanfncdbry3iljeb?.jpg",
   },
 };
 

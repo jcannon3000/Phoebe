@@ -504,6 +504,12 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   label={t("menu.podcast_aawy", { defaultValue: "And Also With You" })}
                   onClick={() => navigate("/podcasts/show/and-also-with-you")}
                 />
+                <MenuRow
+                  emoji="🌎"
+                  label={t("menu.podcast_fore", { defaultValue: "Yale Religion & Ecology" })}
+                  sub={t("menu.podcast_fore_sub", { defaultValue: "FORE Spotlights" })}
+                  onClick={() => navigate("/podcasts/show/fore-spotlights")}
+                />
               </MenuSection>
               {/* Resources — non-prayer, non-reflection reference
                   surfaces. Sunday Lectionary opens externally to
