@@ -175,7 +175,9 @@ export default function PrayerChooserPage() {
       title: devotionLabel,
       sub: "From the Book of Common Prayer",
       duration: "5–10 Min",
-      href: `/bcp/daily-devotions?mode=${encodeURIComponent(devotionMode)}${devotionState.kind === "done" ? "&reset=1" : ""}`,
+      // picked=1 — the user is choosing the devotion from this chooser,
+      // so the viewer's first slide drops its alternate-route pills.
+      href: `/bcp/daily-devotions?mode=${encodeURIComponent(devotionMode)}&picked=1${devotionState.kind === "done" ? "&reset=1" : ""}`,
       verb: verbFor(devotionState),
     },
     {

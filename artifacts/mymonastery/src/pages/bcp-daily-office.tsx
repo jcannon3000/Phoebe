@@ -111,6 +111,15 @@ interface OfficeViewerProps {
   // devotion's alternate-route shortcuts (which go to auth-only pages)
   // are hidden.
   onComplete?: () => void;
+  // True when the viewer was reached by explicitly choosing this
+  // devotion from a list of options (the Daily Devotions picker cards,
+  // or the prayer chooser). In that case the first slide hides its
+  // alternate-route pills (Community Intercessions / Full Office) —
+  // the user already made their choice, so re-presenting other paths
+  // is noise. The Start CTA still shows. Direct landings (e.g. the
+  // dashboard's "Pray" tap, which skips any chooser) leave the
+  // alternate routes visible — that's why they live on this slide.
+  cameFromPicker?: boolean;
 }
 
 interface OfficeDayInfo {
@@ -380,7 +389,7 @@ const MODE_CONFIG: Record<LiturgyMode, { endpoint: string; title: string }> = {
   "early-evening-devotion": { endpoint: "/api/devotion/early-evening", title: "Early Evening Devotion" },
 };
 
-export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerProps) {
+export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker }: OfficeViewerProps) {
   const resolvedMode: LiturgyMode = mode ?? office ?? "morning";
   const { endpoint, title: officeTitle } = MODE_CONFIG[resolvedMode];
   // Which half of the day this office belongs to. Threaded onto the
@@ -2320,7 +2329,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
                 {i18n.language?.startsWith("es") ? "Comenzar" : "Start"}
               </button>
 
-              {!officesOnlyViewer && (
+              {/* Alternate routes — hidden when the user picked this
+                  devotion from a list (cameFromPicker) since they've
+                  already chosen, and for offices-only / public viewers
+                  per the prior gating. */}
+              {!officesOnlyViewer && !cameFromPicker && (
                 <div
                   style={{
                     display: "flex",

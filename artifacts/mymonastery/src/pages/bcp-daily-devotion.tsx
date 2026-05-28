@@ -18,6 +18,14 @@ export default function BcpDailyDevotionPage() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [showMode, setShowMode] = useState<LiturgyMode | null>(null);
+  // True when the viewer was opened by an explicit pick — either a tap
+  // on one of the cards below, or a deep link that carried ?picked=1
+  // (the prayer chooser sets it). The viewer uses this to drop the
+  // first-slide alternate-route pills: the user already chose, so
+  // re-offering "Community Intercessions / Full Office" is noise.
+  // A bare ?mode= deep link (e.g. the dashboard's direct "Pray" tap)
+  // leaves this false so those routes still surface.
+  const [cameFromPicker, setCameFromPicker] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
@@ -32,13 +40,20 @@ export default function BcpDailyDevotionPage() {
     const mode = search.get("mode");
     if (mode === "morning-devotion" || mode === "early-evening-devotion") {
       setShowMode(mode);
+      if (search.get("picked") === "1") setCameFromPicker(true);
     }
   }, []);
+
+  // Tapping a card IS picking from the options, so flag it.
+  const pick = (m: LiturgyMode) => {
+    setCameFromPicker(true);
+    setShowMode(m);
+  };
 
   if (isLoading || !user) return null;
 
   if (showMode === "morning-devotion" || showMode === "early-evening-devotion") {
-    return <OfficeViewer mode={showMode} onBack={() => setShowMode(null)} />;
+    return <OfficeViewer mode={showMode} cameFromPicker={cameFromPicker} onBack={() => setShowMode(null)} />;
   }
 
   // Highlight the time-appropriate card. Same threshold as the Daily
@@ -66,7 +81,7 @@ export default function BcpDailyDevotionPage() {
         <div className="space-y-3">
           {/* In the Morning */}
           <button
-            onClick={() => setShowMode("morning-devotion")}
+            onClick={() => pick("morning-devotion")}
             className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
             style={{
               background: isMorning ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.08)",
@@ -90,7 +105,7 @@ export default function BcpDailyDevotionPage() {
 
           {/* In the Early Evening */}
           <button
-            onClick={() => setShowMode("early-evening-devotion")}
+            onClick={() => pick("early-evening-devotion")}
             className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
             style={{
               background: isEvening ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.08)",
