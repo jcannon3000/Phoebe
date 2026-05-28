@@ -93,6 +93,19 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
 // /podcast/:show/today still serves them), they're just not listed.
 const HIDDEN_FROM_DISCOVER = new Set<string>(["morning-office", "evening-office"]);
 
+// Individual episodes hidden by title (matched apostrophe- and
+// whitespace-insensitively). Filtered out when the feed is parsed, so
+// they never surface in the show list, search, or "today".
+function normEpisodeTitle(t: string): string {
+  return t.toLowerCase().replace(/[‘’']/g, "").replace(/\s+/g, " ").trim();
+}
+const HIDDEN_EPISODE_TITLES = new Set<string>([
+  normEpisodeTitle("The Presiding Bishop's Christmas Message: A Sign for You"),
+]);
+function isHiddenEpisode(title: string | null): boolean {
+  return !!title && HIDDEN_EPISODE_TITLES.has(normEpisodeTitle(title));
+}
+
 // Thematic filter pills for the Discover page. Each searches episode
 // titles + descriptions across the whole library for ANY of its
 // keywords (case-insensitive substring). Keywords are deliberately
@@ -354,9 +367,11 @@ function parseFeed(xml: string, limit: number): ParsedFeed {
       firstMatch(item, /<itunes:summary>([\s\S]*?)<\/itunes:summary>/i) ??
       firstMatch(item, /<description>([\s\S]*?)<\/description>/i);
     const itemImage = firstMatch(item, /<itunes:image[^>]*\bhref="([^"]+)"/i);
+    const decodedTitle = title ? decodeXmlText(title) : null;
+    if (isHiddenEpisode(decodedTitle)) continue; // blocklisted episode
     episodes.push({
       id: (guid ? decodeXmlText(guid) : null) || decodeXmlText(enclosure),
-      title: title ? decodeXmlText(title) : null,
+      title: decodedTitle,
       audioUrl: decodeXmlText(enclosure),
       durationSeconds: parseDurationSeconds(duration),
       publishedAt: pub ? pub.trim() : null,
