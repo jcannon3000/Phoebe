@@ -66,7 +66,6 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "experiencing-jesus",
       "nc-crossroads",
       "roundtables-on-race",
-      "average-episcopalian",
       "living-church",
       "vts-love-your-neighbor",
     ],
@@ -246,15 +245,6 @@ const SHOWS: Record<string, Show> = {
     publisher: "around-the-church",
     feedUrl: "https://rosskane.com/feed/podcast/",
     artwork: "/podcast-art/vts.jpg",
-  },
-  // ── The Average Episcopalian ────────────────────────────────────────
-  "average-episcopalian": {
-    slug: "average-episcopalian",
-    title: "The Average Episcopalian",
-    artist: "Kate Greer & Annie Hodges",
-    publisher: "around-the-church",
-    feedUrl: "https://rss.libsyn.com/shows/350996/destinations/2868101.xml",
-    artwork: "/podcast-art/average-episcopalian.jpg",
   },
   // ── The Living Church ───────────────────────────────────────────────
   "living-church": {
