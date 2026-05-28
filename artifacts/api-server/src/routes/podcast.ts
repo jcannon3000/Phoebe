@@ -278,7 +278,7 @@ const SHOWS: Record<string, Show> = {
     artist: "The Living Church",
     publisher: "around-the-church",
     feedUrl: "https://feeds.redcircle.com/2583ed91-dcdb-44c3-b2b1-13bff24fe10c",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/ac/d5/fa/acd5fa11-17c0-999d-068d-308ca424c764/mza_9623362144424080574.jpg/600x600bb.jpg",
+    artwork: "/podcast-art/living-church.jpg",
   },
   // ── Episcopal Diocese of North Carolina ─────────────────────────────
   // No RSS feed — scraped from the diocese's WordPress page.
