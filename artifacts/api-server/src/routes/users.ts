@@ -6,6 +6,9 @@ import {
   groupMembersTable,
   momentUserTokensTable,
   momentPostsTable,
+  lettersTable,
+  letterDraftsTable,
+  correspondenceMembersTable,
 } from "@workspace/db";
 import { UpsertUserBody, GetUserResponse, UpsertUserResponse } from "@workspace/api-zod";
 import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
@@ -159,7 +162,31 @@ router.delete("/users/me", async (req, res): Promise<void> => {
     await db.delete(momentUserTokensTable)
       .where(sql`LOWER(${momentUserTokensTable.email}) = ${emailLower}`);
 
-    // 3) Finally drop the user — cascades do the rest.
+    // 3) Letters (privacy audit #3 + DB audit #4). letters.author_user_id
+    //    and correspondence_members.user_id reference users(id) with NO
+    //    onDelete clause, so the bare `DELETE FROM users` below would
+    //    throw a foreign-key violation for anyone who has ever written
+    //    a letter or joined a correspondence — i.e. account deletion was
+    //    silently BROKEN for letter-writers (it 500'd and rolled back).
+    //
+    //    We UNLINK rather than hard-delete letter bodies: a 1:1 letter
+    //    has two parties, and the surviving correspondent legitimately
+    //    keeps their copy of the exchange. author_email + author_name
+    //    stay on the row for display; only the account link is severed.
+    //    Drafts are the deleting user's own private unsent WIP, so those
+    //    DO get hard-deleted.
+    await db.update(lettersTable)
+      .set({ authorUserId: null })
+      .where(eq(lettersTable.authorUserId, user.id));
+    await db.delete(letterDraftsTable)
+      .where(sql`${letterDraftsTable.authorUserId} = ${user.id} OR LOWER(${letterDraftsTable.authorEmail}) = ${emailLower}`);
+    await db.update(correspondenceMembersTable)
+      .set({ userId: null })
+      .where(eq(correspondenceMembersTable.userId, user.id));
+
+    // 4) Finally drop the user — cascades handle the rest (prayer
+    //    requests/words/amens, device tokens, etc. all declare
+    //    ON DELETE CASCADE).
     await db.delete(usersTable).where(eq(usersTable.id, user.id));
   } catch (err) {
     console.error("[users:delete-me] delete failed:", err);
