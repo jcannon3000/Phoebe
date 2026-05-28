@@ -1,67 +1,197 @@
-// Daily office podcast metadata.
+// Podcast content — shows registry + browse/listen API.
 //
-// Forward Movement publishes the BCP 1979 daily offices as audio — the
-// full order of Morning / Evening Prayer, read aloud, a new episode
-// every day. We surface them as options on the prayer chooser (morning
-// show before noon, evening show after) and play them inline on
-// /podcast/:show; this endpoint resolves TODAY'S episode for a show so
-// the player has an audio URL + the chooser can show a duration badge.
+// Phoebe hosts a small curated set of podcasts you can browse and play
+// IN-APP (think Hallow-style content, not just outbound links):
+//   • Forward Movement daily offices (Morning / Evening Prayer, read
+//     aloud) — also surfaced on the prayer chooser + offices page.
+//   • Center for Action and Contemplation — their full slate of shows.
+//   • Washington National Cathedral — the "Crossroads" podcast.
+//   • Virginia Theological Seminary — "Love Your Neighbor."
 //
-// Resolution: each show publishes a standard podcast RSS feed on
-// Megaphone. We fetch it, take the newest <item>, and pull the
-// enclosure (the MP3), title, duration, and artwork. Mirrors the NCMP
-// route's shape (routes/ncmp.ts) — a cached server-side fetch so we
-// hit each feed at most once per TTL window per process.
+// Each SHOW is one RSS feed. PUBLISHERS group shows for the browse UI.
+// Endpoints:
+//   GET /api/podcast/:show/today        — newest episode of a show
+//                                         (offices use this on the
+//                                         chooser + player).
+//   GET /api/podcasts/publisher/:pub    — a publisher + its show list
+//                                         (registry metadata only; no
+//                                         feed fetch, so it's instant).
+//   GET /api/podcasts/show/:slug        — a show + its recent episodes
+//                                         (fetches + parses the feed,
+//                                         cached per show).
 //
-// Caching: a short per-show TTL (not per-day) keeps it simple and
-// always fresh. The feeds are light XML, the parse is a few regexes,
-// and new episodes land daily — a 30-minute TTL picks up the day's
-// episode well before most users open the app, without a date-key
-// rollover edge case. On any fetch failure we serve the last good
-// cache (even if stale) and only fall back to a null-audio payload when
-// we've never succeeded.
+// Caching: per-feed short TTL. Feeds are light XML; the parse is a few
+// regexes. On fetch failure we serve the last good cache (even stale)
+// and only fall back to an empty payload when we've never succeeded.
+//
+// URL entity-decoding: enclosure + image URLs in feeds arrive XML-
+// escaped (e.g. ...mp3?a=1&amp;b=2). A literal "&amp;" is a malformed
+// URL the browser can't load — so every URL pulled from the XML is run
+// through decodeXmlText before we hand it to the client.
 
 import { Router, type IRouter, type Request, type Response } from "express";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-// Known shows. The :show path param is validated against these keys, so
-// adding a third office (e.g. compline / midday) later is just one more
-// entry here + a chooser card. `fallbackTitle` is what the client shows
-// if we've never managed a successful fetch.
-const SHOWS: Record<string, { feedUrl: string; fallbackTitle: string }> = {
-  "morning-office": {
-    feedUrl: "https://feeds.megaphone.fm/FDMV7144883457",
-    fallbackTitle: "Daily Morning Prayer from Forward Movement",
+type Show = {
+  slug: string;
+  title: string;
+  artist: string;
+  publisher: string; // PUBLISHERS key
+  feedUrl: string;
+  artwork: string | null;
+};
+
+// Ordered list of shows per publisher drives the browse grid.
+const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: string[] }> = {
+  "forward-movement": {
+    title: "Forward Movement",
+    emoji: "📖",
+    showSlugs: ["morning-office", "evening-office"],
   },
-  "evening-office": {
-    feedUrl: "https://feeds.megaphone.fm/FDMV2784874884",
-    fallbackTitle: "An Evening at Prayer",
+  cac: {
+    title: "Center for Action and Contemplation",
+    emoji: "🌵",
+    showSlugs: [
+      "cac-everything-belongs",
+      "cac-turning-to-the-mystics",
+      "cac-another-name",
+      "cac-learning-how-to-see",
+      "cac-love-period",
+      "cac-cosmic-we",
+      "cac-homilies",
+    ],
+  },
+  "national-cathedral": {
+    title: "Washington National Cathedral",
+    emoji: "🟣",
+    showSlugs: ["nc-crossroads"],
+  },
+  vts: {
+    title: "Virginia Theological Seminary",
+    emoji: "🎓",
+    showSlugs: ["vts-love-your-neighbor"],
   },
 };
 
-// Match a real browser UA — Megaphone serves the same XML either way,
-// but keeps behavior predictable if they ever gate on UA.
+const SHOWS: Record<string, Show> = {
+  // ── Forward Movement daily offices ──────────────────────────────────
+  "morning-office": {
+    slug: "morning-office",
+    title: "Daily Morning Prayer",
+    artist: "Forward Movement",
+    publisher: "forward-movement",
+    feedUrl: "https://feeds.megaphone.fm/FDMV7144883457",
+    artwork: null,
+  },
+  "evening-office": {
+    slug: "evening-office",
+    title: "An Evening at Prayer",
+    artist: "Forward Movement",
+    publisher: "forward-movement",
+    feedUrl: "https://feeds.megaphone.fm/FDMV2784874884",
+    artwork: null,
+  },
+  // ── Center for Action and Contemplation ─────────────────────────────
+  "cac-everything-belongs": {
+    slug: "cac-everything-belongs",
+    title: "Everything Belongs",
+    artist: "Center for Action and Contemplation",
+    publisher: "cac",
+    feedUrl: "https://feeds.megaphone.fm/CFAC1704856390",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/93/ab/ef/93abef60-62cc-b944-ebee-8a30ce7508ff/mza_15647178321033802345.jpg/600x600bb.jpg",
+  },
+  "cac-turning-to-the-mystics": {
+    slug: "cac-turning-to-the-mystics",
+    title: "Turning to the Mystics",
+    artist: "James Finley · CAC",
+    publisher: "cac",
+    feedUrl: "https://feeds.megaphone.fm/CFAC7039433581",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/97/c9/52/97c95240-d332-155a-e2a4-c6a951b3d6f1/mza_6610056226181262829.jpg/600x600bb.jpg",
+  },
+  "cac-another-name": {
+    slug: "cac-another-name",
+    title: "Another Name For Every Thing",
+    artist: "Richard Rohr · CAC",
+    publisher: "cac",
+    feedUrl: "https://feeds.megaphone.fm/CFAC4279918867",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/1c/17/2e/1c172e85-cf25-c2c8-aa77-162c7c6d68c9/mza_9011558391357149453.jpg/600x600bb.jpg",
+  },
+  "cac-learning-how-to-see": {
+    slug: "cac-learning-how-to-see",
+    title: "Learning How to See",
+    artist: "Brian McLaren · CAC",
+    publisher: "cac",
+    feedUrl: "https://feeds.megaphone.fm/CFAC3846301578",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cf/ff/bb/cfffbb3b-144c-743c-b707-d051eabbf59e/mza_13929123429956003752.jpg/600x600bb.jpg",
+  },
+  "cac-love-period": {
+    slug: "cac-love-period",
+    title: "Love Period",
+    artist: "Jacqui Lewis · CAC",
+    publisher: "cac",
+    feedUrl: "https://feeds.megaphone.fm/CFAC7740854822",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b1/88/59/b1885906-bb3c-5c03-9c01-4cc643489757/mza_10724753065665227728.jpg/600x600bb.jpg",
+  },
+  "cac-cosmic-we": {
+    slug: "cac-cosmic-we",
+    title: "The Cosmic We",
+    artist: "Barbara Holmes · CAC",
+    publisher: "cac",
+    feedUrl: "https://feeds.megaphone.fm/CFAC6648912537",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/46/12/794612f8-accf-5683-521e-5805da51ae5d/mza_4535843137584053387.jpg/600x600bb.jpg",
+  },
+  "cac-homilies": {
+    slug: "cac-homilies",
+    title: "Homilies by Fr. Richard Rohr",
+    artist: "Richard Rohr · CAC",
+    publisher: "cac",
+    feedUrl: "https://feeds.megaphone.fm/CFAC9780328291",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/6c/4b/c4/6c4bc43b-5697-d33d-2f5a-cd9addf702c0/mza_2580995343840293724.jpg/600x600bb.jpg",
+  },
+  // ── Washington National Cathedral ───────────────────────────────────
+  "nc-crossroads": {
+    slug: "nc-crossroads",
+    title: "Crossroads",
+    artist: "Washington National Cathedral",
+    publisher: "national-cathedral",
+    feedUrl: "https://feed.podbean.com/crossroadsWNC/feed.xml",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b0/ff/05/b0ff0511-10a5-d169-4e36-a204aa204768/mza_9682335394332764792.jpg/600x600bb.jpg",
+  },
+  // ── Virginia Theological Seminary ───────────────────────────────────
+  "vts-love-your-neighbor": {
+    slug: "vts-love-your-neighbor",
+    title: "Love Your Neighbor",
+    artist: "Ross Kane · VTS",
+    publisher: "vts",
+    feedUrl: "https://rosskane.com/feed/podcast/",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/61/7b/c0/617bc035-10b1-2044-40f8-41be97f388c7/mza_11235952246385245389.jpg/600x600bb.jpg",
+  },
+};
+
 const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 " +
   "(KHTML, like Gecko) Version/17.0 Safari/605.1.15";
 
-type Episode = {
-  feedTitle: string | null;
+type EpisodeFull = {
+  id: string;
   title: string | null;
   audioUrl: string | null;
   durationSeconds: number | null;
-  publishedAt: string | null; // RFC-822 string from the feed's <pubDate>
+  publishedAt: string | null;
+  description: string | null;
   imageUrl: string | null;
+};
+type ParsedFeed = {
+  feedTitle: string | null;
+  feedImage: string | null;
+  episodes: EpisodeFull[];
 };
 
 const TTL_MS = 30 * 60_000;
-// One cache slot per show.
-const cache = new Map<string, { at: number; data: Episode }>();
+const cache = new Map<string, { at: number; data: ParsedFeed }>();
 
-// <itunes:duration> is either total seconds ("858") or a clock string
-// ("14:18" or "1:02:30"). Normalize to seconds; null on anything weird.
 function parseDurationSeconds(raw: string | null): number | null {
   if (!raw) return null;
   const t = raw.trim();
@@ -72,9 +202,6 @@ function parseDurationSeconds(raw: string | null): number | null {
   return parts.reduce((acc, p) => acc * 60 + p, 0);
 }
 
-// Strip CDATA wrappers + decode the handful of XML entities that show
-// up in podcast titles. Good enough for display text; we're not
-// building a general XML parser.
 function decodeXmlText(s: string): string {
   return s
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
@@ -86,90 +213,139 @@ function decodeXmlText(s: string): string {
     .trim();
 }
 
-async function fetchTodaysEpisode(feedUrl: string, fallbackTitle: string): Promise<Episode> {
-  const res = await fetch(feedUrl, {
-    headers: {
-      "user-agent": UA,
-      accept: "application/rss+xml, application/xml, text/xml",
-    },
-  });
-  if (!res.ok) throw new Error(`feed HTTP ${res.status}`);
-  const xml = await res.text();
+// Strip HTML tags from a feed description + collapse whitespace, then
+// truncate. Feed descriptions are often full HTML show notes; we only
+// want a one/two-line preview on the episode row.
+function plainTextPreview(raw: string | null, max = 280): string | null {
+  if (!raw) return null;
+  const text = decodeXmlText(raw)
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return null;
+  return text.length > max ? text.slice(0, max - 1).trimEnd() + "…" : text;
+}
 
-  // Channel-level bits live before the first <item>.
+function firstMatch(block: string, re: RegExp): string | null {
+  const m = block.match(re);
+  return m ? m[1] : null;
+}
+
+function parseFeed(xml: string, limit: number): ParsedFeed {
   const channelPart = xml.split(/<item[\s>]/)[0] ?? "";
-  const feedTitleMatch = channelPart.match(/<title>([\s\S]*?)<\/title>/);
-  const channelImageMatch = channelPart.match(/<itunes:image[^>]*\bhref="([^"]+)"/i);
+  const feedTitle = firstMatch(channelPart, /<title>([\s\S]*?)<\/title>/);
+  const feedImageRaw =
+    firstMatch(channelPart, /<itunes:image[^>]*\bhref="([^"]+)"/i) ??
+    firstMatch(channelPart, /<image>[\s\S]*?<url>([\s\S]*?)<\/url>/i);
 
-  // Newest episode = first <item> (Megaphone emits newest-first).
-  const itemMatch = xml.match(/<item[\s>]([\s\S]*?)<\/item>/i);
-  if (!itemMatch) throw new Error("feed has no <item>");
-  const item = itemMatch[1] ?? "";
-
-  const titleMatch = item.match(/<title>([\s\S]*?)<\/title>/);
-  const enclosureMatch = item.match(/<enclosure[^>]*\burl="([^"]+)"/i);
-  const durationMatch = item.match(/<itunes:duration>([\s\S]*?)<\/itunes:duration>/i);
-  const pubDateMatch = item.match(/<pubDate>([\s\S]*?)<\/pubDate>/i);
-  const itemImageMatch = item.match(/<itunes:image[^>]*\bhref="([^"]+)"/i);
-
-  // URLs from XML attributes must be entity-decoded too: a feed image
-  // href like ...image.jpg?updated=123&amp;v=2 arrives with a literal
-  // "&amp;", which is a malformed URL the browser can't load (this was
-  // the broken-thumbnail bug). audioUrl gets the same treatment for
-  // safety — same latent issue if the enclosure URL ever has query
-  // params. decodeXmlText turns &amp;→& etc.
-  const rawImageUrl = itemImageMatch?.[1] ?? channelImageMatch?.[1] ?? null;
+  const episodes: EpisodeFull[] = [];
+  const itemRe = /<item[\s>]([\s\S]*?)<\/item>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = itemRe.exec(xml)) !== null && episodes.length < limit) {
+    const item = m[1] ?? "";
+    const enclosure = firstMatch(item, /<enclosure[^>]*\burl="([^"]+)"/i);
+    if (!enclosure) continue; // no audio → skip (e.g. a text-only post)
+    const guid = firstMatch(item, /<guid[^>]*>([\s\S]*?)<\/guid>/i);
+    const title = firstMatch(item, /<title>([\s\S]*?)<\/title>/);
+    const duration = firstMatch(item, /<itunes:duration>([\s\S]*?)<\/itunes:duration>/i);
+    const pub = firstMatch(item, /<pubDate>([\s\S]*?)<\/pubDate>/i);
+    const desc =
+      firstMatch(item, /<itunes:summary>([\s\S]*?)<\/itunes:summary>/i) ??
+      firstMatch(item, /<description>([\s\S]*?)<\/description>/i);
+    const itemImage = firstMatch(item, /<itunes:image[^>]*\bhref="([^"]+)"/i);
+    episodes.push({
+      id: (guid ? decodeXmlText(guid) : null) || decodeXmlText(enclosure),
+      title: title ? decodeXmlText(title) : null,
+      audioUrl: decodeXmlText(enclosure),
+      durationSeconds: parseDurationSeconds(duration),
+      publishedAt: pub ? pub.trim() : null,
+      description: plainTextPreview(desc),
+      imageUrl: itemImage ? decodeXmlText(itemImage) : null,
+    });
+  }
   return {
-    feedTitle: feedTitleMatch ? decodeXmlText(feedTitleMatch[1]) : fallbackTitle,
-    title: titleMatch ? decodeXmlText(titleMatch[1]) : null,
-    audioUrl: enclosureMatch ? decodeXmlText(enclosureMatch[1]) : null,
-    durationSeconds: parseDurationSeconds(durationMatch ? durationMatch[1] : null),
-    publishedAt: pubDateMatch ? pubDateMatch[1].trim() : null,
-    imageUrl: rawImageUrl ? decodeXmlText(rawImageUrl) : null,
+    feedTitle: feedTitle ? decodeXmlText(feedTitle) : null,
+    feedImage: feedImageRaw ? decodeXmlText(feedImageRaw) : null,
+    episodes,
   };
 }
 
-// GET /api/podcast/:show/today — today's episode for a known show.
-// Public (no auth); the player page is auth-gated on the client, but
-// the metadata itself is harmless to serve openly and the prayer
-// chooser fetches it before any session exists.
-router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<void> => {
-  const showKey = String(req.params.show ?? "");
-  const show = SHOWS[showKey];
-  if (!show) {
-    res.status(404).json({ error: "Unknown show" });
-    return;
+async function loadFeed(show: Show, limit: number): Promise<ParsedFeed> {
+  const hit = cache.get(show.slug);
+  // Cache stores the largest parse we've done; a small-limit request can
+  // be served from a larger cached parse by slicing.
+  if (hit && Date.now() - hit.at < TTL_MS && hit.data.episodes.length >= Math.min(limit, 1)) {
+    return { ...hit.data, episodes: hit.data.episodes.slice(0, limit) };
   }
-  res.setHeader("Cache-Control", "public, max-age=600");
   try {
-    const hit = cache.get(showKey);
-    if (hit && Date.now() - hit.at < TTL_MS) {
-      res.json(hit.data);
-      return;
-    }
-    const data = await fetchTodaysEpisode(show.feedUrl, show.fallbackTitle);
-    cache.set(showKey, { at: Date.now(), data });
-    res.json(data);
-  } catch (err) {
-    logger.warn({ err, show: showKey }, "[podcast] failed to resolve episode");
-    // Serve the last good payload if we have one — a slightly stale
-    // episode is far better than a dead player. Only when we've never
-    // succeeded do we return a null-audio shape the client treats as
-    // "couldn't load."
-    const stale = cache.get(showKey);
-    if (stale) {
-      res.json(stale.data);
-      return;
-    }
-    res.json({
-      feedTitle: show.fallbackTitle,
-      title: null,
-      audioUrl: null,
-      durationSeconds: null,
-      publishedAt: null,
-      imageUrl: null,
+    const res = await fetch(show.feedUrl, {
+      headers: { "user-agent": UA, accept: "application/rss+xml, application/xml, text/xml" },
     });
+    if (!res.ok) throw new Error(`feed HTTP ${res.status}`);
+    const xml = await res.text();
+    const data = parseFeed(xml, Math.max(limit, 50));
+    cache.set(show.slug, { at: Date.now(), data });
+    return { ...data, episodes: data.episodes.slice(0, limit) };
+  } catch (err) {
+    logger.warn({ err, show: show.slug }, "[podcast] feed fetch failed");
+    if (hit) return { ...hit.data, episodes: hit.data.episodes.slice(0, limit) }; // stale
+    return { feedTitle: show.title, feedImage: show.artwork, episodes: [] };
   }
+}
+
+// ── GET /api/podcast/:show/today — newest episode (offices) ──────────────
+router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<void> => {
+  const show = SHOWS[String(req.params.show ?? "")];
+  if (!show) { res.status(404).json({ error: "Unknown show" }); return; }
+  res.setHeader("Cache-Control", "public, max-age=600");
+  const feed = await loadFeed(show, 1);
+  const ep = feed.episodes[0];
+  res.json({
+    feedTitle: feed.feedTitle ?? show.title,
+    title: ep?.title ?? null,
+    audioUrl: ep?.audioUrl ?? null,
+    durationSeconds: ep?.durationSeconds ?? null,
+    publishedAt: ep?.publishedAt ?? null,
+    imageUrl: ep?.imageUrl ?? feed.feedImage ?? show.artwork ?? null,
+  });
+});
+
+// ── GET /api/podcasts/publisher/:publisher — publisher + show list ───────
+router.get("/podcasts/publisher/:publisher", (req: Request, res: Response): void => {
+  const key = String(req.params.publisher ?? "");
+  const pub = PUBLISHERS[key];
+  if (!pub) { res.status(404).json({ error: "Unknown publisher" }); return; }
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.json({
+    slug: key,
+    title: pub.title,
+    emoji: pub.emoji,
+    shows: pub.showSlugs
+      .map((s) => SHOWS[s])
+      .filter((s): s is Show => !!s)
+      .map((s) => ({ slug: s.slug, title: s.title, artist: s.artist, artwork: s.artwork })),
+  });
+});
+
+// ── GET /api/podcasts/show/:slug — show + recent episodes ────────────────
+router.get("/podcasts/show/:slug", async (req: Request, res: Response): Promise<void> => {
+  const show = SHOWS[String(req.params.slug ?? "")];
+  if (!show) { res.status(404).json({ error: "Unknown show" }); return; }
+  res.setHeader("Cache-Control", "public, max-age=600");
+  const feed = await loadFeed(show, 50);
+  const pub = PUBLISHERS[show.publisher];
+  res.json({
+    show: {
+      slug: show.slug,
+      title: show.title,
+      artist: show.artist,
+      artwork: feed.feedImage ?? show.artwork ?? null,
+      publisher: show.publisher,
+      publisherTitle: pub?.title ?? show.artist,
+      emoji: pub?.emoji ?? "🎧",
+    },
+    episodes: feed.episodes,
+  });
 });
 
 export default router;

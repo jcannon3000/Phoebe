@@ -445,7 +445,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   onClick={() => { onClose(); markFddRead(); openExternal(FDD_TODAY_URL); }}
                 />
                 <MenuRow
-                  emoji="🌅"
+                  emoji="🌵"
                   label={t("menu.cac_daily", { defaultValue: "CAC Daily Reflection" })}
                   onClick={() => { onClose(); markCacRead(); openExternal(CAC_TODAY_URL); }}
                 />
@@ -455,11 +455,12 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   onClick={() => { onClose(); markSsjeRead(); openExternal(SSJE_TODAY_URL); }}
                 />
               </MenuSection>
-              {/* Podcasts — daily audio offices. The two Forward
-                  Movement offices open the in-app player (which logs
-                  the prayer session toward the rhythm grid + streak);
-                  National Cathedral links out to the cathedral's own
-                  podcast page, where their audio offerings live. */}
+              {/* Podcasts — browse + listen IN-APP. The Forward Movement
+                  offices open the daily-office player (logs the office
+                  toward the rhythm grid + streak); CAC / National
+                  Cathedral / VTS open the in-app content browser
+                  (/podcasts/...) where every episode plays in a sticky
+                  player without leaving Phoebe. */}
               <MenuSection emoji="🎧" label={t("menu.podcasts", { defaultValue: "Podcasts" })}>
                 <MenuRow
                   emoji="🌅"
@@ -471,26 +472,28 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   label={t("menu.podcast_evening_office", { defaultValue: "Daily Evening Prayer" })}
                   onClick={() => navigate("/podcast/evening-office")}
                 />
+                {/* CAC publishes several shows — opens their browse page
+                    (display of all shows → episodes → in-app player). */}
                 <MenuRow
-                  emoji="📺"
-                  label={t("menu.podcast_national_cathedral", { defaultValue: "National Cathedral" })}
-                  onClick={() => { onClose(); openExternal("https://cathedral.org/podcast/"); }}
-                />
-                {/* CAC publishes several shows (Another Name for Every
-                    Thing, Turning to the Mystics, etc.); the link lands
-                    on their podcast hub so the listener can pick. */}
-                <MenuRow
-                  emoji="🎙️"
+                  emoji="🌵"
                   label={t("menu.podcast_cac", { defaultValue: "Center for Action and Contemplation" })}
-                  onClick={() => { onClose(); openExternal("https://cac.org/podcasts/"); }}
+                  onClick={() => navigate("/podcasts/cac")}
                 />
-                {/* Virginia Theological Seminary — their "Love Your
-                    Neighbor" show, opened in Apple Podcasts. */}
+                {/* National Cathedral — the "Crossroads" podcast,
+                    straight to its episodes (single show). */}
+                <MenuRow
+                  emoji="🟣"
+                  label={t("menu.podcast_national_cathedral", { defaultValue: "National Cathedral" })}
+                  sub={t("menu.podcast_nc_show", { defaultValue: "Crossroads" })}
+                  onClick={() => navigate("/podcasts/show/nc-crossroads")}
+                />
+                {/* Virginia Theological Seminary — "Love Your Neighbor,"
+                    straight to its episodes (single show). */}
                 <MenuRow
                   emoji="🎓"
                   label={t("menu.podcast_vts", { defaultValue: "Virginia Theological Seminary" })}
                   sub={t("menu.podcast_vts_show", { defaultValue: "Love Your Neighbor" })}
-                  onClick={() => { onClose(); openExternal("https://podcasts.apple.com/us/podcast/love-your-neighbor/id1740968459"); }}
+                  onClick={() => navigate("/podcasts/show/vts-love-your-neighbor")}
                 />
               </MenuSection>
               {/* Resources — non-prayer, non-reflection reference

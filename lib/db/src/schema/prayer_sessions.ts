@@ -47,6 +47,12 @@ export const prayerSurfaces = [
   // evening side.
   "morning-office-podcast",
   "evening-office-podcast",
+  // Generic in-app podcast listening (the browse-and-play content from
+  // CAC, National Cathedral, VTS, etc. — see routes/podcast.ts). Logs
+  // real listen time toward the "time praying" rollup, but does NOT
+  // credit a daily office the way the office-podcast surfaces do — this
+  // is general spiritual content, not Morning/Evening Prayer.
+  "podcast",
 ] as const;
 export type PrayerSurface = (typeof prayerSurfaces)[number];
 

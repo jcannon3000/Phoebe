@@ -2528,7 +2528,7 @@ function CacHomeCard() {
           className="font-semibold min-w-0 truncate"
           style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
         >
-          CAC Daily Reflection 🌅
+          CAC Daily Reflection 🌵
         </p>
         <div
           className="rounded-full text-center shrink-0"

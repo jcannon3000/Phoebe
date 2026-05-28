@@ -498,7 +498,7 @@ function ReflectionEntryCard({ slug }: { slug: string }) {
     : data.source === "cac"
       ? "CAC Daily Reflection"
       : null;
-  const emoji = data.source === "fdd" ? "📖" : "🌅";
+  const emoji = data.source === "fdd" ? "📖" : "🌵";
   const count = data.reflections.length;
   return (
     <div

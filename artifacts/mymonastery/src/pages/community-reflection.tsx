@@ -105,7 +105,7 @@ function sourceMeta(source: Source) {
     readEvent: CAC_READ_EVENT,
     hasReadToday: hasReadCacToday,
     markRead: markCacRead,
-    emoji: "🌅",
+    emoji: "🌵",
   };
 }
 
