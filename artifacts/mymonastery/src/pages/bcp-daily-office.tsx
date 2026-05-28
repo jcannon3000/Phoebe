@@ -2629,20 +2629,25 @@ export default function BcpDailyOfficePage() {
   const isEvening = hour >= 14 && !isNight;
 
   type OfficeOption = {
-    mode: LiturgyMode;
+    mode?: LiturgyMode;     // in-page office (setShowMode)
+    navigateTo?: string;    // OR a route to navigate to (Listen / Watch)
     emoji: string;
     label: string;
     sub: string;
     now: boolean;
   };
-  const fullOffice: OfficeOption[] = [
-    { mode: "morning", emoji: "🌅", label: "Morning Prayer", sub: "Rite II · the full Daily Office", now: isMorning },
-    { mode: "evening", emoji: "🌙", label: "Evening Prayer", sub: "Rite II · the full Daily Office", now: isEvening },
-  ];
-  const devotions: OfficeOption[] = [
-    { mode: "morning-devotion", emoji: "🌿", label: "Morning Devotion", sub: "A short devotion · BCP p. 137", now: isMorning },
-    { mode: "early-evening-devotion", emoji: "🌆", label: "Early Evening Devotion", sub: "A short devotion · BCP p. 139", now: isEvening },
-  ];
+  // The chooser is grouped by TIME OF DAY (Morning / Evening) rather than
+  // by office type. Within each block the order walks from lightest to
+  // fullest practice: Devotion → full Office → Listen (the Forward
+  // Movement spoken office) → and then the day-specific tail (Watch /
+  // National Cathedral in the morning, Compline at the close of the
+  // evening).
+  const morningDevotion: OfficeOption = { mode: "morning-devotion", emoji: "🌿", label: "Morning Devotion", sub: "A short devotion · BCP p. 137", now: isMorning };
+  const morningPrayer: OfficeOption = { mode: "morning", emoji: "🌅", label: "Morning Prayer", sub: "Rite II · the full Daily Office", now: isMorning };
+  const morningListen: OfficeOption = { navigateTo: "/podcast/morning-office", emoji: "🎧", label: "Listen", sub: "Morning Prayer read aloud · Forward Movement", now: isMorning };
+  const eveningDevotion: OfficeOption = { mode: "early-evening-devotion", emoji: "🌆", label: "Early Evening Devotion", sub: "A short devotion · BCP p. 139", now: isEvening };
+  const eveningPrayer: OfficeOption = { mode: "evening", emoji: "🌙", label: "Evening Prayer", sub: "Rite II · the full Daily Office", now: isEvening };
+  const eveningListen: OfficeOption = { navigateTo: "/podcast/evening-office", emoji: "🎧", label: "Listen", sub: "Evening Prayer read aloud · Forward Movement", now: isEvening };
   // Compline — beta-only. Stays in the list anytime so an early-bedder
   // can pray it before 8 PM; "Available now" highlights only after 20:00.
   const compline: OfficeOption = {
@@ -2655,7 +2660,7 @@ export default function BcpDailyOfficePage() {
 
   const OptionButton = ({ opt }: { opt: OfficeOption }) => (
     <button
-      onClick={() => setShowMode(opt.mode)}
+      onClick={() => { if (opt.navigateTo) setLocation(opt.navigateTo); else if (opt.mode) setShowMode(opt.mode); }}
       className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
       style={{
         background: opt.now ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.08)",
@@ -2728,10 +2733,12 @@ export default function BcpDailyOfficePage() {
           </div>
         </div>
 
-        <SectionLabel>The full office</SectionLabel>
+        <SectionLabel>Morning</SectionLabel>
         <div className="space-y-3">
-          {fullOffice.map((opt) => <OptionButton key={opt.mode} opt={opt} />)}
-          {/* National Cathedral Morning Prayer — weekday-only purple
+          <OptionButton opt={morningDevotion} />
+          <OptionButton opt={morningPrayer} />
+          <OptionButton opt={morningListen} />
+          {/* "Watch" — National Cathedral Morning Prayer, weekday-only purple
               card slotted alongside the BCP full offices. Live at
               7 AM ET; the cathedral.org page handles live-vs-recording
               by itself once the user lands. Tap → opens today's
@@ -2790,22 +2797,16 @@ export default function BcpDailyOfficePage() {
           )}
         </div>
 
-        <SectionLabel>Short devotions</SectionLabel>
+        <SectionLabel>Evening</SectionLabel>
         <div className="space-y-3">
-          {devotions.map((opt) => <OptionButton key={opt.mode} opt={opt} />)}
+          <OptionButton opt={eveningDevotion} />
+          <OptionButton opt={eveningPrayer} />
+          <OptionButton opt={eveningListen} />
+          {/* Compline closes the evening. Beta-only — the server
+              endpoint 403s non-beta callers (office.ts), so this is the
+              visual mirror of that gate. */}
+          {rawIsBeta && <OptionButton opt={compline} />}
         </div>
-
-        {/* Compline — beta-only. The server endpoint also 403s for
-            non-beta callers (see office.ts), so this is the visual
-            mirror of that gate. */}
-        {rawIsBeta && (
-          <>
-            <SectionLabel>At night</SectionLabel>
-            <div className="space-y-3">
-              <OptionButton opt={compline} />
-            </div>
-          </>
-        )}
       </div>
     </Layout>
   );
