@@ -13,7 +13,7 @@ import { BottomPromptStack } from "@/components/BottomPromptStack";
 import { AppOpenTracker } from "@/components/AppOpenTracker";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
-import { Component, useEffect, type ReactNode, type ErrorInfo } from "react";
+import { Component, useEffect, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
 
 // Scroll the window to (0, 0) on every route change. Without this,
 // navigating from a form-heavy page (login, prayer-request edit, letter
@@ -116,15 +116,15 @@ import PrayerChooserPage from "./pages/prayer-chooser";
 import NcmpWatchPage from "./pages/ncmp-watch";
 import GatheringsPage from "./pages/gatherings";
 import GatheringSettings from "./pages/gathering-settings";
-import MomentNew from "./pages/moment-new";
-import MomentDetail from "./pages/moment-detail";
+const MomentNew = lazy(() => import("./pages/moment-new"));
+const MomentDetail = lazy(() => import("./pages/moment-detail"));
 import MomentPostPage from "./pages/moment-post";
-import LectioPage from "./pages/lectio";
+const LectioPage = lazy(() => import("./pages/lectio"));
 import MorningPrayerPage from "./pages/morning-prayer";
 import MomentsDashboard from "./pages/moments-dashboard";
 import MomentRedirect from "./pages/moment-redirect";
 import PrayerListPage from "./pages/prayer-list";
-import PrayerModePage from "./pages/prayer-mode";
+const PrayerModePage = lazy(() => import("./pages/prayer-mode"));
 import DailyPracticePage from "./pages/daily-practice";
 import BeginPrayerPage from "./pages/begin-prayer";
 import PrayerStartPage from "./pages/prayer-start";
@@ -145,15 +145,15 @@ import BcpPage from "./pages/bcp";
 import OfficesPage from "./pages/offices";
 import ExamenPage from "./pages/examen";
 import ContemplationPage from "./pages/contemplation";
-import SaintsIndex from "./pages/Saints/SaintsIndex";
+const SaintsIndex = lazy(() => import("./pages/Saints/SaintsIndex"));
 import CustomizeHomePage from "./pages/customize-home";
 import GratitudePage from "./pages/gratitude";
-import BcpIntercessionsPage from "./pages/bcp-intercessions";
-import BcpDailyOfficePage from "./pages/bcp-daily-office";
-import BcpDailyDevotionPage from "./pages/bcp-daily-devotion";
+const BcpIntercessionsPage = lazy(() => import("./pages/bcp-intercessions"));
+const BcpDailyOfficePage = lazy(() => import("./pages/bcp-daily-office"));
+const BcpDailyDevotionPage = lazy(() => import("./pages/bcp-daily-devotion"));
 import OfficeSettingsPage from "./pages/office-settings";
-import BcpPsalterPage from "./pages/bcp-psalter";
-import BcpCollectsPage from "./pages/bcp-collects";
+const BcpPsalterPage = lazy(() => import("./pages/bcp-psalter"));
+const BcpCollectsPage = lazy(() => import("./pages/bcp-collects"));
 import PublicPrayerPage from "./pages/public-prayer";
 import PublicPrayerRequestPage from "./pages/public-prayer-request";
 import PublicLettersPage from "./pages/public-letters";
@@ -164,7 +164,7 @@ import CommunityRequestsPage from "./pages/community-requests";
 import WelcomePage from "./pages/welcome";
 import WelcomePublicPage from "./pages/welcome-public";
 import CommunityNewPage from "./pages/community-new";
-import CommunityDetailPage from "./pages/community-detail";
+const CommunityDetailPage = lazy(() => import("./pages/community-detail"));
 import CommunityAskPage from "./pages/community-ask";
 import CommunityReflectionPage from "./pages/community-reflection";
 import CommunitySundayReflectionPage from "./pages/community-sunday-reflection";
@@ -179,8 +179,8 @@ import AdminUserMetricsPage from "./pages/admin-user-metrics";
 import MyPrayerFeedsPage from "./pages/my-prayer-feeds";
 import AdminNewsletterPage from "./pages/admin-newsletter";
 import LearnPage from "./pages/learn";
-import ChurchDeck from "./pages/church-deck";
-import FeaturesDeck from "./pages/features-deck";
+const ChurchDeck = lazy(() => import("./pages/church-deck"));
+const FeaturesDeck = lazy(() => import("./pages/features-deck"));
 import UserOnboarding from "./pages/user-onboarding";
 import FeedbackPage from "./pages/feedback";
 import MutedUsersPage from "./pages/muted-users";
@@ -420,8 +420,25 @@ function ParishGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+// Quiet full-screen fallback shown while a lazy-loaded route chunk is
+// fetched. On iOS the chunks are bundled (capacitor://localhost), so
+// this flashes only for a frame or two; on web it covers the network
+// fetch of the split chunk. Matches the app's dark background so it
+// reads as "still loading" rather than a white flash.
+function RouteFallback() {
+  return (
+    <div style={{ minHeight: "100vh", background: "#091A10" }} aria-hidden />
+  );
+}
+
 function Router() {
   return (
+    // Suspense boundary for the lazy-loaded route chunks (code-splitting,
+    // frontend audit). Eager routes render immediately; lazy ones (the
+    // heavy non-landing pages — prayer-mode, lectio, community-detail,
+    // the decks, BCP readers, etc.) suspend to RouteFallback while their
+    // chunk loads, keeping them out of the initial bundle.
+    <Suspense fallback={<RouteFallback />}>
     <Switch>
       {/* Public first-open chooser: morning/evening office, climate
           prayer, or sign in. Onboarding (the email/password form) is
@@ -585,6 +602,7 @@ function Router() {
       <Route path="/climate">{() => <RedirectTo to="/prayer-feeds/phoebe-climate" />}</Route>
       <Route component={NotFound} />
     </Switch>
+    </Suspense>
   );
 }
 
