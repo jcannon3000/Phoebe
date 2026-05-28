@@ -101,6 +101,11 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     emoji: "✊",
     showSlugs: ["lead-us-not"],
   },
+  "james-martin": {
+    title: "Fr. James Martin, S.J.",
+    emoji: "🙏",
+    showSlugs: ["the-spiritual-life"],
+  },
   "yale-faith-culture": {
     title: "Yale Center for Faith & Culture",
     emoji: "📘",
@@ -258,7 +263,7 @@ const SHOWS: Record<string, Show> = {
     artist: "Virginia Theological Seminary - Rev. Ross Kane",
     publisher: "around-the-church",
     feedUrl: "https://rosskane.com/feed/podcast/",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/61/7b/c0/617bc035-10b1-2044-40f8-41be97f388c7/mza_11235952246385245389.jpg/600x600bb.jpg",
+    artwork: "/podcast-art/vts.jpg",
   },
   // ── The Average Episcopalian ────────────────────────────────────────
   "average-episcopalian": {
@@ -327,6 +332,15 @@ const SHOWS: Record<string, Show> = {
     publisher: "sojourners",
     feedUrl: "https://feeds.simplecast.com/AI2Ev_T4",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts123/v4/7a/e2/14/7ae21401-83ed-130c-2cce-22168ff04c8c/mza_12546347195201606395.jpg/600x600bb.jpg",
+  },
+  // ── Fr. James Martin, S.J. — America Media ──────────────────────────
+  "the-spiritual-life": {
+    slug: "the-spiritual-life",
+    title: "The Spiritual Life",
+    artist: "Fr. James Martin, S.J.",
+    publisher: "james-martin",
+    feedUrl: "https://feeds.megaphone.fm/thespirituallife",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/55/ce/a7/55cea75c-08b5-4656-b655-95e78dc20aa6/mza_4622591337010169746.jpg/600x600bb.jpg",
   },
 };
 
