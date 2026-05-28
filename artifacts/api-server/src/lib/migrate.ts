@@ -2024,6 +2024,35 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_scheduler_runs_name_started ON scheduler_runs (sender_name, started_at DESC)`);
 
+    // ── Hot-path foreign-key indexes (DB audit, finding #1) ──────────────
+    // These junction / owner columns are scanned on nearly every
+    // authenticated request (dashboard load, prayer-list, group detail,
+    // correspondence list) but previously had no index — only the
+    // invite_token / share_token uniques were covered. At current scale
+    // these are cheap seq scans on small tables; by 10-50k DAU they'd be
+    // the dominant query cost. Plain CREATE INDEX (not CONCURRENTLY)
+    // because migrate runs at boot before the server listens, and the
+    // tables are still small enough that the brief lock is invisible —
+    // revisit with CONCURRENTLY + an out-of-band migration if any table
+    // grows past a few hundred thousand rows. All IF NOT EXISTS, so this
+    // block is idempotent like the rest of migrate().
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_group_members_group_id ON group_members (group_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_group_members_user_id ON group_members (user_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_requests_owner_id ON prayer_requests (owner_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_words_request_id ON prayer_words (request_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_amens_request_id ON prayer_request_amens (request_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_correspondence_members_corr_id ON correspondence_members (correspondence_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_correspondence_members_user_id ON correspondence_members (user_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_correspondence_members_email ON correspondence_members (email)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_letters_correspondence_id ON letters (correspondence_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_moment_user_tokens_moment_id ON moment_user_tokens (moment_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_moment_user_tokens_email ON moment_user_tokens (email)`);
+    // moment_id lookups are already covered by the UNIQUE (moment_id,
+    // group_id) constraint's index (moment_id is its leading column);
+    // we only need the standalone group_id index for "what practices
+    // is this group linked to" reverse lookups.
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_moment_groups_group_id ON moment_groups (group_id)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

@@ -106,6 +106,39 @@ async function main() {
     html = html.replace(/<body(\b[^>]*)>/i, match => `${match}\n    ${shellScript}`);
   }
 
+  // ── Post-injection assertions (iOS shell audit, finding #5) ──────────
+  // The html.replace() calls above silently no-op if mymonastery's
+  // index.html template ever changes shape (e.g. <body> attributes,
+  // a viewport meta the regex stops matching). The double-injection
+  // guards (`if (!html.includes(...))`) protect against injecting
+  // twice, but NOT against injecting zero times — which would ship a
+  // bundle with no native shell: a fully broken iOS app (no push, no
+  // deep-links, no safe-area, no keyboard handling) that still builds
+  // green and passes cap sync. Fail the build loudly instead.
+  if (!html.includes("/native-shell.js")) {
+    console.error(
+      "[compose-www] FATAL: native-shell.js script tag was not injected.\n" +
+      "  The <body> regex likely failed to match mymonastery's index.html.\n" +
+      "  Shipping this bundle would produce an iOS app with no native shell."
+    );
+    process.exit(1);
+  }
+  if (!html.includes("viewport-fit")) {
+    console.error(
+      "[compose-www] FATAL: viewport-fit=cover was not injected.\n" +
+      "  The viewport <meta> regex likely failed to match.\n" +
+      "  Shipping this bundle would break safe-area insets on iOS."
+    );
+    process.exit(1);
+  }
+  if (!html.includes("/native.css")) {
+    console.error(
+      "[compose-www] FATAL: native.css link was not injected.\n" +
+      "  Shipping this bundle would lose iOS-specific styling."
+    );
+    process.exit(1);
+  }
+
   await writeFile(indexPath, html, "utf-8");
 
   console.log("[compose-www] www/ built.");
