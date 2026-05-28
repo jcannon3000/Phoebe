@@ -277,7 +277,7 @@ const SHOWS: Record<string, Show> = {
     artist: "Kate Greer & Annie Hodges",
     publisher: "average-episcopalian",
     feedUrl: "https://rss.libsyn.com/shows/350996/destinations/2868101.xml",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/8c/6c/d2/8c6cd27c-a22d-3369-94a1-a1404d50b695/mza_1877788517495835005.png/600x600bb.jpg",
+    artwork: "/podcast-art/average-episcopalian.jpg",
   },
   // ── The Living Church ───────────────────────────────────────────────
   "living-church": {
@@ -296,7 +296,7 @@ const SHOWS: Record<string, Show> = {
     artist: "Episcopal Diocese of North Carolina",
     publisher: "diocese-nc",
     feedUrl: "https://episdionc.org/podcast-roundtables-on-race/",
-    artwork: null,
+    artwork: "/podcast-art/roundtables.jpg",
     kind: "scrape-roundtables",
   },
   // ── And Also With You ───────────────────────────────────────────────
