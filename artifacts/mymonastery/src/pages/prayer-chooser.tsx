@@ -1,13 +1,25 @@
 import { useEffect } from "react";
-import { Link, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { playOpeningSwell } from "@/lib/amenFeedback";
-import { openExternal } from "@/lib/openExternal";
 import { readOfficeProgress, type LiturgyMode } from "@/pages/bcp-daily-office";
+
+// Remembers which depth the user prayed last so the chooser can float
+// it to the top on the next visit. Plain localStorage — a soft UX hint,
+// not state worth syncing to the server. The value is one of the card
+// keys below ("intercessions" | "feed" | "devotion" | "office" |
+// "ncmp" | "examen").
+const LAST_CHOICE_KEY = "phoebe:last-prayer-choice";
+function readLastPrayerChoice(): string | null {
+  try { return localStorage.getItem(LAST_CHOICE_KEY); } catch { return null; }
+}
+function recordPrayerChoice(key: string): void {
+  try { localStorage.setItem(LAST_CHOICE_KEY, key); } catch { /* ignore */ }
+}
 
 // ── Prayer chooser ──────────────────────────────────────────────────────────
 // Replaces the dashboard's inline modal popup. The home-screen CTA links
@@ -136,68 +148,173 @@ export default function PrayerChooserPage() {
     }
   }, []);
 
-  type Option = {
+  // Unified card model so every option — including the National
+  // Cathedral broadcast — flows through one ordering + render path.
+  // `key` is the stable id used to remember "last prayed"; `variant`
+  // picks the palette (purple for the cathedral broadcast, green for
+  // the BCP / community options).
+  type ChooserCard = {
+    key: string;
+    variant: "green" | "purple";
     title: string;
     sub: string;
-    duration: string;
-    href: string;
+    badge: string;
     verb: string;
+    href: string;
   };
-  // First option swaps shape by tier:
+
+  // First card swaps shape by tier:
   //   • Full / parish-only / beta: "Community Intercessions" — the
   //     daily walk through the viewer's requests + intercessions.
   //   • Offices-only: "Prayer feed" — their subscribed feed's
   //     intercessions, routed straight to /prayer-mode?queue=feed
   //     so it doesn't hit any of the blocked-prefix endpoints.
-  //     Hidden entirely when the user has no subscription yet
-  //     (we'd have nowhere to send them).
-  const firstOption: Option | null = officesOnly
+  //     Hidden entirely when the user has no subscription yet.
+  const firstCard: ChooserCard | null = officesOnly
     ? (firstFeed
         ? {
+            key: "feed",
+            variant: "green",
             title: "Prayer feed",
             sub: `Today's intercessions from ${firstFeed.coverEmoji ?? "🌿"} ${firstFeed.title}`,
-            duration: "< 5 Min",
-            href: `/prayer-mode?queue=feed&slug=${encodeURIComponent(firstFeed.slug)}`,
+            badge: "< 5 Min",
             verb: "Start",
+            href: `/prayer-mode?queue=feed&slug=${encodeURIComponent(firstFeed.slug)}`,
           }
         : null)
     : {
+        key: "intercessions",
+        variant: "green",
         title: "Community Intercessions",
         sub: "Your prayer list, no liturgy",
-        duration: "< 5 Min",
-        href: "/prayer-mode",
+        badge: "< 5 Min",
         verb: "Start",
+        href: "/prayer-mode",
       };
 
-  const options: Option[] = [
-    ...(firstOption ? [firstOption] : []),
+  const cards: ChooserCard[] = [
+    // National Cathedral Morning Prayer — weekday mornings only. Opens
+    // the in-app /ncmp/watch embed (logs the prayer session on mount).
+    ...(showNcmpOption ? [{
+      key: "ncmp",
+      variant: "purple" as const,
+      title: "National Cathedral Morning Prayer",
+      sub: "Live weekdays at 7 AM Eastern · Washington National Cathedral",
+      badge: ncmpDurationLabel,
+      verb: "Watch",
+      href: "/ncmp/watch",
+    }] : []),
+    ...(firstCard ? [firstCard] : []),
     {
+      key: "devotion",
+      variant: "green",
       title: devotionLabel,
       sub: "From the Book of Common Prayer",
-      duration: "5–10 Min",
+      badge: "5–10 Min",
+      verb: verbFor(devotionState),
       // picked=1 — the user is choosing the devotion from this chooser,
       // so the viewer's first slide drops its alternate-route pills.
       href: `/bcp/daily-devotions?mode=${encodeURIComponent(devotionMode)}&picked=1${devotionState.kind === "done" ? "&reset=1" : ""}`,
-      verb: verbFor(devotionState),
     },
     {
+      key: "office",
+      variant: "green",
       title: officeLabel,
       sub: "From the Book of Common Prayer",
-      duration: "15–20 Min",
-      href: `/bcp/daily-office?mode=${encodeURIComponent(officeMode)}${officeStateLocal.kind === "done" ? "&reset=1" : ""}`,
+      badge: "15–20 Min",
       verb: verbFor(officeStateLocal),
+      href: `/bcp/daily-office?mode=${encodeURIComponent(officeMode)}${officeStateLocal.kind === "done" ? "&reset=1" : ""}`,
     },
-    // Ignatian Examen — the contemplative close to the day. Sits at
-    // the bottom, and only after 5pm (it's an end-of-day prayer) for
-    // pilot users.
+    // Ignatian Examen — the contemplative close to the day. Only after
+    // 5pm (it's an end-of-day prayer) for pilot users.
     ...(hour >= 17 && isBeta ? [{
+      key: "examen",
+      variant: "green" as const,
       title: "Ignatian Examen",
       sub: "A reflective close to the day",
-      duration: "5–10 Min",
-      href: "/examen",
+      badge: "5–10 Min",
       verb: "Start",
+      href: "/examen",
     }] : []),
   ];
+
+  // Float the last-prayed card to the top, then a visual gap, then the
+  // rest in their natural order. If the user has never chosen (or the
+  // remembered key isn't currently available — e.g. they last watched
+  // the cathedral but it's now afternoon), nothing is pinned and the
+  // list renders in its natural order with no divider.
+  const lastChoice = readLastPrayerChoice();
+  const pinnedCard = lastChoice ? (cards.find(c => c.key === lastChoice) ?? null) : null;
+  const restCards = pinnedCard ? cards.filter(c => c.key !== pinnedCard.key) : cards;
+
+  // One renderer for both palettes. Whole card is the tap target; we
+  // record the choice (so it floats up next time) then navigate.
+  const renderCard = (card: ChooserCard, i: number) => {
+    const purple = card.variant === "purple";
+    const activate = () => { recordPrayerChoice(card.key); setLocation(card.href); };
+    return (
+      <motion.div
+        key={card.key}
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, delay: 0.06 * (i + 1), ease: "easeOut" }}
+      >
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={activate}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); activate(); } }}
+          className="w-full rounded-2xl p-4 cursor-pointer transition-opacity hover:opacity-90"
+          style={{
+            background: purple ? "rgba(120,80,180,0.14)" : "rgba(46,107,64,0.14)",
+            border: purple ? "1px solid rgba(120,80,180,0.40)" : "1px solid rgba(46,107,64,0.35)",
+          }}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p
+                  className="text-base font-semibold"
+                  style={{ color: "#F0EDE6", fontFamily: FONT, margin: 0, lineHeight: 1.2 }}
+                >
+                  {card.title}
+                </p>
+                <span
+                  className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                  style={{
+                    background: purple ? "rgba(120,80,180,0.22)" : "rgba(46,107,64,0.2)",
+                    color: purple ? "rgba(210,190,240,0.95)" : "rgba(143,175,150,0.9)",
+                    border: purple ? "1px solid rgba(120,80,180,0.42)" : "1px solid rgba(46,107,64,0.3)",
+                    fontFamily: FONT,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {card.badge}
+                </span>
+              </div>
+              <p
+                className="text-[12px] mt-1"
+                style={{ color: purple ? "rgba(199,176,235,0.85)" : "rgba(143,175,150,0.85)", margin: 0 }}
+              >
+                {card.sub}
+              </p>
+            </div>
+            <span
+              className="text-[11px] font-semibold px-3 py-1.5 rounded-full shrink-0"
+              style={{
+                background: purple ? "rgba(120,80,180,0.32)" : "rgba(46,107,64,0.35)",
+                color: purple ? "#E0D0F5" : "#C8D4C0",
+                border: purple ? "1px solid rgba(120,80,180,0.55)" : "1px solid rgba(46,107,64,0.55)",
+                fontFamily: FONT,
+              }}
+            >
+              {card.verb} →
+            </span>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
 
   return (
     <div
@@ -275,155 +392,26 @@ export default function PrayerChooserPage() {
           </p>
 
           <div className="space-y-3">
-            {/* National Cathedral Morning Prayer — purple card,
-                weekday-mornings only. Opens the YouTube watch URL
-                externally (cathedral.org links to the same video).
-                Best-effort prayer-session log so the user's daily
-                prayer tracker credits the engagement. The duration
-                badge is populated from /api/ncmp/today-meta —
-                falls back to a generic label when the duration
-                fetch fails. */}
-            {showNcmpOption && (
-              <motion.div
-                key="ncmp"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: 0.06, ease: "easeOut" }}
-              >
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    // Navigate to the in-app embed page (/ncmp/watch).
-                    // That page handles the prayer-session log on
-                    // mount + renders the YouTube iframe inline —
-                    // replaces the prior SFSafariView hop. Keeping
-                    // ncmpMeta around because the duration badge
-                    // below still reads from it.
-                    setLocation("/ncmp/watch");
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") (e.currentTarget as HTMLDivElement).click();
-                  }}
-                  className="w-full rounded-2xl p-4 cursor-pointer transition-opacity hover:opacity-90"
-                  // Royal-purple palette to distinguish from the
-                  // green BCP options. Stays muted enough not to
-                  // overwhelm the rest of the chooser; the duration
-                  // badge picks up a matching purple tint.
-                  style={{
-                    background: "rgba(120,80,180,0.14)",
-                    border: "1px solid rgba(120,80,180,0.40)",
-                  }}
+            {/* Last-prayed depth pinned on top, then a soft "Or"
+                divider, then the rest. When nothing's pinned (first
+                visit, or the remembered card isn't available right
+                now) the divider is skipped and the list renders in
+                its natural order. The National Cathedral broadcast
+                floats up here too if it's what the user watched last. */}
+            {pinnedCard && renderCard(pinnedCard, 0)}
+            {pinnedCard && restCards.length > 0 && (
+              <div className="flex items-center gap-3 py-1" aria-hidden>
+                <div style={{ height: 1, flex: 1, background: "rgba(143,175,150,0.18)" }} />
+                <span
+                  className="text-[10px] uppercase tracking-widest"
+                  style={{ color: "rgba(143,175,150,0.45)", fontFamily: FONT }}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p
-                          className="text-base font-semibold"
-                          style={{ color: "#F0EDE6", fontFamily: FONT, margin: 0, lineHeight: 1.2 }}
-                        >
-                          National Cathedral Morning Prayer
-                        </p>
-                        <span
-                          className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-                          style={{
-                            background: "rgba(120,80,180,0.22)",
-                            color: "rgba(210,190,240,0.95)",
-                            border: "1px solid rgba(120,80,180,0.42)",
-                            fontFamily: FONT,
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {ncmpDurationLabel}
-                        </span>
-                      </div>
-                      <p
-                        className="text-[12px] mt-1"
-                        style={{ color: "rgba(199,176,235,0.85)", margin: 0 }}
-                      >
-                        Live weekdays at 7 AM Eastern · Washington National Cathedral
-                      </p>
-                    </div>
-                    <span
-                      className="text-[11px] font-semibold px-3 py-1.5 rounded-full shrink-0"
-                      style={{
-                        background: "rgba(120,80,180,0.32)",
-                        color: "#E0D0F5",
-                        border: "1px solid rgba(120,80,180,0.55)",
-                        fontFamily: FONT,
-                      }}
-                    >
-                      Watch →
-                    </span>
-                  </div>
-                </div>
-              </motion.div>
+                  Or
+                </span>
+                <div style={{ height: 1, flex: 1, background: "rgba(143,175,150,0.18)" }} />
+              </div>
             )}
-            {options.map((opt, i) => (
-              <motion.div
-                key={opt.href}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35, delay: 0.08 * (i + 1), ease: "easeOut" }}
-              >
-                <Link href={opt.href}>
-                  <div
-                    className="w-full rounded-2xl p-4 cursor-pointer transition-opacity hover:opacity-90"
-                    style={{
-                      background: "rgba(46,107,64,0.14)",
-                      border: "1px solid rgba(46,107,64,0.35)",
-                    }}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p
-                            className="text-base font-semibold"
-                            style={{
-                              color: "#F0EDE6",
-                              fontFamily: FONT,
-                              margin: 0,
-                              lineHeight: 1.2,
-                            }}
-                          >
-                            {opt.title}
-                          </p>
-                          <span
-                            className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-                            style={{
-                              background: "rgba(46,107,64,0.2)",
-                              color: "rgba(143,175,150,0.9)",
-                              border: "1px solid rgba(46,107,64,0.3)",
-                              fontFamily: FONT,
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {opt.duration}
-                          </span>
-                        </div>
-                        <p
-                          className="text-[12px] mt-1"
-                          style={{ color: "rgba(143,175,150,0.85)", margin: 0 }}
-                        >
-                          {opt.sub}
-                        </p>
-                      </div>
-                      <span
-                        className="text-[11px] font-semibold px-3 py-1.5 rounded-full shrink-0"
-                        style={{
-                          background: "rgba(46,107,64,0.35)",
-                          color: "#C8D4C0",
-                          border: "1px solid rgba(46,107,64,0.55)",
-                          fontFamily: FONT,
-                        }}
-                      >
-                        {opt.verb} →
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
+            {restCards.map((card, i) => renderCard(card, pinnedCard ? i + 1 : i))}
           </div>
         </motion.div>
       </main>

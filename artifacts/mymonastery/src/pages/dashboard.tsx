@@ -2759,12 +2759,8 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
   //   • ≥ 20 → night   → Compline (default depth)
   // The user's Settings → Default prayer picker still overrides which
   // depth they land on, but the *which-side* split is time-based.
-  // Compline is its own surface — there's no Compline Devotion, just
-  // Compline itself, so the night bucket short-circuits the
-  // devotion/office/intercessions branch below.
   const hourNow = new Date().getHours();
   const isMorning = hourNow < 12;
-  const isNight = hourNow >= 20;
   const eyebrow = t("dashboard.book_of_common_prayer");
   // Office-streak pill above the CTA. Same data source as before,
   // just the prefs lookup — no longer used to pick a "big" CTA.
@@ -2779,7 +2775,6 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
     staleTime: 60_000,
   });
   const officeStreak = officePrefs?.officeStreak ?? 0;
-  const defaultPrayerLevel = officePrefs?.defaultPrayerLevel ?? "devotion";
 
   const { data: communityPrayedData } = useQuery<{ people: { id: number; name: string; avatarUrl: string | null }[] }>({
     queryKey: ["/api/prayer-streak/community-prayed-week"],
@@ -2883,20 +2878,15 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
   // after a completed pass starts fresh rather than resuming — only
   // applies to the office/devotion routes (prayer-mode has its own
   // reset semantics).
-  const devotionMode = isMorning ? "morning-devotion" : "early-evening-devotion";
-  const officeModeForLink = isMorning ? "morning" : "evening";
-  const devotionHref = `/bcp/daily-devotions?mode=${devotionMode}${prayedToday ? "&reset=1" : ""}`;
-  const officeHref = `/bcp/daily-office?mode=${officeModeForLink}${prayedToday ? "&reset=1" : ""}`;
-  const complineHref = `/bcp/daily-office?mode=compline${prayedToday ? "&reset=1" : ""}`;
-  const intercessionsHref = prayedToday ? "/prayer-mode?reset=1" : "/prayer-mode";
-  // Compline wins for both the devotion and office buckets after 8pm
-  // since it's the BCP's night office and the closest thing either
-  // depth has at that hour.
-  const ctaHref =
-    defaultPrayerLevel === "intercessions" ? intercessionsHref
-    : isNight ? complineHref
-    : defaultPrayerLevel === "office" ? officeHref
-    : devotionHref;
+  // The home CTA routes through /begin-prayer, the single routing brain
+  // shared by the dashboard and the iOS home-screen shortcut. It honors
+  // the user's "Default prayer" setting: "ask" (the out-of-box default)
+  // opens the prayer chooser — the options screen with the last-prayed
+  // depth pinned on top — while a fixed depth (devotion / office /
+  // intercessions) drops straight in. Time-of-day buckets and ?reset
+  // semantics live there (and per-option inside the chooser), so we
+  // don't duplicate that logic on the card anymore.
+  const ctaHref = "/begin-prayer";
   const ctaCopy = "Begin prayer";
 
   // Compact one-line variant — used when feed-first home promotes a

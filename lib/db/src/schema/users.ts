@@ -112,11 +112,17 @@ export const usersTable = pgTable("users", {
   //   "office"        — Full Morning/Evening Prayer (BCP long form).
   //   "intercessions" — Community Intercessions slideshow (/prayer-mode).
   // Other surfaces (the chooser screen, the office's first-slide
-  // skip-pills) stay available; this just picks which one the home
-  // card jumps to in a single tap. Defaults to "devotion" — the
-  // gentler entry point that's been the implicit default on the home
-  // card since we removed the chooser intermediary.
-  defaultPrayerLevel: text("default_prayer_level").notNull().default("devotion"),
+  // skip-pills) stay available; this just picks what the home card's
+  // "Begin prayer" CTA does in a single tap.
+  //   "ask"           — show the prayer chooser (the default; the
+  //                     options screen with the last-prayed depth on top)
+  //   "devotion"      — skip the chooser, open the BCP short form
+  //   "office"        — skip the chooser, open full Morning/Evening Prayer
+  //   "intercessions" — skip the chooser, open the community slideshow
+  // Defaults to "ask" — the chooser is the out-of-box experience; a
+  // fixed depth is an opt-in shortcut. (A one-time migration moves the
+  // historical silent "devotion" default to "ask"; see migrate.ts.)
+  defaultPrayerLevel: text("default_prayer_level").notNull().default("ask"),
   // ── Phoebe Parish: office reminder preferences ───────────────────────────
   // Each side of the day picks one of three values:
   //   "none"     — do not push at the morning/evening reminder hour

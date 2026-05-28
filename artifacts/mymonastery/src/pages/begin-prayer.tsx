@@ -25,7 +25,7 @@ export default function BeginPrayerPage() {
   const { user, isLoading: authLoading } = useAuth();
 
   const { data: officePrefs, isLoading: prefsLoading } = useQuery<{
-    defaultPrayerLevel?: "devotion" | "office" | "intercessions";
+    defaultPrayerLevel?: "ask" | "devotion" | "office" | "intercessions";
   }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
@@ -48,12 +48,26 @@ export default function BeginPrayerPage() {
     }
     if (prefsLoading || historyLoading) return;
 
+    const defaultPrayerLevel = officePrefs?.defaultPrayerLevel ?? "ask";
+
+    // "ask" (the out-of-box default) → show the prayer chooser, the
+    // options screen with the last-prayed depth pinned on top. Only an
+    // explicit per-depth default (devotion/office/intercessions) skips
+    // the chooser and drops straight in. Unknown/legacy values fall
+    // through to the chooser too — safest default.
+    if (defaultPrayerLevel === "ask"
+        || (defaultPrayerLevel !== "devotion"
+            && defaultPrayerLevel !== "office"
+            && defaultPrayerLevel !== "intercessions")) {
+      setLocation("/prayer-chooser", { replace: true });
+      return;
+    }
+
     // Same time-of-day buckets the dashboard uses (see
     // dashboard.tsx ~line 2777).
     const hourNow = new Date().getHours();
     const isMorning = hourNow < 12;
     const isNight = hourNow >= 20;
-    const defaultPrayerLevel = officePrefs?.defaultPrayerLevel ?? "devotion";
 
     // "Prayed today" — server is authoritative; local flags are a
     // sync-immediate fallback for the moment right after the office

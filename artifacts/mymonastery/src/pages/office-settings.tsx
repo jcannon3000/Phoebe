@@ -27,6 +27,7 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Eye, EyeOff } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import {
@@ -48,7 +49,7 @@ type OfficePref = "none" | "office" | "devotion";
 // the home card reads user.defaultPrayerLevel from /auth/me. Default
 // is "devotion" (the gentlest entry point) when the user hasn't
 // chosen one.
-type DefaultPrayerLevel = "devotion" | "office" | "intercessions";
+type DefaultPrayerLevel = "ask" | "devotion" | "office" | "intercessions";
 type OfficePrefs = {
   morning: OfficePref;
   evening: OfficePref;
@@ -89,20 +90,20 @@ function Blurb({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Card({ children }: { children: React.ReactNode }) {
+function SubHeader({ children }: { children: React.ReactNode }) {
   return (
-    <div
-      className="rounded-xl px-5 py-4 mb-3"
-      style={{
-        background: "rgba(46,107,64,0.10)",
-        border: "1px solid rgba(46,107,64,0.18)",
-      }}
+    <p
+      className="text-[10px] uppercase tracking-[0.16em] font-semibold mt-4 mb-2"
+      style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}
     >
       {children}
-    </div>
+    </p>
   );
 }
 
+// Reminder time picker, styled as a standalone row to sit beneath the
+// reminder radios in the same list. The dashed border sets it apart as a
+// dependent detail rather than another pick-one option.
 function ReminderTimeRow({
   label,
   value,
@@ -114,15 +115,21 @@ function ReminderTimeRow({
 }) {
   return (
     <div
-      className="flex items-center justify-between gap-3 py-2.5"
-      style={{ borderTop: "1px solid rgba(200,212,192,0.12)" }}
+      className="flex items-center justify-between gap-3 rounded-xl px-3 py-3"
+      style={{
+        background: "rgba(46,107,64,0.06)",
+        border: "1px dashed rgba(46,107,64,0.28)",
+      }}
     >
-      <p
-        className="text-[14px]"
-        style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}
-      >
-        {label}
-      </p>
+      <div className="flex items-center gap-3 min-w-0">
+        <span style={{ fontSize: 20 }}>⏰</span>
+        <p
+          className="text-[15px] font-semibold"
+          style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}
+        >
+          {label}
+        </p>
+      </div>
       <input
         type="time"
         value={value}
@@ -144,27 +151,32 @@ function ReminderTimeRow({
 
 // ── Radio row + toggle row helpers ──────────────────────────────────
 
+// Pick-one row in the customize-home aesthetic: a standalone rounded-xl
+// card with a radio dot, emoji, and label/sub. Selected rows read like a
+// "visible" module on customize-home (fuller background, full opacity);
+// unselected ones recede like a "hidden" module.
 function RadioRow({
   label,
   sub,
+  emoji,
   selected,
   onSelect,
-  first,
 }: {
   label: string;
   sub?: string;
+  emoji: string;
   selected: boolean;
   onSelect: () => void;
-  first: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onSelect}
-      className="w-full flex items-center gap-3 py-2.5 text-left"
+      className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left select-none"
       style={{
-        borderTop: first ? "none" : "1px solid rgba(200,212,192,0.12)",
-        background: "transparent",
+        background: selected ? "rgba(46,107,64,0.10)" : "rgba(46,107,64,0.04)",
+        border: "1px solid rgba(46,107,64,0.22)",
+        opacity: selected ? 1 : 0.6,
         cursor: "pointer",
       }}
     >
@@ -178,8 +190,9 @@ function RadioRow({
           flexShrink: 0,
         }}
       />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p className="text-[14px]" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+      <span style={{ fontSize: 20 }}>{emoji}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
           {label}
         </p>
         {sub && (
@@ -192,50 +205,58 @@ function RadioRow({
   );
 }
 
-function ToggleRow({
+// Boolean show/hide toggle styled like customize-home's draggable rows:
+// rounded-xl card with emoji + label/sub on the left and Eye/EyeOff on
+// the right. Tapping the row OR the eye flips the value — matching the
+// affordance from customize-home where the eye is the visible control
+// but the whole row is also clickable.
+function EyeToggleRow({
   label,
   subOn,
   subOff,
+  emoji,
   value,
   onChange,
-  first,
+  showLabel,
+  hideLabel,
 }: {
   label: string;
   subOn: string;
   subOff: string;
+  emoji: string;
   value: boolean;
   onChange: (next: boolean) => void;
-  first?: boolean;
+  showLabel: string;
+  hideLabel: string;
 }) {
   return (
     <button
       type="button"
       onClick={() => onChange(!value)}
-      className="w-full flex items-center gap-3 py-2.5 text-left"
+      className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left select-none"
       style={{
-        borderTop: first ? "none" : "1px solid rgba(200,212,192,0.12)",
-        background: "transparent",
+        background: value ? "rgba(46,107,64,0.10)" : "rgba(46,107,64,0.04)",
+        border: "1px solid rgba(46,107,64,0.22)",
+        opacity: value ? 1 : 0.6,
         cursor: "pointer",
       }}
     >
-      <div
-        style={{
-          width: 18,
-          height: 18,
-          borderRadius: "50%",
-          border: `2px solid ${value ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
-          background: value ? "#A8C5A0" : "transparent",
-          flexShrink: 0,
-        }}
-      />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p className="text-[14px]" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+      <span style={{ fontSize: 20 }}>{emoji}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
           {label}
         </p>
         <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>
           {value ? subOn : subOff}
         </p>
       </div>
+      <span
+        aria-label={value ? hideLabel : showLabel}
+        className="transition-opacity"
+        style={{ color: value ? "#A8C5A0" : "rgba(143,175,150,0.6)", lineHeight: 0, padding: 4, flexShrink: 0 }}
+      >
+        {value ? <Eye size={18} /> : <EyeOff size={18} />}
+      </span>
     </button>
   );
 }
@@ -259,12 +280,13 @@ export default function OfficeSettingsPage() {
   const evening = data?.evening ?? "none";
   const morningTime = data?.morningTime ?? "07:00";
   const eveningTime = data?.eveningTime ?? "18:00";
-  const defaultPrayerLevel: DefaultPrayerLevel = data?.defaultPrayerLevel ?? "devotion";
+  const defaultPrayerLevel: DefaultPrayerLevel = data?.defaultPrayerLevel ?? "ask";
 
-  const defaultLevelOptions: Array<{ value: DefaultPrayerLevel; label: string; sub: string }> = [
-    { value: "devotion", label: "Daily Devotion", sub: "The short BCP form (~5 min). The gentlest entry point." },
-    { value: "office", label: "Full Daily Office", sub: "Morning or Evening Prayer (~15-20 min). The fuller liturgy." },
-    { value: "intercessions", label: "Community Intercessions", sub: "The slideshow of prayer requests your community is holding." },
+  const defaultLevelOptions: Array<{ value: DefaultPrayerLevel; label: string; emoji: string; sub: string }> = [
+    { value: "ask", label: "Ask me each time", emoji: "🧭", sub: "Show the options screen, with whatever you prayed last on top." },
+    { value: "devotion", label: "Daily Devotion", emoji: "🌱", sub: "The short BCP form (~5 min). The gentlest entry point." },
+    { value: "office", label: "Full Daily Office", emoji: "📖", sub: "Morning or Evening Prayer (~15-20 min). The fuller liturgy." },
+    { value: "intercessions", label: "Community Intercessions", emoji: "🙏🏽", sub: "The slideshow of prayer requests your community is holding." },
   ];
 
   // Read the local-only office prefs (CAC / FDD / NCMP closing pills,
@@ -280,15 +302,15 @@ export default function OfficeSettingsPage() {
   const [reflection, setReflection] = useState<ReflectionSource>(local.reflectionSource);
   const [gratitudeOn, setGratitudeOn] = useState(local.includeGratitudeSlide);
 
-  const morningOptions: Array<{ value: OfficePref; label: string; sub: string }> = [
-    { value: "none", label: t("settings.no_reminder", { defaultValue: "No reminder" }), sub: "" },
-    { value: "office", label: t("offices.morning_prayer", { defaultValue: "Morning Prayer" }), sub: t("settings.full_daily_office", { defaultValue: "Full Daily Office" }) },
-    { value: "devotion", label: t("offices.morning_devotion", { defaultValue: "Morning Devotion" }), sub: t("settings.short_bcp_form", { defaultValue: "Short BCP form" }) },
+  const morningOptions: Array<{ value: OfficePref; label: string; emoji: string; sub: string }> = [
+    { value: "none", label: t("settings.no_reminder", { defaultValue: "No reminder" }), emoji: "🔕", sub: "" },
+    { value: "office", label: t("offices.morning_prayer", { defaultValue: "Morning Prayer" }), emoji: "📖", sub: t("settings.full_daily_office", { defaultValue: "Full Daily Office" }) },
+    { value: "devotion", label: t("offices.morning_devotion", { defaultValue: "Morning Devotion" }), emoji: "🌱", sub: t("settings.short_bcp_form", { defaultValue: "Short BCP form" }) },
   ];
-  const eveningOptions: Array<{ value: OfficePref; label: string; sub: string }> = [
-    { value: "none", label: t("settings.no_reminder", { defaultValue: "No reminder" }), sub: "" },
-    { value: "office", label: t("offices.evening_prayer", { defaultValue: "Evening Prayer" }), sub: t("settings.full_daily_office", { defaultValue: "Full Daily Office" }) },
-    { value: "devotion", label: t("offices.early_evening_devotion", { defaultValue: "Early Evening Devotion" }), sub: t("settings.short_bcp_form", { defaultValue: "Short BCP form" }) },
+  const eveningOptions: Array<{ value: OfficePref; label: string; emoji: string; sub: string }> = [
+    { value: "none", label: t("settings.no_reminder", { defaultValue: "No reminder" }), emoji: "🔕", sub: "" },
+    { value: "office", label: t("offices.evening_prayer", { defaultValue: "Evening Prayer" }), emoji: "📖", sub: t("settings.full_daily_office", { defaultValue: "Full Daily Office" }) },
+    { value: "devotion", label: t("offices.early_evening_devotion", { defaultValue: "Early Evening Devotion" }), emoji: "🌙", sub: t("settings.short_bcp_form", { defaultValue: "Short BCP form" }) },
   ];
 
   return (
@@ -313,40 +335,35 @@ export default function OfficeSettingsPage() {
 
         <SectionHeader label="Default prayer" />
         <Blurb>
-          When you tap "Begin prayer" on the home screen, this is the surface that opens. You can still pick anything else from /offices anytime.
+          When you tap "Begin prayer" on the home screen, this is what opens. Leave it on "Ask me each time" for the options screen, or pick a depth to jump straight in. You can still reach anything else from /offices anytime.
         </Blurb>
-        <Card>
-          {defaultLevelOptions.map((opt, i) => (
+        <div className="flex flex-col gap-2">
+          {defaultLevelOptions.map((opt) => (
             <RadioRow
               key={opt.value}
               label={opt.label}
               sub={opt.sub}
+              emoji={opt.emoji}
               selected={defaultPrayerLevel === opt.value}
               onSelect={() => save.mutate({ defaultPrayerLevel: opt.value })}
-              first={i === 0}
             />
           ))}
-        </Card>
+        </div>
 
         <SectionHeader label="Daily reminders" />
         <Blurb>
           Pick the office Phoebe will nudge you toward each morning and evening — or none, if you'd rather not be pinged.
         </Blurb>
-        <Card>
-          <p
-            className="text-[12px] font-semibold mb-2"
-            style={{ color: SAGE, fontFamily: SPACE_GROTESK }}
-          >
-            In the morning
-          </p>
-          {morningOptions.map((opt, i) => (
+        <SubHeader>In the morning</SubHeader>
+        <div className="flex flex-col gap-2">
+          {morningOptions.map((opt) => (
             <RadioRow
               key={opt.value}
               label={opt.label}
               sub={opt.sub}
+              emoji={opt.emoji}
               selected={morning === opt.value}
               onSelect={() => save.mutate({ morning: opt.value })}
-              first={i === 0}
             />
           ))}
           {morning !== "none" && (
@@ -356,22 +373,17 @@ export default function OfficeSettingsPage() {
               onChange={(time) => save.mutate({ morningTime: time })}
             />
           )}
-        </Card>
-        <Card>
-          <p
-            className="text-[12px] font-semibold mb-2"
-            style={{ color: SAGE, fontFamily: SPACE_GROTESK }}
-          >
-            In the evening
-          </p>
-          {eveningOptions.map((opt, i) => (
+        </div>
+        <SubHeader>In the evening</SubHeader>
+        <div className="flex flex-col gap-2">
+          {eveningOptions.map((opt) => (
             <RadioRow
               key={opt.value}
               label={opt.label}
               sub={opt.sub}
+              emoji={opt.emoji}
               selected={evening === opt.value}
               onSelect={() => save.mutate({ evening: opt.value })}
-              first={i === 0}
             />
           ))}
           {evening !== "none" && (
@@ -381,62 +393,62 @@ export default function OfficeSettingsPage() {
               onChange={(time) => save.mutate({ eveningTime: time })}
             />
           )}
-        </Card>
+        </div>
 
         <SectionHeader label="Confession of Sin" />
         <Blurb>
           Morning and Evening Prayer open with the BCP Confession of Sin and Absolution by default. Turn this off to begin straight at the Opening Sentence instead.
         </Blurb>
-        <Card>
-          <ToggleRow
-            label="Include Confession of Sin"
-            subOn="Shown before the Opening Sentence."
-            subOff="The office begins with the Opening Sentence."
-            value={!!data?.showConfession}
-            onChange={(next) => save.mutate({ showConfession: next })}
-            first
-          />
-        </Card>
+        <EyeToggleRow
+          label="Include Confession of Sin"
+          subOn="Shown before the Opening Sentence."
+          subOff="The office begins with the Opening Sentence."
+          emoji="🤲"
+          value={!!data?.showConfession}
+          onChange={(next) => save.mutate({ showConfession: next })}
+          showLabel={t("customize_home.show", { defaultValue: "Show" })}
+          hideLabel={t("customize_home.hide", { defaultValue: "Hide" })}
+        />
 
         <SectionHeader label="After the office" />
         <Blurb>
           One daily reflection pill appears on the closing slide and as a card on the home screen. Pick the source you'd like to read each day — or turn the pill off.
         </Blurb>
-        <Card>
+        <div className="flex flex-col gap-2">
           {([
-            { value: "cac" as const,  label: "Center for Action and Contemplation", sub: "Today's CAC daily reflection." },
-            { value: "fdd" as const,  label: "Forward Day by Day", sub: "Today's Forward Movement meditation." },
-            { value: "ssje" as const, label: "SSJE Reflections", sub: "Today's “Brother, Give Us a Word.”" },
-            { value: "none" as const, label: "None", sub: "No reflection pill or card." },
-          ]).map((opt, i) => (
+            { value: "cac" as const,  label: "Center for Action and Contemplation", emoji: "🌅", sub: "Today's CAC daily reflection." },
+            { value: "fdd" as const,  label: "Forward Day by Day", emoji: "📖", sub: "Today's Forward Movement meditation." },
+            { value: "ssje" as const, label: "SSJE Reflections", emoji: "✍🏽", sub: "Today's “Brother, Give Us a Word.”" },
+            { value: "none" as const, label: "None", emoji: "🚫", sub: "No reflection pill or card." },
+          ]).map((opt) => (
             <RadioRow
               key={opt.value}
               label={opt.label}
               sub={opt.sub}
+              emoji={opt.emoji}
               selected={reflection === opt.value}
               onSelect={() => { setReflection(opt.value); setReflectionSource(opt.value); }}
-              first={i === 0}
             />
           ))}
-        </Card>
+        </div>
 
         <SectionHeader label="In the office" />
         <Blurb>
           Optional reflective slides spliced into Morning and Evening Prayer.
         </Blurb>
-        <Card>
-          <ToggleRow
-            label="Personal thanksgiving slide"
-            subOn="A short gratitude prompt slides in before the closing."
-            subOff="The office runs straight to the closing."
-            value={gratitudeOn}
-            onChange={(next) => {
-              setGratitudeOn(next);
-              setIncludeGratitudeSlide(next);
-            }}
-            first
-          />
-        </Card>
+        <EyeToggleRow
+          label="Personal thanksgiving slide"
+          subOn="A short gratitude prompt slides in before the closing."
+          subOff="The office runs straight to the closing."
+          emoji="🌾"
+          value={gratitudeOn}
+          onChange={(next) => {
+            setGratitudeOn(next);
+            setIncludeGratitudeSlide(next);
+          }}
+          showLabel={t("customize_home.show", { defaultValue: "Show" })}
+          hideLabel={t("customize_home.hide", { defaultValue: "Hide" })}
+        />
 
         <p
           className="text-[11px] mt-6 text-center"

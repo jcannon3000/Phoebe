@@ -51,7 +51,7 @@ type OfficePref = "none" | "office" | "devotion";
 // Default prayer level — Settings picker decides which depth the
 // home-screen office card's CTA jumps to. Mirrors the server-side
 // allowlist in /api/me/office-prefs (PUT).
-type DefaultPrayerLevel = "devotion" | "office" | "intercessions";
+type DefaultPrayerLevel = "ask" | "devotion" | "office" | "intercessions";
 type OfficePrefs = {
   morning: OfficePref;
   evening: OfficePref;
@@ -353,9 +353,14 @@ function DefaultPrayerLevelSettings() {
       apiRequest("PUT", "/api/me/office-prefs", patch),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/me/office-prefs"] }),
   });
-  const value: DefaultPrayerLevel = data?.defaultPrayerLevel ?? "devotion";
+  const value: DefaultPrayerLevel = data?.defaultPrayerLevel ?? "ask";
 
   const options: Array<{ value: DefaultPrayerLevel; label: string; sub: string }> = [
+    {
+      value: "ask",
+      label: "Ask me each time",
+      sub: "Show the options, with your last prayer on top",
+    },
     {
       value: "devotion",
       label: "Daily Devotion",
@@ -377,7 +382,7 @@ function DefaultPrayerLevelSettings() {
     <>
       <SectionHeader label="Default prayer" />
       <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-        When you tap "Begin prayer" on the home screen, this is where you'll land. You can still jump to the other depths from inside the prayer.
+        When you tap "Begin prayer" on the home screen, this is where you'll land. Leave it on "Ask me each time" to see the chooser, or pick a depth to jump straight in. You can always reach the other depths from inside the prayer.
       </p>
       <SettingsCard>
         {options.map((opt, i) => {

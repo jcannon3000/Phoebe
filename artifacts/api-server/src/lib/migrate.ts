@@ -1964,6 +1964,37 @@ export async function migrate() {
     // level.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS default_prayer_level TEXT NOT NULL DEFAULT 'devotion'`);
 
+    // Re-introduce the prayer chooser as the default "Begin prayer"
+    // destination. The button used to drop straight into a single
+    // depth (the column's 'devotion' default); product direction
+    // reverted to showing the options screen, with an explicit
+    // per-depth default as an opt-in shortcut. The new sentinel value
+    // 'ask' means "show me the chooser."
+    //
+    // One-time data move, guarded by the column's own DEFAULT so it
+    // runs exactly once: while the default is still the old 'devotion',
+    // flip everyone sitting on that silent default over to 'ask' (so
+    // the chooser comes back for them), then advance the column default
+    // to 'ask'. Users who explicitly picked 'office' or 'intercessions'
+    // keep their choice — only the historical silent default is moved.
+    // After this runs, column_default is 'ask' and the guard is false
+    // forever, so a user who later re-selects 'devotion' is never
+    // clobbered on the next boot.
+    await run(client, `
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'users'
+            AND column_name = 'default_prayer_level'
+            AND column_default LIKE '%devotion%'
+        ) THEN
+          UPDATE users SET default_prayer_level = 'ask' WHERE default_prayer_level = 'devotion';
+          ALTER TABLE users ALTER COLUMN default_prayer_level SET DEFAULT 'ask';
+        END IF;
+      END $$;
+    `);
+
     // Scheduler heartbeat / audit log — one row per scheduler tick per
     // sender so we can answer "did the bell sender actually run this
     // morning?" from the DB without relying on ephemeral Railway logs.
