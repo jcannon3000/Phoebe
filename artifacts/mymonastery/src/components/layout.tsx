@@ -469,6 +469,14 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   label={t("menu.podcast_national_cathedral", { defaultValue: "National Cathedral" })}
                   onClick={() => { onClose(); openExternal("https://cathedral.org/podcast/"); }}
                 />
+                {/* CAC publishes several shows (Another Name for Every
+                    Thing, Turning to the Mystics, etc.); the link lands
+                    on their podcast hub so the listener can pick. */}
+                <MenuRow
+                  emoji="🎙️"
+                  label={t("menu.podcast_cac", { defaultValue: "Center for Action and Contemplation" })}
+                  onClick={() => { onClose(); openExternal("https://cac.org/podcasts/"); }}
+                />
               </MenuSection>
               {/* Resources — non-prayer, non-reflection reference
                   surfaces. Sunday Lectionary opens externally to
