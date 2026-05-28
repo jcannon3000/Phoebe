@@ -100,7 +100,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const logout = useLogout();
   const [, setLocation] = useLocation();
-  const { isAdmin: isBetaAdmin, rawIsAdmin, rawIsBeta } = useBetaStatus();
+  const { isBeta, isAdmin: isBetaAdmin, rawIsAdmin, rawIsBeta } = useBetaStatus();
   const { t } = useTranslation();
   // Offices-only accounts 403 on /api/groups, /api/me/pending-…,
   // and /api/prayer-feeds/mine (requireBeta). Firing them on every
@@ -243,6 +243,32 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 
               {/* Pilot view / community admin toggles moved to Admin Tools page */}
             </div>
+
+            {/* ── Daily Practice (beta) ── Progress + build-your-rhythm
+                hub. Its own section above Communities, gated to beta
+                testers via the same isBeta toggle other beta surfaces
+                use, so flipping pilot view off hides it. */}
+            {isBeta && (
+              <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
+                <button
+                  type="button"
+                  onClick={() => navigate("/daily-practice")}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-opacity hover:opacity-90"
+                  style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.28)" }}
+                >
+                  <span className="text-lg leading-none w-5 text-center" aria-hidden>🌱</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                      {t("menu.daily_practice", { defaultValue: "Daily Practice" })}
+                    </p>
+                    <p className="text-[11px]" style={{ color: "#8FAF96", margin: 0 }}>
+                      {t("menu.daily_practice_sub", { defaultValue: "Your progress & rhythm" })}
+                    </p>
+                  </div>
+                  <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.4)", flexShrink: 0 }} />
+                </button>
+              </div>
+            )}
 
             {/* ── Communities ── lists the user's communities.
                 Offices-only tier has none, so the whole block is

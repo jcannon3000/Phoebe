@@ -74,12 +74,17 @@ export function IOSAppDownloadPrompt() {
     try { localStorage.setItem(DISMISS_KEY, "1"); } catch { /* non-fatal */ }
   }
 
+  // Positioning/stacking is owned by BottomPromptStack; this renders just
+  // the card and re-enables pointer events for its own box.
   return (
     <div
-      className="fixed left-0 right-0 z-50 px-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+      className="mx-auto w-full rounded-2xl flex items-stretch gap-3 p-3 max-w-md"
       style={{
-        bottom: 0,
+        background: "#0F2818",
+        border: "1px solid rgba(46,107,64,0.45)",
+        boxShadow: "0 12px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)",
         animation: "phoebe-ios-prompt-slide 360ms ease-out",
+        pointerEvents: "auto",
       }}
       role="dialog"
       aria-label={t("ios_prompt.aria_label")}
@@ -90,15 +95,7 @@ export function IOSAppDownloadPrompt() {
           to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
-      <div
-        className="mx-auto rounded-2xl flex items-stretch gap-3 p-3 max-w-md"
-        style={{
-          background: "#0F2818",
-          border: "1px solid rgba(46,107,64,0.45)",
-          boxShadow: "0 12px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4)",
-        }}
-      >
-        <img
+      <img
           src="/favicon.png"
           alt=""
           className="w-12 h-12 rounded-xl shrink-0 self-center object-cover"
@@ -142,7 +139,6 @@ export function IOSAppDownloadPrompt() {
             {t("desktop_prompt.not_now")}
           </button>
         </div>
-      </div>
     </div>
   );
 }
