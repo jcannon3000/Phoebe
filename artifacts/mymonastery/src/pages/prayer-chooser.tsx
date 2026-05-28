@@ -128,6 +128,33 @@ export default function PrayerChooserPage() {
   // chooser badges ("5–10 Min", "15–20 Min").
   const ncmpDurationLabel = "7 AM ET";
 
+  // "A Morning at the Office" — Forward Movement's daily Episcopal
+  // Morning Prayer podcast. Shown every morning (it publishes 7 days a
+  // week, unlike the weekday-only cathedral broadcast). We fetch today's
+  // episode meta to label the card with its real length; the in-app
+  // player at /podcast/morning-office does the actual playback + session
+  // log. Gated on isMorning so the request only fires when the card
+  // will render.
+  type PodcastMeta = {
+    feedTitle: string | null;
+    title: string | null;
+    audioUrl: string | null;
+    durationSeconds: number | null;
+  };
+  const { data: podcastMeta } = useQuery<PodcastMeta>({
+    queryKey: ["/api/podcast/morning-office/today"],
+    queryFn: () => apiRequest("GET", "/api/podcast/morning-office/today"),
+    enabled: isMorning,
+    staleTime: 30 * 60_000,
+  });
+  const showPodcastOption = isMorning;
+  const podcastDurationLabel = (() => {
+    const s = podcastMeta?.durationSeconds ?? null;
+    if (!s || s <= 0) return "🎧 Audio";
+    const mins = Math.round(s / 60);
+    return `≈ ${mins} min`;
+  })();
+
   // Per-mode progress: drives the verb in the corner pill (Start /
   // Continue / Pray again) and the ?reset=1 suffix on the link.
   const devotionState = readOfficeProgress(devotionMode);
@@ -151,11 +178,12 @@ export default function PrayerChooserPage() {
   // Unified card model so every option — including the National
   // Cathedral broadcast — flows through one ordering + render path.
   // `key` is the stable id used to remember "last prayed"; `variant`
-  // picks the palette (purple for the cathedral broadcast, green for
-  // the BCP / community options).
+  // picks the palette (purple for the cathedral broadcast, gold for the
+  // Morning at the Office podcast, green for the BCP / community
+  // options).
   type ChooserCard = {
     key: string;
-    variant: "green" | "purple";
+    variant: "green" | "purple" | "gold";
     title: string;
     sub: string;
     badge: string;
@@ -204,6 +232,18 @@ export default function PrayerChooserPage() {
       verb: "Watch",
       href: "/ncmp/watch",
     }] : []),
+    // "A Morning at the Office" podcast — every morning (publishes 7
+    // days a week). Opens the in-app audio player at
+    // /podcast/morning-office, which logs the prayer session.
+    ...(showPodcastOption ? [{
+      key: "podcast",
+      variant: "gold" as const,
+      title: "A Morning at the Office",
+      sub: "Daily Episcopal Morning Prayer, read aloud · Forward Movement",
+      badge: podcastDurationLabel,
+      verb: "Listen",
+      href: "/podcast/morning-office",
+    }] : []),
     ...(firstCard ? [firstCard] : []),
     {
       key: "devotion",
@@ -247,10 +287,33 @@ export default function PrayerChooserPage() {
   const pinnedCard = lastChoice ? (cards.find(c => c.key === lastChoice) ?? null) : null;
   const restCards = pinnedCard ? cards.filter(c => c.key !== pinnedCard.key) : cards;
 
-  // One renderer for both palettes. Whole card is the tap target; we
+  // Per-variant palette. Green = BCP/community, purple = National
+  // Cathedral broadcast, gold = "A Morning at the Office" podcast.
+  const palettes = {
+    green: {
+      cardBg: "rgba(46,107,64,0.14)", cardBorder: "rgba(46,107,64,0.35)",
+      badgeBg: "rgba(46,107,64,0.2)", badgeColor: "rgba(143,175,150,0.9)", badgeBorder: "rgba(46,107,64,0.3)",
+      sub: "rgba(143,175,150,0.85)",
+      verbBg: "rgba(46,107,64,0.35)", verbColor: "#C8D4C0", verbBorder: "rgba(46,107,64,0.55)",
+    },
+    purple: {
+      cardBg: "rgba(120,80,180,0.14)", cardBorder: "rgba(120,80,180,0.40)",
+      badgeBg: "rgba(120,80,180,0.22)", badgeColor: "rgba(210,190,240,0.95)", badgeBorder: "rgba(120,80,180,0.42)",
+      sub: "rgba(199,176,235,0.85)",
+      verbBg: "rgba(120,80,180,0.32)", verbColor: "#E0D0F5", verbBorder: "rgba(120,80,180,0.55)",
+    },
+    gold: {
+      cardBg: "rgba(212,160,70,0.13)", cardBorder: "rgba(212,160,70,0.38)",
+      badgeBg: "rgba(212,160,70,0.20)", badgeColor: "rgba(240,213,150,0.95)", badgeBorder: "rgba(212,160,70,0.40)",
+      sub: "rgba(226,200,150,0.85)",
+      verbBg: "rgba(212,160,70,0.30)", verbColor: "#F0DCA8", verbBorder: "rgba(212,160,70,0.52)",
+    },
+  } as const;
+
+  // One renderer for every palette. Whole card is the tap target; we
   // record the choice (so it floats up next time) then navigate.
   const renderCard = (card: ChooserCard, i: number) => {
-    const purple = card.variant === "purple";
+    const p = palettes[card.variant];
     const activate = () => { recordPrayerChoice(card.key); setLocation(card.href); };
     return (
       <motion.div
@@ -265,10 +328,7 @@ export default function PrayerChooserPage() {
           onClick={activate}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); activate(); } }}
           className="w-full rounded-2xl p-4 cursor-pointer transition-opacity hover:opacity-90"
-          style={{
-            background: purple ? "rgba(120,80,180,0.14)" : "rgba(46,107,64,0.14)",
-            border: purple ? "1px solid rgba(120,80,180,0.40)" : "1px solid rgba(46,107,64,0.35)",
-          }}
+          style={{ background: p.cardBg, border: `1px solid ${p.cardBorder}` }}
         >
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
@@ -282,9 +342,9 @@ export default function PrayerChooserPage() {
                 <span
                   className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
                   style={{
-                    background: purple ? "rgba(120,80,180,0.22)" : "rgba(46,107,64,0.2)",
-                    color: purple ? "rgba(210,190,240,0.95)" : "rgba(143,175,150,0.9)",
-                    border: purple ? "1px solid rgba(120,80,180,0.42)" : "1px solid rgba(46,107,64,0.3)",
+                    background: p.badgeBg,
+                    color: p.badgeColor,
+                    border: `1px solid ${p.badgeBorder}`,
                     fontFamily: FONT,
                     whiteSpace: "nowrap",
                   }}
@@ -294,7 +354,7 @@ export default function PrayerChooserPage() {
               </div>
               <p
                 className="text-[12px] mt-1"
-                style={{ color: purple ? "rgba(199,176,235,0.85)" : "rgba(143,175,150,0.85)", margin: 0 }}
+                style={{ color: p.sub, margin: 0 }}
               >
                 {card.sub}
               </p>
@@ -302,9 +362,9 @@ export default function PrayerChooserPage() {
             <span
               className="text-[11px] font-semibold px-3 py-1.5 rounded-full shrink-0"
               style={{
-                background: purple ? "rgba(120,80,180,0.32)" : "rgba(46,107,64,0.35)",
-                color: purple ? "#E0D0F5" : "#C8D4C0",
-                border: purple ? "1px solid rgba(120,80,180,0.55)" : "1px solid rgba(46,107,64,0.55)",
+                background: p.verbBg,
+                color: p.verbColor,
+                border: `1px solid ${p.verbBorder}`,
                 fontFamily: FONT,
               }}
             >

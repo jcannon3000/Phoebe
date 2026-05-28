@@ -36,6 +36,7 @@ import meetupsRouter from "./meetups";
 import cacRouter from "./cac";
 import lectionaryRouter from "./lectionary";
 import ncmpRouter from "./ncmp";
+import podcastRouter from "./podcast";
 import groupReflectionsRouter from "./group-reflections";
 
 const router: IRouter = Router();
@@ -148,6 +149,7 @@ router.use(meetupsRouter);
 router.use(cacRouter);
 router.use(lectionaryRouter);
 router.use(ncmpRouter);
+router.use(podcastRouter);
 router.use(groupReflectionsRouter);
 
 export default router;
