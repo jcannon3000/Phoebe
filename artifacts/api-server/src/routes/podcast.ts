@@ -41,6 +41,11 @@ type Show = {
   publisher: string; // PUBLISHERS key
   feedUrl: string;
   artwork: string | null;
+  // "rss" (default) = standard podcast RSS. "scrape-roundtables" =
+  // the Diocese of NC's "Roundtables on Race" page, which has no RSS
+  // feed — episodes are MP3s embedded on a WordPress page, so we scrape
+  // them (titles + audio URLs) into the same episode shape.
+  kind?: "rss" | "scrape-roundtables";
 };
 
 // Ordered list of shows per publisher drives the browse grid.
@@ -72,6 +77,26 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     title: "Virginia Theological Seminary",
     emoji: "🎓",
     showSlugs: ["vts-love-your-neighbor"],
+  },
+  "average-episcopalian": {
+    title: "The Average Episcopalian",
+    emoji: "⛪",
+    showSlugs: ["average-episcopalian"],
+  },
+  "living-church": {
+    title: "The Living Church",
+    emoji: "📰",
+    showSlugs: ["living-church"],
+  },
+  "diocese-nc": {
+    title: "Diocese of North Carolina",
+    emoji: "🤝",
+    showSlugs: ["roundtables-on-race"],
+  },
+  "and-also-with-you": {
+    title: "And Also With You",
+    emoji: "🕊️",
+    showSlugs: ["and-also-with-you"],
   },
 };
 
@@ -167,6 +192,44 @@ const SHOWS: Record<string, Show> = {
     publisher: "vts",
     feedUrl: "https://rosskane.com/feed/podcast/",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/61/7b/c0/617bc035-10b1-2044-40f8-41be97f388c7/mza_11235952246385245389.jpg/600x600bb.jpg",
+  },
+  // ── The Average Episcopalian ────────────────────────────────────────
+  "average-episcopalian": {
+    slug: "average-episcopalian",
+    title: "The Average Episcopalian",
+    artist: "Kate Greer & Annie Hodges",
+    publisher: "average-episcopalian",
+    feedUrl: "https://rss.libsyn.com/shows/350996/destinations/2868101.xml",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/8c/6c/d2/8c6cd27c-a22d-3369-94a1-a1404d50b695/mza_1877788517495835005.png/600x600bb.jpg",
+  },
+  // ── The Living Church ───────────────────────────────────────────────
+  "living-church": {
+    slug: "living-church",
+    title: "The Living Church Podcast",
+    artist: "The Living Church",
+    publisher: "living-church",
+    feedUrl: "https://feeds.redcircle.com/2583ed91-dcdb-44c3-b2b1-13bff24fe10c",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/ac/d5/fa/acd5fa11-17c0-999d-068d-308ca424c764/mza_9623362144424080574.jpg/600x600bb.jpg",
+  },
+  // ── Episcopal Diocese of North Carolina ─────────────────────────────
+  // No RSS feed — scraped from the diocese's WordPress page.
+  "roundtables-on-race": {
+    slug: "roundtables-on-race",
+    title: "Roundtables on Race",
+    artist: "Episcopal Diocese of North Carolina",
+    publisher: "diocese-nc",
+    feedUrl: "https://episdionc.org/podcast-roundtables-on-race/",
+    artwork: null,
+    kind: "scrape-roundtables",
+  },
+  // ── And Also With You ───────────────────────────────────────────────
+  "and-also-with-you": {
+    slug: "and-also-with-you",
+    title: "And Also With You",
+    artist: "Lizzie McManus-Dail & Laura Di Panfilo",
+    publisher: "and-also-with-you",
+    feedUrl: "https://feeds.simplecast.com/2MOSOCPL",
+    artwork: "https://image.simplecastcdn.com/images/8bd398a2-dfc3-4662-bb8a-b7e502e69031/8c23cf47-3ad0-4f08-b7d6-81b5b82ca030/3000x3000/aawy-artwork.jpg",
   },
 };
 
@@ -270,6 +333,40 @@ function parseFeed(xml: string, limit: number): ParsedFeed {
   };
 }
 
+// "Roundtables on Race" has no RSS feed — episodes are MP3s embedded on
+// a WordPress page, each with a title="RoR – Season N, Episode M: …"
+// (or "Season N, …") attribute. Titles and MP3 URLs both appear
+// newest-first in document order, so we extract each list (de-duped,
+// order-preserving) and zip them by index.
+function scrapeRoundtables(html: string, fallbackTitle: string): ParsedFeed {
+  const titles: string[] = [];
+  const seenTitle = new Set<string>();
+  const titleRe = /title="((?:RoR|Season)[^"]+)"/gi;
+  let tm: RegExpExecArray | null;
+  while ((tm = titleRe.exec(html)) !== null) {
+    const t = decodeXmlText(tm[1] ?? "").replace(/^RoR\s*[–—-]\s*/i, "");
+    if (t && !seenTitle.has(t)) { seenTitle.add(t); titles.push(t); }
+  }
+  const urls: string[] = [];
+  const seenUrl = new Set<string>();
+  const urlRe = /https?:\/\/episdionc\.org\/wp-content\/uploads\/[^"'\s)]+\.mp3/gi;
+  let um: RegExpExecArray | null;
+  while ((um = urlRe.exec(html)) !== null) {
+    const u = um[0];
+    if (!seenUrl.has(u)) { seenUrl.add(u); urls.push(u); }
+  }
+  const episodes: EpisodeFull[] = urls.map((url, i) => ({
+    id: url,
+    title: titles[i] ?? `Episode ${urls.length - i}`,
+    audioUrl: url,
+    durationSeconds: null,
+    publishedAt: null,
+    description: null,
+    imageUrl: null,
+  }));
+  return { feedTitle: fallbackTitle, feedImage: null, episodes };
+}
+
 async function loadFeed(show: Show, limit: number): Promise<ParsedFeed> {
   const hit = cache.get(show.slug);
   // Cache stores the largest parse we've done; a small-limit request can
@@ -279,11 +376,13 @@ async function loadFeed(show: Show, limit: number): Promise<ParsedFeed> {
   }
   try {
     const res = await fetch(show.feedUrl, {
-      headers: { "user-agent": UA, accept: "application/rss+xml, application/xml, text/xml" },
+      headers: { "user-agent": UA, accept: "application/rss+xml, application/xml, text/xml, text/html" },
     });
     if (!res.ok) throw new Error(`feed HTTP ${res.status}`);
-    const xml = await res.text();
-    const data = parseFeed(xml, Math.max(limit, 50));
+    const body = await res.text();
+    const data = show.kind === "scrape-roundtables"
+      ? scrapeRoundtables(body, show.title)
+      : parseFeed(body, Math.max(limit, 50));
     cache.set(show.slug, { at: Date.now(), data });
     return { ...data, episodes: data.episodes.slice(0, limit) };
   } catch (err) {

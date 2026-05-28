@@ -165,7 +165,16 @@ export default function PodcastShowPage() {
       >
         <button
           type="button"
-          onClick={() => { if (show?.publisher) setLocation(`/podcasts/${show.publisher}`); else setLocation("/dashboard"); }}
+          onClick={() => {
+            // Respect how the user got here: from the CAC grid → back to
+            // the grid; from a direct menu tap (single-show publisher)
+            // → back to wherever they were (dashboard). history.back()
+            // does both; fall back to the publisher page / dashboard on
+            // a cold deep-link with no history.
+            if (window.history.length > 1) window.history.back();
+            else if (show?.publisher) setLocation(`/podcasts/${show.publisher}`);
+            else setLocation("/dashboard");
+          }}
           style={{ background: "none", border: "none", color: PALETTE.sage, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}
         >
           ← Back

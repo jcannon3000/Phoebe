@@ -455,45 +455,54 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   onClick={() => { onClose(); markSsjeRead(); openExternal(SSJE_TODAY_URL); }}
                 />
               </MenuSection>
-              {/* Podcasts — browse + listen IN-APP. The Forward Movement
-                  offices open the daily-office player (logs the office
-                  toward the rhythm grid + streak); CAC / National
-                  Cathedral / VTS open the in-app content browser
-                  (/podcasts/...) where every episode plays in a sticky
-                  player without leaving Phoebe. */}
+              {/* Podcasts — browse + listen IN-APP. Each opens the
+                  content browser (/podcasts/...) where every episode
+                  plays in a sticky player without leaving Phoebe. The
+                  Forward Movement daily offices are intentionally NOT
+                  here — they're reached through the office portals
+                  (/offices + the prayer chooser), which is where their
+                  audio belongs. */}
               <MenuSection emoji="🎧" label={t("menu.podcasts", { defaultValue: "Podcasts" })}>
-                <MenuRow
-                  emoji="🌅"
-                  label={t("menu.podcast_morning_office", { defaultValue: "Daily Morning Prayer" })}
-                  onClick={() => navigate("/podcast/morning-office")}
-                />
-                <MenuRow
-                  emoji="🌙"
-                  label={t("menu.podcast_evening_office", { defaultValue: "Daily Evening Prayer" })}
-                  onClick={() => navigate("/podcast/evening-office")}
-                />
                 {/* CAC publishes several shows — opens their browse page
                     (display of all shows → episodes → in-app player). */}
                 <MenuRow
                   emoji="🌵"
-                  label={t("menu.podcast_cac", { defaultValue: "Center for Action and Contemplation" })}
+                  label={t("menu.podcast_cac", { defaultValue: "CAC" })}
+                  sub={t("menu.podcast_cac_sub", { defaultValue: "Center for Action and Contemplation" })}
                   onClick={() => navigate("/podcasts/cac")}
                 />
-                {/* National Cathedral — the "Crossroads" podcast,
-                    straight to its episodes (single show). */}
                 <MenuRow
                   emoji="🟣"
                   label={t("menu.podcast_national_cathedral", { defaultValue: "National Cathedral" })}
                   sub={t("menu.podcast_nc_show", { defaultValue: "Crossroads" })}
                   onClick={() => navigate("/podcasts/show/nc-crossroads")}
                 />
-                {/* Virginia Theological Seminary — "Love Your Neighbor,"
-                    straight to its episodes (single show). */}
                 <MenuRow
                   emoji="🎓"
                   label={t("menu.podcast_vts", { defaultValue: "Virginia Theological Seminary" })}
                   sub={t("menu.podcast_vts_show", { defaultValue: "Love Your Neighbor" })}
                   onClick={() => navigate("/podcasts/show/vts-love-your-neighbor")}
+                />
+                <MenuRow
+                  emoji="⛪"
+                  label={t("menu.podcast_avg_episcopalian", { defaultValue: "The Average Episcopalian" })}
+                  onClick={() => navigate("/podcasts/show/average-episcopalian")}
+                />
+                <MenuRow
+                  emoji="📰"
+                  label={t("menu.podcast_living_church", { defaultValue: "The Living Church" })}
+                  onClick={() => navigate("/podcasts/show/living-church")}
+                />
+                <MenuRow
+                  emoji="🤝"
+                  label={t("menu.podcast_roundtables", { defaultValue: "Roundtables on Race" })}
+                  sub={t("menu.podcast_roundtables_sub", { defaultValue: "Diocese of North Carolina" })}
+                  onClick={() => navigate("/podcasts/show/roundtables-on-race")}
+                />
+                <MenuRow
+                  emoji="🕊️"
+                  label={t("menu.podcast_aawy", { defaultValue: "And Also With You" })}
+                  onClick={() => navigate("/podcasts/show/and-also-with-you")}
                 />
               </MenuSection>
               {/* Resources — non-prayer, non-reflection reference
