@@ -192,11 +192,23 @@ export default function OfficePodcastPage() {
 
   const durationLabel = formatDuration(episode?.durationSeconds ?? null);
 
+  // Ambient gradient behind the player — a soft glow up top (behind the
+  // cover art) melting down into the deep Phoebe green, layered over a
+  // vertical fade to near-black. Side-aware: a dawn-blue lift for
+  // Morning Prayer, a cooler indigo for Evening, both keyed off the
+  // Forward Movement blue so the page reads as one calm, lit space
+  // rather than a flat panel.
+  const pageBackground =
+    show.side === "evening"
+      ? "radial-gradient(120% 80% at 50% 12%, rgba(110,150,220,0.24) 0%, rgba(70,105,185,0.07) 38%, rgba(5,16,11,0) 66%), linear-gradient(180deg, #0B2030 0%, #091A14 45%, #05100B 100%)"
+      : "radial-gradient(120% 80% at 50% 12%, rgba(150,185,230,0.20) 0%, rgba(96,141,209,0.06) 38%, rgba(6,19,12,0) 66%), linear-gradient(180deg, #0F2A1E 0%, #0A1C13 45%, #06130C 100%)";
+
   return (
     <div
       style={{
         minHeight: "100dvh",
-        background: PALETTE.bg,
+        background: pageBackground,
+        backgroundColor: PALETTE.bg,
         color: PALETTE.warm,
         fontFamily: FONT,
         display: "flex",
