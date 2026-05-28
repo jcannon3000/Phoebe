@@ -55,6 +55,15 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     emoji: "📖",
     showSlugs: ["morning-office", "evening-office"],
   },
+  // Featured pairing — the Presiding Bishop + the Bishop of Washington,
+  // grouped into one section ABOVE CAC. Both are single-show sources, so
+  // grouping them here keeps them out of the stacked "More shows" grid
+  // and packs them two-across.
+  "episcopal-leaders": {
+    title: "Episcopal Leaders",
+    emoji: "✝️",
+    showSlugs: ["experiencing-jesus", "way-of-love-curry"],
+  },
   cac: {
     title: "Center for Action and Contemplation",
     emoji: "🌵",
@@ -73,16 +82,6 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     title: "Washington National Cathedral",
     emoji: "🟣",
     showSlugs: ["nc-crossroads"],
-  },
-  "diocese-washington": {
-    title: "Diocese of Washington",
-    emoji: "🏛️",
-    showSlugs: ["experiencing-jesus"],
-  },
-  "episcopal-church": {
-    title: "The Episcopal Church",
-    emoji: "🛡️",
-    showSlugs: ["way-of-love-curry"],
   },
   vts: {
     title: "Virginia Theological Seminary",
@@ -235,7 +234,7 @@ const SHOWS: Record<string, Show> = {
     slug: "experiencing-jesus",
     title: "Experiencing Jesus with Bishop Mariann",
     artist: "Diocese of Washington",
-    publisher: "diocese-washington",
+    publisher: "episcopal-leaders",
     feedUrl: "https://feeds.simplecast.com/1CBZhkXf",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/9d/df/80/9ddf8035-4fd1-7234-5acf-4594adff4935/mza_18382143898364247324.jpg/600x600bb.jpg",
   },
@@ -244,7 +243,7 @@ const SHOWS: Record<string, Show> = {
     slug: "way-of-love-curry",
     title: "The Way of Love with Bishop Michael Curry",
     artist: "The Episcopal Church",
-    publisher: "episcopal-church",
+    publisher: "episcopal-leaders",
     feedUrl: "https://feeds.megaphone.fm/the-way-of-love",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/85/41/7e/85417eb6-f6e8-f41b-504c-d38e106de1d0/mza_12496655716183440745.jpg/600x600bb.jpg",
   },
