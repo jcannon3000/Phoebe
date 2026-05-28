@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and, or, asc, desc, gt, inArray, isNull, sql } from "drizzle-orm";
+import { eq, and, or, asc, desc, gt, inArray, isNull, isNotNull, ne, count, sql } from "drizzle-orm";
 import {
   db,
   groupsTable,
@@ -484,14 +484,26 @@ router.get("/groups", async (req, res): Promise<void> => {
     const groupIds = joined.map(m => m.groupId);
     const groups = await db.select().from(groupsTable).where(inArray(groupsTable.id, groupIds));
 
-    const enriched = await Promise.all(groups.map(async (g) => {
-      const allMembers = await db.select().from(groupMembersTable)
-        .where(eq(groupMembersTable.groupId, g.id));
-      // Hidden admins are invisible members (pilot-designated observers),
-      // so they don't count toward the community's public member tally.
-      const countable = allMembers.filter(m => m.joinedAt !== null && m.role !== "hidden_admin");
-      const myRole = joined.find(m => m.groupId === g.id)?.role ?? "member";
-      return { ...g, memberCount: countable.length, myRole };
+    // Member counts in ONE grouped query instead of N+1 (was: a
+    // SELECT * per group, counting in JS). Hidden admins are invisible
+    // members (pilot-designated observers), so the COUNT excludes them
+    // and any not-yet-joined invite rows — matching the old in-JS
+    // filter exactly. Index: group_members(group_id).
+    const countRows = await db
+      .select({ groupId: groupMembersTable.groupId, cnt: count() })
+      .from(groupMembersTable)
+      .where(and(
+        inArray(groupMembersTable.groupId, groupIds),
+        isNotNull(groupMembersTable.joinedAt),
+        ne(groupMembersTable.role, "hidden_admin"),
+      ))
+      .groupBy(groupMembersTable.groupId);
+    const countByGroup = new Map(countRows.map(r => [r.groupId, Number(r.cnt)]));
+
+    const enriched = groups.map((g) => ({
+      ...g,
+      memberCount: countByGroup.get(g.id) ?? 0,
+      myRole: joined.find(m => m.groupId === g.id)?.role ?? "member",
     }));
 
     res.json({ groups: enriched });

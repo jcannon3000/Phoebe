@@ -1,5 +1,5 @@
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
-import { eq, and, desc, sql, count } from "drizzle-orm";
+import { eq, and, desc, sql, count, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import {
   db,
@@ -184,25 +184,43 @@ router.get(
       return;
     }
 
+    // Batch-fetch all three datasets in 3 queries total instead of
+    // 3×N sequential round-trips (was: a for-loop issuing
+    // correspondence + members + letters per correspondence — the
+    // worst N+1 in the app, and serial rather than parallelized).
+    // Indexes: correspondence_members(correspondence_id),
+    // letters(correspondence_id).
+    const corrs = await db
+      .select()
+      .from(correspondencesTable)
+      .where(and(inArray(correspondencesTable.id, correspondenceIds), eq(correspondencesTable.isActive, true)));
+    const allMemberRows = await db
+      .select()
+      .from(correspondenceMembersTable)
+      .where(inArray(correspondenceMembersTable.correspondenceId, correspondenceIds));
+    const allLetterRows = await db
+      .select()
+      .from(lettersTable)
+      .where(inArray(lettersTable.correspondenceId, correspondenceIds));
+
+    const membersByCorr = new Map<number, typeof allMemberRows>();
+    for (const m of allMemberRows) {
+      const arr = membersByCorr.get(m.correspondenceId) ?? [];
+      arr.push(m);
+      membersByCorr.set(m.correspondenceId, arr);
+    }
+    const lettersByCorr = new Map<number, typeof allLetterRows>();
+    for (const l of allLetterRows) {
+      const arr = lettersByCorr.get(l.correspondenceId) ?? [];
+      arr.push(l);
+      lettersByCorr.set(l.correspondenceId, arr);
+    }
+
     const results = [];
 
-    for (const cId of correspondenceIds) {
-      const [correspondence] = await db
-        .select()
-        .from(correspondencesTable)
-        .where(and(eq(correspondencesTable.id, cId), eq(correspondencesTable.isActive, true)));
-
-      if (!correspondence) continue;
-
-      const members = await db
-        .select()
-        .from(correspondenceMembersTable)
-        .where(eq(correspondenceMembersTable.correspondenceId, cId));
-
-      const letters = await db
-        .select()
-        .from(lettersTable)
-        .where(eq(lettersTable.correspondenceId, cId));
+    for (const correspondence of corrs) {
+      const members = membersByCorr.get(correspondence.id) ?? [];
+      const letters = lettersByCorr.get(correspondence.id) ?? [];
 
       const now = new Date();
       const periodDays = correspondence.groupType === "small_group" ? 14 : 7;
