@@ -321,6 +321,10 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
     // than writing a recursive SQL CTE — the set is small (<= 365
     // for a year of dedicated practice) and the round-trip cost is
     // dwarfed by the dashboard render.
+    //
+    // A >= 3-minute National Cathedral Morning Prayer watch counts as
+    // an office day too, so faithfully watching the broadcast keeps
+    // the streak alive just like praying an office in-app.
     const [meTz] = await db
       .select({ timezone: usersTable.timezone })
       .from(usersTable)
@@ -330,7 +334,10 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
       SELECT DISTINCT to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day
       FROM prayer_sessions
       WHERE user_id = ${sessionUserId}
-        AND surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
+        AND (
+          surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
+          OR (surface = 'national-cathedral' AND duration_seconds >= 180)
+        )
     `);
     const officeDaySet = new Set(dayRows.rows.map((r) => r.day));
     const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
@@ -426,16 +433,24 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
     // One row per (day, side). The CASE collapses the four surfaces
     // into "morning" or "evening"; DISTINCT folds duplicate sessions
     // for the same side on the same day into one.
+    // Watching National Cathedral Morning Prayer for >= 3 min counts as
+    // a morning office here (the "national-cathedral" surface, gated on
+    // duration so a quick tap-away doesn't light up the rhythm grid).
+    // It maps to the 'morning' side in the CASE below; the duration
+    // gate lives in the WHERE so the CASE can stay surface-only.
     const rows = await db.execute<{ day: string; side: string }>(sql`
       SELECT DISTINCT
         to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day,
         CASE
-          WHEN surface IN ('morning-prayer', 'morning-devotion') THEN 'morning'
+          WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral') THEN 'morning'
           WHEN surface IN ('evening-prayer', 'early-evening-devotion') THEN 'evening'
         END AS side
       FROM prayer_sessions
       WHERE user_id = ${sessionUserId}
-        AND surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
+        AND (
+          surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
+          OR (surface = 'national-cathedral' AND duration_seconds >= 180)
+        )
         AND ended_at >= NOW() - INTERVAL '8 days'
     `);
     const byDay = new Map<string, { morning: boolean; evening: boolean }>();
