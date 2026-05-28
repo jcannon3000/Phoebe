@@ -308,16 +308,27 @@ export default function PodcastShowPage() {
                       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); playEpisode(ep); } }}
                       className="flex items-start gap-3 flex-1 min-w-0 cursor-pointer transition-opacity hover:opacity-90"
                     >
-                      <div
-                        style={{
-                          width: 34, height: 34, borderRadius: "50%", flexShrink: 0, marginTop: 2,
-                          background: active ? "#A8C5A0" : "rgba(46,107,64,0.35)",
-                          color: active ? "#0A1A0F" : "#F0EDE6",
-                          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
-                        }}
-                        aria-hidden
-                      >
-                        {active && player.isPlaying ? "♪" : "▶"}
+                      {/* Episode thumbnail with subtle play overlay */}
+                      <div style={{ width: 52, height: 52, flexShrink: 0, position: "relative", borderRadius: 10, overflow: "hidden" }}>
+                        {(ep.imageUrl ?? showData?.artwork) ? (
+                          <img
+                            src={ep.imageUrl ?? showData?.artwork ?? ""}
+                            alt=""
+                            loading="lazy"
+                            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", background: "rgba(143,175,150,0.12)" }}
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                          />
+                        ) : (
+                          <div style={{ width: "100%", height: "100%", background: "rgba(46,107,64,0.22)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>🎧</div>
+                        )}
+                        <div style={{
+                          position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                          background: active ? "rgba(0,0,0,0.38)" : "rgba(0,0,0,0.16)",
+                        }}>
+                          <span style={{ color: active ? "#A8C5A0" : "rgba(255,255,255,0.85)", fontSize: 15, textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>
+                            {active && player.isPlaying ? "♪" : "▶"}
+                          </span>
+                        </div>
                       </div>
                       <div className="min-w-0 flex-1">
                         {listened && (
