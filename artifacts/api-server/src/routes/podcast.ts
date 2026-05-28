@@ -64,13 +64,21 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     emoji: "✝️",
     showSlugs: ["experiencing-jesus", "way-of-love-curry"],
   },
-  // Second row — Crossroads (the Cathedral) + The Living Church Podcast,
-  // grouped so they pack two-across instead of sitting alone in the
-  // stacked "More shows" grid.
+  // Around the Church — the Episcopal-world single-show sources gathered
+  // into one grid (National Cathedral, The Living Church, Roundtables on
+  // Race, And Also With You, The Average Episcopalian, VTS) so they pack
+  // two-across instead of each sitting alone in "More shows."
   "around-the-church": {
     title: "Around the Church",
     emoji: "⛪",
-    showSlugs: ["nc-crossroads", "living-church"],
+    showSlugs: [
+      "nc-crossroads",
+      "living-church",
+      "roundtables-on-race",
+      "and-also-with-you",
+      "average-episcopalian",
+      "vts-love-your-neighbor",
+    ],
   },
   cac: {
     title: "Center for Action and Contemplation",
@@ -86,40 +94,22 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "cac-homilies",
     ],
   },
-  vts: {
-    title: "Virginia Theological Seminary",
-    emoji: "🎓",
-    showSlugs: ["vts-love-your-neighbor"],
-  },
-  "average-episcopalian": {
-    title: "The Average Episcopalian",
-    emoji: "⛪",
-    showSlugs: ["average-episcopalian"],
-  },
-  "diocese-nc": {
-    title: "Diocese of North Carolina",
-    emoji: "🫱🏽‍🫲🏿",
-    showSlugs: ["roundtables-on-race"],
-  },
-  "and-also-with-you": {
-    title: "And Also With You",
-    emoji: "🕊️",
-    showSlugs: ["and-also-with-you"],
-  },
-  "yale-fore": {
-    title: "Forum on Religion & Ecology",
-    emoji: "🌎",
-    showSlugs: ["fore-spotlights"],
+  // Single-show sources → the stacked "More shows" grid, in this order
+  // (Sojourners leads).
+  sojourners: {
+    title: "Sojourners",
+    emoji: "✊",
+    showSlugs: ["lead-us-not"],
   },
   "yale-faith-culture": {
     title: "Yale Center for Faith & Culture",
     emoji: "📘",
     showSlugs: ["for-the-life-of-the-world"],
   },
-  sojourners: {
-    title: "Sojourners",
-    emoji: "✊",
-    showSlugs: ["lead-us-not"],
+  "yale-fore": {
+    title: "Forum on Religion & Ecology",
+    emoji: "🌎",
+    showSlugs: ["fore-spotlights"],
   },
 };
 
@@ -265,8 +255,8 @@ const SHOWS: Record<string, Show> = {
   "vts-love-your-neighbor": {
     slug: "vts-love-your-neighbor",
     title: "Love Your Neighbor",
-    artist: "Ross Kane · VTS",
-    publisher: "vts",
+    artist: "Virginia Theological Seminary - Rev. Ross Kane",
+    publisher: "around-the-church",
     feedUrl: "https://rosskane.com/feed/podcast/",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/61/7b/c0/617bc035-10b1-2044-40f8-41be97f388c7/mza_11235952246385245389.jpg/600x600bb.jpg",
   },
@@ -275,7 +265,7 @@ const SHOWS: Record<string, Show> = {
     slug: "average-episcopalian",
     title: "The Average Episcopalian",
     artist: "Kate Greer & Annie Hodges",
-    publisher: "average-episcopalian",
+    publisher: "around-the-church",
     feedUrl: "https://rss.libsyn.com/shows/350996/destinations/2868101.xml",
     artwork: "/podcast-art/average-episcopalian.jpg",
   },
@@ -294,7 +284,7 @@ const SHOWS: Record<string, Show> = {
     slug: "roundtables-on-race",
     title: "Roundtables on Race",
     artist: "Episcopal Diocese of North Carolina",
-    publisher: "diocese-nc",
+    publisher: "around-the-church",
     feedUrl: "https://episdionc.org/podcast-roundtables-on-race/",
     artwork: "/podcast-art/roundtables.jpg",
     kind: "scrape-roundtables",
@@ -304,7 +294,7 @@ const SHOWS: Record<string, Show> = {
     slug: "and-also-with-you",
     title: "And Also With You",
     artist: "Lizzie McManus-Dail & Laura Di Panfilo",
-    publisher: "and-also-with-you",
+    publisher: "around-the-church",
     feedUrl: "https://feeds.simplecast.com/2MOSOCPL",
     artwork: "https://image.simplecastcdn.com/images/8bd398a2-dfc3-4662-bb8a-b7e502e69031/8c23cf47-3ad0-4f08-b7d6-81b5b82ca030/3000x3000/aawy-artwork.jpg",
   },
