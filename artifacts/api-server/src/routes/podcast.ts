@@ -213,7 +213,7 @@ const SHOWS: Record<string, Show> = {
   // ── Washington National Cathedral ───────────────────────────────────
   "nc-crossroads": {
     slug: "nc-crossroads",
-    title: "Crossroads",
+    title: "Crossroads with Dean Randy Hollerith",
     artist: "Washington National Cathedral",
     publisher: "around-the-church",
     feedUrl: "https://feed.podbean.com/crossroadsWNC/feed.xml",

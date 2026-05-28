@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 // ── Global podcast player ────────────────────────────────────────────────
 //
@@ -376,12 +377,15 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         <div
           style={{
             position: "fixed", inset: 0, zIndex: 70, fontFamily: FONT, color: "#F0EDE6",
-            background: "linear-gradient(180deg, #143227 0%, #0C1F12 55%, #06130C 100%)",
+            background: "#0C1F12",
             display: "flex", flexDirection: "column",
             paddingTop: "max(0.75rem, env(safe-area-inset-top))",
             paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))",
           }}
         >
+          {/* Drifting gradient backdrop — same animation as the home /
+              office slides, behind the now-playing content. */}
+          <AnimatedBackground base="#0C1F12" variant="pronounced" />
           {/* Top bar: minimize / label / close */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 16px 0", flexShrink: 0 }}>
             <button type="button" onClick={() => setExpanded(false)} aria-label="Minimize player"
