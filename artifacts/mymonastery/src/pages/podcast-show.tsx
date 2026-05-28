@@ -1,4 +1,4 @@
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -151,10 +151,25 @@ export default function PodcastShowPage() {
   });
   const listenedSet = new Set(me?.listenedKeys ?? []);
 
+  // In-show episode list controls: free-text search + newest/oldest sort.
+  const [query, setQuery] = useState("");
+  const [sortNewest, setSortNewest] = useState(true);
+  const episodes = data?.episodes ?? [];
+  const visibleEpisodes = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const filtered = q
+      ? episodes.filter((ep) => `${ep.title ?? ""} ${ep.description ?? ""}`.toLowerCase().includes(q))
+      : episodes;
+    return [...filtered].sort((a, b) => {
+      const ta = new Date(a.publishedAt ?? 0).getTime();
+      const tb = new Date(b.publishedAt ?? 0).getTime();
+      return sortNewest ? tb - ta : ta - tb;
+    });
+  }, [episodes, query, sortNewest]);
+
   if (authLoading || !user) return null;
 
   const show = data?.show;
-  const episodes = data?.episodes ?? [];
 
   return (
     <div style={{ minHeight: "100dvh", background: PALETTE.bg, color: PALETTE.warm, fontFamily: FONT, paddingBottom: player.current ? 96 : 0 }}>
@@ -215,8 +230,34 @@ export default function PodcastShowPage() {
             Couldn't load episodes right now. Please try again in a little while.
           </p>
         ) : (
-          <div className="space-y-2.5">
-            {episodes.map((ep) => {
+          <>
+            {/* Search + newest/oldest sort */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
+              <div style={{ position: "relative", flex: 1 }}>
+                <span aria-hidden style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 13, opacity: 0.6 }}>🔍</span>
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search episodes…"
+                  aria-label="Search episodes"
+                  style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px 9px 34px", borderRadius: 12, background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.30)", color: PALETTE.warm, fontFamily: FONT, fontSize: 14, outline: "none" }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setSortNewest((s) => !s)}
+                aria-label="Toggle sort order"
+                style={{ flexShrink: 0, padding: "9px 13px", borderRadius: 12, background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.30)", color: "rgba(168,197,160,0.95)", fontFamily: FONT, fontSize: 12.5, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+              >
+                {sortNewest ? "Newest ↓" : "Oldest ↑"}
+              </button>
+            </div>
+            {visibleEpisodes.length === 0 ? (
+              <p style={{ color: PALETTE.faint, fontSize: 13, marginTop: 8 }}>No episodes match “{query}”.</p>
+            ) : (
+            <div className="space-y-2.5">
+              {visibleEpisodes.map((ep) => {
               const active = player.isCurrent(slug, ep.id);
               const date = formatDate(ep.publishedAt);
               const dur = formatDuration(ep.durationSeconds);
@@ -270,7 +311,9 @@ export default function PodcastShowPage() {
                 </div>
               );
             })}
-          </div>
+            </div>
+            )}
+          </>
         )}
       </main>
     </div>

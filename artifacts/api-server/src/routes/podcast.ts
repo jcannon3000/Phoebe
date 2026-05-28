@@ -326,6 +326,9 @@ function parseDurationSeconds(raw: string | null): number | null {
   return parts.reduce((acc, p) => acc * 60 + p, 0);
 }
 
+function fromCodePoint(cp: number): string {
+  try { return cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : ""; } catch { return ""; }
+}
 function decodeXmlText(s: string): string {
   return s
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
@@ -334,6 +337,10 @@ function decodeXmlText(s: string): string {
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#0*39;|&apos;/g, "'")
+    // Numeric character refs — without these, en-dashes / curly quotes
+    // leak as literal "&#8211;" / "&#8217;" in episode titles.
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => fromCodePoint(parseInt(d, 10)))
     .trim();
 }
 
