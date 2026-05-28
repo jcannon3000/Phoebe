@@ -1578,6 +1578,15 @@ router.get("/moments", async (req, res): Promise<void> => {
     // This runs BEFORE we read tokens so a user newly added to a group picks
     // up that group's practices on their very next /moments request — no
     // refresh, no delay, no dependency on the eager helpers firing.
+    // Track which practices we've already reconciled this request so the
+    // post-reconcile pass below doesn't redo the same writes. The pre-
+    // reconcile (by group/feed membership) and post-reconcile (by the
+    // moments the viewer holds tokens for) overlap almost entirely —
+    // reconciling twice per dashboard load was pure waste. Dedup keeps
+    // the exact same set of practices synced (freshness guarantee
+    // intact) at roughly half the write fan-out.
+    const reconciledGroupPracticeIds = new Set<number>();
+    const reconciledFeedPracticeIds = new Set<number>();
     try {
       const myGroupRows = await db.select({ groupId: groupMembersTable.groupId })
         .from(groupMembersTable)
@@ -1607,6 +1616,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           ...secondaryPractices.map(p => p.id),
         ]));
         await Promise.all(allPracticeIds.map(id => reconcileGroupPracticeMembers(id)));
+        for (const id of allPracticeIds) reconciledGroupPracticeIds.add(id);
       }
 
       // Same pre-reconcile pattern for feed-scoped intercessions:
@@ -1626,6 +1636,7 @@ router.get("/moments", async (req, res): Promise<void> => {
             sql`${sharedMomentsTable.state} != 'archived'`,
           ));
         await Promise.all(feedPractices.map(p => reconcileFeedPracticeMembers(p.id)));
+        for (const p of feedPractices) reconciledFeedPracticeIds.add(p.id);
       }
     } catch (err) {
       console.error("[GET /api/moments] pre-reconcile failed:", err);
@@ -1697,14 +1708,19 @@ router.get("/moments", async (req, res): Promise<void> => {
     // roster; feed-scoped intercessions reflect the feed's subscribers.
     // Either way, this is the authoritative sync point so a stale eager
     // path can't leak into the response.
+    // Post-reconcile — only practices NOT already synced by the pre-
+    // reconcile above. This catches the edge cases the membership-based
+    // pre-pass misses (e.g. a token lingering from a group the viewer
+    // has since left), without re-running the writes for everything the
+    // pre-pass already handled.
     await Promise.all(
       flatMoments
-        .filter(m => m.groupId !== null && m.groupId !== undefined)
+        .filter(m => m.groupId !== null && m.groupId !== undefined && !reconciledGroupPracticeIds.has(m.id))
         .map(m => reconcileGroupPracticeMembers(m.id))
     );
     await Promise.all(
       flatMoments
-        .filter(m => m.prayerFeedId !== null && m.prayerFeedId !== undefined)
+        .filter(m => m.prayerFeedId !== null && m.prayerFeedId !== undefined && !reconciledFeedPracticeIds.has(m.id))
         .map(m => reconcileFeedPracticeMembers(m.id))
     );
 
