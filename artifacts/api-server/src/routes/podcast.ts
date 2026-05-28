@@ -55,28 +55,20 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     emoji: "📖",
     showSlugs: ["morning-office", "evening-office"],
   },
-  // Featured pairing — the Presiding Bishop + the Bishop of Washington,
-  // grouped into one section ABOVE CAC. Both are single-show sources, so
-  // grouping them here keeps them out of the stacked "More shows" grid
-  // and packs them two-across.
-  "episcopal-leaders": {
-    title: "Episcopal Leaders",
-    emoji: "✝️",
-    showSlugs: ["experiencing-jesus", "way-of-love-curry"],
-  },
-  // Around the Church — the Episcopal-world single-show sources gathered
-  // into one grid (National Cathedral, The Living Church, Roundtables on
-  // Race, And Also With You, The Average Episcopalian, VTS) so they pack
-  // two-across instead of each sitting alone in "More shows."
+  // Lead section — intentionally has NO title (an empty title makes the
+  // browse skip the header). The Episcopal-world shows in a curated order
+  // open the page as one headerless grid.
   "around-the-church": {
-    title: "Around the Church",
-    emoji: "⛪",
+    title: "",
+    emoji: "",
     showSlugs: [
+      "experiencing-jesus",
+      "way-of-love-curry",
       "nc-crossroads",
-      "living-church",
       "roundtables-on-race",
       "and-also-with-you",
       "average-episcopalian",
+      "living-church",
       "vts-love-your-neighbor",
     ],
   },
@@ -233,7 +225,7 @@ const SHOWS: Record<string, Show> = {
     slug: "experiencing-jesus",
     title: "Experiencing Jesus with Bishop Mariann",
     artist: "Diocese of Washington",
-    publisher: "episcopal-leaders",
+    publisher: "around-the-church",
     feedUrl: "https://feeds.simplecast.com/1CBZhkXf",
     artwork: "/podcast-art/budde.jpg",
   },
@@ -242,7 +234,7 @@ const SHOWS: Record<string, Show> = {
     slug: "way-of-love-curry",
     title: "The Way of Love with Bishop Michael Curry",
     artist: "The Episcopal Church",
-    publisher: "episcopal-leaders",
+    publisher: "around-the-church",
     feedUrl: "https://feeds.megaphone.fm/the-way-of-love",
     artwork: "/podcast-art/curry.jpg",
   },

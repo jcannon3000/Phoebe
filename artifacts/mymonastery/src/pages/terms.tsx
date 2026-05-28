@@ -10,7 +10,7 @@
 // Licensed Application Schedule that Apple requires every custom iOS
 // EULA to incorporate. If you rewrite, keep both sections intact.
 
-const LAST_UPDATED = "May 1, 2026";
+const LAST_UPDATED = "May 28, 2026";
 const CONTACT_EMAIL = "invites@withphoebe.app";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -200,8 +200,9 @@ export function TermsBody() {
         <Section title="6. Your Content">
           <p>
             "Your Content" means everything you submit to or through Phoebe — prayer requests, Lectio Divina
-            reflections, letters, intentions, practice notes, RSVPs, your display name and profile photo, and
-            anything else you create on the Service.
+            reflections, letters, one-to-one messages, group reflections and comments, podcast recommendations,
+            prayers you record for another member, intentions, practice notes, RSVPs, your display name and
+            profile photo, and anything else you create on the Service.
           </p>
           <p>
             <strong>You keep ownership of Your Content.</strong> You grant us a limited, non-exclusive,
@@ -248,10 +249,10 @@ export function TermsBody() {
 
         <Section title="8. Termination">
           <p>
-            <strong>You may terminate at any time.</strong> Go to Settings → Delete account. Your account will be
-            scheduled for deletion and permanently removed after a 30-day window, during which you can change your
-            mind by signing back in. After 30 days, deletion is permanent and irreversible. You can also export
-            your data as JSON before you delete.
+            <strong>You may terminate at any time.</strong> Go to Settings → Delete account and confirm by typing
+            your account email. Deletion is immediate and permanent: your account and all user-owned content are
+            removed right away and cannot be recovered, and we revoke any Google authorization we still hold. If
+            you'd like a copy first, export your data as JSON (Settings → Export my data) before you delete.
           </p>
           <p>
             <strong>We may terminate or suspend your account</strong> at any time, with or without notice, if:
@@ -526,7 +527,20 @@ export function TermsBody() {
           </ul>
         </Section>
 
-        <Section title="17. Contact">
+        <Section title="17. Third-Party Content and Links">
+          <p>
+            Phoebe surfaces content from other people and organizations — for example, daily-office and
+            contemplative podcasts, the Washington National Cathedral's livestream, daily reflections and
+            Scripture readings, and links to other websites and meeting tools. That content and those sites are
+            owned and operated by third parties, not by us. We don't create, control, endorse, or guarantee
+            third-party content, and we're not responsible for it or for the practices of the sites it lives on.
+            When you play, view, or open it, your use may be subject to that third party's own terms and privacy
+            policy, and your device may connect to them directly (our Privacy Policy explains what that
+            involves). You access third-party content at your own discretion.
+          </p>
+        </Section>
+
+        <Section title="18. Contact">
           <p>
             For legal notices, policy questions, copyright complaints, or anything else about these Terms, email{" "}
             <MailLink />.

@@ -2,7 +2,7 @@ import {
   createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode,
 } from "react";
 import { useLocation } from "wouter";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -34,6 +34,7 @@ export type PlayingEpisode = {
   showArtwork?: string | null;
   durationSeconds?: number | null;
   publishedAt?: string | null;
+  description?: string | null;
 };
 
 type PlayerCtx = {
@@ -83,6 +84,8 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const [duration, setDuration] = useState(0);
   const [rate, setRate] = useState(1);
   const [artBroken, setArtBroken] = useState(false);
+  // Full-screen "now playing" listener (vs. the bottom mini-bar).
+  const [expanded, setExpanded] = useState(false);
 
   const pendingSeekRef = useRef<number | null>(null);
   const lastSaveRef = useRef(0);
@@ -117,6 +120,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
 
   const play = useCallback((ep: PlayingEpisode) => {
     if (!ep.audioUrl) return;
+    setExpanded(true); // tapping an episode opens the full-screen listener
     setCurrent((prev) => {
       if (prev && prev.showSlug === ep.showSlug && prev.episodeId === ep.episodeId) {
         audioRef.current?.play().catch(() => { /* gesture-gated */ });
@@ -231,13 +235,46 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     if (a && current) savePos(current, a.currentTime);
     commitSession();
     if (a) a.pause();
-    setCurrent(null); setIsPlaying(false); setCurrentTime(0); setDuration(0);
+    setCurrent(null); setIsPlaying(false); setCurrentTime(0); setDuration(0); setExpanded(false);
   };
 
   const isCurrent = useCallback(
     (slug: string, id: string) => !!current && current.showSlug === slug && current.episodeId === id,
     [current],
   );
+
+  // ── Recommend (♡) for the now-playing episode ───────────────────────────
+  // Shares the episode to the community feed. Lives on the player (the
+  // full-screen listener) rather than the show list. Only fetches the
+  // engagement state while something is playing.
+  const { data: engagement } = useQuery<{ recommendedKeys: string[] }>({
+    queryKey: ["/api/podcasts/me"],
+    queryFn: () => apiRequest("GET", "/api/podcasts/me"),
+    enabled: !!user && !!current,
+    staleTime: 60_000,
+  });
+  const isRecommended =
+    !!current && new Set(engagement?.recommendedKeys ?? []).has(`${current.showSlug}:${current.episodeId}`);
+  const recommendMut = useMutation({
+    mutationFn: (rec: boolean) => {
+      const c = current!;
+      return rec
+        ? apiRequest("POST", "/api/podcasts/recommendations", {
+            showSlug: c.showSlug, episodeId: c.episodeId,
+            episodeTitle: c.title ?? undefined, episodeAudioUrl: c.audioUrl,
+            episodeImageUrl: c.imageUrl ?? c.showArtwork ?? undefined,
+            durationSeconds: c.durationSeconds ?? undefined,
+            publishedAt: c.publishedAt ?? undefined,
+            showTitle: c.showTitle ?? undefined, showArtwork: c.showArtwork ?? undefined,
+          })
+        : apiRequest("DELETE", "/api/podcasts/recommendations", { showSlug: c.showSlug, episodeId: c.episodeId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/podcasts/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/podcasts/recommendations"] });
+    },
+  });
+  const toggleRecommend = () => { if (current) recommendMut.mutate(!isRecommended); };
 
   const onTrackClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const a = audioRef.current; if (!a || !a.duration || !isFinite(a.duration)) return;
@@ -285,10 +322,10 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
           </div>
 
           <div className="w-full max-w-2xl mx-auto" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px" }}>
-            {/* Artwork + title → tap to open the show page. */}
+            {/* Artwork + title → tap to expand the full-screen listener. */}
             <button
               type="button"
-              onClick={() => current && setLocation(`/podcasts/show/${current.showSlug}`)}
+              onClick={() => setExpanded(true)}
               style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: 0, cursor: "pointer", minWidth: 0, flex: 1 }}
             >
               {art ? (
@@ -328,6 +365,100 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
               style={{ background: "none", border: "none", color: "rgba(143,175,150,0.7)", fontSize: 18, cursor: "pointer", padding: "0 2px", flexShrink: 0 }}>
               ✕
             </button>
+          </div>
+        </div>
+      )}
+      {/* Full-screen "now playing" listener — opened by starting an
+          episode or tapping the mini-bar. Carries the Recommend action
+          (the show list no longer does). Drives the same <audio> as the
+          mini-bar, so collapsing keeps playback going. */}
+      {current && expanded && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 70, fontFamily: FONT, color: "#F0EDE6",
+            background: "linear-gradient(180deg, #143227 0%, #0C1F12 55%, #06130C 100%)",
+            display: "flex", flexDirection: "column",
+            paddingTop: "max(0.75rem, env(safe-area-inset-top))",
+            paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))",
+          }}
+        >
+          {/* Top bar: minimize / label / close */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 16px 0", flexShrink: 0 }}>
+            <button type="button" onClick={() => setExpanded(false)} aria-label="Minimize player"
+              style={{ background: "none", border: "none", color: "rgba(168,197,160,0.95)", fontSize: 28, lineHeight: 1, cursor: "pointer", padding: 4 }}>
+              ⌄
+            </button>
+            <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(143,175,150,0.75)" }}>
+              Now Playing
+            </span>
+            <button type="button" onClick={closePlayer} aria-label="Close player"
+              style={{ background: "none", border: "none", color: "rgba(143,175,150,0.7)", fontSize: 20, lineHeight: 1, cursor: "pointer", padding: 4 }}>
+              ✕
+            </button>
+          </div>
+
+          {/* Center: cover art + title + show + description (scrolls if long) */}
+          <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 26px 8px", textAlign: "center" }}>
+            {art ? (
+              <img src={art} alt="" onError={() => setArtBroken(true)}
+                style={{ width: "min(64vw, 288px)", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: 22, background: "rgba(143,175,150,0.12)", boxShadow: "0 16px 40px rgba(0,0,0,0.4)" }} />
+            ) : (
+              <div style={{ width: "min(64vw, 288px)", aspectRatio: "1 / 1", borderRadius: 22, background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.35)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 72 }} aria-hidden>🎧</div>
+            )}
+            <h2 style={{ fontSize: 21, fontWeight: 800, margin: "24px 0 0", lineHeight: 1.2, maxWidth: 460 }}>
+              {current.title ?? "Now playing"}
+            </h2>
+            <button type="button"
+              onClick={() => { setExpanded(false); setLocation(`/podcasts/show/${current.showSlug}`); }}
+              style={{ background: "none", border: "none", color: "#8FAF96", fontFamily: FONT, fontSize: 13.5, margin: "8px 0 0", cursor: "pointer", padding: 0 }}>
+              {current.showTitle ?? "View show"}
+            </button>
+            {current.description && (
+              <p style={{ fontSize: 13, color: "rgba(200,212,192,0.85)", lineHeight: 1.55, margin: "18px 0 0", maxWidth: 460, textAlign: "left", whiteSpace: "pre-line" }}>
+                {current.description}
+              </p>
+            )}
+          </div>
+
+          {/* Controls pinned to the bottom */}
+          <div style={{ flexShrink: 0, padding: "8px 26px 0" }}>
+            <div onClick={onTrackClick} role="slider" aria-label="Seek" aria-valuenow={Math.round(pct)}
+              style={{ height: 6, borderRadius: 999, background: "rgba(143,175,150,0.18)", cursor: "pointer", overflow: "hidden" }}>
+              <div style={{ width: `${pct}%`, height: "100%", background: "#A8C5A0" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(143,175,150,0.8)", margin: "6px 2px 0" }}>
+              <span>{fmtClock(currentTime)}</span>
+              <span>{duration > 0 ? fmtClock(duration) : "--:--"}</span>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 30, margin: "14px 0 0" }}>
+              <button type="button" onClick={() => skip(-15)} aria-label="Back 15 seconds"
+                style={{ background: "none", border: "none", color: "#C8D4C0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>⟲15</button>
+              <button type="button" onClick={toggle} aria-label={isPlaying ? "Pause" : "Play"}
+                style={{ width: 64, height: 64, borderRadius: "50%", background: "#A8C5A0", color: "#0A1A0F", border: "none", fontSize: 26, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {isPlaying ? "⏸" : "▶"}
+              </button>
+              <button type="button" onClick={() => skip(30)} aria-label="Forward 30 seconds"
+                style={{ background: "none", border: "none", color: "#C8D4C0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>30⟳</button>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "16px 0 0" }}>
+              <button type="button" onClick={cycleRate} aria-label="Playback speed"
+                style={{ background: "rgba(46,107,64,0.25)", border: "1px solid rgba(46,107,64,0.4)", color: "#C8D4C0", fontSize: 12, fontWeight: 700, borderRadius: 999, padding: "6px 12px", cursor: "pointer" }}>
+                {rate}×
+              </button>
+              <button type="button" onClick={toggleRecommend}
+                className="transition-opacity hover:opacity-90"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 16px",
+                  fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer",
+                  background: isRecommended ? "rgba(212,160,70,0.18)" : "rgba(46,107,64,0.14)",
+                  color: isRecommended ? "#F0DCA8" : "rgba(168,197,160,0.95)",
+                  border: `1px solid ${isRecommended ? "rgba(212,160,70,0.45)" : "rgba(46,107,64,0.3)"}`,
+                }}>
+                {isRecommended ? "♥ Recommended" : "♡ Recommend"}
+              </button>
+            </div>
           </div>
         </div>
       )}

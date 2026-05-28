@@ -15,6 +15,7 @@ import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { PodcastPlayerProvider } from "@/components/PodcastPlayer";
 import { Component, useEffect, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
+import { isChunkLoadError, recoverFromStaleChunk } from "@/lib/staleChunk";
 
 // Scroll the window to (0, 0) on every route change. Without this,
 // navigating from a form-heavy page (login, prayer-request edit, letter
@@ -35,15 +36,27 @@ function ScrollToTopOnNavigate() {
   return null;
 }
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null; recovering: boolean }> {
   constructor(props: { children: ReactNode }) {
     super(props);
-    this.state = { error: null };
+    this.state = { error: null, recovering: false };
   }
   static getDerivedStateFromError(error: Error) {
     return { error };
   }
   componentDidCatch(error: Error, info: ErrorInfo) {
+    // A failed dynamic import (lazy route) after a deploy isn't a real
+    // crash — the running page is referencing chunk hashes the new
+    // deploy removed. Reload (network-first nav fetches the fresh index
+    // + chunks) instead of showing the scary fallback. Guarded against
+    // reload loops; if recovery is suppressed we fall through to the
+    // normal fallback so the user isn't stuck on a blank "Updating…".
+    if (isChunkLoadError(error)) {
+      if (recoverFromStaleChunk("error-boundary")) {
+        this.setState({ recovering: true });
+        return;
+      }
+    }
     // Frontend audit: this is the only client-side crash signal today.
     // console.error keeps it in the device console / Safari Web
     // Inspector; wire a browser error reporter (Sentry) here so
@@ -52,6 +65,23 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
     console.error("React render error:", error, info);
   }
   render() {
+    if (this.state.recovering) {
+      // A stale-chunk reload is in flight — show a calm placeholder
+      // (not the alarming fallback) for the moment before the refresh.
+      return (
+        <div
+          style={{
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            textAlign: "center", padding: 32, gap: 16,
+            background: "#091A10", minHeight: "100vh",
+            fontFamily: "'Space Grotesk', system-ui, sans-serif",
+          }}
+        >
+          <div style={{ fontSize: 40 }}>🕯️</div>
+          <p style={{ color: "#8FAF96", fontSize: 15, margin: 0 }}>Updating…</p>
+        </div>
+      );
+    }
     if (this.state.error) {
       // Friendly fallback (frontend audit). We deliberately do NOT show
       // the raw message/stack to the user — it's jarring in a
@@ -75,7 +105,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
             let's get you back.
           </p>
           <button
-            onClick={() => { this.setState({ error: null }); window.location.href = "/dashboard"; }}
+            onClick={() => { this.setState({ error: null, recovering: false }); window.location.href = "/dashboard"; }}
             style={{
               marginTop: 8, padding: "12px 28px", background: "#2D5E3F", color: "#F0EDE6",
               border: "none", borderRadius: 12, cursor: "pointer", fontSize: 15, fontWeight: 600,

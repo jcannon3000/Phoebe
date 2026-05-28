@@ -2,16 +2,23 @@ import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useOfficePrefs, setOfficeAudioSource, type OfficeAudioSource } from "@/lib/officePrefs";
 
-// ── /podcast/:show — Forward Movement daily office podcasts, embedded ──
+// ── /podcast/:show — daily office podcasts, embedded ──
 //
-// One generic player for both Forward Movement office podcasts (the BCP
-// 1979 Morning / Evening Prayer offices, read aloud). The show is
-// derived from the path: /podcast/evening-office vs anything else
-// (/podcast/morning-office). Surfaced as options on the prayer chooser;
-// this page plays today's episode inline with a thin Phoebe header,
-// the same in-app-not-ejected feel as the National Cathedral watch page
-// (/ncmp/watch).
+// One generic player for the read-aloud Morning / Evening Prayer office.
+// The show (side) is derived from the path: /podcast/evening-office vs
+// anything else (/podcast/morning-office). Surfaced as options on the
+// prayer chooser; this page plays today's episode inline with a thin
+// Phoebe header, the same in-app-not-ejected feel as the National
+// Cathedral watch page (/ncmp/watch).
+//
+// Source toggle: the office can be played in either of two traditions —
+// Forward Movement (the US 1979 BCP offices, the default) or the Church
+// of England (Common Worship Morning/Evening Prayer). The toggle writes
+// the per-device `officeAudioSource` pref (also settable in Settings),
+// and the /today fetch passes ?source= so the server returns the right
+// feed's episode.
 //
 // Prayer-session log:
 //   We accumulate ACTUAL playback time — segments bounded by the
@@ -49,6 +56,27 @@ const SHOWS: Record<ShowKey, {
     headerLabel: "🎧 Evening Prayer",
     fallbackTitle: "An Evening at Prayer",
     blurb: "The full order of Evening Prayer from the Book of Common Prayer, read aloud. A new episode every evening.",
+  },
+};
+
+// Per-source display copy. `provider` shows under the title; `blurb`
+// describes the office in that tradition's terms.
+const SOURCE_META: Record<OfficeAudioSource, {
+  label: string;
+  provider: string;
+  blurb: (side: "morning" | "evening") => string;
+}> = {
+  "forward-movement": {
+    label: "Forward Movement",
+    provider: "Forward Movement",
+    blurb: (side) =>
+      `The full order of ${side === "evening" ? "Evening" : "Morning"} Prayer from the Book of Common Prayer, read aloud. A new episode every ${side === "evening" ? "evening" : "morning"}.`,
+  },
+  "church-of-england": {
+    label: "Church of England",
+    provider: "Church of England",
+    blurb: (side) =>
+      `Common Worship ${side === "evening" ? "Evening" : "Morning"} Prayer from the Church of England, read aloud. A new recording every day.`,
   },
 };
 
@@ -94,9 +122,17 @@ export default function OfficePodcastPage() {
   const showKey: ShowKey = location.includes("evening") ? "evening-office" : "morning-office";
   const show = SHOWS[showKey];
 
+  // Which tradition to play. Reactive to the pref event so toggling the
+  // segmented control below (or changing the default in Settings) swaps
+  // the feed without a remount.
+  const { officeAudioSource } = useOfficePrefs();
+  const sourceMeta = SOURCE_META[officeAudioSource];
+
   const { data: episode, isLoading } = useQuery<Episode>({
-    queryKey: [`/api/podcast/${show.apiSlug}/today`],
-    queryFn: () => apiRequest("GET", `/api/podcast/${show.apiSlug}/today`),
+    // Source is in the key so switching re-fetches the right feed.
+    queryKey: [`/api/podcast/${show.apiSlug}/today`, officeAudioSource],
+    queryFn: () =>
+      apiRequest("GET", `/api/podcast/${show.apiSlug}/today?source=${encodeURIComponent(officeAudioSource)}`),
     staleTime: 30 * 60_000,
   });
 
@@ -271,6 +307,51 @@ export default function OfficePodcastPage() {
           gap: 20,
         }}
       >
+        {/* Source switcher — Forward Movement ↔ Church of England.
+            Always visible (even while today's episode loads) so the
+            choice reads as part of the player, not an afterthought.
+            Tapping persists the default via setOfficeAudioSource. */}
+        <div
+          role="tablist"
+          aria-label="Prayer book tradition"
+          style={{
+            display: "flex",
+            gap: 4,
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 999,
+            padding: 4,
+          }}
+        >
+          {(["forward-movement", "church-of-england"] as const).map((s) => {
+            const active = officeAudioSource === s;
+            return (
+              <button
+                key={s}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setOfficeAudioSource(s)}
+                style={{
+                  borderRadius: 999,
+                  padding: "6px 14px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: FONT,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                  background: active ? PALETTE.cardBg : "transparent",
+                  border: `1px solid ${active ? PALETTE.border : "transparent"}`,
+                  color: active ? PALETTE.warm : PALETTE.faint,
+                  transition: "background 0.15s, color 0.15s",
+                }}
+              >
+                {SOURCE_META[s].label}
+              </button>
+            );
+          })}
+        </div>
+
         {isLoading && !episode ? (
           <p style={{ color: PALETTE.faint, fontSize: 13, marginTop: 48 }}>
             Loading today's episode…
@@ -344,11 +425,9 @@ export default function OfficePodcastPage() {
                   {episode.title}
                 </h1>
               )}
-              {durationLabel && (
-                <p style={{ fontSize: 12, color: PALETTE.sage, margin: "8px 0 0" }}>
-                  {durationLabel} · Forward Movement
-                </p>
-              )}
+              <p style={{ fontSize: 12, color: PALETTE.sage, margin: "8px 0 0" }}>
+                {durationLabel ? `${durationLabel} · ${sourceMeta.provider}` : sourceMeta.provider}
+              </p>
             </div>
 
             {/* Native audio controls — full transport for free, plus iOS
@@ -372,7 +451,7 @@ export default function OfficePodcastPage() {
                 maxWidth: 380,
               }}
             >
-              {show.blurb}
+              {sourceMeta.blurb(show.side)}
             </p>
           </div>
         )}

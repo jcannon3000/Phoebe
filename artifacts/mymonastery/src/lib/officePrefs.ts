@@ -36,6 +36,12 @@ const KEY_SHOW_SSJE_CLOSE = "phoebe:office:show-ssje-close";
 // independently toggled set of home modules — they are not driven by
 // this value.
 const KEY_REFLECTION_SOURCE = "phoebe:office:reflection-source";
+// Which voice/tradition the audio office plays — Forward Movement (the
+// US 1979 BCP offices, read aloud) or the Church of England (Common
+// Worship Morning/Evening Prayer). The office-podcast player toggles
+// this live; Settings sets the default. Per-device, like the reflection
+// source.
+const KEY_OFFICE_AUDIO_SOURCE = "phoebe:office:audio-source";
 const KEY_INCLUDE_GRATITUDE_SLIDE = "phoebe:office:include-gratitude-slide";
 // Default silent-contemplation length in minutes. 0 = off (no default;
 // the Contemplation timer shows its picker). Set from the Daily Office
@@ -45,6 +51,9 @@ const KEY_CONTEMPLATION_MINUTES = "phoebe:office:contemplation-minutes";
 
 export type ReflectionSource = "cac" | "fdd" | "ssje" | "none";
 const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "none"];
+
+export type OfficeAudioSource = "forward-movement" | "church-of-england";
+const OFFICE_AUDIO_SOURCES: OfficeAudioSource[] = ["forward-movement", "church-of-england"];
 
 // ── Events ─────────────────────────────────────────────────────────
 export const OFFICE_PREFS_EVENT = "phoebe:office-prefs";
@@ -177,6 +186,28 @@ export function getShowSsjeClose(): boolean { return getReflectionSource() === "
 // reflection. The Resources entry surfaces it as its own thing,
 // not as a CAC/FDD-style follow-on.)
 
+// ── Audio office source (Forward Movement vs Church of England) ──
+// Which tradition the read-aloud Morning/Evening Prayer plays. Forward
+// Movement = the US 1979 BCP offices (the original, default); Church of
+// England = Common Worship Morning/Evening Prayer. The office-podcast
+// player lets you switch live; Settings sets the default. Default =
+// "forward-movement" so nothing changes for existing listeners.
+export function getOfficeAudioSource(): OfficeAudioSource {
+  try {
+    const raw = localStorage.getItem(KEY_OFFICE_AUDIO_SOURCE);
+    if (raw && (OFFICE_AUDIO_SOURCES as string[]).includes(raw)) {
+      return raw as OfficeAudioSource;
+    }
+  } catch { /* private mode */ }
+  return "forward-movement";
+}
+export function setOfficeAudioSource(v: OfficeAudioSource): void {
+  try {
+    localStorage.setItem(KEY_OFFICE_AUDIO_SOURCE, v);
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* private mode / quota — non-fatal */ }
+}
+
 // ── Gratitude slide in the office ──
 // When on, MorningPrayerSlideshow splices a "Personal Thanksgiving"
 // slide in before the closing — a contemplative prompt that asks
@@ -216,6 +247,7 @@ export function useOfficePrefs(): {
   showSsjeClose: boolean;
   includeGratitudeSlide: boolean;
   defaultContemplationMinutes: number;
+  officeAudioSource: OfficeAudioSource;
 } {
   const snapshot = () => {
     const src = getReflectionSource();
@@ -226,6 +258,7 @@ export function useOfficePrefs(): {
       showSsjeClose: src === "ssje",
       includeGratitudeSlide: getIncludeGratitudeSlide(),
       defaultContemplationMinutes: getDefaultContemplationMinutes(),
+      officeAudioSource: getOfficeAudioSource(),
     };
   };
   const [state, setState] = useState(snapshot);

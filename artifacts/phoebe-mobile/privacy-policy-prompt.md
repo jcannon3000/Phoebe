@@ -58,6 +58,17 @@ The iOS app is a thin Capacitor wrapper around the web app at `withphoebe.app`; 
 
 We do **not** collect: device location, microphone, device calendar, health data, advertising identifiers, IDFA, or any cross-app/cross-site tracking data.
 
+## Additions since the first version (May 2026)
+
+These features postdate the original brief and must be reflected:
+
+- **Usage/timing telemetry (server-side):** `prayer_sessions` (surface, duration, slidesCompleted, start/end, isPrivate), `podcast_listens` (per-user listening history: show/episode + first/last listened), `app_opens` (app-open timestamps bucketed to 15-minute windows, for an internal admin metrics dashboard). Client IP is used only for in-memory rate-limiting and is NOT persisted.
+- **New user-generated content:** one-to-one beta **messages** (stored plaintext), **group reflections** + comments, **podcast recommendations** (+ note), **"prayers for"** (private directed prayer text the recipient never sees), **meetups** (location + notes).
+- **Waitlist:** email + name + free-text reason collected from NON-users on the public site.
+- **Third-party content the device loads directly (discloses IP/User-Agent to those hosts):** podcast audio + artwork stream from each show's host (Forward Movement; CDNs incl. Megaphone, Libsyn, Simplecast, Podbean, Buzzsprout); the National Cathedral livestream is an embedded YouTube iframe (`youtube-nocookie.com`); reflections/readings open on Forward Movement, SSJE, CAC (via a withphoebe.app → cac.org redirect), lectionarypage.net (via redirect), Bible.com, episcopalchurch.org; community meeting links open on Zoom / Google Calendar. These are NOT subprocessors — Phoebe shares no account data with them; the connection is the device loading their content.
+- **No client-side analytics/telemetry** ships in either app (no client Sentry, GA, pixels).
+- **Account deletion is immediate and irreversible** (hard cascade across user-keyed tables + Google token revoke); there is no soft-delete / 30-day recovery window.
+
 ## iOS permissions and why
 
 - **Contacts** — Only when the user taps "Invite from contacts." Selected names/emails/phones are used to send circle invites. Contact data is not uploaded in bulk and is not stored server-side beyond the invite record itself.
@@ -77,10 +88,11 @@ We do **not** collect: device location, microphone, device calendar, health data
   - Sign in with Apple — for native iOS authentication (identity token, optional first-time name/email)
   - Apple Push Notification service (APNs) — for push notifications (no third-party push vendor)
 - **Backend hosting and database** — Postgres database and API server are hosted on **Railway** (Railway Corp.). All web traffic terminates at Railway's edge; the Postgres instance is a managed Railway Postgres service. Data at rest is encrypted via Railway's default disk encryption.
+- **Sentry** (Functional Software, Inc.) — server-side error monitoring via `@sentry/node`, active only when `SENTRY_DSN` is set. Receives error stack traces, the affected route, environment, release (Railway commit SHA), and an internal numeric user ID as a tag where relevant. `tracesSampleRate: 0` (no performance tracing); the Console breadcrumb integration is disabled; `sendDefaultPii` is left at its default (false), so request bodies, headers, cookies, and IP are NOT sent. No prayer content, messages, or letters are sent.
 
-Typography is self-hosted — Phoebe bundles its fonts as part of the web build and does not load fonts from Google Fonts or any other third-party CDN.
+Typography is self-hosted — both the main app and the `/mail` letters app bundle their fonts via `@fontsource-variable` as part of the web build and do not load fonts from Google Fonts or any other third-party CDN.
 
-We do **not** use: analytics SDKs, crash reporting SDKs, advertising networks, Mixpanel, PostHog, Google Analytics, Sentry, Firebase, or Stripe. The app is free; there is no payment processing.
+Apart from the Sentry error monitoring above, we do **not** use: product-analytics SDKs, advertising networks, marketing/attribution trackers, Mixpanel, PostHog, Google Analytics, Firebase, or Stripe. The app is free; there is no payment processing.
 
 ## How data is shared
 

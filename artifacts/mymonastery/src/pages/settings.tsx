@@ -14,7 +14,9 @@ import {
   useEffectiveReflectionSource,
   setReflectionSource,
   setIncludeGratitudeSlide,
+  setOfficeAudioSource,
   type ReflectionSource,
+  type OfficeAudioSource,
 } from "@/lib/officePrefs";
 
 
@@ -615,6 +617,61 @@ function OfficeReminderSettings() {
 //     slide in before the closing on both Morning and Evening Prayer.
 //     A contemplative prompt; not interactive (the dedicated
 //     /gratitude surface is where journal entries live).
+// Default tradition for the read-aloud (audio) office. Forward Movement
+// = the US 1979 BCP offices; Church of England = Common Worship Morning/
+// Evening Prayer. The audio-office player can also switch this live; this
+// just sets the default it opens with.
+function OfficeAudioSourceSettings() {
+  const { officeAudioSource } = useOfficePrefs();
+  const options: Array<{ value: OfficeAudioSource; label: string; sub: string; emoji: string }> = [
+    { value: "forward-movement", label: "Forward Movement", sub: "The US 1979 Book of Common Prayer offices, read aloud.", emoji: "📖" },
+    { value: "church-of-england", label: "Church of England", sub: "Common Worship Morning & Evening Prayer.", emoji: "⛪" },
+  ];
+  return (
+    <>
+      <SectionHeader label="Listen to the office" />
+      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+        Choose which tradition the read-aloud Morning and Evening Prayer plays by default. You can also switch it any time while listening.
+      </p>
+      <SettingsCard>
+        {options.map((opt, i) => {
+          const selected = officeAudioSource === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setOfficeAudioSource(opt.value)}
+              className="w-full flex items-center gap-3 py-2.5 text-left"
+              style={{
+                background: "transparent",
+                cursor: "pointer",
+                borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)",
+              }}
+            >
+              <div
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  border: `2px solid ${selected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+                  background: selected ? "#A8C5A0" : "transparent",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                  {opt.label} <span>{opt.emoji}</span>
+                </p>
+                <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+                  {opt.sub}
+                </p>
+              </div>
+            </button>
+          );
+        })}
+      </SettingsCard>
+    </>
+  );
+}
+
 function OfficeCloseExtrasSettings() {
   const prefs = useOfficePrefs();
   // The radio reflects the EFFECTIVE source (explicit pick → visible
@@ -1462,6 +1519,12 @@ export default function SettingsPage() {
             above for the rationale on each. Right after the office
             reminders because they're conceptually office settings. */}
         <OfficeCloseExtrasSettings />
+
+        {/* ── Audio office tradition ──
+            Default voice for the read-aloud office (Forward Movement /
+            Church of England). Sits with the other office-shape settings;
+            the audio player can also switch it live. */}
+        <OfficeAudioSourceSettings />
 
         {/* ── Language (beta) ── */}
         <LanguageSettings />

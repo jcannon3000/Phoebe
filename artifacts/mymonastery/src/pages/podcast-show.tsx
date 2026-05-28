@@ -1,6 +1,6 @@
 import { useEffect, useRef, type CSSProperties } from "react";
 import { useParams, useLocation } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlayer";
@@ -12,8 +12,8 @@ import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlaye
 // keeps playing as you navigate away. Listening history + the listen-time
 // prayer-session are recorded by the player, not here.
 //
-// Also: per-episode "✓ Listened" markers, a ♡ Recommend toggle that
-// shares to the community feed, and ?ep=<id> deep-link auto-open.
+// Also: per-episode "✓ Listened" markers and ?ep=<id> deep-link
+// auto-open. (Recommend ♡ now lives on the full-screen player.)
 
 const PALETTE = {
   bg: "#0C1F12",
@@ -37,6 +37,7 @@ type ShowResponse = {
   show: {
     slug: string; title: string; artist: string; artwork: string | null;
     publisher: string; publisherTitle: string; emoji: string;
+    description: string | null;
   };
   episodes: Episode[];
 };
@@ -94,7 +95,6 @@ export default function PodcastShowPage() {
   const { slug } = useParams<{ slug: string }>();
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
-  const queryClient = useQueryClient();
   const player = usePodcastPlayer();
 
   useEffect(() => {
@@ -122,6 +122,7 @@ export default function PodcastShowPage() {
     showArtwork: showData?.artwork ?? null,
     durationSeconds: ep.durationSeconds,
     publishedAt: ep.publishedAt,
+    description: ep.description,
   });
   const playEpisode = (ep: Episode) => { if (ep.audioUrl) player.play(toPlaying(ep)); };
 
@@ -141,7 +142,7 @@ export default function PodcastShowPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
-  // ── Listening history + recommendations ──────────────────────────────
+  // ── Listening history (drives the "✓ Listened" row markers) ──────────
   const { data: me } = useQuery<{ listenedKeys: string[]; recommendedKeys: string[] }>({
     queryKey: ["/api/podcasts/me"],
     queryFn: () => apiRequest("GET", "/api/podcasts/me"),
@@ -149,38 +150,6 @@ export default function PodcastShowPage() {
     staleTime: 60_000,
   });
   const listenedSet = new Set(me?.listenedKeys ?? []);
-  const recommendedSet = new Set(me?.recommendedKeys ?? []);
-
-  const snapshot = (ep: Episode) => ({
-    showSlug: slug,
-    episodeId: ep.id,
-    episodeTitle: ep.title ?? undefined,
-    episodeAudioUrl: ep.audioUrl ?? undefined,
-    episodeImageUrl: ep.imageUrl ?? showData?.artwork ?? undefined,
-    durationSeconds: ep.durationSeconds ?? undefined,
-    publishedAt: ep.publishedAt ?? undefined,
-    showTitle: showData?.title ?? undefined,
-    showArtwork: showData?.artwork ?? undefined,
-  });
-
-  const recommendMut = useMutation({
-    mutationFn: (ep: Episode) => apiRequest("POST", "/api/podcasts/recommendations", snapshot(ep)),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/podcasts/me"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/podcasts/recommendations"] });
-    },
-  });
-  const unrecommendMut = useMutation({
-    mutationFn: (ep: Episode) => apiRequest("DELETE", "/api/podcasts/recommendations", { showSlug: slug, episodeId: ep.id }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/podcasts/me"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/podcasts/recommendations"] });
-    },
-  });
-  const toggleRecommend = (ep: Episode) => {
-    if (recommendedSet.has(epKey(ep))) unrecommendMut.mutate(ep);
-    else recommendMut.mutate(ep);
-  };
 
   if (authLoading || !user) return null;
 
@@ -226,6 +195,17 @@ export default function PodcastShowPage() {
           <p style={{ fontSize: 13.5, color: PALETTE.sage, margin: "6px 0 0" }}>
             {show?.artist ?? ""}
           </p>
+          {show?.description && (
+            <p
+              style={{
+                fontSize: 13.5, color: "rgba(200,212,192,0.82)", lineHeight: 1.55,
+                margin: "14px 0 0", maxWidth: 460,
+                display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden",
+              }}
+            >
+              {show.description}
+            </p>
+          )}
         </div>
 
         {isLoading && episodes.length === 0 ? (
@@ -241,7 +221,6 @@ export default function PodcastShowPage() {
               const date = formatDate(ep.publishedAt);
               const dur = formatDuration(ep.durationSeconds);
               const listened = listenedSet.has(epKey(ep));
-              const recommended = recommendedSet.has(epKey(ep));
               return (
                 <div
                   key={ep.id}
@@ -286,22 +265,6 @@ export default function PodcastShowPage() {
                           {ep.description}
                         </p>
                       )}
-                      {/* Recommend → shares this episode to the community
-                          feed (/podcasts Community tab). stopPropagation so
-                          tapping it doesn't also start playback. */}
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); toggleRecommend(ep); }}
-                        className="mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 transition-opacity hover:opacity-90"
-                        style={{
-                          fontSize: 12, fontWeight: 600, fontFamily: FONT, cursor: "pointer",
-                          background: recommended ? "rgba(212,160,70,0.18)" : "rgba(46,107,64,0.14)",
-                          color: recommended ? "#F0DCA8" : "rgba(168,197,160,0.95)",
-                          border: `1px solid ${recommended ? "rgba(212,160,70,0.45)" : "rgba(46,107,64,0.3)"}`,
-                        }}
-                      >
-                        {recommended ? "♥ Recommended" : "♡ Recommend"}
-                      </button>
                     </div>
                   </div>
                 </div>

@@ -1,11 +1,23 @@
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
+import { recoverFromStaleChunk } from "./lib/staleChunk";
 // Boot i18next before mounting the tree so the very first render
 // reads from the resource tables. Fallback to English if Spanish
 // hasn't been activated. Runs as a side-effect import — there's no
 // React provider needed; react-i18next reads from the singleton.
 import "./i18n";
+
+// Stale-deploy recovery. Our routes are code-split (React.lazy), so a
+// browser still running a pre-deploy page can try to import() a chunk
+// filename the new deploy has removed. Vite fires `vite:preloadError`
+// when that dynamic import fails; reload (network-first nav pulls the
+// fresh index + chunks) instead of letting the route silently fail.
+// recoverFromStaleChunk() guards against reload loops.
+window.addEventListener("vite:preloadError", (event) => {
+  event.preventDefault(); // we handle it ourselves by reloading
+  recoverFromStaleChunk("vite:preloadError");
+});
 
 createRoot(document.getElementById("root")!).render(<App />);
 

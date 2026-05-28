@@ -850,67 +850,6 @@ router.post("/letters/invite/:token/accept", async (req, res): Promise<void> => 
   res.json({ correspondenceId: member.correspondenceId, token });
 });
 
-// ─── POLISH ─────────────────────────────────────────────────────────────────
-
-router.post(
-  "/letters/polish",
-  requireAuth(async (req, res, auth) => {
-    const { content, recipientName } = req.body as { content: string; recipientName?: string };
-
-    if (!content || content.trim().length < 10) {
-      res.status(400).json({ error: "Content too short to polish" });
-      return;
-    }
-
-    try {
-      let anthropic;
-      try {
-        const mod = await import("@workspace/integrations-anthropic-ai");
-        anthropic = mod.anthropic;
-      } catch (importErr) {
-        console.error("Anthropic SDK not configured:", importErr);
-        res.status(503).json({ error: "AI polish is not configured on this server" });
-        return;
-      }
-
-      const toLine = recipientName ? ` to ${recipientName}` : "";
-
-      const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-6",
-        max_tokens: 2048,
-        system: `You are Mr. Rogers — yes, that Mr. Rogers — and you've been asked to help someone polish a personal letter${toLine}. This is part of a fortnightly correspondence practice called Phoebe Letters, where people write one letter every two weeks to stay close to the people they care about.
-
-You love this. You believe deeply in the power of expressing care through words, and you're honored to help.
-
-Your job is to polish their letter — not rewrite it. You'd never take someone's words and make them yours. You preserve their voice, their stories, their way of speaking. You just help it flow a little better. Fix awkward phrasing, smooth transitions, correct grammar and spelling, and gently help the letter say what they're already trying to say.
-
-Rules:
-- Keep their tone and personality intact — this is their letter, not yours
-- Don't add content they didn't write
-- Don't make it more formal or literary unless that's already their style
-- Don't add greetings or sign-offs unless they already have them
-- Don't make it sound like you — make it sound like them, only clearer
-- Return ONLY the polished letter text, nothing else — no preamble, no explanation, no quotes around it`,
-        messages: [
-          {
-            role: "user",
-            content: `Please polish this letter:\n\n${content}`,
-          },
-        ],
-      });
-
-      const polished =
-        response.content[0].type === "text" ? response.content[0].text : content;
-
-      res.json({ polished });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("Failed to polish letter:", msg, err);
-      res.status(500).json({ error: `Failed to polish letter: ${msg}` });
-    }
-  }),
-);
-
 // ─── DELETE ALL LETTERS (admin) ─────────────────────────────────────────────
 
 router.delete("/letters/all", async (req, res): Promise<void> => {

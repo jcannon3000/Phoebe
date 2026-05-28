@@ -31,5 +31,9 @@
     "tailwindcss": "catalog:",
     "vite": "catalog:",
     "wouter": "^3.3.5"
+  },
+  "dependencies": {
+    "@fontsource-variable/lora": "^5.2.8",
+    "@fontsource-variable/space-grotesk": "^5.2.10"
   }
 }

@@ -9,7 +9,7 @@
 //   - ios/App/App/PrivacyInfo.xcprivacy (Apple's privacy manifest)
 //   - Any third-party subprocessor changes in api-server
 
-const LAST_UPDATED = "April 24, 2026";
+const LAST_UPDATED = "May 28, 2026";
 const CONTACT_EMAIL = "invites@withphoebe.app";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -68,9 +68,18 @@ export function PrivacyBody() {
             <li>Practices you set up — name, intention, reflection notes, completion logs</li>
             <li>Traditions and gatherings — name, description, location, intention, RSVP tracking</li>
             <li>Letters and correspondences</li>
+            <li>One-to-one messages you send to other members</li>
+            <li>Reflections and comments you share within a group</li>
+            <li>Podcast episodes you recommend to your community, with any note you add</li>
+            <li>Prayers you record privately for another member ("prayers for")</li>
             <li>Notes, reflections, and gratitude entries</li>
             <li>Your daily reminder ("bell") time and timezone</li>
           </ul>
+          <p>
+            If you join our waitlist or request an invite on our public website, we store the email address,
+            name, and any message you include so we can follow up about access. You can ask us to delete this at
+            any time.
+          </p>
         </Section>
 
         <Section title="Data we collect automatically">
@@ -80,6 +89,9 @@ export function PrivacyBody() {
             <li>Presence signals (when you are actively using the app) — only shared with members of your circles if you leave presence enabled; you can turn this off in Settings</li>
             <li>Practice completion events — sent to your circle members so they see your activity</li>
             <li>Prayer streak records and onboarding state flags</li>
+            <li>Prayer and listening session records — when you pray or listen in the app, we log which surface you used (for example, Morning Prayer or a podcast), how long, and the start and end times, to power your "time in prayer" totals and streaks. You can mark a session private.</li>
+            <li>Podcast listening history — which shows and episodes you've played, and when, so we can offer "continue listening" and recommendations</li>
+            <li>App-open timestamps, rounded to 15-minute windows, used only for our own aggregate product metrics</li>
           </ul>
           <p>
             We do not collect device location, microphone audio, the device calendar, health data, the advertising
@@ -123,10 +135,52 @@ export function PrivacyBody() {
               <strong>Railway</strong> — our API server and Postgres database run on Railway (Railway Corp.).
               Traffic is encrypted in transit; data at rest is encrypted by Railway's default disk encryption.
             </li>
+            <li>
+              <strong>Sentry</strong> — error monitoring (Functional Software, Inc., dba Sentry). When the
+              Service hits a server error, we send Sentry the technical details needed to diagnose and fix it:
+              the error and its stack trace, the route involved, the app version, and an internal account ID
+              where relevant. We do <strong>not</strong> send Sentry your prayer content, messages, letters, or
+              your IP address. Sentry runs only when we have it configured.
+            </li>
           </ul>
           <p>
-            We do not use analytics SDKs, crash reporting SDKs, advertising networks, or payment processors.
-            Phoebe is free; there are no in-app purchases.
+            Other than the Sentry error monitoring described above, we do not use product-analytics SDKs,
+            advertising networks, marketing or attribution trackers, or payment processors. We do not track you
+            across other apps or websites. Phoebe is free; there are no in-app purchases.
+          </p>
+        </Section>
+
+        <Section title="Content from other websites and apps">
+          <p>
+            Some of what Phoebe shows comes straight from other organizations, and playing or opening it
+            connects your device directly to them. That means they receive your IP address and basic device and
+            browser information, under their own privacy policies rather than ours:
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>
+              <strong>Podcasts.</strong> Audio and cover art stream directly from each show's host — for
+              example, Forward Movement and podcast networks such as Megaphone, Libsyn, Simplecast, Podbean, and
+              Buzzsprout. The host sees your device's connection when you play or browse a show.
+            </li>
+            <li>
+              <strong>The Washington National Cathedral livestream</strong> is embedded from YouTube
+              (youtube-nocookie.com); watching it connects your device to Google/YouTube.
+            </li>
+            <li>
+              <strong>Daily reflections and readings</strong> — Forward Day by Day (Forward Movement), the
+              Society of St. John the Evangelist, the Center for Action and Contemplation, the Revised Common
+              Lectionary (lectionarypage.net), Scripture on Bible.com, and the Episcopal Church's "Find a Church"
+              directory — open on those organizations' own sites.
+            </li>
+            <li>
+              <strong>Meeting links</strong> a community adds (such as Zoom or Google Calendar) open on those
+              services.
+            </li>
+          </ul>
+          <p>
+            We don't hand your account data to these third parties — the connection happens because your device
+            loads their content. We don't control their practices, and we'd encourage you to review their
+            policies if you have questions.
           </p>
         </Section>
 
@@ -135,6 +189,11 @@ export function PrivacyBody() {
             Members of a prayer circle you join can see your name, profile photo, prayer requests, practice
             activity, RSVP status, and presence (if enabled). Practices and letters can be shared via invite
             link; anyone holding the link can view the shared content. Invite links are not publicly indexed.
+          </p>
+          <p>
+            One-to-one messages and letters are visible only to the people you exchange them with. Reflections
+            and comments you post in a group are visible to that group's members. Prayers you record privately
+            for another member are not shown to that person.
           </p>
           <p>
             There are no public profiles. Your account is not discoverable unless someone already knows your
