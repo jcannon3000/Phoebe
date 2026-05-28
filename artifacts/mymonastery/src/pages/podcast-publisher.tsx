@@ -23,25 +23,55 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 type ShowCard = { slug: string; title: string; artist: string; artwork: string | null };
 type PublisherResponse = { slug: string; title: string; emoji: string; shows: ShowCard[] };
 
-function ArtTile({ url, alt, size }: { url: string | null; alt: string; size: number }) {
+// Full-bleed square cover art for the browse grid (Hallow-style — the
+// artwork is the hero, not a thumbnail). Fills its grid cell; falls
+// back to a calm headphones tile when a feed has no artwork or its
+// image fails to load.
+function GridArt({ url, alt }: { url: string | null; alt: string }) {
   if (url) {
     return (
       <img
         src={url}
         alt={alt}
         loading="lazy"
-        style={{ width: size, height: size, objectFit: "cover", borderRadius: 14, flexShrink: 0, background: "rgba(143,175,150,0.12)" }}
-        onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
+        style={{
+          width: "100%",
+          aspectRatio: "1 / 1",
+          objectFit: "cover",
+          borderRadius: 16,
+          background: "rgba(143,175,150,0.12)",
+          display: "block",
+        }}
+        onError={(e) => {
+          // Swap the broken <img> for the fallback tile rather than
+          // leaving a blank/torn box (same lesson as the office-podcast
+          // artwork fix).
+          const el = e.currentTarget as HTMLImageElement;
+          el.style.display = "none";
+          const sib = el.nextElementSibling as HTMLElement | null;
+          if (sib) sib.style.display = "flex";
+        }}
       />
     );
   }
+  return <GridArtFallback />;
+}
+
+function GridArtFallback({ hidden }: { hidden?: boolean }) {
   return (
     <div
       style={{
-        width: size, height: size, borderRadius: 14, flexShrink: 0,
-        background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.3)",
-        display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.4,
+        width: "100%",
+        aspectRatio: "1 / 1",
+        borderRadius: 16,
+        background: "rgba(46,107,64,0.18)",
+        border: "1px solid rgba(46,107,64,0.3)",
+        display: hidden ? "none" : "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 44,
       }}
+      aria-hidden
     >
       🎧
     </div>
@@ -94,7 +124,10 @@ export default function PodcastPublisherPage() {
           {isLoading ? "Loading shows…" : `${data?.shows.length ?? 0} ${(data?.shows.length ?? 0) === 1 ? "show" : "shows"} · listen in Phoebe`}
         </p>
 
-        <div className="space-y-3">
+        {/* Image-forward 2-column grid (Hallow-style). The cover art is
+            the hero; title + artist sit beneath in a tight stack. Tapping
+            anywhere on a cell opens the show's episode list + player. */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6">
           {(data?.shows ?? []).map((s) => (
             <div
               key={s.slug}
@@ -102,19 +135,41 @@ export default function PodcastPublisherPage() {
               tabIndex={0}
               onClick={() => setLocation(`/podcasts/show/${s.slug}`)}
               onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLocation(`/podcasts/show/${s.slug}`); } }}
-              className="w-full flex items-center gap-3.5 rounded-2xl p-3 cursor-pointer transition-opacity hover:opacity-90"
-              style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.28)" }}
+              className="cursor-pointer transition-opacity hover:opacity-90"
             >
-              <ArtTile url={s.artwork} alt={s.title} size={64} />
-              <div className="min-w-0 flex-1">
-                <p style={{ fontSize: 16, fontWeight: 600, color: PALETTE.warm, margin: 0, lineHeight: 1.2 }}>
-                  {s.title}
-                </p>
-                <p style={{ fontSize: 12.5, color: PALETTE.sage, margin: "3px 0 0" }}>
-                  {s.artist}
-                </p>
+              <div style={{ position: "relative" }}>
+                <GridArt url={s.artwork} alt={s.title} />
+                {/* Hidden sibling the <img> onError reveals on a broken load. */}
+                {s.artwork && <GridArtFallback hidden />}
               </div>
-              <span style={{ color: PALETTE.faint, fontSize: 18, flexShrink: 0 }}>›</span>
+              <p
+                style={{
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: PALETTE.warm,
+                  margin: "10px 0 0",
+                  lineHeight: 1.2,
+                  display: "-webkit-box",
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical",
+                  overflow: "hidden",
+                }}
+              >
+                {s.title}
+              </p>
+              <p
+                style={{
+                  fontSize: 12.5,
+                  color: PALETTE.sage,
+                  margin: "3px 0 0",
+                  lineHeight: 1.3,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {s.artist}
+              </p>
             </div>
           ))}
         </div>
