@@ -32,9 +32,9 @@ import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import {
   useOfficePrefs,
+  useEffectiveReflectionSource,
   setReflectionSource,
   setIncludeGratitudeSlide,
-  type ReflectionSource,
 } from "@/lib/officePrefs";
 
 const WARM = "#F0EDE6";
@@ -294,12 +294,18 @@ export default function OfficeSettingsPage() {
   // bus in lib/officePrefs.ts so the setters below trigger a refresh
   // without a remount.
   const local = useOfficePrefs();
+  // Effective source (explicit pick → visible home card → FDD) drives
+  // the radio so it matches the pill the user actually gets, even when
+  // they haven't made an explicit pick yet. The hook re-derives on
+  // OFFICE_PREFS_EVENT (which setReflectionSource fires synchronously),
+  // so tapping a row updates the selection immediately — no optimistic
+  // copy needed.
+  const effectiveSource = useEffectiveReflectionSource();
 
-  // Local copies so the toggle UI flips immediately while the bool
-  // settles into localStorage. (The setters fire a custom event,
+  // Local copy so the gratitude toggle flips immediately while the bool
+  // settles into localStorage. (The setter fires a custom event,
   // useOfficePrefs picks it up, but immediate optimistic state is
   // smoother than waiting one render cycle.)
-  const [reflection, setReflection] = useState<ReflectionSource>(local.reflectionSource);
   const [gratitudeOn, setGratitudeOn] = useState(local.includeGratitudeSlide);
 
   const morningOptions: Array<{ value: OfficePref; label: string; emoji: string; sub: string }> = [
@@ -426,8 +432,8 @@ export default function OfficeSettingsPage() {
               label={opt.label}
               sub={opt.sub}
               emoji={opt.emoji}
-              selected={reflection === opt.value}
-              onSelect={() => { setReflection(opt.value); setReflectionSource(opt.value); }}
+              selected={effectiveSource === opt.value}
+              onSelect={() => setReflectionSource(opt.value)}
             />
           ))}
         </div>

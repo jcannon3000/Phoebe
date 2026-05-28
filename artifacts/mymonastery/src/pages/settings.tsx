@@ -11,6 +11,7 @@ import i18n from "@/i18n";
 import { LogOut, Camera, Pencil, Trash2, Download } from "lucide-react";
 import {
   useOfficePrefs,
+  useEffectiveReflectionSource,
   setReflectionSource,
   setIncludeGratitudeSlide,
   type ReflectionSource,
@@ -616,6 +617,10 @@ function OfficeReminderSettings() {
 //     /gratitude surface is where journal entries live).
 function OfficeCloseExtrasSettings() {
   const prefs = useOfficePrefs();
+  // The radio reflects the EFFECTIVE source (explicit pick → visible
+  // home card → FDD default), so what's highlighted always matches the
+  // pill the user actually gets. Tapping an option makes it explicit.
+  const effectiveSource = useEffectiveReflectionSource();
   const options: Array<{ value: ReflectionSource; label: string; sub: string; emoji: string }> = [
     { value: "cac", label: "CAC Daily Reflection", sub: "From the Center for Action & Contemplation.", emoji: "🌅" },
     { value: "fdd", label: "Forward Day by Day", sub: "From Forward Movement.", emoji: "📖" },
@@ -626,11 +631,11 @@ function OfficeCloseExtrasSettings() {
     <>
       <SectionHeader label="After the office" />
       <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-        Pick one daily reflection to read at the close of Morning and Evening Prayer. A single pill on the last slide opens today's reading.
+        Pick one daily reflection to read at the close of Morning and Evening Prayer. A single pill on the last slide opens today's reading. If you don't choose here, Phoebe follows whichever reflection you've added to your home screen, or Forward Day by Day.
       </p>
       <SettingsCard>
         {options.map((opt, i) => {
-          const selected = prefs.reflectionSource === opt.value;
+          const selected = effectiveSource === opt.value;
           return (
             <button
               key={opt.value}

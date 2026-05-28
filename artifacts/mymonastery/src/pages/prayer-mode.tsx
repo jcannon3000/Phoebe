@@ -10,6 +10,15 @@ import { apiRequest } from "@/lib/queryClient";
 import { findBcpPrayer, localizeBcpPrayer } from "@/lib/bcp-prayers";
 import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { openExternal } from "@/lib/openExternal";
+import { useEffectiveReflectionSource } from "@/lib/officePrefs";
+import {
+  CAC_TODAY_URL,
+  FDD_TODAY_URL,
+  SSJE_TODAY_URL,
+  markCacRead,
+  markFddRead,
+  markSsjeRead,
+} from "@/lib/cacReadState";
 import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { RequestWordField } from "@/components/RequestWordField";
@@ -1342,6 +1351,11 @@ function HabitSlide({
   // End-of-office gratitude beat — a gentle "name one thing you're
   // grateful for" the close offers before you leave.
   const [thanksOpen, setThanksOpen] = useState(false);
+  // Daily-reflection source for the "Read today's reflection" pill
+  // that sits alongside the gratitude pill on this last screen.
+  // Effective precedence: explicit Settings pick → whichever
+  // reflection card is visible on the home screen → FDD default.
+  const reflectionSource = useEffectiveReflectionSource();
   // Server is the source of truth — past completions from any device
   // live in prayer_sessions, not localStorage. We still union with
   // localStorage for the freshly-finished office so the slide reflects
@@ -1652,6 +1666,32 @@ function HabitSlide({
         🌾 Give thanks
       </button>
       <GratitudeNudge open={thanksOpen} onClose={() => setThanksOpen(false)} />
+
+      {/* Read-today's-reflection pill — sits next to Give thanks on
+          this last screen. Opens the source the user picked in Office
+          Settings → After the office (CAC / FDD / SSJE) externally and
+          marks today read so the home card flips. Hidden when the user
+          picked "none". */}
+      {reflectionSource !== "none" && (
+        <button
+          type="button"
+          onClick={() => {
+            if (reflectionSource === "fdd") { markFddRead(); openExternal(FDD_TODAY_URL); }
+            else if (reflectionSource === "ssje") { markSsjeRead(); openExternal(SSJE_TODAY_URL); }
+            else { markCacRead(); openExternal(CAC_TODAY_URL); }
+          }}
+          className="text-[12px] font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-90"
+          style={{
+            background: "rgba(46,107,64,0.22)",
+            color: "#A8C5A0",
+            border: "1px solid rgba(46,107,64,0.45)",
+            fontFamily: "'Space Grotesk', sans-serif",
+            cursor: "pointer",
+          }}
+        >
+          🌅 Read today's reflection →
+        </button>
+      )}
 
       {/* Ignatian Examen pill — evening only (the Examen is an
           end-of-day prayer), and pilot-only (same gate as the menu

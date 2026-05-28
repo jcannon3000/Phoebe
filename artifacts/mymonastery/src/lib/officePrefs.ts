@@ -16,6 +16,7 @@
 // state and refreshes on any pref event.
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 // ── Storage keys ───────────────────────────────────────────────────
 // Boolean prefs serialize as "1" / "0". Empty / malformed / missing
@@ -27,10 +28,13 @@ import { useEffect, useState } from "react";
 const KEY_SHOW_CAC_CLOSE = "phoebe:office:show-cac-close";
 const KEY_SHOW_FDD_CLOSE = "phoebe:office:show-fdd-close";
 const KEY_SHOW_SSJE_CLOSE = "phoebe:office:show-ssje-close";
-// Which reflection source surfaces at the close of the office and on
-// the home card. Mutually exclusive — picking "fdd" turns off the CAC
-// pill and the CAC home card; picking "none" hides the reflection
-// surface entirely.
+// The user's EXPLICIT reflection-source pick from Settings → After the
+// office (the close-pill radio). Mutually exclusive; "none" hides the
+// close pill entirely. When this key is unset the effective source
+// falls back to the visible home reflection card, then to FDD (see
+// deriveReflectionSource). The CAC/FDD/SSJE *home cards* are a separate,
+// independently toggled set of home modules — they are not driven by
+// this value.
 const KEY_REFLECTION_SOURCE = "phoebe:office:reflection-source";
 const KEY_INCLUDE_GRATITUDE_SLIDE = "phoebe:office:include-gratitude-slide";
 
@@ -72,11 +76,23 @@ function readBoolDefault(key: string, fallback: boolean): boolean {
 
 // ── Reflection source at office close ──
 // One pill, the user's choice. Replaces the three independent
-// CAC/FDD/SSJE booleans we briefly shipped. Default = "cac" (most
-// popular of the three). Reads honor an explicit value first; if the
-// new key is unset we migrate from the legacy booleans (so a user who
-// had explicitly turned FDD on / CAC off keeps FDD as their pick).
-export function getReflectionSource(): ReflectionSource {
+// CAC/FDD/SSJE booleans we briefly shipped.
+//
+// Precedence for which reflection actually surfaces (see
+// deriveReflectionSource / useEffectiveReflectionSource):
+//   1. An EXPLICIT settings pick (the radio in Settings → After the
+//      office). Once set it wins — "they can also change this in
+//      settings".
+//   2. Otherwise, whichever reflection card the user has made visible
+//      on their home screen — "if they have one on their home screen
+//      visible, that's the one". Topmost in home order wins.
+//   3. Otherwise the default, FDD ("Forward Day by Day").
+//
+// getExplicitReflectionSource() returns ONLY the explicit pick (or
+// null), so callers can tell "user chose this" from "we defaulted".
+// getReflectionSource() keeps its old signature for non-React / no-
+// home-layout callers and folds in the FDD default.
+export function getExplicitReflectionSource(): ReflectionSource | null {
   try {
     const raw = localStorage.getItem(KEY_REFLECTION_SOURCE);
     if (raw && (REFLECTION_SOURCES as string[]).includes(raw)) {
@@ -84,7 +100,7 @@ export function getReflectionSource(): ReflectionSource {
     }
   } catch { /* private mode */ }
   // Legacy migration — pick the first source whose old boolean is
-  // explicitly "1". If none are explicit, fall through to the default.
+  // explicitly "1". If none are explicit, return null (not chosen).
   try {
     if (localStorage.getItem(KEY_SHOW_CAC_CLOSE) === "1") return "cac";
     if (localStorage.getItem(KEY_SHOW_FDD_CLOSE) === "1") return "fdd";
@@ -96,8 +112,45 @@ export function getReflectionSource(): ReflectionSource {
       localStorage.getItem(KEY_SHOW_SSJE_CLOSE) === "0"
     ) return "none";
   } catch { /* non-fatal */ }
-  return "cac";
+  return null;
 }
+
+// Backward-compatible reader: explicit pick, else the FDD default.
+// Does NOT consult the home screen (no access to the server user here);
+// React call sites that want the full precedence use
+// useEffectiveReflectionSource() below.
+export function getReflectionSource(): ReflectionSource {
+  return getExplicitReflectionSource() ?? "fdd";
+}
+
+// Home layout shape we care about (mirror of AuthUser.homeLayout).
+type HomeLayoutLike = { order: string[]; hidden: string[] } | null | undefined;
+
+// The reflection card (if any) the user has surfaced on their home
+// screen. CAC/FDD/SSJE are opt-in home modules: a card counts as
+// "visible" when it's in the saved order and NOT in hidden. Cards that
+// aren't in the saved order at all are opt-in-hidden (same guard the
+// dashboard applies), so iterating the saved order and skipping hidden
+// naturally ignores them. Topmost in order wins when several are on.
+function visibleHomeReflection(homeLayout: HomeLayoutLike): ReflectionSource | null {
+  if (!homeLayout) return null;
+  const order = homeLayout.order ?? [];
+  const hidden = new Set(homeLayout.hidden ?? []);
+  for (const k of order) {
+    if ((k === "cac" || k === "fdd" || k === "ssje") && !hidden.has(k)) {
+      return k;
+    }
+  }
+  return null;
+}
+
+// Full precedence: explicit settings pick → visible home card → FDD.
+export function deriveReflectionSource(homeLayout: HomeLayoutLike): ReflectionSource {
+  const explicit = getExplicitReflectionSource();
+  if (explicit) return explicit;
+  return visibleHomeReflection(homeLayout) ?? "fdd";
+}
+
 export function setReflectionSource(v: ReflectionSource): void {
   try {
     localStorage.setItem(KEY_REFLECTION_SOURCE, v);
@@ -155,6 +208,32 @@ export function useOfficePrefs(): {
     return () => window.removeEventListener(OFFICE_PREFS_EVENT, refresh);
   }, []);
   return state;
+}
+
+// Effective reflection source for the close pill — runs the full
+// precedence (explicit settings pick → visible home card → FDD).
+// Pulls the user's home layout from useAuth, re-derives when that
+// layout changes or when the user flips the radio in Settings. Use
+// this anywhere the close-pill source is read; useOfficePrefs's raw
+// reflectionSource (explicit-or-FDD, no home layer) is for the
+// Settings radio's own "is this explicitly chosen?" needs.
+export function useEffectiveReflectionSource(): ReflectionSource {
+  const { user } = useAuth();
+  const homeLayout = user?.homeLayout ?? null;
+  // Serialize the layout so the effect re-runs on content change, not
+  // on every react-query reference churn.
+  const homeKey = homeLayout
+    ? `${homeLayout.order.join(",")}|${homeLayout.hidden.join(",")}`
+    : "";
+  const [src, setSrc] = useState<ReflectionSource>(() => deriveReflectionSource(homeLayout));
+  useEffect(() => {
+    const refresh = () => setSrc(deriveReflectionSource(homeLayout));
+    refresh();
+    window.addEventListener(OFFICE_PREFS_EVENT, refresh);
+    return () => window.removeEventListener(OFFICE_PREFS_EVENT, refresh);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [homeKey]);
+  return src;
 }
 
 // ── National Cathedral Morning Prayer URL + broadcast window ──

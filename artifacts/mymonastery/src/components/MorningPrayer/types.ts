@@ -54,16 +54,7 @@ export type SlideType =
   // grateful for and tap Continue. The dedicated /gratitude surface
   // remains the place for actual journal entries.
   | "personal_thanksgiving"
-  | "closing"
-  // Post-closing reflection embed — appended client-side when the
-  // user's "After the office" pref picks FDD or SSJE (both iframe-
-  // friendly). Renders a full-bleed iframe of today's reflection
-  // under the office's existing bottom nav so the reading reads as
-  // a continuation of the prayer rather than a hop to Safari. CAC
-  // sets X-Frame-Options: SAMEORIGIN and can't be embedded; for
-  // CAC the closing-slide "Read today's reflection →" pill keeps
-  // its external-open behavior.
-  | "reflection_embed";
+  | "closing";
 
 export interface CallAndResponseLine {
   speaker: "officiant" | "people" | "both";
