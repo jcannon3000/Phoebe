@@ -74,6 +74,16 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     emoji: "🟣",
     showSlugs: ["nc-crossroads"],
   },
+  "diocese-washington": {
+    title: "Diocese of Washington",
+    emoji: "🏛️",
+    showSlugs: ["experiencing-jesus"],
+  },
+  "episcopal-church": {
+    title: "The Episcopal Church",
+    emoji: "🛡️",
+    showSlugs: ["way-of-love-curry"],
+  },
   vts: {
     title: "Virginia Theological Seminary",
     emoji: "🎓",
@@ -219,6 +229,24 @@ const SHOWS: Record<string, Show> = {
     publisher: "national-cathedral",
     feedUrl: "https://feed.podbean.com/crossroadsWNC/feed.xml",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b0/ff/05/b0ff0511-10a5-d169-4e36-a204aa204768/mza_9682335394332764792.jpg/600x600bb.jpg",
+  },
+  // ── Diocese of Washington — Bishop Mariann Budde ────────────────────
+  "experiencing-jesus": {
+    slug: "experiencing-jesus",
+    title: "Experiencing Jesus with Bishop Mariann",
+    artist: "Diocese of Washington",
+    publisher: "diocese-washington",
+    feedUrl: "https://feeds.simplecast.com/1CBZhkXf",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts115/v4/9d/df/80/9ddf8035-4fd1-7234-5acf-4594adff4935/mza_18382143898364247324.jpg/600x600bb.jpg",
+  },
+  // ── The Episcopal Church — Presiding Bishop Michael Curry ───────────
+  "way-of-love-curry": {
+    slug: "way-of-love-curry",
+    title: "The Way of Love with Bishop Michael Curry",
+    artist: "The Episcopal Church",
+    publisher: "episcopal-church",
+    feedUrl: "https://feeds.megaphone.fm/the-way-of-love",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/85/41/7e/85417eb6-f6e8-f41b-504c-d38e106de1d0/mza_12496655716183440745.jpg/600x600bb.jpg",
   },
   // ── Virginia Theological Seminary ───────────────────────────────────
   "vts-love-your-neighbor": {
