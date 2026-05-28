@@ -119,6 +119,33 @@ interface OfficeDayInfo {
   feastName?: string | null;
 }
 
+// Clear every office-reminder push from the lock screen once the user
+// has prayed. The daily reminders arrive under a few different APN
+// thread-ids depending on which sender fired them:
+//   • "bell"                 — the general morning bell / evening nudge
+//   • "parish-office-morning"
+//   • "parish-office-evening"
+// The native shell's phoebe:clear-notifications handler removes
+// delivered pushes matching one thread-id per event, so we dispatch
+// once per id. No-op on web (the listener only exists in the
+// Capacitor shell) and idempotent if the notification was already
+// dismissed. Clearing both sides regardless of which office the user
+// prayed is intentional: a stray evening reminder shouldn't survive a
+// morning office and vice versa once they've engaged with prayer for
+// the day.
+function clearOfficeReminderNotifications() {
+  const threadIds = ["bell", "parish-office-morning", "parish-office-evening"];
+  for (const threadId of threadIds) {
+    try {
+      window.dispatchEvent(
+        new CustomEvent("phoebe:clear-notifications", { detail: { threadId } }),
+      );
+    } catch {
+      /* non-fatal; web build has no listener and the OS drops the push later */
+    }
+  }
+}
+
 // Friendly section label for the bottom pill, derived from the slide
 // type. Keeps the chrome readable when the eyebrow is verbose
 // (e.g. "VENITE · PSALM 95").
@@ -863,21 +890,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
   }
   function amen() {
     if (currentSlide) fireAmenSideEffect(currentSlide);
-    // Clear the morning bell / evening nudge from the iOS lock screen
-    // the moment the user prays. The native shell listens for
-    // `phoebe:clear-notifications` and removes any delivered push
-    // whose APN thread-id matches "bell". Mirrors what prayer-mode
-    // does on Amen — without this dispatch the Office/Devotion amen
-    // counted toward metrics but the lock-screen reminder kept
-    // sitting there for the rest of the day, which the user
-    // explicitly flagged as broken.
-    try {
-      window.dispatchEvent(
-        new CustomEvent("phoebe:clear-notifications", { detail: { threadId: "bell" } })
-      );
-    } catch {
-      /* non-fatal; web build has no listener and the OS will drop the push later */
-    }
+    // Clear every office-reminder push from the lock screen the moment
+    // the user prays — "bell" plus the parish-office-{morning,evening}
+    // thread-ids the reminder cron actually sends under. Earlier this
+    // only cleared "bell", so a parish-office reminder kept sitting on
+    // the lock screen for the rest of the day even after the user had
+    // prayed the office — exactly the bug just reported.
+    clearOfficeReminderNotifications();
     if (!atEnd) {
       // Same chapel chime Next/tap/swipe play — the Amen button is just
       // another advance, so it shouldn't be the one silent path.
@@ -2452,6 +2471,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
                 localStorage.setItem(officeCompletedKey(resolvedMode), "1");
                 localStorage.removeItem(officeProgressKey(resolvedMode));
               } catch { /* non-fatal */ }
+              // Clear the daily reminder pushes — the "Done" path is the
+              // other way an office can finish (a non-prayer closing
+              // slide, or the embedded reflection slide). The Amen path
+              // clears these too; covering both means completing the
+              // office always sweeps the reminder off the lock screen.
+              clearOfficeReminderNotifications();
               // Public /pray page: hand off to its own sign-up close.
               if (onComplete) { onComplete(); return; }
               if (parishOnly) {
