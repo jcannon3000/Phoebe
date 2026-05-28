@@ -8,8 +8,8 @@ import { GlobalButtonHaptics } from "@/components/GlobalButtonHaptics";
 import { LocaleSync } from "@/components/LocaleSync";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
-import { IOSAppDownloadPrompt } from "@/components/IOSAppDownloadPrompt";
 import { DesktopAppPrompt } from "@/components/DesktopAppPrompt";
+import { BottomPromptStack } from "@/components/BottomPromptStack";
 import { AppOpenTracker } from "@/components/AppOpenTracker";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -43,21 +43,43 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
     return { error };
   }
   componentDidCatch(error: Error, info: ErrorInfo) {
+    // Frontend audit: this is the only client-side crash signal today.
+    // console.error keeps it in the device console / Safari Web
+    // Inspector; wire a browser error reporter (Sentry) here so
+    // white-screen crashes on real phones become visible — currently
+    // they're invisible to the team.
     console.error("React render error:", error, info);
   }
   render() {
     if (this.state.error) {
+      // Friendly fallback (frontend audit). We deliberately do NOT show
+      // the raw message/stack to the user — it's jarring in a
+      // contemplative app and leaks internals. The stack still goes to
+      // the console (componentDidCatch above) for debugging.
       return (
-        <div style={{ padding: 24, fontFamily: "monospace", background: "#FAF6F0", minHeight: "100vh" }}>
-          <h2 style={{ color: "#C17F24" }}>Something went wrong</h2>
-          <pre style={{ whiteSpace: "pre-wrap", color: "#2C1810", fontSize: 13 }}>
-            {this.state.error.message}
-            {"\n"}
-            {this.state.error.stack}
-          </pre>
+        <div
+          style={{
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+            textAlign: "center", padding: 32, gap: 16,
+            background: "#091A10", minHeight: "100vh",
+            fontFamily: "'Space Grotesk', system-ui, sans-serif",
+          }}
+        >
+          <div style={{ fontSize: 40 }}>🕯️</div>
+          <h2 style={{ color: "#F0EDE6", fontSize: 22, fontWeight: 700, margin: 0 }}>
+            Something interrupted us
+          </h2>
+          <p style={{ color: "#8FAF96", fontSize: 15, lineHeight: 1.5, maxWidth: 320, margin: 0 }}>
+            A quiet hiccup on our end. Your prayers and letters are safe —
+            let's get you back.
+          </p>
           <button
             onClick={() => { this.setState({ error: null }); window.location.href = "/dashboard"; }}
-            style={{ marginTop: 16, padding: "8px 20px", background: "#2C1810", color: "#E8E4D8", border: "none", borderRadius: 8, cursor: "pointer" }}
+            style={{
+              marginTop: 8, padding: "12px 28px", background: "#2D5E3F", color: "#F0EDE6",
+              border: "none", borderRadius: 12, cursor: "pointer", fontSize: 15, fontWeight: 600,
+              fontFamily: "'Space Grotesk', system-ui, sans-serif",
+            }}
           >
             Back to dashboard
           </button>
@@ -103,6 +125,7 @@ import MomentsDashboard from "./pages/moments-dashboard";
 import MomentRedirect from "./pages/moment-redirect";
 import PrayerListPage from "./pages/prayer-list";
 import PrayerModePage from "./pages/prayer-mode";
+import DailyPracticePage from "./pages/daily-practice";
 import BeginPrayerPage from "./pages/begin-prayer";
 import PrayerStartPage from "./pages/prayer-start";
 import PrayerRequestDetailPage from "./pages/prayer-request-detail";
@@ -482,6 +505,7 @@ function Router() {
       <Route path="/pray-request/new" component={PrayerRequestNew} />
       <Route path="/pray-for/:email" component={PrayerForDetail} />
       <Route path="/settings" component={SettingsPage} />
+      <Route path="/daily-practice" component={DailyPracticePage} />
       <Route path="/customize-home" component={CustomizeHomePage} />
       <Route path="/about" component={AboutPage} />
       <Route path="/privacy" component={PrivacyPage} />
@@ -625,7 +649,6 @@ function App() {
           <AppOpenTracker />
           <PushPermissionPrompt />
           <WebPushPermissionPrompt />
-          <IOSAppDownloadPrompt />
           <DesktopAppPrompt />
           <ForegroundPushToast />
           <NetworkBanner />
@@ -636,6 +659,11 @@ function App() {
           <PullToRefresh />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <ScrollToTopOnNavigate />
+            {/* Bottom-anchored prompt cards (live broadcast banner + App
+                Store download), stacked so they never overlap. Inside the
+                router so the live banner's "Watch →" can SPA-navigate to
+                /ncmp/watch. */}
+            <BottomPromptStack />
             <ParishGate>
               <Router />
             </ParishGate>

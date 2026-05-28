@@ -116,8 +116,13 @@ export async function getGardenUserIds(userId: number): Promise<number[]> {
       if (typeof id === "number" && id !== userId) groupPeerIds.add(id);
     }
   }
+  // Privacy audit #5 — log the numeric userId only, never the email.
+  // This line fires on every garden computation (i.e. most authenticated
+  // reads); shipping the viewer's email into logs is a needless PII /
+  // social-graph exposure if logs are retained or forwarded. userId is
+  // enough to debug with.
   console.log(
-    `[garden] viewer=${userId} email=${viewerEmail} groups=[${myGroupIds.join(",")}] peerDiag=${JSON.stringify(peerDiag)}`,
+    `[garden] viewer=${userId} groups=[${myGroupIds.join(",")}] peerDiag=${JSON.stringify(peerDiag)}`,
   );
 
   const correspondentIds = await getCorrespondentUserIds(userId);
