@@ -359,6 +359,24 @@ function wireClearNotifications() {
               const idFromData = data?.["prayerRequestId"];
               if (typeof idFromData === "number" && idFromData === targetRequestId) return true;
               if (typeof idFromData === "string" && Number(idFromData) === targetRequestId) return true;
+
+              // Second fallback: match on the deep-link path
+              // ("/prayer-requests/N"). Some Capacitor / iOS combos
+              // surface the custom userInfo for getDeliveredNotifications()
+              // differently than for the tapped-action callback — but the
+              // `path` field is the one we already know lands reliably
+              // (the deep-link handler reads notification.data.path). So
+              // if prayerRequestId didn't make it through, the path
+              // usually did. Accept an exact match OR a trailing-segment
+              // match so a future query string / origin prefix doesn't
+              // break it.
+              const pathFromData = data?.["path"];
+              if (typeof pathFromData === "string") {
+                const want = `/prayer-requests/${targetRequestId}`;
+                if (pathFromData === want || pathFromData.split("?")[0].endsWith(want)) {
+                  return true;
+                }
+              }
             }
             return false;
           })
