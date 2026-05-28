@@ -896,6 +896,25 @@ export async function sendNewPrayerRequestPush(
   });
 }
 
+// Beta Messages — a new 1:1 message landed. Title carries the sender's
+// first name; body is a short preview of the message. Tap deep-links to
+// the conversation thread. Threaded per-conversation so a back-and-forth
+// stacks under one thread on the lock screen rather than N banners.
+export function sendBetaMessagePush(
+  recipientUserId: number,
+  opts: { senderName: string; conversationId: number; preview: string },
+) {
+  const firstName = (opts.senderName || "Someone").split(/\s+/)[0] || "Someone";
+  const preview = opts.preview.length > 140 ? opts.preview.slice(0, 139) + "…" : opts.preview;
+  return sendPushToUser(recipientUserId, {
+    title: `${firstName} sent you a message`,
+    body: preview,
+    path: `/messages/${opts.conversationId}`,
+    threadId: `beta-message-${opts.conversationId}`,
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
 // Community admin → all members: "How can we pray for you?" prompt.
 // Rate-limited server-side to once per 7 days per group. Tap deep-
 // links the member to /community/:slug/share-prayer where they can

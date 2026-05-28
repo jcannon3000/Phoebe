@@ -49,3 +49,4 @@ export * from "./ritual_groups";
 export * from "./persistent_auth_tokens";
 export * from "./app_opens";
 export * from "./group_reflections";
+export * from "./beta_messages";

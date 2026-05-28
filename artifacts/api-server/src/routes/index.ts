@@ -38,6 +38,7 @@ import lectionaryRouter from "./lectionary";
 import ncmpRouter from "./ncmp";
 import podcastRouter from "./podcast";
 import groupReflectionsRouter from "./group-reflections";
+import betaMessagesRouter from "./beta-messages";
 
 const router: IRouter = Router();
 
@@ -151,5 +152,6 @@ router.use(lectionaryRouter);
 router.use(ncmpRouter);
 router.use(podcastRouter);
 router.use(groupReflectionsRouter);
+router.use(betaMessagesRouter);
 
 export default router;

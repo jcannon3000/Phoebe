@@ -505,6 +505,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               {showLetters && (
                 <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
               )}
+              {/* Beta Messages — unlimited 1:1 messaging between beta
+                  users. Beta-gated (the server 403s non-beta anyway). */}
+              {rawIsBeta && (
+                <MenuRow emoji="✉️" label={t("menu.messages", { defaultValue: "Messages" })} badge={t("menu.beta")} onClick={() => navigate("/messages")} />
+              )}
             </div>
 
             {/* ── Account + info footer ── */}

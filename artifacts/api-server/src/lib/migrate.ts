@@ -1660,6 +1660,49 @@ export async function migrate() {
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS sunday_reflections_enabled BOOLEAN NOT NULL DEFAULT FALSE`);
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS sunday_reflection_notified_at TIMESTAMPTZ`);
 
+    // ── Beta Messages (beta-only) ────────────────────────────────────────
+    // Unlimited 1:1 messaging between beta users (Letters-style UI, no
+    // cadence limit). One conversation per pair (enforced in the route
+    // layer); two member rows carry each user's read cursor.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS beta_conversations (
+        id SERIAL PRIMARY KEY,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        last_message_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS beta_conversation_members (
+        id SERIAL PRIMARY KEY,
+        conversation_id INTEGER NOT NULL REFERENCES beta_conversations(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        last_read_at TIMESTAMPTZ,
+        archived_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE UNIQUE INDEX IF NOT EXISTS beta_conv_members_unique
+      ON beta_conversation_members (conversation_id, user_id)
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS beta_conv_members_by_user
+      ON beta_conversation_members (user_id)
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS beta_messages (
+        id SERIAL PRIMARY KEY,
+        conversation_id INTEGER NOT NULL REFERENCES beta_conversations(id) ON DELETE CASCADE,
+        sender_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        body TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `
+      CREATE INDEX IF NOT EXISTS beta_messages_by_conversation
+      ON beta_messages (conversation_id, created_at)
+    `);
+
     // Backfill: every existing climate-enrolled user gets a subscription
     // to phoebe-climate so they pick up feed-scoped intercessions on
     // their dashboard and slideshow without a manual opt-in step.
