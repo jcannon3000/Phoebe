@@ -13,14 +13,22 @@ import { openExternal } from "@/lib/openExternal";
 // card, prayer-chooser, or the office picker all funnel here.
 //
 // Prayer-session log:
-//   The old flow fired a fixed-duration prayer-session POST on tap
-//   ("the user opened the cathedral video, credit them ~20 min") and
-//   then let the external page run. We keep the same log here on
-//   mount — the engagement event is "they opened the broadcast" —
-//   so the metrics dashboard sees the same surface = "national-
-//   cathedral" rows it did before. Anti-cheat (5s floor + 60min cap)
-//   lives server-side and the cathedral surface is on the floor-
-//   bypass list so a quick-tap-away still counts.
+//   We track ACTUAL foreground watch time on this page (segment
+//   accumulator that pauses when the app backgrounds, same shape as
+//   usePrayerSession) and commit one national-cathedral row with the
+//   real duration when the user leaves. Two reasons it's watch-time
+//   now rather than a fixed credit on mount:
+//     • The community "Time Praying" metric is more honest if it
+//       reflects how long they actually sat with the broadcast.
+//     • Morning-prayer credit is gated on ">= 3 minutes watched"
+//       (the product ask). A fixed-on-mount log would credit every
+//       quick tap-away as a full Morning Prayer, which it isn't.
+//   When the watch reaches the 3-minute threshold we ALSO stamp the
+//   morning office-completed localStorage flag so the dashboard's
+//   "prayed today" state + the end-of-office rhythm slide light up
+//   immediately; the server's office-history query independently
+//   treats a >=180s national-cathedral row as a morning office, so
+//   the credit survives a refetch / another device.
 //
 // Why iframe and not the @capacitor/inappbrowser plugin:
 //   YouTube's player allows iframe embed via /embed/<videoId>. The
@@ -49,6 +57,11 @@ const PALETTE = {
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const CHANNEL_LIVE_URL = "https://www.youtube.com/@WashingtonNationalCathedral/live";
 
+// Watching the broadcast for at least this long counts as having
+// prayed Morning Prayer (home-screen "prayed today" + the end-of-
+// office rhythm slide). Mirrors the server gate in users.ts.
+const MORNING_PRAYER_CREDIT_SECONDS = 180;
+
 type NcmpMeta = {
   url: string;
   videoId: string | null;
@@ -69,30 +82,78 @@ export default function NcmpWatchPage() {
     staleTime: 60 * 60_000,
   });
 
-  // Best-effort prayer-session log — fire once on mount. The cathedral
-  // surface is exempt from the server's 5s floor (see prayer-sessions
-  // route) so a quick-tap-away from this page still records. Wrapped
-  // in a ref guard because StrictMode double-invokes effects in dev
-  // and we don't want two rows per visit.
-  const loggedRef = useRef(false);
+  // ── Watch-time tracking. Accumulate foreground seconds across
+  // segments (pause when the app backgrounds — a paused video isn't
+  // being prayed with), then commit one national-cathedral row on
+  // leave. Same segment model as usePrayerSession; inlined here
+  // because this surface also writes the morning-office flag, which
+  // the shared hook doesn't.
+  const startedAtRef = useRef<Date | null>(null);
+  const segmentStartRef = useRef<number | null>(null);
+  const accumulatedRef = useRef<number>(0);
+  const committedRef = useRef(false);
   useEffect(() => {
-    if (loggedRef.current) return;
-    loggedRef.current = true;
-    const now = new Date();
-    const seconds = ncmpMeta?.durationSeconds && ncmpMeta.durationSeconds > 0
-      ? ncmpMeta.durationSeconds
-      : 20 * 60;
-    apiRequest("POST", "/api/prayer-sessions", {
-      surface: "national-cathedral",
-      durationSeconds: seconds,
-      startedAt: now.toISOString(),
-      endedAt: new Date(now.getTime() + seconds * 1000).toISOString(),
-    }).catch(() => { /* non-fatal */ });
-    // We log even on the loading flicker — the engagement event is
-    // "opened the page," not "watched the video." If the user
-    // immediately backs out, server's floor-bypass list keeps the
-    // row; if they stay through, the duration credit is the same.
-  }, [ncmpMeta?.durationSeconds]);
+    startedAtRef.current = new Date();
+    segmentStartRef.current = Date.now();
+    accumulatedRef.current = 0;
+    committedRef.current = false;
+
+    const closeSegment = () => {
+      const s = segmentStartRef.current;
+      if (s === null) return;
+      const elapsedMs = Date.now() - s;
+      if (elapsedMs > 0) accumulatedRef.current += elapsedMs / 1000;
+      segmentStartRef.current = null;
+    };
+
+    // Commit exactly one row for this visit. Guarded so unmount +
+    // pagehide can both call it without double-posting.
+    const commit = () => {
+      if (committedRef.current) return;
+      closeSegment();
+      const total = Math.round(accumulatedRef.current);
+      const startedAt = startedAtRef.current;
+      if (total <= 0 || !startedAt) return;
+      committedRef.current = true;
+      apiRequest("POST", "/api/prayer-sessions", {
+        surface: "national-cathedral",
+        durationSeconds: total,
+        startedAt: startedAt.toISOString(),
+        endedAt: new Date().toISOString(),
+      }).catch(() => { /* best-effort */ });
+      // Watched long enough to count as Morning Prayer — stamp the
+      // local office-completed flag so the dashboard + rhythm slide
+      // reflect it before the server history refetches. Morning side
+      // because the cathedral broadcast IS Morning Prayer.
+      if (total >= MORNING_PRAYER_CREDIT_SECONDS) {
+        try {
+          const now = new Date();
+          const dateKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+          localStorage.setItem(`phoebe:office-completed:morning:${dateKey}`, "1");
+        } catch { /* private mode / quota — non-fatal */ }
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        closeSegment();
+      } else if (document.visibilityState === "visible") {
+        if (segmentStartRef.current === null) segmentStartRef.current = Date.now();
+      }
+    };
+    const onPageHide = () => commit();
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", onPageHide);
+      commit();
+    };
+    // Mount-once: the watch session spans the whole page lifetime,
+    // independent of when the video metadata resolves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Build the embed src. The /embed/<videoId> form gives us inline
   // playback; if we don't have a videoId yet (cold meta resolve),
