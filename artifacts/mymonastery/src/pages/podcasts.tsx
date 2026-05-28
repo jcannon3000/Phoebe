@@ -5,6 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlayer";
+import { useTranslation } from "react-i18next";
 
 // ── /podcasts — the Discover index ──────────────────────────────────────
 //
@@ -28,8 +29,7 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 
 type ShowCard = { slug: string; title: string; artist: string; artwork: string | null };
 type Publisher = { slug: string; title: string; emoji: string; shows: ShowCard[] };
-type Theme = { key: string; label: string; emoji: string };
-type PodcastsResponse = { publishers: Publisher[]; themes?: Theme[] };
+type PodcastsResponse = { publishers: Publisher[] };
 type EpisodeHit = {
   id: string;
   title: string | null;
@@ -165,6 +165,7 @@ function ShowTile({ show, onOpen }: { show: ShowCard; onOpen: () => void }) {
 // show / date / duration + a one-line preview. Opens the show page with
 // this episode auto-loaded in the player.
 function EpisodeRow({ ep, onOpen }: { ep: EpisodeHit; onOpen: () => void }) {
+  const { t } = useTranslation();
   const meta = [ep.show.title, fmtDate(ep.publishedAt), fmtDuration(ep.durationSeconds)].filter(Boolean).join(" · ");
   return (
     <div
@@ -181,7 +182,7 @@ function EpisodeRow({ ep, onOpen }: { ep: EpisodeHit; onOpen: () => void }) {
       <div className="min-w-0 flex-1">
         <p style={{ fontSize: 14.5, fontWeight: 600, color: PALETTE.warm, margin: 0, lineHeight: 1.25,
           display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-          {ep.title ?? "Untitled episode"}
+          {ep.title ?? t("podcasts.untitled_episode")}
         </p>
         <p style={{ fontSize: 11.5, color: PALETTE.faint, margin: "3px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {meta}
@@ -212,11 +213,13 @@ function RecAvatar({ name, url, size = 24 }: { name: string; url: string | null;
 // A community-recommendation card — episode + who recommended it + an
 // optional note. Opens the show page with the episode auto-loaded.
 function RecommendationRow({ rec, onOpen }: { rec: RecommendedEpisode; onOpen: () => void }) {
+  const { t } = useTranslation();
   const meta = [rec.showTitle, fmtDate(rec.publishedAt), fmtDuration(rec.durationSeconds)].filter(Boolean).join(" · ");
   const recs = rec.recommenders;
-  const firstName = (recs[0]?.name || "Someone").split(/\s+/)[0];
-  const byline = recs.length === 1 ? `Recommended by ${firstName}`
-    : `Recommended by ${firstName} + ${recs.length - 1} other${recs.length - 1 === 1 ? "" : "s"}`;
+  const firstName = (recs[0]?.name || t("podcasts.someone")).split(/\s+/)[0];
+  const byline = recs.length === 1
+    ? t("podcasts.rec_byline_one", { name: firstName })
+    : t("podcasts.rec_byline_more", { name: firstName, n: recs.length - 1 });
   const note = recs.find((r) => r.note)?.note ?? null;
   return (
     <div
@@ -229,12 +232,12 @@ function RecommendationRow({ rec, onOpen }: { rec: RecommendedEpisode; onOpen: (
     >
       <div className="flex items-start gap-3">
         <div style={{ width: 56, height: 56, flexShrink: 0 }}>
-          <GridArt url={rec.episodeImageUrl ?? rec.showArtwork} alt={rec.showTitle ?? "Show"} />
+          <GridArt url={rec.episodeImageUrl ?? rec.showArtwork} alt={rec.showTitle ?? t("podcasts.show_fallback")} />
         </div>
         <div className="min-w-0 flex-1">
           <p style={{ fontSize: 14.5, fontWeight: 600, color: PALETTE.warm, margin: 0, lineHeight: 1.25,
             display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-            {rec.episodeTitle ?? "Untitled episode"}
+            {rec.episodeTitle ?? t("podcasts.untitled_episode")}
           </p>
           <p style={{ fontSize: 11.5, color: PALETTE.faint, margin: "3px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {meta}
@@ -271,6 +274,7 @@ function ListenListRow({
   onPlay: () => void;
   onRemove: () => void;
 }) {
+  const { t } = useTranslation();
   const art = item.episodeImageUrl ?? item.showArtwork;
   const meta = [item.showTitle, fmtDuration(item.durationSeconds)].filter(Boolean).join(" · ");
   return (
@@ -296,7 +300,7 @@ function ListenListRow({
         <div className="min-w-0 flex-1">
           <p style={{ fontSize: 14, fontWeight: 600, color: PALETTE.warm, margin: 0, lineHeight: 1.25,
             display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-            {item.episodeTitle ?? "Untitled episode"}
+            {item.episodeTitle ?? t("podcasts.untitled_episode")}
           </p>
           {meta && <p style={{ fontSize: 11.5, color: PALETTE.faint, margin: "3px 0 0" }}>{meta}</p>}
         </div>
@@ -305,7 +309,7 @@ function ListenListRow({
       <button
         type="button"
         onClick={onRemove}
-        aria-label="Remove from listen list"
+        aria-label={t("podcasts.remove_from_list")}
         style={{ flexShrink: 0, background: "none", border: "none", color: "rgba(143,175,150,0.5)", fontSize: 18, lineHeight: 1, cursor: "pointer", padding: "4px 2px", marginLeft: 2 }}
       >
         ✕
@@ -320,6 +324,7 @@ export default function PodcastsPage() {
   const [tab, setTab] = useState<"discover" | "listen-list" | "community">("discover");
   const player = usePodcastPlayer();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -333,7 +338,6 @@ export default function PodcastsPage() {
   });
 
   const [query, setQuery] = useState("");
-  const [activeTheme, setActiveTheme] = useState<string | null>(null);
 
   // Debounce the free-text query so we don't fire a library-wide episode
   // search on every keystroke.
@@ -343,15 +347,11 @@ export default function PodcastsPage() {
     return () => clearTimeout(t);
   }, [query]);
 
-  const themes = data?.themes ?? [];
-  const searching = debouncedQ.length > 0 || !!activeTheme;
+  const searching = debouncedQ.length > 0;
 
   const { data: searchData, isLoading: searchLoading } = useQuery<SearchResponse>({
-    queryKey: ["/api/podcasts/search", debouncedQ, activeTheme],
-    queryFn: () => apiRequest(
-      "GET",
-      `/api/podcasts/search?q=${encodeURIComponent(debouncedQ)}&theme=${encodeURIComponent(activeTheme ?? "")}`,
-    ),
+    queryKey: ["/api/podcasts/search", debouncedQ],
+    queryFn: () => apiRequest("GET", `/api/podcasts/search?q=${encodeURIComponent(debouncedQ)}`),
     enabled: !!user && searching,
     staleTime: 5 * 60_000,
   });
@@ -388,7 +388,6 @@ export default function PodcastsPage() {
   const episodeHits = searchData?.episodes ?? [];
   const openEpisode = (ep: EpisodeHit) =>
     setLocation(`/podcasts/show/${ep.show.slug}?ep=${encodeURIComponent(ep.id)}`);
-  const activeThemeLabel = themes.find((t) => t.key === activeTheme)?.label;
 
   return (
     <div style={{ minHeight: "100dvh", background: PALETTE.bg, color: PALETTE.warm, fontFamily: FONT }}>
@@ -406,20 +405,20 @@ export default function PodcastsPage() {
           onClick={() => setLocation("/dashboard")}
           style={{ background: "none", border: "none", color: PALETTE.sage, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}
         >
-          ← Back
+          ← {t("common.back")}
         </button>
       </header>
 
       <main className="w-full max-w-2xl mx-auto" style={{ padding: "8px 16px 48px" }}>
         <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 16px", lineHeight: 1.1 }}>
-          Podcasts
+          {t("podcasts.title")}
         </h1>
 
         {/* Discover ↔ Listen List ↔ Community tabs. */}
         <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
           {(["discover", "listen-list", "community"] as const).map((k) => {
             const active = tab === k;
-            const label = k === "discover" ? "Discover" : k === "listen-list" ? "Listen List" : "Community";
+            const label = k === "discover" ? t("podcasts.tab_discover") : k === "listen-list" ? t("podcasts.tab_listen_list") : t("podcasts.tab_community");
             return (
               <button
                 key={k}
@@ -442,22 +441,22 @@ export default function PodcastsPage() {
         {tab === "listen-list" ? (
           // ── Listen List ───────────────────────────────────────────────
           listenListLoading ? (
-            <p style={{ fontSize: 14, color: PALETTE.faint, marginTop: 24, textAlign: "center" }}>Loading…</p>
+            <p style={{ fontSize: 14, color: PALETTE.faint, marginTop: 24, textAlign: "center" }}>{t("common.loading")}</p>
           ) : (listenListData?.items ?? []).length === 0 ? (
             <div style={{ textAlign: "center", marginTop: 48 }}>
               <p style={{ fontSize: 36, margin: "0 0 12px" }}>🎧</p>
               <p style={{ fontSize: 15, fontWeight: 700, color: PALETTE.warm, margin: "0 0 8px", fontFamily: FONT }}>
-                Your listen list is empty
+                {t("podcasts.listen_list_empty_title")}
               </p>
               <p style={{ fontSize: 13.5, color: PALETTE.sage, lineHeight: 1.5, maxWidth: 300, margin: "0 auto 20px" }}>
-                Browse shows and tap + on any episode to save it here.
+                {t("podcasts.listen_list_empty_body")}
               </p>
               <button
                 type="button"
                 onClick={() => setTab("discover")}
                 style={{ background: "#2D5E3F", color: PALETTE.warm, border: "none", borderRadius: 12, padding: "10px 20px", fontSize: 14, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}
               >
-                Browse shows →
+                {t("podcasts.browse_shows")}
               </button>
             </div>
           ) : (() => {
@@ -467,7 +466,7 @@ export default function PodcastsPage() {
               episodeId: item.episodeId,
               title: item.episodeTitle,
               audioUrl: item.episodeAudioUrl ?? "",
-              imageUrl: item.episodeImageUrl ?? item.showArtwork,
+              imageUrl: item.episodeImageUrl ?? null,
               showTitle: item.showTitle,
               showArtwork: item.showArtwork,
               durationSeconds: item.durationSeconds,
@@ -484,7 +483,7 @@ export default function PodcastsPage() {
                     fontSize: 15, fontWeight: 700, fontFamily: FONT, cursor: "pointer",
                   }}
                 >
-                  ▶ Play All ({items.length} episode{items.length === 1 ? "" : "s"})
+                  {t("podcasts.play_all", { count: items.length })}
                 </button>
                 <div className="space-y-2.5">
                   {items.map((item) => (
@@ -504,12 +503,12 @@ export default function PodcastsPage() {
         ) : tab === "community" ? (
           // ── Community recommendations feed ────────────────────────────
           recLoading ? (
-            <p style={{ fontSize: 14, color: PALETTE.faint, marginTop: 24, textAlign: "center" }}>Loading recommendations…</p>
+            <p style={{ fontSize: 14, color: PALETTE.faint, marginTop: 24, textAlign: "center" }}>{t("podcasts.community_loading")}</p>
           ) : (recData?.recommendations ?? []).length === 0 ? (
             <div style={{ textAlign: "center", marginTop: 36 }}>
               <p style={{ fontSize: 30, margin: "0 0 10px" }}>💬</p>
               <p style={{ fontSize: 14, color: PALETTE.sage, lineHeight: 1.5, maxWidth: 320, margin: "0 auto" }}>
-                No community recommendations yet. Open a show and tap “Recommend” on an episode to share it here.
+                {t("podcasts.community_empty")}
               </p>
             </div>
           ) : (
@@ -537,8 +536,8 @@ export default function PodcastsPage() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search shows & episodes…"
-            aria-label="Search podcasts"
+            placeholder={t("podcasts.search_placeholder")}
+            aria-label={t("podcasts.search_aria")}
             style={{
               width: "100%", boxSizing: "border-box",
               padding: "12px 16px 12px 40px", borderRadius: 14,
@@ -548,52 +547,20 @@ export default function PodcastsPage() {
           />
         </div>
 
-        {/* Thematic pills — tap to search episodes by theme. Horizontally
-            scrollable so the row never wraps. */}
-        {themes.length > 0 && (
-          <div
-            style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, marginBottom: 22, WebkitOverflowScrolling: "touch" }}
-          >
-            {themes.map((t) => {
-              const active = activeTheme === t.key;
-              return (
-                <button
-                  key={t.key}
-                  type="button"
-                  onClick={() => setActiveTheme(active ? null : t.key)}
-                  style={{
-                    flexShrink: 0,
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    padding: "7px 13px", borderRadius: 999,
-                    fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    background: active ? "#2D5E3F" : "rgba(46,107,64,0.12)",
-                    color: active ? PALETTE.warm : "rgba(168,197,160,0.95)",
-                    border: `1px solid ${active ? "rgba(168,197,160,0.5)" : "rgba(46,107,64,0.3)"}`,
-                  }}
-                >
-                  <span aria-hidden>{t.emoji}</span>
-                  {t.label}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
         {searching ? (
           // ── Search / theme results ──────────────────────────────────
           searchLoading ? (
-            <p style={{ fontSize: 14, color: PALETTE.faint, marginTop: 24, textAlign: "center" }}>Searching…</p>
+            <p style={{ fontSize: 14, color: PALETTE.faint, marginTop: 24, textAlign: "center" }}>{t("podcasts.searching")}</p>
           ) : (showHits.length === 0 && episodeHits.length === 0) ? (
             <p style={{ fontSize: 14, color: PALETTE.faint, marginTop: 24, textAlign: "center" }}>
-              No results for {activeTheme ? `“${activeThemeLabel}”` : `“${debouncedQ}”`}{debouncedQ && activeTheme ? ` in ${activeThemeLabel}` : ""}.
+              {t("podcasts.no_results_for", { q: debouncedQ })}
             </p>
           ) : (
             <>
               {showHits.length > 0 && (
                 <section style={{ marginBottom: 28 }}>
                   <h2 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: PALETTE.faint, margin: "0 0 12px" }}>
-                    Shows
+                    {t("podcasts.section_shows")}
                   </h2>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-6">
                     {showHits.map((s) => (
@@ -604,10 +571,10 @@ export default function PodcastsPage() {
               )}
               <section>
                 <h2 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: PALETTE.faint, margin: "0 0 12px" }}>
-                  {episodeHits.length > 0 ? `Episodes${episodeHits.length >= 80 ? " (top 80)" : ""}` : "Episodes"}
+                  {episodeHits.length >= 80 ? t("podcasts.section_episodes_top") : t("podcasts.section_episodes")}
                 </h2>
                 {episodeHits.length === 0 ? (
-                  <p style={{ fontSize: 13.5, color: PALETTE.faint }}>No matching episodes.</p>
+                  <p style={{ fontSize: 13.5, color: PALETTE.faint }}>{t("podcasts.no_matching_episodes")}</p>
                 ) : (
                   <div className="space-y-2.5">
                     {episodeHits.map((ep) => (
@@ -651,7 +618,7 @@ export default function PodcastsPage() {
                   <section style={{ marginBottom: 32 }}>
                     <div className="flex items-center" style={{ marginBottom: 14 }}>
                       <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, lineHeight: 1.15 }}>
-                        More shows
+                        {t("podcasts.more_shows")}
                       </h2>
                     </div>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-6">

@@ -37,6 +37,25 @@ export type PlayingEpisode = {
   durationSeconds?: number | null;
   publishedAt?: string | null;
   description?: string | null;
+  // ── Office / non-podcast playback (all optional; podcast defaults) ──
+  // The daily-office pages play through this same player so they get the
+  // persistent mini-bar + minimize. These tags let one episode behave as
+  // an office rather than a podcast without forking the player.
+  //
+  // Prayer-session surface to log (default "podcast"). The office passes
+  // "morning-office-podcast" / "evening-office-podcast".
+  sessionSurface?: string;
+  // When set, a session >= 180s stamps the local office-completed flag
+  // (phoebe:office-completed:<mode>:<date>) so the dashboard lights up.
+  creditMode?: "morning" | "evening";
+  // Skip the listening-history write — the daily office changes every day
+  // and is tracked via prayer-sessions, not the podcast history.
+  skipHistory?: boolean;
+  // Hide the Recommend (♡) action — a daily office isn't a shareable ep.
+  hideRecommend?: boolean;
+  // Override the "view show" link target — offices have no /podcasts/show
+  // page, so they link back to their own player route.
+  showHref?: string;
 };
 
 type PlayerCtx = {
@@ -102,6 +121,10 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const queueIndexRef = useRef(-1);
   // Prayer-session accumulator (time actually playing).
   const seg = useRef<{ start: number | null; acc: number; startedAt: Date | null }>({ start: null, acc: 0, startedAt: null });
+  // Surface + office-credit mode for the CURRENTLY accumulating session.
+  // Set when an episode starts; read by commitSession (which can't close
+  // over `current`). Defaults to the podcast surface.
+  const sessionMetaRef = useRef<{ surface: string; creditMode?: "morning" | "evening" }>({ surface: "podcast" });
 
   const closeSeg = useCallback(() => {
     if (seg.current.start !== null) {
@@ -117,14 +140,25 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     closeSeg();
     const total = Math.round(seg.current.acc);
     const startedAt = seg.current.startedAt;
+    const { surface, creditMode } = sessionMetaRef.current;
     seg.current = { start: null, acc: 0, startedAt: null };
     if (total > 0 && startedAt && user) {
       apiRequest("POST", "/api/prayer-sessions", {
-        surface: "podcast",
+        surface,
         durationSeconds: total,
         startedAt: startedAt.toISOString(),
         endedAt: new Date().toISOString(),
       }).catch(() => { /* best-effort */ });
+      // Office credit: a session >= 180s counts as having prayed that
+      // office — stamp the local flag the dashboard reads so it reflects
+      // immediately (users.ts also credits the >=180s row server-side).
+      if (creditMode && total >= 180) {
+        try {
+          const now = new Date();
+          const dateKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+          localStorage.setItem(`phoebe:office-completed:${creditMode}:${dateKey}`, "1");
+        } catch { /* private mode / quota — non-fatal */ }
+      }
     }
   }, [closeSeg, user]);
 
@@ -138,7 +172,10 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       }
       const a = audioRef.current;
       if (a && prev) savePos(prev, a.currentTime);
-      commitSession();
+      commitSession(); // flushes prev's session under prev's surface
+      // Switch the session surface/credit to the new episode (commitSession
+      // above already used the old meta).
+      sessionMetaRef.current = { surface: ep.sessionSurface ?? "podcast", creditMode: ep.creditMode };
       pendingSeekRef.current = loadPos(ep);
       setArtBroken(false);
       return ep;
@@ -170,9 +207,10 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     a.load();
     a.play().catch(() => { /* iOS may gate autoplay; the bar's play button covers it */ });
 
-    // Listening history — once per episode per session.
+    // Listening history — once per episode per session. Offices opt out
+    // (skipHistory): they change daily and are tracked via prayer-sessions.
     const key = `${current.showSlug}:${current.episodeId}`;
-    if (user && !loggedRef.current.has(key)) {
+    if (user && !current.skipHistory && !loggedRef.current.has(key)) {
       loggedRef.current.add(key);
       apiRequest("POST", "/api/podcasts/listens", {
         showSlug: current.showSlug,
@@ -444,7 +482,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
               {current.title ?? t("podcasts.now_playing_fallback")}
             </h2>
             <button type="button"
-              onClick={() => { setExpanded(false); setLocation(`/podcasts/show/${current.showSlug}`); }}
+              onClick={() => { setExpanded(false); setLocation(current.showHref ?? `/podcasts/show/${current.showSlug}`); }}
               style={{ background: "none", border: "none", color: "#8FAF96", fontFamily: FONT, fontSize: 13.5, margin: "8px 0 0", cursor: "pointer", padding: 0 }}>
               {current.showTitle ?? t("podcasts.view_show")}
             </button>
@@ -482,17 +520,19 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
                 style={{ background: "rgba(46,107,64,0.25)", border: "1px solid rgba(46,107,64,0.4)", color: "#C8D4C0", fontSize: 12, fontWeight: 700, borderRadius: 999, padding: "6px 12px", cursor: "pointer" }}>
                 {rate}×
               </button>
-              <button type="button" onClick={toggleRecommend}
-                className="transition-opacity hover:opacity-90"
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 16px",
-                  fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer",
-                  background: isRecommended ? "rgba(212,160,70,0.18)" : "rgba(46,107,64,0.14)",
-                  color: isRecommended ? "#F0DCA8" : "rgba(168,197,160,0.95)",
-                  border: `1px solid ${isRecommended ? "rgba(212,160,70,0.45)" : "rgba(46,107,64,0.3)"}`,
-                }}>
-                {isRecommended ? `♥ ${t("podcasts.recommended")}` : `♡ ${t("podcasts.recommend")}`}
-              </button>
+              {!current.hideRecommend && (
+                <button type="button" onClick={toggleRecommend}
+                  className="transition-opacity hover:opacity-90"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 999, padding: "8px 16px",
+                    fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer",
+                    background: isRecommended ? "rgba(212,160,70,0.18)" : "rgba(46,107,64,0.14)",
+                    color: isRecommended ? "#F0DCA8" : "rgba(168,197,160,0.95)",
+                    border: `1px solid ${isRecommended ? "rgba(212,160,70,0.45)" : "rgba(46,107,64,0.3)"}`,
+                  }}>
+                  {isRecommended ? `♥ ${t("podcasts.recommended")}` : `♡ ${t("podcasts.recommend")}`}
+                </button>
+              )}
             </div>
           </div>
         </div>

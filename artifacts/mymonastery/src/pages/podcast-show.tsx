@@ -119,7 +119,7 @@ export default function PodcastShowPage() {
     episodeId: ep.id,
     title: ep.title,
     audioUrl: ep.audioUrl ?? "",
-    imageUrl: ep.imageUrl ?? showData?.artwork ?? null,
+    imageUrl: ep.imageUrl ?? null,
     showTitle: showData?.title ?? null,
     showArtwork: showData?.artwork ?? null,
     durationSeconds: ep.durationSeconds,
@@ -163,7 +163,7 @@ export default function PodcastShowPage() {
           episodeId: ep.id,
           episodeTitle: ep.title ?? undefined,
           episodeAudioUrl: ep.audioUrl ?? undefined,
-          episodeImageUrl: ep.imageUrl ?? showData?.artwork ?? undefined,
+          episodeImageUrl: ep.imageUrl ?? undefined,
           durationSeconds: ep.durationSeconds ?? undefined,
           publishedAt: ep.publishedAt ?? undefined,
           showTitle: showData?.title ?? undefined,
@@ -266,22 +266,22 @@ export default function PodcastShowPage() {
                   type="search"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search episodes…"
-                  aria-label="Search episodes"
+                  placeholder={t("podcasts.search_episodes_placeholder")}
+                  aria-label={t("podcasts.search_episodes_aria")}
                   style={{ width: "100%", boxSizing: "border-box", padding: "9px 12px 9px 34px", borderRadius: 12, background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.30)", color: PALETTE.warm, fontFamily: FONT, fontSize: 14, outline: "none" }}
                 />
               </div>
               <button
                 type="button"
                 onClick={() => setSortNewest((s) => !s)}
-                aria-label="Toggle sort order"
+                aria-label={t("podcasts.sort_toggle_aria")}
                 style={{ flexShrink: 0, padding: "9px 13px", borderRadius: 12, background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.30)", color: "rgba(168,197,160,0.95)", fontFamily: FONT, fontSize: 12.5, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
               >
-                {sortNewest ? "Newest ↓" : "Oldest ↑"}
+                {sortNewest ? t("podcasts.sort_newest") : t("podcasts.sort_oldest")}
               </button>
             </div>
             {visibleEpisodes.length === 0 ? (
-              <p style={{ color: PALETTE.faint, fontSize: 13, marginTop: 8 }}>No episodes match “{query}”.</p>
+              <p style={{ color: PALETTE.faint, fontSize: 13, marginTop: 8 }}>{t("podcasts.no_episodes_match", { query })}</p>
             ) : (
             <div className="space-y-2.5">
               {visibleEpisodes.map((ep) => {
@@ -342,8 +342,8 @@ export default function PodcastShowPage() {
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); listenListMut.mutate({ add: !inList, ep }); }}
-                      aria-label={inList ? "Remove from listen list" : "Add to listen list"}
-                      title={inList ? "Remove from listen list" : "Add to listen list"}
+                      aria-label={inList ? t("podcasts.remove_from_list") : t("podcasts.add_to_list")}
+                      title={inList ? t("podcasts.remove_from_list") : t("podcasts.add_to_list")}
                       style={{
                         flexShrink: 0, marginTop: 4,
                         width: 30, height: 30, borderRadius: "50%", border: "none",

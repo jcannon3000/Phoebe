@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useOfficePrefs, setOfficeAudioSource, type OfficeAudioSource } from "@/lib/officePrefs";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { usePodcastPlayer } from "@/components/PodcastPlayer";
 
 // ── /podcast/:show — daily office podcasts, embedded ──
 //
@@ -21,16 +22,19 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 // and the /today fetch passes ?source= so the server returns the right
 // feed's episode.
 //
-// Prayer-session log:
-//   We accumulate ACTUAL playback time — segments bounded by the
-//   <audio> element's play/pause/ended events (and paused when the app
-//   backgrounds). One "{morning,evening}-office-podcast" row is
-//   committed with the real listened duration on leave. A session >= 3
-//   minutes counts as the matching office: we stamp the local office-
-//   completed flag for that side so the dashboard lights up
+// Playback + engagement:
+//   This page is a launch screen — it does NOT own an <audio> element.
+//   Tapping Listen hands today's episode to the GLOBAL podcast player
+//   (usePodcastPlayer().play), so the office gets the same persistent
+//   mini-bar + minimize as podcasts and keeps playing while you navigate.
+//   We tag the handed-off episode with sessionSurface
+//   ("{morning,evening}-office-podcast") and creditMode ("morning" |
+//   "evening"): the player accumulates ACTUAL playback time and, on
+//   commit (background / close / episode-change), POSTs one prayer-
+//   session row under that surface. A session >= 3 minutes stamps the
+//   local office-completed flag for that side so the dashboard lights up
 //   immediately, and the server independently treats a >=180s row as
-//   that office (see users.ts), so the credit survives a refetch /
-//   another device.
+//   that office (see users.ts), so credit survives a refetch / device.
 
 type ShowKey = "morning-office" | "evening-office";
 
@@ -96,10 +100,6 @@ const PALETTE = {
 };
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
-// Listening for at least this long counts as having prayed the office.
-// Mirrors the national-cathedral gate in users.ts.
-const OFFICE_CREDIT_SECONDS = 180;
-
 type Episode = {
   feedTitle: string | null;
   title: string | null;
@@ -145,87 +145,38 @@ export default function OfficePodcastPage() {
   const [artworkFailed, setArtworkFailed] = useState(false);
   useEffect(() => { setArtworkFailed(false); }, [episode?.imageUrl]);
 
-  // ── Playback-time tracking. Accumulate seconds the audio is actually
-  // playing (segments opened on `play`, closed on `pause`/`ended`/leave
-  // and when the app backgrounds), then commit one row on leave.
-  const startedAtRef = useRef<Date | null>(null);
-  const segmentStartRef = useRef<number | null>(null);
-  const accumulatedRef = useRef<number>(0);
-  const committedRef = useRef(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Playback runs through the GLOBAL podcast player (see file header), so
+  // the office audio gets the same persistent mini-bar + minimize and
+  // keeps playing as you navigate. We just hand it today's episode tagged
+  // with the office surface + credit mode; the player owns the <audio>
+  // element and all the session bookkeeping.
+  const player = usePodcastPlayer();
+  const playerSlug = `office-${show.side}`;        // office-morning | office-evening
+  const episodeId = episode?.audioUrl ?? "";       // unique per recording / source
+  const isThis = !!episode?.audioUrl && player.isCurrent(playerSlug, episodeId);
+  const playingThis = isThis && player.isPlaying;
 
-  useEffect(() => {
-    startedAtRef.current = new Date();
-    segmentStartRef.current = null;
-    accumulatedRef.current = 0;
-    committedRef.current = false;
-
-    const closeSegment = () => {
-      const s = segmentStartRef.current;
-      if (s === null) return;
-      const elapsedMs = Date.now() - s;
-      if (elapsedMs > 0) accumulatedRef.current += elapsedMs / 1000;
-      segmentStartRef.current = null;
-    };
-    const openSegment = () => {
-      if (segmentStartRef.current === null) segmentStartRef.current = Date.now();
-    };
-
-    // Commit exactly one row for this visit. Guarded so unmount +
-    // pagehide can both call it without double-posting.
-    const commit = () => {
-      if (committedRef.current) return;
-      closeSegment();
-      const total = Math.round(accumulatedRef.current);
-      const startedAt = startedAtRef.current;
-      if (total <= 0 || !startedAt) return;
-      committedRef.current = true;
-      apiRequest("POST", "/api/prayer-sessions", {
-        surface: show.surface,
-        durationSeconds: total,
-        startedAt: startedAt.toISOString(),
-        endedAt: new Date().toISOString(),
-      }).catch(() => { /* best-effort */ });
-      // Listened long enough to count as the office — stamp the local
-      // office-completed flag so the dashboard + rhythm slide reflect
-      // it before the server history refetches. The side IS the
-      // office-completed mode key the dashboard reads.
-      if (total >= OFFICE_CREDIT_SECONDS) {
-        try {
-          const now = new Date();
-          const dateKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-          localStorage.setItem(`phoebe:office-completed:${show.side}:${dateKey}`, "1");
-        } catch { /* private mode / quota — non-fatal */ }
-      }
-    };
-
-    const audio = audioRef.current;
-    const onPlay = () => openSegment();
-    const onPause = () => closeSegment();
-    const onEnded = () => closeSegment();
-    audio?.addEventListener("play", onPlay);
-    audio?.addEventListener("pause", onPause);
-    audio?.addEventListener("ended", onEnded);
-
-    const onVisibility = () => {
-      if (document.visibilityState === "hidden") closeSegment();
-      else if (document.visibilityState === "visible" && audio && !audio.paused) openSegment();
-    };
-    const onPageHide = () => commit();
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("pagehide", onPageHide);
-
-    return () => {
-      audio?.removeEventListener("play", onPlay);
-      audio?.removeEventListener("pause", onPause);
-      audio?.removeEventListener("ended", onEnded);
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("pagehide", onPageHide);
-      commit();
-    };
-    // Mount-once per show: the listen session spans the page lifetime.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showKey]);
+  function launch() {
+    if (!episode?.audioUrl) return;
+    if (isThis) { player.toggle(); return; }        // already loaded — just play/pause
+    player.play({
+      showSlug: playerSlug,
+      episodeId,
+      title: episode.title,
+      audioUrl: episode.audioUrl,
+      imageUrl: episode.imageUrl,
+      showTitle: episode.feedTitle ?? show.fallbackTitle,
+      showArtwork: episode.imageUrl,
+      durationSeconds: episode.durationSeconds,
+      publishedAt: episode.publishedAt,
+      description: sourceMeta.blurb(show.side),
+      sessionSurface: show.surface,    // morning/evening-office-podcast
+      creditMode: show.side,           // stamps office-completed at >=180s
+      skipHistory: true,               // daily office — not podcast history
+      hideRecommend: true,             // a daily office isn't a shareable ep
+      showHref: `/podcast/${show.apiSlug}`,
+    });
+  }
 
   const durationLabel = formatDuration(episode?.durationSeconds ?? null);
 
@@ -241,7 +192,7 @@ export default function OfficePodcastPage() {
         flexDirection: "column",
       }}
     >
-      <AnimatedBackground base={PALETTE.bg} variant="subtle" fadeTop />
+      <AnimatedBackground base={PALETTE.bg} variant="pronounced" fadeTop />
       <header
         style={{
           paddingTop: "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))",
@@ -421,16 +372,32 @@ export default function OfficePodcastPage() {
               </p>
             </div>
 
-            {/* Native audio controls — full transport for free, plus iOS
-                lock-screen + Control Center playback automatically. */}
-            <audio
-              ref={audioRef}
-              src={episode.audioUrl}
-              controls
-              autoPlay
-              preload="metadata"
-              style={{ width: "100%", marginTop: 4 }}
-            />
+            {/* Hand off to the global player — gets the persistent
+                mini-bar + minimize (⌄), and playback survives leaving
+                this page. Once it's the current episode the button
+                mirrors play/pause. */}
+            <button
+              type="button"
+              onClick={launch}
+              style={{
+                marginTop: 4,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 10,
+                borderRadius: 999,
+                padding: "13px 30px",
+                fontSize: 15,
+                fontWeight: 700,
+                fontFamily: FONT,
+                cursor: "pointer",
+                background: PALETTE.accent,
+                color: PALETTE.bg,
+                border: "none",
+              }}
+            >
+              <span style={{ fontSize: 18, lineHeight: 1 }} aria-hidden>{playingThis ? "⏸" : "▶"}</span>
+              {playingThis ? "Pause" : isThis ? "Resume" : "Listen"}
+            </button>
 
             <p
               style={{
