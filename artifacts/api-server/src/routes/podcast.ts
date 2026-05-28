@@ -205,7 +205,7 @@ const SHOWS: Record<string, Show> = {
     artist: "Jacqui Lewis · CAC",
     publisher: "cac",
     feedUrl: "https://feeds.megaphone.fm/CFAC7740854822",
-    artwork: "/podcast-art/jacqui-lewis.jpg",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b1/88/59/b1885906-bb3c-5c03-9c01-4cc643489757/mza_10724753065665227728.jpg/600x600bb.jpg",
   },
   "cac-cosmic-we": {
     slug: "cac-cosmic-we",
