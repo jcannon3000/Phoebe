@@ -448,6 +448,28 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   onClick={() => { onClose(); markSsjeRead(); openExternal(SSJE_TODAY_URL); }}
                 />
               </MenuSection>
+              {/* Podcasts — daily audio offices. The two Forward
+                  Movement offices open the in-app player (which logs
+                  the prayer session toward the rhythm grid + streak);
+                  National Cathedral links out to the cathedral's own
+                  podcast page, where their audio offerings live. */}
+              <MenuSection emoji="🎧" label={t("menu.podcasts", { defaultValue: "Podcasts" })}>
+                <MenuRow
+                  emoji="🌅"
+                  label={t("menu.podcast_morning_office", { defaultValue: "Daily Morning Prayer" })}
+                  onClick={() => navigate("/podcast/morning-office")}
+                />
+                <MenuRow
+                  emoji="🌙"
+                  label={t("menu.podcast_evening_office", { defaultValue: "Daily Evening Prayer" })}
+                  onClick={() => navigate("/podcast/evening-office")}
+                />
+                <MenuRow
+                  emoji="📺"
+                  label={t("menu.podcast_national_cathedral", { defaultValue: "National Cathedral" })}
+                  onClick={() => { onClose(); openExternal("https://cathedral.org/podcast/"); }}
+                />
+              </MenuSection>
               {/* Resources — non-prayer, non-reflection reference
                   surfaces. Sunday Lectionary opens externally to
                   lectionarypage.net via /api/lectionary/today (the
