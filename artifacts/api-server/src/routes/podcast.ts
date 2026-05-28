@@ -106,6 +106,28 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
   },
 };
 
+// Thematic filter pills for the Discover page. Each searches episode
+// titles + descriptions across the whole library for ANY of its
+// keywords (case-insensitive substring). Keywords are deliberately
+// broad/stemmed (e.g. "contempl" catches contemplate/contemplation/
+// contemplative).
+const THEMES: Array<{ key: string; label: string; emoji: string; keywords: string[] }> = [
+  { key: "contemplation", label: "Contemplation", emoji: "🕯️",
+    keywords: ["contempl", "silence", "mystic", "meditat", "stillness", "presence", "centering prayer", "solitude"] },
+  { key: "justice", label: "Justice & Race", emoji: "🫱🏽‍🫲🏿",
+    keywords: ["justice", "race", "racism", "racial", "poverty", "oppress", "liberation", "equity", "beloved community", "reparation", "immigra"] },
+  { key: "scripture", label: "Scripture", emoji: "📖",
+    keywords: ["scripture", "gospel", "bible", "biblical", "psalm", "lectionary", "epistle", "parable", "exodus", "genesis"] },
+  { key: "creation", label: "Creation", emoji: "🌎",
+    keywords: ["creation", "ecolog", "earth", "climate", "environment", "nature", "creature", "land", "wilderness", "season"] },
+  { key: "mystics", label: "Saints & Mystics", emoji: "😇",
+    keywords: ["mystic", "saint", "merton", "julian of norwich", "teresa", "john of the cross", "francis", "desert", "hildegard", "eckhart", "thérèse", "therese"] },
+  { key: "healing", label: "Grief & Healing", emoji: "🕊️",
+    keywords: ["grief", "loss", "healing", "lament", "suffering", "comfort", "wholeness", "trauma", "mourning", "death"] },
+  { key: "prayer", label: "Prayer", emoji: "🙏",
+    keywords: ["prayer", "pray", "intercession", "examen", "rule of life", "spiritual practice", "morning prayer", "evening prayer", "compline"] },
+];
+
 const SHOWS: Record<string, Show> = {
   // ── Forward Movement daily offices ──────────────────────────────────
   "morning-office": {
@@ -449,7 +471,59 @@ router.get("/podcasts", (_req: Request, res: Response): void => {
         .filter((s): s is Show => !!s)
         .map((s) => ({ slug: s.slug, title: s.title, artist: s.artist, artwork: s.artwork })),
     })),
+    // Thematic filter pills for the Discover page. Tapping one runs an
+    // episode search across the whole library (see /podcasts/search).
+    themes: THEMES.map((t) => ({ key: t.key, label: t.label, emoji: t.emoji })),
   });
+});
+
+// ── GET /api/podcasts/search — search SHOWS + EPISODES ───────────────────
+// `?q=` is free-text; `?theme=` is one of the THEMES keys. Either or both
+// (AND-combined). Episodes are matched on title + description across the
+// whole library; shows on title/artist (free-text only). Loads every
+// feed (cached per show) in parallel — the first search warms the cache,
+// the rest are instant.
+router.get("/podcasts/search", async (req: Request, res: Response): Promise<void> => {
+  const q = String(req.query.q ?? "").trim().toLowerCase();
+  const themeKey = String(req.query.theme ?? "").trim();
+  const theme = THEMES.find((t) => t.key === themeKey) ?? null;
+  res.setHeader("Cache-Control", "public, max-age=300");
+
+  if (!q && !theme) { res.json({ shows: [], episodes: [] }); return; }
+
+  // Matching shows (free-text only — a theme pill is about episodes).
+  const showMatches = q
+    ? Object.values(SHOWS)
+        .filter((s) => s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q))
+        .map((s) => ({ slug: s.slug, title: s.title, artist: s.artist, artwork: s.artwork }))
+    : [];
+
+  // Aggregate episodes across all shows (cached feeds), filtered by q
+  // AND theme (whichever are set).
+  const all = Object.values(SHOWS);
+  const feeds = await Promise.all(all.map(async (s) => {
+    try { return { s, f: await loadFeed(s, 50) }; }
+    catch { return { s, f: { feedTitle: null, feedImage: null, episodes: [] as EpisodeFull[] } }; }
+  }));
+
+  type Hit = EpisodeFull & { show: { slug: string; title: string; artist: string; artwork: string | null } };
+  const episodes: Hit[] = [];
+  for (const { s, f } of feeds) {
+    const showArt = f.feedImage ?? s.artwork ?? null;
+    for (const ep of f.episodes) {
+      const hay = `${ep.title ?? ""} ${ep.description ?? ""}`.toLowerCase();
+      const matchesQ = !q || hay.includes(q);
+      const matchesTheme = !theme || theme.keywords.some((k) => hay.includes(k));
+      if (matchesQ && matchesTheme) {
+        episodes.push({ ...ep, show: { slug: s.slug, title: s.title, artist: s.artist, artwork: showArt } });
+      }
+    }
+  }
+  // Most-recent first; cap so a broad theme doesn't return hundreds.
+  episodes.sort((a, b) =>
+    new Date(b.publishedAt ?? 0).getTime() - new Date(a.publishedAt ?? 0).getTime());
+
+  res.json({ shows: showMatches, episodes: episodes.slice(0, 80) });
 });
 
 // ── GET /api/podcasts/publisher/:publisher — publisher + show list ───────

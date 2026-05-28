@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -7,11 +7,14 @@ import { useAuth } from "@/hooks/useAuth";
 // ── /podcasts — the Discover index ──────────────────────────────────────
 //
 // One browsable home for the whole curated podcast library, grouped by
-// publisher (Forward Movement offices, CAC, National Cathedral, VTS).
-// Hallow-style: each publisher is a section header over an image-forward
-// 2-column cover-art grid. Tapping a show opens /podcasts/show/:slug —
-// the episode list + in-app player. Registry metadata only (no feed
-// fetch), so the page loads instantly.
+// publisher. Hallow-style cover-art grids. Tapping a show opens
+// /podcasts/show/:slug — the episode list + in-app player.
+//
+// Search + themes: the search box and the thematic pills both query
+// /api/podcasts/search, which searches EPISODE titles + descriptions
+// across every show (not just show names), and returns matching shows
+// too. Tapping an episode result opens its show page with that episode
+// auto-loaded in the player (?ep=…).
 
 const PALETTE = {
   bg: "#0C1F12",
@@ -23,7 +26,31 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 
 type ShowCard = { slug: string; title: string; artist: string; artwork: string | null };
 type Publisher = { slug: string; title: string; emoji: string; shows: ShowCard[] };
-type PodcastsResponse = { publishers: Publisher[] };
+type Theme = { key: string; label: string; emoji: string };
+type PodcastsResponse = { publishers: Publisher[]; themes?: Theme[] };
+type EpisodeHit = {
+  id: string;
+  title: string | null;
+  description: string | null;
+  durationSeconds: number | null;
+  publishedAt: string | null;
+  show: { slug: string; title: string; artist: string; artwork: string | null };
+};
+type SearchResponse = { shows: ShowCard[]; episodes: EpisodeHit[] };
+
+function fmtDuration(seconds: number | null): string | null {
+  if (!seconds || seconds <= 0) return null;
+  const mins = Math.round(seconds / 60);
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60); const m = mins % 60;
+  return m === 0 ? `${h} hr` : `${h} hr ${m} min`;
+}
+function fmtDate(rfc822: string | null): string | null {
+  if (!rfc822) return null;
+  const d = new Date(rfc822);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
 
 // Full-bleed square cover art — the artwork is the hero. Falls back to a
 // calm headphones tile when a feed has no artwork or its image fails.
@@ -102,6 +129,43 @@ function ShowTile({ show, onOpen }: { show: ShowCard; onOpen: () => void }) {
   );
 }
 
+// A single episode search result — artwork thumb + episode title +
+// show / date / duration + a one-line preview. Opens the show page with
+// this episode auto-loaded in the player.
+function EpisodeRow({ ep, onOpen }: { ep: EpisodeHit; onOpen: () => void }) {
+  const meta = [ep.show.title, fmtDate(ep.publishedAt), fmtDuration(ep.durationSeconds)].filter(Boolean).join(" · ");
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      className="w-full rounded-2xl p-3 cursor-pointer transition-opacity hover:opacity-90 flex items-start gap-3"
+      style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+    >
+      <div style={{ width: 52, height: 52, flexShrink: 0 }}>
+        <GridArt url={ep.show.artwork} alt={ep.show.title} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p style={{ fontSize: 14.5, fontWeight: 600, color: PALETTE.warm, margin: 0, lineHeight: 1.25,
+          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          {ep.title ?? "Untitled episode"}
+        </p>
+        <p style={{ fontSize: 11.5, color: PALETTE.faint, margin: "3px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {meta}
+        </p>
+        {ep.description && (
+          <p style={{ fontSize: 12.5, color: PALETTE.sage, margin: "5px 0 0", lineHeight: 1.4,
+            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+            {ep.description}
+          </p>
+        )}
+      </div>
+      <span style={{ color: "rgba(143,175,150,0.5)", fontSize: 16, flexShrink: 0, marginTop: 2 }}>▶</span>
+    </div>
+  );
+}
+
 export default function PodcastsPage() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
@@ -118,26 +182,37 @@ export default function PodcastsPage() {
   });
 
   const [query, setQuery] = useState("");
+  const [activeTheme, setActiveTheme] = useState<string | null>(null);
 
-  // Flatten every show across publishers once, then filter by the
-  // search query (title or artist, case-insensitive). useMemo so we
-  // don't re-flatten on every keystroke render.
-  const allShows = useMemo(
-    () => (data?.publishers ?? []).flatMap((p) => p.shows),
-    [data],
-  );
-  const q = query.trim().toLowerCase();
-  const results = useMemo(
-    () => (q ? allShows.filter((s) =>
-      s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q)
-    ) : []),
-    [allShows, q],
-  );
+  // Debounce the free-text query so we don't fire a library-wide episode
+  // search on every keystroke.
+  const [debouncedQ, setDebouncedQ] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(query.trim()), 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  const themes = data?.themes ?? [];
+  const searching = debouncedQ.length > 0 || !!activeTheme;
+
+  const { data: searchData, isLoading: searchLoading } = useQuery<SearchResponse>({
+    queryKey: ["/api/podcasts/search", debouncedQ, activeTheme],
+    queryFn: () => apiRequest(
+      "GET",
+      `/api/podcasts/search?q=${encodeURIComponent(debouncedQ)}&theme=${encodeURIComponent(activeTheme ?? "")}`,
+    ),
+    enabled: !!user && searching,
+    staleTime: 5 * 60_000,
+  });
 
   if (authLoading || !user) return null;
 
   const publishers = data?.publishers ?? [];
-  const searching = q.length > 0;
+  const showHits = searchData?.shows ?? [];
+  const episodeHits = searchData?.episodes ?? [];
+  const openEpisode = (ep: EpisodeHit) =>
+    setLocation(`/podcasts/show/${ep.show.slug}?ep=${encodeURIComponent(ep.id)}`);
+  const activeThemeLabel = themes.find((t) => t.key === activeTheme)?.label;
 
   return (
     <div style={{ minHeight: "100dvh", background: PALETTE.bg, color: PALETTE.warm, fontFamily: FONT }}>
@@ -164,8 +239,8 @@ export default function PodcastsPage() {
           {isLoading ? "Loading the library…" : "Listen in Phoebe — the offices, contemplatives, and teachers we love."}
         </p>
 
-        {/* Search across the whole library by show or author. */}
-        <div style={{ position: "relative", marginBottom: 24 }}>
+        {/* Search across shows AND episodes. */}
+        <div style={{ position: "relative", marginBottom: 12 }}>
           <span
             aria-hidden
             style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 15, opacity: 0.6 }}
@@ -176,35 +251,86 @@ export default function PodcastsPage() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search podcasts…"
+            placeholder="Search shows & episodes…"
             aria-label="Search podcasts"
             style={{
-              width: "100%",
-              boxSizing: "border-box",
-              padding: "12px 16px 12px 40px",
-              borderRadius: 14,
-              background: "rgba(46,107,64,0.10)",
-              border: "1px solid rgba(46,107,64,0.30)",
-              color: PALETTE.warm,
-              fontFamily: FONT,
-              fontSize: 15,
-              outline: "none",
+              width: "100%", boxSizing: "border-box",
+              padding: "12px 16px 12px 40px", borderRadius: 14,
+              background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.30)",
+              color: PALETTE.warm, fontFamily: FONT, fontSize: 15, outline: "none",
             }}
           />
         </div>
 
+        {/* Thematic pills — tap to search episodes by theme. Horizontally
+            scrollable so the row never wraps. */}
+        {themes.length > 0 && (
+          <div
+            style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, marginBottom: 22, WebkitOverflowScrolling: "touch" }}
+          >
+            {themes.map((t) => {
+              const active = activeTheme === t.key;
+              return (
+                <button
+                  key={t.key}
+                  type="button"
+                  onClick={() => setActiveTheme(active ? null : t.key)}
+                  style={{
+                    flexShrink: 0,
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "7px 13px", borderRadius: 999,
+                    fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer",
+                    whiteSpace: "nowrap",
+                    background: active ? "#2D5E3F" : "rgba(46,107,64,0.12)",
+                    color: active ? PALETTE.warm : "rgba(168,197,160,0.95)",
+                    border: `1px solid ${active ? "rgba(168,197,160,0.5)" : "rgba(46,107,64,0.3)"}`,
+                  }}
+                >
+                  <span aria-hidden>{t.emoji}</span>
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {searching ? (
-          // ── Search results — a single flat grid across all publishers.
-          results.length === 0 ? (
+          // ── Search / theme results ──────────────────────────────────
+          searchLoading ? (
+            <p style={{ fontSize: 14, color: PALETTE.faint, marginTop: 24, textAlign: "center" }}>Searching…</p>
+          ) : (showHits.length === 0 && episodeHits.length === 0) ? (
             <p style={{ fontSize: 14, color: PALETTE.faint, marginTop: 24, textAlign: "center" }}>
-              No podcasts match “{query.trim()}”.
+              No results for {activeTheme ? `“${activeThemeLabel}”` : `“${debouncedQ}”`}{debouncedQ && activeTheme ? ` in ${activeThemeLabel}` : ""}.
             </p>
           ) : (
-            <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-              {results.map((s) => (
-                <ShowTile key={s.slug} show={s} onOpen={() => setLocation(`/podcasts/show/${s.slug}`)} />
-              ))}
-            </div>
+            <>
+              {showHits.length > 0 && (
+                <section style={{ marginBottom: 28 }}>
+                  <h2 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: PALETTE.faint, margin: "0 0 12px" }}>
+                    Shows
+                  </h2>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-6">
+                    {showHits.map((s) => (
+                      <ShowTile key={s.slug} show={s} onOpen={() => setLocation(`/podcasts/show/${s.slug}`)} />
+                    ))}
+                  </div>
+                </section>
+              )}
+              <section>
+                <h2 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: PALETTE.faint, margin: "0 0 12px" }}>
+                  {episodeHits.length > 0 ? `Episodes${episodeHits.length >= 80 ? " (top 80)" : ""}` : "Episodes"}
+                </h2>
+                {episodeHits.length === 0 ? (
+                  <p style={{ fontSize: 13.5, color: PALETTE.faint }}>No matching episodes.</p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {episodeHits.map((ep) => (
+                      <EpisodeRow key={`${ep.show.slug}:${ep.id}`} ep={ep} onOpen={() => openEpisode(ep)} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            </>
           )
         ) : (
           // ── Default browse — sections per publisher.

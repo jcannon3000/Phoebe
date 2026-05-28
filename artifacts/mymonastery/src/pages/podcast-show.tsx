@@ -136,6 +136,10 @@ export default function PodcastShowPage() {
   const segmentStartRef = useRef<number | null>(null);
   const accumulatedRef = useRef<number>(0);
   const committedRef = useRef(false);
+  // One-time auto-open: when arrived here from an episode search result
+  // (/podcasts/show/:slug?ep=<id>), open that episode in the player as
+  // soon as the feed loads.
+  const autoSelectedRef = useRef(false);
 
   const closeSegment = () => {
     const s = segmentStartRef.current;
@@ -183,6 +187,21 @@ export default function PodcastShowPage() {
     closeSegment(); // close the prior episode's segment before switching
     setNowPlaying(ep);
   };
+
+  // Auto-open the ?ep=<id> episode once the feed loads (deep-link from an
+  // episode search result). Runs once.
+  useEffect(() => {
+    if (autoSelectedRef.current) return;
+    const eps = data?.episodes ?? [];
+    if (eps.length === 0) return;
+    let epId: string | null = null;
+    try { epId = new URLSearchParams(window.location.search).get("ep"); } catch { /* ignore */ }
+    autoSelectedRef.current = true;
+    if (!epId) return;
+    const match = eps.find((e) => e.id === epId);
+    if (match && match.audioUrl) { closeSegment(); setNowPlaying(match); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   if (authLoading || !user) return null;
 
