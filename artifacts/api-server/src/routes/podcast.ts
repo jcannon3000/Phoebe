@@ -48,6 +48,31 @@ type Show = {
   kind?: "rss" | "scrape-roundtables";
 };
 
+// Show-level theme tags (slug → theme keys). A theme search surfaces a
+// tagged show + ALL its episodes even when individual episode titles /
+// descriptions don't contain the theme's keywords — e.g. "Roundtables
+// on Race" is entirely about race/justice, but episode titles like
+// "Judaism" or "Season Wrap-up" wouldn't keyword-match on their own.
+// Centralized here (rather than a field per show) to keep tagging in
+// one place.
+const SHOW_THEMES: Record<string, string[]> = {
+  "roundtables-on-race": ["justice"],
+  "cac-love-period": ["justice"],
+  "cac-cosmic-we": ["justice", "contemplation"],
+  "way-of-love-curry": ["justice", "prayer"],
+  "vts-love-your-neighbor": ["justice"],
+  "cac-learning-how-to-see": ["justice", "contemplation"],
+  "cac-practices-learning-to-see": ["contemplation"],
+  "cac-turning-to-the-mystics": ["contemplation", "mystics"],
+  "cac-everything-belongs": ["contemplation"],
+  "cac-another-name": ["contemplation"],
+  "cac-homilies": ["scripture", "contemplation"],
+  "experiencing-jesus": ["scripture", "prayer"],
+};
+function showThemes(slug: string): string[] {
+  return SHOW_THEMES[slug] ?? [];
+}
+
 // Ordered list of shows per publisher drives the browse grid.
 const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: string[] }> = {
   "forward-movement": {
@@ -557,14 +582,19 @@ router.get("/podcasts/search", async (req: Request, res: Response): Promise<void
 
   if (!q && !theme) { res.json({ shows: [], episodes: [] }); return; }
 
-  // Matching shows (free-text only — a theme pill is about episodes).
-  const showMatches = q
-    ? Object.values(SHOWS)
-        .filter((s) => !HIDDEN_FROM_DISCOVER.has(s.slug)
-          && (s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q)))
-        .sort((a, b) => relevance(q, b.title, b.artist) - relevance(q, a.title, a.artist))
-        .map((s) => ({ slug: s.slug, title: s.title, artist: s.artist, artwork: s.artwork }))
-    : [];
+  // Matching shows: free-text matches on title/artist, PLUS shows tagged
+  // with the active theme (so a thematically-relevant show like
+  // "Roundtables on Race" surfaces under "Justice & Race" even though
+  // its episode titles don't keyword-match).
+  const showMatches = Object.values(SHOWS)
+    .filter((s) => {
+      if (HIDDEN_FROM_DISCOVER.has(s.slug)) return false;
+      if (q && (s.title.toLowerCase().includes(q) || s.artist.toLowerCase().includes(q))) return true;
+      if (theme && showThemes(s.slug).includes(theme.key)) return true;
+      return false;
+    })
+    .sort((a, b) => relevance(q, b.title, b.artist) - relevance(q, a.title, a.artist))
+    .map((s) => ({ slug: s.slug, title: s.title, artist: s.artist, artwork: s.artwork }));
 
   // Aggregate episodes across all shows (cached feeds), filtered by q AND
   // theme (whichever are set). Office shows are excluded — they live on
@@ -579,10 +609,13 @@ router.get("/podcasts/search", async (req: Request, res: Response): Promise<void
   const scored: Array<{ hit: Hit; score: number }> = [];
   for (const { s, f } of feeds) {
     const showArt = f.feedImage ?? s.artwork ?? null;
+    // A whole show tagged with the active theme contributes ALL its
+    // episodes (covers shows whose episode titles don't keyword-match).
+    const showTagged = !!theme && showThemes(s.slug).includes(theme.key);
     for (const ep of f.episodes) {
       const hay = `${ep.title ?? ""} ${ep.description ?? ""}`.toLowerCase();
       const matchesQ = !q || hay.includes(q);
-      const matchesTheme = !theme || theme.keywords.some((k) => hay.includes(k));
+      const matchesTheme = !theme || showTagged || theme.keywords.some((k) => hay.includes(k));
       if (matchesQ && matchesTheme) {
         scored.push({
           hit: { ...ep, show: { slug: s.slug, title: s.title, artist: s.artist, artwork: showArt } },
