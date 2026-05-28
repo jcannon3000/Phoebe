@@ -2611,10 +2611,10 @@ function FddHomeCard() {
 }
 
 // SSJE Reflections home card. Mirrors CacHomeCard / FddHomeCard: opens
-// web.ssje.org/listen-brother-give-us-a-word externally (their page
-// loads today's word client-side, so the same URL every day works),
-// tracks "read today" in localStorage via the ssje-tracker in
-// lib/cacReadState, and flips the pill to "Read again" once tapped.
+// www.ssje.org/word externally (their page loads today's word
+// client-side, so the same URL every day works), tracks "read today"
+// in localStorage via the ssje-tracker in lib/cacReadState, and flips
+// the pill to "Read again" once tapped.
 //
 // Warm amber palette (rgba(193,127,36, …)) — matches the SSJE pill in
 // the office closing slide so the visual identity is consistent
@@ -4786,15 +4786,7 @@ export default function Dashboard() {
   // the letter cards mixed into the Today / This week / This month buckets.
   const { data: dashCorrespondences, isLoading: dashCorrespondencesLoading } = useQuery<Correspondence[]>({
     queryKey: ["/api/phoebe/correspondences"],
-    queryFn: async () => {
-      // Same fallback the LettersPage uses — the route was renamed and some
-      // deployments still serve only the legacy path.
-      try {
-        return await apiRequest("GET", "/api/phoebe/correspondences");
-      } catch {
-        return await apiRequest("GET", "/api/letters/correspondences");
-      }
-    },
+    queryFn: () => apiRequest("GET", "/api/phoebe/correspondences"),
     enabled: !!user,
   });
 

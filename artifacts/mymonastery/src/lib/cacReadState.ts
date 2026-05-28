@@ -90,11 +90,11 @@ export function hasReadFddToday(): boolean { return fddTracker.hasReadToday(); }
 export function markFddRead(): void { fddTracker.markRead(); }
 
 // ── SSJE Reflections (Society of Saint John the Evangelist) ──
-// "Brother, Give Us a Word" is a daily one-paragraph reflection from
-// the Cambridge MA Episcopal monastery. The page itself loads today's
-// word client-side, so the same URL every day resolves to "today" —
-// matching FDD's pattern. No server-side route on our end.
-export const SSJE_TODAY_URL = "https://web.ssje.org/listen-brother-give-us-a-word";
+// SSJE's daily "Word" reflection from the Cambridge MA Episcopal
+// monastery. The page itself loads today's word client-side, so the
+// same URL every day resolves to "today" — matching FDD's pattern.
+// No server-side route on our end.
+export const SSJE_TODAY_URL = "https://www.ssje.org/word/";
 export const SSJE_READ_EVENT = ssjeTracker.eventName;
 export function getSsjeReadDay(): string | null { return ssjeTracker.getLastReadDay(); }
 export function hasReadSsjeToday(): boolean { return ssjeTracker.hasReadToday(); }
