@@ -159,11 +159,15 @@ export default function NcmpWatchPage() {
   // playback; if we don't have a videoId yet (cold meta resolve),
   // fall through to the channel's /live page, which redirects to
   // the active stream during broadcast and to the most-recent video
-  // outside it. Autoplay on iOS requires the user to tap play —
-  // we accept that constraint; the alternative (muted autoplay)
-  // doesn't make sense for a prayer broadcast.
+  // outside it.
   //
   // Query params:
+  //   autoplay=1    — start the broadcast on open. The iOS app's
+  //                   WebView allows inline media playback, so it
+  //                   plays with sound; desktop Safari's autoplay
+  //                   policy may still require a tap (we leave it
+  //                   UNMUTED rather than muted — a silent prayer
+  //                   broadcast defeats the point).
   //   playsinline=1 — iOS Safari respects this to keep the player
   //                   inline instead of taking over the screen.
   //   rel=0         — when this video ends, suggested videos stay
@@ -173,6 +177,7 @@ export default function NcmpWatchPage() {
   const embedSrc = useMemo(() => {
     if (ncmpMeta?.videoId) {
       const params = new URLSearchParams({
+        autoplay: "1",
         playsinline: "1",
         rel: "0",
         modestbranding: "1",
@@ -283,8 +288,16 @@ export default function NcmpWatchPage() {
         <div
           style={{
             position: "relative",
+            // Cap the player so it reads as a focused video, not a
+            // full-bleed wall — on wide screens it would otherwise span
+            // the whole page. Centered; on phones width:100% keeps it
+            // edge-to-edge under the cap. aspectRatio holds 16:9 at any
+            // width (cleaner than the padding-bottom % trick, which is
+            // relative to the parent, not this capped element).
             width: "100%",
-            paddingBottom: "56.25%", // 16:9
+            maxWidth: 560,
+            aspectRatio: "16 / 9",
+            alignSelf: "center",
             background: "#000",
             borderRadius: 16,
             overflow: "hidden",
@@ -324,8 +337,9 @@ export default function NcmpWatchPage() {
         </div>
 
         {/* Small copy beneath the player — sets the context for users
-            who land here without prior knowledge of the broadcast. */}
-        <div>
+            who land here without prior knowledge of the broadcast.
+            Constrained + centered to align under the capped player. */}
+        <div style={{ width: "100%", maxWidth: 560, alignSelf: "center" }}>
           <p
             style={{
               fontSize: 13,
