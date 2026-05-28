@@ -455,58 +455,28 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   onClick={() => { onClose(); markSsjeRead(); openExternal(SSJE_TODAY_URL); }}
                 />
               </MenuSection>
-              {/* Podcasts — browse + listen IN-APP. Each opens the
-                  content browser (/podcasts/...) where every episode
-                  plays in a sticky player without leaving Phoebe. The
-                  Forward Movement daily offices are intentionally NOT
-                  here — they're reached through the office portals
-                  (/offices + the prayer chooser), which is where their
-                  audio belongs. */}
-              {/* Single-line rows only — mixing sub-lines on some rows
-                  and not others looked uneven, so every podcast row is
-                  just the publisher/show name. */}
-              <MenuSection emoji="🎧" label={t("menu.podcasts", { defaultValue: "Podcasts" })}>
-                {/* CAC publishes several shows — opens their browse page
-                    (display of all shows → episodes → in-app player). */}
+              {/* Audio — everything to listen to, in one place. The
+                  Forward Movement daily offices read aloud (Morning /
+                  Evening Prayer) plus the full podcast library.
+                  "Podcasts" is a DIRECT link to the searchable
+                  /podcasts library (not a per-publisher dropdown — the
+                  library page groups + searches every publisher
+                  itself). */}
+              <MenuSection emoji="🎧" label={t("menu.audio", { defaultValue: "Audio" })}>
                 <MenuRow
-                  emoji="🌵"
-                  label={t("menu.podcast_cac", { defaultValue: "Center for Action and Contemplation" })}
-                  onClick={() => navigate("/podcasts/cac")}
+                  emoji="🌅"
+                  label={t("menu.audio_morning_prayer", { defaultValue: "Morning Prayer" })}
+                  onClick={() => navigate("/podcast/morning-office")}
                 />
                 <MenuRow
-                  emoji="🟣"
-                  label={t("menu.podcast_national_cathedral", { defaultValue: "National Cathedral" })}
-                  onClick={() => navigate("/podcasts/show/nc-crossroads")}
+                  emoji="🌙"
+                  label={t("menu.audio_evening_prayer", { defaultValue: "Evening Prayer" })}
+                  onClick={() => navigate("/podcast/evening-office")}
                 />
                 <MenuRow
-                  emoji="🎓"
-                  label={t("menu.podcast_vts", { defaultValue: "Virginia Theological Seminary" })}
-                  onClick={() => navigate("/podcasts/show/vts-love-your-neighbor")}
-                />
-                <MenuRow
-                  emoji="⛪"
-                  label={t("menu.podcast_avg_episcopalian", { defaultValue: "The Average Episcopalian" })}
-                  onClick={() => navigate("/podcasts/show/average-episcopalian")}
-                />
-                <MenuRow
-                  emoji="📰"
-                  label={t("menu.podcast_living_church", { defaultValue: "The Living Church" })}
-                  onClick={() => navigate("/podcasts/show/living-church")}
-                />
-                <MenuRow
-                  emoji="🫱🏽‍🫲🏿"
-                  label={t("menu.podcast_roundtables", { defaultValue: "Roundtables on Race" })}
-                  onClick={() => navigate("/podcasts/show/roundtables-on-race")}
-                />
-                <MenuRow
-                  emoji="🕊️"
-                  label={t("menu.podcast_aawy", { defaultValue: "And Also With You" })}
-                  onClick={() => navigate("/podcasts/show/and-also-with-you")}
-                />
-                <MenuRow
-                  emoji="🌎"
-                  label={t("menu.podcast_fore", { defaultValue: "Yale Religion & Ecology" })}
-                  onClick={() => navigate("/podcasts/show/fore-spotlights")}
+                  emoji="🎙️"
+                  label={t("menu.podcasts", { defaultValue: "Podcasts" })}
+                  onClick={() => navigate("/podcasts")}
                 />
               </MenuSection>
               {/* Resources — non-prayer, non-reflection reference
@@ -520,11 +490,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   to everyone; the "Beta" badge stays so readers know
                   the index is still growing. */}
               <MenuSection emoji="📚" label={t("menu.resources", { defaultValue: "Resources" })}>
-                <MenuRow
-                  emoji="🎧"
-                  label={t("menu.podcasts", { defaultValue: "Podcasts" })}
-                  onClick={() => navigate("/podcasts")}
-                />
                 <MenuRow
                   emoji="📅"
                   label={t("menu.sunday_lectionary", { defaultValue: "Sunday Lectionary" })}
