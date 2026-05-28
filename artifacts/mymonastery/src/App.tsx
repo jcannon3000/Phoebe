@@ -13,6 +13,7 @@ import { BottomPromptStack } from "@/components/BottomPromptStack";
 import { AppOpenTracker } from "@/components/AppOpenTracker";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
+import { PodcastPlayerProvider } from "@/components/PodcastPlayer";
 import { Component, useEffect, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
 
 // Scroll the window to (0, 0) on every route change. Without this,
@@ -702,9 +703,14 @@ function App() {
                 router so the live banner's "Watch →" can SPA-navigate to
                 /ncmp/watch. */}
             <BottomPromptStack />
-            <ParishGate>
-              <Router />
-            </ParishGate>
+            {/* Global podcast player — mounted above the route Switch so
+                audio keeps playing as you navigate. Renders its own
+                persistent <audio> + mini-player bar. */}
+            <PodcastPlayerProvider>
+              <ParishGate>
+                <Router />
+              </ParishGate>
+            </PodcastPlayerProvider>
           </WouterRouter>
           <Toaster />
         </ErrorBoundary>
