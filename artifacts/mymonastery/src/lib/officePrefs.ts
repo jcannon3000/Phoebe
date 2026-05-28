@@ -37,6 +37,11 @@ const KEY_SHOW_SSJE_CLOSE = "phoebe:office:show-ssje-close";
 // this value.
 const KEY_REFLECTION_SOURCE = "phoebe:office:reflection-source";
 const KEY_INCLUDE_GRATITUDE_SLIDE = "phoebe:office:include-gratitude-slide";
+// Default silent-contemplation length in minutes. 0 = off (no default;
+// the Contemplation timer shows its picker). Set from the Daily Office
+// wizard's meditation slide; read by the Contemplation page's "Begin"
+// so a default skips the picker and starts a sit straight away.
+const KEY_CONTEMPLATION_MINUTES = "phoebe:office:contemplation-minutes";
 
 export type ReflectionSource = "cac" | "fdd" | "ssje" | "none";
 const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "none"];
@@ -180,6 +185,26 @@ export function getShowSsjeClose(): boolean { return getReflectionSource() === "
 export function getIncludeGratitudeSlide(): boolean { return readBool(KEY_INCLUDE_GRATITUDE_SLIDE); }
 export function setIncludeGratitudeSlide(v: boolean): void { writeBool(KEY_INCLUDE_GRATITUDE_SLIDE, v); }
 
+// ── Default contemplation length ──
+// 0 = off (no default; show the picker). A positive value is the
+// preset sit length the Contemplation "Begin" uses to skip the picker.
+export function getDefaultContemplationMinutes(): number {
+  try {
+    const n = parseInt(localStorage.getItem(KEY_CONTEMPLATION_MINUTES) ?? "", 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+export function setDefaultContemplationMinutes(minutes: number): void {
+  try {
+    localStorage.setItem(KEY_CONTEMPLATION_MINUTES, String(Math.max(0, Math.round(minutes))));
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch {
+    /* private mode / quota — non-fatal */
+  }
+}
+
 // ── React hook ─────────────────────────────────────────────────────
 // Snapshot the prefs into state and refresh on any change. Use this
 // instead of calling the getters in render — otherwise the component
@@ -190,6 +215,7 @@ export function useOfficePrefs(): {
   showFddClose: boolean;
   showSsjeClose: boolean;
   includeGratitudeSlide: boolean;
+  defaultContemplationMinutes: number;
 } {
   const snapshot = () => {
     const src = getReflectionSource();
@@ -199,6 +225,7 @@ export function useOfficePrefs(): {
       showFddClose: src === "fdd",
       showSsjeClose: src === "ssje",
       includeGratitudeSlide: getIncludeGratitudeSlide(),
+      defaultContemplationMinutes: getDefaultContemplationMinutes(),
     };
   };
   const [state, setState] = useState(snapshot);

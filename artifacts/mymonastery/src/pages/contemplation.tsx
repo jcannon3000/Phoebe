@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
+import { getDefaultContemplationMinutes } from "@/lib/officePrefs";
 import { openExternal } from "@/lib/openExternal";
 
 // Curated "Learn" resources — talks, videos, and guides on contemplative /
@@ -368,7 +369,7 @@ export default function ContemplationPage() {
           </div>
           <button
             type="button"
-            onClick={() => start(undefined)}
+            onClick={() => start(getDefaultContemplationMinutes() || undefined)}
             className="w-full rounded-xl py-3.5 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
             style={{
               background: "#2D5E3F",

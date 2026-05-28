@@ -1,54 +1,51 @@
 /**
- * Office Settings — focused page for office-only prefs.
+ * Customize your Daily Office — a Hallow-style questionnaire.
  *
- * Reached from the "Settings" pill on the Daily Offices chooser at
- * /bcp/daily-office. Surfaces just the office-relevant controls so a
- * user customizing their office doesn't have to scroll the full
- * /settings page looking for the right card:
+ * Reached from the "Customize" pill on /bcp/daily-office and the
+ * "Your office" row in Daily Practice. Replaces the old scrollable
+ * settings form with a full-screen, one-question-per-screen wizard:
+ * progress dots up top, a single question with big tappable cards in
+ * the middle, Back / Next at the bottom. Single-choice questions auto-
+ * advance after a beat (the Hallow feel); the reminder questions (which
+ * reveal a time picker) and the informational slides use Next.
  *
- *   • Daily reminders — morning + evening office reminder push
- *     (none / full office / short devotion + time picker). Server-
- *     backed via PUT /api/me/office-prefs.
- *   • Confession of Sin — opt-out toggle for the penitential opening
- *     of Morning / Evening Prayer (same office-prefs endpoint).
- *   • Closing pills (CAC / FDD / NCMP) and the optional Gratitude
- *     slide — local-only prefs from lib/officePrefs.ts.
+ * Every answer saves the moment it's picked — server-backed prefs via
+ * PUT /api/me/office-prefs, local prefs via lib/officePrefs.ts — so
+ * closing mid-wizard never loses progress, and re-opening lands on the
+ * first question with the current answers pre-selected.
  *
- * Mirrors the same form controls that live in /settings —
- * intentionally duplicated rather than refactored out because
- * /settings is heavily touched by the i18n parallel work and a shared
- * component would have to thread through both pages at once. The
- * shared bits (the server office-prefs endpoint, the localStorage
- * helpers in lib/officePrefs.ts) ARE shared; this file just hosts the
- * focused UI.
+ * Questions:
+ *   1. Default prayer    → /me/office-prefs defaultPrayerLevel
+ *   2. Morning reminder  → morning + morningTime
+ *   3. Evening reminder  → evening + eveningTime
+ *   4. Confession of Sin → showConfession
+ *   5. Meditation timer  → local defaultContemplationMinutes (off / set)
+ *   6. Ways to pray      → informational (read / listen / watch)
+ *   7. After the office  → local reflectionSource
+ *   8. Gratitude pause   → local includeGratitudeSlide
  */
 
 import { useState } from "react";
-import { Link } from "wouter";
-import { useTranslation } from "react-i18next";
+import { useLocation } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff } from "lucide-react";
-import { Layout } from "@/components/layout";
+import { X, ChevronLeft, Check } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import {
   useOfficePrefs,
-  useEffectiveReflectionSource,
   setReflectionSource,
   setIncludeGratitudeSlide,
+  setDefaultContemplationMinutes,
+  type ReflectionSource,
 } from "@/lib/officePrefs";
 
+const BG = "#091A10";
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
-const FAINT_GREEN = "rgba(143,175,150,0.55)";
+const ACCENT = "#A8C5A0";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 
 type OfficePref = "none" | "office" | "devotion";
-// Default prayer "depth" — picks which surface the home-screen office
-// card's "Begin prayer" CTA jumps to in a single tap. The picker
-// below writes the column via the same /me/office-prefs endpoint;
-// the home card reads user.defaultPrayerLevel from /auth/me. Default
-// is "devotion" (the gentlest entry point) when the user hasn't
-// chosen one.
 type DefaultPrayerLevel = "ask" | "devotion" | "office" | "intercessions";
 type OfficePrefs = {
   morning: OfficePref;
@@ -59,75 +56,123 @@ type OfficePrefs = {
   defaultPrayerLevel?: DefaultPrayerLevel;
 };
 
-// ── shared chrome ───────────────────────────────────────────────────
+// ── Reusable bits ───────────────────────────────────────────────────
 
-function SectionHeader({ label }: { label: string }) {
+function OptionCard({
+  emoji,
+  label,
+  sub,
+  selected,
+  onSelect,
+}: {
+  emoji?: string;
+  label: string;
+  sub?: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   return (
-    <div className="flex items-center gap-3 mb-3 mt-7">
-      <h2
-        className="text-lg font-semibold"
-        style={{ color: WARM, fontFamily: SPACE_GROTESK }}
+    <button
+      type="button"
+      onClick={onSelect}
+      className="w-full flex items-center gap-3 rounded-2xl px-4 py-4 text-left transition-all active:scale-[0.99]"
+      style={{
+        background: selected ? "rgba(46,107,64,0.22)" : "rgba(46,107,64,0.08)",
+        border: `1.5px solid ${selected ? ACCENT : "rgba(46,107,64,0.25)"}`,
+        cursor: "pointer",
+      }}
+    >
+      {emoji && <span style={{ fontSize: 24, lineHeight: 1 }}>{emoji}</span>}
+      <div className="flex-1 min-w-0">
+        <p className="text-[16px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+          {label}
+        </p>
+        {sub && (
+          <p className="text-[13px]" style={{ color: SAGE, margin: "2px 0 0", lineHeight: 1.35 }}>
+            {sub}
+          </p>
+        )}
+      </div>
+      <span
+        className="flex items-center justify-center shrink-0"
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: "50%",
+          border: `2px solid ${selected ? ACCENT : "rgba(143,175,150,0.4)"}`,
+          background: selected ? ACCENT : "transparent",
+        }}
       >
-        {label}
-      </h2>
-      <div className="flex-1 h-px" style={{ background: "rgba(200, 212, 192, 0.15)" }} />
+        {selected && <Check size={13} color={BG} strokeWidth={3} />}
+      </span>
+    </button>
+  );
+}
+
+// Static (non-selectable) info card — used by the "ways to pray" slide.
+function InfoCard({ emoji, label, sub }: { emoji: string; label: string; sub: string }) {
+  return (
+    <div
+      className="w-full flex items-center gap-3 rounded-2xl px-4 py-4"
+      style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+    >
+      <span style={{ fontSize: 24, lineHeight: 1 }}>{emoji}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-[16px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+          {label}
+        </p>
+        <p className="text-[13px]" style={{ color: SAGE, margin: "2px 0 0", lineHeight: 1.35 }}>
+          {sub}
+        </p>
+      </div>
     </div>
   );
 }
 
-function Blurb({ children }: { children: React.ReactNode }) {
-  return (
-    <p
-      className="text-[13px] mb-3"
-      style={{
-        color: "rgba(143,175,150,0.8)",
-        fontFamily: "Georgia, serif",
-        fontStyle: "italic",
-      }}
-    >
-      {children}
-    </p>
-  );
-}
-
-function SubHeader({ children }: { children: React.ReactNode }) {
-  return (
-    <p
-      className="text-[10px] uppercase tracking-[0.16em] font-semibold mt-4 mb-2"
-      style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}
-    >
-      {children}
-    </p>
-  );
-}
-
-// Reminder time picker, styled as a standalone row to sit beneath the
-// reminder radios in the same list. The dashed border sets it apart as a
-// dependent detail rather than another pick-one option.
-function ReminderTimeRow({
-  label,
-  value,
-  onChange,
+function SlideShell({
+  eyebrow,
+  headline,
+  sub,
+  children,
 }: {
-  label: string;
-  value: string;
-  onChange: (next: string) => void;
+  eyebrow?: string;
+  headline: string;
+  sub?: string;
+  children: React.ReactNode;
 }) {
   return (
-    <div
-      className="flex items-center justify-between gap-3 rounded-xl px-3 py-3"
-      style={{
-        background: "rgba(46,107,64,0.06)",
-        border: "1px dashed rgba(46,107,64,0.28)",
-      }}
-    >
-      <div className="flex items-center gap-3 min-w-0">
-        <span style={{ fontSize: 20 }}>⏰</span>
+    <div className="flex flex-col">
+      {eyebrow && (
         <p
-          className="text-[15px] font-semibold"
-          style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}
+          className="text-[11px] uppercase tracking-[0.18em] mb-3"
+          style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}
         >
-          {label}
+          {eyebrow}
+        </p>
+      )}
+      <h2
+        className="text-[25px] md:text-[29px] font-bold leading-tight mb-2"
+        style={{ color: WARM, fontFamily: SPACE_GROTESK, letterSpacing: "-0.01em" }}
+      >
+        {headline}
+      </h2>
+      {sub && <p className="text-[15px] mb-6" style={{ color: SAGE, lineHeight: 1.5 }}>{sub}</p>}
+      {!sub && <div className="mb-6" />}
+      <div className="flex flex-col gap-2.5">{children}</div>
+    </div>
+  );
+}
+
+function ReminderTimeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div
+      className="flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 mt-1"
+      style={{ background: "rgba(46,107,64,0.06)", border: "1px dashed rgba(46,107,64,0.3)" }}
+    >
+      <div className="flex items-center gap-3">
+        <span style={{ fontSize: 22 }}>⏰</span>
+        <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+          Reminder time
         </p>
       </div>
       <input
@@ -137,332 +182,359 @@ function ReminderTimeRow({
           const v = e.target.value;
           if (/^\d{2}:\d{2}$/.test(v)) onChange(v);
         }}
-        className="text-[14px] rounded-md px-2 py-1"
-        style={{
-          background: "rgba(15,40,24,0.6)",
-          border: "1px solid rgba(46,107,64,0.4)",
-          color: WARM,
-          fontFamily: SPACE_GROTESK,
-        }}
+        className="text-[15px] rounded-lg px-2.5 py-1.5"
+        style={{ background: "rgba(9,26,16,0.7)", border: "1px solid rgba(46,107,64,0.45)", color: WARM, fontFamily: SPACE_GROTESK }}
       />
     </div>
-  );
-}
-
-// ── Radio row + toggle row helpers ──────────────────────────────────
-
-// Pick-one row in the customize-home aesthetic: a standalone rounded-xl
-// card with a radio dot, emoji, and label/sub. Selected rows read like a
-// "visible" module on customize-home (fuller background, full opacity);
-// unselected ones recede like a "hidden" module.
-function RadioRow({
-  label,
-  sub,
-  emoji,
-  selected,
-  onSelect,
-}: {
-  label: string;
-  sub?: string;
-  emoji: string;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left select-none"
-      style={{
-        background: selected ? "rgba(46,107,64,0.10)" : "rgba(46,107,64,0.04)",
-        border: "1px solid rgba(46,107,64,0.22)",
-        opacity: selected ? 1 : 0.6,
-        cursor: "pointer",
-      }}
-    >
-      <div
-        style={{
-          width: 18,
-          height: 18,
-          borderRadius: "50%",
-          border: `2px solid ${selected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
-          background: selected ? "#A8C5A0" : "transparent",
-          flexShrink: 0,
-        }}
-      />
-      <span style={{ fontSize: 20 }}>{emoji}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
-          {label}
-        </p>
-        {sub && (
-          <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>
-            {sub}
-          </p>
-        )}
-      </div>
-    </button>
-  );
-}
-
-// Boolean show/hide toggle styled like customize-home's draggable rows:
-// rounded-xl card with emoji + label/sub on the left and Eye/EyeOff on
-// the right. Tapping the row OR the eye flips the value — matching the
-// affordance from customize-home where the eye is the visible control
-// but the whole row is also clickable.
-function EyeToggleRow({
-  label,
-  subOn,
-  subOff,
-  emoji,
-  value,
-  onChange,
-  showLabel,
-  hideLabel,
-}: {
-  label: string;
-  subOn: string;
-  subOff: string;
-  emoji: string;
-  value: boolean;
-  onChange: (next: boolean) => void;
-  showLabel: string;
-  hideLabel: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!value)}
-      className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left select-none"
-      style={{
-        background: value ? "rgba(46,107,64,0.10)" : "rgba(46,107,64,0.04)",
-        border: "1px solid rgba(46,107,64,0.22)",
-        opacity: value ? 1 : 0.6,
-        cursor: "pointer",
-      }}
-    >
-      <span style={{ fontSize: 20 }}>{emoji}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
-          {label}
-        </p>
-        <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>
-          {value ? subOn : subOff}
-        </p>
-      </div>
-      <span
-        aria-label={value ? hideLabel : showLabel}
-        className="transition-opacity"
-        style={{ color: value ? "#A8C5A0" : "rgba(143,175,150,0.6)", lineHeight: 0, padding: 4, flexShrink: 0 }}
-      >
-        {value ? <Eye size={18} /> : <EyeOff size={18} />}
-      </span>
-    </button>
   );
 }
 
 // ── Page ────────────────────────────────────────────────────────────
 
 export default function OfficeSettingsPage() {
-  const { t } = useTranslation();
+  const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+
   const { data } = useQuery<OfficePrefs>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs") as Promise<OfficePrefs>,
   });
   const save = useMutation({
-    mutationFn: (patch: Partial<OfficePrefs>) =>
-      apiRequest("PUT", "/api/me/office-prefs", patch),
+    mutationFn: (patch: Partial<OfficePrefs>) => apiRequest("PUT", "/api/me/office-prefs", patch),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/me/office-prefs"] }),
   });
 
-  const morning = data?.morning ?? "none";
-  const evening = data?.evening ?? "none";
-  const morningTime = data?.morningTime ?? "07:00";
-  const eveningTime = data?.eveningTime ?? "18:00";
-  const defaultPrayerLevel: DefaultPrayerLevel = data?.defaultPrayerLevel ?? "ask";
+  // Optimistic mirror of the server prefs so a tapped card shows
+  // selected instantly (the card highlights before the slide animates
+  // away), without waiting on the PUT → invalidate → refetch round-trip.
+  const [opt, setOpt] = useState<Partial<OfficePrefs>>({});
+  const eff: OfficePrefs = { morning: "none", evening: "none", morningTime: null, eveningTime: null, ...(data ?? {}), ...opt };
+  const saveServer = (patch: Partial<OfficePrefs>) => {
+    setOpt((o) => ({ ...o, ...patch }));
+    save.mutate(patch);
+  };
 
-  const defaultLevelOptions: Array<{ value: DefaultPrayerLevel; label: string; emoji: string; sub: string }> = [
-    { value: "ask", label: "Ask me each time", emoji: "🧭", sub: "Show the options screen, with whatever you prayed last on top." },
-    { value: "devotion", label: "Daily Devotion", emoji: "🌱", sub: "The short BCP form (~5 min). The gentlest entry point." },
-    { value: "office", label: "Full Daily Office", emoji: "📖", sub: "Morning or Evening Prayer (~15-20 min). The fuller liturgy." },
-    { value: "intercessions", label: "Community Intercessions", emoji: "🙏🏽", sub: "The slideshow of prayer requests your community is holding." },
-  ];
-
-  // Read the local-only office prefs (CAC / FDD / NCMP closing pills,
-  // Gratitude slide). useOfficePrefs subscribes to the custom event
-  // bus in lib/officePrefs.ts so the setters below trigger a refresh
-  // without a remount.
+  // Local-only prefs (per device). Optimistic copies flip the card
+  // immediately; the setters persist + broadcast the change.
   const local = useOfficePrefs();
-  // Effective source (explicit pick → visible home card → FDD) drives
-  // the radio so it matches the pill the user actually gets, even when
-  // they haven't made an explicit pick yet. The hook re-derives on
-  // OFFICE_PREFS_EVENT (which setReflectionSource fires synchronously),
-  // so tapping a row updates the selection immediately — no optimistic
-  // copy needed.
-  const effectiveSource = useEffectiveReflectionSource();
-
-  // Local copy so the gratitude toggle flips immediately while the bool
-  // settles into localStorage. (The setter fires a custom event,
-  // useOfficePrefs picks it up, but immediate optimistic state is
-  // smoother than waiting one render cycle.)
+  const [reflection, setReflection] = useState<ReflectionSource>(local.reflectionSource);
   const [gratitudeOn, setGratitudeOn] = useState(local.includeGratitudeSlide);
+  const [medMinutes, setMedMinutes] = useState(local.defaultContemplationMinutes);
 
-  const morningOptions: Array<{ value: OfficePref; label: string; emoji: string; sub: string }> = [
-    { value: "none", label: t("settings.no_reminder", { defaultValue: "No reminder" }), emoji: "🔕", sub: "" },
-    { value: "office", label: t("offices.morning_prayer", { defaultValue: "Morning Prayer" }), emoji: "📖", sub: t("settings.full_daily_office", { defaultValue: "Full Daily Office" }) },
-    { value: "devotion", label: t("offices.morning_devotion", { defaultValue: "Morning Devotion" }), emoji: "🌱", sub: t("settings.short_bcp_form", { defaultValue: "Short BCP form" }) },
-  ];
-  const eveningOptions: Array<{ value: OfficePref; label: string; emoji: string; sub: string }> = [
-    { value: "none", label: t("settings.no_reminder", { defaultValue: "No reminder" }), emoji: "🔕", sub: "" },
-    { value: "office", label: t("offices.evening_prayer", { defaultValue: "Evening Prayer" }), emoji: "📖", sub: t("settings.full_daily_office", { defaultValue: "Full Daily Office" }) },
-    { value: "devotion", label: t("offices.early_evening_devotion", { defaultValue: "Early Evening Devotion" }), emoji: "🌙", sub: t("settings.short_bcp_form", { defaultValue: "Short BCP form" }) },
-  ];
+  const morning = eff.morning ?? "none";
+  const evening = eff.evening ?? "none";
+  const morningTime = eff.morningTime ?? "07:00";
+  const eveningTime = eff.eveningTime ?? "18:00";
+  const defaultPrayerLevel: DefaultPrayerLevel = eff.defaultPrayerLevel ?? "devotion";
 
-  return (
-    <Layout>
-      <div className="flex flex-col w-full max-w-2xl mx-auto pb-24 px-4 sm:px-0">
-        <Link
-          href="/bcp/daily-office"
-          className="text-sm mb-3 inline-block"
-          style={{ color: SAGE }}
-        >
-          ← Daily Offices
-        </Link>
-        <h1
-          className="text-2xl font-bold mb-1"
-          style={{ color: WARM, fontFamily: SPACE_GROTESK }}
-        >
-          Customize your office ⚙️
-        </h1>
-        <p className="text-sm mb-2" style={{ color: SAGE }}>
-          Default prayer, daily reminders, the penitential opening, and the closing pills.
-        </p>
+  const [step, setStep] = useState(0);
+  const [dir, setDir] = useState(1);
+  const TOTAL = 9;
 
-        <SectionHeader label="Default prayer" />
-        <Blurb>
-          When you tap "Begin prayer" on the home screen, this is what opens. Leave it on "Ask me each time" for the options screen, or pick a depth to jump straight in. You can still reach anything else from /offices anytime.
-        </Blurb>
-        <div className="flex flex-col gap-2">
-          {defaultLevelOptions.map((opt) => (
-            <RadioRow
-              key={opt.value}
-              label={opt.label}
-              sub={opt.sub}
-              emoji={opt.emoji}
-              selected={defaultPrayerLevel === opt.value}
-              onSelect={() => save.mutate({ defaultPrayerLevel: opt.value })}
-            />
-          ))}
-        </div>
+  const goNext = () => { setDir(1); setStep((s) => Math.min(s + 1, TOTAL - 1)); };
+  const goBack = () => { setDir(-1); setStep((s) => Math.max(s - 1, 0)); };
+  const close = () => setLocation("/bcp/daily-office");
+  // Single-choice questions auto-advance after a short beat so the
+  // selection is visible before the slide slides away.
+  const autoAdvance = () => window.setTimeout(goNext, 320);
 
-        <SectionHeader label="Daily reminders" />
-        <Blurb>
-          Pick the office Phoebe will nudge you toward each morning and evening — or none, if you'd rather not be pinged.
-        </Blurb>
-        <SubHeader>In the morning</SubHeader>
-        <div className="flex flex-col gap-2">
-          {morningOptions.map((opt) => (
-            <RadioRow
-              key={opt.value}
-              label={opt.label}
-              sub={opt.sub}
-              emoji={opt.emoji}
-              selected={morning === opt.value}
-              onSelect={() => save.mutate({ morning: opt.value })}
-            />
-          ))}
-          {morning !== "none" && (
-            <ReminderTimeRow
-              label="Reminder time"
-              value={morningTime}
-              onChange={(time) => save.mutate({ morningTime: time })}
-            />
-          )}
-        </div>
-        <SubHeader>In the evening</SubHeader>
-        <div className="flex flex-col gap-2">
-          {eveningOptions.map((opt) => (
-            <RadioRow
-              key={opt.value}
-              label={opt.label}
-              sub={opt.sub}
-              emoji={opt.emoji}
-              selected={evening === opt.value}
-              onSelect={() => save.mutate({ evening: opt.value })}
-            />
-          ))}
-          {evening !== "none" && (
-            <ReminderTimeRow
-              label="Reminder time"
-              value={eveningTime}
-              onChange={(time) => save.mutate({ eveningTime: time })}
-            />
-          )}
-        </div>
-
-        <SectionHeader label="Confession of Sin" />
-        <Blurb>
-          Morning and Evening Prayer open with the BCP Confession of Sin and Absolution by default. Turn this off to begin straight at the Opening Sentence instead.
-        </Blurb>
-        <EyeToggleRow
-          label="Include Confession of Sin"
-          subOn="Shown before the Opening Sentence."
-          subOff="The office begins with the Opening Sentence."
-          emoji="🤲"
-          value={!!data?.showConfession}
-          onChange={(next) => save.mutate({ showConfession: next })}
-          showLabel={t("customize_home.show", { defaultValue: "Show" })}
-          hideLabel={t("customize_home.hide", { defaultValue: "Hide" })}
-        />
-
-        <SectionHeader label="After the office" />
-        <Blurb>
-          One daily reflection pill appears on the closing slide and as a card on the home screen. Pick the source you'd like to read each day — or turn the pill off.
-        </Blurb>
-        <div className="flex flex-col gap-2">
-          {([
-            { value: "cac" as const,  label: "Center for Action and Contemplation", emoji: "🌅", sub: "Today's CAC daily reflection." },
-            { value: "fdd" as const,  label: "Forward Day by Day", emoji: "📖", sub: "Today's Forward Movement meditation." },
-            { value: "ssje" as const, label: "SSJE Reflections", emoji: "✍🏽", sub: "Today's “Brother, Give Us a Word.”" },
-            { value: "none" as const, label: "None", emoji: "🚫", sub: "No reflection pill or card." },
-          ]).map((opt) => (
-            <RadioRow
-              key={opt.value}
-              label={opt.label}
-              sub={opt.sub}
-              emoji={opt.emoji}
-              selected={effectiveSource === opt.value}
-              onSelect={() => setReflectionSource(opt.value)}
-            />
-          ))}
-        </div>
-
-        <SectionHeader label="In the office" />
-        <Blurb>
-          Optional reflective slides spliced into Morning and Evening Prayer.
-        </Blurb>
-        <EyeToggleRow
-          label="Personal thanksgiving slide"
-          subOn="A short gratitude prompt slides in before the closing."
-          subOff="The office runs straight to the closing."
-          emoji="🌾"
-          value={gratitudeOn}
-          onChange={(next) => {
-            setGratitudeOn(next);
-            setIncludeGratitudeSlide(next);
-          }}
-          showLabel={t("customize_home.show", { defaultValue: "Show" })}
-          hideLabel={t("customize_home.hide", { defaultValue: "Hide" })}
-        />
-
-        <p
-          className="text-[11px] mt-6 text-center"
-          style={{ color: FAINT_GREEN, fontFamily: SPACE_GROTESK }}
-        >
-          Looking for the full Settings page? <Link href="/settings" style={{ color: SAGE, textDecoration: "underline" }}>Open Settings →</Link>
+  // ── Slides (index aligns with the dots) ──────────────────────────
+  const slides: Array<() => React.ReactNode> = [
+    // 0 — Intro
+    () => (
+      <div className="flex flex-col items-center text-center px-2">
+        <div style={{ fontSize: 56, lineHeight: 1 }}>🌅</div>
+        <h2 className="text-[27px] md:text-[31px] font-bold leading-tight mt-5 mb-2" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+          Shape your Daily Office
+        </h2>
+        <p className="text-[15px]" style={{ color: SAGE, lineHeight: 1.5, maxWidth: 360 }}>
+          A few quick questions to set a prayer rhythm that fits you. You can change any answer anytime.
         </p>
       </div>
-    </Layout>
+    ),
+
+    // 1 — Default prayer
+    () => (
+      <SlideShell
+        eyebrow="Step 1 · Your default"
+        headline="When you tap “Begin prayer,” where to?"
+        sub="The one-tap entry point from your home screen."
+      >
+        {([
+          { value: "ask" as const, emoji: "🤔", label: "Ask each time", sub: "Show me the choices when I begin." },
+          { value: "devotion" as const, emoji: "🌱", label: "Daily Devotion", sub: "The short BCP form (~5 min). The gentlest start." },
+          { value: "office" as const, emoji: "📖", label: "Full Daily Office", sub: "Morning or Evening Prayer (~15–20 min)." },
+          { value: "intercessions" as const, emoji: "🙏🏽", label: "Community Intercessions", sub: "The slideshow of prayer requests your community holds." },
+        ]).map((o) => (
+          <OptionCard
+            key={o.value}
+            emoji={o.emoji}
+            label={o.label}
+            sub={o.sub}
+            selected={defaultPrayerLevel === o.value}
+            onSelect={() => { saveServer({ defaultPrayerLevel: o.value }); autoAdvance(); }}
+          />
+        ))}
+      </SlideShell>
+    ),
+
+    // 2 — Morning reminder
+    () => (
+      <SlideShell
+        eyebrow="Step 2 · Mornings"
+        headline="Want a morning nudge?"
+        sub="A gentle push notification to begin your day in prayer."
+      >
+        {([
+          { value: "none" as const, emoji: "🔕", label: "No reminder", sub: "" },
+          { value: "office" as const, emoji: "📖", label: "Morning Prayer", sub: "Full Daily Office" },
+          { value: "devotion" as const, emoji: "🌱", label: "Morning Devotion", sub: "Short BCP form" },
+        ]).map((o) => (
+          <OptionCard
+            key={o.value}
+            emoji={o.emoji}
+            label={o.label}
+            sub={o.sub || undefined}
+            selected={morning === o.value}
+            onSelect={() => saveServer({ morning: o.value })}
+          />
+        ))}
+        {morning !== "none" && (
+          <ReminderTimeField value={morningTime} onChange={(t) => saveServer({ morningTime: t })} />
+        )}
+      </SlideShell>
+    ),
+
+    // 3 — Evening reminder
+    () => (
+      <SlideShell
+        eyebrow="Step 3 · Evenings"
+        headline="And an evening nudge?"
+        sub="A reminder to close the day in prayer."
+      >
+        {([
+          { value: "none" as const, emoji: "🔕", label: "No reminder", sub: "" },
+          { value: "office" as const, emoji: "📖", label: "Evening Prayer", sub: "Full Daily Office" },
+          { value: "devotion" as const, emoji: "🌙", label: "Early Evening Devotion", sub: "Short BCP form" },
+        ]).map((o) => (
+          <OptionCard
+            key={o.value}
+            emoji={o.emoji}
+            label={o.label}
+            sub={o.sub || undefined}
+            selected={evening === o.value}
+            onSelect={() => saveServer({ evening: o.value })}
+          />
+        ))}
+        {evening !== "none" && (
+          <ReminderTimeField value={eveningTime} onChange={(t) => saveServer({ eveningTime: t })} />
+        )}
+      </SlideShell>
+    ),
+
+    // 4 — Confession of Sin
+    () => (
+      <SlideShell
+        eyebrow="Step 4 · The opening"
+        headline="Open with the Confession of Sin?"
+        sub="Morning and Evening Prayer can begin with the BCP Confession & Absolution."
+      >
+        {([
+          { value: true, emoji: "🤲", label: "Include it", sub: "Begin with the Confession of Sin & Absolution." },
+          { value: false, emoji: "🌅", label: "Skip it", sub: "Begin straight at the Opening Sentence." },
+        ]).map((o) => (
+          <OptionCard
+            key={String(o.value)}
+            emoji={o.emoji}
+            label={o.label}
+            sub={o.sub}
+            selected={!!eff.showConfession === o.value}
+            onSelect={() => { saveServer({ showConfession: o.value }); autoAdvance(); }}
+          />
+        ))}
+      </SlideShell>
+    ),
+
+    // 5 — Meditation timer
+    () => (
+      <SlideShell
+        eyebrow="Step 5 · Silence"
+        headline="A default for silent contemplation?"
+        sub="When you begin a silent sit, start straight at this length — or leave it off to choose each time."
+      >
+        {([
+          { value: 0, emoji: "🔕", label: "Off", sub: "No default — I’ll pick a length when I sit." },
+          { value: 5, emoji: "🕯️", label: "5 minutes", sub: "" },
+          { value: 10, emoji: "🕯️", label: "10 minutes", sub: "" },
+          { value: 20, emoji: "🕯️", label: "20 minutes", sub: "" },
+        ]).map((o) => (
+          <OptionCard
+            key={o.value}
+            emoji={o.emoji}
+            label={o.label}
+            sub={o.sub || undefined}
+            selected={medMinutes === o.value}
+            onSelect={() => { setMedMinutes(o.value); setDefaultContemplationMinutes(o.value); autoAdvance(); }}
+          />
+        ))}
+      </SlideShell>
+    ),
+
+    // 6 — Ways to pray (informational)
+    () => (
+      <SlideShell
+        eyebrow="Step 6 · Three ways to pray"
+        headline="Read it, hear it, or watch it"
+        sub="On the office screen you can choose any of these — switch whenever you like."
+      >
+        <InfoCard emoji="📖" label="Read along" sub="The full text of the office, at your own pace." />
+        <InfoCard emoji="🎧" label="Listen" sub="Morning & Evening Prayer read aloud (Forward Movement)." />
+        <InfoCard emoji="📺" label="Watch" sub="Pray live with the National Cathedral each weekday morning." />
+      </SlideShell>
+    ),
+
+    // 7 — After the office (reflection)
+    () => (
+      <SlideShell
+        eyebrow="Step 7 · After the office"
+        headline="A daily reflection to close with?"
+        sub="One reflection pill appears on the closing slide and as a home card."
+      >
+        {([
+          { value: "cac" as const, emoji: "🌅", label: "Center for Action & Contemplation", sub: "Today’s CAC daily reflection." },
+          { value: "fdd" as const, emoji: "📖", label: "Forward Day by Day", sub: "Today’s Forward Movement meditation." },
+          { value: "ssje" as const, emoji: "✍🏽", label: "SSJE Reflections", sub: "Today’s “Brother, Give Us a Word.”" },
+          { value: "none" as const, emoji: "🚫", label: "None", sub: "No reflection pill or card." },
+        ]).map((o) => (
+          <OptionCard
+            key={o.value}
+            emoji={o.emoji}
+            label={o.label}
+            sub={o.sub}
+            selected={reflection === o.value}
+            onSelect={() => { setReflection(o.value); setReflectionSource(o.value); autoAdvance(); }}
+          />
+        ))}
+      </SlideShell>
+    ),
+
+    // 8 — Gratitude pause + finish
+    () => (
+      <SlideShell
+        eyebrow="Step 8 · The final touch"
+        headline="A gratitude pause before the close?"
+        sub="A short thanksgiving prompt slides in before the office ends."
+      >
+        {([
+          { value: true, emoji: "🌾", label: "Yes, add it", sub: "A gratitude prompt before the closing." },
+          { value: false, emoji: "🍃", label: "No thanks", sub: "Run straight to the closing." },
+        ]).map((o) => (
+          <OptionCard
+            key={String(o.value)}
+            emoji={o.emoji}
+            label={o.label}
+            sub={o.sub}
+            selected={gratitudeOn === o.value}
+            onSelect={() => { setGratitudeOn(o.value); setIncludeGratitudeSlide(o.value); }}
+          />
+        ))}
+      </SlideShell>
+    ),
+  ];
+
+  const isLast = step === TOTAL - 1;
+
+  return (
+    <div className="fixed inset-0 z-30 flex flex-col" style={{ background: BG }}>
+      {/* Top bar — close, progress dots, counter */}
+      <div
+        className="flex items-center justify-between px-4 pb-3"
+        style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top) + 0.5rem))" }}
+      >
+        <button
+          type="button"
+          onClick={close}
+          aria-label="Close"
+          className="inline-flex items-center gap-1 text-sm transition-opacity hover:opacity-80"
+          style={{ color: SAGE, background: "transparent", cursor: "pointer" }}
+        >
+          <X size={18} /> Close
+        </button>
+        <div className="flex items-center gap-1.5">
+          {Array.from({ length: TOTAL }).map((_, i) => (
+            <div
+              key={i}
+              style={{
+                width: i === step ? 22 : 6,
+                height: 6,
+                borderRadius: 3,
+                background: i <= step ? ACCENT : "rgba(143,175,150,0.25)",
+                transition: "all 0.25s ease",
+              }}
+            />
+          ))}
+        </div>
+        <span className="text-[13px] tabular-nums" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
+          {step + 1}/{TOTAL}
+        </span>
+      </div>
+
+      {/* Slide */}
+      <div className="flex-1 overflow-y-auto px-5">
+        <div className="w-full max-w-md mx-auto min-h-full flex flex-col justify-center py-6">
+          <AnimatePresence mode="wait" custom={dir}>
+            <motion.div
+              key={step}
+              custom={dir}
+              initial={{ opacity: 0, x: dir * 36 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: dir * -36 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+            >
+              {slides[step]()}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Bottom nav */}
+      <div
+        className="px-5 pt-3 flex items-center gap-3 max-w-md mx-auto w-full"
+        style={{ paddingBottom: "max(1.25rem, calc(env(safe-area-inset-bottom) + 0.5rem))" }}
+      >
+        {step > 0 ? (
+          <button
+            type="button"
+            onClick={goBack}
+            className="inline-flex items-center gap-1 text-[15px] font-medium px-3 py-3 transition-opacity hover:opacity-80"
+            style={{ color: SAGE, background: "transparent", cursor: "pointer", fontFamily: SPACE_GROTESK }}
+          >
+            <ChevronLeft size={18} /> Back
+          </button>
+        ) : (
+          <span className="flex-1" />
+        )}
+        <div className="flex-1" />
+        {isLast ? (
+          <button
+            type="button"
+            onClick={close}
+            className="rounded-full px-7 py-3 text-[15px] font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
+            style={{ background: ACCENT, color: BG, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
+          >
+            Done ✓
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={goNext}
+            className="rounded-full px-7 py-3 text-[15px] font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
+            style={{ background: "#2D5E3F", color: WARM, border: `1px solid ${ACCENT}`, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
+          >
+            {step === 0 ? "Get started →" : "Next →"}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
