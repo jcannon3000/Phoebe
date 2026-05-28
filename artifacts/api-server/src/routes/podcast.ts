@@ -112,13 +112,20 @@ async function fetchTodaysEpisode(feedUrl: string, fallbackTitle: string): Promi
   const pubDateMatch = item.match(/<pubDate>([\s\S]*?)<\/pubDate>/i);
   const itemImageMatch = item.match(/<itunes:image[^>]*\bhref="([^"]+)"/i);
 
+  // URLs from XML attributes must be entity-decoded too: a feed image
+  // href like ...image.jpg?updated=123&amp;v=2 arrives with a literal
+  // "&amp;", which is a malformed URL the browser can't load (this was
+  // the broken-thumbnail bug). audioUrl gets the same treatment for
+  // safety — same latent issue if the enclosure URL ever has query
+  // params. decodeXmlText turns &amp;→& etc.
+  const rawImageUrl = itemImageMatch?.[1] ?? channelImageMatch?.[1] ?? null;
   return {
     feedTitle: feedTitleMatch ? decodeXmlText(feedTitleMatch[1]) : fallbackTitle,
     title: titleMatch ? decodeXmlText(titleMatch[1]) : null,
-    audioUrl: enclosureMatch ? enclosureMatch[1] : null,
+    audioUrl: enclosureMatch ? decodeXmlText(enclosureMatch[1]) : null,
     durationSeconds: parseDurationSeconds(durationMatch ? durationMatch[1] : null),
     publishedAt: pubDateMatch ? pubDateMatch[1].trim() : null,
-    imageUrl: itemImageMatch?.[1] ?? channelImageMatch?.[1] ?? null,
+    imageUrl: rawImageUrl ? decodeXmlText(rawImageUrl) : null,
   };
 }
 
