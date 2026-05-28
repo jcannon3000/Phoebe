@@ -333,22 +333,51 @@ export default function PodcastsPage() {
             </>
           )
         ) : (
-          // ── Default browse — sections per publisher.
-          publishers.map((pub) => (
-            <section key={pub.slug} style={{ marginBottom: 32 }}>
-              <div className="flex items-center gap-2.5" style={{ marginBottom: 14 }}>
-                <span style={{ fontSize: 20 }} aria-hidden>{pub.emoji}</span>
-                <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, lineHeight: 1.15 }}>
-                  {pub.title}
-                </h2>
-              </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-                {pub.shows.map((s) => (
-                  <ShowTile key={s.slug} show={s} onOpen={() => setLocation(`/podcasts/show/${s.slug}`)} />
+          // ── Default browse — multi-show publishers each keep their own
+          // section; single-show publishers are stacked together into one
+          // combined grid so they pack two-across instead of each taking a
+          // half-empty section + header of its own. The source still shows
+          // on every tile via the artist line (e.g. "Ross Kane · VTS").
+          (() => {
+            const multi = publishers.filter((p) => p.shows.length > 1);
+            const singleShows = publishers
+              .filter((p) => p.shows.length === 1)
+              .flatMap((p) => p.shows);
+            return (
+              <>
+                {multi.map((pub) => (
+                  <section key={pub.slug} style={{ marginBottom: 32 }}>
+                    <div className="flex items-center gap-2.5" style={{ marginBottom: 14 }}>
+                      <span style={{ fontSize: 20 }} aria-hidden>{pub.emoji}</span>
+                      <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, lineHeight: 1.15 }}>
+                        {pub.title}
+                      </h2>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-6">
+                      {pub.shows.map((s) => (
+                        <ShowTile key={s.slug} show={s} onOpen={() => setLocation(`/podcasts/show/${s.slug}`)} />
+                      ))}
+                    </div>
+                  </section>
                 ))}
-              </div>
-            </section>
-          ))
+                {singleShows.length > 0 && (
+                  <section style={{ marginBottom: 32 }}>
+                    <div className="flex items-center gap-2.5" style={{ marginBottom: 14 }}>
+                      <span style={{ fontSize: 20 }} aria-hidden>🎙️</span>
+                      <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, lineHeight: 1.15 }}>
+                        More shows
+                      </h2>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-6">
+                      {singleShows.map((s) => (
+                        <ShowTile key={s.slug} show={s} onOpen={() => setLocation(`/podcasts/show/${s.slug}`)} />
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </>
+            );
+          })()
         )}
       </main>
     </div>
