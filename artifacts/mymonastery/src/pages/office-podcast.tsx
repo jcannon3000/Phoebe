@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -97,6 +97,14 @@ export default function OfficePodcastPage() {
     queryFn: () => apiRequest("GET", `/api/podcast/${show.apiSlug}/today`),
     staleTime: 30 * 60_000,
   });
+
+  // The episode artwork comes from the external podcast feed (Forward
+  // Movement); some of those image URLs hotlink-protect, CORS-block,
+  // or 404, which renders the browser's broken-image icon. Track a
+  // load failure so we can swap in a calm branded tile instead of a
+  // broken box. Reset whenever the image URL changes (new episode).
+  const [artworkFailed, setArtworkFailed] = useState(false);
+  useEffect(() => { setArtworkFailed(false); }, [episode?.imageUrl]);
 
   // ── Playback-time tracking. Accumulate seconds the audio is actually
   // playing (segments opened on `play`, closed on `pause`/`ended`/leave
@@ -260,10 +268,11 @@ export default function OfficePodcastPage() {
           </p>
         ) : (
           <div style={{ width: "100%", maxWidth: 460, display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
-            {episode.imageUrl && (
+            {episode.imageUrl && !artworkFailed ? (
               <img
                 src={episode.imageUrl}
                 alt={episode.feedTitle ?? show.fallbackTitle}
+                onError={() => setArtworkFailed(true)}
                 style={{
                   width: "min(72vw, 320px)",
                   aspectRatio: "1 / 1",
@@ -272,6 +281,27 @@ export default function OfficePodcastPage() {
                   border: `1px solid ${PALETTE.border}`,
                 }}
               />
+            ) : (
+              // Branded fallback when the feed artwork is missing or
+              // fails to load — a calm candlelit tile rather than the
+              // browser's broken-image icon or an empty bordered box.
+              <div
+                style={{
+                  width: "min(72vw, 320px)",
+                  aspectRatio: "1 / 1",
+                  borderRadius: 20,
+                  border: `1px solid ${PALETTE.border}`,
+                  background: PALETTE.cardBg,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                aria-label={episode.feedTitle ?? show.fallbackTitle}
+              >
+                <span style={{ fontSize: 72, lineHeight: 1 }} aria-hidden>
+                  {show.side === "evening" ? "🌙" : "🕯️"}
+                </span>
+              </div>
             )}
 
             <div style={{ textAlign: "center" }}>
