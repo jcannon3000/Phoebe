@@ -2556,9 +2556,9 @@ function CacHomeCard() {
 // "read today" in localStorage via the fdd-tracker in
 // lib/cacReadState, and flips the pill to "Read again" once tapped.
 //
-// Sea-teal palette (rgba(74,158,132, …)) distinguishes it from the
-// brand-forest CAC card next to it — both reading "green" but
-// visually separable when stacked on the home.
+// Forward Movement blue (rgba(96,141,209, …)) — FDD's identity color
+// across the app (office player, office-close pill, this card). Clearly
+// distinct from the brand-forest CAC card next to it.
 function FddHomeCard() {
   const [hasRead, setHasRead] = useState(() => hasReadFddToday());
   useEffect(() => {
@@ -2581,7 +2581,7 @@ function FddHomeCard() {
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
       className="relative flex rounded-xl overflow-hidden cursor-pointer"
-      style={{ background: "rgba(74,158,132,0.12)", border: "1px solid rgba(74,158,132,0.38)" }}
+      style={{ background: "rgba(96,141,209,0.13)", border: "1px solid rgba(96,141,209,0.40)" }}
     >
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
         <p
@@ -2593,13 +2593,13 @@ function FddHomeCard() {
         <div
           className="rounded-full text-center shrink-0"
           style={{
-            background: "rgba(74,158,132,0.28)",
+            background: "rgba(96,141,209,0.28)",
             color: "#F0EDE6",
             fontFamily: "'Space Grotesk', sans-serif",
             fontSize: 13,
             fontWeight: 500,
             padding: "6px 14px",
-            border: "1px solid rgba(74,158,132,0.48)",
+            border: "1px solid rgba(96,141,209,0.50)",
             whiteSpace: "nowrap",
           }}
         >

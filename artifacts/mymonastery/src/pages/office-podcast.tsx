@@ -57,11 +57,13 @@ const PALETTE = {
   warm: "#F0EDE6",
   sage: "#8FAF96",
   faint: "rgba(143,175,150,0.55)",
-  // Warm gold — distinct from the green BCP options and the purple
-  // National Cathedral card on the chooser. Reads as candlelight.
-  border: "rgba(212,160,70,0.40)",
-  cardBg: "rgba(212,160,70,0.14)",
-  accent: "#E8C27A",
+  // Forward Movement blue — FDD / Forward Movement's identity color
+  // across the app (home card, office-close pill, this player), kept
+  // distinct from the green BCP offices and the purple National
+  // Cathedral card on the chooser.
+  border: "rgba(96,141,209,0.45)",
+  cardBg: "rgba(96,141,209,0.15)",
+  accent: "#8FB4E0",
 };
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 

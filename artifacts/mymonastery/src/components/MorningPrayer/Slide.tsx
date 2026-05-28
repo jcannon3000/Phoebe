@@ -4,12 +4,18 @@ import { CallAndResponse } from "./CallAndResponse";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { openExternal } from "@/lib/openExternal";
-// FDD/SSJE moved to the embedded reflection slide (bcp-daily-office
-// appends a reflection_embed at the end when the source picks one).
-// Only CAC still uses the closing-slide pill because cac.org blocks
-// iframe embedding (X-Frame-Options: SAMEORIGIN).
-import { CAC_TODAY_URL, markCacRead } from "@/lib/cacReadState";
-import { useOfficePrefs } from "@/lib/officePrefs";
+// Single daily-reflection pill on the closing slide. The user picks
+// ONE source in Office Settings → After the office; the pill opens
+// that source externally and marks it read so the home card flips.
+import {
+  CAC_TODAY_URL,
+  FDD_TODAY_URL,
+  SSJE_TODAY_URL,
+  markCacRead,
+  markFddRead,
+  markSsjeRead,
+} from "@/lib/cacReadState";
+import { useEffectiveReflectionSource } from "@/lib/officePrefs";
 
 interface SlideProps {
   slide: SlideData;
@@ -85,7 +91,9 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
     // weekday broadcast that IS Morning Prayer at the National
     // Cathedral, not a post-office reflection. It's reachable via
     // the drawer Resources entry instead.
-    const officePrefs = useOfficePrefs();
+    // Effective precedence: explicit Settings pick → visible home
+    // reflection card → FDD default.
+    const reflectionSource = useEffectiveReflectionSource();
 
     // Color scheme
     const bg = isEvening ? EP_BG : (isOpenClose ? SOIL : CREAM);
@@ -320,25 +328,23 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
               )}
             </div>
 
-            {/* Single daily-reflection pill — the user picks ONE
-                source in Office Settings → After the office (CAC /
-                FDD / SSJE / none). For FDD/SSJE the reading is
-                embedded as the slide that follows the closing
-                (bcp-daily-office appends a reflection_embed slide
-                whenever the source is FDD or SSJE), so the pill
-                here would be redundant — the user just taps Next
-                to keep reading. CAC blocks iframe embedding
-                (X-Frame-Options: SAMEORIGIN), so for CAC the pill
-                stays and opens externally via SFSafariView, marking
-                today as read so the home card flips. When the user
-                picks "none" the entire pill disappears. */}
+            {/* Single daily-reflection pill. Source follows the
+                effective precedence (explicit Settings pick → the
+                reflection card visible on the home screen → FDD
+                default). The pill opens that source externally and
+                marks today as read so the home card flips. When the
+                user has explicitly picked "none" the pill disappears
+                entirely. */}
             {(() => {
-              const src = officePrefs.reflectionSource;
+              const src = reflectionSource;
               if (src === "none") return null;
-              // FDD/SSJE: hidden — the embedded reflection slide
-              // appended after this one is the read-it surface now.
-              if (src === "fdd" || src === "ssje") return null;
-              const cfg = { label: "🌅 Read today's reflection →", bg: "rgba(46,107,64,0.22)", border: "rgba(46,107,64,0.50)", url: CAC_TODAY_URL, mark: markCacRead };
+              const cfg =
+                src === "fdd"
+                  // Forward Movement blue — FDD's identity color everywhere.
+                  ? { label: "🌅 Read today's reflection →", bg: "rgba(96,141,209,0.20)", border: "rgba(96,141,209,0.50)", url: FDD_TODAY_URL, mark: markFddRead }
+                  : src === "ssje"
+                  ? { label: "🌅 Read today's reflection →", bg: "rgba(46,107,64,0.22)", border: "rgba(46,107,64,0.50)", url: SSJE_TODAY_URL, mark: markSsjeRead }
+                  : { label: "🌅 Read today's reflection →", bg: "rgba(46,107,64,0.22)", border: "rgba(46,107,64,0.50)", url: CAC_TODAY_URL, mark: markCacRead };
               return (
                 <button
                   type="button"
