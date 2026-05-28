@@ -4803,7 +4803,13 @@ export default function Dashboard() {
     queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed"),
     enabled: !!user,
   });
-  const subscribedFeeds = subscribedFeedsData?.subscriptions ?? [];
+  // phoebe-climate is intentionally excluded from the home-screen feed
+  // cards — its content surfaces through the prayer-list slideshow and
+  // the dedicated /climate hub. Showing it as a card here added clutter
+  // without driving extra engagement.
+  const subscribedFeeds = (subscribedFeedsData?.subscriptions ?? []).filter(
+    (f) => f.feed.slug !== "phoebe-climate",
+  );
 
   // Feed-first home: when the user has a featured feed (set at signup
   // for portal sign-ups) AND the toggle is on AND that feed is in their
