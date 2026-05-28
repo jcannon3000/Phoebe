@@ -900,54 +900,10 @@ router.post("/moments", perUserRateLimit("moments_create", {
   const isBcp = BCP_TEMPLATE_IDS.has(templateType ?? "");
   const momentToken = generateToken();
 
-  const [moment] = await db.insert(sharedMomentsTable).values({
-    ritualId: providedRitualId ?? null,
-    groupId: groupId ?? null,
-    name,
-    intention,
-    loggingType,
-    reflectionPrompt: reflectionPrompt ?? null,
-    templateType: templateType ?? null,
-    intercessionTopic: intercessionTopic ?? null,
-    intercessionSource: intercessionSource ?? null,
-    intercessionFullText: intercessionFullText ?? null,
-    frequency,
-    scheduledTime,
-    dayOfWeek: dayOfWeek ?? null,
-    goalDays,
-    timezone,
-    timeOfDay: isSpiritual ? (timeOfDay ?? null) : null,
-    momentToken,
-    windowMinutes: isBcp ? 1440 : (isSpiritual ? 1440 : 240),
-    // Anchor the cycle window at creation. The read filter hides
-    // intercessions once now > cycleStartedAt + goalDays.
-    commitmentCycleStartedAt: new Date(),
-    ...(frequencyType !== undefined ? { frequencyType } : {}),
-    ...(frequencyDaysPerWeek !== undefined ? { frequencyDaysPerWeek } : {}),
-    ...(practiceDays !== undefined ? { practiceDays } : {}),
-    ...(contemplativeDurationMinutes !== undefined ? { contemplativeDurationMinutes } : {}),
-    ...(fastingType !== undefined ? { fastingType } : {}),
-    ...(fastingFrom !== undefined ? { fastingFrom } : {}),
-    ...(fastingIntention !== undefined ? { fastingIntention } : {}),
-    ...(fastingFrequency !== undefined ? { fastingFrequency } : {}),
-    ...(fastingDate !== undefined ? { fastingDate } : {}),
-    ...(fastingDay !== undefined ? { fastingDay } : {}),
-    ...(fastingDayOfMonth !== undefined ? { fastingDayOfMonth } : {}),
-    ...(commitmentDuration !== undefined ? { commitmentDuration } : {}),
-    ...(commitmentEndDate ? { commitmentEndDate } : {}),
-    ...(commitmentSessionsGoal !== undefined ? { commitmentSessionsGoal } : {}),
-    ...(learnMoreUrl !== undefined ? { learnMoreUrl } : {}),
-  }).returning();
-
-  // Link any additional groups via the junction table. Primary group
-  // stays on sharedMoments.groupId — we skip it here to avoid a
-  // redundant "also visible from" row pointing at the owner group.
-  if (additionalGroupRows.length > 0) {
-    await db.insert(momentGroupsTable).values(
-      additionalGroupRows.map(row => ({ momentId: moment.id, groupId: row.groupId })),
-    );
-  }
-
+  // Resolve organizer + the deduped participant list BEFORE the write
+  // transaction — these are reads/computation, no reason to hold them
+  // inside the tx. The member token rows reference moment.id, so they
+  // get built inside the tx once the moment row exists.
   const [organizer] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
 
   // Merge organizer into participants, deduplicate by email
@@ -966,14 +922,72 @@ router.post("/moments", perUserRateLimit("moments_create", {
 
   const baseUrl = `${getInviteBaseUrl()}/moment`;
 
-  const memberTokenRows = uniqueMembers.map(m => ({
-    momentId: moment.id,
-    email: m.email.toLowerCase(),
-    name: m.name,
-    userToken: generateToken(),
-  }));
+  // Atomic create: the moment row, its additional-group junction rows,
+  // and every member's access token commit together. Previously these
+  // ran as three independent statements — a failure after the moment
+  // insert but before the token insert left a practice that NOBODY
+  // (including the creator) could open, because access is gated on a
+  // momentUserTokens row. Calendar events + emails + pushes stay
+  // OUTSIDE the tx below (external API calls with no rollback).
+  const { moment, insertedTokens } = await db.transaction(async (tx) => {
+    const [insertedMoment] = await tx.insert(sharedMomentsTable).values({
+      ritualId: providedRitualId ?? null,
+      groupId: groupId ?? null,
+      name,
+      intention,
+      loggingType,
+      reflectionPrompt: reflectionPrompt ?? null,
+      templateType: templateType ?? null,
+      intercessionTopic: intercessionTopic ?? null,
+      intercessionSource: intercessionSource ?? null,
+      intercessionFullText: intercessionFullText ?? null,
+      frequency,
+      scheduledTime,
+      dayOfWeek: dayOfWeek ?? null,
+      goalDays,
+      timezone,
+      timeOfDay: isSpiritual ? (timeOfDay ?? null) : null,
+      momentToken,
+      windowMinutes: isBcp ? 1440 : (isSpiritual ? 1440 : 240),
+      // Anchor the cycle window at creation. The read filter hides
+      // intercessions once now > cycleStartedAt + goalDays.
+      commitmentCycleStartedAt: new Date(),
+      ...(frequencyType !== undefined ? { frequencyType } : {}),
+      ...(frequencyDaysPerWeek !== undefined ? { frequencyDaysPerWeek } : {}),
+      ...(practiceDays !== undefined ? { practiceDays } : {}),
+      ...(contemplativeDurationMinutes !== undefined ? { contemplativeDurationMinutes } : {}),
+      ...(fastingType !== undefined ? { fastingType } : {}),
+      ...(fastingFrom !== undefined ? { fastingFrom } : {}),
+      ...(fastingIntention !== undefined ? { fastingIntention } : {}),
+      ...(fastingFrequency !== undefined ? { fastingFrequency } : {}),
+      ...(fastingDate !== undefined ? { fastingDate } : {}),
+      ...(fastingDay !== undefined ? { fastingDay } : {}),
+      ...(fastingDayOfMonth !== undefined ? { fastingDayOfMonth } : {}),
+      ...(commitmentDuration !== undefined ? { commitmentDuration } : {}),
+      ...(commitmentEndDate ? { commitmentEndDate } : {}),
+      ...(commitmentSessionsGoal !== undefined ? { commitmentSessionsGoal } : {}),
+      ...(learnMoreUrl !== undefined ? { learnMoreUrl } : {}),
+    }).returning();
 
-  const insertedTokens = await db.insert(momentUserTokensTable).values(memberTokenRows).returning();
+    // Link any additional groups via the junction table. Primary group
+    // stays on sharedMoments.groupId — we skip it here to avoid a
+    // redundant "also visible from" row pointing at the owner group.
+    if (additionalGroupRows.length > 0) {
+      await tx.insert(momentGroupsTable).values(
+        additionalGroupRows.map(row => ({ momentId: insertedMoment.id, groupId: row.groupId })),
+      );
+    }
+
+    const memberTokenRows = uniqueMembers.map(m => ({
+      momentId: insertedMoment.id,
+      email: m.email.toLowerCase(),
+      name: m.name,
+      userToken: generateToken(),
+    }));
+    const tokens = await tx.insert(momentUserTokensTable).values(memberTokenRows).returning();
+
+    return { moment: insertedMoment, insertedTokens: tokens };
+  });
 
   // ─── Friendly schedule label (time-of-day language, never clock times) ──────
   const TOD_LABELS: Record<string, string> = {

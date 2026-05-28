@@ -439,35 +439,46 @@ router.post("/rituals", async (req, res): Promise<void> => {
       }
     }
 
-    const [ritual] = await db
-      .insert(ritualsTable)
-      .values({
-        name: body.name,
-        description: body.description ?? null,
-        frequency: body.frequency,
-        dayPreference: body.dayPreference ?? null,
-        participants: body.participants ?? [],
-        intention: body.intention ?? null,
-        location,
-        meetingUrl,
-        ownerId: body.ownerId,
-        scheduleToken: schedulingToken,
-        rhythm: body.rhythm ?? "fortnightly",
-        hasIntercession: body.hasIntercession ?? false,
-        hasFasting: body.hasFasting ?? false,
-        intercessionIntention: body.intercessionIntention ?? null,
-        fastingDescription: body.fastingDescription ?? null,
-        template,
-        groupId,
-      })
-      .returning();
+    // Atomic create: the gathering row + its additional-community
+    // junction rows commit together. A failure between the two left a
+    // gathering that the host community could see but the additional
+    // communities couldn't — a silent, hard-to-diagnose "why isn't
+    // this showing up for the other group" bug. Push fan-out + the
+    // welcome-message insert stay OUTSIDE (fire-and-forget side
+    // effects, below).
+    const ritual = await db.transaction(async (tx) => {
+      const [insertedRitual] = await tx
+        .insert(ritualsTable)
+        .values({
+          name: body.name,
+          description: body.description ?? null,
+          frequency: body.frequency,
+          dayPreference: body.dayPreference ?? null,
+          participants: body.participants ?? [],
+          intention: body.intention ?? null,
+          location,
+          meetingUrl,
+          ownerId: body.ownerId,
+          scheduleToken: schedulingToken,
+          rhythm: body.rhythm ?? "fortnightly",
+          hasIntercession: body.hasIntercession ?? false,
+          hasFasting: body.hasFasting ?? false,
+          intercessionIntention: body.intercessionIntention ?? null,
+          fastingDescription: body.fastingDescription ?? null,
+          template,
+          groupId,
+        })
+        .returning();
 
-    // Write additional-community links (multi-community gatherings).
-    if (additionalGroupIds.length > 0) {
-      await db.insert(ritualGroupsTable).values(
-        additionalGroupIds.map((gid) => ({ ritualId: ritual.id, groupId: gid })),
-      ).onConflictDoNothing();
-    }
+      // Write additional-community links (multi-community gatherings).
+      if (additionalGroupIds.length > 0) {
+        await tx.insert(ritualGroupsTable).values(
+          additionalGroupIds.map((gid) => ({ ritualId: insertedRitual.id, groupId: gid })),
+        ).onConflictDoNothing();
+      }
+
+      return insertedRitual;
+    });
 
     const meetups = await db.select().from(meetupsTable).where(eq(meetupsTable.ritualId, ritual.id));
     const enriched = await enrichRitual(ritual, meetups);
