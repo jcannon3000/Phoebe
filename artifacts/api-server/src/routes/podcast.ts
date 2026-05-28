@@ -298,10 +298,10 @@ const SHOWS: Record<string, Show> = {
   "and-also-with-you": {
     slug: "and-also-with-you",
     title: "And Also With You",
-    artist: "Lizzie McManus-Dail & Laura Di Panfilo",
+    artist: "Rev. Lizzie McManus-Dail & Rev. Laura Di Panfilo",
     publisher: "around-the-church",
     feedUrl: "https://feeds.simplecast.com/2MOSOCPL",
-    artwork: "https://image.simplecastcdn.com/images/8bd398a2-dfc3-4662-bb8a-b7e502e69031/8c23cf47-3ad0-4f08-b7d6-81b5b82ca030/3000x3000/aawy-artwork.jpg",
+    artwork: "/podcast-art/and-also-with-you.jpg",
   },
   // ── Yale Forum on Religion & Ecology ────────────────────────────────
   "fore-spotlights": {
@@ -360,6 +360,7 @@ type EpisodeFull = {
 type ParsedFeed = {
   feedTitle: string | null;
   feedImage: string | null;
+  feedDescription: string | null;
   episodes: EpisodeFull[];
 };
 
@@ -411,6 +412,11 @@ function parseFeed(xml: string, limit: number): ParsedFeed {
   const feedImageRaw =
     firstMatch(channelPart, /<itunes:image[^>]*\bhref="([^"]+)"/i) ??
     firstMatch(channelPart, /<image>[\s\S]*?<url>([\s\S]*?)<\/url>/i);
+  // Channel-level blurb for the show header — same cleanup as episode
+  // descriptions (decode entities + CDATA, strip HTML, truncate).
+  const feedDescRaw =
+    firstMatch(channelPart, /<itunes:summary>([\s\S]*?)<\/itunes:summary>/i) ??
+    firstMatch(channelPart, /<description>([\s\S]*?)<\/description>/i);
 
   const episodes: EpisodeFull[] = [];
   const itemRe = /<item[\s>]([\s\S]*?)<\/item>/gi;
@@ -440,6 +446,7 @@ function parseFeed(xml: string, limit: number): ParsedFeed {
   return {
     feedTitle: feedTitle ? decodeXmlText(feedTitle) : null,
     feedImage: feedImageRaw ? decodeXmlText(feedImageRaw) : null,
+    feedDescription: plainTextPreview(feedDescRaw, 360),
     episodes,
   };
 }
@@ -475,7 +482,7 @@ function scrapeRoundtables(html: string, fallbackTitle: string): ParsedFeed {
     description: null,
     imageUrl: null,
   }));
-  return { feedTitle: fallbackTitle, feedImage: null, episodes };
+  return { feedTitle: fallbackTitle, feedImage: null, feedDescription: null, episodes };
 }
 
 async function loadFeed(show: Show, limit: number): Promise<ParsedFeed> {
@@ -499,7 +506,7 @@ async function loadFeed(show: Show, limit: number): Promise<ParsedFeed> {
   } catch (err) {
     logger.warn({ err, show: show.slug }, "[podcast] feed fetch failed");
     if (hit) return { ...hit.data, episodes: hit.data.episodes.slice(0, limit) }; // stale
-    return { feedTitle: show.title, feedImage: show.artwork, episodes: [] };
+    return { feedTitle: show.title, feedImage: show.artwork, feedDescription: null, episodes: [] };
   }
 }
 
@@ -639,7 +646,7 @@ router.get("/podcasts/search", async (req: Request, res: Response): Promise<void
   const all = Object.values(SHOWS).filter((s) => !HIDDEN_FROM_DISCOVER.has(s.slug));
   const feeds = await Promise.all(all.map(async (s) => {
     try { return { s, f: await loadFeed(s, 50) }; }
-    catch { return { s, f: { feedTitle: null, feedImage: null, episodes: [] as EpisodeFull[] } }; }
+    catch { return { s, f: { feedTitle: null, feedImage: null, feedDescription: null, episodes: [] as EpisodeFull[] } }; }
   }));
 
   type Hit = EpisodeFull & { show: { slug: string; title: string; artist: string; artwork: string | null } };
@@ -701,6 +708,7 @@ router.get("/podcasts/show/:slug", async (req: Request, res: Response): Promise<
       publisher: show.publisher,
       publisherTitle: pub?.title ?? show.artist,
       emoji: pub?.emoji ?? "🎧",
+      description: feed.feedDescription ?? null,
     },
     episodes: feed.episodes,
   });
