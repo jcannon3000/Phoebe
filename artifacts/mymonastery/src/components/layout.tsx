@@ -100,7 +100,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const logout = useLogout();
   const [, setLocation] = useLocation();
-  const { isBeta, isAdmin: isBetaAdmin, rawIsAdmin, rawIsBeta } = useBetaStatus();
+  const { isAdmin: isBetaAdmin, rawIsAdmin, rawIsBeta } = useBetaStatus();
   const { t } = useTranslation();
   // Offices-only accounts 403 on /api/groups, /api/me/pending-…,
   // and /api/prayer-feeds/mine (requireBeta). Firing them on every
@@ -245,10 +245,10 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             </div>
 
             {/* ── Daily Practice (beta) ── Progress + build-your-rhythm
-                hub. Its own section above Communities, gated to beta
-                testers via the same isBeta toggle other beta surfaces
-                use, so flipping pilot view off hides it. */}
-            {isBeta && (
+                hub. Its own section above Communities. Gated on rawIsBeta
+                (like Phoebe Parish below) so every beta tester sees it
+                regardless of the beta-view preview toggle. */}
+            {rawIsBeta && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
                 <button
                   type="button"
