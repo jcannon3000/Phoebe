@@ -3,30 +3,54 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
-// ── /podcast/morning-office — "A Morning at the Office", embedded ──
+// ── /podcast/:show — Forward Movement daily office podcasts, embedded ──
 //
-// Forward Movement's daily Episcopal Morning Prayer podcast (the full
-// BCP 1979 office, read aloud). Surfaced as an option on the morning
-// prayer chooser; this page plays today's episode inline with a thin
-// Phoebe header above, the same in-app-not-ejected feel as the
-// National Cathedral watch page (/ncmp/watch).
+// One generic player for both Forward Movement office podcasts (the BCP
+// 1979 Morning / Evening Prayer offices, read aloud). The show is
+// derived from the path: /podcast/evening-office vs anything else
+// (/podcast/morning-office). Surfaced as options on the prayer chooser;
+// this page plays today's episode inline with a thin Phoebe header,
+// the same in-app-not-ejected feel as the National Cathedral watch page
+// (/ncmp/watch).
 //
 // Prayer-session log:
 //   We accumulate ACTUAL playback time — segments bounded by the
 //   <audio> element's play/pause/ended events (and paused when the app
-//   backgrounds, since a backgrounded prayer isn't being prayed). One
-//   "morning-office-podcast" row is committed with the real listened
-//   duration when the user leaves. A session >= 3 minutes counts as
-//   Morning Prayer: we stamp the local morning office-completed flag so
-//   the dashboard lights up immediately, and the server independently
-//   treats a >=180s morning-office-podcast row as a morning office (see
-//   users.ts), so the credit survives a refetch / another device.
-//
-// Why playback-time and not page-open-time (NCMP uses the latter):
-//   NCMP embeds a YouTube iframe whose play state we can't observe, so
-//   it falls back to foreground time. Here we own the <audio> element,
-//   so we can be honest and only count time the office is actually
-//   playing.
+//   backgrounds). One "{morning,evening}-office-podcast" row is
+//   committed with the real listened duration on leave. A session >= 3
+//   minutes counts as the matching office: we stamp the local office-
+//   completed flag for that side so the dashboard lights up
+//   immediately, and the server independently treats a >=180s row as
+//   that office (see users.ts), so the credit survives a refetch /
+//   another device.
+
+type ShowKey = "morning-office" | "evening-office";
+
+const SHOWS: Record<ShowKey, {
+  apiSlug: string;
+  surface: string;
+  side: "morning" | "evening";       // also the office-completed mode key
+  headerLabel: string;
+  fallbackTitle: string;
+  blurb: string;
+}> = {
+  "morning-office": {
+    apiSlug: "morning-office",
+    surface: "morning-office-podcast",
+    side: "morning",
+    headerLabel: "🎧 Morning Prayer",
+    fallbackTitle: "Daily Morning Prayer",
+    blurb: "The full order of Morning Prayer from the Book of Common Prayer, read aloud. A new episode every morning.",
+  },
+  "evening-office": {
+    apiSlug: "evening-office",
+    surface: "evening-office-podcast",
+    side: "evening",
+    headerLabel: "🎧 Evening Prayer",
+    fallbackTitle: "An Evening at Prayer",
+    blurb: "The full order of Evening Prayer from the Book of Common Prayer, read aloud. A new episode every evening.",
+  },
+};
 
 const PALETTE = {
   bg: "#091A10",
@@ -34,16 +58,16 @@ const PALETTE = {
   sage: "#8FAF96",
   faint: "rgba(143,175,150,0.55)",
   // Warm gold — distinct from the green BCP options and the purple
-  // National Cathedral card on the chooser. Reads as "morning."
+  // National Cathedral card on the chooser. Reads as candlelight.
   border: "rgba(212,160,70,0.40)",
   cardBg: "rgba(212,160,70,0.14)",
   accent: "#E8C27A",
 };
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
-// Listening for at least this long counts as having prayed Morning
-// Prayer. Mirrors the national-cathedral gate in users.ts.
-const MORNING_PRAYER_CREDIT_SECONDS = 180;
+// Listening for at least this long counts as having prayed the office.
+// Mirrors the national-cathedral gate in users.ts.
+const OFFICE_CREDIT_SECONDS = 180;
 
 type Episode = {
   feedTitle: string | null;
@@ -63,20 +87,20 @@ function formatDuration(seconds: number | null): string | null {
   return m === 0 ? `${h} hr` : `${h} hr ${m} min`;
 }
 
-export default function MorningOfficePodcastPage() {
-  const [, setLocation] = useLocation();
+export default function OfficePodcastPage() {
+  const [location, setLocation] = useLocation();
+  const showKey: ShowKey = location.includes("evening") ? "evening-office" : "morning-office";
+  const show = SHOWS[showKey];
 
   const { data: episode, isLoading } = useQuery<Episode>({
-    queryKey: ["/api/podcast/morning-office/today"],
-    queryFn: () => apiRequest("GET", "/api/podcast/morning-office/today"),
+    queryKey: [`/api/podcast/${show.apiSlug}/today`],
+    queryFn: () => apiRequest("GET", `/api/podcast/${show.apiSlug}/today`),
     staleTime: 30 * 60_000,
   });
 
   // ── Playback-time tracking. Accumulate seconds the audio is actually
   // playing (segments opened on `play`, closed on `pause`/`ended`/leave
-  // and when the app backgrounds), then commit one row on leave. Same
-  // accumulator shape as usePrayerSession / the NCMP watch page;
-  // inlined because this surface also writes the morning-office flag.
+  // and when the app backgrounds), then commit one row on leave.
   const startedAtRef = useRef<Date | null>(null);
   const segmentStartRef = useRef<number | null>(null);
   const accumulatedRef = useRef<number>(0);
@@ -110,20 +134,20 @@ export default function MorningOfficePodcastPage() {
       if (total <= 0 || !startedAt) return;
       committedRef.current = true;
       apiRequest("POST", "/api/prayer-sessions", {
-        surface: "morning-office-podcast",
+        surface: show.surface,
         durationSeconds: total,
         startedAt: startedAt.toISOString(),
         endedAt: new Date().toISOString(),
       }).catch(() => { /* best-effort */ });
-      // Listened long enough to count as Morning Prayer — stamp the
-      // local office-completed flag so the dashboard + rhythm slide
-      // reflect it before the server history refetches. Morning side
-      // because this office IS Morning Prayer.
-      if (total >= MORNING_PRAYER_CREDIT_SECONDS) {
+      // Listened long enough to count as the office — stamp the local
+      // office-completed flag so the dashboard + rhythm slide reflect
+      // it before the server history refetches. The side IS the
+      // office-completed mode key the dashboard reads.
+      if (total >= OFFICE_CREDIT_SECONDS) {
         try {
           const now = new Date();
           const dateKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-          localStorage.setItem(`phoebe:office-completed:morning:${dateKey}`, "1");
+          localStorage.setItem(`phoebe:office-completed:${show.side}:${dateKey}`, "1");
         } catch { /* private mode / quota — non-fatal */ }
       }
     };
@@ -136,9 +160,6 @@ export default function MorningOfficePodcastPage() {
     audio?.addEventListener("pause", onPause);
     audio?.addEventListener("ended", onEnded);
 
-    // Backgrounding pauses the audio on iOS, but close the segment
-    // explicitly so foreground-only time is what's counted even when
-    // the OS keeps audio alive (e.g. lock-screen playback).
     const onVisibility = () => {
       if (document.visibilityState === "hidden") closeSegment();
       else if (document.visibilityState === "visible" && audio && !audio.paused) openSegment();
@@ -155,10 +176,9 @@ export default function MorningOfficePodcastPage() {
       window.removeEventListener("pagehide", onPageHide);
       commit();
     };
-    // Mount-once: the listen session spans the whole page lifetime,
-    // independent of when the episode metadata resolves.
+    // Mount-once per show: the listen session spans the page lifetime.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [showKey]);
 
   const durationLabel = formatDuration(episode?.durationSeconds ?? null);
 
@@ -173,8 +193,6 @@ export default function MorningOfficePodcastPage() {
         flexDirection: "column",
       }}
     >
-      {/* Top bar — Back left, label centered. Matches the office viewer
-          + NCMP header rhythm so this reads as a Phoebe page. */}
       <header
         style={{
           paddingTop: "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))",
@@ -216,7 +234,7 @@ export default function MorningOfficePodcastPage() {
             whiteSpace: "nowrap",
           }}
         >
-          🎧 Morning Prayer
+          {show.headerLabel}
         </span>
         <span />
       </header>
@@ -242,12 +260,10 @@ export default function MorningOfficePodcastPage() {
           </p>
         ) : (
           <div style={{ width: "100%", maxWidth: 460, display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
-            {/* Cover art — episode image if present, else the show
-                artwork. Square, rounded, gold hairline border. */}
             {episode.imageUrl && (
               <img
                 src={episode.imageUrl}
-                alt={episode.feedTitle ?? "A Morning at the Office"}
+                alt={episode.feedTitle ?? show.fallbackTitle}
                 style={{
                   width: "min(72vw, 320px)",
                   aspectRatio: "1 / 1",
@@ -269,7 +285,7 @@ export default function MorningOfficePodcastPage() {
                   margin: 0,
                 }}
               >
-                {episode.feedTitle ?? "A Morning at the Office"}
+                {episode.feedTitle ?? show.fallbackTitle}
               </p>
               {episode.title && (
                 <h1
@@ -291,9 +307,8 @@ export default function MorningOfficePodcastPage() {
               )}
             </div>
 
-            {/* Native audio controls — full transport (play/pause,
-                scrubber, time, volume) for free, and iOS lock-screen +
-                Control Center playback come along automatically. */}
+            {/* Native audio controls — full transport for free, plus iOS
+                lock-screen + Control Center playback automatically. */}
             <audio
               ref={audioRef}
               src={episode.audioUrl}
@@ -313,8 +328,7 @@ export default function MorningOfficePodcastPage() {
                 maxWidth: 380,
               }}
             >
-              The full order of Morning Prayer from the Book of Common Prayer,
-              read aloud. A new episode every morning.
+              {show.blurb}
             </p>
           </div>
         )}

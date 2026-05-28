@@ -364,7 +364,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
         AND (
           surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
           OR (surface = 'national-cathedral' AND duration_seconds >= 180)
-          OR (surface = 'morning-office-podcast' AND duration_seconds >= 180)
+          OR (surface IN ('morning-office-podcast', 'evening-office-podcast') AND duration_seconds >= 180)
         )
     `);
     const officeDaySet = new Set(dayRows.rows.map((r) => r.day));
@@ -471,14 +471,14 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
         to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day,
         CASE
           WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral', 'morning-office-podcast') THEN 'morning'
-          WHEN surface IN ('evening-prayer', 'early-evening-devotion') THEN 'evening'
+          WHEN surface IN ('evening-prayer', 'early-evening-devotion', 'evening-office-podcast') THEN 'evening'
         END AS side
       FROM prayer_sessions
       WHERE user_id = ${sessionUserId}
         AND (
           surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
           OR (surface = 'national-cathedral' AND duration_seconds >= 180)
-          OR (surface = 'morning-office-podcast' AND duration_seconds >= 180)
+          OR (surface IN ('morning-office-podcast', 'evening-office-podcast') AND duration_seconds >= 180)
         )
         AND ended_at >= NOW() - INTERVAL '8 days'
     `);

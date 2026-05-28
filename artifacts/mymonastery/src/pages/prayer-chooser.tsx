@@ -128,32 +128,35 @@ export default function PrayerChooserPage() {
   // chooser badges ("5–10 Min", "15–20 Min").
   const ncmpDurationLabel = "7 AM ET";
 
-  // "A Morning at the Office" — Forward Movement's daily Episcopal
-  // Morning Prayer podcast. Shown every morning (it publishes 7 days a
-  // week, unlike the weekday-only cathedral broadcast). We fetch today's
+  // Forward Movement's daily Episcopal office podcasts — Morning Prayer
+  // (mornings) and Evening Prayer (evenings), the BCP 1979 office read
+  // aloud. Both publish 7 days a week. We fetch the relevant show's
   // episode meta to label the card with its real length; the in-app
-  // player at /podcast/morning-office does the actual playback + session
-  // log. Gated on isMorning so the request only fires when the card
-  // will render.
+  // player at /podcast/:show does the playback + session log. Each query
+  // is gated on the half-of-day so only the one whose card will render
+  // actually fires.
   type PodcastMeta = {
     feedTitle: string | null;
     title: string | null;
     audioUrl: string | null;
     durationSeconds: number | null;
   };
-  const { data: podcastMeta } = useQuery<PodcastMeta>({
+  const podcastDurationLabel = (s: number | null | undefined) => {
+    if (!s || s <= 0) return "🎧 Audio";
+    return `≈ ${Math.round(s / 60)} min`;
+  };
+  const { data: morningPodcastMeta } = useQuery<PodcastMeta>({
     queryKey: ["/api/podcast/morning-office/today"],
     queryFn: () => apiRequest("GET", "/api/podcast/morning-office/today"),
     enabled: isMorning,
     staleTime: 30 * 60_000,
   });
-  const showPodcastOption = isMorning;
-  const podcastDurationLabel = (() => {
-    const s = podcastMeta?.durationSeconds ?? null;
-    if (!s || s <= 0) return "🎧 Audio";
-    const mins = Math.round(s / 60);
-    return `≈ ${mins} min`;
-  })();
+  const { data: eveningPodcastMeta } = useQuery<PodcastMeta>({
+    queryKey: ["/api/podcast/evening-office/today"],
+    queryFn: () => apiRequest("GET", "/api/podcast/evening-office/today"),
+    enabled: !isMorning,
+    staleTime: 30 * 60_000,
+  });
 
   // Per-mode progress: drives the verb in the corner pill (Start /
   // Continue / Pray again) and the ?reset=1 suffix on the link.
@@ -232,18 +235,26 @@ export default function PrayerChooserPage() {
       verb: "Watch",
       href: "/ncmp/watch",
     }] : []),
-    // "A Morning at the Office" podcast — every morning (publishes 7
-    // days a week). Opens the in-app audio player at
-    // /podcast/morning-office, which logs the prayer session.
-    ...(showPodcastOption ? [{
-      key: "podcast",
+    // Forward Movement office podcast — Morning Prayer in the morning,
+    // Evening Prayer in the evening. Both publish 7 days a week. Opens
+    // the in-app audio player at /podcast/:show, which logs the session.
+    ...(isMorning ? [{
+      key: "podcast-morning",
       variant: "gold" as const,
-      title: "A Morning at the Office",
-      sub: "Daily Episcopal Morning Prayer, read aloud · Forward Movement",
-      badge: podcastDurationLabel,
+      title: "Daily Morning Prayer",
+      sub: "The Morning Prayer office, read aloud · Forward Movement",
+      badge: podcastDurationLabel(morningPodcastMeta?.durationSeconds),
       verb: "Listen",
       href: "/podcast/morning-office",
-    }] : []),
+    }] : [{
+      key: "podcast-evening",
+      variant: "gold" as const,
+      title: "Daily Evening Prayer",
+      sub: "The Evening Prayer office, read aloud · Forward Movement",
+      badge: podcastDurationLabel(eveningPodcastMeta?.durationSeconds),
+      verb: "Listen",
+      href: "/podcast/evening-office",
+    }]),
     ...(firstCard ? [firstCard] : []),
     {
       key: "devotion",

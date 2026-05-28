@@ -1,23 +1,22 @@
-// Daily Morning Prayer podcast metadata.
+// Daily office podcast metadata.
 //
-// "A Morning at the Office" is Forward Movement's daily Episcopal
-// Morning Prayer podcast — the full BCP 1979 office read aloud, a new
-// episode every morning. (Forward Movement also publishes Forward Day
-// by Day, already integrated as a reflection source.) We surface it as
-// an option on the morning prayer chooser and play it inline on
-// /podcast/morning-office; this endpoint resolves TODAY'S episode so the
-// player has an audio URL + the chooser can show a duration badge.
+// Forward Movement publishes the BCP 1979 daily offices as audio — the
+// full order of Morning / Evening Prayer, read aloud, a new episode
+// every day. We surface them as options on the prayer chooser (morning
+// show before noon, evening show after) and play them inline on
+// /podcast/:show; this endpoint resolves TODAY'S episode for a show so
+// the player has an audio URL + the chooser can show a duration badge.
 //
-// Resolution: the show publishes a standard podcast RSS feed on
+// Resolution: each show publishes a standard podcast RSS feed on
 // Megaphone. We fetch it, take the newest <item>, and pull the
 // enclosure (the MP3), title, duration, and artwork. Mirrors the NCMP
 // route's shape (routes/ncmp.ts) — a cached server-side fetch so we
-// hit the feed at most once per TTL window per process.
+// hit each feed at most once per TTL window per process.
 //
-// Caching: a short TTL (not per-day) keeps it simple and always fresh.
-// The feed is light XML, the parse is a few regexes, and a new episode
-// lands ~01:30 ET daily — a 30-minute TTL means the morning's episode
-// is picked up well before most users open the app, without a date-key
+// Caching: a short per-show TTL (not per-day) keeps it simple and
+// always fresh. The feeds are light XML, the parse is a few regexes,
+// and new episodes land daily — a 30-minute TTL picks up the day's
+// episode well before most users open the app, without a date-key
 // rollover edge case. On any fetch failure we serve the last good
 // cache (even if stale) and only fall back to a null-audio payload when
 // we've never succeeded.
@@ -27,9 +26,20 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-// "A Morning at the Office" public RSS feed (Megaphone).
-const FEED_URL = "https://feeds.megaphone.fm/FDMV8366345804";
-const SHOW_TITLE = "A Morning at the Office";
+// Known shows. The :show path param is validated against these keys, so
+// adding a third office (e.g. compline / midday) later is just one more
+// entry here + a chooser card. `fallbackTitle` is what the client shows
+// if we've never managed a successful fetch.
+const SHOWS: Record<string, { feedUrl: string; fallbackTitle: string }> = {
+  "morning-office": {
+    feedUrl: "https://feeds.megaphone.fm/FDMV7144883457",
+    fallbackTitle: "Daily Morning Prayer from Forward Movement",
+  },
+  "evening-office": {
+    feedUrl: "https://feeds.megaphone.fm/FDMV2784874884",
+    fallbackTitle: "An Evening at Prayer",
+  },
+};
 
 // Match a real browser UA — Megaphone serves the same XML either way,
 // but keeps behavior predictable if they ever gate on UA.
@@ -47,7 +57,8 @@ type Episode = {
 };
 
 const TTL_MS = 30 * 60_000;
-let cached: { at: number; data: Episode } | null = null;
+// One cache slot per show.
+const cache = new Map<string, { at: number; data: Episode }>();
 
 // <itunes:duration> is either total seconds ("858") or a clock string
 // ("14:18" or "1:02:30"). Normalize to seconds; null on anything weird.
@@ -75,8 +86,8 @@ function decodeXmlText(s: string): string {
     .trim();
 }
 
-async function fetchTodaysEpisode(): Promise<Episode> {
-  const res = await fetch(FEED_URL, {
+async function fetchTodaysEpisode(feedUrl: string, fallbackTitle: string): Promise<Episode> {
+  const res = await fetch(feedUrl, {
     headers: {
       "user-agent": UA,
       accept: "application/rss+xml, application/xml, text/xml",
@@ -102,7 +113,7 @@ async function fetchTodaysEpisode(): Promise<Episode> {
   const itemImageMatch = item.match(/<itunes:image[^>]*\bhref="([^"]+)"/i);
 
   return {
-    feedTitle: feedTitleMatch ? decodeXmlText(feedTitleMatch[1]) : SHOW_TITLE,
+    feedTitle: feedTitleMatch ? decodeXmlText(feedTitleMatch[1]) : fallbackTitle,
     title: titleMatch ? decodeXmlText(titleMatch[1]) : null,
     audioUrl: enclosureMatch ? enclosureMatch[1] : null,
     durationSeconds: parseDurationSeconds(durationMatch ? durationMatch[1] : null),
@@ -111,32 +122,40 @@ async function fetchTodaysEpisode(): Promise<Episode> {
   };
 }
 
-// GET /api/podcast/morning-office/today — today's episode of "A Morning
-// at the Office". Public (no auth); the player page is auth-gated on the
-// client, but the metadata itself is harmless to serve openly and the
-// prayer chooser fetches it before any session exists.
-router.get("/podcast/morning-office/today", async (_req: Request, res: Response): Promise<void> => {
+// GET /api/podcast/:show/today — today's episode for a known show.
+// Public (no auth); the player page is auth-gated on the client, but
+// the metadata itself is harmless to serve openly and the prayer
+// chooser fetches it before any session exists.
+router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<void> => {
+  const showKey = String(req.params.show ?? "");
+  const show = SHOWS[showKey];
+  if (!show) {
+    res.status(404).json({ error: "Unknown show" });
+    return;
+  }
   res.setHeader("Cache-Control", "public, max-age=600");
   try {
-    if (cached && Date.now() - cached.at < TTL_MS) {
-      res.json(cached.data);
+    const hit = cache.get(showKey);
+    if (hit && Date.now() - hit.at < TTL_MS) {
+      res.json(hit.data);
       return;
     }
-    const data = await fetchTodaysEpisode();
-    cached = { at: Date.now(), data };
+    const data = await fetchTodaysEpisode(show.feedUrl, show.fallbackTitle);
+    cache.set(showKey, { at: Date.now(), data });
     res.json(data);
   } catch (err) {
-    logger.warn({ err }, "[podcast] failed to resolve morning-office episode");
+    logger.warn({ err, show: showKey }, "[podcast] failed to resolve episode");
     // Serve the last good payload if we have one — a slightly stale
     // episode is far better than a dead player. Only when we've never
-    // succeeded do we return a null-audio shape the client can treat
-    // as "couldn't load."
-    if (cached) {
-      res.json(cached.data);
+    // succeeded do we return a null-audio shape the client treats as
+    // "couldn't load."
+    const stale = cache.get(showKey);
+    if (stale) {
+      res.json(stale.data);
       return;
     }
     res.json({
-      feedTitle: SHOW_TITLE,
+      feedTitle: show.fallbackTitle,
       title: null,
       audioUrl: null,
       durationSeconds: null,

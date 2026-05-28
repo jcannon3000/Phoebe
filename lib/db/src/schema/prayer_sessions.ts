@@ -38,12 +38,15 @@ export const prayerSurfaces = [
   // engaging with Morning Prayer at the cathedral; we can't observe
   // how long they actually watch.
   "national-cathedral",
-  // In-app listen to "A Morning at the Office" — Forward Movement's
-  // daily Episcopal Morning Prayer podcast (BCP 1979). The listen page
+  // In-app listen to Forward Movement's daily Episcopal office podcasts
+  // (BCP 1979 Morning / Evening Prayer, read aloud). The listen page
   // tracks real foreground audio time and commits one row on leave,
   // same watch-time model as national-cathedral. A session >= 180s
-  // counts as a morning office (see users.ts office-history gates).
+  // counts as the matching office (see users.ts office-history gates):
+  // morning-office-podcast → morning side, evening-office-podcast →
+  // evening side.
   "morning-office-podcast",
+  "evening-office-podcast",
 ] as const;
 export type PrayerSurface = (typeof prayerSurfaces)[number];
 

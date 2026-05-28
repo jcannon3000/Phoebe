@@ -114,7 +114,7 @@ import ForgotPassword from "./pages/forgot-password";
 import ResetPassword from "./pages/reset-password";
 import PrayerChooserPage from "./pages/prayer-chooser";
 import NcmpWatchPage from "./pages/ncmp-watch";
-import MorningOfficePodcastPage from "./pages/morning-office-podcast";
+import OfficePodcastPage from "./pages/office-podcast";
 const GatheringsPage = lazy(() => import("./pages/gatherings"));
 import GatheringSettings from "./pages/gathering-settings";
 const MomentNew = lazy(() => import("./pages/moment-new"));
@@ -455,7 +455,8 @@ function Router() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/prayer-chooser" component={PrayerChooserPage} />
       <Route path="/ncmp/watch" component={NcmpWatchPage} />
-      <Route path="/podcast/morning-office" component={MorningOfficePodcastPage} />
+      <Route path="/podcast/morning-office" component={OfficePodcastPage} />
+      <Route path="/podcast/evening-office" component={OfficePodcastPage} />
       <Route path="/dashboard" component={Dashboard} />
       {/* Phoebe Parish — simplified tier. /parish is the dashboard
           for parish-only users; /parish/onboarding is the parish
