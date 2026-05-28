@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { ScrollStrip } from "@/components/ScrollStrip";
+import { PodcastsRail } from "@/components/PodcastsRail";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
@@ -6011,6 +6012,11 @@ export default function Dashboard() {
             /my-prayer-requests, /prayers-for-me, and /prayer-list
             pages remain reachable from the side menu and from the
             "View list" pill on the Daily Prayer List card. */}
+
+        {/* Podcasts — a Hallow-style horizontal cover-art slider of the
+            available shows, near the bottom of the home. Taps open the
+            show's episode list + player; "See all" → /podcasts. */}
+        {filter === null && <PodcastsRail />}
 
         {/* Customize pill — opens the home-screen customization page
             (reorder / show-hide modules, pick what leads). Only on the
