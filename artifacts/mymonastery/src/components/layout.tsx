@@ -23,10 +23,12 @@ const SECTION_COLORS = {
 // ─── Drawer building blocks ─────────────────────────────────────────────────
 
 // A tappable menu row — a standalone link, or a child inside a section.
+// `sub` adds a small second line beneath the label (e.g. a podcast's
+// publisher → show name); omit it for single-line rows.
 function MenuRow({
-  emoji, label, badge, count, onClick,
+  emoji, label, sub, badge, count, onClick,
 }: {
-  emoji: string; label: string; badge?: string; count?: number; onClick: () => void;
+  emoji: string; label: string; sub?: string; badge?: string; count?: number; onClick: () => void;
 }) {
   return (
     <button
@@ -36,9 +38,14 @@ function MenuRow({
       onMouseEnter={e => { (e.currentTarget).style.background = "rgba(200,212,192,0.06)"; }}
       onMouseLeave={e => { (e.currentTarget).style.background = "transparent"; }}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0">
         <span className="text-base leading-none w-5 text-center">{emoji}</span>
-        <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{label}</span>
+        <span className="flex flex-col min-w-0 text-left">
+          <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{label}</span>
+          {sub && (
+            <span className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.6)" }}>{sub}</span>
+          )}
+        </span>
         {badge && (
           <span className="text-[10px] font-medium" style={{ color: "rgba(143,175,150,0.45)" }}>{badge}</span>
         )}
@@ -51,7 +58,7 @@ function MenuRow({
           </span>
         )}
       </div>
-      <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)" }} />
+      <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.3)", flexShrink: 0 }} />
     </button>
   );
 }
@@ -476,6 +483,14 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   emoji="🎙️"
                   label={t("menu.podcast_cac", { defaultValue: "Center for Action and Contemplation" })}
                   onClick={() => { onClose(); openExternal("https://cac.org/podcasts/"); }}
+                />
+                {/* Virginia Theological Seminary — their "Love Your
+                    Neighbor" show, opened in Apple Podcasts. */}
+                <MenuRow
+                  emoji="🎓"
+                  label={t("menu.podcast_vts", { defaultValue: "Virginia Theological Seminary" })}
+                  sub={t("menu.podcast_vts_show", { defaultValue: "Love Your Neighbor" })}
+                  onClick={() => { onClose(); openExternal("https://podcasts.apple.com/us/podcast/love-your-neighbor/id1740968459"); }}
                 />
               </MenuSection>
               {/* Resources — non-prayer, non-reflection reference
