@@ -62,11 +62,10 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     title: "",
     emoji: "",
     showSlugs: [
-      "experiencing-jesus",
       "way-of-love-curry",
+      "experiencing-jesus",
       "nc-crossroads",
       "roundtables-on-race",
-      "and-also-with-you",
       "average-episcopalian",
       "living-church",
       "vts-love-your-neighbor",
@@ -263,15 +262,6 @@ const SHOWS: Record<string, Show> = {
     feedUrl: "https://episdionc.org/podcast-roundtables-on-race/",
     artwork: "/podcast-art/roundtables.jpg",
     kind: "scrape-roundtables",
-  },
-  // ── And Also With You ───────────────────────────────────────────────
-  "and-also-with-you": {
-    slug: "and-also-with-you",
-    title: "And Also With You",
-    artist: "Rev. Lizzie McManus-Dail & Rev. Laura Di Panfilo",
-    publisher: "around-the-church",
-    feedUrl: "https://feeds.simplecast.com/2MOSOCPL",
-    artwork: "/podcast-art/and-also-with-you.jpg",
   },
 };
 
