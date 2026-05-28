@@ -485,11 +485,13 @@ export default function PodcastsPage() {
               <>
                 {multi.map((pub) => (
                   <section key={pub.slug} style={{ marginBottom: 32 }}>
-                    <div className="flex items-center" style={{ marginBottom: 14 }}>
-                      <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, lineHeight: 1.15 }}>
-                        {pub.title}
-                      </h2>
-                    </div>
+                    {pub.title && (
+                      <div className="flex items-center" style={{ marginBottom: 14 }}>
+                        <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, lineHeight: 1.15 }}>
+                          {pub.title}
+                        </h2>
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-x-4 gap-y-6">
                       {pub.shows.map((s) => (
                         <ShowTile key={s.slug} show={s} onOpen={() => setLocation(`/podcasts/show/${s.slug}`)} />

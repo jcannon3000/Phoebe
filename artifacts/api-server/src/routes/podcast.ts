@@ -86,18 +86,6 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "cac-homilies",
     ],
   },
-  // Single-show sources → the stacked "More shows" grid, in this order
-  // (Sojourners leads).
-  sojourners: {
-    title: "Sojourners",
-    emoji: "✊",
-    showSlugs: ["lead-us-not"],
-  },
-  "james-martin": {
-    title: "Fr. James Martin, S.J.",
-    emoji: "🙏",
-    showSlugs: ["the-spiritual-life"],
-  },
 };
 
 // Shows that power the daily offices on the prayer chooser / office
@@ -284,27 +272,6 @@ const SHOWS: Record<string, Show> = {
     publisher: "around-the-church",
     feedUrl: "https://feeds.simplecast.com/2MOSOCPL",
     artwork: "/podcast-art/and-also-with-you.jpg",
-  },
-  // ── Sojourners — Lead Us Not (their longform miniseries, host Jenna
-  // Barnett). Their only current self-produced feed; the old "Jim Wallis
-  // in Conversation" libsyn feed is really Wallis's own show now (he left
-  // Sojourners in 2021). ──
-  "lead-us-not": {
-    slug: "lead-us-not",
-    title: "Lead Us Not",
-    artist: "Sojourners",
-    publisher: "sojourners",
-    feedUrl: "https://feeds.simplecast.com/AI2Ev_T4",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts123/v4/7a/e2/14/7ae21401-83ed-130c-2cce-22168ff04c8c/mza_12546347195201606395.jpg/600x600bb.jpg",
-  },
-  // ── Fr. James Martin, S.J. — America Media ──────────────────────────
-  "the-spiritual-life": {
-    slug: "the-spiritual-life",
-    title: "The Spiritual Life",
-    artist: "Fr. James Martin, S.J.",
-    publisher: "james-martin",
-    feedUrl: "https://feeds.megaphone.fm/thespirituallife",
-    artwork: "/podcast-art/james-martin.jpg",
   },
 };
 
@@ -670,7 +637,7 @@ router.get("/podcasts/show/:slug", async (req: Request, res: Response): Promise<
       artist: show.artist,
       artwork: feed.feedImage ?? show.artwork ?? null,
       publisher: show.publisher,
-      publisherTitle: pub?.title ?? show.artist,
+      publisherTitle: pub?.title || show.artist,
       emoji: pub?.emoji ?? "🎧",
       description: feed.feedDescription ?? null,
     },
