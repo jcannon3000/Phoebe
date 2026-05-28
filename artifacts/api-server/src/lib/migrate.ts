@@ -1703,6 +1703,49 @@ export async function migrate() {
       ON beta_messages (conversation_id, created_at)
     `);
 
+    // ── Podcast engagement — listening history + recommendations ─────────
+    // Episode snapshots (external feeds, no local episode table) so we
+    // can render history + the community-recommendations feed from the DB.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS podcast_listens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        show_slug TEXT NOT NULL,
+        episode_id TEXT NOT NULL,
+        episode_title TEXT,
+        episode_audio_url TEXT,
+        episode_image_url TEXT,
+        duration_seconds INTEGER,
+        published_at TEXT,
+        show_title TEXT,
+        show_artwork TEXT,
+        first_listened_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        last_listened_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS podcast_listens_unique ON podcast_listens (user_id, show_slug, episode_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS podcast_listens_by_user ON podcast_listens (user_id, last_listened_at)`);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS podcast_recommendations (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        show_slug TEXT NOT NULL,
+        episode_id TEXT NOT NULL,
+        episode_title TEXT,
+        episode_audio_url TEXT,
+        episode_image_url TEXT,
+        duration_seconds INTEGER,
+        published_at TEXT,
+        show_title TEXT,
+        show_artwork TEXT,
+        note TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS podcast_recommendations_unique ON podcast_recommendations (user_id, show_slug, episode_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS podcast_recommendations_by_episode ON podcast_recommendations (show_slug, episode_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS podcast_recommendations_by_recent ON podcast_recommendations (created_at)`);
+
     // Backfill: every existing climate-enrolled user gets a subscription
     // to phoebe-climate so they pick up feed-scoped intercessions on
     // their dashboard and slideshow without a manual opt-in step.

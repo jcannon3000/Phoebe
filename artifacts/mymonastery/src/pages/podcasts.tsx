@@ -37,6 +37,22 @@ type EpisodeHit = {
   show: { slug: string; title: string; artist: string; artwork: string | null };
 };
 type SearchResponse = { shows: ShowCard[]; episodes: EpisodeHit[] };
+type Recommender = { id: number; name: string; avatarUrl: string | null; note: string | null };
+type RecommendedEpisode = {
+  key: string;
+  showSlug: string;
+  episodeId: string;
+  episodeTitle: string | null;
+  episodeAudioUrl: string | null;
+  episodeImageUrl: string | null;
+  durationSeconds: number | null;
+  publishedAt: string | null;
+  showTitle: string | null;
+  showArtwork: string | null;
+  latestAt: string;
+  recommenders: Recommender[];
+};
+type RecommendationsResponse = { recommendations: RecommendedEpisode[] };
 
 function fmtDuration(seconds: number | null): string | null {
   if (!seconds || seconds <= 0) return null;
@@ -166,9 +182,74 @@ function EpisodeRow({ ep, onOpen }: { ep: EpisodeHit; onOpen: () => void }) {
   );
 }
 
+function RecAvatar({ name, url, size = 24 }: { name: string; url: string | null; size?: number }) {
+  if (url) return <img src={url} alt={name} className="rounded-full object-cover" style={{ width: size, height: size, border: "1.5px solid #0C1F12" }} />;
+  const initials = (name || "?").trim().split(/\s+/).slice(0, 2).map((s) => s[0] ?? "").join("").toUpperCase() || "?";
+  return (
+    <div className="rounded-full flex items-center justify-center font-semibold"
+      style={{ width: size, height: size, background: "#1A4A2E", color: "#A8C5A0", fontSize: Math.round(size * 0.4), fontFamily: FONT, border: "1.5px solid #0C1F12" }}>
+      {initials}
+    </div>
+  );
+}
+
+// A community-recommendation card — episode + who recommended it + an
+// optional note. Opens the show page with the episode auto-loaded.
+function RecommendationRow({ rec, onOpen }: { rec: RecommendedEpisode; onOpen: () => void }) {
+  const meta = [rec.showTitle, fmtDate(rec.publishedAt), fmtDuration(rec.durationSeconds)].filter(Boolean).join(" · ");
+  const recs = rec.recommenders;
+  const firstName = (recs[0]?.name || "Someone").split(/\s+/)[0];
+  const byline = recs.length === 1 ? `Recommended by ${firstName}`
+    : `Recommended by ${firstName} + ${recs.length - 1} other${recs.length - 1 === 1 ? "" : "s"}`;
+  const note = recs.find((r) => r.note)?.note ?? null;
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
+      className="w-full rounded-2xl p-3.5 cursor-pointer transition-opacity hover:opacity-90"
+      style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+    >
+      <div className="flex items-start gap-3">
+        <div style={{ width: 56, height: 56, flexShrink: 0 }}>
+          <GridArt url={rec.episodeImageUrl ?? rec.showArtwork} alt={rec.showTitle ?? "Show"} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p style={{ fontSize: 14.5, fontWeight: 600, color: PALETTE.warm, margin: 0, lineHeight: 1.25,
+            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+            {rec.episodeTitle ?? "Untitled episode"}
+          </p>
+          <p style={{ fontSize: 11.5, color: PALETTE.faint, margin: "3px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {meta}
+          </p>
+          <div className="flex items-center gap-2" style={{ marginTop: 8 }}>
+            <div style={{ display: "flex" }}>
+              {recs.slice(0, 3).map((r, i) => (
+                <div key={r.id} style={{ marginLeft: i === 0 ? 0 : -8 }}>
+                  <RecAvatar name={r.name} url={r.avatarUrl} />
+                </div>
+              ))}
+            </div>
+            <span style={{ fontSize: 12, color: "#A8C5A0", fontWeight: 600 }}>{byline}</span>
+          </div>
+          {note && (
+            <p style={{ fontSize: 12.5, color: PALETTE.sage, margin: "6px 0 0", lineHeight: 1.4, fontStyle: "italic",
+              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              “{note}”
+            </p>
+          )}
+        </div>
+        <span style={{ color: "rgba(143,175,150,0.5)", fontSize: 16, flexShrink: 0, marginTop: 2 }}>▶</span>
+      </div>
+    </div>
+  );
+}
+
 export default function PodcastsPage() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
+  const [tab, setTab] = useState<"discover" | "community">("discover");
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -205,6 +286,14 @@ export default function PodcastsPage() {
     staleTime: 5 * 60_000,
   });
 
+  // Community recommendations feed — only fetched when that tab is open.
+  const { data: recData, isLoading: recLoading } = useQuery<RecommendationsResponse>({
+    queryKey: ["/api/podcasts/recommendations"],
+    queryFn: () => apiRequest("GET", "/api/podcasts/recommendations"),
+    enabled: !!user && tab === "community",
+    staleTime: 60_000,
+  });
+
   if (authLoading || !user) return null;
 
   const publishers = data?.publishers ?? [];
@@ -235,10 +324,58 @@ export default function PodcastsPage() {
         <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 4px", lineHeight: 1.1 }}>
           Podcasts
         </h1>
-        <p style={{ fontSize: 14, color: PALETTE.sage, margin: "0 0 16px" }}>
+        <p style={{ fontSize: 14, color: PALETTE.sage, margin: "0 0 14px" }}>
           {isLoading ? "Loading the library…" : "Listen in Phoebe — the offices, contemplatives, and teachers we love."}
         </p>
 
+        {/* Discover ↔ Community tabs. Discover is the curated library +
+            search; Community is the recommendations feed. */}
+        <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
+          {(["discover", "community"] as const).map((k) => {
+            const active = tab === k;
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => setTab(k)}
+                style={{
+                  flex: 1, padding: "9px 12px", borderRadius: 12,
+                  fontSize: 14, fontWeight: 700, fontFamily: FONT, cursor: "pointer",
+                  background: active ? "#2D5E3F" : "rgba(46,107,64,0.10)",
+                  color: active ? PALETTE.warm : "rgba(168,197,160,0.9)",
+                  border: `1px solid ${active ? "rgba(168,197,160,0.5)" : "rgba(46,107,64,0.28)"}`,
+                }}
+              >
+                {k === "discover" ? "Discover" : "Community"}
+              </button>
+            );
+          })}
+        </div>
+
+        {tab === "community" ? (
+          // ── Community recommendations feed ────────────────────────────
+          recLoading ? (
+            <p style={{ fontSize: 14, color: PALETTE.faint, marginTop: 24, textAlign: "center" }}>Loading recommendations…</p>
+          ) : (recData?.recommendations ?? []).length === 0 ? (
+            <div style={{ textAlign: "center", marginTop: 36 }}>
+              <p style={{ fontSize: 30, margin: "0 0 10px" }}>💬</p>
+              <p style={{ fontSize: 14, color: PALETTE.sage, lineHeight: 1.5, maxWidth: 320, margin: "0 auto" }}>
+                No community recommendations yet. Open a show and tap “Recommend” on an episode to share it here.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {(recData?.recommendations ?? []).map((rec) => (
+                <RecommendationRow
+                  key={rec.key}
+                  rec={rec}
+                  onOpen={() => setLocation(`/podcasts/show/${rec.showSlug}?ep=${encodeURIComponent(rec.episodeId)}`)}
+                />
+              ))}
+            </div>
+          )
+        ) : (
+        <>
         {/* Search across shows AND episodes. */}
         <div style={{ position: "relative", marginBottom: 12 }}>
           <span
@@ -378,6 +515,8 @@ export default function PodcastsPage() {
               </>
             );
           })()
+        )}
+        </>
         )}
       </main>
     </div>

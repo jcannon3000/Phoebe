@@ -37,6 +37,7 @@ import cacRouter from "./cac";
 import lectionaryRouter from "./lectionary";
 import ncmpRouter from "./ncmp";
 import podcastRouter from "./podcast";
+import podcastSocialRouter from "./podcast-social";
 import groupReflectionsRouter from "./group-reflections";
 import betaMessagesRouter from "./beta-messages";
 
@@ -151,6 +152,7 @@ router.use(cacRouter);
 router.use(lectionaryRouter);
 router.use(ncmpRouter);
 router.use(podcastRouter);
+router.use(podcastSocialRouter);
 router.use(groupReflectionsRouter);
 router.use(betaMessagesRouter);
 
