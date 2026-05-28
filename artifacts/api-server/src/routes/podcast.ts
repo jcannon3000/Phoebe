@@ -106,16 +106,6 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     emoji: "🙏",
     showSlugs: ["the-spiritual-life"],
   },
-  "yale-faith-culture": {
-    title: "Yale Center for Faith & Culture",
-    emoji: "📘",
-    showSlugs: ["for-the-life-of-the-world"],
-  },
-  "yale-fore": {
-    title: "Forum on Religion & Ecology",
-    emoji: "🌎",
-    showSlugs: ["fore-spotlights"],
-  },
 };
 
 // Shows that power the daily offices on the prayer chooser / office
@@ -236,7 +226,7 @@ const SHOWS: Record<string, Show> = {
     artist: "Washington National Cathedral",
     publisher: "around-the-church",
     feedUrl: "https://feed.podbean.com/crossroadsWNC/feed.xml",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b0/ff/05/b0ff0511-10a5-d169-4e36-a204aa204768/mza_9682335394332764792.jpg/600x600bb.jpg",
+    artwork: "/podcast-art/nc-crossroads.jpg",
   },
   // ── Diocese of Washington — Bishop Mariann Budde ────────────────────
   "experiencing-jesus": {
@@ -303,24 +293,6 @@ const SHOWS: Record<string, Show> = {
     feedUrl: "https://feeds.simplecast.com/2MOSOCPL",
     artwork: "/podcast-art/and-also-with-you.jpg",
   },
-  // ── Yale Forum on Religion & Ecology ────────────────────────────────
-  "fore-spotlights": {
-    slug: "fore-spotlights",
-    title: "FORE Spotlights",
-    artist: "Sam Mickey · Forum on Religion & Ecology",
-    publisher: "yale-fore",
-    feedUrl: "https://rss.buzzsprout.com/1269704.rss",
-    artwork: "https://storage.buzzsprout.com/1fuajatyj5gvhanfncdbry3iljeb?.jpg",
-  },
-  // ── Yale Center for Faith & Culture ─────────────────────────────────
-  "for-the-life-of-the-world": {
-    slug: "for-the-life-of-the-world",
-    title: "For the Life of the World",
-    artist: "Yale Center for Faith & Culture",
-    publisher: "yale-faith-culture",
-    feedUrl: "https://feeds.simplecast.com/tjI7YMGV",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/da/ab/0c/daab0c18-928d-1a9f-9fd3-c58ad1975fbd/mza_5912217182998287523.jpg/600x600bb.jpg",
-  },
   // ── Sojourners — Lead Us Not (their longform miniseries, host Jenna
   // Barnett). Their only current self-produced feed; the old "Jim Wallis
   // in Conversation" libsyn feed is really Wallis's own show now (he left
@@ -340,7 +312,7 @@ const SHOWS: Record<string, Show> = {
     artist: "Fr. James Martin, S.J.",
     publisher: "james-martin",
     feedUrl: "https://feeds.megaphone.fm/thespirituallife",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/55/ce/a7/55cea75c-08b5-4656-b655-95e78dc20aa6/mza_4622591337010169746.jpg/600x600bb.jpg",
+    artwork: "/podcast-art/james-martin.jpg",
   },
 };
 
