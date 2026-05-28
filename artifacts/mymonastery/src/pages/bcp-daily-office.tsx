@@ -2272,72 +2272,110 @@ export function OfficeViewer({ office, mode, onBack, onComplete }: OfficeViewerP
               side-by-side pills (per user direction) rather than
               underlined text links — reads as proper alternate
               actions instead of footnote-style links. */}
-          {isDevotion && slideIdx === 0 && !onComplete && !officesOnlyViewer && (
-            // Offices-only users get this row hidden entirely:
-            // /prayer-mode (no queue) would loading-screen for them
-            // because the default queue depends on /api/moments +
-            // /api/prayer-requests, both 403 for that tier. They have
-            // no parallel "skip to your prayer feed" affordance here
-            // yet (no subscribed-feeds query in scope); the chooser
-            // page surfaces a Prayer Feed option for the same flow
-            // one step up, so dropping the link here is the safest
-            // outcome until/unless a feed-aware variant is added.
+          {/* First-slide "Start" CTA + devotion side-doors. The Start
+              pill is the primary action — a full-width filled pill that
+              advances into the liturgy, sitting above the two lighter
+              alternate-route pills (so it's as wide as both of them put
+              together). Start shows for every tier, including offices-
+              only viewers who don't get the secondary routes. The
+              Community Intercessions / Full Office pair stays gated to
+              non-public, non-offices-only viewers as before:
+              /prayer-mode (no queue) would loading-screen for offices-
+              only users because the default queue depends on
+              /api/moments + /api/prayer-requests (both 403 for that
+              tier). First slide only — once the reader is moving
+              through the devotion they shouldn't keep seeing these. */}
+          {isDevotion && slideIdx === 0 && !onComplete && (
             <div
               style={{
                 marginTop: 28,
                 display: "flex",
-                flexDirection: "row",
-                flexWrap: "wrap",
-                justifyContent: "center",
+                flexDirection: "column",
                 alignItems: "center",
-                gap: 8,
+                gap: 14,
                 paddingTop: 16,
                 borderTop: `1px solid ${BORDER}`,
               }}
             >
+              {/* Start — primary, full width so it spans the same room
+                  as the two option pills below it. */}
               <button
                 type="button"
-                onClick={() => setViewerLocation("/prayer-mode")}
+                onClick={next}
                 style={{
-                  background: "rgba(46,107,64,0.10)",
-                  border: "1px solid rgba(46,107,64,0.32)",
+                  width: "100%",
+                  maxWidth: 420,
+                  background: "#2D5E3F",
+                  border: "1px solid rgba(46,107,64,0.7)",
                   borderRadius: 999,
-                  color: "rgba(168,197,160,0.95)",
+                  color: WARM_TEXT,
                   fontFamily: SPACE_GROTESK,
-                  fontSize: 12,
-                  fontWeight: 500,
+                  fontSize: 15,
+                  fontWeight: 600,
+                  letterSpacing: "0.02em",
                   cursor: "pointer",
-                  padding: "7px 14px",
+                  padding: "13px 24px",
                 }}
               >
-                Community Intercessions
+                {i18n.language?.startsWith("es") ? "Comenzar" : "Start"}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  // Morning devotion → Morning Prayer; early-evening
-                  // devotion → Evening Prayer. Same time-of-day rule
-                  // the picker uses.
-                  const target =
-                    resolvedMode === "early-evening-devotion"
-                      ? "/bcp/daily-office?mode=evening"
-                      : "/bcp/daily-office?mode=morning";
-                  setViewerLocation(target);
-                }}
-                style={{
-                  background: "rgba(46,107,64,0.10)",
-                  border: "1px solid rgba(46,107,64,0.32)",
-                  borderRadius: 999,
-                  color: "rgba(168,197,160,0.95)",
-                  fontFamily: SPACE_GROTESK,
-                  fontSize: 12,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  padding: "7px 14px",
-                }}
-              >
-                Pray the full {resolvedMode === "early-evening-devotion" ? "Evening Prayer" : "Morning Prayer"}
-              </button>
+
+              {!officesOnlyViewer && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setViewerLocation("/prayer-mode")}
+                    style={{
+                      background: "rgba(46,107,64,0.10)",
+                      border: "1px solid rgba(46,107,64,0.32)",
+                      borderRadius: 999,
+                      color: "rgba(168,197,160,0.95)",
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      padding: "7px 14px",
+                    }}
+                  >
+                    Community Intercessions
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      // Morning devotion → Morning Prayer; early-evening
+                      // devotion → Evening Prayer. Same time-of-day rule
+                      // the picker uses.
+                      const target =
+                        resolvedMode === "early-evening-devotion"
+                          ? "/bcp/daily-office?mode=evening"
+                          : "/bcp/daily-office?mode=morning";
+                      setViewerLocation(target);
+                    }}
+                    style={{
+                      background: "rgba(46,107,64,0.10)",
+                      border: "1px solid rgba(46,107,64,0.32)",
+                      borderRadius: 999,
+                      color: "rgba(168,197,160,0.95)",
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      padding: "7px 14px",
+                    }}
+                  >
+                    Pray the full {resolvedMode === "early-evening-devotion" ? "Evening Prayer" : "Morning Prayer"}
+                  </button>
+                </div>
+              )}
             </div>
           )}
           {/* Compline first-slide alternate. Compline is the after-8pm
