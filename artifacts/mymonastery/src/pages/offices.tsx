@@ -108,13 +108,48 @@ export default function OfficesPage() {
 
         <SectionLabel>{t("offices.in_the_morning")}</SectionLabel>
         <div className="space-y-6 mb-10">
-          <OfficeOption spec={morningOffice} />
+          <div>
+            <OfficeOption spec={morningOffice} />
+            {/* Alternate ways to pray Morning Prayer — listen to
+                Forward Movement's audio office, or watch the National
+                Cathedral's live broadcast. Both log the morning office
+                toward the rhythm grid + streak, same as reading it. */}
+            <OfficeFormatPills
+              items={[
+                {
+                  variant: "gold",
+                  emoji: "🎧",
+                  label: t("offices.listen_forward", { defaultValue: "Listen · Forward" }),
+                  href: "/podcast/morning-office",
+                },
+                {
+                  variant: "purple",
+                  emoji: "📺",
+                  label: t("offices.watch_ncmp", { defaultValue: "Watch · Nat'l Cathedral" }),
+                  href: "/ncmp/watch",
+                },
+              ]}
+            />
+          </div>
           <OfficeOption spec={morningDevotion} />
         </div>
 
         <SectionLabel>{t("offices.in_the_evening")}</SectionLabel>
         <div className="space-y-6 mb-10">
-          <OfficeOption spec={eveningOffice} />
+          <div>
+            <OfficeOption spec={eveningOffice} />
+            {/* Listen to Forward Movement's audio Evening Prayer. */}
+            <OfficeFormatPills
+              items={[
+                {
+                  variant: "gold",
+                  emoji: "🎧",
+                  label: t("offices.listen_forward", { defaultValue: "Listen · Forward" }),
+                  href: "/podcast/evening-office",
+                },
+              ]}
+            />
+          </div>
           <OfficeOption spec={eveningDevotion} />
         </div>
 
@@ -173,6 +208,46 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     >
       {children}
     </p>
+  );
+}
+
+// Small pill row sitting just under an office card — alternate formats
+// of the same office (listen / watch). Variants match the chooser's
+// color language: gold for the Forward Movement audio offices, purple
+// for the National Cathedral broadcast.
+function OfficeFormatPills({
+  items,
+}: {
+  items: Array<{ variant: "gold" | "purple"; emoji: string; label: string; href: string }>;
+}) {
+  const palette = {
+    gold: { bg: "rgba(212,160,70,0.14)", border: "rgba(212,160,70,0.38)", color: "#F0DCA8" },
+    purple: { bg: "rgba(120,80,180,0.16)", border: "rgba(120,80,180,0.42)", color: "#E0D0F5" },
+  } as const;
+  return (
+    <div className="flex flex-wrap gap-2 mt-2 ml-1">
+      {items.map((it) => {
+        const p = palette[it.variant];
+        return (
+          <Link key={it.href} href={it.href}>
+            <div
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 cursor-pointer transition-opacity hover:opacity-90"
+              style={{
+                background: p.bg,
+                border: `1px solid ${p.border}`,
+                color: p.color,
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              <span aria-hidden>{it.emoji}</span>
+              <span>{it.label}</span>
+            </div>
+          </Link>
+        );
+      })}
+    </div>
   );
 }
 
