@@ -24,82 +24,15 @@ import { sendInvitationEmail, sendReminderEmail } from "../lib/letterEmails";
 import { getInviteBaseUrl } from "../lib/urls";
 import { sendNewLetterPush } from "../lib/pushSender";
 import { ensureCorrespondenceFellows } from "../lib/correspondents";
+// Auth + membership infra is shared with routes/phoebe.ts via
+// lib/letterAuth.ts (was duplicated byte-for-byte in both files).
+import {
+  requireAuth,
+  requireSessionAuth,
+  getMembership,
+} from "../lib/letterAuth";
 
 const router: IRouter = Router();
-
-// ─── Auth middleware ────────────────────────────────────────────────────────
-
-interface LetterAuth {
-  userId: number | null;
-  email: string;
-  name: string;
-}
-
-async function resolveLetterAuth(req: Request): Promise<LetterAuth | null> {
-  // Session auth first
-  if (req.user) {
-    const u = req.user as { id: number; email: string; name: string };
-    return { userId: u.id, email: u.email, name: u.name };
-  }
-
-  // Token-based auth
-  const token = req.query.token as string | undefined;
-  if (token) {
-    const [member] = await db
-      .select()
-      .from(correspondenceMembersTable)
-      .where(eq(correspondenceMembersTable.inviteToken, token))
-      .limit(1);
-    if (member && member.joinedAt) {
-      return { userId: member.userId, email: member.email, name: member.name || "Anonymous" };
-    }
-  }
-
-  return null;
-}
-
-function requireAuth(handler: (req: Request, res: Response, auth: LetterAuth) => Promise<void>) {
-  return async (req: Request, res: Response): Promise<void> => {
-    const auth = await resolveLetterAuth(req);
-    if (!auth) {
-      res.status(401).json({ error: "Not authenticated" });
-      return;
-    }
-    await handler(req, res, auth);
-  };
-}
-
-function requireSessionAuth(handler: (req: Request, res: Response, auth: LetterAuth) => Promise<void>) {
-  return async (req: Request, res: Response): Promise<void> => {
-    if (!req.user) {
-      res.status(401).json({ error: "Not authenticated" });
-      return;
-    }
-    const u = req.user as { id: number; email: string; name: string };
-    await handler(req, res, { userId: u.id, email: u.email, name: u.name });
-  };
-}
-
-// ─── Helper: check membership ───────────────────────────────────────────────
-
-async function getMembership(correspondenceId: number, auth: LetterAuth) {
-  const members = await db
-    .select()
-    .from(correspondenceMembersTable)
-    .where(eq(correspondenceMembersTable.correspondenceId, correspondenceId));
-
-  // Match by userId when we have one, falling back to case-insensitive
-  // email. Email casing on stored rows isn't *currently* mixed (signup
-  // lowercases users.email and most insert paths normalize), but doing
-  // the compare case-insensitively here is belt-and-suspenders against
-  // any data path that ever stores a non-lowercased address.
-  const authEmailLc = auth.email.toLowerCase();
-  const member = members.find(
-    (m) => (auth.userId && m.userId === auth.userId) || m.email.toLowerCase() === authEmailLc,
-  );
-
-  return { member, members };
-}
 
 // ─── CORRESPONDENCES ────────────────────────────────────────────────────────
 
