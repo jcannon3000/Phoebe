@@ -62,11 +62,9 @@ const SHOW_THEMES: Record<string, string[]> = {
   "way-of-love-curry": ["justice", "prayer"],
   "vts-love-your-neighbor": ["justice"],
   "cac-learning-how-to-see": ["justice", "contemplation"],
-  "cac-practices-learning-to-see": ["contemplation"],
   "cac-turning-to-the-mystics": ["contemplation", "mystics"],
   "cac-everything-belongs": ["contemplation"],
   "cac-another-name": ["contemplation"],
-  "cac-homilies": ["scripture", "contemplation"],
   "experiencing-jesus": ["scripture", "prayer"],
 };
 function showThemes(slug: string): string[] {
@@ -103,10 +101,8 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "cac-turning-to-the-mystics",
       "cac-another-name",
       "cac-learning-how-to-see",
-      "cac-practices-learning-to-see",
       "cac-love-period",
       "cac-cosmic-we",
-      "cac-homilies",
     ],
   },
 };
@@ -203,21 +199,13 @@ const SHOWS: Record<string, Show> = {
     feedUrl: "https://feeds.megaphone.fm/CFAC3846301578",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/cf/ff/bb/cfffbb3b-144c-743c-b707-d051eabbf59e/mza_13929123429956003752.jpg/600x600bb.jpg",
   },
-  "cac-practices-learning-to-see": {
-    slug: "cac-practices-learning-to-see",
-    title: "Practices for Learning How to See",
-    artist: "Brian McLaren · CAC",
-    publisher: "cac",
-    feedUrl: "https://feeds.megaphone.fm/CFAC4203774721",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/bd/06/f2/bd06f237-d464-9cf7-5b5c-bec2b348ef7d/mza_16894994872515457789.jpg/600x600bb.jpg",
-  },
   "cac-love-period": {
     slug: "cac-love-period",
     title: "Love Period",
     artist: "Jacqui Lewis · CAC",
     publisher: "cac",
     feedUrl: "https://feeds.megaphone.fm/CFAC7740854822",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/b1/88/59/b1885906-bb3c-5c03-9c01-4cc643489757/mza_10724753065665227728.jpg/600x600bb.jpg",
+    artwork: "/podcast-art/jacqui-lewis.jpg",
   },
   "cac-cosmic-we": {
     slug: "cac-cosmic-we",
@@ -226,14 +214,6 @@ const SHOWS: Record<string, Show> = {
     publisher: "cac",
     feedUrl: "https://feeds.megaphone.fm/CFAC6648912537",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/46/12/794612f8-accf-5683-521e-5805da51ae5d/mza_4535843137584053387.jpg/600x600bb.jpg",
-  },
-  "cac-homilies": {
-    slug: "cac-homilies",
-    title: "Homilies by Fr. Richard Rohr",
-    artist: "Richard Rohr · CAC",
-    publisher: "cac",
-    feedUrl: "https://feeds.megaphone.fm/CFAC9780328291",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/6c/4b/c4/6c4bc43b-5697-d33d-2f5a-cd9addf702c0/mza_2580995343840293724.jpg/600x600bb.jpg",
   },
   // ── Washington National Cathedral ───────────────────────────────────
   "nc-crossroads": {
