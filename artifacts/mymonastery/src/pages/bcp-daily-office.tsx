@@ -11,13 +11,6 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import i18n from "@/i18n";
 import { playOfficeChime } from "@/lib/amenFeedback";
 import { apiRequest } from "@/lib/queryClient";
-import {
-  FDD_TODAY_URL,
-  SSJE_TODAY_URL,
-  markFddRead,
-  markSsjeRead,
-} from "@/lib/cacReadState";
-import { getReflectionSource } from "@/lib/officePrefs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
@@ -182,7 +175,6 @@ const SECTION_LABEL: Record<string, string> = {
   intercessions: "Intercessions",
   general_thanksgiving: "General Thanksgiving",
   closing: "Closing",
-  reflection_embed: "Reflection",
 };
 
 // Parse a 1979 BCP Psalter content blob into a structured list for the
@@ -479,20 +471,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
     if (slideIdx + 1 > slidesReachedRef.current) {
       slidesReachedRef.current = slideIdx + 1;
     }
-    // If the user just landed on the embedded reflection slide,
-    // mark today's reading as read — same side effect the closing-
-    // slide "Read today's reflection" pill used to fire. Drives the
-    // home card's "Read again" flip and the cross-surface read-state
-    // events. Done by reading the slide's metadata.source rather
-    // than hard-coding so adding more sources stays a one-place
-    // change.
-    const here = slides[slideIdx];
-    if (here?.type === "reflection_embed") {
-      const src = (here.metadata as { source?: string } | undefined)?.source;
-      if (src === "fdd") markFddRead();
-      else if (src === "ssje") markSsjeRead();
-    }
-  }, [slideIdx, slides]);
+  }, [slideIdx]);
 
   // Persist progress per-mode/per-day so the dashboard PrayerOfficeCard
   // can render "Continue Morning Devotion →" when the user bails partway.
@@ -550,41 +529,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
         if (cancelled) return;
         const fetched: Slide[] = data.slides ?? [];
         if (fetched.length === 0) throw new Error("No slides returned");
-        // Append a post-closing reflection slide when the user's
-        // "After the office" pref is FDD or SSJE — both iframe-
-        // friendly. The slide is a full-bleed embed of today's
-        // reading under the office's existing bottom nav, so the
-        // user keeps tapping Next past the closing and lands in
-        // the reflection without leaving the slideshow shell.
-        // CAC is excluded because cac.org sets X-Frame-Options:
-        // SAMEORIGIN and would render as a blank iframe; CAC
-        // users keep the closing-slide pill that opens externally.
-        // Non-devotion modes only — devotions are short enough
-        // that adding a reading at the end overshoots the form.
-        const reflectionSource = getReflectionSource();
-        const embedSlide: Slide | null =
-          !isDevotion && (reflectionSource === "fdd" || reflectionSource === "ssje")
-            ? {
-                id: `reflection-embed-${reflectionSource}`,
-                type: "reflection_embed",
-                emoji: reflectionSource === "fdd" ? "📖" : "✍🏽",
-                eyebrow: "After the office",
-                title: reflectionSource === "fdd"
-                  ? "Forward Day by Day"
-                  : "SSJE · Brother, Give Us a Word",
-                content: "",
-                isCallAndResponse: false,
-                callAndResponseLines: null,
-                bcpReference: null,
-                isScrollable: false,
-                scrollHint: null,
-                metadata: {
-                  source: reflectionSource,
-                  url: reflectionSource === "fdd" ? FDD_TODAY_URL : SSJE_TODAY_URL,
-                },
-              }
-            : null;
-        setSlides(embedSlide ? [...fetched, embedSlide] : fetched);
+        // The daily reflection (FDD / SSJE / CAC) is no longer
+        // appended as an in-office slide. It's surfaced instead as a
+        // pill on the post-office last screen (prayer-mode's
+        // HabitSlide, where the gratitude pill lives) — the office
+        // finishes by redirecting to /prayer-mode?closingOnly=1, and
+        // that screen is where the user expects the "read a
+        // reflection" affordance to sit, next to Give thanks.
+        setSlides(fetched);
         setOfficeDay(data.officeDay ?? null);
         // Allow returning into the office mid-flow — when the
         // /prayer-mode redirect comes back here it appends ?slide=N
@@ -998,62 +950,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
         </div>
       </header>
 
-      {/* Reflection-embed slide gets its own minimal main: a full-
-          bleed iframe of today's reading (FDD or SSJE), with just
-          enough top padding to clear the fixed header. The existing
-          bottom nav below stays overlaid via its fixed positioning,
-          so the user navigates the embed with the same Back/Next
-          pill they used for every other slide — keeps the office +
-          reflection reading as one continuous experience instead
-          of a SFSafariView hop. The standard <main> below renders
-          for every other slide type. */}
-      {currentSlide.type === "reflection_embed" ? (
-        <main
-          ref={mainRef}
-          className="flex-1"
-          style={{
-            minHeight: 0,
-            display: "flex",
-            flexDirection: "column",
-            paddingTop: "max(72px, calc(env(safe-area-inset-top) + 60px))",
-            paddingBottom: "calc(env(safe-area-inset-bottom) + 96px)",
-            paddingLeft: 8,
-            paddingRight: 8,
-          }}
-        >
-          <div
-            style={{
-              flex: 1,
-              minHeight: 0,
-              background: "#0F2818",
-              border: `1px solid ${BORDER}`,
-              borderRadius: 16,
-              overflow: "hidden",
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <iframe
-              src={String((currentSlide.metadata as { url?: string } | undefined)?.url ?? "")}
-              title={currentSlide.title ?? "Today's reflection"}
-              referrerPolicy="no-referrer-when-downgrade"
-              // Sandbox keeps the embed scoped — it can run scripts
-              // (FDD's SPA needs that to load today's content) and
-              // open new tabs (the YouTube embed precedent), but
-              // can't grant itself top-level navigation or read our
-              // storage. allow-popups lets external links inside the
-              // iframe open via _blank into the system browser.
-              sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
-              style={{
-                flex: 1,
-                width: "100%",
-                border: "none",
-                background: "#fff",
-              }}
-            />
-          </div>
-        </main>
-      ) : (
       <main
         ref={mainRef}
         className="flex-1 px-5"
@@ -1146,6 +1042,67 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
                   {currentSlide.content}
                 </p>
               )}
+
+              {/* Other ways to pray this office. "Listen" → the Forward
+                  Movement spoken office (read-aloud podcast); "Watch" →
+                  the Washington National Cathedral broadcast, which is
+                  Morning Prayer specifically, so it only shows on the
+                  morning side. Both navigate away from the slideshow
+                  into the dedicated player / watch surfaces. */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  marginTop: 8,
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setViewerLocation(`/podcast/${officeSide}-office`)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 7,
+                    background: "rgba(46,107,64,0.22)",
+                    color: WARM_TEXT,
+                    border: "1px solid rgba(46,107,64,0.50)",
+                    borderRadius: 999,
+                    padding: "10px 20px",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    fontFamily: SPACE_GROTESK,
+                    cursor: "pointer",
+                  }}
+                >
+                  🎧 Listen
+                </button>
+                {officeSide === "morning" && (
+                  <button
+                    type="button"
+                    onClick={() => setViewerLocation("/ncmp/watch")}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 7,
+                      // Muted purple — the Washington National Cathedral's
+                      // identity color, distinct from the green office chrome.
+                      background: "rgba(124,92,176,0.20)",
+                      color: WARM_TEXT,
+                      border: "1px solid rgba(124,92,176,0.50)",
+                      borderRadius: 999,
+                      padding: "10px 20px",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      fontFamily: SPACE_GROTESK,
+                      cursor: "pointer",
+                    }}
+                  >
+                    📺 Watch
+                  </button>
+                )}
+              </div>
             </div>
           ) : currentSlide.type === "intercessions_portal" ? (
             // Intro chord for the prayer-mode handoff. The title
@@ -2436,7 +2393,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
           )}
         </div>
       </main>
-      )}
 
       {/* Bottom nav pill — Back · section · Next/Done. Mirrors Lectio. */}
       <nav
@@ -2524,9 +2480,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
               } catch { /* non-fatal */ }
               // Clear the daily reminder pushes — the "Done" path is the
               // other way an office can finish (a non-prayer closing
-              // slide, or the embedded reflection slide). The Amen path
-              // clears these too; covering both means completing the
-              // office always sweeps the reminder off the lock screen.
+              // slide). The Amen path clears these too; covering both
+              // means completing the office always sweeps the reminder
+              // off the lock screen.
               clearOfficeReminderNotifications();
               // Public /pray page: hand off to its own sign-up close.
               if (onComplete) { onComplete(); return; }
@@ -2793,7 +2749,7 @@ export default function BcpDailyOfficePage() {
                 // the YouTube iframe inline. ncmpMeta stays in scope
                 // because the duration badge below still reads from
                 // it for the chooser-style preview.
-                setViewerLocation("/ncmp/watch");
+                setLocation("/ncmp/watch");
               }}
               className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
               style={{
