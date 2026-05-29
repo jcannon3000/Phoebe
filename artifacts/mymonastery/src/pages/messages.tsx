@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { useTranslation } from "react-i18next";
 
 // ── /messages — Beta Messages inbox ─────────────────────────────────────
 //
@@ -54,6 +55,7 @@ export default function MessagesPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { isBeta, isLoading: betaLoading } = useBetaStatus();
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -78,12 +80,12 @@ export default function MessagesPage() {
       <div className="max-w-2xl mx-auto w-full pb-24">
         <div className="flex items-center justify-between gap-3 mb-1 mt-1">
           <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl font-bold" style={{ color: WARM, fontFamily: FONT }}>Messages 📨</h1>
+            <h1 className="text-2xl font-bold" style={{ color: WARM, fontFamily: FONT }}>{t("messages.title")} 📨</h1>
             <span
               className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-full"
               style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", letterSpacing: "0.1em" }}
             >
-              Beta
+              {t("messages.beta_badge")}
             </span>
           </div>
           <Link
@@ -91,28 +93,28 @@ export default function MessagesPage() {
             className="text-sm font-semibold px-3.5 py-1.5 rounded-full transition-opacity hover:opacity-90"
             style={{ background: "#2D5E3F", color: WARM, fontFamily: FONT }}
           >
-            New +
+            {t("messages.new")}
           </Link>
         </div>
         <p className="text-sm mb-6" style={{ color: SAGE }}>
-          Write back and forth with others in the beta — as often as you like.
+          {t("messages.subtitle")}
         </p>
 
         {isLoading ? (
-          <p className="text-sm text-center py-10" style={{ color: "rgba(143,175,150,0.6)" }}>Loading…</p>
+          <p className="text-sm text-center py-10" style={{ color: "rgba(143,175,150,0.6)" }}>{t("common.loading")}</p>
         ) : conversations.length === 0 ? (
           <div
             className="rounded-2xl px-6 py-10 text-center"
             style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
           >
             <p className="text-3xl mb-3">✉️</p>
-            <p className="text-sm mb-5" style={{ color: SAGE }}>No conversations yet.</p>
+            <p className="text-sm mb-5" style={{ color: SAGE }}>{t("messages.empty")}</p>
             <Link
               href="/messages/new"
               className="inline-block px-5 py-2.5 rounded-xl text-sm font-semibold"
               style={{ background: "#2D5E3F", color: WARM, fontFamily: FONT }}
             >
-              Start a conversation →
+              {t("messages.start")}
             </Link>
           </div>
         ) : (
@@ -140,7 +142,7 @@ export default function MessagesPage() {
                           className="text-[13px] truncate"
                           style={{ color: c.unreadCount > 0 ? "#C8D4C0" : SAGE, fontWeight: c.unreadCount > 0 ? 600 : 400 }}
                         >
-                          {c.lastMessagePreview ?? "No messages yet"}
+                          {c.lastMessagePreview ?? t("messages.no_messages_yet")}
                         </p>
                         {c.unreadCount > 0 && (
                           <span

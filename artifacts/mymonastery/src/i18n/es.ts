@@ -530,8 +530,6 @@ export const es: Translations = {
     iframe_title: "Oración matutina de la Catedral Nacional",
     loading: "Cargando la transmisión de hoy…",
     blurb: "En vivo cada día de semana a las 7 a. m. (hora del Este) desde la Catedral Nacional de Washington. La grabación de hoy queda disponible hasta la transmisión de mañana.",
-    tap_to_watch: "Toca para ver",
-    watch_on_youtube: "Ver en YouTube",
   },
   offices: {
     back_home: "← Inicio",

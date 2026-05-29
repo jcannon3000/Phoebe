@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
-import { isNativeShell } from "@/lib/isNativeShell";
 import { useTranslation } from "react-i18next";
 
 // ── /ncmp/watch — National Cathedral Morning Prayer, embedded ──
@@ -291,6 +290,12 @@ export default function NcmpWatchPage() {
         <div
           style={{
             position: "relative",
+            // Cap the player so it reads as a focused video, not a
+            // full-bleed wall — on wide screens it would otherwise span
+            // the whole page. Centered; on phones width:100% keeps it
+            // edge-to-edge under the cap. aspectRatio holds 16:9 at any
+            // width (cleaner than the padding-bottom % trick, which is
+            // relative to the parent, not this capped element).
             width: "100%",
             maxWidth: 560,
             aspectRatio: "16 / 9",
@@ -304,74 +309,18 @@ export default function NcmpWatchPage() {
           {isLoading && !ncmpMeta ? (
             <div
               style={{
-                position: "absolute", inset: 0, display: "flex",
-                alignItems: "center", justifyContent: "center",
-                color: PALETTE.faint, fontSize: 13,
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: PALETTE.faint,
+                fontSize: 13,
               }}
             >
               {t("ncmp.loading")}
             </div>
-          ) : isNativeShell() ? (
-            // ── Native (Capacitor WKWebView) ──────────────────────────
-            // YouTube blocks iframe playback inside non-browser WebViews
-            // (capacitor://localhost is not a trusted origin). Show the
-            // video thumbnail + a tap-target that opens the broadcast in
-            // SFSafariViewController via openExternal, which YouTube
-            // treats as a real browser and plays inline.
-            <div
-              role="button"
-              tabIndex={0}
-              aria-label={t("ncmp.watch_on_youtube")}
-              onClick={() => openExternal(ncmpMeta?.url ?? CHANNEL_LIVE_URL)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  openExternal(ncmpMeta?.url ?? CHANNEL_LIVE_URL);
-                }
-              }}
-              style={{
-                position: "absolute", inset: 0, cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}
-            >
-              {/* YouTube thumbnail — hqdefault is always available even
-                  for a video that's currently live */}
-              {ncmpMeta?.videoId && (
-                <img
-                  src={`https://img.youtube.com/vi/${ncmpMeta.videoId}/hqdefault.jpg`}
-                  alt=""
-                  style={{
-                    position: "absolute", inset: 0, width: "100%", height: "100%",
-                    objectFit: "cover",
-                  }}
-                />
-              )}
-              {/* Semi-dark scrim + YouTube-style red play button */}
-              <div style={{
-                position: "absolute", inset: 0,
-                background: "rgba(0,0,0,0.35)",
-              }} />
-              <div style={{
-                position: "relative", zIndex: 1,
-                width: 64, height: 44, borderRadius: 10,
-                background: "rgba(255,0,0,0.92)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <span style={{ color: "#fff", fontSize: 20, marginLeft: 4, lineHeight: 1 }}>▶</span>
-              </div>
-              {/* "Tap to watch" label at the bottom */}
-              <p style={{
-                position: "absolute", bottom: 14, left: 0, right: 0,
-                textAlign: "center", margin: 0,
-                color: "rgba(255,255,255,0.9)", fontSize: 12.5, fontWeight: 600,
-                fontFamily: FONT, textShadow: "0 1px 3px rgba(0,0,0,0.7)",
-              }}>
-                {t("ncmp.tap_to_watch")}
-              </p>
-            </div>
           ) : (
-            // ── Web ───────────────────────────────────────────────────
-            // Standard iframe embed works fine in a real browser.
             <iframe
               key={embedSrc}
               src={embedSrc}
@@ -379,7 +328,11 @@ export default function NcmpWatchPage() {
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
               allowFullScreen
               style={{
-                position: "absolute", inset: 0, width: "100%", height: "100%", border: "none",
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                border: "none",
               }}
             />
           )}

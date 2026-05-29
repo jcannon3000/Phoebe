@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { readOfficeProgress, type LiturgyMode } from "@/pages/bcp-daily-office";
+import { useTranslation } from "react-i18next";
 
 // Remembers which depth the user prayed last so the chooser can float
 // it to the top on the next visit. Plain localStorage — a soft UX hint,
@@ -44,6 +45,7 @@ const FONT = "'Space Grotesk', sans-serif";
 
 export default function PrayerChooserPage() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   // The Examen is pilot-only — same gate as the menu entry + the
   // habit-slide pill.
   const { isBeta } = useBetaStatus();
@@ -73,11 +75,11 @@ export default function PrayerChooserPage() {
   // Time-of-day split — same threshold the dashboard card uses (noon).
   const hour = new Date().getHours();
   const isMorning = hour < 12;
-  const eyebrow = isMorning ? "🌅 This morning" : "🌙 This evening";
-  const headline = isMorning ? "Start this morning's prayer" : "Start this evening's prayer";
+  const eyebrow = isMorning ? t("chooser.eyebrow_morning") : t("chooser.eyebrow_evening");
+  const headline = isMorning ? t("chooser.headline_morning") : t("chooser.headline_evening");
 
-  const devotionLabel = isMorning ? "Morning Devotion" : "Evening Devotion";
-  const officeLabel = isMorning ? "Morning Office" : "Evening Office";
+  const devotionLabel = isMorning ? t("chooser.devotion_morning") : t("chooser.devotion_evening");
+  const officeLabel = isMorning ? t("chooser.office_morning") : t("chooser.office_evening");
   const devotionMode: LiturgyMode = isMorning ? "morning-devotion" : "early-evening-devotion";
   const officeMode: LiturgyMode = isMorning ? "morning" : "evening";
 
@@ -126,7 +128,7 @@ export default function PrayerChooserPage() {
   // log uses on tap), but the chip itself just names the broadcast
   // schedule. "7 AM ET" matches the concise style of the other
   // chooser badges ("5–10 Min", "15–20 Min").
-  const ncmpDurationLabel = "7 AM ET";
+  const ncmpDurationLabel = t("chooser.ncmp_badge");
 
   // Forward Movement's daily Episcopal office podcasts — Morning Prayer
   // (mornings) and Evening Prayer (evenings), the BCP 1979 office read
@@ -142,8 +144,8 @@ export default function PrayerChooserPage() {
     durationSeconds: number | null;
   };
   const podcastDurationLabel = (s: number | null | undefined) => {
-    if (!s || s <= 0) return "🎧 Audio";
-    return `≈ ${Math.round(s / 60)} min`;
+    if (!s || s <= 0) return t("chooser.audio_fallback");
+    return t("chooser.audio_minutes", { min: Math.round(s / 60) });
   };
   const { data: morningPodcastMeta } = useQuery<PodcastMeta>({
     queryKey: ["/api/podcast/morning-office/today"],
@@ -163,7 +165,7 @@ export default function PrayerChooserPage() {
   const devotionState = readOfficeProgress(devotionMode);
   const officeStateLocal = readOfficeProgress(officeMode);
   const verbFor = (state: { kind: string }) =>
-    state.kind === "done" ? "Pray again" : state.kind === "in-progress" ? "Continue" : "Start";
+    state.kind === "done" ? t("chooser.verb_pray_again") : state.kind === "in-progress" ? t("chooser.verb_continue") : t("chooser.verb_start");
 
   // Play the opening swell on mount. Fire-and-forget — the audio
   // helper handles autoplay-policy unlock and visibility-resume.
@@ -206,20 +208,20 @@ export default function PrayerChooserPage() {
         ? {
             key: "feed",
             variant: "green",
-            title: "Prayer feed",
-            sub: `Today's intercessions from ${firstFeed.coverEmoji ?? "🌿"} ${firstFeed.title}`,
-            badge: "< 5 Min",
-            verb: "Start",
+            title: t("chooser.feed_title"),
+            sub: t("chooser.feed_sub", { name: `${firstFeed.coverEmoji ?? "🌿"} ${firstFeed.title}` }),
+            badge: t("chooser.badge_under5"),
+            verb: t("chooser.verb_start"),
             href: `/prayer-mode?queue=feed&slug=${encodeURIComponent(firstFeed.slug)}`,
           }
         : null)
     : {
         key: "intercessions",
         variant: "green",
-        title: "Community Intercessions",
-        sub: "Your prayer list, no liturgy",
-        badge: "< 5 Min",
-        verb: "Start",
+        title: t("chooser.intercessions_title"),
+        sub: t("chooser.intercessions_sub"),
+        badge: t("chooser.badge_under5"),
+        verb: t("chooser.verb_start"),
         href: "/prayer-mode",
       };
 
@@ -229,10 +231,10 @@ export default function PrayerChooserPage() {
     ...(showNcmpOption ? [{
       key: "ncmp",
       variant: "purple" as const,
-      title: "National Cathedral Morning Prayer",
-      sub: "Live weekdays at 7 AM Eastern · Washington National Cathedral",
+      title: t("chooser.ncmp_title"),
+      sub: t("chooser.ncmp_sub"),
       badge: ncmpDurationLabel,
-      verb: "Watch",
+      verb: t("chooser.verb_watch"),
       href: "/ncmp/watch",
     }] : []),
     // Forward Movement office podcast — Morning Prayer in the morning,
@@ -241,18 +243,18 @@ export default function PrayerChooserPage() {
     ...(isMorning ? [{
       key: "podcast-morning",
       variant: "gold" as const,
-      title: "Daily Morning Prayer",
-      sub: "The Morning Prayer office, read aloud · Forward Movement",
+      title: t("chooser.podcast_morning_title"),
+      sub: t("chooser.podcast_morning_sub"),
       badge: podcastDurationLabel(morningPodcastMeta?.durationSeconds),
-      verb: "Listen",
+      verb: t("chooser.verb_listen"),
       href: "/podcast/morning-office",
     }] : [{
       key: "podcast-evening",
       variant: "gold" as const,
-      title: "Daily Evening Prayer",
-      sub: "The Evening Prayer office, read aloud · Forward Movement",
+      title: t("chooser.podcast_evening_title"),
+      sub: t("chooser.podcast_evening_sub"),
       badge: podcastDurationLabel(eveningPodcastMeta?.durationSeconds),
-      verb: "Listen",
+      verb: t("chooser.verb_listen"),
       href: "/podcast/evening-office",
     }]),
     ...(firstCard ? [firstCard] : []),
@@ -260,8 +262,8 @@ export default function PrayerChooserPage() {
       key: "devotion",
       variant: "green",
       title: devotionLabel,
-      sub: "From the Book of Common Prayer",
-      badge: "5–10 Min",
+      sub: t("chooser.bcp_sub"),
+      badge: t("chooser.badge_5_10"),
       verb: verbFor(devotionState),
       // picked=1 — the user is choosing the devotion from this chooser,
       // so the viewer's first slide drops its alternate-route pills.
@@ -271,8 +273,8 @@ export default function PrayerChooserPage() {
       key: "office",
       variant: "green",
       title: officeLabel,
-      sub: "From the Book of Common Prayer",
-      badge: "15–20 Min",
+      sub: t("chooser.bcp_sub"),
+      badge: t("chooser.badge_15_20"),
       verb: verbFor(officeStateLocal),
       href: `/bcp/daily-office?mode=${encodeURIComponent(officeMode)}${officeStateLocal.kind === "done" ? "&reset=1" : ""}`,
     },
@@ -281,10 +283,10 @@ export default function PrayerChooserPage() {
     ...(hour >= 17 && isBeta ? [{
       key: "examen",
       variant: "green" as const,
-      title: "Ignatian Examen",
-      sub: "A reflective close to the day",
-      badge: "5–10 Min",
-      verb: "Start",
+      title: t("menu.examen"),
+      sub: t("chooser.examen_sub"),
+      badge: t("chooser.badge_5_10"),
+      verb: t("chooser.verb_start"),
       href: "/examen",
     }] : []),
   ];
@@ -459,7 +461,7 @@ export default function PrayerChooserPage() {
             className="text-sm mb-7"
             style={{ color: "#8FAF96", fontFamily: FONT }}
           >
-            Choose how to pray with your community today.
+            {t("chooser.subtitle")}
           </p>
 
           <div className="space-y-3">
@@ -477,7 +479,7 @@ export default function PrayerChooserPage() {
                   className="text-[10px] uppercase tracking-widest"
                   style={{ color: "rgba(143,175,150,0.45)", fontFamily: FONT }}
                 >
-                  Or
+                  {t("chooser.divider_or")}
                 </span>
                 <div style={{ height: 1, flex: 1, background: "rgba(143,175,150,0.18)" }} />
               </div>

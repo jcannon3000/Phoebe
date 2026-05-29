@@ -116,8 +116,17 @@ const config: CapacitorConfig = {
   // opens the app instead of Safari. The deep-link handler in
   // src/native-shell.ts routes the path into Wouter.
   server: {
-    // Setting androidScheme keeps the local scheme consistent; iOS uses
-    // `capacitor://localhost` by default so we don't override it.
+    // iOS: serve from https://localhost so cross-origin embeds (YouTube
+    // iframes, etc.) work. The default `capacitor://` custom scheme is
+    // not recognised as a valid origin by YouTube's embed player, causing
+    // a blank iframe. Changing to `https` fixes that.
+    //
+    // NOTE: localStorage is origin-scoped. Existing test devices will
+    // start with empty localStorage after this change (resume positions,
+    // prefs, etc. reset). Auth cookies are NOT affected — CapacitorHttp +
+    // CapacitorCookies route cookies through NSHTTPCookieStorage, keyed
+    // by `withphoebe.app` domain, not by the local scheme.
+    iosScheme: "https",
     androidScheme: "https",
   },
 };

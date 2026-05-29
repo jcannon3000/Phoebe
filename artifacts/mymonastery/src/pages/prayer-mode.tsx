@@ -1356,6 +1356,7 @@ function HabitSlide({
   // Effective precedence: explicit Settings pick → whichever
   // reflection card is visible on the home screen → FDD default.
   const reflectionSource = useEffectiveReflectionSource();
+  const { t } = useTranslation();
   // Server is the source of truth — past completions from any device
   // live in prayer_sessions, not localStorage. We still union with
   // localStorage for the freshly-finished office so the slide reflects
@@ -1689,7 +1690,7 @@ function HabitSlide({
             cursor: "pointer",
           }}
         >
-          🌅 Read today's reflection →
+          {t("offices.read_reflection")}
         </button>
       )}
 

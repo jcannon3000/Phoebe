@@ -3,6 +3,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 
 // ── /podcasts/:publisher — a publisher's shows ──────────────────────────
 //
@@ -82,6 +83,7 @@ export default function PodcastPublisherPage() {
   const { publisher } = useParams<{ publisher: string }>();
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -109,7 +111,7 @@ export default function PodcastPublisherPage() {
           onClick={() => setLocation("/dashboard")}
           style={{ background: "none", border: "none", color: PALETTE.sage, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}
         >
-          ← Back
+          ← {t("common.back")}
         </button>
       </header>
 
@@ -117,11 +119,11 @@ export default function PodcastPublisherPage() {
         <div className="flex items-center gap-3 mb-1">
           <span style={{ fontSize: 26 }} aria-hidden>{data?.emoji ?? "🎧"}</span>
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, lineHeight: 1.15 }}>
-            {data?.title ?? "Podcasts"}
+            {data?.title ?? t("podcasts.title")}
           </h1>
         </div>
         <p style={{ fontSize: 13, color: PALETTE.sage, margin: "0 0 20px" }}>
-          {isLoading ? "Loading shows…" : `${data?.shows.length ?? 0} ${(data?.shows.length ?? 0) === 1 ? "show" : "shows"} · listen in Phoebe`}
+          {isLoading ? t("podcasts.publisher_loading") : t("podcasts.publisher_count", { count: data?.shows.length ?? 0 })}
         </p>
 
         {/* Image-forward 2-column grid (Hallow-style). The cover art is

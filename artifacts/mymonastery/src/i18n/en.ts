@@ -536,8 +536,6 @@ export const en = {
     iframe_title: "National Cathedral Morning Prayer",
     loading: "Loading today's broadcast…",
     blurb: "Live every weekday at 7 AM ET from the Washington National Cathedral. Today's recording stays available until tomorrow's broadcast.",
-    tap_to_watch: "Tap to watch",
-    watch_on_youtube: "Watch on YouTube",
   },
   // Daily Prayer picker (pages/offices.tsx).
   offices: {

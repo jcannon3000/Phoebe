@@ -4,6 +4,7 @@ import { CallAndResponse } from "./CallAndResponse";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { openExternal } from "@/lib/openExternal";
+import { useTranslation } from "react-i18next";
 // Single daily-reflection pill on the closing slide. The user picks
 // ONE source in Office Settings → After the office; the pill opens
 // that source externally and marks it read so the home card flips.
@@ -94,6 +95,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
     // Effective precedence: explicit Settings pick → visible home
     // reflection card → FDD default.
     const reflectionSource = useEffectiveReflectionSource();
+    const { t } = useTranslation();
 
     // Color scheme
     const bg = isEvening ? EP_BG : (isOpenClose ? SOIL : CREAM);
@@ -341,10 +343,10 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
               const cfg =
                 src === "fdd"
                   // Forward Movement blue — FDD's identity color everywhere.
-                  ? { label: "🌅 Read today's reflection →", bg: "rgba(96,141,209,0.20)", border: "rgba(96,141,209,0.50)", url: FDD_TODAY_URL, mark: markFddRead }
+                  ? { label: t("offices.read_reflection"), bg: "rgba(96,141,209,0.20)", border: "rgba(96,141,209,0.50)", url: FDD_TODAY_URL, mark: markFddRead }
                   : src === "ssje"
-                  ? { label: "🌅 Read today's reflection →", bg: "rgba(46,107,64,0.22)", border: "rgba(46,107,64,0.50)", url: SSJE_TODAY_URL, mark: markSsjeRead }
-                  : { label: "🌅 Read today's reflection →", bg: "rgba(46,107,64,0.22)", border: "rgba(46,107,64,0.50)", url: CAC_TODAY_URL, mark: markCacRead };
+                  ? { label: t("offices.read_reflection"), bg: "rgba(46,107,64,0.22)", border: "rgba(46,107,64,0.50)", url: SSJE_TODAY_URL, mark: markSsjeRead }
+                  : { label: t("offices.read_reflection"), bg: "rgba(46,107,64,0.22)", border: "rgba(46,107,64,0.50)", url: CAC_TODAY_URL, mark: markCacRead };
               return (
                 <button
                   type="button"

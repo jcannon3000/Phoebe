@@ -5,6 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useOfficePrefs, setOfficeAudioSource, type OfficeAudioSource } from "@/lib/officePrefs";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
+import { useTranslation } from "react-i18next";
 
 // ── /podcast/:show — daily office podcasts, embedded ──
 //
@@ -128,6 +129,10 @@ export default function OfficePodcastPage() {
   // the feed without a remount.
   const { officeAudioSource } = useOfficePrefs();
   const sourceMeta = SOURCE_META[officeAudioSource];
+  const { t } = useTranslation();
+  const isCoE = officeAudioSource === "church-of-england";
+  const sourceLabel = t(isCoE ? "podcasts.office_source_coe" : "podcasts.office_source_fm", { defaultValue: sourceMeta.provider });
+  const blurb = t(`podcasts.office_blurb_${isCoE ? "coe" : "fm"}_${show.side}`, { defaultValue: sourceMeta.blurb(show.side) });
 
   const { data: episode, isLoading } = useQuery<Episode>({
     // Source is in the key so switching re-fetches the right feed.
@@ -169,7 +174,7 @@ export default function OfficePodcastPage() {
       showArtwork: episode.imageUrl,
       durationSeconds: episode.durationSeconds,
       publishedAt: episode.publishedAt,
-      description: sourceMeta.blurb(show.side),
+      description: blurb,
       sessionSurface: show.surface,    // morning/evening-office-podcast
       creditMode: show.side,           // stamps office-completed at >=180s
       skipHistory: true,               // daily office — not podcast history
@@ -219,7 +224,7 @@ export default function OfficePodcastPage() {
             padding: 0,
           }}
         >
-          ← Back
+          ← {t("common.back")}
         </button>
         <span
           className="rounded-full"
@@ -234,7 +239,7 @@ export default function OfficePodcastPage() {
             whiteSpace: "nowrap",
           }}
         >
-          {show.headerLabel}
+          🎧 {t(show.side === "evening" ? "offices.evening_prayer" : "offices.morning_prayer")}
         </span>
         <span />
       </header>
@@ -255,7 +260,7 @@ export default function OfficePodcastPage() {
             Tapping persists the default via setOfficeAudioSource. */}
         <div
           role="tablist"
-          aria-label="Prayer book tradition"
+          aria-label={t("podcasts.office_tradition_aria")}
           style={{
             display: "flex",
             gap: 4,
@@ -288,7 +293,7 @@ export default function OfficePodcastPage() {
                   transition: "background 0.15s, color 0.15s",
                 }}
               >
-                {SOURCE_META[s].label}
+                {t(s === "church-of-england" ? "podcasts.office_source_coe" : "podcasts.office_source_fm", { defaultValue: SOURCE_META[s].label })}
               </button>
             );
           })}
@@ -296,12 +301,11 @@ export default function OfficePodcastPage() {
 
         {isLoading && !episode ? (
           <p style={{ color: PALETTE.faint, fontSize: 13, marginTop: 48 }}>
-            Loading today's episode…
+            {t("podcasts.office_loading")}
           </p>
         ) : !episode?.audioUrl ? (
           <p style={{ color: PALETTE.faint, fontSize: 13, marginTop: 48, textAlign: "center", maxWidth: 320, lineHeight: 1.5 }}>
-            Today's episode couldn't be loaded right now. Please try again in
-            a little while.
+            {t("podcasts.office_error")}
           </p>
         ) : (
           <div style={{ width: "100%", maxWidth: 460, display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
@@ -368,7 +372,7 @@ export default function OfficePodcastPage() {
                 </h1>
               )}
               <p style={{ fontSize: 12, color: PALETTE.sage, margin: "8px 0 0" }}>
-                {durationLabel ? `${durationLabel} · ${sourceMeta.provider}` : sourceMeta.provider}
+                {durationLabel ? `${durationLabel} · ${sourceLabel}` : sourceLabel}
               </p>
             </div>
 
@@ -396,7 +400,7 @@ export default function OfficePodcastPage() {
               }}
             >
               <span style={{ fontSize: 18, lineHeight: 1 }} aria-hidden>{playingThis ? "⏸" : "▶"}</span>
-              {playingThis ? "Pause" : isThis ? "Resume" : "Listen"}
+              {playingThis ? t("podcasts.office_pause") : isThis ? t("podcasts.office_resume") : t("podcasts.office_listen")}
             </button>
 
             <p
@@ -409,7 +413,7 @@ export default function OfficePodcastPage() {
                 maxWidth: 380,
               }}
             >
-              {sourceMeta.blurb(show.side)}
+              {blurb}
             </p>
           </div>
         )}
