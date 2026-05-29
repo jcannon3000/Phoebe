@@ -61,7 +61,10 @@ export type PlayingEpisode = {
 type PlayerCtx = {
   current: PlayingEpisode | null;
   isPlaying: boolean;
-  play: (ep: PlayingEpisode) => void;
+  // opts.expand defaults to true (open the full-screen listener). Pass
+  // { expand: false } to start playback in the mini-bar only — e.g. the
+  // FDD reflection's "Listen" button, which keeps the reflection on screen.
+  play: (ep: PlayingEpisode, opts?: { expand?: boolean }) => void;
   playQueue: (eps: PlayingEpisode[]) => void;
   toggle: () => void;
   isCurrent: (showSlug: string, episodeId: string) => boolean;
@@ -112,6 +115,9 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
 
   const pendingSeekRef = useRef<number | null>(null);
   const lastSaveRef = useRef(0);
+  // Whether playback was active when the app last went to the background,
+  // so the resume handler knows to kick it back on when we return.
+  const wasPlayingRef = useRef(false);
   const loggedRef = useRef<Set<string>>(new Set());
   // Queue for listen-list playback. queueRef holds the ordered episode
   // list; queueIndexRef is the index of the currently playing episode.
@@ -182,11 +188,12 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     });
   }, [commitSession]);
 
-  const play = useCallback((ep: PlayingEpisode) => {
-    // User-initiated tap: clear any running queue and open full-screen.
+  const play = useCallback((ep: PlayingEpisode, opts?: { expand?: boolean }) => {
+    // User-initiated tap: clear any running queue. Open full-screen unless
+    // the caller asked to stay in the mini-bar (expand: false).
     queueRef.current = [];
     queueIndexRef.current = -1;
-    setExpanded(true);
+    setExpanded(opts?.expand !== false);
     startEpisode(ep);
   }, [startEpisode]);
 
@@ -295,13 +302,43 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  // Save position + flush session on background / unload.
+  // Save position on background; re-sync + resume on return.
+  //
+  // iOS suspends the WebView's <audio> after the app sits in the background
+  // (or under memory pressure / an audio interruption), and the element's
+  // play/pause events don't reliably fire across that gap. So on return the
+  // bar could show "playing" while it's actually silent, with nothing
+  // resuming it — the "came back and it won't play" bug. On hide we remember
+  // whether we were playing; on show we reconcile isPlaying with the
+  // element's real state and, if we were playing, kick it back on (reloading
+  // the source first if WKWebView evicted the buffer, then seeking to the
+  // saved position).
   useEffect(() => {
     const onVis = () => {
+      const a = audioRef.current;
+      if (!a) return;
       if (document.visibilityState === "hidden") {
-        const a = audioRef.current;
-        if (a && current) savePos(current, a.currentTime);
+        wasPlayingRef.current = !a.paused;
+        if (current) savePos(current, a.currentTime);
         closeSeg();
+        return;
+      }
+      // Back in the foreground.
+      if (wasPlayingRef.current && a.paused) {
+        const resumeAt = current ? loadPos(current) : a.currentTime;
+        // readyState < HAVE_CURRENT_DATA means the decoded buffer was
+        // evicted while suspended — reload + reseek or play() stalls.
+        if (a.readyState < 2) {
+          pendingSeekRef.current = resumeAt;
+          a.load();
+        }
+        a.play()
+          .then(() => { setIsPlaying(true); openSeg(); })
+          .catch(() => { setIsPlaying(false); }); // iOS gated it — a tap will start it
+      } else {
+        // Element kept its state — just make the UI match reality.
+        setIsPlaying(!a.paused);
+        if (!a.paused) openSeg();
       }
     };
     const onHide = () => {
@@ -315,9 +352,56 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("pagehide", onHide);
     };
-  }, [current, closeSeg, commitSession]);
+  }, [current, closeSeg, commitSession, openSeg]);
+
+  // Lock-screen / Control Center controls (MediaSession API). Publishes
+  // now-playing metadata + routes remote play/pause/seek back to the same
+  // <audio> element, and keeps iOS's media controls in sync with what's
+  // actually playing — which also helps the OS keep our audio session
+  // associated across backgrounding.
+  useEffect(() => {
+    const ms = navigator.mediaSession;
+    if (!ms) return;
+    if (!current) {
+      ms.metadata = null;
+      ms.playbackState = "none";
+      return;
+    }
+    const art = current.imageUrl || current.showArtwork;
+    ms.metadata = new MediaMetadata({
+      title: current.title ?? current.showTitle ?? "Phoebe",
+      artist: current.showTitle ?? "",
+      album: "Phoebe",
+      artwork: art ? [{ src: art, sizes: "512x512", type: "image/jpeg" }] : [],
+    });
+    ms.setActionHandler("play", () => { audioRef.current?.play().catch(() => { /* ignore */ }); });
+    ms.setActionHandler("pause", () => { audioRef.current?.pause(); });
+    ms.setActionHandler("seekbackward", () => skip(-15));
+    ms.setActionHandler("seekforward", () => skip(30));
+    ms.setActionHandler("seekto", (d) => { if (d.seekTime != null) seekTo(d.seekTime); });
+    return () => {
+      for (const act of ["play", "pause", "seekbackward", "seekforward", "seekto"] as const) {
+        try { ms.setActionHandler(act, null); } catch { /* unsupported action */ }
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current]);
 
   // ── <audio> event handlers ──────────────────────────────────────────────
+  // MediaSession sync helpers (lock-screen scrubber + play/pause state).
+  // No-ops where the API or a valid duration isn't available.
+  const syncMediaPlaybackState = () => {
+    const a = audioRef.current; const ms = navigator.mediaSession;
+    if (a && ms) ms.playbackState = a.paused ? "paused" : "playing";
+  };
+  const syncMediaPosition = () => {
+    const a = audioRef.current; const ms = navigator.mediaSession;
+    if (!a || !ms?.setPositionState || !isFinite(a.duration) || a.duration <= 0) return;
+    try {
+      ms.setPositionState({ duration: a.duration, playbackRate: a.playbackRate || 1, position: Math.min(a.currentTime, a.duration) });
+    } catch { /* invalid position state — ignore */ }
+  };
+
   const onLoadedMeta = () => {
     const a = audioRef.current; if (!a) return;
     setDuration(a.duration || 0);
@@ -326,20 +410,22 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     if (target != null && target > 5 && (!a.duration || target < a.duration - 10)) {
       try { a.currentTime = target; } catch { /* ignore */ }
     }
+    syncMediaPosition();
   };
   const onTimeUpdate = () => {
     const a = audioRef.current; if (!a || !current) return;
     setCurrentTime(a.currentTime);
+    syncMediaPosition();
     const now = Date.now();
     if (now - lastSaveRef.current > 5000) { lastSaveRef.current = now; savePos(current, a.currentTime); }
   };
-  const onPlayEv = () => { setIsPlaying(true); openSeg(); };
+  const onPlayEv = () => { setIsPlaying(true); openSeg(); syncMediaPlaybackState(); };
   const onPauseEv = () => {
-    setIsPlaying(false); closeSeg();
+    setIsPlaying(false); closeSeg(); syncMediaPlaybackState();
     const a = audioRef.current; if (a && current) savePos(current, a.currentTime);
   };
   const onEndedEv = () => {
-    setIsPlaying(false); closeSeg();
+    setIsPlaying(false); closeSeg(); syncMediaPlaybackState();
     if (current) clearPos(current);
     commitSession();
     // Auto-advance through the listen-list queue if one is active.
