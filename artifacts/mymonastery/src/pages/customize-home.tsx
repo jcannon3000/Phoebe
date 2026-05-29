@@ -2,17 +2,21 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Reorder } from "framer-motion";
-import { ChevronLeft, Eye, EyeOff, GripVertical } from "lucide-react";
+import { ChevronLeft, GripVertical, Plus, X, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth, type AuthUser } from "@/hooks/useAuth";
 
-// Customize home screen — reached from the "Customize" pill at the
-// bottom of the dashboard. Lets the viewer reorder the home modules,
-// show/hide them, choose what leads (the top one), and pick which feed
-// gets the big card. Saves immediately: order/hidden via
-// PUT /api/me/home-layout, featured feed via PUT /api/me/feed-first-home.
+// Customize home screen — two pages:
+//
+//   /customize-home        — shows only your VISIBLE cards; drag to reorder,
+//                            tap × to remove. "+ Add card" goes to the add page.
+//   /customize-home/add    — shows all hidden / never-added modules; tap + to
+//                            add any of them to your home screen.
+//
+// Changes save immediately to PUT /api/me/home-layout. Featured feed is
+// picked in the main page after the card list.
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -21,45 +25,29 @@ const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 // Keep this list in sync with HOME_MODULES in dashboard.tsx AND
 // HOME_MODULE_KEYS in api-server/src/routes/prayer.ts — keys not in
 // the server's allowlist are silently dropped from saved layouts.
-const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "requests"] as const;
+const HOME_MODULES = [
+  "office", "feeds", "contemplation", "gratitude", "examen",
+  "cac", "fdd", "ssje", "ncmp", "podcasts", "requests",
+] as const;
 type HomeModule = typeof HOME_MODULES[number];
 
-// Prayer requests always leads the home — it can't be hidden or reordered.
+// Prayer requests always leads the home — it can't be moved or removed.
 const PINNED: HomeModule = "requests";
 
-// Module display metadata. Built inside the component via useModuleMeta()
-// so the labels/subs localize live; a module-level const would freeze the
-// language at module load.
 function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub: string }> {
   const { t } = useTranslation();
   return {
-    office: { label: t("customize_home.module_office"), emoji: "📖", sub: t("customize_home.module_office_sub") },
-    feeds: { label: t("customize_home.module_feeds"), emoji: "🌿", sub: t("customize_home.module_feeds_sub") },
-    contemplation: { label: t("menu.contemplation"), emoji: "🕯️", sub: t("customize_home.module_contemplation_sub") },
-    gratitude: { label: t("gratitude.title"), emoji: "🌾", sub: t("customize_home.module_gratitude_sub") },
-    examen: { label: t("menu.examen"), emoji: "🤔", sub: t("customize_home.module_examen_sub") },
-    // CAC label is intentionally NOT i18n'd — "CAC Daily Reflection"
-    // is a proper-noun product name the Center for Action &
-    // Contemplation publishes in English. We can localize the
-    // description sub later if/when CAC offers a Spanish edition.
-    cac: { label: "CAC Daily Reflection", emoji: "🌅", sub: "Today's reflection from the Center for Action & Contemplation" },
-    // Same rationale as CAC — "Forward Day by Day" is a proper-noun
-    // product name from Forward Movement; we leave the label in
-    // English regardless of i18n locale.
-    fdd: { label: "Forward Day by Day", emoji: "📖", sub: "Today's meditation from Forward Movement" },
-    // SSJE Reflections — "Brother, Give Us a Word," a one-paragraph
-    // daily reflection from the Society of Saint John the Evangelist
-    // (Cambridge MA Episcopal monastery). Proper-noun product name;
-    // not localized.
-    ssje: { label: "SSJE Reflections", emoji: "✍🏽", sub: "Today's Brother, Give Us a Word" },
-    // National Cathedral Morning Prayer — live YouTube broadcast
-    // Mon–Fri 7:00 AM ET, with the same URL serving the recording
-    // afterward. Proper-noun service name; not localized. The card
-    // self-hides on weekends (no broadcast) and label flips between
-    // "Live now" / "Live in N min" / "Today's recording" at the
-    // home-card render site (see NcmpHomeCard in dashboard.tsx).
-    ncmp: { label: "National Cathedral Morning Prayer", emoji: "📺", sub: "Weekday live broadcast · 7 AM ET" },
-    requests: { label: t("customize_home.module_requests"), emoji: "🙏🏽", sub: t("customize_home.module_requests_sub") },
+    office:       { label: t("customize_home.module_office"),    emoji: "📖", sub: t("customize_home.module_office_sub") },
+    feeds:        { label: t("customize_home.module_feeds"),     emoji: "🌿", sub: t("customize_home.module_feeds_sub") },
+    contemplation:{ label: t("menu.contemplation"),              emoji: "🕯️", sub: t("customize_home.module_contemplation_sub") },
+    gratitude:    { label: t("gratitude.title"),                 emoji: "🌾", sub: t("customize_home.module_gratitude_sub") },
+    examen:       { label: t("menu.examen"),                     emoji: "🤔", sub: t("customize_home.module_examen_sub") },
+    cac:          { label: "CAC Daily Reflection",               emoji: "🌅", sub: "Today's reflection from the Center for Action & Contemplation" },
+    fdd:          { label: "Forward Day by Day",                 emoji: "📖", sub: "Today's meditation from Forward Movement" },
+    ssje:         { label: "SSJE Reflections",                   emoji: "✍🏽", sub: "Today's Brother, Give Us a Word" },
+    ncmp:         { label: "National Cathedral Morning Prayer",  emoji: "📺", sub: "Weekday live broadcast · 7 AM ET" },
+    podcasts:     { label: t("customize_home.module_podcasts", { defaultValue: "Podcasts" }), emoji: "🎧", sub: t("customize_home.module_podcasts_sub", { defaultValue: "Shows you've added · pick up where you left off" }) },
+    requests:     { label: t("customize_home.module_requests"),  emoji: "🙏🏽", sub: t("customize_home.module_requests_sub") },
   };
 }
 
@@ -74,95 +62,34 @@ function buildOrder(saved: string[] | null | undefined, fallback: HomeModule[]):
       out.push(k as HomeModule);
     }
   }
+  // Append any module not yet in saved order (newly added modules).
   for (const k of HOME_MODULES) if (!seen.has(k)) out.push(k);
-  // Prayer requests always leads — pin it to the front regardless of the
-  // saved order.
   return [PINNED, ...out.filter((k) => k !== PINNED)];
 }
 
-// Gate on the auth user being loaded before mounting the stateful inner
-// component. Critical: the inner initializes its order/hidden state from
-// user.homeLayout in a useState initializer, which only runs once — if it
-// ran while user was still loading (hard refresh / direct nav), it would
-// seed the DEFAULT layout and a subsequent edit would clobber the user's
-// saved layout. Mounting only once user is present avoids that.
-export default function CustomizeHomePage() {
-  const { user } = useAuth();
-  if (!user) {
-    return (
-      <Layout>
-        <div className="max-w-xl mx-auto w-full pb-24" />
-      </Layout>
-    );
-  }
-  return <CustomizeHomeInner user={user} />;
-}
+// ── Shared state hook used by both pages ─────────────────────────────────────
 
-function CustomizeHomeInner({ user }: { user: AuthUser }) {
+function useHomeLayout(user: AuthUser) {
   const queryClient = useQueryClient();
-  const { t } = useTranslation();
-  const MODULE_META = useModuleMeta();
-  const [, setLocation] = useLocation();
-
-  // Feed-led default mirrors the dashboard: feed-led users lead with
-  // feeds, everyone else leads with the office. Computed from the user
-  // fields directly so it doesn't wait on the feeds query.
   const feedLed = !!(user?.feedFirstHome && user?.homeFeedId != null);
   const fallbackOrder: HomeModule[] = feedLed
-    ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp"]
-    : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp"];
+    ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts"]
+    : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts"];
 
   const [order, setOrder] = useState<HomeModule[]>(() => buildOrder(user?.homeLayout?.order, fallbackOrder));
   const [hidden, setHidden] = useState<Set<string>>(() => {
-    // First customization (no homeLayout row) hides the secondary
-    // practices by default so the home doesn't feel cluttered out of
-    // the gate. Once savedHidden exists, trust it — we used to ALSO
-    // re-hide every module missing from saved order, which silently
-    // un-did the user's "show Gratitude" toggle whenever their saved
-    // order pre-dated the new module.
     const savedHidden = user?.homeLayout?.hidden;
     const savedOrder = user?.homeLayout?.order;
     const s = new Set<string>(savedHidden ?? ["contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp"]);
-    // CAC + FDD + SSJE + NCMP daily-reflection / broadcast cards are
-    // opt-in for EVERYONE (new and existing users) per product
-    // decision — optional external surfaces, not default-on
-    // practices. For new users this is covered by the default-hidden
-    // array above; for existing users whose saved layout pre-dates
-    // either module, we add it to hidden if it's not already in
-    // their saved order (i.e. they've never explicitly toggled it
-    // on). Once they enable via the eye, the key appears in
-    // savedOrder and this guard becomes a no-op.
-    if (savedOrder && !savedOrder.includes("cac")) {
-      s.add("cac");
+    // Opt-in-only modules: add to hidden for existing users whose saved
+    // order pre-dates the module (they've never explicitly toggled it on).
+    for (const mod of ["cac", "fdd", "ssje", "ncmp", "podcasts"] as HomeModule[]) {
+      if (savedOrder && !savedOrder.includes(mod)) s.add(mod);
     }
-    if (savedOrder && !savedOrder.includes("fdd")) {
-      s.add("fdd");
-    }
-    if (savedOrder && !savedOrder.includes("ssje")) {
-      s.add("ssje");
-    }
-    if (savedOrder && !savedOrder.includes("ncmp")) {
-      s.add("ncmp");
-    }
-    s.delete(PINNED); // Prayer requests can never be hidden.
+    s.delete(PINNED);
     return s;
   });
 
-  const { data: subsData } = useQuery<{ subscriptions: Array<{ feed: { id: number; title: string; coverEmoji: string | null } }> }>({
-    queryKey: ["/api/prayer-feeds/subscribed"],
-    queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed") as Promise<{ subscriptions: Array<{ feed: { id: number; title: string; coverEmoji: string | null } }> }>,
-    enabled: !!user,
-  });
-  const feeds = subsData?.subscriptions.map((s) => s.feed) ?? [];
-
-  // Optimistic cache update so the dashboard renders the new
-  // homeLayout the moment the user navigates back — no stale-data
-  // flash while the network round-trip + invalidate-then-refetch
-  // lands. Without this, a user who toggled a module visible and
-  // immediately tapped Home / the back arrow would see the OLD
-  // hidden set briefly on the dashboard and reasonably conclude
-  // "my change didn't save" — even though it did, and the refetch
-  // would correct the UI half a second later.
   const saveLayout = useMutation({
     mutationFn: (layout: { order: string[]; hidden: string[] }) =>
       apiRequest("PUT", "/api/me/home-layout", layout),
@@ -176,40 +103,69 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
       return { prev };
     },
     onError: (_err, _vars, ctx) => {
-      // Roll back on failure so we don't leave the dashboard reading
-      // a phantom layout that the server didn't actually accept.
       if (ctx && typeof ctx === "object" && "prev" in ctx) {
         queryClient.setQueryData(["/api/auth/me"], (ctx as { prev: unknown }).prev);
       }
     },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-    },
+    onSettled: () => { queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }); },
   });
+
   const persist = (nextOrder: HomeModule[], nextHidden: Set<string>) => {
     setOrder(nextOrder);
     setHidden(new Set(nextHidden));
     saveLayout.mutate({ order: nextOrder, hidden: [...nextHidden] });
   };
 
-  // The draggable rows — everything except the pinned lead. Reordering
-  // these writes back a full order with the pinned module still first.
-  const movable = order.filter((k) => k !== PINNED);
-  const reorder = (next: HomeModule[]) => persist([PINNED, ...next], hidden);
-
-  const toggleHidden = (k: HomeModule) => {
-    if (k === PINNED) return; // pinned — always visible
+  const removeCard = (k: HomeModule) => {
+    if (k === PINNED) return;
     const next = new Set(hidden);
-    if (next.has(k)) next.delete(k);
-    else {
-      // Keep at least one module visible.
-      if (hidden.size >= order.length - 1) return;
-      next.add(k);
-    }
+    // Keep at least one visible card besides the pinned one.
+    const visibleCount = order.filter(m => m !== PINNED && !hidden.has(m)).length;
+    if (visibleCount <= 1) return;
+    next.add(k);
     persist(order, next);
   };
 
-  // Featured-feed picker (which feed gets the big card when feeds lead).
+  const addCard = (k: HomeModule) => {
+    const next = new Set(hidden);
+    next.delete(k);
+    persist(order, next);
+  };
+
+  const reorder = (next: HomeModule[]) => persist([PINNED, ...next], hidden);
+
+  return { order, hidden, removeCard, addCard, reorder };
+}
+
+// ── Gate component — waits for auth before mounting stateful inner ────────────
+
+export default function CustomizeHomePage() {
+  const { user } = useAuth();
+  if (!user) return <Layout><div className="max-w-xl mx-auto w-full pb-24" /></Layout>;
+  return <CustomizeHomeInner user={user} />;
+}
+
+export function CustomizeHomeAddPage() {
+  const { user } = useAuth();
+  if (!user) return <Layout><div className="max-w-xl mx-auto w-full pb-24" /></Layout>;
+  return <CustomizeHomeAddInner user={user} />;
+}
+
+// ── Main list page ─────────────────────────────────────────────────────────
+
+function CustomizeHomeInner({ user }: { user: AuthUser }) {
+  const { t } = useTranslation();
+  const [, setLocation] = useLocation();
+  const MODULE_META = useModuleMeta();
+  const { order, hidden, removeCard, reorder } = useHomeLayout(user);
+
+  const { data: subsData } = useQuery<{ subscriptions: Array<{ feed: { id: number; title: string; coverEmoji: string | null } }> }>({
+    queryKey: ["/api/prayer-feeds/subscribed"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed") as Promise<{ subscriptions: Array<{ feed: { id: number; title: string; coverEmoji: string | null } }> }>,
+    enabled: !!user,
+  });
+
+  const queryClient = useQueryClient();
   const setFeed = useMutation({
     mutationFn: (feedId: number | null) => apiRequest("PUT", "/api/me/feed-first-home", { feedId }),
     onSuccess: () => {
@@ -217,13 +173,15 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
     },
   });
-  // Featured-feed selection. When the viewer hasn't explicitly chosen one,
-  // default to Creation Care (if they follow it) rather than "No featured
-  // feed" — it's the house feed we lead with.
+  const feeds = subsData?.subscriptions.map((s) => s.feed) ?? [];
   const creationCareId = feeds.find((f) => /creation\s*care/i.test(f.title))?.id ?? null;
   const selectedFeedId = (user?.feedFirstHome && user?.homeFeedId != null && feeds.some((f) => f.id === user.homeFeedId))
-    ? user.homeFeedId
-    : creationCareId;
+    ? user.homeFeedId : creationCareId;
+
+  // Visible modules (excluding the pinned Prayer requests).
+  const visibleMovable = order.filter((k) => k !== PINNED && !hidden.has(k));
+  const hiddenCount = order.filter((k) => k !== PINNED && hidden.has(k)).length
+    + HOME_MODULES.filter((k) => k !== PINNED && !order.includes(k)).length;
 
   return (
     <Layout>
@@ -245,13 +203,12 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
           {t("customize_home.subtitle")}
         </p>
 
-        {/* Pinned lead — Prayer requests always sits at the top, set apart
-            from the draggable list below. It can't be moved or hidden. */}
+        {/* Pinned lead — always at top, can't be moved or removed. */}
         {(() => {
           const meta = MODULE_META[PINNED];
           return (
             <div
-              className="flex items-center gap-3 rounded-xl px-3 py-3"
+              className="flex items-center gap-3 rounded-xl px-3 py-3 mb-1"
               style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
             >
               <span style={{ fontSize: 20 }}>{meta.emoji}</span>
@@ -267,22 +224,19 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
                     {t("customize_home.leads")}
                   </span>
                 </div>
-                <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>
-                  {meta.sub}
-                </p>
+                <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>{meta.sub}</p>
               </div>
             </div>
           );
         })()}
 
-        {/* Draggable rows — everything below the pinned lead. */}
-        <p className="text-[11px] mt-4 mb-2" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}>
+        {/* Draggable visible cards. */}
+        <p className="text-[11px] mt-3 mb-2" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}>
           {t("customize_home.drag_hint")}
         </p>
-        <Reorder.Group as="div" axis="y" values={movable} onReorder={reorder} className="flex flex-col gap-2">
-          {movable.map((key) => {
+        <Reorder.Group as="div" axis="y" values={visibleMovable} onReorder={reorder} className="flex flex-col gap-2">
+          {visibleMovable.map((key) => {
             const meta = MODULE_META[key];
-            const isHidden = hidden.has(key);
             return (
               <Reorder.Item
                 key={key}
@@ -290,9 +244,8 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
                 value={key}
                 className="flex items-center gap-3 rounded-xl px-3 py-3 select-none"
                 style={{
-                  background: isHidden ? "rgba(46,107,64,0.04)" : "rgba(46,107,64,0.10)",
+                  background: "rgba(46,107,64,0.10)",
                   border: "1px solid rgba(46,107,64,0.22)",
-                  opacity: isHidden ? 0.6 : 1,
                   cursor: "grab",
                 }}
                 whileDrag={{ cursor: "grabbing", scale: 1.02, boxShadow: "0 8px 24px rgba(0,0,0,0.45)" }}
@@ -303,29 +256,52 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
                   <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
                     {meta.label}
                   </p>
-                  <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>
-                    {meta.sub}
-                  </p>
+                  <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>{meta.sub}</p>
                 </div>
-                {/* Show / hide. stopPropagation on pointer-down so tapping
-                    the eye doesn't begin a drag. */}
+                {/* Remove — stop-propagation on pointer-down prevents drag start. */}
                 <button
                   type="button"
-                  aria-label={isHidden ? t("customize_home.show") : t("customize_home.hide")}
+                  aria-label={`Remove ${meta.label}`}
                   onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => toggleHidden(key)}
-                  className="transition-opacity hover:opacity-80"
-                  style={{ color: isHidden ? "rgba(143,175,150,0.6)" : "#A8C5A0", cursor: "pointer", lineHeight: 0, padding: 4 }}
+                  onClick={() => removeCard(key)}
+                  className="transition-opacity hover:opacity-80 rounded-full flex items-center justify-center"
+                  style={{
+                    color: "rgba(143,175,150,0.7)",
+                    background: "rgba(143,175,150,0.10)",
+                    border: "1px solid rgba(143,175,150,0.20)",
+                    cursor: "pointer",
+                    padding: 5,
+                    flexShrink: 0,
+                  }}
                 >
-                  {isHidden ? <EyeOff size={18} /> : <Eye size={18} />}
+                  <X size={14} />
                 </button>
               </Reorder.Item>
             );
           })}
         </Reorder.Group>
 
-        {/* Featured feed — which feed gets the big card when Prayer feeds
-            lead. Only shown when the viewer follows at least one feed. */}
+        {/* Add card CTA. */}
+        <button
+          type="button"
+          onClick={() => setLocation("/customize-home/add")}
+          className="w-full flex items-center justify-center gap-2 rounded-xl mt-3 transition-opacity hover:opacity-80"
+          style={{
+            padding: "13px 16px",
+            background: "transparent",
+            border: "1px dashed rgba(143,175,150,0.35)",
+            color: SAGE,
+            fontFamily: SPACE_GROTESK,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          <Plus size={16} />
+          Add card{hiddenCount > 0 ? ` · ${hiddenCount} available` : ""}
+        </button>
+
+        {/* Featured-feed picker */}
         {feeds.length > 0 && (
           <>
             <h2
@@ -337,30 +313,17 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
             <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
               {t("customize_home.featured_feed_blurb")}
             </p>
-            <div
-              className="rounded-xl px-3"
-              style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
-            >
+            <div className="rounded-xl px-3" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
               {[{ id: null as number | null, label: t("customize_home.no_featured"), sub: t("customize_home.no_featured_sub") },
                 ...feeds.map((f) => ({ id: f.id as number | null, label: `${f.title} ${f.coverEmoji ?? "🌿"}`.trim(), sub: t("customize_home.featured_sub") }))]
                 .map((row, idx) => {
                   const isSel = selectedFeedId === row.id;
                   return (
-                    <button
-                      key={row.id ?? "none"}
-                      type="button"
-                      onClick={() => setFeed.mutate(row.id)}
+                    <button key={row.id ?? "none"} type="button" onClick={() => setFeed.mutate(row.id)}
                       className="w-full flex items-center gap-3 py-2.5 text-left"
                       style={{ borderTop: idx === 0 ? "none" : "1px solid rgba(200,212,192,0.12)", background: "transparent", cursor: "pointer" }}
                     >
-                      <div
-                        style={{
-                          width: 18, height: 18, borderRadius: "50%",
-                          border: `2px solid ${isSel ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
-                          background: isSel ? "#A8C5A0" : "transparent",
-                          flexShrink: 0,
-                        }}
-                      />
+                      <div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${isSel ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`, background: isSel ? "#A8C5A0" : "transparent", flexShrink: 0 }} />
                       <div className="flex-1 min-w-0">
                         <p className="text-[14px]" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>{row.label}</p>
                         <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>{row.sub}</p>
@@ -372,25 +335,130 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
           </>
         )}
 
-        {/* Bottom escape — pure navigation, not a save action. Every
-            toggle / drag / feed pick fires saveLayout immediately, so
-            this link is just the easy way back from the bottom of the
-            page (mirrors the back-arrow at the top). Renamed from
-            "Done" because "Done" implied the user had to click it to
-            persist their changes. */}
-        <Link
-          href="/dashboard"
-          className="block text-center mt-8 text-sm font-semibold transition-opacity hover:opacity-80"
-          style={{ color: "#A8C5A0", fontFamily: SPACE_GROTESK }}
-        >
+        <Link href="/dashboard" className="block text-center mt-8 text-sm font-semibold transition-opacity hover:opacity-80" style={{ color: "#A8C5A0", fontFamily: SPACE_GROTESK }}>
           {t("customize_home.back_to_home", { defaultValue: "← Back to home" })}
         </Link>
-        <p
-          className="block text-center mt-2 text-[11px]"
-          style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}
-        >
+        <p className="block text-center mt-2 text-[11px]" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}>
           {t("customize_home.auto_save_hint", { defaultValue: "Changes save automatically." })}
         </p>
+      </div>
+    </Layout>
+  );
+}
+
+// ── Add-a-card page ───────────────────────────────────────────────────────────
+
+function CustomizeHomeAddInner({ user }: { user: AuthUser }) {
+  const { t } = useTranslation();
+  const [, setLocation] = useLocation();
+  const MODULE_META = useModuleMeta();
+  const { order, hidden, addCard } = useHomeLayout(user);
+
+  // Track which modules the user just added this session so we can
+  // show a checkmark before they navigate back.
+  const [justAdded, setJustAdded] = useState<Set<HomeModule>>(new Set());
+
+  const handleAdd = (k: HomeModule) => {
+    addCard(k);
+    setJustAdded((prev) => new Set([...prev, k]));
+  };
+
+  // Modules available to add: hidden ones + any not yet in order.
+  const available = HOME_MODULES.filter(
+    (k) => k !== PINNED && (hidden.has(k) || !order.includes(k)),
+  );
+
+  return (
+    <Layout>
+      <div className="max-w-xl mx-auto w-full pb-24">
+        <button
+          type="button"
+          onClick={() => setLocation("/customize-home")}
+          className="inline-flex items-center gap-1.5 text-xs font-medium mb-6 transition-opacity hover:opacity-80"
+          style={{ color: SAGE, background: "transparent", cursor: "pointer" }}
+        >
+          <ChevronLeft size={14} />
+          {t("customize_home.title")}
+        </button>
+
+        <h1 className="text-2xl font-bold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+          Add a card
+        </h1>
+        <p className="text-sm mt-1 mb-5" style={{ color: SAGE }}>
+          Choose what to show on your home screen.
+        </p>
+
+        {available.length === 0 ? (
+          <div className="text-center mt-16">
+            <p style={{ fontSize: 32 }}>✅</p>
+            <p className="mt-3 text-sm" style={{ color: SAGE }}>All cards are already on your home screen.</p>
+            <button
+              type="button"
+              onClick={() => setLocation("/customize-home")}
+              className="mt-5 text-sm font-semibold transition-opacity hover:opacity-80"
+              style={{ color: "#A8C5A0", background: "transparent", cursor: "pointer" }}
+            >
+              ← Back
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {available.map((key) => {
+              const meta = MODULE_META[key];
+              const added = justAdded.has(key);
+              return (
+                <div
+                  key={key}
+                  className="flex items-center gap-3 rounded-xl px-3 py-3"
+                  style={{
+                    background: added ? "rgba(46,107,64,0.16)" : "rgba(46,107,64,0.07)",
+                    border: `1px solid ${added ? "rgba(46,107,64,0.40)" : "rgba(46,107,64,0.18)"}`,
+                    transition: "background 0.2s, border-color 0.2s",
+                  }}
+                >
+                  <span style={{ fontSize: 20 }}>{meta.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+                      {meta.label}
+                    </p>
+                    <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>
+                      {meta.sub}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={added ? `${meta.label} added` : `Add ${meta.label}`}
+                    onClick={() => !added && handleAdd(key)}
+                    className="rounded-full flex items-center justify-center transition-all"
+                    style={{
+                      width: 32,
+                      height: 32,
+                      background: added ? "#A8C5A0" : "rgba(143,175,150,0.12)",
+                      border: `1px solid ${added ? "#A8C5A0" : "rgba(143,175,150,0.30)"}`,
+                      color: added ? "#091A10" : SAGE,
+                      cursor: added ? "default" : "pointer",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {added ? <Check size={15} strokeWidth={2.5} /> : <Plus size={16} />}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Done — navigate back after adding. */}
+        {justAdded.size > 0 && (
+          <button
+            type="button"
+            onClick={() => setLocation("/customize-home")}
+            className="w-full mt-6 rounded-xl py-3 text-sm font-semibold transition-opacity hover:opacity-90"
+            style={{ background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.45)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, cursor: "pointer" }}
+          >
+            Done — back to my cards
+          </button>
+        )}
       </div>
     </Layout>
   );

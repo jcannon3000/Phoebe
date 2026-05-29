@@ -92,6 +92,12 @@ export default function FddSitPage() {
       audioUrl={data.audioUrl}
       audioTitle={audioTitle}
       eyebrowLabel={label}
+      // Pass the episode length so the picker shows it and lets the user
+      // choose how much silence to add after the reflection ends, rather
+      // than picking a total time blind (and potentially cutting the audio
+      // short). begin() is called inside the Begin button's onClick, which
+      // satisfies iOS's user-gesture requirement for audio.play().
+      audioDurationSeconds={data.durationSeconds}
       onClose={() => setLocation("/dashboard")}
     />
   );

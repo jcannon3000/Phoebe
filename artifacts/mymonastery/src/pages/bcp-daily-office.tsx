@@ -16,6 +16,7 @@ import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
 import { getSideEntry, getSideConfession } from "@/lib/officePrefs";
+import { usePodcastPlayer } from "@/components/PodcastPlayer";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
 // Visual chrome mirrors Lectio: dark forest background, top-bar with
@@ -385,6 +386,7 @@ const MODE_CONFIG: Record<LiturgyMode, { endpoint: string; title: string }> = {
 export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker }: OfficeViewerProps) {
   const resolvedMode: LiturgyMode = mode ?? office ?? "morning";
   const { endpoint, title: officeTitle } = MODE_CONFIG[resolvedMode];
+  const player = usePodcastPlayer();
   // Which half of the day this office belongs to. Threaded onto the
   // closing redirect (?side=) so the prayer-rhythm habit slide can
   // show an evening-only "Pray the Examen" pill. Compline counts as
@@ -967,7 +969,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
           paddingTop: isTitleCard
             ? "max(24px, env(safe-area-inset-top))"
             : "max(72px, calc(env(safe-area-inset-top) + 60px))",
-          paddingBottom: "calc(env(safe-area-inset-bottom) + 112px)",
+          paddingBottom: player.current
+            ? "calc(env(safe-area-inset-bottom) + 176px)"
+            : "calc(env(safe-area-inset-bottom) + 112px)",
           display: "flex",
           flexDirection: "column",
         }}
@@ -977,10 +981,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
           style={{
             display: "flex",
             flexDirection: "column",
-            // flex-grow fills the scroll container so justifyContent:center
-            // vertically centers title cards in the full viewport.
-            // flex-shrink:0 lets content slides overflow and scroll normally.
-            flexGrow: 1,
+            // Title cards: flex-grow fills the scroll container so
+            // justifyContent:center vertically centers them in the viewport.
+            // Content slides: flex-grow:0 keeps the div at its natural height
+            // so scrollHeight < clientHeight on short slides — iOS can't
+            // rubber-band a non-scrollable element. flex-shrink:0 lets long
+            // slides (psalms, canticles) overflow and scroll normally.
+            flexGrow: isTitleCard ? 1 : 0,
             flexShrink: 0,
             justifyContent: isTitleCard ? "center" : "flex-start",
             textAlign: isTitleCard ? "center" : "left",
@@ -2392,7 +2399,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
         style={{
           position: "fixed",
           left: "50%",
-          bottom: "calc(env(safe-area-inset-bottom) + 16px)",
+          bottom: player.current
+            ? "calc(env(safe-area-inset-bottom) + 80px)"
+            : "calc(env(safe-area-inset-bottom) + 16px)",
+          transition: "bottom 0.2s ease",
           transform: "translateX(-50%)",
           zIndex: 50,
           background: "rgba(19,44,29,0.92)",

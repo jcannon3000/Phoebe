@@ -479,6 +479,14 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   label={t("menu.podcasts", { defaultValue: "Podcasts" })}
                   onClick={() => navigate("/podcasts")}
                 />
+                {isBeta && (
+                  <MenuRow
+                    emoji="📰"
+                    label={t("menu.news_actions", { defaultValue: "News & Actions" })}
+                    badge={t("menu.beta")}
+                    onClick={() => navigate("/news")}
+                  />
+                )}
                 <MenuRow
                   emoji="🕯️"
                   label={t("menu.reflect_sit", { defaultValue: "Reflect & Sit" })}
@@ -496,14 +504,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   to everyone; the "Beta" badge stays so readers know
                   the index is still growing. */}
               <MenuSection emoji="📚" label={t("menu.resources", { defaultValue: "Resources" })}>
-                {isBeta && (
-                  <MenuRow
-                    emoji="📰"
-                    label={t("menu.news_actions", { defaultValue: "News & Actions" })}
-                    badge={t("menu.beta")}
-                    onClick={() => navigate("/news")}
-                  />
-                )}
                 <MenuRow
                   emoji="📅"
                   label={t("menu.sunday_lectionary", { defaultValue: "Sunday Lectionary" })}

@@ -863,7 +863,6 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
     for (const r of rows) {
       const tz = r.parishTimezone || r.userTimezone || "America/New_York";
       const today = todayInZone(tz);
-      const communityTitle = r.parishTitle ?? "your community";
 
       // Shared: approximate UTC start of today in user-tz (covers UTC-14).
       const sinceUtc = new Date(`${today}T00:00:00Z`);
@@ -891,8 +890,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
             try {
               await sendParishOfficeReminderPush(r.userId, {
                 side: "morning",
-                pref: r.morningPref as "office" | "devotion",
-                parishTitle: communityTitle,
+                parishTitle: r.parishTitle,
               });
               await db
                 .update(usersTable)
@@ -934,8 +932,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
             try {
               await sendParishOfficeReminderPush(r.userId, {
                 side: "evening",
-                pref: r.eveningPref as "office" | "devotion",
-                parishTitle: communityTitle,
+                parishTitle: r.parishTitle,
               });
               await db
                 .update(usersTable)

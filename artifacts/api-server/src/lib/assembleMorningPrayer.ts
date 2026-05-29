@@ -25,6 +25,7 @@ import {
   splitCanticleIntoChunks,
 } from "./psalmRange";
 import { buildIntercessionSlides } from "./assembleIntercessions";
+import { getTodayFddEpisode } from "./fddFetcher";
 import { buildLessonSlides } from "./assembleLesson";
 import { EYEBROWS, PRAYERS, TITLES, pick, type Locale } from "./officeI18n";
 // Lessons render as references only (e.g. "John 2:1-7") — readers
@@ -67,6 +68,12 @@ export type SlideType =
   | "intercessions"
   | "intercessions_portal"
   | "general_thanksgiving"
+  // In-office Forward Day by Day audio meditation. Injected fresh on
+  // every request (after the DB cache step, like intercessions) so that
+  // the 05:00-ET FDD publish reaches users without waiting for a cache
+  // bust. Placed immediately before the Creed — the homily/meditation
+  // position in the BCP rubric.
+  | "fdd_meditation"
   | "closing";
 
 export interface CallAndResponseLine {
@@ -444,6 +451,7 @@ export async function assembleMorningPrayer(
   date: Date,
   userId: number,
   locale: Locale = "en",
+  confessionOverride?: boolean,
 ): Promise<{
   slides: Slide[];
   officeDay: OfficeDayInfo;
@@ -472,12 +480,17 @@ export async function assembleMorningPrayer(
   if (cached.length > 0) {
     const row = cached[0];
     const cachedSlides = row.slidesJson as Slide[];
+    // Inject FDD meditation first (before creed) — fetched fresh from the
+    // Megaphone feed with a 30-min TTL so the 05:00 ET FDD publish reaches
+    // users without a full cache rebuild. Non-fatal: if the feed is down
+    // the slide is simply absent.
+    const withFdd = await injectFddMeditation(cachedSlides, cacheDate);
     // Splice the per-user intercessions slide in BEFORE general
     // thanksgiving — the cached slides don't include it (caching it
     // would cross-contaminate users with each other's prayer lists).
-    const withIntercessions = await injectIntercessions(cachedSlides, userId, cacheDate);
+    const withIntercessions = await injectIntercessions(withFdd, userId, cacheDate);
     // Per-user: hide the Confession + Absolution unless the user opted in.
-    const slides = await applyConfessionPref(withIntercessions, userId);
+    const slides = await applyConfessionPref(withIntercessions, userId, confessionOverride);
     // Derive officeDay fresh from the date instead of fishing fields
     // out of slide[0]'s metadata. The cached opening slide is gone now
     // (the office begins with the Opening Sentence), so the metadata
@@ -1085,10 +1098,13 @@ export async function assembleMorningPrayer(
     }
   }
 
+  // FDD meditation — injected fresh (same 30-min TTL) on both cache-hit and
+  // cache-miss paths so it reliably reflects today's published episode.
+  const withFdd = await injectFddMeditation(slides, cacheDate);
   // Per-user intercessions slide — built fresh, never cached.
-  const withIntercessions = await injectIntercessions(slides, userId, cacheDate);
+  const withIntercessions = await injectIntercessions(withFdd, userId, cacheDate);
   // Per-user: hide the Confession + Absolution unless the user opted in.
-  const slidesForUser = await applyConfessionPref(withIntercessions, userId);
+  const slidesForUser = await applyConfessionPref(withIntercessions, userId, confessionOverride);
 
   const officeDay: OfficeDayInfo = {
     season: liturgicalDay.season,
@@ -1103,6 +1119,49 @@ export async function assembleMorningPrayer(
   };
 
   return { slides: slidesForUser, officeDay, fromCache: false };
+}
+
+// Inject the FDD meditation slide immediately before the first Creed slide.
+// This is the traditional homily/meditation position in BCP Morning Prayer
+// — after the scripture and canticles, before the creed and prayers.
+// Non-fatal: if the FDD feed is unavailable the array is returned unchanged.
+async function injectFddMeditation(slides: Slide[], date: Date): Promise<Slide[]> {
+  let episode;
+  try {
+    episode = await getTodayFddEpisode();
+  } catch { episode = null; }
+  if (!episode) return slides;
+
+  const fddSlide: Slide = {
+    // Use a date-keyed ID so it's stable within a day (consistent with
+    // the slide_N pattern used elsewhere).
+    id: `fdd_${date.toISOString().slice(0, 10)}`,
+    type: "fdd_meditation",
+    emoji: "📖",
+    eyebrow: "FORWARD DAY BY DAY",
+    title: episode.title,
+    content: episode.description ?? "A daily reflection from Forward Movement.",
+    isCallAndResponse: false,
+    callAndResponseLines: null,
+    bcpReference: null,
+    isScrollable: false,
+    scrollHint: null,
+    metadata: {
+      audioUrl: episode.audioUrl,
+      durationSeconds: episode.durationSeconds,
+      publishedAt: episode.publishedAt,
+    },
+  };
+
+  // Insert immediately before the first Creed slide.
+  const insertBefore = slides.findIndex((s) => s.type === "creed");
+  if (insertBefore === -1) {
+    // Creed is absent (shouldn't happen in MP) — insert before closing.
+    const beforeClosing = slides.findIndex((s) => s.type === "closing");
+    if (beforeClosing === -1) return [...slides, fddSlide];
+    return [...slides.slice(0, beforeClosing), fddSlide, ...slides.slice(beforeClosing)];
+  }
+  return [...slides.slice(0, insertBefore), fddSlide, ...slides.slice(insertBefore)];
 }
 
 // Inject the intercessions slide into a slide array between Prayer for
@@ -1171,12 +1230,20 @@ async function injectIntercessions(
 //
 // Applied per-user AFTER the cache step, so the canonical cached deck
 // remains the same for everyone — only the slices a user sees differ.
-export async function applyConfessionPref(slides: Slide[], userId: number): Promise<Slide[]> {
-  const [u] = await db
-    .select({ showConfession: usersTable.bcpShowConfession })
-    .from(usersTable)
-    .where(eq(usersTable.id, userId))
-    .limit(1);
-  if (u?.showConfession) return slides;
+export async function applyConfessionPref(slides: Slide[], userId: number, override?: boolean): Promise<Slide[]> {
+  let show: boolean;
+  if (override !== undefined) {
+    // Per-side override from the office fetch (?confession=1|0) — the
+    // Morning/Evening split lets each side carry its own confession choice.
+    show = override;
+  } else {
+    const [u] = await db
+      .select({ showConfession: usersTable.bcpShowConfession })
+      .from(usersTable)
+      .where(eq(usersTable.id, userId))
+      .limit(1);
+    show = !!u?.showConfession;
+  }
+  if (show) return slides;
   return slides.filter((s) => s.type !== "confession" && s.type !== "absolution");
 }

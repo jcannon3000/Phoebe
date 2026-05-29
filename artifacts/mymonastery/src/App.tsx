@@ -157,6 +157,8 @@ const PodcastShowPage = lazy(() => import("./pages/podcast-show"));
 const FddSitPage = lazy(() => import("./pages/fdd-sit"));
 const JournalPage = lazy(() => import("./pages/journal"));
 const GatheringsPage = lazy(() => import("./pages/gatherings"));
+const GatheringNewPage = lazy(() => import("./pages/gathering-new"));
+const GatheringDetailPage = lazy(() => import("./pages/gathering-detail"));
 const GatheringSettings = lazy(() => import("./pages/gathering-settings"));
 const MomentNew = lazy(() => import("./pages/moment-new"));
 const MomentDetail = lazy(() => import("./pages/moment-detail"));
@@ -168,6 +170,8 @@ const MomentRedirect = lazy(() => import("./pages/moment-redirect"));
 const PrayerListPage = lazy(() => import("./pages/prayer-list"));
 const PrayerModePage = lazy(() => import("./pages/prayer-mode"));
 const DailyPracticePage = lazy(() => import("./pages/daily-practice"));
+const RuleOfLifePage = lazy(() => import("./pages/rule-of-life"));
+const RuleOfLifeViewPage = lazy(() => import("./pages/rule-of-life-view"));
 const BeginPrayerPage = lazy(() => import("./pages/begin-prayer"));
 const PrayerStartPage = lazy(() => import("./pages/prayer-start"));
 const PrayerRequestDetailPage = lazy(() => import("./pages/prayer-request-detail"));
@@ -189,6 +193,9 @@ const ExamenPage = lazy(() => import("./pages/examen"));
 const ContemplationPage = lazy(() => import("./pages/contemplation"));
 const SaintsIndex = lazy(() => import("./pages/Saints/SaintsIndex"));
 const CustomizeHomePage = lazy(() => import("./pages/customize-home"));
+const CustomizeHomeAddPage = lazy(() =>
+  import("./pages/customize-home").then((m) => ({ default: m.CustomizeHomeAddPage })),
+);
 const GratitudePage = lazy(() => import("./pages/gratitude"));
 const BcpIntercessionsPage = lazy(() => import("./pages/bcp-intercessions"));
 const BcpDailyOfficePage = lazy(() => import("./pages/bcp-daily-office"));
@@ -527,6 +534,8 @@ function Router() {
       <Route path="/parish/concerns" component={ParishConcernsPage} />
       <Route path="/parish/intercessions" component={ParishIntercessionsPage} />
       <Route path="/gatherings" component={GatheringsPage} />
+      <Route path="/gatherings/new" component={GatheringNewPage} />
+      <Route path="/gatherings/:id" component={GatheringDetailPage} />
       <Route path="/gatherings/:id/settings" component={GatheringSettings} />
       <Route path="/ritual/:id/schedule" component={RitualSchedule} />
       <Route path="/tradition/new" component={TraditionNew} />
@@ -584,6 +593,11 @@ function Router() {
       <Route path="/pray-for/:email" component={PrayerForDetail} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/daily-practice" component={DailyPracticePage} />
+      {/* /rule-of-life/:id must sit above /rule-of-life so the id param isn't lost */}
+      <Route path="/rule-of-life/:id" component={RuleOfLifeViewPage} />
+      <Route path="/rule-of-life" component={RuleOfLifePage} />
+      {/* /customize-home/add must sit above /customize-home so it matches first */}
+      <Route path="/customize-home/add" component={CustomizeHomeAddPage} />
       <Route path="/customize-home" component={CustomizeHomePage} />
       <Route path="/about" component={AboutPage} />
       <Route path="/privacy" component={PrivacyPage} />

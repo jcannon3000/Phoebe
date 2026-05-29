@@ -3257,7 +3257,7 @@ export default function PrayerModePage() {
   // IN-APP as a slide right before the closing summary — replacing the old
   // "Read reflection" pill that ejected to SFSafariViewController. Effective
   // precedence: explicit Settings pick → visible home card → FDD default.
-  const reflectionSource = useEffectiveReflectionSource();
+  const reflectionSource = useEffectiveReflectionSource(closingIsEvening ? "evening" : "morning");
   const [reflectionDone, setReflectionDone] = useState(false);
   // Hold the closing summary behind the reflection slide until the user taps
   // Continue — but only on an office-finish walk (closingOnly / offices-only)

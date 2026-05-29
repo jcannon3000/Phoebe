@@ -561,6 +561,133 @@ function ShareLinkSection({
   );
 }
 
+// ── Composer form (shared between inline-edit and "add new") ─────────────
+//
+// Rendered in-place inside the item row when editing, or below the list
+// when adding a new intercession. Extracted so the same JSX isn't
+// duplicated in both call sites.
+interface ComposerFormProps {
+  draft: { source: "custom" | "action"; title: string; fullText: string; learnMoreUrl: string };
+  setDraft: (d: ComposerFormProps["draft"]) => void;
+  editingId: number | null;
+  savePending: boolean;
+  error: string | null;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+function ComposerForm({ draft, setDraft, editingId, savePending, error, onSave, onCancel }: ComposerFormProps) {
+  const inputStyle = {
+    background: "rgba(200,212,192,0.06)",
+    border: "1px solid rgba(46,107,64,0.35)",
+    color: "#F0EDE6",
+    fontFamily: "'Space Grotesk', sans-serif",
+    outline: "none",
+  } as const;
+
+  return (
+    <>
+      {/* Prayer / Action type toggle */}
+      <div className="flex gap-2">
+        {(["custom", "action"] as const).map((src) => (
+          <button
+            key={src}
+            type="button"
+            onClick={() => setDraft({ ...draft, source: src })}
+            className="text-xs font-semibold px-3 py-1.5 rounded-full transition-opacity"
+            style={{
+              background: draft.source === src ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+              border: `1px solid ${draft.source === src ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
+              color: draft.source === src ? "#F0EDE6" : "#8FAF96",
+              cursor: "pointer",
+            }}
+          >
+            {src === "custom" ? "🙏 Prayer" : "🌍 Action"}
+          </button>
+        ))}
+      </div>
+      <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)" }}>
+        {draft.source === "action"
+          ? "A prayer paired with a concrete invitation — subscribers see a “Take action →” button."
+          : "A written intercession. Add a link below to include a “Learn more →” button."}
+      </p>
+
+      {/* Title / intention */}
+      <div>
+        <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+          Title / intention
+        </label>
+        <input
+          type="text"
+          value={draft.title}
+          onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+          maxLength={200}
+          placeholder="e.g. For the people of Gaza"
+          // eslint-disable-next-line jsx-a11y/no-autofocus
+          autoFocus
+          className="w-full px-3 py-2 rounded-lg text-sm"
+          style={inputStyle}
+        />
+      </div>
+
+      {/* Prayer text */}
+      <div>
+        <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+          Prayer text
+        </label>
+        <textarea
+          value={draft.fullText}
+          onChange={(e) => setDraft({ ...draft, fullText: e.target.value })}
+          maxLength={2000}
+          rows={4}
+          placeholder="Write the intercession…"
+          className="w-full px-3 py-2 rounded-lg text-sm resize-none"
+          style={inputStyle}
+        />
+      </div>
+
+      {/* Link — required for Action, optional for Prayer */}
+      <div>
+        <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
+          {draft.source === "action" ? "Action link (required)" : "Learn-more link (optional)"}
+        </label>
+        <input
+          type="url"
+          value={draft.learnMoreUrl}
+          onChange={(e) => setDraft({ ...draft, learnMoreUrl: e.target.value })}
+          maxLength={500}
+          placeholder="https://…"
+          className="w-full px-3 py-2 rounded-lg text-sm"
+          style={inputStyle}
+        />
+      </div>
+
+      {error && <p className="text-xs" style={{ color: "#E8B872" }}>{error}</p>}
+
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={savePending}
+          className="flex-1 text-sm font-semibold rounded-full py-2 disabled:opacity-50"
+          style={{ background: "#2E6B40", color: "#F0EDE6", cursor: savePending ? "not-allowed" : "pointer" }}
+        >
+          {savePending ? "Saving…" : editingId != null ? "Save changes" : "Add intercession"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={savePending}
+          className="text-sm font-medium rounded-full px-4 py-2 disabled:opacity-50"
+          style={{ background: "transparent", border: "1px solid rgba(46,107,64,0.4)", color: "#8FAF96", cursor: "pointer" }}
+        >
+          Cancel
+        </button>
+      </div>
+    </>
+  );
+}
+
 // ── Intercessions composer ──────────────────────────────────────────────
 //
 // The feed's whole content surface: a flat, ongoing list of community
@@ -704,12 +831,28 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
       <div className="space-y-2 mb-3">
         {items.map((it) => {
           const isAction = it.intercessionSource === "action";
+          // When this item is being edited, expand the form inline in
+          // place of the row — no scrolling needed.
+          if (composing && editingId === it.id) {
+            return (
+              <div
+                key={it.id}
+                className="rounded-lg p-3 space-y-3"
+                style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.5)" }}
+              >
+                <ComposerForm
+                  draft={draft}
+                  setDraft={setDraft}
+                  editingId={editingId}
+                  savePending={savePending}
+                  error={error}
+                  onSave={save}
+                  onCancel={closeComposer}
+                />
+              </div>
+            );
+          }
           return (
-            // Row container is a div (not a button) so the inline Edit
-            // pencil can be its own button without nesting interactive
-            // elements. The left text region keeps the tap-to-open
-            // affordance; the right-hand pencil opens the composer in
-            // edit mode without navigating away.
             <div
               key={it.id}
               className="w-full rounded-xl px-4 py-3 flex items-center gap-3"
@@ -766,115 +909,22 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
         )}
       </div>
 
-      {composing ? (
+      {/* "Add new" composer — only shown when composing a brand-new item,
+          not when editing an existing one (that form is inline above). */}
+      {composing && editingId === null ? (
         <div
           className="rounded-lg p-3 space-y-3"
           style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.2)" }}
         >
-          {/* Type toggle — Prayer vs Action. */}
-          <div className="flex gap-2">
-            {([
-              { key: "custom" as const, label: "🙏🏽 Prayer", sub: "A written prayer" },
-              { key: "action" as const, label: "🌍 Action", sub: "Prayer + a link" },
-            ]).map((opt) => {
-              const on = draft.source === opt.key;
-              return (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setDraft({ ...draft, source: opt.key })}
-                  className="flex-1 text-left rounded-lg px-3 py-2 transition-opacity"
-                  style={{
-                    background: on ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
-                    border: `1px solid ${on ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
-                  }}
-                >
-                  <p className="text-xs font-semibold" style={{ color: "#F0EDE6" }}>{opt.label}</p>
-                  <p className="text-[10px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)" }}>{opt.sub}</p>
-                </button>
-              );
-            })}
-          </div>
-
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-              Title
-            </label>
-            <input
-              type="text"
-              value={draft.title}
-              onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-              maxLength={120}
-              placeholder="e.g. For families displaced by the floods"
-              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
-              style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" }}
-            />
-          </div>
-
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-              Prayer
-            </label>
-            <textarea
-              value={draft.fullText}
-              onChange={(e) => setDraft({ ...draft, fullText: e.target.value })}
-              rows={4}
-              maxLength={4000}
-              placeholder="Write the prayer your subscribers will pray together…"
-              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm resize-none"
-              style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" }}
-            />
-          </div>
-
-          {/* Link field — required for an Action ("Take action →"
-              pill), optional for a written Prayer ("Learn more →" pill
-              for linking the article a prayer is responding to). */}
-          <div>
-            <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-              {draft.source === "action" ? "Action link" : "Learn more URL (optional)"}
-            </label>
-            <input
-              type="url"
-              value={draft.learnMoreUrl}
-              onChange={(e) => setDraft({ ...draft, learnMoreUrl: e.target.value })}
-              maxLength={500}
-              placeholder="https://…"
-              className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
-              style={{ borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" }}
-            />
-            <p className="text-[10px] mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
-              {draft.source === "action"
-                ? 'Shown as a "Take action →" pill on the prayer slide.'
-                : 'Link an article — subscribers see a "Learn more →" pill on the slide that opens it.'}
-            </p>
-          </div>
-
-          {error && (
-            <p className="text-[11px]" style={{ color: "#E57373" }}>{error}</p>
-          )}
-
-          <div className="flex items-center gap-2 pt-1">
-            <button
-              type="button"
-              onClick={save}
-              disabled={savePending || !draft.title.trim() || !draft.fullText.trim()}
-              className="text-xs font-semibold px-3 py-2 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-40"
-              style={{ background: "#2D5E3F", border: "1px solid #2D5E3F", color: "#F0EDE6" }}
-            >
-              {savePending
-                ? (editingId != null ? "Saving…" : "Adding…")
-                : (editingId != null ? "Save changes" : "Add intercession")}
-            </button>
-            <button
-              type="button"
-              onClick={closeComposer}
-              disabled={savePending}
-              className="text-xs font-semibold px-3 py-2 rounded-lg transition-opacity hover:opacity-90"
-              style={{ background: "transparent", border: "1px solid rgba(143,175,150,0.3)", color: "#A8C5A0" }}
-            >
-              Cancel
-            </button>
-          </div>
+          <ComposerForm
+            draft={draft}
+            setDraft={setDraft}
+            editingId={editingId}
+            savePending={savePending}
+            error={error}
+            onSave={save}
+            onCancel={closeComposer}
+          />
         </div>
       ) : picking ? (
         // "Add from a community" — attach an existing community

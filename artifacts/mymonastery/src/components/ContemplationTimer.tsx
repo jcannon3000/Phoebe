@@ -50,7 +50,20 @@ function formatDone(totalSeconds: number): string {
   return `${m} min ${sec} sec`;
 }
 
-type Phase = "picker" | "running" | "complete";
+// "reflection" is the audio-led opening (e.g. Forward Day by Day read
+// aloud). It plays FIRST and is deliberately NOT counted as
+// contemplative time — only the "running" silence that follows it logs
+// as prayer. Plain sits skip "reflection" and go picker → running.
+type Phase = "picker" | "reflection" | "running" | "complete";
+
+// Format a reflection/audio duration as a short human-readable string.
+// "5 min" for even minutes, "5 min 45 sec" when seconds remain.
+function formatReflectionLength(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (s === 0) return `${m} min`;
+  return `${m} min ${s} sec`;
+}
 
 export function ContemplationTimer({
   open,
@@ -70,6 +83,7 @@ export function ContemplationTimer({
   audioUrl,
   audioTitle,
   eyebrowLabel,
+  audioDurationSeconds,
 }: {
   open: boolean;
   // `completed` is true when the user actually sat (reached the closing
@@ -81,12 +95,24 @@ export function ContemplationTimer({
   audioUrl?: string | null;
   audioTitle?: string | null;
   eyebrowLabel?: string;
+  // When set (e.g. Forward Day by Day), the picker shows the reflection
+  // duration and lets the user choose how much silence to add AFTER the
+  // audio ends, rather than picking a total time blind. The total passed
+  // to begin() = ceil(audioDurationSeconds/60) + chosen silence minutes,
+  // so the timer is always long enough for the reflection to complete.
+  audioDurationSeconds?: number | null;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [phase, setPhase] = useState<Phase>("picker");
   const [customMode, setCustomMode] = useState(false);
   const [customMin, setCustomMin] = useState("10");
+  // FDD-specific silence add-on state (shown in the picker when
+  // audioDurationSeconds is set). Default 5 min of silence after the
+  // reflection; 0 = reflection only, no extra silence.
+  const [fddSilenceMin, setFddSilenceMin] = useState(5);
+  const [fddCustomMode, setFddCustomMode] = useState(false);
+  const [fddCustomMin, setFddCustomMin] = useState("10");
   // Chosen length + the live remaining count (seconds).
   const [totalSeconds, setTotalSeconds] = useState(0);
   const [remaining, setRemaining] = useState(0);
@@ -133,7 +159,16 @@ export function ContemplationTimer({
   // Optional audio (e.g. Forward Day by Day read aloud) that opens the sit.
   const audioElRef = useRef<HTMLAudioElement | null>(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
+  // Live audio position during the reflection phase — drives the progress
+  // bar + time readout so the listener sees how much of the reflection is left.
+  const [audioElapsed, setAudioElapsed] = useState(0);
   const stopAudio = () => { try { audioElRef.current?.pause(); } catch { /* non-fatal */ } };
+  // Chosen silence (minutes) to sit AFTER the reflection, remembered across
+  // the reflection phase so the audio's onEnded can start the right length.
+  const silenceMinRef = useRef(0);
+  // Mirrors `phase` for callbacks (audio onEnded) that would otherwise read
+  // a stale closure value.
+  const phaseRef = useRef<Phase>("picker");
   const eyebrow = eyebrowLabel ?? t("contemplation.title");
 
   // Fire a native-shell bridge event (no-op on the plain web build —
@@ -204,7 +239,9 @@ export function ContemplationTimer({
         setReachedGoal(false);
         setOvertime(0);
         setPhase("picker");
+        phaseRef.current = "picker";
         setCustomMode(false);
+        setAudioElapsed(0);
       }
     } else {
       releaseWakeLock();
@@ -287,17 +324,16 @@ export function ContemplationTimer({
       .catch(() => { /* non-fatal — summary just shows the existing copy */ });
   }
 
+  // Entry point from the picker / quick buttons. In audio (FDD) mode
+  // `minutes` is the SILENCE to sit AFTER the reflection — the reflection
+  // plays first and is NOT counted as contemplative time. In plain mode
+  // `minutes` is the whole sit and we go straight into the silence.
   function begin(minutes: number) {
     // Warm up the Web Audio context inside the Begin tap's user-gesture
-    // scope so the opening swell at line ~244 lands on a "running" context
+    // scope so the opening/closing swell lands on a "running" context
     // instead of a suspended one. Without this, the swell often silently
-    // fails on the first sit after a cold launch because resume() runs
-    // outside the gesture by the time playOpeningSwell schedules its
-    // oscillators.
+    // fails on the first sit after a cold launch.
     primeAudio();
-    const total = Math.max(1, Math.round(minutes)) * 60;
-    setTotalSeconds(total);
-    setRemaining(total);
     setSatSeconds(0);
     setReachedGoal(false);
     setOvertime(0);
@@ -312,27 +348,68 @@ export function ContemplationTimer({
     recordedRef.current = false;
     finishedRef.current = false;
     reachedRef.current = false;
-    startedAtRef.current = new Date();
-    endAtRef.current = Date.now() + total * 1000;
     setEndedEarly(false);
-    setPhase("running");
-    void acquireWakeLock();
-    scheduleEndBell(endAtRef.current);
+
     if (audioUrl) {
-      // The audio IS the opening — start it instead of the chapel-exhale
-      // swell so the two don't collide. (The closing bell still rings at
-      // the goal, primed by primeAudio() above.) This runs inside the
-      // Begin tap's user gesture, so iOS lets it play.
+      // Reflection phase: play the audio FIRST. The contemplative
+      // countdown does not start until the reflection ends (or is
+      // skipped) — only the silence after it logs as prayer.
+      silenceMinRef.current = Math.max(0, Math.round(minutes));
+      setAudioElapsed(0);
+      setPhase("reflection");
+      phaseRef.current = "reflection";
+      void acquireWakeLock();
       const a = audioElRef.current;
       if (a) {
         try { a.currentTime = 0; } catch { /* ignore */ }
-        a.play().then(() => setAudioPlaying(true)).catch(() => { /* gated/offline — the silence still counts */ });
+        // Runs inside the Begin tap's user gesture, so iOS lets it play.
+        a.play().then(() => setAudioPlaying(true)).catch(() => {
+          // Couldn't play (gated/offline) — fall through to the silence.
+          startSilence(silenceMinRef.current);
+        });
+      } else {
+        startSilence(silenceMinRef.current);
       }
     } else {
-      // Opening swell — the same chapel-exhale the prayer slideshow plays
-      // on every slide entry (octave 0, the base voicing).
-      playOpeningSwell(0);
+      startSilence(minutes);
     }
+  }
+
+  // Begin the silent contemplation countdown. THIS is the only stretch
+  // logged as contemplative prayer — in FDD mode the reflection that
+  // played first is intentionally excluded. `minutes <= 0` means the user
+  // chose "reflection only", so there's nothing to sit and nothing to log.
+  function startSilence(minutes: number) {
+    const mins = Math.max(0, Math.round(minutes));
+    if (mins <= 0) {
+      // Reflection-only — close gently once the audio is done. Nothing logs.
+      stopAudio();
+      setAudioPlaying(false);
+      releaseWakeLock();
+      cancelEndBell();
+      onClose({ completed: true });
+      return;
+    }
+    // The reflection is over — silence starts NOW, so the logged time
+    // begins here (excluding the audio that preceded it).
+    stopAudio();
+    setAudioPlaying(false);
+    const total = mins * 60;
+    setTotalSeconds(total);
+    setRemaining(total);
+    startedAtRef.current = new Date();
+    endAtRef.current = Date.now() + total * 1000;
+    reachedRef.current = false;
+    finishedRef.current = false;
+    setReachedGoal(false);
+    setOvertime(0);
+    setPhase("running");
+    phaseRef.current = "running";
+    void acquireWakeLock();
+    scheduleEndBell(endAtRef.current);
+    // Opening swell — the chapel-exhale that marks the hand-off from
+    // listening into stillness (octave 0, the base voicing).
+    playOpeningSwell(0);
   }
 
   // The set time has elapsed. Ring the closing bell and flip into
@@ -381,6 +458,14 @@ export function ContemplationTimer({
       } catch { /* non-fatal */ }
     }
     setPhase("complete");
+    phaseRef.current = "complete";
+  }
+
+  // Skip the rest of the reflection and go straight into the silence.
+  // Used by the "Skip to silence" control in the reflection phase.
+  function skipToSilence() {
+    if (phaseRef.current !== "reflection") return;
+    startSilence(silenceMinRef.current);
   }
 
   // The "End" pill. Before the bell → log the elapsed time (early end).
@@ -460,12 +545,18 @@ export function ContemplationTimer({
             preload="auto"
             onPlay={() => setAudioPlaying(true)}
             onPause={() => setAudioPlaying(false)}
-            onEnded={() => setAudioPlaying(false)}
+            onTimeUpdate={(e) => setAudioElapsed(e.currentTarget.currentTime)}
+            onEnded={() => {
+              setAudioPlaying(false);
+              // Reflection finished → flow into the silent contemplation.
+              if (phaseRef.current === "reflection") startSilence(silenceMinRef.current);
+            }}
           />
         )}
         {/* Close (×) — top right, safe-area aware. Hidden mid-sit so a
             stray tap doesn't abandon the silence; an explicit "End"
-            sits at the bottom instead. */}
+            sits at the bottom instead. Shown in the reflection phase so
+            the listener can back out before the silence begins. */}
         {phase !== "running" && (
           <button
             type="button"
@@ -494,81 +585,241 @@ export function ContemplationTimer({
               <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: "rgba(143,175,150,0.55)" }}>
                 {eyebrow}
               </p>
-              <p className="text-[22px] leading-[1.4] font-medium italic mb-8" style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif" }}>
-                {t("contemplation_timer.how_long")}
-              </p>
 
-              {!customMode ? (
-                <>
-                  <div className="grid grid-cols-3 gap-3 w-full">
-                    {PRESETS.map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => begin(m)}
-                        className="rounded-2xl py-4 transition-opacity hover:opacity-90 active:scale-[0.98]"
-                        style={{
-                          background: "rgba(46,107,64,0.16)",
-                          border: "1px solid rgba(46,107,64,0.4)",
-                          color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 600, cursor: "pointer",
-                        }}
+              {audioUrl ? (
+                // ── FDD / audio-led picker ────────────────────────────────────
+                // Shows how long today's reflection is (when known), then lets
+                // the user choose how much silence to add after it. begin() is
+                // called directly inside the Begin button's onClick so the
+                // audio gesture requirement is met on iOS.
+                (() => {
+                  // audioMin is the ceiling of the episode in whole minutes,
+                  // or a generous 10-min fallback when the feed omits duration.
+                  const audioMin = audioDurationSeconds != null
+                    ? Math.ceil(audioDurationSeconds / 60)
+                    : null;
+
+                  return (
+                    <>
+                      {/* Reflection duration badge — names how long today's
+                          Forward Day by Day reflection runs before the sit. */}
+                      <div
+                        className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-5"
+                        style={{ background: "rgba(96,141,209,0.16)", border: "1px solid rgba(96,141,209,0.4)" }}
                       >
-                        {m}
-                        <span className="block text-[11px] font-normal mt-0.5" style={{ color: SAGE }}>
-                          {m === 1 ? t("contemplation.minute") : t("contemplation.minutes")}
+                        <span aria-hidden style={{ fontSize: 14 }}>🎧</span>
+                        <span
+                          className="text-[13px] font-semibold"
+                          style={{ color: "#C8D4C0", fontFamily: SPACE_GROTESK, letterSpacing: "0.01em" }}
+                        >
+                          {audioMin != null
+                            ? `${formatReflectionLength(audioDurationSeconds!)} reflection`
+                            : "Today's reflection"}
                         </span>
+                      </div>
+
+                      <p
+                        className="text-[22px] leading-[1.4] font-medium italic mb-2"
+                        style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif" }}
+                      >
+                        How long would you like to sit afterward?
+                      </p>
+                      <p
+                        className="text-[12px] mb-7"
+                        style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, serif", fontStyle: "italic" }}
+                      >
+                        The reflection plays first, then your silence begins.
+                      </p>
+
+                      {!fddCustomMode ? (
+                        <>
+                          <div className="grid grid-cols-3 gap-3 w-full">
+                            {/* "None" = reflection only */}
+                            <button
+                              type="button"
+                              onClick={() => setFddSilenceMin(0)}
+                              className="rounded-2xl py-4 transition-opacity hover:opacity-90 active:scale-[0.98]"
+                              style={{
+                                background: fddSilenceMin === 0 ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.16)",
+                                border: `1px solid ${fddSilenceMin === 0 ? "rgba(46,107,64,0.65)" : "rgba(46,107,64,0.4)"}`,
+                                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, cursor: "pointer",
+                              }}
+                            >
+                              None
+                            </button>
+                            {[3, 5, 10, 15, 20].map((m) => (
+                              <button
+                                key={m}
+                                type="button"
+                                onClick={() => setFddSilenceMin(m)}
+                                className="rounded-2xl py-4 transition-opacity hover:opacity-90 active:scale-[0.98]"
+                                style={{
+                                  background: fddSilenceMin === m ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.16)",
+                                  border: `1px solid ${fddSilenceMin === m ? "rgba(46,107,64,0.65)" : "rgba(46,107,64,0.4)"}`,
+                                  color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 600, cursor: "pointer",
+                                }}
+                              >
+                                {m}
+                                <span className="block text-[11px] font-normal mt-0.5" style={{ color: SAGE }}>min</span>
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setFddCustomMode(true)}
+                            className="mt-4 text-[13px] transition-opacity hover:opacity-80"
+                            style={{ color: "rgba(143,175,150,0.8)", background: "none", border: "none", cursor: "pointer", fontFamily: SPACE_GROTESK }}
+                          >
+                            {t("contemplation_timer.custom_length")}
+                          </button>
+                        </>
+                      ) : (
+                        <div className="w-full flex flex-col items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              inputMode="numeric"
+                              min={0}
+                              max={120}
+                              value={fddCustomMin}
+                              onChange={(e) => setFddCustomMin(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
+                              className="text-center rounded-xl py-3 px-4 text-[22px] font-semibold"
+                              style={{
+                                width: 110,
+                                background: "rgba(15,40,24,0.6)",
+                                border: "1px solid rgba(46,107,64,0.4)",
+                                color: WARM, fontFamily: SPACE_GROTESK,
+                              }}
+                            />
+                            <span style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>min silence</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const n = Math.max(0, Math.min(120, parseInt(fddCustomMin || "0", 10) || 0));
+                              setFddSilenceMin(n);
+                              setFddCustomMode(false);
+                            }}
+                            className="rounded-full py-3 px-8 text-sm font-semibold transition-opacity hover:opacity-90"
+                            style={{ background: "rgba(46,107,64,0.25)", border: "1px solid rgba(46,107,64,0.5)", color: WARM, cursor: "pointer", fontFamily: SPACE_GROTESK }}
+                          >
+                            Set
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFddCustomMode(false)}
+                            className="text-[13px] transition-opacity hover:opacity-80"
+                            style={{ color: "rgba(143,175,150,0.7)", background: "none", border: "none", cursor: "pointer", fontFamily: SPACE_GROTESK }}
+                          >
+                            {t("contemplation_timer.back_to_presets")}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Contemplation hint — only the silence after the
+                          reflection counts as contemplative prayer time. */}
+                      {!fddCustomMode && (
+                        <p className="mt-4 text-[11px]" style={{ color: "rgba(143,175,150,0.5)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+                          {fddSilenceMin === 0
+                            ? "Reflection only — no silence after"
+                            : `${fddSilenceMin} min of silence logs as contemplative prayer`}
+                        </p>
+                      )}
+
+                      {/* Begin — passes the SILENCE length only; the reflection
+                          plays first and isn't counted. Called inside onClick
+                          so iOS allows audio.play(). */}
+                      <button
+                        type="button"
+                        onClick={() => begin(fddSilenceMin)}
+                        className="mt-6 w-full max-w-xs rounded-full py-3.5 text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
+                        style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", cursor: "pointer", fontFamily: SPACE_GROTESK }}
+                      >
+                        {fddSilenceMin === 0 ? "Play reflection" : "Begin"}
                       </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setCustomMode(true)}
-                    className="mt-5 text-[13px] transition-opacity hover:opacity-80"
-                    style={{ color: "rgba(143,175,150,0.8)", background: "none", border: "none", cursor: "pointer", fontFamily: SPACE_GROTESK }}
-                  >
-                    {t("contemplation_timer.custom_length")}
-                  </button>
-                </>
+                    </>
+                  );
+                })()
               ) : (
-                <div className="w-full flex flex-col items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={1}
-                      max={120}
-                      value={customMin}
-                      onChange={(e) => setCustomMin(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
-                      className="text-center rounded-xl py-3 px-4 text-[22px] font-semibold"
-                      style={{
-                        width: 110,
-                        background: "rgba(15,40,24,0.6)",
-                        border: "1px solid rgba(46,107,64,0.4)",
-                        color: WARM, fontFamily: SPACE_GROTESK,
-                      }}
-                    />
-                    <span style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{t("contemplation.minutes")}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const n = Math.max(1, Math.min(120, parseInt(customMin || "0", 10) || 0));
-                      begin(n);
-                    }}
-                    className="w-full max-w-xs rounded-full py-3.5 text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
-                    style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", cursor: "pointer", fontFamily: SPACE_GROTESK }}
-                  >
-                    {t("examen.begin")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCustomMode(false)}
-                    className="text-[13px] transition-opacity hover:opacity-80"
-                    style={{ color: "rgba(143,175,150,0.7)", background: "none", border: "none", cursor: "pointer", fontFamily: SPACE_GROTESK }}
-                  >
-                    {t("contemplation_timer.back_to_presets")}
-                  </button>
-                </div>
+                // ── Standard contemplation picker ─────────────────────────────
+                <>
+                  <p className="text-[22px] leading-[1.4] font-medium italic mb-8" style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif" }}>
+                    {t("contemplation_timer.how_long")}
+                  </p>
+
+                  {!customMode ? (
+                    <>
+                      <div className="grid grid-cols-3 gap-3 w-full">
+                        {PRESETS.map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => begin(m)}
+                            className="rounded-2xl py-4 transition-opacity hover:opacity-90 active:scale-[0.98]"
+                            style={{
+                              background: "rgba(46,107,64,0.16)",
+                              border: "1px solid rgba(46,107,64,0.4)",
+                              color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 600, cursor: "pointer",
+                            }}
+                          >
+                            {m}
+                            <span className="block text-[11px] font-normal mt-0.5" style={{ color: SAGE }}>
+                              {m === 1 ? t("contemplation.minute") : t("contemplation.minutes")}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCustomMode(true)}
+                        className="mt-5 text-[13px] transition-opacity hover:opacity-80"
+                        style={{ color: "rgba(143,175,150,0.8)", background: "none", border: "none", cursor: "pointer", fontFamily: SPACE_GROTESK }}
+                      >
+                        {t("contemplation_timer.custom_length")}
+                      </button>
+                    </>
+                  ) : (
+                    <div className="w-full flex flex-col items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={120}
+                          value={customMin}
+                          onChange={(e) => setCustomMin(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
+                          className="text-center rounded-xl py-3 px-4 text-[22px] font-semibold"
+                          style={{
+                            width: 110,
+                            background: "rgba(15,40,24,0.6)",
+                            border: "1px solid rgba(46,107,64,0.4)",
+                            color: WARM, fontFamily: SPACE_GROTESK,
+                          }}
+                        />
+                        <span style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{t("contemplation.minutes")}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const n = Math.max(1, Math.min(120, parseInt(customMin || "0", 10) || 0));
+                          begin(n);
+                        }}
+                        className="w-full max-w-xs rounded-full py-3.5 text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
+                        style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", cursor: "pointer", fontFamily: SPACE_GROTESK }}
+                      >
+                        {t("examen.begin")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomMode(false)}
+                        className="text-[13px] transition-opacity hover:opacity-80"
+                        style={{ color: "rgba(143,175,150,0.7)", background: "none", border: "none", cursor: "pointer", fontFamily: SPACE_GROTESK }}
+                      >
+                        {t("contemplation_timer.back_to_presets")}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}

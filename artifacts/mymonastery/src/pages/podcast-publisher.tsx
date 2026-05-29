@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
+import { Layout } from "@/components/layout";
 
 // ── /podcasts/:publisher — a publisher's shows ──────────────────────────
 //
@@ -99,23 +100,8 @@ export default function PodcastPublisherPage() {
   if (authLoading || !user) return null;
 
   return (
-    <div style={{ minHeight: "100dvh", background: PALETTE.bg, color: PALETTE.warm, fontFamily: FONT }}>
-      <header
-        style={{
-          paddingTop: "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))",
-          paddingLeft: 20, paddingRight: 20, paddingBottom: 8,
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => setLocation("/dashboard")}
-          style={{ background: "none", border: "none", color: PALETTE.sage, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}
-        >
-          ← {t("common.back")}
-        </button>
-      </header>
-
-      <main className="w-full max-w-2xl mx-auto" style={{ padding: "8px 16px 40px" }}>
+    <Layout>
+      <div className="w-full max-w-2xl mx-auto" style={{ color: PALETTE.warm, fontFamily: FONT, paddingBottom: 40 }}>
         <div className="flex items-center gap-3 mb-1">
           <span style={{ fontSize: 26 }} aria-hidden>{data?.emoji ?? "🎧"}</span>
           <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0, lineHeight: 1.15 }}>
@@ -175,7 +161,7 @@ export default function PodcastPublisherPage() {
             </div>
           ))}
         </div>
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 }

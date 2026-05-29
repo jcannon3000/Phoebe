@@ -5,6 +5,7 @@ import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { ChevronLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type MutedUser = { userId: number; name: string; email: string };
 type GardenPerson = { name: string; email: string };
@@ -19,6 +20,7 @@ export default function MutedUsersPage() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   const [muteSearch, setMuteSearch] = useState("");
   const [addSearch, setAddSearch] = useState("");
@@ -86,7 +88,7 @@ export default function MutedUsersPage() {
             style={{ color: "#8FAF96" }}
           >
             <ChevronLeft size={16} />
-            Settings
+            {t("menu.settings")}
           </button>
         </div>
 
@@ -95,41 +97,41 @@ export default function MutedUsersPage() {
             className="text-2xl font-bold"
             style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            Muted People
+            {t("mutes.title")}
           </h1>
           <button
             onClick={() => { setShowAdd(v => !v); setAddSearch(""); }}
             className="text-sm font-medium px-3 py-1.5 rounded-full transition-opacity hover:opacity-80"
             style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.25)" }}
           >
-            {showAdd ? "Done" : "+ Add"}
+            {showAdd ? t("common.done") : t("mutes.add")}
           </button>
         </div>
         <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-          Their prayer requests and Lectio reflections won't appear in your view.
+          {t("mutes.subtitle")}
         </p>
 
         {/* ── Add section ── */}
         {showAdd && (
           <div className="mb-6 rounded-xl px-4 py-4" style={{ background: "rgba(200,212,192,0.03)", border: "1px solid rgba(46,107,64,0.2)" }}>
             <p className="text-xs font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(200,212,192,0.4)" }}>
-              Mute someone from your garden
+              {t("mutes.add_section_label")}
             </p>
             <input
               type="text"
               value={addSearch}
               onChange={e => setAddSearch(e.target.value)}
-              placeholder="Search by name or email…"
+              placeholder={t("mutes.add_search_placeholder")}
               className="w-full rounded-xl px-4 py-2.5 text-sm outline-none mb-3"
               style={INPUT_STYLE}
               onFocus={e => { e.currentTarget.style.borderColor = "rgba(46,107,64,0.55)"; }}
               onBlur={e => { e.currentTarget.style.borderColor = "rgba(46,107,64,0.25)"; }}
             />
             {filteredGarden.length === 0 && addSearch.trim() && (
-              <p className="text-sm" style={{ color: "#8FAF96" }}>No one found.</p>
+              <p className="text-sm" style={{ color: "#8FAF96" }}>{t("mutes.none_found")}</p>
             )}
             {filteredGarden.length === 0 && !addSearch.trim() && (
-              <p className="text-sm" style={{ color: "#8FAF96" }}>Everyone in your garden is unmuted.</p>
+              <p className="text-sm" style={{ color: "#8FAF96" }}>{t("mutes.all_unmuted")}</p>
             )}
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {filteredGarden.map(p => (
@@ -144,7 +146,7 @@ export default function MutedUsersPage() {
                     className="text-xs font-medium px-3 py-1.5 rounded-full shrink-0 transition-opacity hover:opacity-80 disabled:opacity-40"
                     style={{ background: "rgba(194,92,92,0.1)", color: "#C25C5C", border: "1px solid rgba(194,92,92,0.25)" }}
                   >
-                    🔇 Mute
+                    {t("mutes.mute")}
                   </button>
                 </div>
               ))}
@@ -157,7 +159,7 @@ export default function MutedUsersPage() {
           type="text"
           value={muteSearch}
           onChange={e => setMuteSearch(e.target.value)}
-          placeholder="Search muted people…"
+          placeholder={t("mutes.search_placeholder")}
           className="w-full rounded-xl px-4 py-3 text-sm outline-none mb-4"
           style={INPUT_STYLE}
           onFocus={e => { e.currentTarget.style.borderColor = "rgba(46,107,64,0.55)"; }}
@@ -165,15 +167,15 @@ export default function MutedUsersPage() {
         />
 
         {isLoading && (
-          <p className="text-sm" style={{ color: "#8FAF96" }}>Loading…</p>
+          <p className="text-sm" style={{ color: "#8FAF96" }}>{t("common.loading")}</p>
         )}
         {!isLoading && muted.length === 0 && (
           <p className="text-sm" style={{ color: "#8FAF96" }}>
-            No one muted. Tap "+ Add" above or mute someone from their prayer request.
+            {t("mutes.empty")}
           </p>
         )}
         {!isLoading && muted.length > 0 && filteredMuted.length === 0 && (
-          <p className="text-sm" style={{ color: "#8FAF96" }}>No results for "{muteSearch}".</p>
+          <p className="text-sm" style={{ color: "#8FAF96" }}>{t("mutes.no_results", { query: muteSearch })}</p>
         )}
 
         <div className="space-y-2">
@@ -193,7 +195,7 @@ export default function MutedUsersPage() {
                 className="text-xs font-medium px-3 py-1.5 rounded-full shrink-0 transition-opacity hover:opacity-80 disabled:opacity-40"
                 style={{ background: "rgba(46,107,64,0.15)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.25)" }}
               >
-                Unmute
+                {t("mutes.unmute")}
               </button>
             </div>
           ))}

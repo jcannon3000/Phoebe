@@ -2056,12 +2056,6 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
       ].filter((id): id is number => typeof id === "number"),
     ),
   );
-  console.log(
-    `[groups/${req.params.slug}/prayer-requests] resolved ${memberUserIds.length} member user IDs ` +
-    `from ${joinedMemberRows.length} roster rows:`,
-    memberUserIds,
-  );
-
   // Hidden-admin filter — SCOPED TO THIS COMMUNITY.
   //
   // Earlier rule was global: once hidden_admin in ANY group, your
@@ -2200,11 +2194,6 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
     isAnonymous: r.isAnonymous,
     createdAt: r.createdAt,
   }));
-
-  console.log(
-    `[groups/${req.params.slug}/prayer-requests] returning ${requests.length} requests` +
-    (requests.length > 0 ? ` — owners: ${rows.map(r => r.ownerId).join(", ")}` : ""),
-  );
 
   // Debug dump: hit /api/groups/<slug>/prayer-requests?debug=1 to see
   // exactly what the server computed — roster rows, resolved member

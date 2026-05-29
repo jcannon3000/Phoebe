@@ -74,6 +74,14 @@ interface ContactSuggestion { name: string; email: string; }
 // ─── Templates ───────────────────────────────────────────────────────────────
 const TEMPLATES = [
   {
+    id: "morning-prayer", emoji: "🌅", name: "Morning Prayer",
+    desc: "Pray the Daily Office together each morning — everyone from their own home, the same words.",
+  },
+  {
+    id: "evening-prayer", emoji: "🌙", name: "Evening Prayer",
+    desc: "Close the day together in the Daily Office — the same words, from wherever you are.",
+  },
+  {
     id: "lectio-divina", emoji: "📜", name: "Lectio Divina",
     desc: "Read this Sunday's gospel together in three unhurried stages — Mon, Wed, Fri. Catch up any day.",
     prefill: {
@@ -401,7 +409,7 @@ export default function MomentNew() {
   const [scheduledHour, setScheduledHour] = useState(8);
   const [scheduledMinute, setScheduledMinute] = useState(0);
   const [scheduledAmPm, setScheduledAmPm] = useState<"AM" | "PM">("AM");
-  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay | null>(null);
+  const [timeOfDay, setTimeOfDay] = useState<TimeOfDay | null>("morning");
   const [commitmentDays, setCommitmentDays] = useState(30);
   const [commitmentSessionsGoal, setCommitmentSessionsGoal] = useState<number | null>(3);
   const [practiceDurationDays, setPracticeDurationDays] = useState<number | null>(null);
@@ -640,7 +648,7 @@ export default function MomentNew() {
 
   // ─── Navigation ─────────────────────────────────────────────────────────────
   const isBcpTemplate = templateId === "morning-prayer" || templateId === "evening-prayer";
-  const BCP_STEP_ORDER: StepId[] = ["template", "bcp-commitment", "bcp-frequency", "bcp-days", "bcp-invite"];
+  const BCP_STEP_ORDER: StepId[] = ["template", "bcp-commitment", "bcp-frequency", "bcp-days", "bcp-time", "bcp-invite"];
   const STEP_ORDER: StepId[] = isBcpTemplate
     ? BCP_STEP_ORDER
     : templateId === "intercession"
@@ -660,9 +668,9 @@ export default function MomentNew() {
       : ["template", "name", "intention", "logging", "schedule", "invite"];
 
   function goNext() {
-    // Skip bcp-days for daily (no specific days to choose)
+    // Skip bcp-days for daily (no specific days to choose), but still show bcp-time
     if (step === "bcp-frequency" && bcpFreqType === "daily") {
-      setStep("bcp-invite");
+      setStep("bcp-time");
       return;
     }
     const idx = STEP_ORDER.indexOf(step);
@@ -912,7 +920,7 @@ export default function MomentNew() {
       commitmentDuration: isLectio ? 0 : (isFasting && fastingTypeChoice === "meat") ? 0 : (isFasting || templateId === "intercession") ? (practiceDurationDays ?? 0) : 0,
       commitmentSessionsGoal: (isFasting && fastingTypeChoice === "meat") ? null : (isFasting || templateId === "intercession") ? practiceDurationDays : null,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      timeOfDay: undefined,
+      timeOfDay: timeOfDay ?? undefined,
       participants: validParticipants,
       ritualId: ritualIdFromUrl ?? undefined,
       // Contemplative
@@ -1415,6 +1423,104 @@ export default function MomentNew() {
                 );
               })()}
 
+              {/* ── BCP: When will you pray? ──────────────────────────── */}
+              {step === "bcp-time" && (() => {
+                const isMorning = templateId === "morning-prayer";
+                const BCP_TIME_SLOTS: { id: "early-morning" | "morning" | "late-afternoon" | "evening"; emoji: string; label: string; sub: string; defaultH: number; defaultAmPm: "AM" | "PM" }[] = [
+                  { id: "early-morning", emoji: "🌄", label: "Early morning", sub: "5am – 8am", defaultH: 6, defaultAmPm: "AM" },
+                  { id: "morning",       emoji: "🌅", label: "Morning",       sub: "8am – 11am", defaultH: 8, defaultAmPm: "AM" },
+                  { id: "late-afternoon",emoji: "🌇", label: "Late afternoon", sub: "4pm – 7pm", defaultH: 5, defaultAmPm: "PM" },
+                  { id: "evening",       emoji: "🌆", label: "Evening",       sub: "7pm – 10pm", defaultH: 8, defaultAmPm: "PM" },
+                ];
+                return (
+                  <div className="flex-1 space-y-5">
+                    <div>
+                      <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
+                        When will you pray? 🌿
+                      </h2>
+                      <p className="text-sm italic" style={{ color: "#8FAF96" }}>
+                        Everyone chooses their own time. This sets your personal default.
+                      </p>
+                    </div>
+                    <div className="space-y-2.5">
+                      {BCP_TIME_SLOTS.map(slot => {
+                        const sel = bcpTimeSlot === slot.id;
+                        return (
+                          <button
+                            key={slot.id}
+                            onClick={() => {
+                              setBcpTimeSlot(slot.id);
+                              setBcpPersonalHour(slot.defaultH);
+                              setBcpPersonalAmPm(slot.defaultAmPm);
+                            }}
+                            className="w-full text-left rounded-2xl transition-all active:scale-[0.99]"
+                            style={{
+                              background: sel ? "#1A4A2E" : "#0F2818",
+                              border: `1.5px solid ${sel ? "rgba(46,107,64,0.7)" : "rgba(46,107,64,0.3)"}`,
+                            }}
+                          >
+                            <div className="flex items-center gap-4 px-5 py-4">
+                              <span className="text-3xl leading-none shrink-0">{slot.emoji}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-[15px] leading-snug" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                                  {slot.label}
+                                </p>
+                                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{slot.sub}</p>
+                              </div>
+                              {sel && <span className="font-bold text-base" style={{ color: "#C8D4C0" }}>✓</span>}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {bcpTimeSlot && (
+                      <div className="rounded-2xl px-4 py-3 space-y-2" style={{ background: "rgba(200,212,192,0.06)", border: "1px solid rgba(46,107,64,0.25)" }}>
+                        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>Your exact time (optional)</p>
+                        <div className="flex items-center gap-3">
+                          <div className="flex gap-1">
+                            {TOD_CONSTRAINTS[bcpTimeSlot]?.hours.map(h => (
+                              <button
+                                key={h}
+                                onClick={() => setBcpPersonalHour(h)}
+                                className="w-10 h-10 rounded-xl text-sm font-semibold transition-all"
+                                style={{
+                                  background: bcpPersonalHour === h ? "#2D5E3F" : "rgba(200,212,192,0.08)",
+                                  color: bcpPersonalHour === h ? "#F0EDE6" : "#8FAF96",
+                                  border: bcpPersonalHour === h ? "1px solid rgba(46,107,64,0.6)" : "1px solid rgba(46,107,64,0.2)",
+                                }}
+                              >
+                                {h > 12 ? h - 12 : h === 0 ? 12 : h}
+                              </button>
+                            ))}
+                          </div>
+                          {TOD_CONSTRAINTS[bcpTimeSlot]?.amPm === "mixed" && (
+                            <div className="flex gap-1">
+                              {(["AM", "PM"] as ("AM"|"PM")[]).map(ap => (
+                                <button
+                                  key={ap}
+                                  onClick={() => setBcpPersonalAmPm(ap)}
+                                  className="px-3 h-10 rounded-xl text-sm font-semibold transition-all"
+                                  style={{
+                                    background: bcpPersonalAmPm === ap ? "#2D5E3F" : "rgba(200,212,192,0.08)",
+                                    color: bcpPersonalAmPm === ap ? "#F0EDE6" : "#8FAF96",
+                                    border: bcpPersonalAmPm === ap ? "1px solid rgba(46,107,64,0.6)" : "1px solid rgba(46,107,64,0.2)",
+                                  }}
+                                >
+                                  {ap}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <p className="text-sm font-medium" style={{ color: "#C8D4C0" }}>
+                            {bcpPersonalHour > 12 ? bcpPersonalHour - 12 : bcpPersonalHour === 0 ? 12 : bcpPersonalHour}:00 {bcpPersonalAmPm}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* ── BCP: Invite ──────────────────────────────────────── */}
               {step === "bcp-invite" && (() => {
                 const isMorning = templateId === "morning-prayer";
@@ -1726,7 +1832,32 @@ export default function MomentNew() {
                     </motion.div>
                   )}
 
-                  <p className="text-xs" style={{ color: "rgba(143,175,150,0.5)" }}>The whole day counts. 🌿</p>
+                  {/* Time of day */}
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>
+                      Time of day
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {TIME_OF_DAY_OPTIONS.map(opt => (
+                        <button
+                          key={opt.id}
+                          onClick={() => {
+                            setTimeOfDay(opt.id);
+                            const c = TOD_CONSTRAINTS[opt.id];
+                            if (c) { setScheduledHour(c.defaultH); setScheduledAmPm(c.defaultAmPm); }
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all"
+                          style={timeOfDay === opt.id
+                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)" }
+                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
+                        >
+                          <span>{opt.emoji}</span>
+                          <span>{opt.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs mt-2" style={{ color: "rgba(143,175,150,0.45)" }}>The whole day counts — this sets the calendar time. 🌿</p>
+                  </div>
                 </div>
               )}
 
@@ -1830,6 +1961,28 @@ export default function MomentNew() {
                       {selectedGroupId ? "All community members will be added automatically." : "Select which community this practice belongs to."}
                     </p>
                   </div>
+
+                  {/* No admin groups — prompt to create one */}
+                  {adminGroups.length === 0 && (
+                    <div
+                      className="rounded-2xl px-5 py-5 space-y-3"
+                      style={{ background: "rgba(200,212,192,0.06)", border: "1px solid rgba(46,107,64,0.3)" }}
+                    >
+                      <p className="text-sm font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                        You need a community first 🌿
+                      </p>
+                      <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
+                        This practice belongs to a community — everyone in the group joins automatically. Create yours and come back.
+                      </p>
+                      <a
+                        href="/tradition/new"
+                        className="inline-block mt-1 text-sm font-semibold rounded-xl px-4 py-2.5 transition-colors"
+                        style={{ background: "#2D5E3F", color: "#F0EDE6", textDecoration: "none" }}
+                      >
+                        Create a community →
+                      </a>
+                    </div>
+                  )}
 
                   {/* Community selector */}
                   {adminGroups.length > 0 && (

@@ -27,6 +27,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { useBetaStatus } from "@/hooks/useDemo";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -113,6 +114,7 @@ function PracticeLinkRow({
 }
 
 export default function DailyPracticePage() {
+  const { isBeta } = useBetaStatus();
   const { data } = useQuery<PrayerStreak>({
     queryKey: ["/api/prayer-streak"],
     queryFn: () => apiRequest("GET", "/api/prayer-streak") as Promise<PrayerStreak>,
@@ -194,20 +196,28 @@ export default function DailyPracticePage() {
 
         <SectionHeader label="Build your practice" />
         <Blurb>
-          Shape your daily rhythm — what you pray, when Phoebe nudges you, and how your home is laid out.
+          Set your morning and evening rhythms separately — depth, reminder, way to pray, and a reflection for each.
         </Blurb>
         <div className="flex flex-col gap-2">
+          {isBeta && (
+            <PracticeLinkRow
+              emoji="✦"
+              label="Start a conversation about prayer"
+              sub="A guided reflection that ends in a personal rule of life"
+              href="/rule-of-life"
+            />
+          )}
           <PracticeLinkRow
-            emoji="📖"
-            label="Your office"
-            sub="Default prayer, reminders, confession, and reflections"
-            href="/bcp/daily-office/settings"
+            emoji="🌅"
+            label="Morning"
+            sub="Depth, reminder, way to pray, and reflection"
+            href="/bcp/daily-office/settings?side=morning"
           />
           <PracticeLinkRow
-            emoji="🪟"
-            label="Home & slideshow"
-            sub="Reorder your home modules and pick your featured feed"
-            href="/customize-home"
+            emoji="🌙"
+            label="Evening"
+            sub="Depth, reminder, way to pray, and reflection"
+            href="/bcp/daily-office/settings?side=evening"
           />
         </div>
       </div>

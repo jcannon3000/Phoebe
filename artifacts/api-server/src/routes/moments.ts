@@ -117,16 +117,22 @@ function generateToken() {
 async function saveConnectionCache(members: Array<{ email: string; name: string | null }>) {
   if (members.length < 2) return;
   try {
+    const pairs: Array<[string, string, string | null]> = [];
     for (const a of members) {
       for (const b of members) {
-        if (a.email === b.email) continue;
-        await db.execute(
-          sql`INSERT INTO user_connections_cache (user_email, contact_email, contact_name, last_seen_at)
-              VALUES (${a.email}, ${b.email}, ${b.name}, NOW())
-              ON CONFLICT (user_email, contact_email) DO UPDATE SET contact_name = ${b.name}, last_seen_at = NOW()`
-        );
+        if (a.email !== b.email) pairs.push([a.email, b.email, b.name]);
       }
     }
+    if (pairs.length === 0) return;
+    await db.execute(
+      sql`INSERT INTO user_connections_cache (user_email, contact_email, contact_name, last_seen_at)
+          VALUES ${sql.join(
+            pairs.map(([ue, ce, cn]) => sql`(${ue}, ${ce}, ${cn}, NOW())`),
+            sql`, `
+          )}
+          ON CONFLICT (user_email, contact_email) DO UPDATE
+            SET contact_name = EXCLUDED.contact_name, last_seen_at = NOW()`
+    );
   } catch { /* non-fatal */ }
 }
 

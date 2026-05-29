@@ -214,6 +214,7 @@ export async function assembleEveningPrayer(
   date: Date,
   userId: number,
   locale: Locale = "en",
+  confessionOverride?: boolean,
 ): Promise<{
   slides: Slide[];
   officeDay: OfficeDayInfo;
@@ -679,7 +680,7 @@ export async function assembleEveningPrayer(
   // the office; the bottom pill's "Done" button signals the end.)
 
   // Per-user: hide the Confession + Absolution unless the user opted in.
-  const slidesForUser = await applyConfessionPref(slides, userId);
+  const slidesForUser = await applyConfessionPref(slides, userId, confessionOverride);
 
   const officeDay: OfficeDayInfo = {
     season: liturgicalDay.season,

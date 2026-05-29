@@ -185,16 +185,14 @@ function sourceMeta(s: NewsSource) {
   return { slug: s.slug, name: s.name, emoji: s.emoji, siteUrl: s.siteUrl };
 }
 
-// ── GET /api/news — every source, merged newest-first ──
+// ── GET /api/news — every source, in website feed order ──
 router.get("/news", async (_req: Request, res: Response): Promise<void> => {
   res.setHeader("Cache-Control", "public, max-age=600");
   const sources = SOURCE_ORDER.map((slug) => SOURCES[slug]).filter(Boolean) as NewsSource[];
   const lists = await Promise.all(sources.map((s) => loadSource(s)));
-  const items = lists.flat().sort((a, b) => {
-    const ta = a.publishedAt ? Date.parse(a.publishedAt) : 0;
-    const tb = b.publishedAt ? Date.parse(b.publishedAt) : 0;
-    return tb - ta;
-  });
+  // Preserve the per-source feed order (= website page order) rather than
+  // re-sorting globally by date, which can reorder or bury items.
+  const items = lists.flat();
   res.json({ sources: sources.map(sourceMeta), items });
 });
 

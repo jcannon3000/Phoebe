@@ -939,36 +939,33 @@ export function sendPrayerInvitePush(
   });
 }
 
-// Phoebe Parish — morning / evening office reminder. Fires at the
-// user's chosen reminder time once per local day. Body branches by
-// pref: "office" deep-links into the full Daily Office, "devotion"
-// into the abbreviated form. Sound is the standard mid chime —
-// not the urgent variant, since this is a gentle invitation.
+// Morning / evening office reminder. Fires at the user's chosen reminder
+// time once per local day. It opens the user's DEFAULT prayer — begin-prayer
+// routes to their defaultPrayerLevel for this time of day (or the chooser, if
+// their default is "ask") — so the copy stays generic rather than promising a
+// specific office the tap might not open. parishTitle, when present, names
+// the parish for a communal feel; otherwise the body is a quiet personal
+// nudge. Sound is the standard mid chime — a gentle invitation, not urgent.
 export function sendParishOfficeReminderPush(
   userId: number,
   opts: {
     side: "morning" | "evening";
-    pref: "office" | "devotion";
-    parishTitle: string;
+    parishTitle?: string | null;
   }
 ) {
-  const { side, pref, parishTitle } = opts;
-  const liturgyName = (() => {
-    if (side === "morning" && pref === "office") return "Morning Prayer";
-    if (side === "morning" && pref === "devotion") return "Morning Devotion";
-    if (side === "evening" && pref === "office") return "Evening Prayer";
-    return "Evening Devotion";
-  })();
-  const path = (() => {
-    if (side === "morning" && pref === "office") return "/bcp/daily-office?mode=morning";
-    if (side === "morning" && pref === "devotion") return "/bcp/daily-devotions?mode=morning-devotion";
-    if (side === "evening" && pref === "office") return "/bcp/daily-office?mode=evening";
-    return "/bcp/daily-devotions?mode=early-evening-devotion";
-  })();
+  const { side, parishTitle } = opts;
+  const title = side === "morning"
+    ? "Begin your day in prayer"
+    : "Close your day in prayer";
+  const body = parishTitle
+    ? `Pray with ${parishTitle}.`
+    : side === "morning"
+      ? "A few quiet minutes to start the day."
+      : "A few quiet minutes before the day ends.";
   return sendPushToUser(userId, {
-    title: `Time for ${liturgyName}`,
-    body: `Pray with ${parishTitle}.`,
-    path,
+    title,
+    body,
+    path: "/begin-prayer",
     threadId: `parish-office-${side}`,
     collapseId: `parish-office-${side}-${userId}`,
     sound: PHOEBE_SOUND_MID,

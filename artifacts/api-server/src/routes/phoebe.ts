@@ -694,10 +694,6 @@ router.post(
   }),
   requireAuth(async (req, res, auth) => {
     const correspondenceId = parseInt(String(req.params.id ?? ""), 10);
-    console.log(
-      `[POST /phoebe/correspondences/${correspondenceId}/letters] ` +
-      `from=${auth.email} userId=${auth.userId} name=${JSON.stringify(auth.name)}`,
-    );
 
     try {
     const [correspondence] = await db

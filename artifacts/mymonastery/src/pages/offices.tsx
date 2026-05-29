@@ -14,6 +14,10 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
+import { isNativeShell } from "@/lib/isNativeShell";
+import { openExternal } from "@/lib/openExternal";
+
+const NCMP_LIVE_URL = "https://www.youtube.com/@WashingtonNationalCathedral/live";
 
 type CardSpec = {
   emoji: string;
@@ -127,6 +131,7 @@ export default function OfficesPage() {
                   emoji: "📺",
                   label: t("offices.watch_ncmp", { defaultValue: "Watch · Nat'l Cathedral" }),
                   href: "/ncmp/watch",
+                  onClick: isNativeShell() ? () => openExternal(NCMP_LIVE_URL) : undefined,
                 },
               ]}
             />
@@ -218,7 +223,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function OfficeFormatPills({
   items,
 }: {
-  items: Array<{ variant: "gold" | "purple"; emoji: string; label: string; href: string }>;
+  items: Array<{ variant: "gold" | "purple"; emoji: string; label: string; href: string; onClick?: () => void }>;
 }) {
   const palette = {
     gold: { bg: "rgba(212,160,70,0.14)", border: "rgba(212,160,70,0.38)", color: "#F0DCA8" },
@@ -228,24 +233,30 @@ function OfficeFormatPills({
     <div className="flex flex-wrap gap-2 mt-2 ml-1">
       {items.map((it) => {
         const p = palette[it.variant];
-        return (
-          <Link key={it.href} href={it.href}>
-            <div
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 cursor-pointer transition-opacity hover:opacity-90"
-              style={{
-                background: p.bg,
-                border: `1px solid ${p.border}`,
-                color: p.color,
-                fontSize: 13,
-                fontWeight: 600,
-                fontFamily: "'Space Grotesk', sans-serif",
-              }}
-            >
-              <span aria-hidden>{it.emoji}</span>
-              <span>{it.label}</span>
-            </div>
-          </Link>
+        const inner = (
+          <div
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 cursor-pointer transition-opacity hover:opacity-90"
+            style={{
+              background: p.bg,
+              border: `1px solid ${p.border}`,
+              color: p.color,
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            <span aria-hidden>{it.emoji}</span>
+            <span>{it.label}</span>
+          </div>
         );
+        if (it.onClick) {
+          return (
+            <button key={it.href} type="button" onClick={it.onClick} style={{ background: "none", border: "none", padding: 0 }}>
+              {inner}
+            </button>
+          );
+        }
+        return <Link key={it.href} href={it.href}>{inner}</Link>;
       })}
     </div>
   );

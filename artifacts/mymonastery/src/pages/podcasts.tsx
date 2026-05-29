@@ -3,9 +3,9 @@ import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { isNativeShell } from "@/lib/isNativeShell";
 import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlayer";
 import { useTranslation } from "react-i18next";
+import { Layout } from "@/components/layout";
 
 // ── /podcasts — the Discover index ──────────────────────────────────────
 //
@@ -450,26 +450,8 @@ export default function PodcastsPage() {
     setLocation(`/podcasts/show/${ep.show.slug}?ep=${encodeURIComponent(ep.id)}`);
 
   return (
-    <div style={{ minHeight: "100dvh", background: PALETTE.bg, color: PALETTE.warm, fontFamily: FONT }}>
-      <header
-        style={{
-          // Native shell sits below the system status bar already, so a
-          // small fixed pad keeps the title high; web keeps the safe-area
-          // inset. (Matches the double-count fix in layout.tsx.)
-          paddingTop: isNativeShell() ? "0.75rem" : "max(1rem, calc(env(safe-area-inset-top) + 0.5rem))",
-          paddingLeft: 20, paddingRight: 20, paddingBottom: 8,
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => setLocation("/dashboard")}
-          style={{ background: "none", border: "none", color: PALETTE.sage, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}
-        >
-          ← {t("common.back")}
-        </button>
-      </header>
-
-      <main className="w-full max-w-2xl mx-auto" style={{ padding: "8px 16px 48px" }}>
+    <Layout>
+      <div className="w-full max-w-2xl mx-auto" style={{ color: PALETTE.warm, fontFamily: FONT, paddingBottom: player.current ? 112 : 48 }}>
         <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 16px", lineHeight: 1.1 }}>
           {t("podcasts.title")}
         </h1>
@@ -694,7 +676,7 @@ export default function PodcastsPage() {
         )}
         </>
         )}
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 }

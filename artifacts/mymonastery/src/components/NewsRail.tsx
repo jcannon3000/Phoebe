@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { EyeOff } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
+import { useHiddenStoryIds, hideStory } from "@/lib/newsPrefs";
 
 // ── NewsRail — horizontal "stories" carousel ────────────────────────────
 //
@@ -9,8 +11,12 @@ import { openExternal } from "@/lib/openExternal";
 // PodcastsRail: a row of square story tiles that scroll horizontally.
 // Pulls the merged partner-org news feed (/api/news — the same source the
 // /news page uses), so it stays in sync automatically. Tapping a tile opens
-// the full article in the in-app browser. Renders nothing until stories load
-// (no skeleton — it's a secondary surface near the page bottom).
+// the full article in the in-app browser.
+//
+// Each tile carries an eye-off button (top-right corner) that hides the
+// story from the rail and saves the preference to localStorage. Hidden
+// stories are excluded immediately; the user can restore all via
+// clearHiddenStories() (exposed on /news if needed).
 
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const CARD_W = 144;
@@ -68,9 +74,13 @@ export function NewsRail() {
     queryFn: () => apiRequest("GET", "/api/news"),
     staleTime: 30 * 60_000,
   });
+  const hiddenIds = useHiddenStoryIds();
 
-  // Only stories that can be opened + named, capped for the rail.
-  const stories = (data?.items ?? []).filter((s) => s.link && s.title).slice(0, 16);
+  // Only stories that can be opened + named, excluding hidden ones, capped for the rail.
+  const stories = (data?.items ?? [])
+    .filter((s) => s.link && s.title && !hiddenIds.has(s.id))
+    .slice(0, 16);
+
   if (stories.length === 0) return null;
 
   return (
@@ -89,31 +99,64 @@ export function NewsRail() {
         {stories.map((s) => (
           <div
             key={s.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => { if (s.link) openExternal(s.link); }}
-            onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && s.link) { e.preventDefault(); openExternal(s.link); } }}
-            className="cursor-pointer transition-opacity hover:opacity-90"
-            style={{ width: CARD_W, flexShrink: 0 }}
+            style={{ width: CARD_W, flexShrink: 0, position: "relative" }}
           >
-            <CardImage url={s.imageUrl} alt={s.title ?? "Story"} />
-            <p
+            {/* Article link area */}
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() => { if (s.link) openExternal(s.link); }}
+              onKeyDown={(e) => { if ((e.key === "Enter" || e.key === " ") && s.link) { e.preventDefault(); openExternal(s.link); } }}
+              className="cursor-pointer transition-opacity hover:opacity-90"
+            >
+              <CardImage url={s.imageUrl} alt={s.title ?? "Story"} />
+              <p
+                style={{
+                  fontSize: 13.5, fontWeight: 700, color: "#F0EDE6", fontFamily: FONT,
+                  margin: "8px 0 0", lineHeight: 1.2,
+                  display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                }}
+              >
+                {s.title}
+              </p>
+              <p
+                style={{
+                  fontSize: 11.5, color: "#8FAF96", fontFamily: FONT, margin: "2px 0 0", lineHeight: 1.3,
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}
+              >
+                {s.sourceName}
+              </p>
+            </div>
+
+            {/* Eye-off button — top-right corner of the image */}
+            <button
+              type="button"
+              aria-label="Hide this story"
+              onClick={(e) => {
+                e.stopPropagation();
+                hideStory(s.id);
+              }}
               style={{
-                fontSize: 13.5, fontWeight: 700, color: "#F0EDE6", fontFamily: FONT,
-                margin: "8px 0 0", lineHeight: 1.2,
-                display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+                position: "absolute",
+                top: 6,
+                right: 6,
+                width: 26,
+                height: 26,
+                borderRadius: "50%",
+                background: "rgba(0,0,0,0.52)",
+                border: "none",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                color: "rgba(255,255,255,0.75)",
+                padding: 0,
+                lineHeight: 0,
               }}
             >
-              {s.title}
-            </p>
-            <p
-              style={{
-                fontSize: 11.5, color: "#8FAF96", fontFamily: FONT, margin: "2px 0 0", lineHeight: 1.3,
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-              }}
-            >
-              {s.sourceName}
-            </p>
+              <EyeOff size={13} strokeWidth={2} />
+            </button>
           </div>
         ))}
       </div>

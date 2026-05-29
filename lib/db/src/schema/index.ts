@@ -54,3 +54,6 @@ export * from "./app_opens";
 export * from "./group_reflections";
 export * from "./beta_messages";
 export * from "./podcast_engagement";
+export * from "./gatherings";
+export * from "./gathering_members";
+export * from "./availability_patterns";

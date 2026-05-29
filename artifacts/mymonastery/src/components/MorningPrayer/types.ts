@@ -54,6 +54,13 @@ export type SlideType =
   // grateful for and tap Continue. The dedicated /gratitude surface
   // remains the place for actual journal entries.
   | "personal_thanksgiving"
+  // Forward Day by Day audio meditation. Produced by the server and
+  // injected after the second canticle (before the Creed) — the
+  // homily/meditation position in the BCP rubric. metadata carries
+  // { audioUrl, durationSeconds, publishedAt }. Same for all users;
+  // injected fresh on every office request so the 05:00 ET FDD
+  // publish reaches users without a cache rebuild.
+  | "fdd_meditation"
   | "closing";
 
 export interface CallAndResponseLine {

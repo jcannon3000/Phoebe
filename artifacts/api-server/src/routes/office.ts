@@ -33,10 +33,13 @@ router.get("/office/morning", async (req, res) => {
   try {
     const userId = (req.user as { id: number } | undefined)?.id ?? 0;
     const locale = resolveLocale(req.query.locale);
+    // Per-side confession override (Morning/Evening split): ?confession=1|0.
+    const confessionOverride = req.query.confession === undefined ? undefined : req.query.confession === "1";
     const { slides, officeDay, fromCache } = await assembleMorningPrayer(
       date,
       userId,
       locale,
+      confessionOverride,
     );
 
     return res.json({
@@ -147,7 +150,8 @@ router.get("/office/evening", async (req, res) => {
   try {
     const userId = (req.user as { id: number } | undefined)?.id ?? 0;
     const locale = resolveLocale(req.query.locale);
-    const { slides, officeDay, fromCache } = await assembleEveningPrayer(date, userId, locale);
+    const confessionOverride = req.query.confession === undefined ? undefined : req.query.confession === "1";
+    const { slides, officeDay, fromCache } = await assembleEveningPrayer(date, userId, locale, confessionOverride);
 
     return res.json({
       slides,

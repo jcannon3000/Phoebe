@@ -9,7 +9,8 @@ import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { ScrollStrip } from "@/components/ScrollStrip";
 import { PodcastsRail } from "@/components/PodcastsRail";
-import { NewsRail } from "@/components/NewsRail";
+import { usePodcastPlayer } from "@/components/PodcastPlayer";
+import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
@@ -2552,6 +2553,132 @@ function CacHomeCard() {
   );
 }
 
+// Podcast show home card — the podcast analogue of a subscribed prayer
+// feed (one card per show added to home; see lib/podcastHome). Shows your
+// progress through the show's recent episodes and plays the next one you
+// haven't opened. "Progress" is approximate: it counts episodes you've
+// OPENED (server listen history), not finished, since per-episode
+// completion isn't tracked server-side. Tapping the card body opens the
+// show; the pill plays the next/continue episode (the player resumes its
+// saved position automatically).
+type PodcastHomeEpisode = {
+  id: string;
+  title: string | null;
+  audioUrl: string | null;
+  durationSeconds: number | null;
+  publishedAt: string | null;
+  description: string | null;
+  imageUrl: string | null;
+};
+function PodcastHomeCard({ show }: { show: FollowedShow }) {
+  const player = usePodcastPlayer();
+  const [, setLocation] = useLocation();
+
+  const { data: showData } = useQuery<{ show: { slug: string; title: string; artwork: string | null }; episodes: PodcastHomeEpisode[] }>({
+    queryKey: [`/api/podcasts/show/${show.slug}`],
+    queryFn: () => apiRequest("GET", `/api/podcasts/show/${show.slug}`),
+    staleTime: 15 * 60_000,
+  });
+  const { data: me } = useQuery<{ listenedKeys: string[] }>({
+    queryKey: ["/api/podcasts/me"],
+    queryFn: () => apiRequest("GET", "/api/podcasts/me"),
+    staleTime: 60_000,
+  });
+
+  const episodes = showData?.episodes ?? [];
+  const listened = new Set(me?.listenedKeys ?? []);
+  const total = episodes.length;
+  const heard = episodes.filter((e) => listened.has(`${show.slug}:${e.id}`)).length;
+  const pct = total > 0 ? Math.round((heard / total) * 100) : 0;
+  const caughtUp = total > 0 && heard >= total;
+  const playable = episodes.filter((e) => !!e.audioUrl);
+  // Next = newest episode not yet opened; once caught up, replay the latest.
+  const nextEp = playable.find((e) => !listened.has(`${show.slug}:${e.id}`)) ?? playable[0] ?? null;
+
+  // "Continue" episode: a started episode with a meaningful saved
+  // position (> 30 s) and not essentially finished (< 95% of duration).
+  // localStorage key mirrors PodcastPlayer's posKey helper.
+  const posKey = (id: string) => `phoebe:podcast:pos:${show.slug}:${id}`;
+  const inProgressEp = (() => {
+    for (const e of playable) {
+      if (!listened.has(`${show.slug}:${e.id}`)) continue; // not started
+      const pos = parseFloat(localStorage.getItem(posKey(e.id)) ?? "0") || 0;
+      if (pos < 30) continue; // virtually not started
+      if (e.durationSeconds && pos / e.durationSeconds > 0.95) continue; // virtually done
+      return e;
+    }
+    return null;
+  })();
+  // Prefer resuming in-progress episode over starting the next unheard one.
+  const playTarget = inProgressEp ?? nextEp;
+  const isContinue = !!inProgressEp;
+
+  const title = showData?.show.title ?? show.title;
+  const artwork = showData?.show.artwork ?? show.artwork;
+  const progressLabel = total === 0
+    ? "Open show →"
+    : caughtUp ? `Caught up · ${total} episodes` : `${heard} of ${total} episodes`;
+
+  const open = () => setLocation(`/podcasts/show/${show.slug}`);
+  const playNext = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!playTarget || !playTarget.audioUrl) { open(); return; }
+    player.play({
+      showSlug: show.slug,
+      episodeId: playTarget.id,
+      title: playTarget.title,
+      audioUrl: playTarget.audioUrl,
+      imageUrl: playTarget.imageUrl ?? null,
+      showTitle: title,
+      showArtwork: artwork,
+      durationSeconds: playTarget.durationSeconds,
+      publishedAt: playTarget.publishedAt,
+      description: playTarget.description,
+    });
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={open}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") open(); }}
+      className="relative flex rounded-xl overflow-hidden cursor-pointer"
+      style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.40)" }}
+    >
+      <div className="flex-1 px-4 py-[14px] flex items-center gap-3">
+        {artwork ? (
+          <img src={artwork} alt="" loading="lazy" style={{ width: 44, height: 44, borderRadius: 10, objectFit: "cover", flexShrink: 0, background: "rgba(143,175,150,0.12)" }} />
+        ) : (
+          <div style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, background: "rgba(46,107,64,0.30)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }} aria-hidden>🎧</div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 15 }}>
+            {title}
+          </p>
+          <p style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: "3px 0 0", fontSize: 12 }}>
+            {progressLabel}
+          </p>
+          {total > 0 && (
+            <div style={{ marginTop: 6, height: 3, borderRadius: 2, background: "rgba(143,175,150,0.18)" }}>
+              <div style={{ height: "100%", width: `${pct}%`, borderRadius: 2, background: "#A8C5A0", transition: "width 0.3s" }} />
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={playNext}
+          aria-label={isContinue ? "Continue episode" : caughtUp ? "Replay latest episode" : "Play next episode"}
+          className="rounded-full text-center shrink-0 transition-opacity hover:opacity-90"
+          style={{ background: "rgba(46,107,64,0.30)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 500, padding: "6px 14px", border: "1px solid rgba(46,107,64,0.50)", whiteSpace: "nowrap", cursor: "pointer" }}
+        >
+          {isContinue ? "Continue" : caughtUp ? "Replay" : "Play next"} <span aria-hidden>▶</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Forward Day by Day home card. Mirrors CacHomeCard: opens
 // prayer.forwardmovement.org/fdd externally (their SPA resolves
 // "today" client-side, so the same URL every day works), tracks
@@ -4831,7 +4958,7 @@ export default function Dashboard() {
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // Prayer requests always leads — never hidden. For users who've
   // never customized (no homeLayout row) we hide the secondary practices
@@ -4862,8 +4989,8 @@ export default function Dashboard() {
   const homeOrder: HomeModule[] = (() => {
     const saved = user?.homeLayout?.order ?? null;
     const fallback: HomeModule[] = featuredFeed
-      ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp"]
-      : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp"];
+      ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts"]
+      : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts"];
     // Keep known keys in saved order, then append any missing modules so
     // a newly-added module always has a place.
     const seen = new Set<string>();
@@ -4883,6 +5010,11 @@ export default function Dashboard() {
   const primaryAnchor = homeOrder.find(
     (k) => (k === "office" || k === "feeds") && !homeHidden.has(k),
   );
+
+  // Podcast shows the user has added to home (localStorage-backed). The
+  // "podcasts" module expands to one PodcastHomeCard per followed show,
+  // mirroring how "feeds" expands to one card per subscribed feed.
+  const followedShows = useFollowedShows();
 
   // Gatherings / traditions the user owns or participates in. Enriched
   // rows already carry `nextMeetupDate`, so bucketing into Today /
@@ -5810,6 +5942,17 @@ export default function Dashboard() {
                   // window; returns null in those cases so the
                   // filter below drops the slot from the layout.
                   return <NcmpHomeCard />;
+                case "podcasts": {
+                  // One card per show added to home; self-hides when none.
+                  if (followedShows.length === 0) return null;
+                  return (
+                    <div className="flex flex-col gap-3">
+                      {followedShows.map((s) => (
+                        <PodcastHomeCard key={s.slug} show={s} />
+                      ))}
+                    </div>
+                  );
+                }
                 default:
                   return null;
               }
@@ -6025,10 +6168,9 @@ export default function Dashboard() {
             show's episode list + player; "See all" → /podcasts. */}
         {filter === null && <PodcastsRail />}
 
-        {/* News — partner-org stories as a horizontal cover-image carousel,
-            same square-tile vocabulary as the podcasts rail. Taps open the
-            article in the in-app browser; "See all" → /news. */}
-        {filter === null && <NewsRail />}
+        {/* News is intentionally NOT on the home screen — it lives in the
+            side menu (Audio → News & Actions, beta) and at /news. It was
+            briefly shown here as a rail; removed per product direction. */}
 
         {/* Customize pill — opens the home-screen customization page
             (reorder / show-hide modules, pick what leads). Only on the

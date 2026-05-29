@@ -1,25 +1,59 @@
 // BibleWebViewController.swift
 //
-// Custom in-app WebView for the "Read on Bible.com" lesson links.
-// SFSafariViewController auto-collapses its top toolbar when the
-// reader scrolls down to make room for the page, which hides the
-// Done button — users reported losing the only way back to the
-// liturgy mid-passage. This controller wraps WKWebView in a
-// UINavigationController so the close button stays pinned to the
-// top of the screen for the whole session.
+// Phoebe's in-app browser. It was first added for the "Read on
+// Bible.com" lesson links (hence the Bible* names), but every external
+// link in the app now flows through it via
+// PhoebeNative.openInAppBrowser → BibleBrowser.present.
 //
-// Presented from JS by dispatching a `phoebe:open-bible-url`
-// CustomEvent; the native shell's listener calls
-// BibleBrowser.present(url:from:).
+// Product goals it implements:
+//   • Phoebe-branded top + bottom chrome (dark green), not Safari's, so
+//     it reads as part of the app rather than a system browser sheet.
+//   • Slides in from the right like advancing to the next slide, and
+//     keeps target=_blank links INSIDE this view — never bounces the
+//     user out to Safari unless they tap the explicit "open in Safari".
+//   • Persists cookies + site storage across opens AND app launches (a
+//     single shared persistent data store + process pool), so a site's
+//     "accept cookies" choice sticks instead of re-prompting each visit.
+//   • Dark appearance to match the app (also makes pages that support
+//     prefers-color-scheme render dark).
+//
+// Presented from JS by BibleBrowserPlugin.open({ url }) →
+// BibleBrowser.shared.present(url:from:).
 
 import UIKit
 import WebKit
+
+// Phoebe palette — mirrors the web app's dark-green theme so the chrome
+// reads as the same product.
+private enum PhoebeBrowserColor {
+    static let bar = UIColor(red: 0.047, green: 0.122, blue: 0.071, alpha: 1)   // #0C1F12
+    static let text = UIColor(red: 0.941, green: 0.929, blue: 0.902, alpha: 1)  // #F0EDE6
+    static let tint = UIColor(red: 0.659, green: 0.773, blue: 0.627, alpha: 1)  // #A8C5A0
+}
 
 final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     private let url: URL
     private var webView: WKWebView!
     private let progressView = UIProgressView(progressViewStyle: .bar)
     private var progressObservation: NSKeyValueObservation?
+    private var titleObservation: NSKeyValueObservation?
+
+    // Bottom-bar web-history buttons; enabled/disabled as the user navigates.
+    private var backButton: UIBarButtonItem!
+    private var forwardButton: UIBarButtonItem!
+
+    // Retained strongly here because UIViewController.transitioningDelegate
+    // is a WEAK reference — without an owner the slide animation is dropped.
+    // The nav controller retains this VC (its root), this VC retains the
+    // delegate, so it lives as long as the browser is on screen.
+    let slideDelegate = SlideTransitionDelegate()
+
+    // ONE cookie jar for every in-app browser instance, persisted to disk.
+    // A fresh WKWebViewConfiguration defaults to its own process pool, which
+    // means a consent cookie set in one visit isn't reliably visible to the
+    // next; sharing the pool (plus the persistent default store) keeps the
+    // "accept cookies" choice so banners don't reappear every time.
+    private static let sharedProcessPool = WKProcessPool()
 
     init(url: URL) {
         self.url = url
@@ -29,116 +63,196 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
     deinit {
         progressObservation?.invalidate()
+        titleObservation?.invalidate()
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .systemBackground
+        // Dark chrome to match the app. Forcing .dark also makes the web
+        // content report prefers-color-scheme: dark, so dark-capable sites
+        // render dark too.
+        overrideUserInterfaceStyle = .dark
+        view.backgroundColor = PhoebeBrowserColor.bar
 
-        // Title shows the host so the user knows where they are
-        // without needing the URL bar.
-        title = url.host ?? "Read Scripture"
+        // Page <title> reads as content (set below via KVO); host is the
+        // first-paint fallback so the bar is never blank.
+        title = url.host ?? "Reading"
 
-        // Done button (left) — primary close, always visible. Keeping
-        // it on the leading edge mirrors the Capacitor Browser /
-        // SFSafariViewController layout that users are already used
-        // to so the muscle memory carries over.
-        navigationItem.leftBarButtonItem = UIBarButtonItem(
-            barButtonSystemItem: .done,
-            target: self,
-            action: #selector(close)
+        // ── Top bar: close (left) + open-in-Safari (right). ──
+        let closeItem = UIBarButtonItem(
+            image: UIImage(systemName: "xmark"),
+            style: .plain, target: self, action: #selector(close)
         )
+        closeItem.accessibilityLabel = "Close"
+        navigationItem.leftBarButtonItem = closeItem
 
-        // Reload button (right) — handy when bible.com hiccups on
-        // first load; cheap to add now since we own the chrome.
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            barButtonSystemItem: .refresh,
-            target: self,
-            action: #selector(reload)
+        let safariItem = UIBarButtonItem(
+            image: UIImage(systemName: "safari"),
+            style: .plain, target: self, action: #selector(openInSafari)
         )
+        safariItem.accessibilityLabel = "Open in Safari"
+        navigationItem.rightBarButtonItem = safariItem
 
+        // ── WebView ──
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
+        config.processPool = BibleWebViewController.sharedProcessPool
+        config.websiteDataStore = WKWebsiteDataStore.default()   // persistent
         webView = WKWebView(frame: .zero, configuration: config)
         webView.translatesAutoresizingMaskIntoConstraints = false
         webView.navigationDelegate = self
-        webView.allowsBackForwardNavigationGestures = true
+        // Off so the left screen edge is free for our swipe-to-dismiss; web
+        // history is reachable via the bottom toolbar's back button instead.
+        webView.allowsBackForwardNavigationGestures = false
+        webView.backgroundColor = PhoebeBrowserColor.bar
+        webView.isOpaque = false
         view.addSubview(webView)
 
         progressView.translatesAutoresizingMaskIntoConstraints = false
-        progressView.tintColor = .systemGreen
+        progressView.tintColor = PhoebeBrowserColor.tint
         progressView.trackTintColor = .clear
         progressView.alpha = 0
         view.addSubview(progressView)
 
         NSLayoutConstraint.activate([
-            // Top of the WebView pins to the navigation bar's
-            // bottom (handled automatically by safe area).
             webView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
 
-            // Hairline progress bar under the navigation bar.
             progressView.topAnchor.constraint(equalTo: webView.topAnchor),
             progressView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             progressView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             progressView.heightAnchor.constraint(equalToConstant: 2),
         ])
 
-        // Bind WKWebView's estimatedProgress → UIProgressView.
-        progressObservation = webView.observe(
-            \.estimatedProgress,
-            options: [.new]
-        ) { [weak self] _, change in
+        // ── Bottom bar: web back / forward · reload · share. ──
+        backButton = UIBarButtonItem(
+            image: UIImage(systemName: "chevron.left"),
+            style: .plain, target: self, action: #selector(goBack)
+        )
+        backButton.accessibilityLabel = "Back"
+        forwardButton = UIBarButtonItem(
+            image: UIImage(systemName: "chevron.right"),
+            style: .plain, target: self, action: #selector(goForward)
+        )
+        forwardButton.accessibilityLabel = "Forward"
+        let reloadButton = UIBarButtonItem(
+            image: UIImage(systemName: "arrow.clockwise"),
+            style: .plain, target: self, action: #selector(reload)
+        )
+        reloadButton.accessibilityLabel = "Reload"
+        let shareButton = UIBarButtonItem(
+            image: UIImage(systemName: "square.and.arrow.up"),
+            style: .plain, target: self, action: #selector(share)
+        )
+        shareButton.accessibilityLabel = "Share"
+        let flex = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+        backButton.isEnabled = false
+        forwardButton.isEnabled = false
+        toolbarItems = [backButton, fixedSpace(20), forwardButton, flex, reloadButton, fixedSpace(28), shareButton]
+
+        // Progress bar bound to the load.
+        progressObservation = webView.observe(\.estimatedProgress, options: [.new]) { [weak self] _, change in
             guard let self = self, let p = change.newValue else { return }
             self.progressView.setProgress(Float(p), animated: true)
-            // Reveal while loading; fade once we're past the threshold
-            // and hide entirely on completion (handled in
-            // didFinish below).
             if p > 0 && p < 1 {
                 UIView.animate(withDuration: 0.15) { self.progressView.alpha = 1 }
             }
         }
+        // Title follows the page's <title> once it loads.
+        titleObservation = webView.observe(\.title, options: [.new]) { [weak self] webView, _ in
+            if let t = webView.title, !t.isEmpty { self?.title = t }
+        }
 
         webView.load(URLRequest(url: url))
+        updateNavButtons()
+
+        // Swipe right from the left edge to flick the browser back out — the
+        // interactive twin of the slide-in present.
+        let edgePan = UIScreenEdgePanGestureRecognizer(target: self, action: #selector(handleDismissPan(_:)))
+        edgePan.edges = .left
+        view.addGestureRecognizer(edgePan)
+    }
+
+    // Drives the interactive swipe-to-dismiss. The percent-driven interactor
+    // is handed to the transition delegate for the life of the gesture so the
+    // slide-out tracks the finger; on release we complete past 40% (or a fast
+    // flick) and snap back otherwise.
+    @objc private func handleDismissPan(_ gr: UIScreenEdgePanGestureRecognizer) {
+        let width = max(view.bounds.width, 1)
+        let progress = min(1, max(0, gr.translation(in: view).x / width))
+        switch gr.state {
+        case .began:
+            slideDelegate.interactiveDismiss = UIPercentDrivenInteractiveTransition()
+            dismiss(animated: true)
+        case .changed:
+            slideDelegate.interactiveDismiss?.update(progress)
+        case .ended, .cancelled:
+            let interactor = slideDelegate.interactiveDismiss
+            let flick = gr.velocity(in: view).x > 600
+            if gr.state == .ended && (progress > 0.4 || flick) {
+                interactor?.finish()
+            } else {
+                interactor?.cancel()
+            }
+            slideDelegate.interactiveDismiss = nil
+        default:
+            break
+        }
+    }
+
+    private func fixedSpace(_ width: CGFloat) -> UIBarButtonItem {
+        let item = UIBarButtonItem(barButtonSystemItem: .fixedSpace, target: nil, action: nil)
+        item.width = width
+        return item
+    }
+
+    private func updateNavButtons() {
+        backButton?.isEnabled = webView.canGoBack
+        forwardButton?.isEnabled = webView.canGoForward
     }
 
     // ── Actions ───────────────────────────────────────────────────────────
-
-    @objc private func close() {
-        dismiss(animated: true)
+    @objc private func close() { dismiss(animated: true) }
+    @objc private func reload() { webView.reload() }
+    @objc private func goBack() { if webView.canGoBack { webView.goBack() } }
+    @objc private func goForward() { if webView.canGoForward { webView.goForward() } }
+    @objc private func openInSafari() { UIApplication.shared.open(webView.url ?? url) }
+    @objc private func share() {
+        let activity = UIActivityViewController(activityItems: [webView.url ?? url], applicationActivities: nil)
+        // iPad needs a popover anchor; the share button is the last toolbar item.
+        activity.popoverPresentationController?.barButtonItem = toolbarItems?.last
+        present(activity, animated: true)
     }
 
-    @objc private func reload() {
-        webView.reload()
-    }
-
-    // ── WKNavigationDelegate ──────────────────────────────────────────────
-
+    // ── WKNavigationDelegate ────────────────────────────────────────────────
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         UIView.animate(withDuration: 0.25, animations: { [weak self] in
             self?.progressView.alpha = 0
         }) { [weak self] _ in
             self?.progressView.setProgress(0, animated: false)
         }
+        updateNavButtons()
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-        UIView.animate(withDuration: 0.25) { [weak self] in
-            self?.progressView.alpha = 0
-        }
+        UIView.animate(withDuration: 0.25) { [weak self] in self?.progressView.alpha = 0 }
+        updateNavButtons()
     }
 
-    // External links (target=_blank, http(s):// not navigated to in
-    // this view) — let them open in the system browser instead of
-    // hijacking the WebView's main frame, so a tap on a footer link
-    // doesn't strand the user inside our chrome on someone else's site.
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        updateNavButtons()
+    }
+
+    // target=_blank / new-window links: load them in THIS view rather than
+    // handing off to the system browser, so a footer/link tap doesn't eject
+    // the user to Safari. The toolbar's Safari button is the deliberate exit.
     func webView(_ webView: WKWebView,
                  decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         if navigationAction.targetFrame == nil, let url = navigationAction.request.url {
-            UIApplication.shared.open(url)
+            webView.load(URLRequest(url: url))
             decisionHandler(.cancel)
             return
         }
@@ -146,11 +260,82 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     }
 }
 
+// ── Slide transition ────────────────────────────────────────────────────────
+//
+// Makes the browser slide in from the right (and back out to the right on
+// close) like advancing to the next slide — instead of the default modal
+// sheet that animates up from the bottom and reads as "leaving the app".
+
+final class SlideTransitionDelegate: NSObject, UIViewControllerTransitioningDelegate {
+    // Set by the browser's edge-pan handler while a swipe-to-dismiss is in
+    // flight; nil for a button-tap dismiss (which just animates normally).
+    var interactiveDismiss: UIPercentDrivenInteractiveTransition?
+
+    func animationController(forPresented presented: UIViewController,
+                             presenting: UIViewController,
+                             source: UIViewController) -> UIViewControllerAnimatedTransitioning? {
+        SlideTransitionAnimator(presenting: true)
+    }
+    func animationController(forDismissed dismissed: UIViewController) -> UIViewControllerAnimatedTransitioning? {
+        SlideTransitionAnimator(presenting: false)
+    }
+    func interactionControllerForDismissal(using animator: UIViewControllerAnimatedTransitioning) -> UIViewControllerInteractiveTransitioning? {
+        interactiveDismiss
+    }
+}
+
+final class SlideTransitionAnimator: NSObject, UIViewControllerAnimatedTransitioning {
+    private let presenting: Bool
+    init(presenting: Bool) { self.presenting = presenting }
+
+    func transitionDuration(using ctx: UIViewControllerContextTransitioning?) -> TimeInterval { 0.33 }
+
+    func animateTransition(using ctx: UIViewControllerContextTransitioning) {
+        let container = ctx.containerView
+        let width = container.bounds.width
+        let duration = transitionDuration(using: ctx)
+
+        if presenting {
+            guard let toVC = ctx.viewController(forKey: .to),
+                  let toView = ctx.view(forKey: .to) else {
+                ctx.completeTransition(false); return
+            }
+            toView.frame = ctx.finalFrame(for: toVC)
+            toView.transform = CGAffineTransform(translationX: width, y: 0)
+            container.addSubview(toView)
+            UIView.animate(withDuration: duration, delay: 0, options: [.curveEaseOut], animations: {
+                toView.transform = .identity
+            }, completion: { _ in
+                ctx.completeTransition(!ctx.transitionWasCancelled)
+            })
+        } else {
+            // The presenter's view stays behind (overFullScreen), so we just
+            // slide the browser back out to the right to reveal it.
+            guard let fromView = ctx.view(forKey: .from) else {
+                ctx.completeTransition(false); return
+            }
+            UIView.animate(withDuration: duration, delay: 0, options: [.curveEaseIn], animations: {
+                fromView.transform = CGAffineTransform(translationX: width, y: 0)
+            }, completion: { _ in
+                if ctx.transitionWasCancelled {
+                    // Released before the threshold — restore the browser in
+                    // place (UIView.animate otherwise leaves the model layer
+                    // at the final, off-screen transform).
+                    fromView.transform = .identity
+                } else {
+                    fromView.removeFromSuperview()
+                }
+                ctx.completeTransition(!ctx.transitionWasCancelled)
+            })
+        }
+    }
+}
+
 // ── Presenter ─────────────────────────────────────────────────────────────
 //
-// Single entry point used from JS (via the bridge in AppDelegate).
-// Wraps the controller in a UINavigationController so the title bar
-// + Done button render automatically.
+// Single entry point used from BibleBrowserPlugin. Wraps the controller in a
+// UINavigationController (top bar + bottom toolbar render automatically) and
+// presents it with the custom slide transition + dark Phoebe chrome.
 
 @objcMembers
 final class BibleBrowser: NSObject {
@@ -161,12 +346,37 @@ final class BibleBrowser: NSObject {
         guard let presenter = presenter else { return }
         let vc = BibleWebViewController(url: url)
         let nav = UINavigationController(rootViewController: vc)
-        nav.modalPresentationStyle = .fullScreen
-        nav.navigationBar.prefersLargeTitles = false
-        // Translucent bar with a hairline divider so the chrome
-        // reads as a Safari-ish utility frame, not a full app
-        // header — matches the visual weight of SFSafariViewController.
-        nav.navigationBar.tintColor = .systemGreen
+        nav.overrideUserInterfaceStyle = .dark
+
+        // Dark Phoebe chrome for the top navigation bar.
+        let barAppearance = UINavigationBarAppearance()
+        barAppearance.configureWithOpaqueBackground()
+        barAppearance.backgroundColor = PhoebeBrowserColor.bar
+        barAppearance.titleTextAttributes = [.foregroundColor: PhoebeBrowserColor.text]
+        barAppearance.shadowColor = UIColor.white.withAlphaComponent(0.08)
+        nav.navigationBar.standardAppearance = barAppearance
+        nav.navigationBar.scrollEdgeAppearance = barAppearance
+        nav.navigationBar.compactAppearance = barAppearance
+        nav.navigationBar.tintColor = PhoebeBrowserColor.tint
+
+        // …and the bottom toolbar.
+        let toolbarAppearance = UIToolbarAppearance()
+        toolbarAppearance.configureWithOpaqueBackground()
+        toolbarAppearance.backgroundColor = PhoebeBrowserColor.bar
+        toolbarAppearance.shadowColor = UIColor.white.withAlphaComponent(0.08)
+        nav.toolbar.standardAppearance = toolbarAppearance
+        nav.toolbar.compactAppearance = toolbarAppearance
+        if #available(iOS 15.0, *) {
+            nav.toolbar.scrollEdgeAppearance = toolbarAppearance
+        }
+        nav.toolbar.tintColor = PhoebeBrowserColor.tint
+        nav.setToolbarHidden(false, animated: false)
+
+        // Slide in from the right (next-slide feel), over the app rather than
+        // replacing it, so the dismiss can slide back to reveal it.
+        nav.modalPresentationStyle = .overFullScreen
+        nav.transitioningDelegate = vc.slideDelegate
+
         presenter.present(nav, animated: true)
     }
 }

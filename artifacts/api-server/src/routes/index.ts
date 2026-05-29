@@ -44,6 +44,7 @@ import groupReflectionsRouter from "./group-reflections";
 import betaMessagesRouter from "./beta-messages";
 import journalRouter from "./journal";
 import officeAlignmentRouter from "./office-alignment";
+import ruleOfLifeRouter from "./ruleOfLife";
 
 const router: IRouter = Router();
 
@@ -163,5 +164,6 @@ router.use(groupReflectionsRouter);
 router.use(betaMessagesRouter);
 router.use(journalRouter);
 router.use(officeAlignmentRouter);
+router.use("/rule-of-life", ruleOfLifeRouter);
 
 export default router;

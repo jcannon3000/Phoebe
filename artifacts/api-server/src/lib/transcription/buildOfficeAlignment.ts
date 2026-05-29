@@ -18,6 +18,7 @@ import { assembleEveningPrayer } from "../assembleEveningPrayer";
 import { SHOWS, loadFeed } from "../../routes/podcast";
 import { transcribeAudio, transcriptionEnabled } from "./transcribeAudio";
 import { alignOffice } from "./alignOffice";
+import { analyzeOfficeLiturgicalChoices, type LiturgicalAnalysis } from "./analyzeOfficeLiturgicalChoices";
 import type { OfficeAlignmentSection } from "@workspace/db";
 
 export type OfficeShow = "morning-office" | "evening-office";
@@ -31,6 +32,8 @@ export type AlignmentResult = {
   cached?: boolean;
   durationSeconds?: number | null;
   sections?: OfficeAlignmentSection[];
+  // Liturgical-choices analysis — present when Claude ran the analysis.
+  liturgicalAnalysis?: LiturgicalAnalysis;
   reason?: string;
   error?: string;
 };
@@ -122,6 +125,19 @@ export async function buildOfficeAlignment(opts: {
     const { sections, aligner } = await alignOffice(slides, transcript);
     const durationSeconds = Math.round(transcript.durationSeconds);
 
+    // Run liturgical-choices analysis in parallel with the DB save.
+    // Non-fatal: a failed analysis still lets the alignment succeed.
+    const office: "morning" | "evening" = opts.show === "morning-office" ? "morning" : "evening";
+    const liturgicalAnalysis = await analyzeOfficeLiturgicalChoices({
+      transcript,
+      slides,
+      office,
+      episodeDate,
+    }).catch((err) => {
+      console.warn("[office-align] liturgical analysis failed:", err);
+      return undefined;
+    });
+
     await save({
       status: "done",
       audioUrl,
@@ -131,7 +147,7 @@ export async function buildOfficeAlignment(opts: {
       aligner,
       error: null,
     });
-    return { show: opts.show, episodeDate, status: "done", aligner, durationSeconds, sections };
+    return { show: opts.show, episodeDate, status: "done", aligner, durationSeconds, sections, liturgicalAnalysis };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[office-align] ${opts.show} ${episodeDate} failed:`, msg);

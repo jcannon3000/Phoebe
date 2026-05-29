@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { useOfficePrefs, setOfficeAudioSource, type OfficeAudioSource } from "@/lib/officePrefs";
 
 // ── Global podcast player ────────────────────────────────────────────────
 //
@@ -491,6 +492,57 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     setRate(next);
     const a = audioRef.current; if (a) a.playbackRate = next;
   };
+  const skipToNext = useCallback(() => {
+    const nextIdx = queueIndexRef.current + 1;
+    // nextIdx <= 0 means no queue was loaded (queueIndexRef starts at -1).
+    if (nextIdx <= 0 || nextIdx >= queueRef.current.length) return;
+    const a = audioRef.current;
+    if (a && current) savePos(current, a.currentTime);
+    commitSession();
+    queueIndexRef.current = nextIdx;
+    const next = queueRef.current[nextIdx];
+    if (next) startEpisode(next);
+  }, [current, commitSession, startEpisode]);
+
+  // ── Office source toggle (Forward Movement ↔ Church of England) ────────
+  // Visible only when the currently-playing episode is a daily office.
+  // Fetches the new source's episode and hands it to the same player so
+  // the user stays in the full-screen listener without navigating away.
+  const { officeAudioSource } = useOfficePrefs();
+  const sourceSwitchingRef = useRef(false);
+  const [sourceSwitching, setSourceSwitching] = useState(false);
+
+  const switchOfficeSource = useCallback(async (newSource: OfficeAudioSource) => {
+    if (!current || sourceSwitchingRef.current) return;
+    setOfficeAudioSource(newSource);
+    const apiSlug = current.showSlug === "office-morning" ? "morning-office" : "evening-office";
+    const side = current.showSlug === "office-morning" ? "morning" : "evening";
+    sourceSwitchingRef.current = true;
+    setSourceSwitching(true);
+    try {
+      const ep: { audioUrl: string | null; title: string | null; imageUrl: string | null; feedTitle: string | null; durationSeconds: number | null; publishedAt: string | null } =
+        await apiRequest("GET", `/api/podcast/${apiSlug}/today?source=${encodeURIComponent(newSource)}`);
+      if (ep?.audioUrl) {
+        const blurb = newSource === "church-of-england"
+          ? `Common Worship ${side === "evening" ? "Evening" : "Morning"} Prayer from the Church of England, read aloud. A new recording every day.`
+          : `The full order of ${side === "evening" ? "Evening" : "Morning"} Prayer from the Book of Common Prayer, read aloud. A new episode every ${side === "evening" ? "evening" : "morning"}.`;
+        play({
+          ...current,
+          audioUrl: ep.audioUrl,
+          title: ep.title,
+          imageUrl: ep.imageUrl ?? current.imageUrl,
+          episodeId: ep.audioUrl,
+          showTitle: ep.feedTitle ?? current.showTitle,
+          showArtwork: ep.imageUrl ?? current.showArtwork,
+          durationSeconds: ep.durationSeconds ?? null,
+          publishedAt: ep.publishedAt ?? null,
+          description: blurb,
+        }, { expand: true });
+      }
+    } catch { /* keep current source playing */ }
+    finally { sourceSwitchingRef.current = false; setSourceSwitching(false); }
+  }, [current, play]);
+
   const closePlayer = () => {
     const a = audioRef.current;
     if (a && current) savePos(current, a.currentTime);
@@ -647,7 +699,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
           {/* Drifting gradient backdrop — same animation as the home /
               office slides, behind the now-playing content. */}
           <AnimatedBackground base="#0C1F12" variant="pronounced" />
-          {/* Top bar: minimize / label / close */}
+          {/* Top bar: minimize / label / spacer (no close — use the mini-bar) */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 16px 0", flexShrink: 0 }}>
             <button type="button" onClick={() => setExpanded(false)} aria-label={t("podcasts.a11y_minimize")}
               style={{ background: "none", border: "none", color: "rgba(168,197,160,0.95)", fontSize: 28, lineHeight: 1, cursor: "pointer", padding: 4 }}>
@@ -656,10 +708,8 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
             <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.18em", color: "rgba(143,175,150,0.75)" }}>
               {t("podcasts.now_playing")}
             </span>
-            <button type="button" onClick={closePlayer} aria-label={t("podcasts.a11y_close")}
-              style={{ background: "none", border: "none", color: "rgba(143,175,150,0.7)", fontSize: 20, lineHeight: 1, cursor: "pointer", padding: 4 }}>
-              ✕
-            </button>
+            {/* Same width as the minimize button so NOW PLAYING stays centered */}
+            <span style={{ width: 36 }} />
           </div>
 
           {/* Center: cover art + title + show + description (scrolls if long) */}
@@ -678,6 +728,39 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
               style={{ background: "none", border: "none", color: "#8FAF96", fontFamily: FONT, fontSize: 13.5, margin: "8px 0 0", cursor: "pointer", padding: 0 }}>
               {current.showTitle ?? t("podcasts.view_show")}
             </button>
+            {current.showSlug?.startsWith("office-") && (
+              <div
+                role="tablist"
+                aria-label={t("podcasts.office_tradition_aria", { defaultValue: "Prayer tradition" })}
+                style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 999, padding: 4, margin: "16px 0 0" }}
+              >
+                {(["forward-movement", "church-of-england"] as const).map((s) => {
+                  const active = officeAudioSource === s;
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => switchOfficeSource(s)}
+                      disabled={sourceSwitching}
+                      style={{
+                        borderRadius: 999, padding: "6px 14px", fontSize: 12, fontWeight: 600,
+                        fontFamily: FONT, cursor: sourceSwitching ? "wait" : "pointer",
+                        whiteSpace: "nowrap",
+                        background: active ? "rgba(96,141,209,0.15)" : "transparent",
+                        border: `1px solid ${active ? "rgba(96,141,209,0.45)" : "transparent"}`,
+                        color: active ? "#F0EDE6" : "rgba(143,175,150,0.55)",
+                        transition: "background 0.15s, color 0.15s",
+                      }}
+                    >
+                      {t(s === "church-of-england" ? "podcasts.office_source_coe" : "podcasts.office_source_fm",
+                        { defaultValue: s === "church-of-england" ? "Church of England" : "Forward Movement" })}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
             {current.description && (
               <p style={{ fontSize: 13, color: "rgba(200,212,192,0.85)", lineHeight: 1.55, margin: "18px 0 0", maxWidth: 460, textAlign: "left", whiteSpace: "pre-line" }}>
                 {current.description}
@@ -696,16 +779,26 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
               <span>{duration > 0 ? fmtClock(duration) : "--:--"}</span>
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 30, margin: "14px 0 0" }}>
-              <button type="button" onClick={() => skip(-15)} aria-label={t("podcasts.a11y_back15")}
-                style={{ background: "none", border: "none", color: "#C8D4C0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>⟲15</button>
-              <button type="button" onClick={toggle} aria-label={isPlaying ? t("podcasts.a11y_pause") : t("podcasts.a11y_play")}
-                style={{ width: 64, height: 64, borderRadius: "50%", background: "#A8C5A0", color: "#0A1A0F", border: "none", fontSize: 26, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {isPlaying ? "⏸" : "▶"}
-              </button>
-              <button type="button" onClick={() => skip(30)} aria-label={t("podcasts.a11y_forward30")}
-                style={{ background: "none", border: "none", color: "#C8D4C0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>30⟳</button>
-            </div>
+            {(() => {
+              const hasNext = queueIndexRef.current >= 0 && queueIndexRef.current + 1 < queueRef.current.length;
+              return (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 26, margin: "14px 0 0" }}>
+                  <button type="button" onClick={() => skip(-15)} aria-label={t("podcasts.a11y_back15")}
+                    style={{ background: "none", border: "none", color: "#C8D4C0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>⟲15</button>
+                  <button type="button" onClick={toggle} aria-label={isPlaying ? t("podcasts.a11y_pause") : t("podcasts.a11y_play")}
+                    style={{ width: 64, height: 64, borderRadius: "50%", background: "#A8C5A0", color: "#0A1A0F", border: "none", fontSize: 26, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {isPlaying ? "⏸" : "▶"}
+                  </button>
+                  <button type="button" onClick={() => skip(30)} aria-label={t("podcasts.a11y_forward30")}
+                    style={{ background: "none", border: "none", color: "#C8D4C0", fontSize: 15, fontWeight: 700, cursor: "pointer" }}>30⟳</button>
+                  <button type="button" onClick={skipToNext} disabled={!hasNext}
+                    aria-label={t("podcasts.a11y_next", { defaultValue: "Next episode" })}
+                    style={{ background: "none", border: "none", fontSize: 22, lineHeight: 1, padding: 0, cursor: hasNext ? "pointer" : "default", color: hasNext ? "#C8D4C0" : "rgba(200,212,192,0.22)", transition: "color 0.2s" }}>
+                    ⏭
+                  </button>
+                </div>
+              );
+            })()}
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", margin: "16px 0 0" }}>
               <button type="button" onClick={cycleRate} aria-label={t("podcasts.a11y_speed")}

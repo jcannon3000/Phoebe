@@ -2195,6 +2195,90 @@ export async function migrate() {
     // is this group linked to" reverse lookups.
     await run(client, `CREATE INDEX IF NOT EXISTS idx_moment_groups_group_id ON moment_groups (group_id)`);
 
+    // ── Rule of Life sessions ─────────────────────────────────────────────────
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS rule_of_life_sessions (
+        id                    SERIAL PRIMARY KEY,
+        created_by_user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        subject_name          TEXT,
+        mode                  TEXT NOT NULL DEFAULT 'self',
+        locale                TEXT NOT NULL DEFAULT 'en',
+        answers               JSONB NOT NULL DEFAULT '{}',
+        narrative             TEXT,
+        plain_summary         TEXT,
+        settings              JSONB,
+        connection_focus      TEXT,
+        anchor                TEXT,
+        applied_at            TIMESTAMPTZ,
+        delivered_to          TEXT,
+        created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_rule_of_life_user ON rule_of_life_sessions (created_by_user_id)`);
+
+    // ── Gatherings scheduler (Phase 1) ──────────────────────────────────────
+    // Three tables: the gathering being scheduled, who's invited, and each
+    // member's recurring weekly availability rhythm.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS scheduled_gatherings (
+        id                    SERIAL PRIMARY KEY,
+        community_id          INTEGER REFERENCES groups(id) ON DELETE SET NULL,
+        leader_user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title                 TEXT NOT NULL,
+        description           TEXT,
+        cadence               TEXT NOT NULL DEFAULT 'weekly',
+        duration_min          INTEGER NOT NULL DEFAULT 60,
+        expected_size         INTEGER,
+        needs_room            BOOLEAN NOT NULL DEFAULT FALSE,
+        needs_clergy          BOOLEAN NOT NULL DEFAULT FALSE,
+        visibility            TEXT NOT NULL DEFAULT 'community',
+        status                TEXT NOT NULL DEFAULT 'forming',
+        season_window         JSONB,
+        confirmed_day_of_week INTEGER,
+        confirmed_time        TEXT,
+        confirmed_start_date  TEXT,
+        created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_sched_gatherings_leader ON scheduled_gatherings (leader_user_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_sched_gatherings_community ON scheduled_gatherings (community_id)`);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS gathering_members (
+        id            SERIAL PRIMARY KEY,
+        gathering_id  INTEGER NOT NULL REFERENCES scheduled_gatherings(id) ON DELETE CASCADE,
+        user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role          TEXT NOT NULL DEFAULT 'member',
+        invite_status TEXT NOT NULL DEFAULT 'invited',
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CONSTRAINT uq_gathering_member UNIQUE (gathering_id, user_id)
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_gathering_members_user ON gathering_members (user_id)`);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS availability_patterns (
+        id           SERIAL PRIMARY KEY,
+        user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        gathering_id INTEGER REFERENCES scheduled_gatherings(id) ON DELETE CASCADE,
+        day_of_week  INTEGER NOT NULL,
+        time_band    TEXT NOT NULL,
+        level        TEXT NOT NULL DEFAULT 'free',
+        created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_avail_user_gathering ON availability_patterns (user_id, gathering_id)`);
+    await run(client, `
+      CREATE UNIQUE INDEX IF NOT EXISTS uniq_avail_gathering
+        ON availability_patterns (user_id, gathering_id, day_of_week, time_band)
+        WHERE gathering_id IS NOT NULL
+    `);
+    await run(client, `
+      CREATE UNIQUE INDEX IF NOT EXISTS uniq_avail_global
+        ON availability_patterns (user_id, day_of_week, time_band)
+        WHERE gathering_id IS NULL
+    `);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

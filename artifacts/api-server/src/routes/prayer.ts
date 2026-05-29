@@ -303,9 +303,6 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
   // If the only community we share is one where they're hidden,
   // they don't enter the garden and their prayers don't surface.
   // If we share any community where they're visible, they do.
-  console.log(
-    `[GET /prayer-requests] viewer=${sessionUserId} gardenIds=[${gardenIds.join(",")}]`,
-  );
 
   // Prayer requests stay visible until the owner explicitly releases,
   // answers, or deletes them. For other viewers, once `expiresAt` has
@@ -342,11 +339,8 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
   if (mutedIds.length > 0) baseFilters.push(notInArray(prayerRequestsTable.ownerId, mutedIds));
   const requests = await db.select().from(prayerRequestsTable)
     .where(and(...baseFilters))
-    .orderBy(desc(prayerRequestsTable.createdAt));
-  console.log(
-    `[GET /prayer-requests] returning ${requests.length} requests ` +
-    `owners=[${requests.map(r => r.ownerId).join(",")}]`,
-  );
+    .orderBy(desc(prayerRequestsTable.createdAt))
+    .limit(200);
 
   // Viewer's timezone — used to scope "today" for their own amen counts so
   // the number in the UI matches the user's local day, not UTC.
@@ -354,19 +348,55 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
   const viewerTz = viewer?.timezone || "UTC";
   const viewerTodayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(new Date());
 
+  // Bulk-load owners, words, and amens for all requests in three queries
+  // instead of 3×N individual lookups.
+  const requestIds = requests.map(r => r.id);
+  const ownerIds = [...new Set(requests.map(r => r.ownerId))];
+
+  const [ownerRows, allWordsRows, allAmenRows] = await Promise.all([
+    ownerIds.length > 0
+      ? db.select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+          .from(usersTable).where(inArray(usersTable.id, ownerIds))
+      : Promise.resolve([] as Array<{ id: number; name: string | null; avatarUrl: string | null }>),
+    requestIds.length > 0
+      ? db.select({
+          requestId: prayerWordsTable.requestId,
+          authorName: prayerWordsTable.authorName,
+          content: prayerWordsTable.content,
+          authorUserId: prayerWordsTable.authorUserId,
+          createdAt: prayerWordsTable.createdAt,
+          isPrivate: prayerWordsTable.isPrivate,
+        }).from(prayerWordsTable).where(inArray(prayerWordsTable.requestId, requestIds))
+      : Promise.resolve([] as Array<{ requestId: number; authorName: string | null; content: string; authorUserId: number | null; createdAt: Date | null; isPrivate: boolean | null }>),
+    requestIds.length > 0
+      ? db.select({
+          requestId: prayerRequestAmensTable.requestId,
+          prayedAt: prayerRequestAmensTable.prayedAt,
+          userId: prayerRequestAmensTable.userId,
+        }).from(prayerRequestAmensTable).where(inArray(prayerRequestAmensTable.requestId, requestIds))
+      : Promise.resolve([] as Array<{ requestId: number; prayedAt: Date; userId: number }>),
+  ]);
+
+  const ownersMap = new Map<number, { name: string | null; avatarUrl: string | null }>();
+  for (const o of ownerRows) ownersMap.set(o.id, { name: o.name, avatarUrl: o.avatarUrl });
+
+  const wordsByRequest = new Map<number, typeof allWordsRows>();
+  for (const w of allWordsRows) {
+    if (!wordsByRequest.has(w.requestId)) wordsByRequest.set(w.requestId, []);
+    wordsByRequest.get(w.requestId)!.push(w);
+  }
+
+  const amensByRequest = new Map<number, typeof allAmenRows>();
+  for (const a of allAmenRows) {
+    if (!amensByRequest.has(a.requestId)) amensByRequest.set(a.requestId, []);
+    amensByRequest.get(a.requestId)!.push(a);
+  }
+
   // Enrich with owner name, words, and per-user flags
-  const enriched = await Promise.all(requests.map(async (r) => {
-    const [owner] = await db
-      .select({ name: usersTable.name, avatarUrl: usersTable.avatarUrl })
-      .from(usersTable)
-      .where(eq(usersTable.id, r.ownerId));
-    const allWords = await db.select({
-      authorName: prayerWordsTable.authorName,
-      content: prayerWordsTable.content,
-      authorUserId: prayerWordsTable.authorUserId,
-      createdAt: prayerWordsTable.createdAt,
-      isPrivate: prayerWordsTable.isPrivate,
-    }).from(prayerWordsTable).where(eq(prayerWordsTable.requestId, r.id));
+  const enriched = requests.map((r) => {
+    const owner = ownersMap.get(r.ownerId);
+    const allWords = wordsByRequest.get(r.id) ?? [];
+    const amens = amensByRequest.get(r.id) ?? [];
 
     const isOwnRequest = r.ownerId === sessionUserId;
     // Privacy filter: a private word is visible only to the request
@@ -393,18 +423,6 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     // prays on three different days counts once here (vs amenCountTotal
     // which is per-user-per-day).
     let amenPeopleCount: number | null = null;
-    // Pull all amens once so we can derive both the owner-only counts
-    // and the per-viewer "did I amen this today?" flag without two
-    // round-trips. The viewer flag drives the slideshow's resume-
-    // where-you-left-off behavior + the dashboard "X more prayers"
-    // partial-progress card state.
-    const amens = await db
-      .select({
-        prayedAt: prayerRequestAmensTable.prayedAt,
-        userId: prayerRequestAmensTable.userId,
-      })
-      .from(prayerRequestAmensTable)
-      .where(eq(prayerRequestAmensTable.requestId, r.id));
 
     let myAmenedToday = false;
     let myAmenedEver = false;
@@ -484,7 +502,7 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       // not "new" to you anymore even after midnight rolls over.
       myAmenedEver,
     };
-  }));
+  });
 
   // Order: pure chronological (createdAt-desc), already established
   // by the SQL query above. We deliberately do NOT re-tier by
@@ -1814,7 +1832,7 @@ router.put("/me/feed-first-home", async (req, res): Promise<void> => {
 // doesn't do anything." (Earlier this list was 4 keys and gratitude /
 // examen rows on /customize-home couldn't be turned on at all because
 // the server kept stripping them out on the way to the DB.)
-const HOME_MODULE_KEYS = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "requests"] as const;
+const HOME_MODULE_KEYS = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
 router.put("/me/home-layout", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }

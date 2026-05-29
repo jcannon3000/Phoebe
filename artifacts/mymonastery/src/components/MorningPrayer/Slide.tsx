@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, useRef, useState } from "react";
 import type { Slide as SlideData, MemberPresence } from "./types";
 import { CallAndResponse } from "./CallAndResponse";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
@@ -67,6 +67,147 @@ function formatLogTime(loggedAt: string | null): string {
   if (!loggedAt) return "";
   const d = new Date(loggedAt);
   return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+// ── FDD MEDITATION ─────────────────────────────────────────────────────────
+// Self-contained audio player slide for the Forward Day by Day daily
+// meditation. Uses its own local state so it doesn't need a ref.
+
+function FddMeditationSlide({ slide, theme }: { slide: SlideData; theme: "morning" | "evening" }) {
+  const audioUrl = slide.metadata?.audioUrl as string | undefined;
+  const totalSecs = (slide.metadata?.durationSeconds as number | null) ?? 0;
+  const isEvening = theme === "evening";
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+
+  const bg = isEvening ? EP_BG : SOIL;
+  const textColor = isEvening ? EP_TEXT : CREAM;
+  const accent = isEvening ? EP_ACCENT : SAGE;
+  const highlight = isEvening ? EP_HIGHLIGHT : AMBER;
+
+  function toggle() {
+    const a = audioRef.current;
+    if (!a) return;
+    if (isPlaying) { a.pause(); } else { void a.play(); }
+  }
+
+  function fmt(secs: number): string {
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  }
+
+  const progress = totalSecs > 0 ? Math.min(currentTime / totalSecs, 1) : 0;
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100vh",
+        background: bg,
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        padding: "48px 32px",
+        overflow: "hidden",
+      }}
+    >
+      {/* Eyebrow */}
+      <p style={{ fontSize: 11, letterSpacing: "0.12em", color: accent, textTransform: "uppercase", fontFamily: "Space Grotesk, sans-serif", margin: "0 0 14px" }}>
+        Forward Day by Day
+      </p>
+
+      {/* Emoji */}
+      <div style={{ fontSize: 40, marginBottom: 16 }}>📖</div>
+
+      {/* Title */}
+      {slide.title && (
+        <p style={{ fontSize: 20, fontWeight: 700, color: textColor, fontFamily: "Space Grotesk, sans-serif", margin: "0 0 6px", lineHeight: 1.25 }}>
+          {slide.title}
+        </p>
+      )}
+
+      {/* Subhead */}
+      <p style={{ fontSize: 14, color: accent, fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", margin: "0 0 28px", lineHeight: 1.5 }}>
+        A daily reflection from Forward Movement
+      </p>
+
+      {/* Audio player */}
+      {audioUrl ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Hidden audio element */}
+          <audio
+            ref={audioRef}
+            src={audioUrl}
+            preload="metadata"
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onEnded={() => { setIsPlaying(false); setCurrentTime(totalSecs || 0); }}
+            onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime ?? 0)}
+          />
+
+          {/* Play / Pause button */}
+          <button
+            type="button"
+            onClick={toggle}
+            aria-label={isPlaying ? "Pause" : "Play Forward Day by Day"}
+            style={{
+              width: 68,
+              height: 68,
+              borderRadius: "50%",
+              background: isEvening ? EP_ACCENT : AMBER,
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 26,
+              color: bg,
+              paddingLeft: isPlaying ? 0 : 3,
+              flexShrink: 0,
+            }}
+          >
+            {isPlaying ? "⏸" : "▶"}
+          </button>
+
+          {/* Progress bar + time */}
+          {totalSecs > 0 && (
+            <div style={{ width: "100%", maxWidth: 260 }}>
+              <div
+                style={{
+                  height: 3,
+                  background: isEvening ? "rgba(143,175,150,0.2)" : "rgba(247,240,230,0.15)",
+                  borderRadius: 2,
+                  marginBottom: 7,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    height: "100%",
+                    background: highlight,
+                    borderRadius: 2,
+                    width: `${progress * 100}%`,
+                    transition: "width 0.5s linear",
+                  }}
+                />
+              </div>
+              <p style={{ fontSize: 12, color: accent, fontFamily: "Space Grotesk, sans-serif", margin: 0 }}>
+                {fmt(currentTime)} / {fmt(totalSecs)}
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <p style={{ fontSize: 13, color: isEvening ? EP_MUTED : MUTED, fontStyle: "italic", fontFamily: "Georgia, serif" }}>
+          Audio unavailable
+        </p>
+      )}
+    </div>
+  );
 }
 
 export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
@@ -457,6 +598,11 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
           </div>
         </div>
       );
+    }
+
+    // ── FDD MEDITATION ────────────────────────────────────────────────────────
+    if (slide.type === "fdd_meditation") {
+      return <FddMeditationSlide slide={slide} theme={theme} />;
     }
 
     // ── CONTENT SLIDES ─────────────────────────────────────────────────────────

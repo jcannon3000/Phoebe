@@ -46,6 +46,11 @@ export type Show = {
   // feed — episodes are MP3s embedded on a WordPress page, so we scrape
   // them (titles + audio URLs) into the same episode shape.
   kind?: "rss" | "scrape-roundtables";
+  // When true, the show's artwork is used as the imageUrl for EVERY
+  // episode, ignoring per-episode <itunes:image> tags. Useful when the
+  // feed omits episode art (or uses generic imagery) but we have a good
+  // canonical portrait for the host — e.g. Bishop Budde's photo.
+  overrideEpisodeArtwork?: boolean;
 };
 
 // Show-level theme tags (slug → theme keys). A theme search surfaces a
@@ -235,11 +240,14 @@ export const SHOWS: Record<string, Show> = {
   // ── Diocese of Washington — Bishop Mariann Budde ────────────────────
   "experiencing-jesus": {
     slug: "experiencing-jesus",
-    title: "Experiencing Jesus with Bishop Mariann",
+    title: "The Way of Love: A Rule of Life",
     artist: "Diocese of Washington",
     publisher: "around-the-church",
     feedUrl: "https://feeds.simplecast.com/1CBZhkXf",
     artwork: "/podcast-art/budde.jpg",
+    // Use her portrait for every episode — the feed provides no per-episode
+    // art and the generic show graphic is less recognizable than her face.
+    overrideEpisodeArtwork: true,
   },
   // ── The Episcopal Church — Presiding Bishop Michael Curry ───────────
   "way-of-love-curry": {
@@ -440,6 +448,18 @@ function scrapeRoundtables(html: string, fallbackTitle: string): ParsedFeed {
   return { feedTitle: fallbackTitle, feedImage: null, feedDescription: null, episodes };
 }
 
+// Apply show-level artwork overrides to a parsed feed — called after
+// every fetch/parse and before caching, so the override is baked in and
+// callers never need to think about it.
+function applyShowOverrides(data: ParsedFeed, show: Show): ParsedFeed {
+  if (!show.overrideEpisodeArtwork || !show.artwork) return data;
+  const art = show.artwork;
+  return {
+    ...data,
+    episodes: data.episodes.map((ep) => ({ ...ep, imageUrl: art })),
+  };
+}
+
 export async function loadFeed(show: Show, limit: number): Promise<ParsedFeed> {
   const hit = cache.get(show.slug);
   // Cache stores the largest parse we've done; a small-limit request can
@@ -453,9 +473,10 @@ export async function loadFeed(show: Show, limit: number): Promise<ParsedFeed> {
     });
     if (!res.ok) throw new Error(`feed HTTP ${res.status}`);
     const body = await res.text();
-    const data = show.kind === "scrape-roundtables"
+    const parsed = show.kind === "scrape-roundtables"
       ? scrapeRoundtables(body, show.title)
       : parseFeed(body, Math.max(limit, 50));
+    const data = applyShowOverrides(parsed, show);
     cache.set(show.slug, { at: Date.now(), data });
     return { ...data, episodes: data.episodes.slice(0, limit) };
   } catch (err) {

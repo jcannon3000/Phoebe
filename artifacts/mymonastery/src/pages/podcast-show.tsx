@@ -4,7 +4,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlayer";
+import { toggleShowFollowed, useIsShowFollowed } from "@/lib/podcastHome";
 import { useTranslation } from "react-i18next";
+import { Layout } from "@/components/layout";
 
 // ── /podcasts/show/:slug — a show's episodes ────────────────────────────
 //
@@ -197,34 +199,24 @@ export default function PodcastShowPage() {
   if (authLoading || !user) return null;
 
   const show = data?.show;
+  const followed = useIsShowFollowed(slug);
 
   return (
-    <div style={{ minHeight: "100dvh", background: PALETTE.bg, color: PALETTE.warm, fontFamily: FONT, paddingBottom: player.current ? 96 : 0 }}>
-      <header
-        style={{
-          paddingTop: "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))",
-          paddingLeft: 20, paddingRight: 20, paddingBottom: 8,
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => {
-            // Respect how the user got here: from the CAC grid → back to
-            // the grid; from a direct menu tap (single-show publisher)
-            // → back to wherever they were. history.back() does both;
-            // fall back to the publisher page / dashboard on a cold
-            // deep-link with no history.
-            if (window.history.length > 1) window.history.back();
-            else if (show?.publisher) setLocation(`/podcasts/${show.publisher}`);
-            else setLocation("/dashboard");
-          }}
-          style={{ background: "none", border: "none", color: PALETTE.sage, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}
-        >
-          ← {t("common.back")}
-        </button>
-      </header>
-
-      <main className="w-full max-w-2xl mx-auto" style={{ padding: "8px 16px 40px" }}>
+    <Layout>
+      <div className="w-full max-w-2xl mx-auto" style={{ color: PALETTE.warm, fontFamily: FONT, paddingBottom: player.current ? 96 : 40 }}>
+        <div style={{ marginBottom: 12 }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.history.length > 1) window.history.back();
+              else if (show?.publisher) setLocation(`/podcasts/${show.publisher}`);
+              else setLocation("/dashboard");
+            }}
+            style={{ background: "none", border: "none", color: PALETTE.sage, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}
+          >
+            ← {t("common.back")}
+          </button>
+        </div>
         {/* Show header — Hallow-style image-forward hero. */}
         <div className="flex flex-col items-center text-center mb-7">
           <HeroArt url={show?.artwork ?? null} alt={show?.title ?? t("podcasts.show_fallback")} />
@@ -247,6 +239,25 @@ export default function PodcastShowPage() {
             >
               {show.description}
             </p>
+          )}
+          {/* Add this show to the home screen — renders a progress card on
+              the dashboard (see lib/podcastHome + PodcastHomeCard). */}
+          {show && (
+            <button
+              type="button"
+              onClick={() => toggleShowFollowed({ slug: show.slug, title: show.title, artwork: show.artwork })}
+              style={{
+                marginTop: 18,
+                display: "inline-flex", alignItems: "center", gap: 7,
+                background: followed ? "rgba(46,107,64,0.30)" : "transparent",
+                border: `1px solid ${followed ? "rgba(46,107,64,0.55)" : "rgba(143,175,150,0.4)"}`,
+                color: followed ? "#A8C5A0" : PALETTE.sage,
+                fontFamily: FONT, fontSize: 13, fontWeight: 600,
+                padding: "8px 16px", borderRadius: 999, cursor: "pointer",
+              }}
+            >
+              {followed ? "✓ On your home" : "+ Add to home"}
+            </button>
           )}
         </div>
 
@@ -375,7 +386,7 @@ export default function PodcastShowPage() {
             )}
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 }

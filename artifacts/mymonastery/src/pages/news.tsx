@@ -1,18 +1,27 @@
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
 import { useBetaStatus } from "@/hooks/useDemo";
-import { useNewsSubscriptions, toggleNewsSubscription } from "@/lib/newsPrefs";
+import { Layout } from "@/components/layout";
 
-// ── /news — News & Actions ──
+// ── /news — News & Actions ──────────────────────────────────────────────────
 //
-// A scrollable list of recent stories from Episcopal-affiliated partner
-// orgs (currently Rural & Migrant Ministry), pulled from each org's RSS
-// feed server-side (/api/news) with a hero image resolved per story.
-// Tapping a story opens the full article in the in-app browser — the
-// feed only carries an excerpt. Reachable from the side-drawer menu.
+// Podcasts-style feed of partner-org stories. Two tabs:
+//   All   — every source merged, sorted newest first
+//   <Org> — one source's stories in website feed order (one tab per source)
+
+const PALETTE = {
+  bg: "#091A10",
+  warm: "#F0EDE6",
+  sage: "#8FAF96",
+  faint: "rgba(143,175,150,0.55)",
+  cardBg: "rgba(46,107,64,0.08)",
+  cardBorder: "rgba(46,107,64,0.22)",
+  accent: "#A8C5A0",
+};
+const FONT = "'Space Grotesk', system-ui, sans-serif";
 
 type NewsItem = {
   id: string;
@@ -28,17 +37,6 @@ type NewsItem = {
 type NewsSourceMeta = { slug: string; name: string; emoji: string; siteUrl: string };
 type NewsResponse = { sources: NewsSourceMeta[]; items: NewsItem[] };
 
-const PALETTE = {
-  bg: "#091A10",
-  warm: "#F0EDE6",
-  sage: "#8FAF96",
-  faint: "rgba(143,175,150,0.55)",
-  cardBg: "rgba(46,107,64,0.08)",
-  cardBorder: "rgba(46,107,64,0.22)",
-  accent: "#A8C5A0",
-};
-const FONT = "'Space Grotesk', system-ui, sans-serif";
-
 function fmtDate(iso: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
@@ -46,46 +44,65 @@ function fmtDate(iso: string | null): string | null {
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
-function StoryCard({ item }: { item: NewsItem }) {
+// ── Story row — horizontal thumbnail + text, Podcasts-episode style ─────────
+
+function StoryRow({ item }: { item: NewsItem }) {
   const [imgFailed, setImgFailed] = useState(false);
   const date = fmtDate(item.publishedAt);
   const meta = [item.sourceName, date].filter(Boolean).join(" · ");
-  const category = item.categories[0] ?? null;
   const open = () => { if (item.link) openExternal(item.link); };
+
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={open}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } }}
-      className="w-full rounded-2xl overflow-hidden cursor-pointer transition-opacity hover:opacity-90"
-      style={{ background: PALETTE.cardBg, border: `1px solid ${PALETTE.cardBorder}` }}
+      className="w-full rounded-2xl cursor-pointer transition-opacity hover:opacity-90 flex items-start gap-3"
+      style={{ padding: "14px", background: PALETTE.cardBg, border: `1px solid ${PALETTE.cardBorder}` }}
     >
-      {item.imageUrl && !imgFailed && (
-        <div style={{ width: "100%", aspectRatio: "16 / 9", background: "#0F2818" }}>
+      {/* Thumbnail */}
+      <div style={{ width: 76, height: 76, flexShrink: 0 }}>
+        {item.imageUrl && !imgFailed ? (
           <img
             src={item.imageUrl}
             alt=""
+            loading="lazy"
             onError={() => setImgFailed(true)}
-            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+            style={{ width: 76, height: 76, borderRadius: 12, objectFit: "cover", display: "block", background: "rgba(143,175,150,0.1)" }}
           />
-        </div>
-      )}
-      <div style={{ padding: 16 }}>
-        {category && (
-          <p style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 600, color: PALETTE.accent, margin: "0 0 6px" }}>
-            {category}
-          </p>
+        ) : (
+          <div
+            style={{
+              width: 76, height: 76, borderRadius: 12,
+              background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.25)",
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 30,
+            }}
+            aria-hidden
+          >
+            📰
+          </div>
         )}
-        <p style={{ fontSize: 16, fontWeight: 700, color: PALETTE.warm, margin: 0, lineHeight: 1.3, fontFamily: FONT }}>
+      </div>
+
+      {/* Text */}
+      <div className="min-w-0 flex-1">
+        <p
+          style={{
+            fontSize: 14.5, fontWeight: 700, color: PALETTE.warm, margin: 0, lineHeight: 1.25, fontFamily: FONT,
+            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+          }}
+        >
           {item.title ?? "Untitled"}
         </p>
-        <p style={{ fontSize: 12, color: PALETTE.faint, margin: "6px 0 0" }}>{meta}</p>
+        <p style={{ fontSize: 11.5, color: PALETTE.faint, margin: "4px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {meta}
+        </p>
         {item.excerpt && (
           <p
             style={{
-              fontSize: 13.5, color: PALETTE.sage, margin: "8px 0 0", lineHeight: 1.5,
-              display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden",
+              fontSize: 12.5, color: PALETTE.sage, margin: "6px 0 0", lineHeight: 1.4, fontFamily: FONT,
+              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
             }}
           >
             {item.excerpt}
@@ -96,131 +113,129 @@ function StoryCard({ item }: { item: NewsItem }) {
   );
 }
 
+// ── Page ─────────────────────────────────────────────────────────────────────
+
 export default function NewsPage() {
   const [, setLocation] = useLocation();
-  // News & Actions is a beta feature. Redirect non-beta users out once
-  // beta status has resolved (guarding on betaLoading avoids bouncing a
-  // beta user during the brief status fetch).
   const { isBeta, isLoading: betaLoading } = useBetaStatus();
-  const subs = useNewsSubscriptions();
+  const [tab, setTab] = useState("all");
+
   const { data, isLoading } = useQuery<NewsResponse>({
     queryKey: ["/api/news"],
     queryFn: () => apiRequest("GET", "/api/news"),
     enabled: isBeta,
     staleTime: 10 * 60_000,
   });
-  useEffect(() => {
-    if (!betaLoading && !isBeta) setLocation("/dashboard");
-  }, [betaLoading, isBeta, setLocation]);
-  const items = data?.items ?? [];
-  const sources = data?.sources ?? [];
-  const primarySource = sources[0] ?? null;
 
-  // Hold a calm shell while beta status resolves / a non-beta user is
-  // being redirected, rather than flashing the feed.
-  if (betaLoading || !isBeta) {
+  // Gate: redirect non-beta users once status resolves
+  if (!betaLoading && !isBeta) {
+    setLocation("/dashboard");
+    return null;
+  }
+
+  const allItems = data?.items ?? [];
+  const sources = data?.sources ?? [];
+
+  const displayedItems = useMemo(() => {
+    if (tab === "all") {
+      return [...allItems].sort((a, b) => {
+        const ta = a.publishedAt ? Date.parse(a.publishedAt) : 0;
+        const tb = b.publishedAt ? Date.parse(b.publishedAt) : 0;
+        return tb - ta;
+      });
+    }
+    // Per-source: keep feed order (= website page order)
+    return allItems.filter((it) => it.sourceSlug === tab);
+  }, [allItems, tab]);
+
+  const tabs: Array<{ key: string; label: string }> = [
+    { key: "all", label: "All" },
+    ...sources.map((s) => ({ key: s.slug, label: s.name })),
+  ];
+
+  const activeSource = tab !== "all" ? sources.find((s) => s.slug === tab) : null;
+
+  if (betaLoading) {
     return (
-      <div style={{ minHeight: "100dvh", background: PALETTE.bg, color: PALETTE.warm, fontFamily: FONT, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: PALETTE.faint, fontSize: 13 }}>Loading…</p>
+      <div style={{ minHeight: "100dvh", background: PALETTE.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ color: PALETTE.faint, fontSize: 13, fontFamily: FONT }}>Loading…</p>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: "100dvh", background: PALETTE.bg, color: PALETTE.warm, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
-      <header
-        style={{
-          paddingTop: "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))",
-          paddingLeft: 20, paddingRight: 20, paddingBottom: 8,
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => setLocation("/dashboard")}
-          style={{ background: "none", border: "none", color: PALETTE.sage, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}
-        >
-          ← Back
-        </button>
-      </header>
-
-      <main style={{ flex: 1, padding: "8px 20px 40px", maxWidth: 640, width: "100%", margin: "0 auto" }}>
-        <h1 style={{ fontSize: 30, fontWeight: 800, margin: "8px 0 4px", letterSpacing: "-0.02em" }}>News &amp; Actions</h1>
+    <Layout>
+      <div style={{ maxWidth: 640, width: "100%", margin: "0 auto", color: PALETTE.warm, fontFamily: FONT, paddingBottom: 48 }}>
+        <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 4px", letterSpacing: "-0.02em" }}>
+          News &amp; Actions
+        </h1>
         <p style={{ fontSize: 14, color: PALETTE.sage, margin: "0 0 18px", lineHeight: 1.5 }}>
-          Recent stories and ways to act from partners in ministry.
+          Recent stories from partners in ministry.
         </p>
 
-        {/* Follow toggles — following a source surfaces its new stories
-            as a short slide at the end of your prayer. */}
-        {sources.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 22 }}>
-            {sources.map((s) => {
-              const following = subs.includes(s.slug);
+        {/* Source tabs */}
+        {tabs.length > 1 && (
+          <div style={{ display: "flex", gap: 6, marginBottom: 18 }}>
+            {tabs.map(({ key, label }) => {
+              const active = tab === key;
               return (
-                <div
-                  key={s.slug}
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setTab(key)}
                   style={{
-                    display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
-                    borderRadius: 14, background: PALETTE.cardBg, border: `1px solid ${PALETTE.cardBorder}`,
+                    flex: 1,
+                    padding: "9px 10px",
+                    borderRadius: 12,
+                    fontSize: 13, fontWeight: 700, fontFamily: FONT, cursor: "pointer",
+                    background: active ? "#2D5E3F" : "rgba(46,107,64,0.10)",
+                    color: active ? PALETTE.warm : "rgba(168,197,160,0.9)",
+                    border: `1px solid ${active ? "rgba(168,197,160,0.5)" : "rgba(46,107,64,0.28)"}`,
+                    whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                   }}
                 >
-                  <span style={{ fontSize: 20, flexShrink: 0 }}>{s.emoji}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: PALETTE.warm, margin: 0, fontFamily: FONT }}>{s.name}</p>
-                    <p style={{ fontSize: 11.5, color: PALETTE.faint, margin: "2px 0 0", lineHeight: 1.35 }}>
-                      {following ? "New stories appear at the end of your prayer" : "Follow to see new stories at the end of prayer"}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleNewsSubscription(s.slug)}
-                    className="rounded-full"
-                    style={{
-                      flexShrink: 0, fontFamily: FONT, fontSize: 12.5, fontWeight: 600,
-                      padding: "6px 14px", cursor: "pointer", whiteSpace: "nowrap",
-                      background: following ? "rgba(46,107,64,0.30)" : "transparent",
-                      border: `1px solid ${following ? "rgba(46,107,64,0.55)" : "rgba(143,175,150,0.4)"}`,
-                      color: following ? PALETTE.accent : PALETTE.sage,
-                    }}
-                  >
-                    {following ? "✓ Following" : "Follow"}
-                  </button>
-                </div>
+                  {label}
+                </button>
               );
             })}
           </div>
         )}
 
-        {isLoading && items.length === 0 ? (
-          <p style={{ color: PALETTE.faint, fontSize: 13, marginTop: 24 }}>Loading stories…</p>
-        ) : items.length === 0 ? (
-          <p style={{ color: PALETTE.faint, fontSize: 13, marginTop: 24, lineHeight: 1.5 }}>
-            No stories right now. Please check back soon.
-          </p>
+        {/* Story list */}
+        {isLoading && allItems.length === 0 ? (
+          <div style={{ textAlign: "center", marginTop: 48 }}>
+            <p style={{ fontSize: 14, color: PALETTE.faint }}>Loading stories…</p>
+          </div>
+        ) : displayedItems.length === 0 ? (
+          <div style={{ textAlign: "center", marginTop: 48 }}>
+            <p style={{ fontSize: 30, margin: "0 0 12px" }}>📰</p>
+            <p style={{ fontSize: 14, color: PALETTE.faint, lineHeight: 1.5 }}>No stories right now. Check back soon.</p>
+          </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {items.map((it) => (
-              <StoryCard key={`${it.sourceSlug}:${it.id}`} item={it} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {displayedItems.map((it) => (
+              <StoryRow key={`${it.sourceSlug}:${it.id}`} item={it} />
             ))}
           </div>
         )}
 
-        {primarySource && (
+        {/* "View all on source" footer for per-source tabs */}
+        {activeSource && (
           <div style={{ marginTop: 24, textAlign: "center" }}>
             <button
               type="button"
-              onClick={() => openExternal(primarySource.siteUrl)}
-              className="rounded-full"
+              onClick={() => openExternal(activeSource.siteUrl)}
               style={{
                 background: "rgba(46,107,64,0.16)", border: "1px solid rgba(46,107,64,0.45)",
                 color: PALETTE.accent, fontFamily: FONT, fontSize: 13, fontWeight: 600,
-                padding: "8px 18px", cursor: "pointer",
+                padding: "8px 18px", cursor: "pointer", borderRadius: 999,
               }}
             >
-              View all on {primarySource.name} ↗
+              View all on {activeSource.name} ↗
             </button>
           </div>
         )}
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 }
