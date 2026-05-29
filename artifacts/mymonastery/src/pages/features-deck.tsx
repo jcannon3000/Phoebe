@@ -793,7 +793,7 @@ export default function FeaturesDeck() {
 
   // On mobile, expand each "preview" slide into [copy-only, mock-only]
   const slides: Slide[] = isMobile
-    ? SLIDES.flatMap((s) =>
+    ? SLIDES.flatMap((s): Slide[] =>
         s.kind === "preview"
           ? [s, { kind: "preview-mock" as const, variant: s.variant }]
           : [s]

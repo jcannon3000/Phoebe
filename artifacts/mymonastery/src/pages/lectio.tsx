@@ -233,7 +233,7 @@ function initialSlideIndex(data: LectioData, slides: Slide[]): number {
       const submitted = STAGE_ORDER.filter(
         (s) => data.stages[s].unlocked && data.stages[s].userHasSubmitted,
       );
-      const target = submitted[submitted.length - 1] ?? data.currentStage ?? null;
+      const target = submitted[submitted.length - 1] ?? data.week.currentStage ?? null;
       if (target) {
         const idx = slides.findIndex(
           (sl) => sl.stage === target && sl.kind === "responses",

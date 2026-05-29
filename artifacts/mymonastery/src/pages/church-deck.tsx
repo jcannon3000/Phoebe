@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type ReactElement } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, MessageCircle, MapPin, Users } from "lucide-react";
@@ -1311,7 +1311,7 @@ function GatheringsMock() {
   );
 }
 
-const MOCK_MAP: Record<string, () => JSX.Element> = {
+const MOCK_MAP: Record<string, () => ReactElement> = {
   "prayer-requests": PrayerRequestsMock,
   "prayer-notification": PrayerNotificationMock,
   "community-intercession": CommunityIntercessionMock,

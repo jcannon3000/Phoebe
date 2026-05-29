@@ -143,9 +143,9 @@ function MomentCard({ moment, userEmail }: { moment: MomentData; userEmail: stri
     if (isIntercession && moment.intention) {
       const norm = (s: string) => s.trim().toLowerCase();
       const hasMeaningfulTopic =
-        (moment as Record<string, unknown>).intercessionTopic &&
-        norm(String((moment as Record<string, unknown>).intercessionTopic)) !== norm(moment.name) &&
-        norm(String((moment as Record<string, unknown>).intercessionTopic)) !== norm(moment.intention);
+        (moment as unknown as Record<string, unknown>).intercessionTopic &&
+        norm(String((moment as unknown as Record<string, unknown>).intercessionTopic)) !== norm(moment.name) &&
+        norm(String((moment as unknown as Record<string, unknown>).intercessionTopic)) !== norm(moment.intention);
       if (!hasMeaningfulTopic) return moment.intention;
     }
     return stripTrailingEmoji(moment.name);
