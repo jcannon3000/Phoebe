@@ -10,6 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { findBcpPrayer, localizeBcpPrayer } from "@/lib/bcp-prayers";
 import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { openExternal } from "@/lib/openExternal";
+import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useEffectiveReflectionSource } from "@/lib/officePrefs";
 import {
   CAC_TODAY_URL,
@@ -20,6 +21,7 @@ import {
   markSsjeRead,
 } from "@/lib/cacReadState";
 import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
+import NewsClosingSlide, { useUnseenNews } from "@/components/NewsClosingSlide";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
@@ -1351,11 +1353,6 @@ function HabitSlide({
   // End-of-office gratitude beat — a gentle "name one thing you're
   // grateful for" the close offers before you leave.
   const [thanksOpen, setThanksOpen] = useState(false);
-  // Daily-reflection source for the "Read today's reflection" pill
-  // that sits alongside the gratitude pill on this last screen.
-  // Effective precedence: explicit Settings pick → whichever
-  // reflection card is visible on the home screen → FDD default.
-  const reflectionSource = useEffectiveReflectionSource();
   const { t } = useTranslation();
   // Server is the source of truth — past completions from any device
   // live in prayer_sessions, not localStorage. We still union with
@@ -1668,32 +1665,6 @@ function HabitSlide({
       </button>
       <GratitudeNudge open={thanksOpen} onClose={() => setThanksOpen(false)} />
 
-      {/* Read-today's-reflection pill — sits next to Give thanks on
-          this last screen. Opens the source the user picked in Office
-          Settings → After the office (CAC / FDD / SSJE) externally and
-          marks today read so the home card flips. Hidden when the user
-          picked "none". */}
-      {reflectionSource !== "none" && (
-        <button
-          type="button"
-          onClick={() => {
-            if (reflectionSource === "fdd") { markFddRead(); openExternal(FDD_TODAY_URL); }
-            else if (reflectionSource === "ssje") { markSsjeRead(); openExternal(SSJE_TODAY_URL); }
-            else { markCacRead(); openExternal(CAC_TODAY_URL); }
-          }}
-          className="text-[12px] font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-90"
-          style={{
-            background: "rgba(46,107,64,0.22)",
-            color: "#A8C5A0",
-            border: "1px solid rgba(46,107,64,0.45)",
-            fontFamily: "'Space Grotesk', sans-serif",
-            cursor: "pointer",
-          }}
-        >
-          {t("offices.read_reflection")}
-        </button>
-      )}
-
       {/* Ignatian Examen pill — evening only (the Examen is an
           end-of-day prayer), and pilot-only (same gate as the menu
           entry). A gentle invitation to close the day reflectively
@@ -1723,6 +1694,162 @@ function HabitSlide({
       >
         Done
       </button>
+    </div>
+  );
+}
+
+// ─── Reflection slide ───────────────────────────────────────────────────────
+// Shown on the office-finish walk (closingOnly / offices-only) BEFORE the
+// closing summary, when the user has a daily reflection turned on (Settings →
+// After the office, or a visible home reflection card). Embeds today's
+// reflection IN-APP — with a bottom "Continue" bar that advances to the
+// closing summary — instead of ejecting to SFSafariViewController, so the
+// reflection reads as part of the slideshow rather than a detour out of it.
+//
+// FDD + SSJE set no framing restrictions, so they render in an <iframe>. CAC's
+// link 302-redirects to cac.org, which sends X-Frame-Options: SAMEORIGIN and
+// can't be framed; for CAC we show an in-app card that opens the meditation in
+// the in-app browser (the only path that works). An "Open ↗" escape hatch in
+// the header covers any embed that won't load on a given device.
+function ReflectionSlide({
+  source,
+  onContinue,
+}: {
+  source: "cac" | "fdd" | "ssje";
+  onContinue: () => void;
+}) {
+  const { t } = useTranslation();
+  const url = source === "fdd" ? FDD_TODAY_URL : source === "ssje" ? SSJE_TODAY_URL : CAC_TODAY_URL;
+  const heading =
+    source === "fdd" ? "Forward Day by Day"
+      : source === "ssje" ? "Brother, Give Us a Word"
+        : "CAC Daily Meditation";
+  const canEmbed = source !== "cac";
+  const RFONT = "'Space Grotesk', sans-serif";
+
+  // They're reading it now — flip the home card / dashboard module to
+  // "Read again", same as the old close pill did on tap.
+  useEffect(() => {
+    if (source === "fdd") markFddRead();
+    else if (source === "ssje") markSsjeRead();
+    else markCacRead();
+  }, [source]);
+
+  // Forward Day by Day also has an audio edition. Fetch today's episode
+  // (newest from the FDD feed) so the "Listen" button can hand it to the
+  // global player. expand:false keeps the reflection on screen — the audio
+  // rides in the mini-bar (revealed once they Continue past this slide).
+  const player = usePodcastPlayer();
+  const { data: fddToday } = useQuery<{
+    title: string | null; audioUrl: string | null; durationSeconds: number | null;
+    publishedAt: string | null; imageUrl: string | null;
+  }>({
+    queryKey: ["/api/podcast/forward-day-by-day/today"],
+    queryFn: () => apiRequest("GET", "/api/podcast/forward-day-by-day/today"),
+    enabled: source === "fdd",
+    staleTime: 30 * 60_000,
+  });
+  const fddAudio = fddToday?.audioUrl ?? null;
+  const fddIsCurrent = !!fddAudio && player.isCurrent("forward-day-by-day", fddAudio);
+  const fddPlaying = fddIsCurrent && player.isPlaying;
+  function listenFdd() {
+    if (!fddAudio) return;
+    if (fddIsCurrent) { player.toggle(); return; }
+    player.play({
+      showSlug: "forward-day-by-day",
+      episodeId: fddAudio,
+      title: fddToday?.title ?? heading,
+      audioUrl: fddAudio,
+      imageUrl: fddToday?.imageUrl,
+      showTitle: "Forward Day by Day",
+      showArtwork: fddToday?.imageUrl,
+      durationSeconds: fddToday?.durationSeconds,
+      publishedAt: fddToday?.publishedAt,
+      skipHistory: true,    // quick listen from the office close — not history
+      hideRecommend: true,  // recommend lives on the FDD show page, not here
+    }, { expand: false });
+  }
+
+  return (
+    <div
+      style={{
+        // fixed (not absolute): the prayer-mode root can grow taller than
+        // the viewport, so an absolute inset:0 would push the Continue bar
+        // below the fold. Fixed pins us to the viewport like the podcast
+        // expanded player.
+        position: "fixed",
+        inset: 0,
+        zIndex: 70,
+        display: "flex",
+        flexDirection: "column",
+        background: "#0C1F12",
+        paddingTop: "max(0.75rem, env(safe-area-inset-top))",
+      }}
+    >
+      {/* Header — what they're reading + a deliberate open-out escape. */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 18px 10px", flexShrink: 0 }}>
+        <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.16em", color: "rgba(143,175,150,0.8)", fontFamily: RFONT }}>
+          {t("offices.todays_reflection", { defaultValue: "Today's reflection" })}
+        </span>
+        <button
+          type="button"
+          onClick={() => openExternal(url)}
+          style={{ background: "none", border: "none", color: "#8FAF96", fontSize: 12, fontFamily: RFONT, cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}
+        >
+          {t("offices.open_external", { defaultValue: "Open ↗" })}
+        </button>
+      </div>
+
+      {/* Reflection body — embedded inline. */}
+      <div style={{ flex: 1, minHeight: 0, position: "relative", margin: "0 12px", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(46,107,64,0.3)", background: canEmbed ? "#fff" : "#0C1F12" }}>
+        {canEmbed ? (
+          <iframe
+            key={url}
+            src={url}
+            title={heading}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
+          />
+        ) : (
+          // CAC can't be framed — an in-app card that opens it.
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 28, textAlign: "center" }}>
+            <span style={{ fontSize: 44, lineHeight: 1 }} aria-hidden>🌵</span>
+            <p style={{ color: "#F0EDE6", fontSize: 16, fontWeight: 700, margin: 0, fontFamily: RFONT }}>{heading}</p>
+            <p style={{ color: "rgba(200,212,192,0.75)", fontSize: 13, lineHeight: 1.55, margin: 0, maxWidth: 320, fontFamily: RFONT }}>
+              {t("offices.cac_open_blurb", { defaultValue: "Today's meditation from the Center for Action and Contemplation." })}
+            </p>
+            <button
+              type="button"
+              onClick={() => openExternal(url)}
+              className="px-6 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
+              style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: RFONT }}
+            >
+              {t("offices.read_reflection")}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Bottom bar — Listen (today's FDD audio) + Continue to the summary. */}
+      <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 10, padding: "14px 16px max(16px, env(safe-area-inset-bottom))" }}>
+        {source === "fdd" && fddAudio && (
+          <button
+            type="button"
+            onClick={listenFdd}
+            className="px-7 py-3.5 rounded-full text-sm font-semibold tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+            style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.5)", fontFamily: RFONT }}
+          >
+            {fddPlaying ? "⏸ Pause" : "▶ Listen"}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onContinue}
+          className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+          style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: RFONT }}
+        >
+          {t("common.continue", { defaultValue: "Continue" })} →
+        </button>
+      </div>
     </div>
   );
 }
@@ -3095,7 +3222,24 @@ export default function PrayerModePage() {
     ? officePrefsQuery.data?.morning
     : officePrefsQuery.data?.evening;
   const showSetReminder = closingOnly && sidePref === "none";
-  const [phase, setPhase] = useState<"prayer" | "closing" | "habit">(() => closingOnly ? "closing" : "prayer");
+  const [phase, setPhase] = useState<"prayer" | "closing" | "news" | "habit">(() => closingOnly ? "closing" : "prayer");
+  // New stories from followed news sources, if any — gates the optional
+  // "As you go" news slide between the closing summary and the habit
+  // rhythm screen. Empty (and free) for anyone who follows nothing.
+  const unseenNews = useUnseenNews();
+  // Daily reflection (CAC / FDD / SSJE). On the office-finish walk we show it
+  // IN-APP as a slide right before the closing summary — replacing the old
+  // "Read reflection" pill that ejected to SFSafariViewController. Effective
+  // precedence: explicit Settings pick → visible home card → FDD default.
+  const reflectionSource = useEffectiveReflectionSource();
+  const [reflectionDone, setReflectionDone] = useState(false);
+  // Hold the closing summary behind the reflection slide until the user taps
+  // Continue — but only on an office-finish walk (closingOnly / offices-only)
+  // and only when a reflection is actually turned on. Gating on phase ===
+  // "closing" means offices-only feed-walkers still pray their whole list
+  // first; the reflection appears the moment they reach the summary.
+  const showReflectionGate =
+    (closingOnly || officesOnly) && phase === "closing" && reflectionSource !== "none" && !reflectionDone;
   // Contemplation timer overlay — opened from the pause slide's
   // quick-start card. Rendered at the page root below so it covers the
   // whole screen regardless of which slide is showing. startMinutes is
@@ -3702,6 +3846,16 @@ export default function PrayerModePage() {
         ×
       </button>
 
+      {/* Daily reflection — embedded in-app as the slide BEFORE the closing
+          summary (covers the whole screen with its own Continue bar). Only
+          on the office-finish walk, when a reflection source is turned on. */}
+      {showReflectionGate && (
+        <ReflectionSlide
+          source={reflectionSource as "cac" | "fdd" | "ssje"}
+          onContinue={() => setReflectionDone(true)}
+        />
+      )}
+
       {/* Content — anchored toward the top of the viewport so short
           slides (prayer requests, intercessions with no BCP block) don't
           float down near the bottom of tall phone screens.
@@ -3776,7 +3930,7 @@ export default function PrayerModePage() {
             office-handoff path) AND offices-only feed walks — that's
             where the user's morning/evening rhythm grid lives, and
             we want feed prayer to feed into it. */}
-        {phase === "closing" && (
+        {phase === "closing" && !showReflectionGate && (
           <ClosingSlide
             celebration={celebration}
             streak={celebration?.streak ?? streakData?.streak ?? 0}
@@ -3790,7 +3944,7 @@ export default function PrayerModePage() {
             // Otherwise it exits to the home screen.
             onDone={
               closingOnly || officesOnly
-                ? () => setPhase("habit")
+                ? () => setPhase(unseenNews.hasUnseen ? "news" : "habit")
                 : handleDone
             }
             visible={slideVisible}
@@ -3798,6 +3952,13 @@ export default function PrayerModePage() {
             reminderSide={reminderSide}
             doneLabel={closingOnly || officesOnly ? t("common.continue") : t("common.done")}
           />
+        )}
+        {/* Optional "As you go" news slide — only when a followed source
+            has new stories (unseenNews.hasUnseen gates the transition into
+            this phase from the closing slide). Continue marks seen + lands
+            on the habit rhythm screen. */}
+        {phase === "news" && (
+          <NewsClosingSlide onDone={() => setPhase("habit")} visible={slideVisible} />
         )}
         {phase === "habit" && (
           <HabitSlide onDone={handleDone} visible={slideVisible} isEvening={closingIsEvening} />
