@@ -111,14 +111,23 @@ export default function OfficePrayAlongPage() {
 
   // Timeline = alignment sections (what was read, when), enriched with the
   // office slide's text by id. Drop near-zero windows (skipped slides).
+  // Forward Movement's closing donation appeal — the player stops here and
+  // hands off to the community intercessions (it isn't part of the office).
+  const appealStart = useMemo(
+    () => sections.find((s) => s.type === "appeal")?.startSeconds ?? null,
+    [sections],
+  );
+
   const timeline: Row[] = useMemo(() => {
     const byId = new Map(slides.map((s) => [s.id, s]));
     return sections
+      .filter((sec) => sec.type !== "appeal")
+      .filter((sec) => appealStart == null || sec.startSeconds < appealStart - 0.5)
       .filter((sec) => sec.endSeconds == null || sec.endSeconds - sec.startSeconds >= 1.5)
       .slice()
       .sort((a, b) => a.startSeconds - b.startSeconds)
       .map((sec) => ({ sec, slide: byId.get(sec.id) }));
-  }, [slides, sections]);
+  }, [slides, sections, appealStart]);
 
   // Credit the office while they listen.
   const slidesSeenRef = useRef(0);
@@ -129,6 +138,7 @@ export default function OfficePrayAlongPage() {
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [complete, setComplete] = useState(false);
 
   // Active section = last one whose start has passed.
   useEffect(() => {
@@ -174,6 +184,7 @@ export default function OfficePrayAlongPage() {
   const loading = episodeQ.isLoading || officeQ.isLoading || alignQ.isLoading;
   const active = timeline[activeIdx];
   const notAligned = !loading && timeline.length === 0;
+  const endCap = appealStart != null ? appealStart : duration;
   const dateLabel = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
   return (
@@ -199,6 +210,22 @@ export default function OfficePrayAlongPage() {
           <p style={{ color: FAINT, fontSize: 14, lineHeight: 1.5 }}>
             {t("podcasts.office_error", { defaultValue: "Today's recording isn't available yet." })}
           </p>
+        ) : complete ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+            <div style={{ fontSize: 40 }}>🕯️</div>
+            <p style={{ fontSize: 19, fontWeight: 600, margin: 0 }}>{t("prayalong.complete", { defaultValue: "The office is complete." })}</p>
+            <p style={{ fontSize: 14, color: SAGE, lineHeight: 1.5, margin: 0, maxWidth: 320 }}>
+              {t("prayalong.complete_sub", { defaultValue: "Continue into the prayers your community is holding." })}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6, width: "100%", maxWidth: 320 }}>
+              <button type="button" onClick={() => setLocation("/prayer-mode")} style={{ padding: "13px 0", borderRadius: 14, background: "#2D5E3F", color: WARM, border: "1px solid rgba(168,197,160,0.4)", fontFamily: FONT, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                {t("prayalong.to_intercessions", { defaultValue: "Community intercessions →" })}
+              </button>
+              <button type="button" onClick={() => setLocation("/dashboard")} style={{ padding: "11px 0", borderRadius: 14, background: "transparent", color: SAGE, border: "none", fontFamily: FONT, fontSize: 14, cursor: "pointer" }}>
+                {t("common.done", { defaultValue: "Done" })}
+              </button>
+            </div>
+          </div>
         ) : notAligned ? (
           <div style={{ color: FAINT, fontSize: 14, lineHeight: 1.6 }}>
             <div style={{ fontSize: 34, marginBottom: 10 }}>🎧</div>
@@ -247,14 +274,14 @@ export default function OfficePrayAlongPage() {
           <input
             type="range"
             min={0}
-            max={duration || 1}
-            value={Math.min(current, duration || current)}
+            max={endCap || 1}
+            value={Math.min(current, endCap || current)}
             step={1}
             onChange={(e) => seekTo(Number(e.target.value))}
             style={{ flex: 1, accentColor: "#8FAF96", height: 4 }}
             aria-label={t("prayalong.scrub", { defaultValue: "Seek" })}
           />
-          <span style={{ fontSize: 11, color: FAINT, fontVariantNumeric: "tabular-nums", width: 38 }}>{fmt(duration)}</span>
+          <span style={{ fontSize: 11, color: FAINT, fontVariantNumeric: "tabular-nums", width: 38 }}>{fmt(endCap)}</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 22, marginTop: 8 }}>
           <button type="button" onClick={() => seekTo(current - 15)} style={ctrlStyle} aria-label="Back 15 seconds">⏪</button>
@@ -277,10 +304,17 @@ export default function OfficePrayAlongPage() {
           src={audioUrl}
           preload="auto"
           onLoadedMetadata={(e) => setDuration((e.currentTarget.duration || episodeQ.data?.durationSeconds) ?? 0)}
-          onTimeUpdate={(e) => setCurrent(e.currentTarget.currentTime)}
+          onTimeUpdate={(e) => {
+            const tt = e.currentTarget.currentTime;
+            setCurrent(tt);
+            if (appealStart != null && tt >= appealStart - 0.3) {
+              e.currentTarget.pause();
+              setComplete(true);
+            }
+          }}
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
-          onEnded={() => setPlaying(false)}
+          onEnded={() => { setPlaying(false); setComplete(true); }}
         />
       )}
     </div>

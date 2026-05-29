@@ -185,7 +185,10 @@ function locateHeuristic(sections: Section[], transcript: Transcript): Located {
 
 // ── Recognition: OpenAI chat model ─────────────────────────────────────────
 
-async function locateOpenAI(sections: Section[], transcript: Transcript): Promise<Located | null> {
+async function locateOpenAI(
+  sections: Section[],
+  transcript: Transcript,
+): Promise<{ located: Located; appealStartSeconds: number | null } | null> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return null;
   const model = process.env.OFFICE_ALIGN_MODEL || "gpt-4o-mini";
@@ -201,7 +204,8 @@ async function locateOpenAI(sections: Section[], transcript: Transcript): Promis
     "Most sections are fixed liturgical text (psalm verses, the Gloria \"Glory to the Father...\", canticles, the Apostles' Creed, the Lord's Prayer, suffrages, collects, the General Thanksgiving) — locate each by matching its words in the transcript.\n" +
     "LESSON sections are different: the slide has NO scripture text, only a reference like \"Matt. 13:31-35\", because the reader reads the passage aloud from a Bible. Recognise a lesson in the transcript by (a) its spoken announcement — e.g. \"A Reading from the Gospel according to Matthew\", \"The First Lesson\", \"A reading from Isaiah\", \"Here begins...\" — or (b) the opening words of that book/chapter. Use the reference's book + chapter to confirm, and return the timestamp where the announcement (or the reading's first words) begins.\n" +
     "Sections occur strictly in order, so start times must increase. Match on meaning, not exact words (different translations, paraphrase, spoken framing are expected). Omit a section only if you truly cannot find it.\n" +
-    "Respond with ONLY a JSON object: {\"sections\":[{\"id\":\"<section id>\",\"startSeconds\":<number>,\"confidence\":<0..1>}]}";
+    "The recording often ENDS with a closing appeal that is NOT part of the office — the reader thanks listeners and asks for support or donations for Forward Movement (e.g. \"Forward Movement is a ministry...\", \"your gift\", \"support this ministry\", \"become a monthly partner\", \"visit forwardmovement.org\"). If such an appeal is present, set appealStartSeconds to the timestamp where it begins; otherwise null.\n" +
+    "Respond with ONLY a JSON object: {\"sections\":[{\"id\":\"<section id>\",\"startSeconds\":<number>,\"confidence\":<0..1>}],\"appealStartSeconds\":<number|null>}";
   const user = `SECTIONS:\n${outline}\n\nTRANSCRIPT:\n${tx}`;
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -236,7 +240,9 @@ async function locateOpenAI(sections: Section[], transcript: Transcript): Promis
       confidence: typeof item.confidence === "number" ? round2(item.confidence) : 0.8,
     });
   }
-  return located;
+  const rawAppeal = parsed.appealStartSeconds;
+  const appealStartSeconds = typeof rawAppeal === "number" && rawAppeal > 0 ? round1(rawAppeal) : null;
+  return { located, appealStartSeconds };
 }
 
 // ── Prediction: place every slide on the timeline ──────────────────────────
@@ -324,11 +330,13 @@ export async function alignOffice(
   if (sections.length === 0) return { sections: [], aligner: "none" };
 
   let located: Located | null = null;
+  let appealStart: number | null = null;
   let aligner = "heuristic";
   try {
     const llm = await locateOpenAI(sections, transcript);
-    if (llm && llm.size > 0) {
-      located = llm;
+    if (llm && llm.located.size > 0) {
+      located = llm.located;
+      appealStart = llm.appealStartSeconds;
       aligner = "openai";
     }
   } catch (e) {
@@ -336,7 +344,16 @@ export async function alignOffice(
   }
   if (!located) located = locateHeuristic(sections, transcript);
 
-  const timeline = buildTimeline(sections, located, transcript.durationSeconds);
+  // Cap the office at Forward Movement's closing donation appeal so predicted
+  // sections distribute across the office only — not the fundraising tail.
+  const effectiveEnd = appealStart != null && appealStart > 0 ? appealStart : transcript.durationSeconds;
+  const timeline = buildTimeline(sections, located, effectiveEnd);
+  if (appealStart != null) {
+    if (timeline.length > 0) timeline[timeline.length - 1].endSeconds = round1(appealStart);
+    // Marker the player uses to stop before the appeal and hand off to the
+    // community intercessions.
+    timeline.push({ id: "__appeal__", type: "appeal", title: null, startSeconds: round1(appealStart), endSeconds: null, confidence: 0.9 });
+  }
   return { sections: timeline, aligner };
 }
 
@@ -348,12 +365,12 @@ function fillEnds(secs: OfficeAlignmentSection[]): void {
 function round1(n: number): number { return Math.round(n * 10) / 10; }
 function round2(n: number): number { return Math.round(n * 100) / 100; }
 
-function extractJson(text: string): { sections?: unknown } | null {
+function extractJson(text: string): { sections?: unknown; appealStartSeconds?: unknown } | null {
   const a = text.indexOf("{");
   const b = text.lastIndexOf("}");
   if (a < 0 || b <= a) return null;
   try {
-    return JSON.parse(text.slice(a, b + 1)) as { sections?: unknown };
+    return JSON.parse(text.slice(a, b + 1)) as { sections?: unknown; appealStartSeconds?: unknown };
   } catch {
     return null;
   }
