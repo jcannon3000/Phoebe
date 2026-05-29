@@ -103,6 +103,19 @@ router.get("/podcasts/me", requireAuth, async (req, res): Promise<void> => {
   });
 });
 
+// ── GET /api/podcasts/listens — full listen history with snapshots ────────
+// Used by the client's partial-listen import to find episodes that have
+// a saved resume position and need adding to the listen list.
+router.get("/podcasts/listens", requireAuth, async (req, res): Promise<void> => {
+  const me = getUser(req)!;
+  const rows = await db.select()
+    .from(podcastListensTable)
+    .where(eq(podcastListensTable.userId, me.id))
+    .orderBy(desc(podcastListensTable.lastListenedAt))
+    .limit(500);
+  res.json({ listens: rows });
+});
+
 // ── POST /api/podcasts/recommendations — recommend (upsert) ───────────────
 router.post("/podcasts/recommendations", requireAuth, async (req, res): Promise<void> => {
   const me = getUser(req)!;

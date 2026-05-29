@@ -229,6 +229,72 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current?.showSlug, current?.episodeId]);
 
+  // ── One-time import of partially-listened episodes into the listen list ──
+  // On first load after the user signs in, scan localStorage for any saved
+  // resume positions (phoebe:podcast:pos:*). Cross-reference with the full
+  // listen history (which stores episode snapshots) and POST any partial
+  // episodes to the listen list so they appear in the queue automatically.
+  // A localStorage flag prevents re-running on subsequent loads.
+  useEffect(() => {
+    if (!user) return;
+    const importFlag = "phoebe:partial-import:v1";
+    try { if (localStorage.getItem(importFlag)) return; } catch { return; }
+
+    const prefix = "phoebe:podcast:pos:";
+    const partials: { showSlug: string; episodeId: string }[] = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k?.startsWith(prefix)) continue;
+        const pos = Number(localStorage.getItem(k));
+        if (pos < 30) continue; // not meaningfully started
+        const rest = k.slice(prefix.length);
+        const firstColon = rest.indexOf(":");
+        if (firstColon < 0) continue;
+        partials.push({ showSlug: rest.slice(0, firstColon), episodeId: rest.slice(firstColon + 1) });
+      }
+    } catch { /* private mode */ }
+
+    if (partials.length === 0) {
+      try { localStorage.setItem(importFlag, "done"); } catch { /* ignore */ }
+      return;
+    }
+
+    type ListenRow = {
+      showSlug: string; episodeId: string;
+      episodeTitle: string | null; episodeAudioUrl: string | null;
+      episodeImageUrl: string | null; durationSeconds: number | null;
+      publishedAt: string | null; showTitle: string | null; showArtwork: string | null;
+    };
+    apiRequest("GET", "/api/podcasts/listens")
+      .then((data: { listens: ListenRow[] }) => {
+        const map = new Map(data.listens.map((l) => [`${l.showSlug}:${l.episodeId}`, l]));
+        const toAdd = partials.map((p) => map.get(`${p.showSlug}:${p.episodeId}`)).filter(Boolean) as ListenRow[];
+        return Promise.all(
+          toAdd.map((ep) =>
+            apiRequest("POST", "/api/podcasts/listen-list", {
+              showSlug: ep.showSlug,
+              episodeId: ep.episodeId,
+              episodeTitle: ep.episodeTitle ?? undefined,
+              episodeAudioUrl: ep.episodeAudioUrl ?? undefined,
+              episodeImageUrl: ep.episodeImageUrl ?? undefined,
+              durationSeconds: ep.durationSeconds ?? undefined,
+              publishedAt: ep.publishedAt ?? undefined,
+              showTitle: ep.showTitle ?? undefined,
+              showArtwork: ep.showArtwork ?? undefined,
+            }).catch(() => { /* best-effort, skip duplicates */ })
+          )
+        );
+      })
+      .then(() => {
+        try { localStorage.setItem(importFlag, "done"); } catch { /* ignore */ }
+        queryClient.invalidateQueries({ queryKey: ["/api/podcasts/listen-list"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/podcasts/me"] });
+      })
+      .catch(() => { /* don't set flag — will retry next session */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
   // Save position + flush session on background / unload.
   useEffect(() => {
     const onVis = () => {
