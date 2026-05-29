@@ -8,6 +8,28 @@ import { apiRequest } from "@/lib/queryClient";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 
+// Group upcoming events into a simple agenda — Today / This week / Later —
+// so a feed with several events (e.g. Rural & Migrant Ministry) reads like
+// a calendar's agenda view rather than one flat run. Events come back
+// upcoming-only; sort ascending and bucket by days-from-today. Buckets
+// render in this fixed order; empty ones are skipped.
+type EventBucket = "today" | "week" | "later";
+function bucketUpcomingEvents(events: FeedEvent[]): { bucket: EventBucket; items: FeedEvent[] }[] {
+  const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  const today = startOf(new Date()).getTime();
+  const sorted = [...events].sort((a, b) => +new Date(a.startsAt) - +new Date(b.startsAt));
+  const groups = new Map<EventBucket, FeedEvent[]>();
+  for (const ev of sorted) {
+    const days = Math.round((startOf(new Date(ev.startsAt)).getTime() - today) / 86_400_000);
+    const b: EventBucket = days <= 0 ? "today" : days < 7 ? "week" : "later";
+    if (!groups.has(b)) groups.set(b, []);
+    groups.get(b)!.push(ev);
+  }
+  return (["today", "week", "later"] as EventBucket[])
+    .filter((b) => groups.has(b))
+    .map((b) => ({ bucket: b, items: groups.get(b)! }));
+}
+
 // Subscriber detail page for a Prayer Feed.
 //
 // A feed is a flat, ongoing list of community-intercession cards — no
@@ -273,11 +295,25 @@ export default function PrayerFeedDetailPage() {
             >
               {t("prayer_feed_detail.upcoming_events")}
             </p>
-            <div className="flex flex-col gap-2">
-              {events.map((ev) => (
-                <FeedEventCard key={ev.id} event={ev} />
-              ))}
-            </div>
+            {bucketUpcomingEvents(events).map(({ bucket, items }) => (
+              <div key={bucket} className="mb-3">
+                <p
+                  className="text-[11px] font-semibold mb-1.5"
+                  style={{ color: "rgba(143,175,150,0.8)", fontFamily: "'Space Grotesk', sans-serif" }}
+                >
+                  {bucket === "today"
+                    ? t("prayer_feed_detail.events_today", { defaultValue: "Today" })
+                    : bucket === "week"
+                      ? t("prayer_feed_detail.events_this_week", { defaultValue: "This week" })
+                      : t("prayer_feed_detail.events_later", { defaultValue: "Later" })}
+                </p>
+                <div className="flex flex-col gap-2">
+                  {items.map((ev) => (
+                    <FeedEventCard key={ev.id} event={ev} />
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
