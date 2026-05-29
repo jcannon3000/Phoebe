@@ -43,30 +43,54 @@ const FEED_USER_AGENT =
 // serve. Cache stays in-process; a redeploy invalidates it.
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-let cached: { url: string; fetchedAt: number } | null = null;
+let cached: { url: string; title: string; fetchedAt: number } | null = null;
 
-// Pull the first <item>'s <link> out of an RSS document. We
+// Decode the handful of XML/HTML entities WordPress emits in RSS titles
+// (smart quotes, dashes, ampersands) so the title renders cleanly in the
+// app. &amp; is decoded last so a double-encoded entity unwinds one level.
+function decodeEntities(s: string): string {
+  return s
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&#8217;|&#x2019;/gi, "’")
+    .replace(/&#8216;|&#x2018;/gi, "‘")
+    .replace(/&#8220;|&#x201C;/gi, "“")
+    .replace(/&#8221;|&#x201D;/gi, "”")
+    .replace(/&#8211;/g, "–")
+    .replace(/&#8212;/g, "—")
+    .replace(/&hellip;|&#8230;/gi, "…")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#0?39;|&apos;/gi, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&amp;/gi, "&")
+    .trim();
+}
+
+// Pull the first <item>'s <link> + <title> out of an RSS document. We
 // deliberately use a forgiving regex rather than a full XML parser
 // because (a) there's no XML parser already in the dep tree and
 // (b) the WordPress RSS shape is stable. The regex anchors on
-// `<item>` (so we skip the channel-level <link> at the top, which
-// points at cac.org/) and looks for the first <link> tag inside.
-function parseFirstItemLink(xml: string): string | null {
+// `<item>` (so we skip the channel-level <link>/<title> at the top,
+// which point at cac.org/) and reads the first <link>/<title> inside.
+function parseFirstItem(xml: string): { url: string; title: string } | null {
   const firstItem = xml.match(/<item\b[^>]*>([\s\S]*?)<\/item>/);
   if (!firstItem) return null;
-  const linkMatch = firstItem[1].match(/<link>([^<]+)<\/link>/);
+  const block = firstItem[1];
+  const linkMatch = block.match(/<link>([^<]+)<\/link>/);
   if (!linkMatch) return null;
   const url = linkMatch[1].trim();
   // Sanity: a daily-meditations permalink lives under cac.org. If we
   // somehow grabbed an offsite URL (RSS spec allows it) bail out so
   // we don't redirect users to a surprise destination.
   if (!/^https?:\/\/(?:www\.)?cac\.org\//i.test(url)) return null;
-  return url;
+  const titleMatch = block.match(/<title>([\s\S]*?)<\/title>/);
+  const title = titleMatch ? decodeEntities(titleMatch[1]) : "";
+  return { url, title };
 }
 
-async function resolveTodaysUrl(): Promise<string> {
+async function resolveToday(): Promise<{ url: string; title: string }> {
   if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-    return cached.url;
+    return { url: cached.url, title: cached.title };
   }
   // Use AbortController so a slow / hanging RSS fetch doesn't keep
   // the user's tap waiting. 5s is plenty for a healthy WordPress feed
@@ -86,20 +110,20 @@ async function resolveTodaysUrl(): Promise<string> {
       logger.warn({ status: res.status }, "[cac] feed fetch non-ok");
       // Don't poison the cache with the fallback — leave whatever was
       // there (or nothing) so the next request can try again. The
-      // fallback URL is just for THIS response.
-      return FALLBACK_URL;
+      // fallback is just for THIS response.
+      return { url: FALLBACK_URL, title: "" };
     }
     const xml = await res.text();
-    const url = parseFirstItemLink(xml);
-    if (!url) {
-      logger.warn({ bytes: xml.length }, "[cac] could not parse first item link");
-      return FALLBACK_URL;
+    const parsed = parseFirstItem(xml);
+    if (!parsed) {
+      logger.warn({ bytes: xml.length }, "[cac] could not parse first item");
+      return { url: FALLBACK_URL, title: "" };
     }
-    cached = { url, fetchedAt: Date.now() };
-    return url;
+    cached = { ...parsed, fetchedAt: Date.now() };
+    return parsed;
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, "[cac] feed fetch failed");
-    return FALLBACK_URL;
+    return { url: FALLBACK_URL, title: "" };
   } finally {
     clearTimeout(timeout);
   }
@@ -110,7 +134,7 @@ async function resolveTodaysUrl(): Promise<string> {
 // The redirect uses 302 (not 301) so a cache-miss roll-over to
 // tomorrow's meditation doesn't get cached by intermediate proxies.
 router.get("/cac/today", async (_req: Request, res: Response): Promise<void> => {
-  const url = await resolveTodaysUrl();
+  const { url } = await resolveToday();
   // 5-minute CDN/browser cache. The redirect target changes once a
   // day (when CAC publishes), so a long cache risks pinning
   // yesterday's permalink into this morning — exactly the staleness
@@ -121,6 +145,17 @@ router.get("/cac/today", async (_req: Request, res: Response): Promise<void> => 
   // permanently cached.
   res.setHeader("Cache-Control", "public, max-age=300");
   res.redirect(302, url);
+});
+
+// GET /api/cac/today-meta → { title, url } for today's meditation.
+// The in-app reflection slide can't iframe cac.org (it sends
+// X-Frame-Options: SAMEORIGIN), so it shows this scraped title + a
+// "Read now" CTA instead of an embed. Title comes from the same RSS
+// feed the redirect uses (the HTML pages 403 bot-shaped requests).
+router.get("/cac/today-meta", async (_req: Request, res: Response): Promise<void> => {
+  const { url, title } = await resolveToday();
+  res.setHeader("Cache-Control", "public, max-age=300");
+  res.json({ title, url });
 });
 
 export default router;

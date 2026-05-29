@@ -1770,6 +1770,17 @@ function ReflectionSlide({
     }, { expand: false });
   }
 
+  // CAC can't be iframed (cac.org sends X-Frame-Options), so instead of an
+  // embed we show today's scraped title + a "Read now" CTA into the in-app
+  // browser. Title comes from the CAC daily-meditations RSS feed.
+  const { data: cacMeta } = useQuery<{ title: string; url: string }>({
+    queryKey: ["/api/cac/today-meta"],
+    queryFn: () => apiRequest("GET", "/api/cac/today-meta"),
+    enabled: source === "cac",
+    staleTime: 30 * 60_000,
+  });
+  const cacTitle = cacMeta?.title ?? "";
+
   return (
     <div
       style={{
@@ -1800,34 +1811,49 @@ function ReflectionSlide({
         </button>
       </div>
 
-      {/* Reflection body — embedded inline. */}
-      <div style={{ flex: 1, minHeight: 0, position: "relative", margin: "0 12px", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(46,107,64,0.3)", background: canEmbed ? "#fff" : "#0C1F12" }}>
-        {canEmbed ? (
+      {/* Reflection body. FDD/SSJE embed inline (framed); CAC can't be
+          framed (cac.org sends X-Frame-Options), so it shows today's
+          scraped title + a Read-now CTA with no box. */}
+      {canEmbed ? (
+        <div style={{ flex: 1, minHeight: 0, position: "relative", margin: "0 12px", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(46,107,64,0.3)", background: "#fff" }}>
           <iframe
             key={url}
             src={url}
             title={heading}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
           />
-        ) : (
-          // CAC can't be framed — an in-app card that opens it.
-          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 28, textAlign: "center" }}>
-            <span style={{ fontSize: 44, lineHeight: 1 }} aria-hidden>🌵</span>
-            <p style={{ color: "#F0EDE6", fontSize: 16, fontWeight: 700, margin: 0, fontFamily: RFONT }}>{heading}</p>
-            <p style={{ color: "rgba(200,212,192,0.75)", fontSize: 13, lineHeight: 1.55, margin: 0, maxWidth: 320, fontFamily: RFONT }}>
-              {t("offices.cac_open_blurb", { defaultValue: "Today's meditation from the Center for Action and Contemplation." })}
-            </p>
-            <button
-              type="button"
-              onClick={() => openExternal(url)}
-              className="px-6 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
-              style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: RFONT }}
-            >
-              {t("offices.read_reflection")}
-            </button>
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: "0 34px", textAlign: "center" }}>
+          <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.16em", color: "rgba(143,175,150,0.7)", margin: 0, fontFamily: RFONT }}>
+            Center for Action and Contemplation
+          </p>
+          {cacTitle ? (
+            // Once today's title resolves: "Today's Daily Meditation" as a
+            // small label above the actual meditation title for the day.
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#8FAF96", margin: 0, fontFamily: RFONT }}>
+                {t("offices.cac_fallback_title", { defaultValue: "Today’s Daily Meditation" })}
+              </p>
+              <h2 style={{ fontSize: 25, fontWeight: 700, lineHeight: 1.3, color: "#F0EDE6", margin: 0, fontFamily: RFONT }}>
+                {cacTitle}
+              </h2>
+            </div>
+          ) : (
+            <h2 style={{ fontSize: 25, fontWeight: 700, lineHeight: 1.3, color: "#F0EDE6", margin: 0, fontFamily: RFONT }}>
+              {t("offices.cac_fallback_title", { defaultValue: "Today’s Daily Meditation" })}
+            </h2>
+          )}
+          <button
+            type="button"
+            onClick={() => openExternal(url)}
+            className="px-8 py-3.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
+            style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: RFONT, marginTop: 4 }}
+          >
+            {t("offices.read_now", { defaultValue: "Read now →" })}
+          </button>
+        </div>
+      )}
 
       {/* Bottom bar — Listen (today's FDD audio) + Continue to the summary. */}
       <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 10, padding: "14px 16px max(16px, env(safe-area-inset-bottom))" }}>
