@@ -176,6 +176,15 @@ export default function NcmpWatchPage() {
   //                   within the channel (less of a "you've been
   //                   ejected from prayer" feel).
   //   modestbranding=1 — minimize YouTube chrome.
+  //   origin=<page origin> — REQUIRED for the embed to play inside the
+  //                   native shell. The app is served from
+  //                   https://localhost (capacitor iosScheme), and without
+  //                   an explicit origin YouTube can't establish the embed
+  //                   handshake and shows "Error 153 — Video player
+  //                   configuration error." We also use the plain
+  //                   www.youtube.com host (YouTube's own oEmbed canonical
+  //                   form) rather than youtube-nocookie.com, which threw
+  //                   153 in the WebView for the same broadcast.
   const embedSrc = useMemo(() => {
     if (ncmpMeta?.videoId) {
       const params = new URLSearchParams({
@@ -183,8 +192,9 @@ export default function NcmpWatchPage() {
         playsinline: "1",
         rel: "0",
         modestbranding: "1",
+        origin: typeof window !== "undefined" ? window.location.origin : "https://withphoebe.app",
       });
-      return `https://www.youtube-nocookie.com/embed/${ncmpMeta.videoId}?${params.toString()}`;
+      return `https://www.youtube.com/embed/${ncmpMeta.videoId}?${params.toString()}`;
     }
     // Channel-live iframe fallback — same URL the external open uses.
     return CHANNEL_LIVE_URL;
