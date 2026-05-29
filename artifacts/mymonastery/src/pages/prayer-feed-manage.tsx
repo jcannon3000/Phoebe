@@ -963,7 +963,9 @@ type FeedEvent = {
   endsAt: string | null;
   location: string | null;
   joinUrl: string | null;
-  state: "published" | "cancelled";
+  // "draft" = imported/unreviewed (e.g. scraped from RMM); hidden from
+  // subscribers until an admin publishes it.
+  state: "draft" | "published" | "cancelled";
 };
 
 // Format an ISO timestamp for a human-readable manage-row label.
@@ -974,6 +976,16 @@ function formatEventWhen(iso: string): string {
     weekday: "short", month: "short", day: "numeric",
     hour: "numeric", minute: "2-digit",
   });
+}
+
+// ISO (UTC) → a <input type="datetime-local"> value in the viewer's local
+// time, so editing an event pre-fills correctly and round-trips back through
+// new Date(value).toISOString().
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 // Events section — mirrors FeedIntercessionsSection. Manager publishes
@@ -991,6 +1003,38 @@ function FeedEventsSection({ slug }: { slug: string }) {
     joinUrl: string;
   }>({ title: "", description: "", startsAt: "", endsAt: "", location: "", joinUrl: "" });
   const [error, setError] = useState<string | null>(null);
+  // When set, the composer is editing this event (PATCH) rather than
+  // creating a new one (POST).
+  const [editingId, setEditingId] = useState<number | null>(null);
+  // RMM is the one feed wired to a scraper — surface a "Sync" button there.
+  const isRmm = slug === "rmm";
+  const [syncMsg, setSyncMsg] = useState<string | null>(null);
+
+  function invalidateEvents() {
+    qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/events`, "manage"] });
+    qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/events`] });
+  }
+  function resetComposer() {
+    setComposing(false);
+    setEditingId(null);
+    setHasLink(false);
+    setDraft({ title: "", description: "", startsAt: "", endsAt: "", location: "", joinUrl: "" });
+    setError(null);
+  }
+  function startEdit(ev: FeedEvent) {
+    setEditingId(ev.id);
+    setComposing(true);
+    setHasLink(!!ev.joinUrl);
+    setDraft({
+      title: ev.title,
+      description: ev.description ?? "",
+      startsAt: toLocalInput(ev.startsAt),
+      endsAt: ev.endsAt ? toLocalInput(ev.endsAt) : "",
+      location: ev.location ?? "",
+      joinUrl: ev.joinUrl ?? "",
+    });
+    setError(null);
+  }
 
   // ?all=1 so the manage view also shows past events.
   const listQ = useQuery<{ events: FeedEvent[] }>({
@@ -1002,15 +1046,36 @@ function FeedEventsSection({ slug }: { slug: string }) {
   const createMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
       apiRequest("POST", `/api/prayer-feeds/${slug}/events`, payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/events`, "manage"] });
-      qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/events`] });
-      setComposing(false);
-      setHasLink(false);
-      setDraft({ title: "", description: "", startsAt: "", endsAt: "", location: "", joinUrl: "" });
-      setError(null);
-    },
+    onSuccess: () => { invalidateEvents(); resetComposer(); },
     onError: (e) => setError(e instanceof Error ? e.message : "Couldn't add the event."),
+  });
+
+  // Edit an existing event's fields (used to clean up scraped drafts —
+  // fix the placeholder time, add a location — before publishing). Leaves
+  // the event's state unchanged; publishing is the separate button below.
+  const updateMutation = useMutation({
+    mutationFn: (vars: { id: number; payload: Record<string, unknown> }) =>
+      apiRequest("PATCH", `/api/prayer-feeds/${slug}/events/${vars.id}`, vars.payload),
+    onSuccess: () => { invalidateEvents(); resetComposer(); },
+    onError: (e) => setError(e instanceof Error ? e.message : "Couldn't save the event."),
+  });
+
+  // Promote a draft to live (visible to subscribers + the calendar).
+  const publishMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiRequest("PATCH", `/api/prayer-feeds/${slug}/events/${id}`, { state: "published" }),
+    onSuccess: invalidateEvents,
+  });
+
+  // RMM only: scrape ruralmigrantministry.org/events/ and pull new
+  // upcoming events in as drafts to review here.
+  const syncMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/rmm/sync"),
+    onSuccess: (r: { found: number; created: number; skipped: number }) => {
+      setSyncMsg(`Checked RMM — found ${r.found}, added ${r.created} new draft${r.created === 1 ? "" : "s"}.`);
+      invalidateEvents();
+    },
+    onError: () => setSyncMsg("Couldn't reach the RMM site. Try again in a moment."),
   });
 
   const cancelMutation = useMutation({
@@ -1048,14 +1113,16 @@ function FeedEventsSection({ slug }: { slug: string }) {
       setError("Add a link, or turn off the video / link toggle.");
       return;
     }
-    createMutation.mutate({
+    const payload = {
       title: draft.title.trim(),
       description: draft.description.trim() || null,
       startsAt: startsIso,
       endsAt: endsIso,
       location: draft.location.trim() || null,
       joinUrl: hasLink ? draft.joinUrl.trim() : null,
-    });
+    };
+    if (editingId != null) updateMutation.mutate({ id: editingId, payload });
+    else createMutation.mutate(payload);
   }
 
   const inputStyle = { borderColor: "rgba(46,107,64,0.4)", color: "#F0EDE6" } as const;
@@ -1069,48 +1136,104 @@ function FeedEventsSection({ slug }: { slug: string }) {
         Vigils, days of prayer, webinars. Subscribers see upcoming events and get a heads-up push.
       </p>
 
+      {isRmm && (
+        <div className="mb-3">
+          <button
+            type="button"
+            onClick={() => { setSyncMsg(null); syncMutation.mutate(); }}
+            disabled={syncMutation.isPending}
+            className="text-xs font-semibold rounded-full px-3.5 py-2 transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: "rgba(120,80,180,0.18)", border: "1px solid rgba(120,80,180,0.45)", color: "#D8C8F0" }}
+          >
+            {syncMutation.isPending ? "Checking RMM…" : "⟳ Sync events from RMM website"}
+          </button>
+          {syncMsg && (
+            <p className="text-[11px] mt-1.5" style={{ color: "rgba(143,175,150,0.8)" }}>{syncMsg}</p>
+          )}
+          <p className="text-[11px] mt-1.5 italic" style={{ color: "rgba(143,175,150,0.55)" }}>
+            Imported events arrive as drafts — fix the time/location, then Publish.
+          </p>
+        </div>
+      )}
+
       <div className="space-y-2 mb-3">
         {events.map((ev) => {
+          const isDraft = ev.state === "draft";
           const cancelled = ev.state === "cancelled";
+          const pill = "text-[11px] font-medium px-2.5 py-1 rounded-full shrink-0";
           return (
             <div
               key={ev.id}
               className="rounded-xl px-4 py-3 flex items-center gap-3"
-              style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.45)", opacity: cancelled ? 0.6 : 1 }}
+              style={{ background: "#0F2818", border: `1px solid ${isDraft ? "rgba(193,154,58,0.45)" : "rgba(46,107,64,0.45)"}`, opacity: cancelled ? 0.6 : 1 }}
             >
               <div className="min-w-0 flex-1">
-                <p
-                  className="text-sm font-semibold truncate"
-                  style={{ color: "#F0EDE6", textDecoration: cancelled ? "line-through" : undefined }}
-                >
-                  {ev.title}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p
+                    className="text-sm font-semibold truncate"
+                    style={{ color: "#F0EDE6", textDecoration: cancelled ? "line-through" : undefined }}
+                  >
+                    {ev.title}
+                  </p>
+                  {isDraft && (
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0" style={{ background: "rgba(193,154,58,0.18)", color: "#E8B872" }}>Draft</span>
+                  )}
+                  {cancelled && (
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0" style={{ background: "rgba(143,175,150,0.15)", color: "rgba(200,212,192,0.7)" }}>Cancelled</span>
+                  )}
+                </div>
                 <p className="text-[11px] mt-0.5 truncate" style={{ color: "rgba(143,175,150,0.7)" }}>
                   {formatEventWhen(ev.startsAt)}{ev.location ? ` · ${ev.location}` : ""}
                 </p>
               </div>
-              {cancelled ? (
-                <button
-                  type="button"
-                  onClick={() => deleteMutation.mutate(ev.id)}
-                  className="text-[11px] font-medium px-2.5 py-1 rounded-full shrink-0"
-                  style={{ background: "transparent", border: "1px solid rgba(193,154,58,0.4)", color: "#E8B872" }}
-                >
-                  Delete
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (typeof window !== "undefined" && !window.confirm(`Cancel "${ev.title}"?`)) return;
-                    cancelMutation.mutate(ev.id);
-                  }}
-                  className="text-[11px] font-medium px-2.5 py-1 rounded-full shrink-0"
-                  style={{ background: "rgba(46,107,64,0.2)", border: "1px solid rgba(46,107,64,0.45)", color: "#C8D4C0" }}
-                >
-                  Cancel
-                </button>
-              )}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {isDraft && (
+                  <button
+                    type="button"
+                    onClick={() => publishMutation.mutate(ev.id)}
+                    disabled={publishMutation.isPending}
+                    className="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0 disabled:opacity-50"
+                    style={{ background: "#2E6B40", color: "#F0EDE6" }}
+                  >
+                    Publish
+                  </button>
+                )}
+                {!cancelled && (
+                  <button
+                    type="button"
+                    onClick={() => startEdit(ev)}
+                    className={pill}
+                    style={{ background: "rgba(46,107,64,0.2)", border: "1px solid rgba(46,107,64,0.45)", color: "#C8D4C0" }}
+                  >
+                    Edit
+                  </button>
+                )}
+                {cancelled || isDraft ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== "undefined" && !window.confirm(`Delete "${ev.title}"?`)) return;
+                      deleteMutation.mutate(ev.id);
+                    }}
+                    className={pill}
+                    style={{ background: "transparent", border: "1px solid rgba(193,154,58,0.4)", color: "#E8B872" }}
+                  >
+                    Delete
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof window !== "undefined" && !window.confirm(`Cancel "${ev.title}"?`)) return;
+                      cancelMutation.mutate(ev.id);
+                    }}
+                    className={pill}
+                    style={{ background: "rgba(46,107,64,0.2)", border: "1px solid rgba(46,107,64,0.45)", color: "#C8D4C0" }}
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}
@@ -1227,15 +1350,17 @@ function FeedEventsSection({ slug }: { slug: string }) {
             <button
               type="button"
               onClick={save}
-              disabled={createMutation.isPending}
+              disabled={createMutation.isPending || updateMutation.isPending}
               className="flex-1 text-sm font-semibold rounded-full py-2 disabled:opacity-50"
               style={{ background: "#2E6B40", color: "#F0EDE6" }}
             >
-              {createMutation.isPending ? "Publishing…" : "Publish event"}
+              {editingId != null
+                ? (updateMutation.isPending ? "Saving…" : "Save changes")
+                : (createMutation.isPending ? "Publishing…" : "Publish event")}
             </button>
             <button
               type="button"
-              onClick={() => { setComposing(false); setError(null); }}
+              onClick={resetComposer}
               className="text-sm font-medium rounded-full px-4 py-2"
               style={{ background: "transparent", border: "1px solid rgba(46,107,64,0.4)", color: "#8FAF96" }}
             >
@@ -1246,7 +1371,7 @@ function FeedEventsSection({ slug }: { slug: string }) {
       ) : (
         <button
           type="button"
-          onClick={() => { setError(null); setComposing(true); }}
+          onClick={() => { setEditingId(null); setError(null); setComposing(true); }}
           className="text-sm font-semibold rounded-full px-4 py-2 transition-opacity hover:opacity-90"
           style={{ background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.45)", color: "#C8D4C0" }}
         >
