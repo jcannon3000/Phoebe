@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -42,7 +42,42 @@ export default function MessageWritePage() {
   const { t } = useTranslation();
 
   const [content, setContent] = useState("");
+  const [showSaved, setShowSaved] = useState(false);
   const { textareaRef, keyboardH, viewportH } = useComposerScroll(content);
+
+  // Drafts are kept device-locally (localStorage) per conversation, so
+  // backing out of the composer and coming back doesn't lose what you
+  // typed. Unlike letter drafts these aren't synced server-side — a quick
+  // message doesn't need to follow you across devices.
+  const draftKey = `phoebe.msgDraft.${convId}`;
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // Restore the saved draft once when the conversation is known.
+  useEffect(() => {
+    if (!Number.isFinite(convId)) return;
+    try {
+      const saved = localStorage.getItem(draftKey);
+      if (saved) setContent(saved);
+    } catch { /* localStorage unavailable */ }
+    return () => { if (savedTimer.current) clearTimeout(savedTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convId]);
+
+  function handleChange(e: ChangeEvent<HTMLTextAreaElement>) {
+    const v = e.target.value;
+    setContent(v);
+    try {
+      if (v) localStorage.setItem(draftKey, v);
+      else localStorage.removeItem(draftKey);
+    } catch { /* ignore */ }
+    // Debounced "Draft saved" pip so it confirms persistence without
+    // flickering on every keystroke.
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    savedTimer.current = setTimeout(() => {
+      setShowSaved(true);
+      setTimeout(() => setShowSaved(false), 1500);
+    }, 600);
+  }
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -103,6 +138,7 @@ export default function MessageWritePage() {
     mutationFn: (body: string) =>
       apiRequest("POST", `/api/beta-messages/conversations/${convId}/messages`, { body }),
     onSuccess: () => {
+      try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
       queryClient.invalidateQueries({ queryKey });
       queryClient.invalidateQueries({ queryKey: ["/api/beta-messages/conversations"] });
       setLocation(`/messages/${convId}`);
@@ -130,7 +166,12 @@ export default function MessageWritePage() {
       </div>
 
       {/* Action bar */}
-      <div className="px-6 py-3 max-w-3xl mx-auto w-full flex items-center justify-end" style={{ borderBottom: `1px solid ${HAIR}` }}>
+      <div className="px-6 py-3 max-w-3xl mx-auto w-full flex items-center justify-end gap-3" style={{ borderBottom: `1px solid ${HAIR}` }}>
+        {showSaved && (
+          <span className="text-[12px]" style={{ color: SAGE, fontFamily: FONT }}>
+            {t("messages.draft_saved", { defaultValue: "Draft saved" })}
+          </span>
+        )}
         <button
           onClick={() => { if (canSend) send.mutate(trimmed); }}
           disabled={!canSend}
@@ -175,7 +216,7 @@ export default function MessageWritePage() {
         <textarea
           ref={textareaRef}
           value={content}
-          onChange={(e) => setContent(e.target.value)}
+          onChange={handleChange}
           placeholder={t("messages.compose_placeholder", { defaultValue: "Write a message…" })}
           rows={8}
           maxLength={MAX_CHARS}
