@@ -54,7 +54,7 @@ type OfficePref = "none" | "office" | "devotion";
 // Default prayer level — Settings picker decides which depth the
 // home-screen office card's CTA jumps to. Mirrors the server-side
 // allowlist in /api/me/office-prefs (PUT).
-type DefaultPrayerLevel = "ask" | "devotion" | "office" | "intercessions";
+type DefaultPrayerLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit" | "journal";
 type OfficePrefs = {
   morning: OfficePref;
   evening: OfficePref;
@@ -379,6 +379,16 @@ function DefaultPrayerLevelSettings() {
       label: "Community Intercessions",
       sub: "Your prayer list slideshow",
     },
+    {
+      value: "reflect-sit",
+      label: "Reflect & Sit",
+      sub: "Forward Day by Day, then a silent timer",
+    },
+    {
+      value: "journal",
+      label: "Journal",
+      sub: "A private daily reflection you write",
+    },
   ];
 
   return (
@@ -449,15 +459,17 @@ function OfficeReminderSettings() {
   const morningTime = data?.morningTime ?? DEFAULT_MORNING;
   const eveningTime = data?.eveningTime ?? DEFAULT_EVENING;
 
+  // On/off only — the reminder opens whatever the user set as their default
+  // prayer (begin-prayer routes by level + time of day), so we don't pick an
+  // office here. "office" is just the stored "on" sentinel; any non-"none"
+  // value (incl. legacy "devotion") reads as on.
   const morningOptions: Array<{ value: OfficePref; label: string; sub: string }> = [
     { value: "none", label: t("settings.no_reminder"), sub: "" },
-    { value: "office", label: t("offices.morning_prayer"), sub: t("settings.full_daily_office") },
-    { value: "devotion", label: t("offices.morning_devotion"), sub: t("settings.short_bcp_form") },
+    { value: "office", label: t("settings.notify_each_morning", { defaultValue: "Notify me each morning" }), sub: t("settings.notify_opens_default", { defaultValue: "Opens your default prayer" }) },
   ];
   const eveningOptions: Array<{ value: OfficePref; label: string; sub: string }> = [
     { value: "none", label: t("settings.no_reminder"), sub: "" },
-    { value: "office", label: t("offices.evening_prayer"), sub: t("settings.full_daily_office") },
-    { value: "devotion", label: t("offices.early_evening_devotion"), sub: t("settings.short_bcp_form") },
+    { value: "office", label: t("settings.notify_each_evening", { defaultValue: "Notify me each evening" }), sub: t("settings.notify_opens_default", { defaultValue: "Opens your default prayer" }) },
   ];
 
   return (
@@ -471,7 +483,9 @@ function OfficeReminderSettings() {
           {t("offices.in_the_morning")}
         </p>
         {morningOptions.map((opt, i) => {
-          const isSelected = morning === opt.value;
+          // The "on" option is selected for ANY non-"none" pref (covers
+          // legacy "devotion" values that now just mean "on").
+          const isSelected = opt.value === "none" ? morning === "none" : morning !== "none";
           return (
             <button
               key={opt.value}
@@ -518,7 +532,7 @@ function OfficeReminderSettings() {
           {t("offices.in_the_evening")}
         </p>
         {eveningOptions.map((opt, i) => {
-          const isSelected = evening === opt.value;
+          const isSelected = opt.value === "none" ? evening === "none" : evening !== "none";
           return (
             <button
               key={opt.value}

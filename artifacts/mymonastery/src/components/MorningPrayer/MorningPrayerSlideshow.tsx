@@ -11,7 +11,7 @@ import type { Slide, OfficeDayInfo, MemberPresence } from "./types";
 import { SlideView } from "./Slide";
 import { ProgressBar } from "./ProgressBar";
 import { useSlideshow } from "./useSlideshow";
-import { useOfficePrefs } from "@/lib/officePrefs";
+import { useOfficePrefs, getSideGratitude, getSideConfession } from "@/lib/officePrefs";
 
 // Build a synthetic gratitude slide that sits between the General
 // Thanksgiving and the closing. Reflective (prompt + Continue), not
@@ -68,17 +68,20 @@ export function MorningPrayerSlideshow({
   const [logError, setLogError] = useState<string | null>(null);
   const [presenceData, setPresenceData] = useState<MemberPresence[]>([]);
 
-  // Office-close prefs: drives whether we splice in a gratitude slide
-  // before the closing.
-  const officePrefs = useOfficePrefs();
+  // Office-close prefs: per-side gratitude pause (Morning/Evening split).
+  // This is the community Morning Prayer, so it's always the morning side.
+  // The bare useOfficePrefs() call subscribes the component to pref events
+  // so getSideGratitude re-reads when the user flips it.
+  useOfficePrefs();
+  const gratitudeOn = getSideGratitude("morning");
 
   // Derived slide list — raw fetched slides + optional gratitude
   // slide before the closing. Done via useMemo so flipping the pref
   // mid-session re-derives without a re-fetch. Keep this above
   // useSlideshow so the slideshow sees the corrected total.
   const displaySlides = useMemo(
-    () => (officePrefs.includeGratitudeSlide ? spliceGratitudeBeforeClose(slides) : slides),
-    [slides, officePrefs.includeGratitudeSlide],
+    () => (gratitudeOn ? spliceGratitudeBeforeClose(slides) : slides),
+    [slides, gratitudeOn],
   );
 
   // Determine which slides are scrollable by index. Recomputed from
@@ -101,8 +104,10 @@ export function MorningPrayerSlideshow({
         setLoading(true);
         setError(null);
 
+        const mc = getSideConfession("morning");
+        const confQ = mc === null ? "" : `?confession=${mc ? "1" : "0"}`;
         const [officeRes, logsRes] = await Promise.all([
-          fetch("/api/office/morning"),
+          fetch(`/api/office/morning${confQ}`),
           fetch(
             `/api/moments/${momentId}/today-logs?token=${memberToken}`,
           ).catch(() => null),

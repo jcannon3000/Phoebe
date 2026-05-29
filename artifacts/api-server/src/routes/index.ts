@@ -42,6 +42,7 @@ import podcastSocialRouter from "./podcast-social";
 import newsRouter from "./news";
 import groupReflectionsRouter from "./group-reflections";
 import betaMessagesRouter from "./beta-messages";
+import journalRouter from "./journal";
 
 const router: IRouter = Router();
 
@@ -159,5 +160,6 @@ router.use(podcastSocialRouter);
 router.use(newsRouter);
 router.use(groupReflectionsRouter);
 router.use(betaMessagesRouter);
+router.use(journalRouter);
 
 export default router;

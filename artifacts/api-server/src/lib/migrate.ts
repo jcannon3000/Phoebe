@@ -840,6 +840,18 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_prayer_at TIMESTAMPTZ`);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS gratitude_seen_unique ON gratitude_seen (gratitude_id, user_id)`);
 
+    // ── Private journal (daily written reflection) ─────────────────────────
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS journal_entries (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        prompt TEXT,
+        body TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_journal_entries_user_created ON journal_entries (user_id, created_at DESC)`);
+
     // ── prayers_for — private, directed prayers one user holds for another
     await run(client, `
       CREATE TABLE IF NOT EXISTS prayers_for (

@@ -26,6 +26,7 @@ export * from "./feedback";
 export * from "./user_mutes";
 export * from "./fellows";
 export * from "./gratitude";
+export * from "./journal_entries";
 export * from "./fellow_invites";
 export * from "./prayers_for";
 export * from "./waitlist";

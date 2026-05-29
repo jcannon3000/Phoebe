@@ -60,6 +60,16 @@ export function ContemplationTimer({
   // Contemplation page. Undefined → show the picker (the default, and
   // what the pause-slide CTA + "Begin contemplation" button use).
   startMinutes,
+  // Optional audio layer. When audioUrl is set the sit OPENS with this
+  // audio playing (e.g. today's Forward Day by Day, read aloud) over the
+  // same screen, then flows seamlessly into silence when it ends — the
+  // countdown spans the WHOLE experience and the full time logs as
+  // contemplation, so "listen then sit" reads as one continuous thing.
+  // audioTitle shows under the timer while it plays; eyebrowLabel
+  // overrides the "Contemplation" eyebrow on the picker.
+  audioUrl,
+  audioTitle,
+  eyebrowLabel,
 }: {
   open: boolean;
   // `completed` is true when the user actually sat (reached the closing
@@ -68,6 +78,9 @@ export function ContemplationTimer({
   // slideshow to the next slide.
   onClose: (result?: { completed: boolean }) => void;
   startMinutes?: number;
+  audioUrl?: string | null;
+  audioTitle?: string | null;
+  eyebrowLabel?: string;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -116,6 +129,12 @@ export function ContemplationTimer({
   // state actually flipping (the `phase` check inside finish reads a
   // stale closure value), which would double-strike the ending bell.
   const finishedRef = useRef(false);
+
+  // Optional audio (e.g. Forward Day by Day read aloud) that opens the sit.
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const stopAudio = () => { try { audioElRef.current?.pause(); } catch { /* non-fatal */ } };
+  const eyebrow = eyebrowLabel ?? t("contemplation.title");
 
   // Fire a native-shell bridge event (no-op on the plain web build —
   // nothing listens there).
@@ -190,6 +209,7 @@ export function ContemplationTimer({
     } else {
       releaseWakeLock();
       cancelEndBell();
+      stopAudio();
     }
     // begin is a stable hoisted fn; depending on it would re-run this
     // every render. We only want the open→true transition.
@@ -298,9 +318,21 @@ export function ContemplationTimer({
     setPhase("running");
     void acquireWakeLock();
     scheduleEndBell(endAtRef.current);
-    // Opening swell — the same chapel-exhale the prayer slideshow plays
-    // on every slide entry (octave 0, the base voicing).
-    playOpeningSwell(0);
+    if (audioUrl) {
+      // The audio IS the opening — start it instead of the chapel-exhale
+      // swell so the two don't collide. (The closing bell still rings at
+      // the goal, primed by primeAudio() above.) This runs inside the
+      // Begin tap's user gesture, so iOS lets it play.
+      const a = audioElRef.current;
+      if (a) {
+        try { a.currentTime = 0; } catch { /* ignore */ }
+        a.play().then(() => setAudioPlaying(true)).catch(() => { /* gated/offline — the silence still counts */ });
+      }
+    } else {
+      // Opening swell — the same chapel-exhale the prayer slideshow plays
+      // on every slide entry (octave 0, the base voicing).
+      playOpeningSwell(0);
+    }
   }
 
   // The set time has elapsed. Ring the closing bell and flip into
@@ -333,6 +365,7 @@ export function ContemplationTimer({
     if (finishedRef.current) return;
     finishedRef.current = true;
     releaseWakeLock();
+    stopAudio(); setAudioPlaying(false);
     // Drop any pending notification so a foregrounded finish doesn't
     // bell after the user has already left the sit.
     cancelEndBell();
@@ -374,12 +407,14 @@ export function ContemplationTimer({
     recordedRef.current = true;
     releaseWakeLock();
     cancelEndBell();
+    stopAudio();
     onClose({ completed: false });
   }
 
   function handleClose() {
     releaseWakeLock();
     cancelEndBell();
+    stopAudio();
     // "completed" when the user actually sat (reached the closing
     // screen); false when they backed out of the picker. The pause-slide
     // caller advances the slideshow only on a completed sit.
@@ -418,6 +453,16 @@ export function ContemplationTimer({
             isolation:isolate keeps it contained so the content paints
             above it without per-element z-index. */}
         <AnimatedBackground base={BG} variant="pronounced" />
+        {audioUrl && (
+          <audio
+            ref={audioElRef}
+            src={audioUrl}
+            preload="auto"
+            onPlay={() => setAudioPlaying(true)}
+            onPause={() => setAudioPlaying(false)}
+            onEnded={() => setAudioPlaying(false)}
+          />
+        )}
         {/* Close (×) — top right, safe-area aware. Hidden mid-sit so a
             stray tap doesn't abandon the silence; an explicit "End"
             sits at the bottom instead. */}
@@ -447,7 +492,7 @@ export function ContemplationTimer({
           {phase === "picker" && (
             <>
               <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: "rgba(143,175,150,0.55)" }}>
-                {t("contemplation.title")}
+                {eyebrow}
               </p>
               <p className="text-[22px] leading-[1.4] font-medium italic mb-8" style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif" }}>
                 {t("contemplation_timer.how_long")}
@@ -562,17 +607,30 @@ export function ContemplationTimer({
                   +{mmss(overtime)}
                 </p>
               )}
-              <p
-                className="text-[13px]"
-                style={{
-                  color: "rgba(143,175,150,0.6)",
-                  fontFamily: "Georgia, serif",
-                  fontStyle: "italic",
-                  marginTop: 20,
-                }}
-              >
-                {reachedGoal ? t("contemplation_timer.stay_as_long") : t("contemplation_timer.be_still")}
-              </p>
+              {audioUrl && audioPlaying ? (
+                <div style={{ marginTop: 20 }}>
+                  {audioTitle && (
+                    <p className="text-[15px]" style={{ color: "rgba(200,212,192,0.92)", fontFamily: SPACE_GROTESK, fontWeight: 600, margin: 0 }}>
+                      {audioTitle}
+                    </p>
+                  )}
+                  <p className="text-[12px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, serif", fontStyle: "italic", marginTop: 6 }}>
+                    {t("fdd_sit.listening", { defaultValue: "Listen, and let it settle." })}
+                  </p>
+                </div>
+              ) : (
+                <p
+                  className="text-[13px]"
+                  style={{
+                    color: "rgba(143,175,150,0.6)",
+                    fontFamily: "Georgia, serif",
+                    fontStyle: "italic",
+                    marginTop: 20,
+                  }}
+                >
+                  {reachedGoal ? t("contemplation_timer.stay_as_long") : t("contemplation_timer.be_still")}
+                </p>
+              )}
             </>
           )}
 

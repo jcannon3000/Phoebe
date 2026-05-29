@@ -53,6 +53,10 @@ export const prayerSurfaces = [
   // credit a daily office the way the office-podcast surfaces do — this
   // is general spiritual content, not Morning/Evening Prayer.
   "podcast",
+  // Private daily journal — time spent writing a reflection entry. Logs
+  // toward the "time praying" rollup like the other contemplative
+  // surfaces. Entries live in journal_entries (see routes/journal.ts).
+  "journal",
 ] as const;
 export type PrayerSurface = (typeof prayerSurfaces)[number];
 

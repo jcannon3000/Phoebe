@@ -33,10 +33,21 @@ import { X, ChevronLeft, Check } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import {
   useOfficePrefs,
-  setReflectionSource,
-  setIncludeGratitudeSlide,
-  setDefaultContemplationMinutes,
+  getSideLevel,
+  setSideLevel,
+  getSideEntry,
+  setSideEntry,
+  getSideReflectionExplicit,
+  setSideReflection,
+  getSideConfession,
+  setSideConfession,
+  getSideGratitude,
+  setSideGratitude,
+  getSideMinutes,
+  setSideMinutes,
   type ReflectionSource,
+  type DefaultOfficeEntry,
+  type OfficeSide,
 } from "@/lib/officePrefs";
 
 const BG = "#091A10";
@@ -46,7 +57,7 @@ const ACCENT = "#A8C5A0";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 
 type OfficePref = "none" | "office" | "devotion";
-type DefaultPrayerLevel = "ask" | "devotion" | "office" | "intercessions";
+type DefaultPrayerLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit" | "journal";
 type OfficePrefs = {
   morning: OfficePref;
   evening: OfficePref;
@@ -106,26 +117,6 @@ function OptionCard({
         {selected && <Check size={13} color={BG} strokeWidth={3} />}
       </span>
     </button>
-  );
-}
-
-// Static (non-selectable) info card — used by the "ways to pray" slide.
-function InfoCard({ emoji, label, sub }: { emoji: string; label: string; sub: string }) {
-  return (
-    <div
-      className="w-full flex items-center gap-3 rounded-2xl px-4 py-4"
-      style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
-    >
-      <span style={{ fontSize: 24, lineHeight: 1 }}>{emoji}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-[16px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
-          {label}
-        </p>
-        <p className="text-[13px]" style={{ color: SAGE, margin: "2px 0 0", lineHeight: 1.35 }}>
-          {sub}
-        </p>
-      </div>
-    </div>
   );
 }
 
@@ -217,9 +208,14 @@ export default function OfficeSettingsPage() {
   // Local-only prefs (per device). Optimistic copies flip the card
   // immediately; the setters persist + broadcast the change.
   const local = useOfficePrefs();
-  const [reflection, setReflection] = useState<ReflectionSource>(local.reflectionSource);
-  const [gratitudeOn, setGratitudeOn] = useState(local.includeGratitudeSlide);
-  const [medMinutes, setMedMinutes] = useState(local.defaultContemplationMinutes);
+
+  // Which side this wizard configures — Daily Practice opens it with
+  // ?side=morning | ?side=evening (the split Morning / Evening flows).
+  const side: OfficeSide = (() => {
+    try { return new URLSearchParams(window.location.search).get("side") === "evening" ? "evening" : "morning"; }
+    catch { return "morning"; }
+  })();
+  const sideLabel = side === "evening" ? "Evening" : "Morning";
 
   const morning = eff.morning ?? "none";
   const evening = eff.evening ?? "none";
@@ -227,9 +223,27 @@ export default function OfficeSettingsPage() {
   const eveningTime = eff.eveningTime ?? "18:00";
   const defaultPrayerLevel: DefaultPrayerLevel = eff.defaultPrayerLevel ?? "devotion";
 
+  // Per-side selections. Each falls back to the shared global when this
+  // side has no override. Read the getters directly — useOfficePrefs
+  // re-renders the page on every pref event, so taps reflect immediately.
+  const sideLevel: DefaultPrayerLevel = (getSideLevel(side) ?? defaultPrayerLevel) as DefaultPrayerLevel;
+  const sideEntry: DefaultOfficeEntry = getSideEntry(side);
+  const sideReflection: ReflectionSource = getSideReflectionExplicit(side) ?? local.reflectionSource;
+  // Now-per-side too: confession (Office only), the gratitude pause, and the
+  // silence default — each falls back to the shared global when this side is
+  // unset.
+  const sideConfession: boolean = getSideConfession(side) ?? !!eff.showConfession;
+  const sideGratitude: boolean = getSideGratitude(side);
+  const sideMinutes: number = getSideMinutes(side);
+
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
-  const TOTAL = 9;
+  // Confession belongs to the full Office only — show it for this side
+  // only when this side's depth is the Office (skip it for Devotion).
+  const includeConfession = sideLevel === "office";
+  // Side-scoped: 9 base slides minus the OTHER side's reminder, minus the
+  // Confession step when this side isn't the Office.
+  const TOTAL = includeConfession ? 8 : 7;
 
   const goNext = () => { setDir(1); setStep((s) => Math.min(s + 1, TOTAL - 1)); };
   const goBack = () => { setDir(-1); setStep((s) => Math.max(s - 1, 0)); };
@@ -243,89 +257,93 @@ export default function OfficeSettingsPage() {
     // 0 — Intro
     () => (
       <div className="flex flex-col items-center text-center px-2">
-        <div style={{ fontSize: 56, lineHeight: 1 }}>🌅</div>
+        <div style={{ fontSize: 56, lineHeight: 1 }}>{side === "evening" ? "🌙" : "🌅"}</div>
         <h2 className="text-[27px] md:text-[31px] font-bold leading-tight mt-5 mb-2" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-          Shape your Daily Office
+          Shape your {side === "evening" ? "evenings" : "mornings"}
         </h2>
         <p className="text-[15px]" style={{ color: SAGE, lineHeight: 1.5, maxWidth: 360 }}>
-          A few quick questions to set a prayer rhythm that fits you. You can change any answer anytime.
+          A few quick questions to set your {side === "evening" ? "evening" : "morning"} rhythm — independent from the other. You can change any answer anytime.
         </p>
       </div>
     ),
 
-    // 1 — Default prayer
+    // 1 — Depth (per side)
     () => (
       <SlideShell
-        eyebrow="Step 1 · Your default"
-        headline="When you tap “Begin prayer,” where to?"
-        sub="The one-tap entry point from your home screen."
+        eyebrow={`Step 1 · Your ${side === "evening" ? "evening" : "morning"}`}
+        headline={`How do you want to pray each ${side === "evening" ? "evening" : "morning"}?`}
+        sub="This side's default depth — set independently from the other."
       >
         {([
           { value: "ask" as const, emoji: "🤔", label: "Ask each time", sub: "Show me the choices when I begin." },
           { value: "devotion" as const, emoji: "🌱", label: "Daily Devotion", sub: "The short BCP form (~5 min). The gentlest start." },
-          { value: "office" as const, emoji: "📖", label: "Full Daily Office", sub: "Morning or Evening Prayer (~15–20 min)." },
+          { value: "office" as const, emoji: "📖", label: "Full Daily Office", sub: `${side === "evening" ? "Evening" : "Morning"} Prayer (~15–20 min).` },
           { value: "intercessions" as const, emoji: "🙏🏽", label: "Community Intercessions", sub: "The slideshow of prayer requests your community holds." },
+          { value: "reflect-sit" as const, emoji: "🕯️", label: "Reflect & Sit", sub: "Forward Day by Day, read aloud, then a silent timer." },
+          { value: "journal" as const, emoji: "📓", label: "Journal", sub: "A private daily reflection you write." },
         ]).map((o) => (
           <OptionCard
             key={o.value}
             emoji={o.emoji}
             label={o.label}
             sub={o.sub}
-            selected={defaultPrayerLevel === o.value}
-            onSelect={() => { saveServer({ defaultPrayerLevel: o.value }); autoAdvance(); }}
+            selected={sideLevel === o.value}
+            onSelect={() => { setSideLevel(side, o.value); autoAdvance(); }}
           />
         ))}
       </SlideShell>
     ),
 
-    // 2 — Morning reminder
+    // 2 — Morning reminder. On/off only — the notification opens whatever
+    // the user set as their default in Step 1 (see begin-prayer.tsx), so we
+    // don't make them pick an office here. ("office" is just the stored
+    // "on" sentinel; the specific value no longer drives the reminder.)
     () => (
       <SlideShell
         eyebrow="Step 2 · Mornings"
         headline="Want a morning nudge?"
-        sub="A gentle push notification to begin your day in prayer."
+        sub="A gentle push to begin your day in prayer — it opens whatever you chose as your default."
       >
-        {([
-          { value: "none" as const, emoji: "🔕", label: "No reminder", sub: "" },
-          { value: "office" as const, emoji: "📖", label: "Morning Prayer", sub: "Full Daily Office" },
-          { value: "devotion" as const, emoji: "🌱", label: "Morning Devotion", sub: "Short BCP form" },
-        ]).map((o) => (
-          <OptionCard
-            key={o.value}
-            emoji={o.emoji}
-            label={o.label}
-            sub={o.sub || undefined}
-            selected={morning === o.value}
-            onSelect={() => saveServer({ morning: o.value })}
-          />
-        ))}
+        <OptionCard
+          emoji="🔕"
+          label="No notification"
+          selected={morning === "none"}
+          onSelect={() => saveServer({ morning: "none" })}
+        />
+        <OptionCard
+          emoji="🔔"
+          label="Notify me each morning"
+          sub="Opens your default prayer"
+          selected={morning !== "none"}
+          onSelect={() => saveServer({ morning: "office" })}
+        />
         {morning !== "none" && (
           <ReminderTimeField value={morningTime} onChange={(t) => saveServer({ morningTime: t })} />
         )}
       </SlideShell>
     ),
 
-    // 3 — Evening reminder
+    // 3 — Evening reminder. On/off only — same as mornings, the tap opens
+    // the user's default prayer (begin-prayer routes by level + time of day).
     () => (
       <SlideShell
         eyebrow="Step 3 · Evenings"
         headline="And an evening nudge?"
-        sub="A reminder to close the day in prayer."
+        sub="A reminder to close the day in prayer — it opens your default."
       >
-        {([
-          { value: "none" as const, emoji: "🔕", label: "No reminder", sub: "" },
-          { value: "office" as const, emoji: "📖", label: "Evening Prayer", sub: "Full Daily Office" },
-          { value: "devotion" as const, emoji: "🌙", label: "Early Evening Devotion", sub: "Short BCP form" },
-        ]).map((o) => (
-          <OptionCard
-            key={o.value}
-            emoji={o.emoji}
-            label={o.label}
-            sub={o.sub || undefined}
-            selected={evening === o.value}
-            onSelect={() => saveServer({ evening: o.value })}
-          />
-        ))}
+        <OptionCard
+          emoji="🔕"
+          label="No notification"
+          selected={evening === "none"}
+          onSelect={() => saveServer({ evening: "none" })}
+        />
+        <OptionCard
+          emoji="🔔"
+          label="Notify me each evening"
+          sub="Opens your default prayer"
+          selected={evening !== "none"}
+          onSelect={() => saveServer({ evening: "office" })}
+        />
         {evening !== "none" && (
           <ReminderTimeField value={eveningTime} onChange={(t) => saveServer({ eveningTime: t })} />
         )}
@@ -348,8 +366,8 @@ export default function OfficeSettingsPage() {
             emoji={o.emoji}
             label={o.label}
             sub={o.sub}
-            selected={!!eff.showConfession === o.value}
-            onSelect={() => { saveServer({ showConfession: o.value }); autoAdvance(); }}
+            selected={sideConfession === o.value}
+            onSelect={() => { setSideConfession(side, o.value); autoAdvance(); }}
           />
         ))}
       </SlideShell>
@@ -373,23 +391,37 @@ export default function OfficeSettingsPage() {
             emoji={o.emoji}
             label={o.label}
             sub={o.sub || undefined}
-            selected={medMinutes === o.value}
-            onSelect={() => { setMedMinutes(o.value); setDefaultContemplationMinutes(o.value); autoAdvance(); }}
+            selected={sideMinutes === o.value}
+            onSelect={() => { setSideMinutes(side, o.value); autoAdvance(); }}
           />
         ))}
       </SlideShell>
     ),
 
-    // 6 — Ways to pray (informational)
+    // 6 — Ways to pray (selectable default)
     () => (
       <SlideShell
         eyebrow="Step 6 · Three ways to pray"
-        headline="Read it, hear it, or watch it"
-        sub="On the office screen you can choose any of these — switch whenever you like."
+        headline="How do you want to pray the office?"
+        sub="Choose your default. You can always switch on the office screen."
       >
-        <InfoCard emoji="📖" label="Read along" sub="The full text of the office, at your own pace." />
-        <InfoCard emoji="🎧" label="Listen" sub="Morning & Evening Prayer read aloud (Forward Movement)." />
-        <InfoCard emoji="📺" label="Watch" sub="Pray live with the National Cathedral each weekday morning." />
+        {([
+          { value: "read" as const, emoji: "📖", label: "Read along", sub: "The full text of the office, at your own pace." },
+          { value: "listen" as const, emoji: "🎧", label: "Listen", sub: `${side === "evening" ? "Evening" : "Morning"} Prayer read aloud (Forward Movement).` },
+          { value: "watch" as const, emoji: "📺", label: "Watch", sub: "Pray live with the National Cathedral each weekday morning." },
+        ]).filter((o) => o.value !== "watch" || side === "morning").map((o) => (
+          <OptionCard
+            key={o.value}
+            emoji={o.emoji}
+            label={o.label}
+            sub={o.sub}
+            selected={sideEntry === o.value}
+            onSelect={() => {
+              setSideEntry(side, o.value);
+              autoAdvance();
+            }}
+          />
+        ))}
       </SlideShell>
     ),
 
@@ -411,8 +443,8 @@ export default function OfficeSettingsPage() {
             emoji={o.emoji}
             label={o.label}
             sub={o.sub}
-            selected={reflection === o.value}
-            onSelect={() => { setReflection(o.value); setReflectionSource(o.value); autoAdvance(); }}
+            selected={sideReflection === o.value}
+            onSelect={() => { setSideReflection(side, o.value); autoAdvance(); }}
           />
         ))}
       </SlideShell>
@@ -434,13 +466,23 @@ export default function OfficeSettingsPage() {
             emoji={o.emoji}
             label={o.label}
             sub={o.sub}
-            selected={gratitudeOn === o.value}
-            onSelect={() => { setGratitudeOn(o.value); setIncludeGratitudeSlide(o.value); }}
+            selected={sideGratitude === o.value}
+            onSelect={() => { setSideGratitude(side, o.value); }}
           />
         ))}
       </SlideShell>
     ),
   ];
+
+  // Side-scoped: show only THIS side's reminder (slide 2 = morning, 3 =
+  // evening) and drop the Confession step (slide 4) unless this side's
+  // depth is the Office.
+  const dropReminderIdx = side === "morning" ? 3 : 2;
+  const visibleSlides = slides.filter((_, i) => {
+    if (i === dropReminderIdx) return false;
+    if (i === 4 && !includeConfession) return false;
+    return true;
+  });
 
   const isLast = step === TOTAL - 1;
 
@@ -491,7 +533,7 @@ export default function OfficeSettingsPage() {
               exit={{ opacity: 0, x: dir * -36 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
             >
-              {slides[step]()}
+              {visibleSlides[step]()}
             </motion.div>
           </AnimatePresence>
         </div>

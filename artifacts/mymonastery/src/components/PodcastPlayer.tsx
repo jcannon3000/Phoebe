@@ -314,20 +314,22 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // the source first if WKWebView evicted the buffer, then seeking to the
   // saved position).
   useEffect(() => {
-    const onVis = () => {
+    // Reconcile playback when the app returns to the foreground. If we
+    // intended to be playing (wasPlayingRef, which now tracks the user's
+    // play/pause intent — see onPlayEv / toggle) but the element is paused
+    // — iOS silently pauses a suspended WebView's audio — kick it back on,
+    // reloading + reseeking first when WKWebView evicted the decoded buffer
+    // (readyState < HAVE_CURRENT_DATA). Throttled so the several foreground
+    // events below don't stack reload/play calls.
+    let lastResume = 0;
+    const resumeForeground = () => {
       const a = audioRef.current;
       if (!a) return;
-      if (document.visibilityState === "hidden") {
-        wasPlayingRef.current = !a.paused;
-        if (current) savePos(current, a.currentTime);
-        closeSeg();
-        return;
-      }
-      // Back in the foreground.
+      const now = Date.now();
+      if (now - lastResume < 800) return;
+      lastResume = now;
       if (wasPlayingRef.current && a.paused) {
         const resumeAt = current ? loadPos(current) : a.currentTime;
-        // readyState < HAVE_CURRENT_DATA means the decoded buffer was
-        // evicted while suspended — reload + reseek or play() stalls.
         if (a.readyState < 2) {
           pendingSeekRef.current = resumeAt;
           a.load();
@@ -341,6 +343,16 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         if (!a.paused) openSeg();
       }
     };
+    const onVis = () => {
+      const a = audioRef.current;
+      if (!a) return;
+      if (document.visibilityState === "hidden") {
+        if (current) savePos(current, a.currentTime);
+        closeSeg();
+        return;
+      }
+      resumeForeground();
+    };
     const onHide = () => {
       const a = audioRef.current;
       if (a && current) savePos(current, a.currentTime);
@@ -348,9 +360,20 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     };
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("pagehide", onHide);
+    // WKWebView delivers visibilitychange / focus / pageshow INCONSISTENTLY
+    // on native resume (sometimes none of them fire) — `phoebe:appactive`,
+    // which the Capacitor shell dispatches from appStateChange→isActive, is
+    // the reliable "back in foreground" signal (see App.tsx / amenFeedback).
+    // Listen to all of them so audio resumes no matter which the OS sends.
+    window.addEventListener("phoebe:appactive", resumeForeground);
+    window.addEventListener("pageshow", resumeForeground);
+    window.addEventListener("focus", resumeForeground);
     return () => {
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("phoebe:appactive", resumeForeground);
+      window.removeEventListener("pageshow", resumeForeground);
+      window.removeEventListener("focus", resumeForeground);
     };
   }, [current, closeSeg, commitSession, openSeg]);
 
@@ -374,8 +397,8 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       album: "Phoebe",
       artwork: art ? [{ src: art, sizes: "512x512", type: "image/jpeg" }] : [],
     });
-    ms.setActionHandler("play", () => { audioRef.current?.play().catch(() => { /* ignore */ }); });
-    ms.setActionHandler("pause", () => { audioRef.current?.pause(); });
+    ms.setActionHandler("play", () => { wasPlayingRef.current = true; audioRef.current?.play().catch(() => { /* ignore */ }); });
+    ms.setActionHandler("pause", () => { wasPlayingRef.current = false; audioRef.current?.pause(); });
     ms.setActionHandler("seekbackward", () => skip(-15));
     ms.setActionHandler("seekforward", () => skip(30));
     ms.setActionHandler("seekto", (d) => { if (d.seekTime != null) seekTo(d.seekTime); });
@@ -419,12 +442,18 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     const now = Date.now();
     if (now - lastSaveRef.current > 5000) { lastSaveRef.current = now; savePos(current, a.currentTime); }
   };
-  const onPlayEv = () => { setIsPlaying(true); openSeg(); syncMediaPlaybackState(); };
+  // wasPlayingRef = the user's INTENT to be playing. Set it true whenever
+  // audio actually starts; do NOT clear it in onPauseEv (iOS pauses
+  // suspended audio on background, and that must not read as "user stopped"
+  // — otherwise resume on return is skipped). It's cleared only on explicit
+  // user stops: toggle-to-pause, lock-screen pause, ended, and close.
+  const onPlayEv = () => { wasPlayingRef.current = true; setIsPlaying(true); openSeg(); syncMediaPlaybackState(); };
   const onPauseEv = () => {
     setIsPlaying(false); closeSeg(); syncMediaPlaybackState();
     const a = audioRef.current; if (a && current) savePos(current, a.currentTime);
   };
   const onEndedEv = () => {
+    wasPlayingRef.current = false;
     setIsPlaying(false); closeSeg(); syncMediaPlaybackState();
     if (current) clearPos(current);
     commitSession();
@@ -439,8 +468,18 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
 
   const toggle = useCallback(() => {
     const a = audioRef.current; if (!a) return;
-    if (a.paused) a.play().catch(() => { /* ignore */ }); else a.pause();
-  }, []);
+    if (a.paused) {
+      wasPlayingRef.current = true;
+      // If WKWebView evicted the decoded buffer while suspended, readyState
+      // drops and a bare play() can stall — reload to the saved spot first
+      // so a manual tap after returning to the app always recovers.
+      if (a.readyState < 2 && current) { pendingSeekRef.current = loadPos(current); a.load(); }
+      a.play().catch(() => { /* ignore */ });
+    } else {
+      wasPlayingRef.current = false;
+      a.pause();
+    }
+  }, [current]);
   const seekTo = (t: number) => { const a = audioRef.current; if (a) { a.currentTime = t; setCurrentTime(t); } };
   const skip = (delta: number) => {
     const a = audioRef.current; if (!a) return;
@@ -455,6 +494,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const closePlayer = () => {
     const a = audioRef.current;
     if (a && current) savePos(current, a.currentTime);
+    wasPlayingRef.current = false;
     commitSession();
     if (a) a.pause();
     setCurrent(null); setIsPlaying(false); setCurrentTime(0); setDuration(0); setExpanded(false);

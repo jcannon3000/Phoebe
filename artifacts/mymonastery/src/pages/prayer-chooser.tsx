@@ -278,6 +278,30 @@ export default function PrayerChooserPage() {
       verb: verbFor(officeStateLocal),
       href: `/bcp/daily-office?mode=${encodeURIComponent(officeMode)}${officeStateLocal.kind === "done" ? "&reset=1" : ""}`,
     },
+    // Reflect & Sit — today's Forward Day by Day (read aloud) flowing
+    // seamlessly into a silent meditation timer; the whole set time logs
+    // as contemplation. One continuous experience (see /reflect/fdd).
+    {
+      key: "reflect-sit",
+      variant: "gold" as const,
+      title: t("chooser.reflect_sit_title", { defaultValue: "Reflect & Sit" }),
+      sub: t("chooser.reflect_sit_sub", { defaultValue: "Forward Day by Day, then silence" }),
+      badge: t("chooser.reflect_sit_badge", { defaultValue: "Set your time" }),
+      verb: t("chooser.verb_start"),
+      href: "/reflect/fdd",
+    },
+    // Journal — a private daily reflection. A rotating prompt over an
+    // open writing space; the entry is saved privately and the time
+    // spent writing counts toward prayer time (see /journal).
+    {
+      key: "journal",
+      variant: "green" as const,
+      title: t("chooser.journal_title", { defaultValue: "Journal" }),
+      sub: t("chooser.journal_sub", { defaultValue: "A private daily reflection" }),
+      badge: t("chooser.journal_badge", { defaultValue: "Write" }),
+      verb: t("chooser.verb_start"),
+      href: "/journal",
+    },
     // Ignatian Examen — the contemplative close to the day. Only after
     // 5pm (it's an end-of-day prayer) for pilot users.
     ...(hour >= 17 && isBeta ? [{

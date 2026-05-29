@@ -154,6 +154,8 @@ const PodcastsPage = lazy(() => import("./pages/podcasts"));
 const NewsPage = lazy(() => import("./pages/news"));
 const PodcastPublisherPage = lazy(() => import("./pages/podcast-publisher"));
 const PodcastShowPage = lazy(() => import("./pages/podcast-show"));
+const FddSitPage = lazy(() => import("./pages/fdd-sit"));
+const JournalPage = lazy(() => import("./pages/journal"));
 const GatheringsPage = lazy(() => import("./pages/gatherings"));
 const GatheringSettings = lazy(() => import("./pages/gathering-settings"));
 const MomentNew = lazy(() => import("./pages/moment-new"));
@@ -501,6 +503,8 @@ function Router() {
           index; /show/:slug must precede /:publisher so "show" isn't
           captured as a publisher slug. */}
       <Route path="/podcasts" component={PodcastsPage} />
+      <Route path="/reflect/fdd" component={FddSitPage} />
+      <Route path="/journal" component={JournalPage} />
       <Route path="/podcasts/show/:slug" component={PodcastShowPage} />
       <Route path="/news" component={NewsPage} />
       <Route path="/podcasts/:publisher" component={PodcastPublisherPage} />

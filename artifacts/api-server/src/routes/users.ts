@@ -429,7 +429,7 @@ router.put("/me/office-prefs", async (req, res): Promise<void> => {
   }
   // Default prayer level — Settings picker. Strict allowlist so an
   // arbitrary string can't be written.
-  const allowedLevels = new Set(["ask", "devotion", "office", "intercessions"]);
+  const allowedLevels = new Set(["ask", "devotion", "office", "intercessions", "reflect-sit", "journal"]);
   if (typeof body.defaultPrayerLevel === "string" && allowedLevels.has(body.defaultPrayerLevel)) {
     update.defaultPrayerLevel = body.defaultPrayerLevel;
   }

@@ -15,6 +15,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
+import { getSideEntry, getSideConfession } from "@/lib/officePrefs";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
 // Visual chrome mirrors Lectio: dark forest background, top-bar with
@@ -523,7 +524,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
         // resolves to "en" server-side.
         const locale = i18n.language === "es" ? "es" : "en";
         const sep = endpoint.includes("?") ? "&" : "?";
-        const res = await fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}`);
+        // Per-side confession override (Morning/Evening split) — only full
+        // offices have a confession; pass it when this side set one.
+        const confParam = (resolvedMode === "morning" || resolvedMode === "evening")
+          ? (() => { const c = getSideConfession(officeSide); return c === null ? "" : `&confession=${c ? "1" : "0"}`; })()
+          : "";
+        const res = await fetch(`${endpoint}${sep}date=${localDate}&locale=${locale}${confParam}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (cancelled) return;
@@ -2574,6 +2580,27 @@ export default function BcpDailyOfficePage() {
       mode === "morning-devotion" ||
       mode === "early-evening-devotion"
     ) {
+      // Apply the user's default "way to pray" preference for full offices.
+      // Devotions and Compline always open as text; only full Morning/Evening
+      // Prayer respect the listen/watch default. Seamless returns (mid-office
+      // handoff from prayer-mode) always resume in read mode regardless of
+      // the default — the user is already mid-slideshow.
+      const seamlessReturn = search.has("seamlessReturn") || search.has("slide");
+      if (!seamlessReturn && (mode === "morning" || mode === "evening")) {
+        // Per-side "way to pray" (Morning/Evening split) — falls back to the
+        // shared default when this side has no override.
+        const pref = getSideEntry(mode);
+        if (pref === "listen") {
+          setLocation(`/podcast/${mode}-office`);
+          return;
+        }
+        if (pref === "watch" && mode === "morning") {
+          setLocation("/ncmp/watch");
+          return;
+        }
+        // "watch" + "evening" falls through to the text office (no evening
+        // broadcast equivalent — the Cathedral only streams morning prayer).
+      }
       setShowMode(mode);
     }
   }, [betaLoading, rawIsBeta]);

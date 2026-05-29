@@ -94,7 +94,7 @@ export const SlideView = forwardRef<HTMLDivElement, SlideProps>(
     // the drawer Resources entry instead.
     // Effective precedence: explicit Settings pick → visible home
     // reflection card → FDD default.
-    const reflectionSource = useEffectiveReflectionSource();
+    const reflectionSource = useEffectiveReflectionSource(isEvening ? "evening" : "morning");
     const { t } = useTranslation();
 
     // Color scheme

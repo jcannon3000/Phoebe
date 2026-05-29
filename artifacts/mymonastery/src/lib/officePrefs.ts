@@ -48,12 +48,21 @@ const KEY_INCLUDE_GRATITUDE_SLIDE = "phoebe:office:include-gratitude-slide";
 // wizard's meditation slide; read by the Contemplation page's "Begin"
 // so a default skips the picker and starts a sit straight away.
 const KEY_CONTEMPLATION_MINUTES = "phoebe:office:contemplation-minutes";
+// Default "way to pray" for the full offices (Morning Prayer / Evening Prayer).
+// "read" = the text slideshow (default); "listen" = the Forward Movement
+// read-aloud podcast; "watch" = the National Cathedral morning broadcast.
+// Only applies to the full offices — devotions and Compline always open as
+// text (no listen/watch equivalents).
+const KEY_DEFAULT_OFFICE_ENTRY = "phoebe:office:default-entry";
 
 export type ReflectionSource = "cac" | "fdd" | "ssje" | "none";
 const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "none"];
 
 export type OfficeAudioSource = "forward-movement" | "church-of-england";
 const OFFICE_AUDIO_SOURCES: OfficeAudioSource[] = ["forward-movement", "church-of-england"];
+
+export type DefaultOfficeEntry = "read" | "listen" | "watch";
+const DEFAULT_OFFICE_ENTRIES: DefaultOfficeEntry[] = ["read", "listen", "watch"];
 
 // ── Events ─────────────────────────────────────────────────────────
 export const OFFICE_PREFS_EVENT = "phoebe:office-prefs";
@@ -236,6 +245,134 @@ export function setDefaultContemplationMinutes(minutes: number): void {
   }
 }
 
+// ── Default office entry mode ──
+// Which of the three "ways to pray" opens automatically when the user
+// navigates to a full Morning or Evening Prayer office. "read" is the
+// text slideshow; "listen" navigates to the Forward Movement podcast
+// player; "watch" navigates to the National Cathedral broadcast.
+export function getDefaultOfficeEntry(): DefaultOfficeEntry {
+  try {
+    const raw = localStorage.getItem(KEY_DEFAULT_OFFICE_ENTRY);
+    if (raw && (DEFAULT_OFFICE_ENTRIES as string[]).includes(raw)) return raw as DefaultOfficeEntry;
+  } catch { /* private mode */ }
+  return "read";
+}
+export function setDefaultOfficeEntry(v: DefaultOfficeEntry): void {
+  try {
+    localStorage.setItem(KEY_DEFAULT_OFFICE_ENTRY, v);
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* private mode / quota — non-fatal */ }
+}
+
+// ── Per-side practice overrides (Morning / Evening split) ──
+// The split Morning/Evening wizards (Daily Practice → Build your practice)
+// let each side carry its own depth, way-to-pray, and reflection. Stored
+// locally per side; when a side is unset, callers fall back to the single
+// shared pref, so anyone who never opens the split flows is unaffected.
+export type OfficeSide = "morning" | "evening";
+export type OfficeLevel = "ask" | "devotion" | "office" | "intercessions" | "reflect-sit" | "journal";
+const OFFICE_LEVELS: OfficeLevel[] = ["ask", "devotion", "office", "intercessions", "reflect-sit", "journal"];
+
+// Depth/level per side. null = no per-side override → callers use the
+// server-side global defaultPrayerLevel (begin-prayer already reads it).
+export function getSideLevel(side: OfficeSide): OfficeLevel | null {
+  try {
+    const raw = localStorage.getItem(`phoebe:office:level:${side}`);
+    if (raw && (OFFICE_LEVELS as string[]).includes(raw)) return raw as OfficeLevel;
+  } catch { /* private mode */ }
+  return null;
+}
+export function setSideLevel(side: OfficeSide, v: OfficeLevel): void {
+  try {
+    localStorage.setItem(`phoebe:office:level:${side}`, v);
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+
+// Way to pray per side (read / listen / watch). Falls back to the shared
+// default-office-entry when this side has no override.
+export function getSideEntry(side: OfficeSide): DefaultOfficeEntry {
+  try {
+    const raw = localStorage.getItem(`phoebe:office:entry:${side}`);
+    if (raw && (DEFAULT_OFFICE_ENTRIES as string[]).includes(raw)) return raw as DefaultOfficeEntry;
+  } catch { /* private mode */ }
+  return getDefaultOfficeEntry();
+}
+export function setSideEntry(side: OfficeSide, v: DefaultOfficeEntry): void {
+  try {
+    localStorage.setItem(`phoebe:office:entry:${side}`, v);
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+
+// Reflection per side. Returns ONLY the explicit per-side pick (or null);
+// useEffectiveReflectionSource(side) folds in the shared precedence when null.
+export function getSideReflectionExplicit(side: OfficeSide): ReflectionSource | null {
+  try {
+    const raw = localStorage.getItem(`phoebe:office:reflection:${side}`);
+    if (raw && (REFLECTION_SOURCES as string[]).includes(raw)) return raw as ReflectionSource;
+  } catch { /* private mode */ }
+  return null;
+}
+export function setSideReflection(side: OfficeSide, v: ReflectionSource): void {
+  try {
+    localStorage.setItem(`phoebe:office:reflection:${side}`, v);
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+
+// Confession per side. null = no per-side override → the office uses the
+// shared server pref (bcpShowConfession). When set, the office fetch passes
+// it to /api/office/{morning,evening}?confession=1|0 so the server assembler
+// honors this side's choice.
+export function getSideConfession(side: OfficeSide): boolean | null {
+  try {
+    const raw = localStorage.getItem(`phoebe:office:confession:${side}`);
+    if (raw === "1") return true;
+    if (raw === "0") return false;
+  } catch { /* private mode */ }
+  return null;
+}
+export function setSideConfession(side: OfficeSide, v: boolean): void {
+  try {
+    localStorage.setItem(`phoebe:office:confession:${side}`, v ? "1" : "0");
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+
+// Gratitude pause per side. Falls back to the shared global when unset.
+export function getSideGratitude(side: OfficeSide): boolean {
+  try {
+    const raw = localStorage.getItem(`phoebe:office:gratitude:${side}`);
+    if (raw === "1") return true;
+    if (raw === "0") return false;
+  } catch { /* private mode */ }
+  return getIncludeGratitudeSlide();
+}
+export function setSideGratitude(side: OfficeSide, v: boolean): void {
+  try {
+    localStorage.setItem(`phoebe:office:gratitude:${side}`, v ? "1" : "0");
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+
+// Silent-contemplation default (minutes; 0 = off) per side. Falls back to
+// the shared global. The Contemplation page reads the side by time of day.
+export function getSideMinutes(side: OfficeSide): number {
+  try {
+    const raw = localStorage.getItem(`phoebe:office:minutes:${side}`);
+    const n = parseInt(raw ?? "", 10);
+    if (Number.isFinite(n) && n >= 0 && raw !== null) return n;
+  } catch { /* private mode */ }
+  return getDefaultContemplationMinutes();
+}
+export function setSideMinutes(side: OfficeSide, minutes: number): void {
+  try {
+    localStorage.setItem(`phoebe:office:minutes:${side}`, String(Math.max(0, Math.round(minutes))));
+    window.dispatchEvent(new Event(OFFICE_PREFS_EVENT));
+  } catch { /* non-fatal */ }
+}
+
 // ── React hook ─────────────────────────────────────────────────────
 // Snapshot the prefs into state and refresh on any change. Use this
 // instead of calling the getters in render — otherwise the component
@@ -248,6 +385,7 @@ export function useOfficePrefs(): {
   includeGratitudeSlide: boolean;
   defaultContemplationMinutes: number;
   officeAudioSource: OfficeAudioSource;
+  defaultOfficeEntry: DefaultOfficeEntry;
 } {
   const snapshot = () => {
     const src = getReflectionSource();
@@ -259,6 +397,7 @@ export function useOfficePrefs(): {
       includeGratitudeSlide: getIncludeGratitudeSlide(),
       defaultContemplationMinutes: getDefaultContemplationMinutes(),
       officeAudioSource: getOfficeAudioSource(),
+      defaultOfficeEntry: getDefaultOfficeEntry(),
     };
   };
   const [state, setState] = useState(snapshot);
@@ -277,7 +416,7 @@ export function useOfficePrefs(): {
 // this anywhere the close-pill source is read; useOfficePrefs's raw
 // reflectionSource (explicit-or-FDD, no home layer) is for the
 // Settings radio's own "is this explicitly chosen?" needs.
-export function useEffectiveReflectionSource(): ReflectionSource {
+export function useEffectiveReflectionSource(side?: OfficeSide): ReflectionSource {
   const { user } = useAuth();
   const homeLayout = user?.homeLayout ?? null;
   // Serialize the layout so the effect re-runs on content change, not
@@ -285,14 +424,24 @@ export function useEffectiveReflectionSource(): ReflectionSource {
   const homeKey = homeLayout
     ? `${homeLayout.order.join(",")}|${homeLayout.hidden.join(",")}`
     : "";
-  const [src, setSrc] = useState<ReflectionSource>(() => deriveReflectionSource(homeLayout));
+  // When a side is given, an explicit per-side reflection pick wins;
+  // otherwise (and for the shared case) fall to the precedence: global
+  // explicit pick → visible home card → FDD.
+  const derive = (): ReflectionSource => {
+    if (side) {
+      const perSide = getSideReflectionExplicit(side);
+      if (perSide) return perSide;
+    }
+    return deriveReflectionSource(homeLayout);
+  };
+  const [src, setSrc] = useState<ReflectionSource>(derive);
   useEffect(() => {
-    const refresh = () => setSrc(deriveReflectionSource(homeLayout));
+    const refresh = () => setSrc(derive());
     refresh();
     window.addEventListener(OFFICE_PREFS_EVENT, refresh);
     return () => window.removeEventListener(OFFICE_PREFS_EVENT, refresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [homeKey]);
+  }, [homeKey, side]);
   return src;
 }
 
