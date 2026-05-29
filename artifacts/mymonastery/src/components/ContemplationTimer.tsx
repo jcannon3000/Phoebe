@@ -824,6 +824,68 @@ export function ContemplationTimer({
             </>
           )}
 
+          {phase === "reflection" && (
+            <>
+              {/* Reflection phase — today's audio plays first. The
+                  contemplative countdown has NOT started yet; it begins
+                  only when this audio ends (or the user skips ahead). */}
+              <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-4" style={{ color: "rgba(143,175,150,0.55)" }}>
+                {t("fdd_sit.listening", { defaultValue: "Listen, and let it settle." })}
+              </p>
+
+              {audioTitle && (
+                <p
+                  className="text-[20px] leading-[1.35] font-medium mb-7"
+                  style={{ color: WARM, fontFamily: "Georgia, 'Times New Roman', serif", maxWidth: 340 }}
+                >
+                  {audioTitle}
+                </p>
+              )}
+
+              {/* Progress bar + time readout (when we know the duration). */}
+              {audioDurationSeconds != null && audioDurationSeconds > 0 && (
+                <div className="w-full max-w-xs mb-2">
+                  <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: "rgba(143,175,150,0.18)" }}>
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.min(100, (audioElapsed / audioDurationSeconds) * 100)}%`,
+                        background: "rgba(96,141,209,0.85)",
+                        transition: "width 0.3s linear",
+                      }}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-1.5 tabular-nums" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK, fontSize: 12 }}>
+                    <span>{mmss(audioElapsed)}</span>
+                    <span>−{mmss(Math.max(0, audioDurationSeconds - audioElapsed))}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Play / pause the reflection. */}
+              <button
+                type="button"
+                onClick={() => {
+                  const a = audioElRef.current;
+                  if (!a) return;
+                  if (a.paused) { a.play().then(() => setAudioPlaying(true)).catch(() => { /* ignore */ }); }
+                  else { a.pause(); setAudioPlaying(false); }
+                }}
+                aria-label={audioPlaying ? "Pause" : "Play"}
+                className="flex items-center justify-center rounded-full mt-4 transition-opacity hover:opacity-90 active:scale-[0.97]"
+                style={{ width: 64, height: 64, background: "rgba(96,141,209,0.22)", border: "1px solid rgba(96,141,209,0.5)", color: WARM, cursor: "pointer" }}
+              >
+                <span aria-hidden style={{ fontSize: 24, lineHeight: 1 }}>{audioPlaying ? "❚❚" : "▶"}</span>
+              </button>
+
+              <p className="text-[12px] mt-6" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+                {silenceMinRef.current > 0
+                  ? `${silenceMinRef.current} min of silence follows`
+                  : "Silence won't follow — reflection only"}
+              </p>
+            </>
+          )}
+
           {phase === "running" && (
             <>
               {/* Glowing countdown title — once the goal is reached it
@@ -1035,6 +1097,35 @@ export function ContemplationTimer({
             </>
           )}
         </div>
+
+        {/* Reflection-phase control — skip the rest of the audio and go
+            straight into the silence (or to the close, if no silence was
+            chosen). Sits in the same spot the "End" pill uses mid-sit. */}
+        {phase === "reflection" && (
+          <div
+            className="flex flex-col items-center gap-2.5"
+            style={{ marginBottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
+          >
+            <button
+              type="button"
+              onClick={skipToSilence}
+              className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.98]"
+              style={{
+                padding: "13px 44px",
+                background: "rgba(46,107,64,0.18)",
+                border: "1px solid rgba(46,107,64,0.5)",
+                color: WARM,
+                fontFamily: SPACE_GROTESK,
+                fontSize: 15,
+                fontWeight: 600,
+                letterSpacing: "0.02em",
+                cursor: "pointer",
+              }}
+            >
+              {silenceMinRef.current > 0 ? "Skip to silence →" : "End reflection"}
+            </button>
+          </div>
+        )}
 
         {/* End pill — only mid-sit, at the bottom out of the focal area.
             After the goal it reads "Done" since the bell has rung. A
