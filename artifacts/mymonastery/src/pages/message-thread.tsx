@@ -1,17 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { useTranslation } from "react-i18next";
 
 // ── /messages/:id — Beta Messages thread ────────────────────────────────
 //
-// The 1:1 conversation: messages oldest→newest as bubbles, a fixed
-// compose bar at the bottom. Unlimited — send as many as you like.
-// Polls every 15s so the other person's replies appear while you're
-// reading. Opening the thread marks it read (server-side, on GET).
+// The conversation rendered as letter-style cards (matching the Letters
+// correspondence look): each message is a card with the sender's avatar,
+// a name · time label, and a serif body, with a left-edge accent marking
+// whose message it is. Writing happens on the full-screen paper composer
+// (/messages/:id/write) reached from the "Write a message" button —
+// unlimited, send as many as you like. Polls every 15s so the other
+// person's replies appear while you're reading; opening the thread marks
+// it read (server-side, on GET).
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -24,25 +29,25 @@ type ThreadResponse = {
   messages: Message[];
 };
 
-function Avatar({ name, email, url, size = 30 }: { name: string; email: string; url: string | null; size?: number }) {
+function Avatar({ name, email, url, size = 32 }: { name: string; email: string; url: string | null; size?: number }) {
   if (url) {
-    return <img src={url} alt={name} className="rounded-full object-cover shrink-0" style={{ width: size, height: size }} />;
+    return <img src={url} alt={name} className="rounded-full object-cover shrink-0" style={{ width: size, height: size, border: "1px solid rgba(46,107,64,0.35)" }} />;
   }
   const initials = (name || email || "?").trim().split(/\s+/).slice(0, 2).map(s => s[0] ?? "").join("").toUpperCase() || "?";
   return (
     <div
       className="rounded-full flex items-center justify-center font-semibold shrink-0"
-      style={{ width: size, height: size, background: "#1A4A2E", color: "#A8C5A0", fontSize: Math.round(size * 0.4), fontFamily: FONT }}
+      style={{ width: size, height: size, background: "#1A4A2E", color: "#A8C5A0", fontSize: Math.round(size * 0.38), fontFamily: FONT, border: "1px solid rgba(46,107,64,0.35)" }}
     >
       {initials}
     </div>
   );
 }
 
-function formatTime(iso: string): string {
+function formatWhen(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 export default function MessageThreadPage() {
@@ -51,9 +56,8 @@ export default function MessageThreadPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { isBeta, isLoading: betaLoading } = useBetaStatus();
   const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
-  const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -74,37 +78,18 @@ export default function MessageThreadPage() {
   const other = data?.conversation?.otherUser ?? null;
 
   // Auto-scroll to the newest message whenever the count changes (load,
-  // incoming poll, or our own send).
+  // incoming poll, or returning from the composer after a send).
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
   }, [messages.length]);
-
-  const send = useMutation({
-    mutationFn: (body: string) =>
-      apiRequest("POST", `/api/beta-messages/conversations/${convId}/messages`, { body }),
-    onSuccess: (res: { message: Message }) => {
-      // Append to the open thread + clear the box; refresh the inbox.
-      queryClient.setQueryData<ThreadResponse>(queryKey, (prev) =>
-        prev ? { ...prev, messages: [...prev.messages, res.message] } : prev);
-      setDraft("");
-      queryClient.invalidateQueries({ queryKey: ["/api/beta-messages/conversations"] });
-      requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }));
-    },
-  });
-
-  const submit = () => {
-    const body = draft.trim();
-    if (!body || send.isPending) return;
-    send.mutate(body);
-  };
 
   if (authLoading || betaLoading || !user) return null;
 
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto w-full" style={{ paddingBottom: 104 }}>
+      <div className="max-w-2xl mx-auto w-full" style={{ paddingBottom: 96 }}>
         {/* Thread header */}
-        <div className="flex items-center gap-3 mb-4 mt-1">
+        <div className="flex items-center gap-3 mb-5 mt-1">
           <button
             type="button"
             onClick={() => setLocation("/messages")}
@@ -116,47 +101,60 @@ export default function MessageThreadPage() {
           {other && <Avatar name={other.name} email={other.email} url={other.avatarUrl} size={36} />}
           <div className="min-w-0">
             <p className="text-base font-semibold truncate" style={{ color: WARM, fontFamily: FONT }}>
-              {other ? (other.name || other.email) : "Conversation"}
+              {other ? (other.name || other.email) : t("messages.conversation_fallback")}
             </p>
           </div>
         </div>
 
         {isLoading && messages.length === 0 ? (
-          <p className="text-sm text-center py-10" style={{ color: "rgba(143,175,150,0.6)" }}>Loading…</p>
+          <p className="text-sm text-center py-10" style={{ color: "rgba(143,175,150,0.6)" }}>{t("common.loading")}</p>
         ) : messages.length === 0 ? (
           <p className="text-[13px] text-center py-10 italic" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SERIF }}>
-            No messages yet. Say hello 🌿
+            {t("messages.empty_thread")}
           </p>
         ) : (
-          <div className="space-y-2.5">
-            {messages.map((m) => (
-              <div key={m.id} className={`flex ${m.isMine ? "justify-end" : "justify-start"}`}>
-                <div
-                  className="rounded-2xl px-3.5 py-2.5"
-                  style={{
-                    maxWidth: "82%",
-                    background: m.isMine ? "rgba(62,124,122,0.22)" : "rgba(46,107,64,0.14)",
-                    border: `1px solid ${m.isMine ? "rgba(62,124,122,0.4)" : "rgba(46,107,64,0.28)"}`,
-                    borderBottomRightRadius: m.isMine ? 6 : 16,
-                    borderBottomLeftRadius: m.isMine ? 16 : 6,
-                  }}
-                >
-                  <p className="text-[15px] whitespace-pre-wrap" style={{ color: "#E8E4D8", fontFamily: SERIF, lineHeight: 1.5, margin: 0 }}>
-                    {m.body}
-                  </p>
-                  <p className="text-[10px] mt-1 text-right" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>
-                    {formatTime(m.createdAt)}
-                  </p>
+          <div>
+            {messages.map((m) => {
+              const author = m.isMine
+                ? { name: t("messages.you", { defaultValue: "You" }), email: user.email, url: user.avatarUrl }
+                : { name: other?.name || other?.email || "", email: other?.email || "", url: other?.avatarUrl ?? null };
+              return (
+                <div key={m.id} className="mb-3">
+                  <div
+                    className="relative flex gap-3"
+                    // Left-edge accent (inset shadow, so border-radius clips
+                    // it flush) marks whose message this is — sage for mine,
+                    // muted green for theirs. Same treatment as the letter
+                    // correspondence cards.
+                    style={{
+                      background: "#0F2818",
+                      border: `1px solid rgba(92,122,95,${m.isMine ? "0.35" : "0.2"})`,
+                      borderRadius: "14px",
+                      padding: "14px 16px",
+                      boxShadow: `inset 3px 0 0 ${m.isMine ? "#8FAF96" : "rgba(46,107,64,0.4)"}, 0 2px 6px rgba(0,0,0,0.35)`,
+                    }}
+                  >
+                    <Avatar name={author.name} email={author.email} url={author.url} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-semibold uppercase mb-1" style={{ color: SAGE, letterSpacing: "0.1em", fontFamily: FONT }}>
+                        {author.name} · {formatWhen(m.createdAt)}
+                      </p>
+                      <p className="text-[15px] leading-relaxed whitespace-pre-wrap" style={{ color: "#C8D4C0", fontFamily: SERIF, margin: 0 }}>
+                        {m.body}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
-      {/* Fixed compose bar. Layout is body-scroll with no bottom tab bar,
-          so a viewport-fixed bar sits cleanly above the home indicator. */}
+      {/* Fixed "Write a message" bar — opens the full-screen paper
+          composer. Replaces the old inline chat input so writing a message
+          uses the same surface as writing a letter. */}
       <div
         style={{
           position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 40,
@@ -165,31 +163,16 @@ export default function MessageThreadPage() {
           paddingBottom: "max(10px, env(safe-area-inset-bottom))",
         }}
       >
-        <div className="max-w-2xl mx-auto w-full flex items-end gap-2">
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Write a message…"
-            rows={1}
-            maxLength={8000}
-            onKeyDown={(e) => {
-              // Enter sends; Shift+Enter inserts a newline.
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
-            }}
-            className="flex-1 rounded-2xl px-3.5 py-2.5 text-[15px] resize-none"
-            style={{
-              background: "rgba(15,40,24,0.7)", border: "1px solid rgba(46,107,64,0.4)",
-              color: WARM, fontFamily: FONT, outline: "none", maxHeight: 120, lineHeight: 1.4,
-            }}
-          />
+        <div className="max-w-2xl mx-auto w-full">
           <button
             type="button"
-            onClick={submit}
-            disabled={!draft.trim() || send.isPending}
-            className="rounded-full px-4 py-2.5 text-sm font-semibold shrink-0 transition-opacity hover:opacity-90 disabled:opacity-40"
-            style={{ background: "#2D5E3F", color: WARM, fontFamily: FONT, cursor: draft.trim() ? "pointer" : "default" }}
+            onClick={() => setLocation(`/messages/${convId}/write`)}
+            className="w-full rounded-2xl py-3 text-sm font-semibold transition-opacity hover:opacity-90"
+            style={{ background: "#2D5E3F", color: WARM, fontFamily: FONT }}
           >
-            {send.isPending ? "…" : "Send"}
+            {messages.length === 0
+              ? t("messages.write_first", { defaultValue: "Write your first message" })
+              : t("messages.write_a_message", { defaultValue: "Write a message" })}
           </button>
         </div>
       </div>

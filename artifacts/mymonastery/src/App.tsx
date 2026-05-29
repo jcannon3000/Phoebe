@@ -138,6 +138,7 @@ const LettersPage = lazy(() => import("./pages/Letters/LettersPage"));
 const MessagesPage = lazy(() => import("./pages/messages"));
 const MessageNewPage = lazy(() => import("./pages/message-new"));
 const MessageThreadPage = lazy(() => import("./pages/message-thread"));
+const MessageWritePage = lazy(() => import("./pages/message-write"));
 const CorrespondencePage = lazy(() => import("./pages/Letters/CorrespondencePage"));
 const WriteLetter = lazy(() => import("./pages/Letters/WriteLetter"));
 const ReadLetter = lazy(() => import("./pages/Letters/ReadLetter"));
@@ -547,6 +548,7 @@ function Router() {
       {/* Beta Messages — unlimited 1:1 messaging. /new before /:id so
           "new" isn't captured as a conversation id. */}
       <Route path="/messages/new" component={MessageNewPage} />
+      <Route path="/messages/:id/write" component={MessageWritePage} />
       <Route path="/messages/:id" component={MessageThreadPage} />
       <Route path="/messages" component={MessagesPage} />
       <Route path="/people" component={People} />
