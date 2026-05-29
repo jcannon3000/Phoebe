@@ -109,7 +109,7 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
   // shows (formation, scripture, church history). Positioned under CAC in
   // the browse order.
   "forward-movement-shows": {
-    title: "Forward and Affiliated Podcasts",
+    title: "Forward Movement",
     emoji: "📖",
     showSlugs: [
       "forward-day-by-day",
