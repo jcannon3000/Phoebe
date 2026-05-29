@@ -36,6 +36,7 @@ import { startBellScheduler } from "./lib/bellSender";
 import { startLetterWindowScheduler } from "./lib/letterWindowSender";
 import { startGoalCleanupScheduler } from "./lib/goalCleanup";
 import { startPrayerHeldScanner } from "./lib/prayerHeldScanner";
+import { startMinistrySyncScheduler } from "./lib/ministryScraper";
 
 // Sentry first so any boot-time scheduler failure (DB pool exhausted,
 // invalid env var, missing seed file) lands as a Sentry issue rather
@@ -59,6 +60,7 @@ startBellScheduler();
 startLetterWindowScheduler();
 startGoalCleanupScheduler();
 startPrayerHeldScanner();
+startMinistrySyncScheduler();
 logger.info("[worker] schedulers running — process will stay alive on setIntervals");
 
 // We don't open an HTTP port — the worker is internal-only. Railway's

@@ -292,3 +292,31 @@ export async function createMinistrySource(name: string, eventsUrl: string): Pro
   const result = await syncMinistrySource(source);
   return { source, result };
 }
+
+// Scrape every enabled source once (sequential to be gentle on the sites).
+// Backs both the admin "Sync all" button and the daily scheduler.
+export async function syncAllEnabledMinistries(): Promise<{ sources: number; created: number }> {
+  const sources = await db.select().from(ministrySourcesTable).where(eq(ministrySourcesTable.enabled, true));
+  let created = 0;
+  for (const s of sources) {
+    const r = await syncMinistrySource(s);
+    created += r.created;
+  }
+  return { sources: sources.length, created };
+}
+
+// ─── Daily auto-sync scheduler ────────────────────────────────────────
+// Re-scrapes every enabled ministry once a day so new upcoming events show
+// up as drafts without anyone tapping "Sync". Idempotent (deduped by
+// joinUrl), so re-runs only add genuinely-new events; per-source errors are
+// recorded in last_status, not thrown. Registered by the worker service in
+// production and by the in-web boot path for single-process dev.
+let schedulerTimer: ReturnType<typeof setInterval> | undefined;
+export function startMinistrySyncScheduler(): void {
+  if (schedulerTimer) return;
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  // First pass ~90s after boot (DB pool warm) so a fresh deploy catches new
+  // events without waiting a full day; then daily.
+  setTimeout(() => { void syncAllEnabledMinistries().catch(() => { /* per-source status records the error */ }); }, 90_000);
+  schedulerTimer = setInterval(() => { void syncAllEnabledMinistries().catch(() => { /* swallow — next run retries */ }); }, DAY_MS);
+}

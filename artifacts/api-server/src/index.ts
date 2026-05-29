@@ -5,6 +5,7 @@ import { migrate } from "./lib/migrate";
 import { attachWebSocketServer } from "./lib/ws";
 import { startGoalCleanupScheduler } from "./lib/goalCleanup";
 import { startPrayerHeldScanner } from "./lib/prayerHeldScanner";
+import { startMinistrySyncScheduler } from "./lib/ministryScraper";
 import { captureError } from "./lib/sentry";
 // Bell system uses calendar events, not email cron — no scheduler needed
 
@@ -54,6 +55,8 @@ migrate()
       // Every 10 min: send batched "you've been held in prayer today"
       // pushes for amens whose 2-hour coalescing window has elapsed.
       startPrayerHeldScanner();
+      // Daily: re-scrape enabled ministry websites into draft events.
+      startMinistrySyncScheduler();
     }
   })
   .catch((err) => {

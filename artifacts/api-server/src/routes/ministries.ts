@@ -2,7 +2,7 @@ import { Router, type IRouter, type RequestHandler } from "express";
 import { db, usersTable, betaUsersTable, ministrySourcesTable, prayerFeedsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod/v4";
-import { createMinistrySource, syncMinistrySource } from "../lib/ministryScraper";
+import { createMinistrySource, syncMinistrySource, syncAllEnabledMinistries } from "../lib/ministryScraper";
 
 // ─── Scraped Ministries admin API ────────────────────────────────────────────
 //
@@ -109,13 +109,8 @@ router.post("/ministries/:id/sync", requireAdmin, async (req, res): Promise<void
 
 // POST /api/ministries/sync-all — scrape every enabled source (sequential).
 router.post("/ministries/sync-all", requireAdmin, async (_req, res): Promise<void> => {
-  const sources = await db.select().from(ministrySourcesTable).where(eq(ministrySourcesTable.enabled, true));
-  let created = 0;
-  for (const s of sources) {
-    const r = await syncMinistrySource(s);
-    created += r.created;
-  }
-  res.json({ ok: true, sources: sources.length, created });
+  const r = await syncAllEnabledMinistries();
+  res.json({ ok: true, ...r });
 });
 
 export default router;
