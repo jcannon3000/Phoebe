@@ -1524,10 +1524,14 @@ export async function migrate() {
 
     // Defensive: an earlier seed that ran before the visibility column
     // existed (or before this seed set it) would leave phoebe-climate
-    // on the schema default 'private', which 404s the public landing.
-    // Force it back to live + public on every boot so the chooser link
-    // works regardless of how the row was originally inserted.
-    await run(client, `UPDATE prayer_feeds SET visibility = 'public', state = 'live' WHERE slug = 'phoebe-climate'`);
+    // on the schema default 'private', which 404s the public landing —
+    // so force visibility back to public on every boot.
+    await run(client, `UPDATE prayer_feeds SET visibility = 'public' WHERE slug = 'phoebe-climate'`);
+    // Promote a never-launched draft to live, but DON'T touch a deliberate
+    // 'paused' — that's the admin "Off" switch. Forcing state='live' on
+    // every boot (as this once did) silently undid turning the feed off,
+    // so it kept reappearing in slideshows after every deploy.
+    await run(client, `UPDATE prayer_feeds SET state = 'live' WHERE slug = 'phoebe-climate' AND state = 'draft'`);
 
     // group_announcements gains optional event-shape columns so a single
     // announcement can be flagged as a prayer walk. Climate tab surfaces
