@@ -2103,12 +2103,18 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
             const FM_READINGS_URL = "https://prayer.forwardmovement.org/daily-readings";
             const reference = currentSlide.title;
             return (
+              // Full-bleed: break out of the slide's centered/padded column
+              // so the readings run edge-to-edge horizontally (100vw),
+              // matching the full-width feel of the Forward Day by Day
+              // devotion. The caption row is re-padded since the wrapper
+              // itself spans the whole viewport width.
               <div
                 style={{
-                  width: "100%",
-                  maxWidth: 560,
-                  margin: "8px auto 0",
-                  alignSelf: "center",
+                  width: "100vw",
+                  maxWidth: "100vw",
+                  marginLeft: "calc(50% - 50vw)",
+                  marginRight: "calc(50% - 50vw)",
+                  marginTop: 8,
                   display: "flex",
                   flexDirection: "column",
                   gap: 6,
@@ -2120,13 +2126,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
                   loading="lazy"
                   style={{
                     width: "100%",
-                    height: "min(62vh, 540px)",
-                    border: "1px solid rgba(46,107,64,0.4)",
-                    borderRadius: 14,
+                    height: "min(70vh, 640px)",
+                    border: "none",
+                    borderTop: "1px solid rgba(46,107,64,0.4)",
+                    borderBottom: "1px solid rgba(46,107,64,0.4)",
                     background: "#fff",
                   }}
                 />
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "0 16px" }}>
                   <span style={{ color: "rgba(143,175,150,0.85)", fontFamily: SPACE_GROTESK, fontSize: 12 }}>
                     {reference ? `Scroll to ${reference}` : "Today's readings"} · Forward Movement
                   </span>
