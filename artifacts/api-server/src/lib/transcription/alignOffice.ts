@@ -1,22 +1,34 @@
 // ── Office ↔ audio alignment ───────────────────────────────────────────────
 //
-// Given the office the app assembled for a day (an ordered list of slides)
-// and a timestamped transcript of that day's spoken office, work out the
-// start time of each part of the office.
+// Given the office Phoebe assembled for a day (an ordered list of slides) and
+// a timestamped transcript of that day's spoken office, work out the start
+// time of EACH part of the office — including the scripture lessons, whose
+// text never appears in the slides (Phoebe shows only the reference + a
+// "read it" link; the Forward Movement reader reads the passage aloud).
 //
-// Two aligners:
-//   • alignWithOpenAI — the smart path. Hands an OpenAI chat model the office
-//     outline + the timestamped transcript and lets it reason about where each
-//     section begins. Robust to paraphrase, different psalm/Bible translations,
-//     and the reader's spoken framing ("Let us confess our sins", "Here begins
-//     the first lesson"). Uses the same OPENAI_API_KEY as transcription, so one
-//     key powers the whole pipeline; inert when the key is absent.
-//   • alignWithHeuristic — a no-LLM fallback. Monotonic fuzzy search of each
-//     section's opening words against the transcript token stream. Reliable
-//     for the fixed liturgical texts; less so for the variable psalms/lessons.
+// Phoebe's office is a deterministic, ordered slideshow: psalms split into
+// 4-verse chunks, the Gloria its own slide, every prayer a fixed-text slide
+// in a known sequence. We lean on that with two layers:
 //
-// alignOffice() prefers the OpenAI aligner and falls back to the heuristic,
-// so the pipeline always produces something.
+//   1. RECOGNISE — hand an OpenAI chat model the office outline + the
+//      timestamped transcript. Fixed-text slides (psalm verses, the Gloria,
+//      canticles, Creed, Lord's Prayer, …) it matches by their words. A
+//      LESSON carries its eyebrow + scripture reference as the hint (e.g.
+//      "FIRST LESSON — a reading from Matt. 13:31-35"); the model spots it in
+//      the transcript by the reader's announcement ("A reading from the
+//      Gospel according to Matthew…") or the passage's opening words. The
+//      heuristic matcher is the no-LLM fallback.
+//
+//   2. PREDICT — any slide the recogniser couldn't pin (often a lesson, or a
+//      psalm chunk in an unfamiliar translation) is placed by its LITURGICAL
+//      POSITION: it sits in the audio gap between the slides on either side of
+//      it, and we split that gap by each slide's estimated spoken length
+//      (word count for fixed text; verse count for a lesson). So a lesson
+//      lands right where the liturgy says it must — after the Psalm's Gloria,
+//      before the Canticle — even when its words can't be matched directly.
+//
+// The result is a per-slide timeline: a start time for every spoken slide,
+// exact where recognised, predicted (flagged, lower confidence) where not.
 
 import type { OfficeAlignmentSection } from "@workspace/db";
 import type { Transcript } from "./transcribeAudio";
@@ -24,20 +36,23 @@ import type { Transcript } from "./transcribeAudio";
 type OfficeSlideLite = {
   id: string;
   type: string;
+  eyebrow?: string | null;
   title: string | null;
   content: string;
   callAndResponseLines?: { speaker: string; text: string }[] | null;
 };
 
-// Slide types that mark a clear, nameable boundary in the spoken office —
-// the chapters worth jumping to. Psalms/lessons vary daily; the canticles,
-// creed, prayers, and thanksgiving are fixed wording — all good landmarks.
-const ANCHOR_TYPES = new Set<string>([
-  "opening_sentence", "confession", "absolution", "invitatory",
-  "invitatory_psalm", "psalm_title", "psalm", "lesson_title", "lesson",
-  "canticle_title", "canticle", "creed", "lords_prayer", "suffrages",
-  "collect", "prayer_for_mission", "general_thanksgiving", "closing",
+// Visual-only / non-spoken slides — no audio, so they get no timestamp.
+const SILENT_TYPES = new Set<string>([
+  "office_intro", "intercessions", "intercessions_portal",
+  "psalm_title", "canticle_title", "lesson_title",
 ]);
+// The scripture lessons — read aloud, but the text isn't in the slide.
+const LESSON_TYPES = new Set<string>(["lesson", "lesson_verses"]);
+
+const WORDS_PER_SECOND = 2.4; // ~145 wpm — unhurried liturgical reading
+const SECONDS_PER_VERSE = 12; // rough spoken length of one Bible verse
+const MATCH_THRESHOLD = 0.5;
 
 function anchorText(s: OfficeSlideLite): string {
   if (s.callAndResponseLines && s.callAndResponseLines.length > 0) {
@@ -55,24 +70,69 @@ function normWords(s: string): string[] {
     .filter((w) => w.length > 0 && !/^\d+$/.test(w));
 }
 
-export type LocatableSection = { id: string; type: string; title: string | null; snippet: string };
+// Estimate how long the reader spends on a lesson from its reference's verse
+// span (e.g. "Matt. 13:31-35" → 5 verses). Falls back to a middling guess.
+function lessonSeconds(reference: string): number {
+  const m = reference.match(/(\d+)\s*[-–—]\s*(\d+)\s*$/);
+  if (m) {
+    const span = Math.abs(parseInt(m[2], 10) - parseInt(m[1], 10)) + 1;
+    if (span > 0 && span < 200) return Math.max(20, span * SECONDS_PER_VERSE);
+  }
+  return 50;
+}
 
-// The compact "sections to find" list handed to both aligners — anchorable
-// slides, each with the first ~16 significant words of its written text.
-export function locatableSections(slides: OfficeSlideLite[]): LocatableSection[] {
-  const out: LocatableSection[] = [];
+type Section = {
+  id: string;
+  type: string;
+  title: string | null;
+  hint: string; // shown to the recogniser; also fuzzy-matched by the heuristic
+  weight: number; // estimated spoken seconds
+  isLesson: boolean;
+};
+
+// Every spoken slide, in order, with a recognition hint + an estimated spoken
+// length. Lessons carry their eyebrow + reference as the hint so the
+// recogniser can find the announcement/reading in the transcript.
+export function buildSections(slides: OfficeSlideLite[]): Section[] {
+  const out: Section[] = [];
   for (const s of slides) {
-    if (!ANCHOR_TYPES.has(s.type)) continue;
+    if (SILENT_TYPES.has(s.type)) continue;
+    if (LESSON_TYPES.has(s.type)) {
+      const ref = (s.title ?? s.content ?? "").trim();
+      const label = (s.eyebrow ?? "A reading").trim();
+      out.push({
+        id: s.id,
+        type: "lesson",
+        title: ref || s.title,
+        hint: `${label} — a reading from ${ref}`.trim(),
+        weight: lessonSeconds(ref),
+        isLesson: true,
+      });
+      continue;
+    }
     const words = normWords(anchorText(s));
     if (words.length < 2) continue;
-    out.push({ id: s.id, type: s.type, title: s.title, snippet: words.slice(0, 16).join(" ") });
+    out.push({
+      id: s.id,
+      type: s.type,
+      title: s.title,
+      hint: words.slice(0, 18).join(" "),
+      weight: Math.max(2, words.length / WORDS_PER_SECOND),
+      isLesson: false,
+    });
   }
   return out;
 }
 
-// ── Heuristic aligner (no LLM) ─────────────────────────────────────────────
+// Back-compat name.
+export function locatableSections(slides: OfficeSlideLite[]): Section[] {
+  return buildSections(slides);
+}
+
+// ── Recognition: heuristic (no LLM) ────────────────────────────────────────
 
 type Tok = { w: string; t: number };
+type Located = Map<string, { start: number; confidence: number }>;
 
 function transcriptTokens(transcript: Transcript): Tok[] {
   const toks: Tok[] = [];
@@ -80,8 +140,6 @@ function transcriptTokens(transcript: Transcript): Tok[] {
     const ws = normWords(seg.text);
     if (ws.length === 0) continue;
     const span = Math.max(0.001, seg.end - seg.start);
-    // Spread each token's time linearly across its segment so a match part-
-    // way through a long segment lands at roughly the right second.
     for (let i = 0; i < ws.length; i++) {
       toks.push({ w: ws[i], t: seg.start + (span * i) / ws.length });
     }
@@ -100,7 +158,7 @@ function bestMatch(anchor: string[], toks: Tok[], from: number): { idx: number; 
     const end = Math.min(toks.length, p + win);
     for (let q = p; q < end && ai < A.length; q++) {
       if (toks[q].w === A[ai]) { matched++; ai++; }
-      else if (ai + 1 < A.length && toks[q].w === A[ai + 1]) { matched++; ai += 2; } // tolerate 1 skip
+      else if (ai + 1 < A.length && toks[q].w === A[ai + 1]) { matched++; ai += 2; }
     }
     const score = matched / A.length;
     if (score > best.score) {
@@ -111,51 +169,38 @@ function bestMatch(anchor: string[], toks: Tok[], from: number): { idx: number; 
   return best;
 }
 
-export function alignWithHeuristic(slides: OfficeSlideLite[], transcript: Transcript): OfficeAlignmentSection[] {
+function locateHeuristic(sections: Section[], transcript: Transcript): Located {
   const toks = transcriptTokens(transcript);
-  const secs = locatableSections(slides);
-  const out: OfficeAlignmentSection[] = [];
+  const located: Located = new Map();
   let cursor = 0;
-  const THRESHOLD = 0.5;
-  for (const sec of secs) {
-    const m = bestMatch(normWords(sec.snippet), toks, cursor);
-    if (m.idx >= 0 && m.score >= THRESHOLD) {
-      out.push({
-        id: sec.id, type: sec.type, title: sec.title,
-        startSeconds: round1(toks[m.idx].t), endSeconds: null, confidence: round2(m.score),
-      });
+  for (const sec of sections) {
+    const m = bestMatch(normWords(sec.hint), toks, cursor);
+    if (m.idx >= 0 && m.score >= MATCH_THRESHOLD) {
+      located.set(sec.id, { start: round1(toks[m.idx].t), confidence: round2(m.score) });
       cursor = m.idx + 1; // monotonic — the office is read in order
     }
   }
-  fillEnds(out);
-  return out;
+  return located;
 }
 
-// ── OpenAI aligner (LLM) ────────────────────────────────────────────────────
+// ── Recognition: OpenAI chat model ─────────────────────────────────────────
 
-export async function alignWithOpenAI(
-  slides: OfficeSlideLite[],
-  transcript: Transcript,
-): Promise<OfficeAlignmentSection[] | null> {
-  // Same OPENAI_API_KEY as transcription — one key powers the whole pipeline
-  // (Whisper listens, GPT matches). Bows out when the key is absent so the
-  // caller can fall back to the heuristic.
+async function locateOpenAI(sections: Section[], transcript: Transcript): Promise<Located | null> {
   const key = process.env.OPENAI_API_KEY;
   if (!key) return null;
-
-  const secs = locatableSections(slides);
-  if (secs.length === 0) return [];
   const model = process.env.OFFICE_ALIGN_MODEL || "gpt-4o-mini";
 
-  const outline = secs
-    .map((s, i) => `${i + 1}. id=${s.id} | ${s.type} | ${s.title ?? ""} | "${s.snippet}"`)
+  const outline = sections
+    .map((s, i) => `${i + 1}. id=${s.id} | ${s.isLesson ? "LESSON" : s.type} | ${s.title ?? ""} | ${s.hint}`)
     .join("\n");
   const tx = transcript.segments.map((seg) => `[${seg.start.toFixed(1)}] ${seg.text}`).join("\n");
 
   const system =
-    "You align a spoken Daily Office (Morning or Evening Prayer) recording to its written structure.\n" +
-    "You are given (A) an ordered list of office SECTIONS — each with an id, a type, a title, and the opening words of its written text — and (B) a TRANSCRIPT of the recording where every line is prefixed with its start time in seconds, like \"[83.4] text...\".\n" +
-    "For each section you can confidently locate, return the start time in seconds, copied from the transcript line where that section begins. Sections occur in order, so their start times must be strictly increasing. Match on meaning, not exact words: the reader may paraphrase, use a different psalm or Bible translation, or add framing such as \"Let us confess our sins\" or \"Here begins the first lesson\". If you genuinely cannot find a section, omit it.\n" +
+    "You align a spoken Daily Office (Morning or Evening Prayer) to its written structure.\n" +
+    "You get (A) the office's SECTIONS in order — each with an id, a type, a title, and a hint — and (B) a TRANSCRIPT whose every line starts with a timestamp in seconds like \"[83.4] ...\".\n" +
+    "Most sections are fixed liturgical text (psalm verses, the Gloria \"Glory to the Father...\", canticles, the Apostles' Creed, the Lord's Prayer, suffrages, collects, the General Thanksgiving) — locate each by matching its words in the transcript.\n" +
+    "LESSON sections are different: the slide has NO scripture text, only a reference like \"Matt. 13:31-35\", because the reader reads the passage aloud from a Bible. Recognise a lesson in the transcript by (a) its spoken announcement — e.g. \"A Reading from the Gospel according to Matthew\", \"The First Lesson\", \"A reading from Isaiah\", \"Here begins...\" — or (b) the opening words of that book/chapter. Use the reference's book + chapter to confirm, and return the timestamp where the announcement (or the reading's first words) begins.\n" +
+    "Sections occur strictly in order, so start times must increase. Match on meaning, not exact words (different translations, paraphrase, spoken framing are expected). Omit a section only if you truly cannot find it.\n" +
     "Respond with ONLY a JSON object: {\"sections\":[{\"id\":\"<section id>\",\"startSeconds\":<number>,\"confidence\":<0..1>}]}";
   const user = `SECTIONS:\n${outline}\n\nTRANSCRIPT:\n${tx}`;
 
@@ -181,39 +226,118 @@ export async function alignWithOpenAI(
   const parsed = extractJson(data.choices?.[0]?.message?.content ?? "");
   if (!parsed || !Array.isArray(parsed.sections)) return null;
 
-  const byId = new Map(secs.map((s) => [s.id, s]));
-  const out: OfficeAlignmentSection[] = [];
-  let lastT = -1;
+  const ids = new Set(sections.map((s) => s.id));
+  const located: Located = new Map();
   for (const item of parsed.sections as Array<{ id?: unknown; startSeconds?: unknown; confidence?: unknown }>) {
     if (!item || typeof item.id !== "string" || typeof item.startSeconds !== "number") continue;
-    const sec = byId.get(item.id);
-    if (!sec) continue;
-    if (item.startSeconds <= lastT) continue; // keep timestamps strictly increasing
-    lastT = item.startSeconds;
-    out.push({
-      id: sec.id, type: sec.type, title: sec.title,
-      startSeconds: round1(item.startSeconds),
-      endSeconds: null,
+    if (!ids.has(item.id)) continue;
+    located.set(item.id, {
+      start: round1(item.startSeconds),
       confidence: typeof item.confidence === "number" ? round2(item.confidence) : 0.8,
     });
+  }
+  return located;
+}
+
+// ── Prediction: place every slide on the timeline ──────────────────────────
+//
+// Pins the recognised slides, then fills the gaps by liturgical position:
+// the slides between two recognised anchors split that span in proportion to
+// their estimated spoken length, so a lesson lands where the order demands.
+function buildTimeline(
+  sections: Section[],
+  located: Located,
+  duration: number,
+): OfficeAlignmentSection[] {
+  const n = sections.length;
+  const start: (number | null)[] = new Array(n).fill(null);
+  const conf: number[] = new Array(n).fill(0);
+  const predicted: boolean[] = new Array(n).fill(false);
+
+  // Assign recognised starts, keeping them strictly increasing (drop any that
+  // would go backwards — the office is read in order).
+  let lastT = -1;
+  for (let i = 0; i < n; i++) {
+    const l = located.get(sections[i].id);
+    if (l && l.start > lastT) {
+      start[i] = l.start;
+      conf[i] = l.confidence;
+      lastT = l.start;
+    }
+  }
+
+  // Anchor points, bracketed by a virtual start (0) and end (duration).
+  const anchored: number[] = [];
+  for (let i = 0; i < n; i++) if (start[i] !== null) anchored.push(i);
+  const lastAnchorT = anchored.length ? (start[anchored[anchored.length - 1]] as number) : 0;
+  const endT = duration > lastAnchorT ? duration : lastAnchorT;
+  const points = [
+    { idx: -1, t: 0 },
+    ...anchored.map((i) => ({ idx: i, t: start[i] as number })),
+    { idx: n, t: endT },
+  ];
+
+  for (let p = 0; p < points.length - 1; p++) {
+    const a = points[p];
+    const b = points[p + 1];
+    const lo = a.idx + 1;
+    const hi = b.idx - 1;
+    if (hi < lo) continue;
+    // Start distributing once the preceding anchor has finished being read.
+    const cursor = a.t + (a.idx >= 0 ? sections[a.idx].weight : 0);
+    const span = Math.max(0, b.t - cursor);
+    let totalW = 0;
+    for (let k = lo; k <= hi; k++) totalW += sections[k].weight;
+    let acc = 0;
+    for (let k = lo; k <= hi; k++) {
+      start[k] = round1(cursor + (totalW > 0 ? (acc / totalW) * span : 0));
+      acc += sections[k].weight;
+      predicted[k] = true;
+      conf[k] = 0.4;
+    }
+  }
+
+  const out: OfficeAlignmentSection[] = sections.map((s, i) => ({
+    id: s.id,
+    type: s.type,
+    title: s.title,
+    startSeconds: start[i] ?? (i > 0 ? (start[i - 1] ?? 0) : 0),
+    endSeconds: null,
+    confidence: conf[i] || 0.4,
+    predicted: predicted[i] ? true : undefined,
+  }));
+  // Guarantee non-decreasing starts after rounding.
+  for (let i = 1; i < out.length; i++) {
+    if (out[i].startSeconds < out[i - 1].startSeconds) out[i].startSeconds = out[i - 1].startSeconds;
   }
   fillEnds(out);
   return out;
 }
 
-// Prefer the LLM (OpenAI) aligner; fall back to the heuristic so the pipeline
-// always yields something even without an API key.
+// Recognise with the LLM (falling back to the heuristic), then predict the
+// rest by liturgical position. Always returns a per-slide timeline.
 export async function alignOffice(
   slides: OfficeSlideLite[],
   transcript: Transcript,
 ): Promise<{ sections: OfficeAlignmentSection[]; aligner: string }> {
+  const sections = buildSections(slides);
+  if (sections.length === 0) return { sections: [], aligner: "none" };
+
+  let located: Located | null = null;
+  let aligner = "heuristic";
   try {
-    const viaLLM = await alignWithOpenAI(slides, transcript);
-    if (viaLLM && viaLLM.length > 0) return { sections: viaLLM, aligner: "openai" };
+    const llm = await locateOpenAI(sections, transcript);
+    if (llm && llm.size > 0) {
+      located = llm;
+      aligner = "openai";
+    }
   } catch (e) {
     console.warn("[office-align] OpenAI alignment failed, falling back to heuristic:", e);
   }
-  return { sections: alignWithHeuristic(slides, transcript), aligner: "heuristic" };
+  if (!located) located = locateHeuristic(sections, transcript);
+
+  const timeline = buildTimeline(sections, located, transcript.durationSeconds);
+  return { sections: timeline, aligner };
 }
 
 function fillEnds(secs: OfficeAlignmentSection[]): void {

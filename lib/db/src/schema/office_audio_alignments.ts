@@ -19,6 +19,11 @@ export type OfficeAlignmentSection = {
   startSeconds: number; // where this part begins in the audio
   endSeconds: number | null; // start of the next located section (null = last)
   confidence: number; // 0..1 — how sure the aligner is about this mark
+  // true when the start time was inferred from the slide's liturgical
+  // position (the gap between recognised neighbours) rather than matched
+  // directly in the transcript — e.g. a scripture lesson, whose text isn't
+  // in the slides. Recognised marks omit this (or set false).
+  predicted?: boolean;
 };
 
 export const officeAudioAlignmentsTable = pgTable("office_audio_alignments", {
