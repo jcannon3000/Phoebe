@@ -1657,10 +1657,29 @@ router.get("/moments", async (req, res): Promise<void> => {
     const now = new Date();
     // Keep aligned with dashboard GoalReachedModal renewal window (2 days).
     const graceMs = 2 * 24 * 60 * 60 * 1000;
-    const flatMoments = (await db.select().from(sharedMomentsTable)
-      .where(inArray(sharedMomentsTable.id, momentIds)))
+    const rawMoments = await db.select().from(sharedMomentsTable)
+      .where(inArray(sharedMomentsTable.id, momentIds));
+    // A prayer feed turned "off" (state != 'live', e.g. paused) must drop
+    // out of the slideshow/timeline even for already-subscribed users.
+    // Feed intercessions flow through here as shared_moments, so this is
+    // where the full-off rule has to apply on the read path (discovery,
+    // /today, /subscribed, the office, and digests are filtered elsewhere).
+    // Nothing is deleted — flipping the feed back to live restores them.
+    const momentFeedIds = [...new Set(
+      rawMoments.map(m => m.prayerFeedId).filter((f): f is number => f != null),
+    )];
+    const offFeedIds = new Set<number>();
+    if (momentFeedIds.length > 0) {
+      const feedStateRows = await db
+        .select({ id: prayerFeedsTable.id, state: prayerFeedsTable.state })
+        .from(prayerFeedsTable)
+        .where(inArray(prayerFeedsTable.id, momentFeedIds));
+      for (const f of feedStateRows) if (f.state !== "live") offFeedIds.add(f.id);
+    }
+    const flatMoments = rawMoments
       .filter(m => {
         if (m.ritualId !== null || m.state === "archived") return false;
+        if (m.prayerFeedId != null && offFeedIds.has(m.prayerFeedId)) return false;
         // Intercessions: hide once the current cycle window expires.
         // The window is [cycleStartedAt, cycleStartedAt + goalDays).
         // Past the end → hide regardless of bloom count, streak, or
