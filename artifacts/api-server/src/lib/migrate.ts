@@ -852,6 +852,26 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_journal_entries_user_created ON journal_entries (user_id, created_at DESC)`);
 
+    // ── Office audio alignments (podcast → office-section timestamps) ──────
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS office_audio_alignments (
+        id SERIAL PRIMARY KEY,
+        show TEXT NOT NULL,
+        source TEXT NOT NULL DEFAULT 'forward-movement',
+        episode_date TEXT NOT NULL,
+        episode_guid TEXT,
+        audio_url TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        aligner TEXT,
+        duration_seconds INTEGER,
+        sections JSONB,
+        error TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_office_alignment_episode ON office_audio_alignments (show, source, episode_date)`);
+
     // ── prayers_for — private, directed prayers one user holds for another
     await run(client, `
       CREATE TABLE IF NOT EXISTS prayers_for (

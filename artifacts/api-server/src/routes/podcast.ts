@@ -34,7 +34,7 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-type Show = {
+export type Show = {
   slug: string;
   title: string;
   artist: string;
@@ -156,7 +156,7 @@ const THEMES: Array<{ key: string; label: string; emoji: string; keywords: strin
     keywords: ["prayer", "pray", "intercession", "examen", "rule of life", "spiritual practice", "morning prayer", "evening prayer", "compline"] },
 ];
 
-const SHOWS: Record<string, Show> = {
+export const SHOWS: Record<string, Show> = {
   // ── Forward Movement daily offices ──────────────────────────────────
   "morning-office": {
     slug: "morning-office",
@@ -294,7 +294,7 @@ const UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 " +
   "(KHTML, like Gecko) Version/17.0 Safari/605.1.15";
 
-type EpisodeFull = {
+export type EpisodeFull = {
   id: string;
   title: string | null;
   audioUrl: string | null;
@@ -303,7 +303,7 @@ type EpisodeFull = {
   description: string | null;
   imageUrl: string | null;
 };
-type ParsedFeed = {
+export type ParsedFeed = {
   feedTitle: string | null;
   feedImage: string | null;
   feedDescription: string | null;
@@ -440,7 +440,7 @@ function scrapeRoundtables(html: string, fallbackTitle: string): ParsedFeed {
   return { feedTitle: fallbackTitle, feedImage: null, feedDescription: null, episodes };
 }
 
-async function loadFeed(show: Show, limit: number): Promise<ParsedFeed> {
+export async function loadFeed(show: Show, limit: number): Promise<ParsedFeed> {
   const hit = cache.get(show.slug);
   // Cache stores the largest parse we've done; a small-limit request can
   // be served from a larger cached parse by slicing.

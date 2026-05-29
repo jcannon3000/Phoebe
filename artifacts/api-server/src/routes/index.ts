@@ -43,6 +43,7 @@ import newsRouter from "./news";
 import groupReflectionsRouter from "./group-reflections";
 import betaMessagesRouter from "./beta-messages";
 import journalRouter from "./journal";
+import officeAlignmentRouter from "./office-alignment";
 
 const router: IRouter = Router();
 
@@ -161,5 +162,6 @@ router.use(newsRouter);
 router.use(groupReflectionsRouter);
 router.use(betaMessagesRouter);
 router.use(journalRouter);
+router.use(officeAlignmentRouter);
 
 export default router;

@@ -5,6 +5,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
+import { bibleUrlSegments } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import i18n from "@/i18n";
@@ -2086,65 +2087,66 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
               />
             );
           })()}
-          {/* On lesson slides we embed Forward Movement's daily-readings
-              page (the appointed passages in full, all on one page) right
-              on the slide, rather than bouncing out to Bible.com. FM holds
-              the licensed translation text, so embedding their page shows
-              it without us licensing scripture ourselves. It's a JS app on
-              a different origin, so we can't auto-scroll it to THIS slide's
-              reading — the caption names the passage to scroll to, and the
-              "Open ↗" link is the fallback if a device blocks the embed.
-              Compline lesson BODY slides already render their short text
-              inline, so they get no embed. */}
+          {/* On lesson slides we link out to YouVersion (bible.com)
+              for the appointed passage in NRSVUE. The URL is computed
+              client-side from the slide title (the reference). We render an
+              actual <a> with href so iOS won't swallow the click — onClick
+              still goes through openExternal so the iOS shell shows
+              SFSafariViewController instead of bouncing out to mobile
+              Safari. (We tried embedding Forward Movement's readings page
+              inline, but it's a cross-origin JS app we can't auto-scroll to
+              the appointed reading — so the jump-out button is the better
+              UX.) Compline lesson BODY slides render their short text inline,
+              so a pill there would be redundant. */}
           {(currentSlide.type === "lesson" || currentSlide.type === "lesson_title") && (() => {
             if (currentSlide.type === "lesson" && currentSlide.metadata?.compline) {
               return null;
             }
-            const FM_READINGS_URL = "https://prayer.forwardmovement.org/daily-readings";
-            const reference = currentSlide.title;
+            // A reference with more than one contiguous range — multi-range
+            // ("Num. 11:16-17, 24-29") or cross-chapter ("John 7:14-8:2") —
+            // gets one pill PER range, because Bible.com only resolves a
+            // single contiguous range per URL.
+            const segments = currentSlide.title
+              ? bibleUrlSegments(currentSlide.title)
+              : [];
+            if (segments.length === 0) return null;
+            const multi = segments.length > 1;
             return (
-              // Full-bleed: break out of the slide's centered/padded column
-              // so the readings run edge-to-edge horizontally (100vw),
-              // matching the full-width feel of the Forward Day by Day
-              // devotion. The caption row is re-padded since the wrapper
-              // itself spans the whole viewport width.
               <div
                 style={{
-                  width: "100vw",
-                  maxWidth: "100vw",
-                  marginLeft: "calc(50% - 50vw)",
-                  marginRight: "calc(50% - 50vw)",
-                  marginTop: 8,
                   display: "flex",
                   flexDirection: "column",
-                  gap: 6,
+                  alignItems: "center",
+                  gap: 8,
+                  marginTop: 4,
                 }}
               >
-                <iframe
-                  src={FM_READINGS_URL}
-                  title="Today's readings — Forward Movement"
-                  loading="lazy"
-                  style={{
-                    width: "100%",
-                    height: "min(70vh, 640px)",
-                    border: "none",
-                    borderTop: "1px solid rgba(46,107,64,0.4)",
-                    borderBottom: "1px solid rgba(46,107,64,0.4)",
-                    background: "#fff",
-                  }}
-                />
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "0 16px" }}>
-                  <span style={{ color: "rgba(143,175,150,0.85)", fontFamily: SPACE_GROTESK, fontSize: 12 }}>
-                    {reference ? `Scroll to ${reference}` : "Today's readings"} · Forward Movement
-                  </span>
+                {segments.map((seg, i) => (
                   <a
-                    href={FM_READINGS_URL}
-                    onClick={(e) => { e.preventDefault(); openExternal(FM_READINGS_URL); }}
-                    style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}
+                    key={`${seg.url}-${i}`}
+                    href={seg.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      openExternal(seg.url);
+                    }}
+                    style={{
+                      padding: "10px 18px",
+                      borderRadius: 999,
+                      background: "rgba(46,107,64,0.18)",
+                      border: "1px solid rgba(46,107,64,0.45)",
+                      color: WARM_TEXT,
+                      fontFamily: SPACE_GROTESK,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      textDecoration: "none",
+                      display: "inline-block",
+                    }}
                   >
-                    Open ↗
+                    {multi ? `Read ${seg.label} →` : "Read on Bible.com →"}
                   </a>
-                </div>
+                ))}
               </div>
             );
           })()}
