@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { useNewsSubscriptions, toggleNewsSubscription } from "@/lib/newsPrefs";
 
 // ── /news — News & Actions ──
@@ -97,15 +98,33 @@ function StoryCard({ item }: { item: NewsItem }) {
 
 export default function NewsPage() {
   const [, setLocation] = useLocation();
+  // News & Actions is a beta feature. Redirect non-beta users out once
+  // beta status has resolved (guarding on betaLoading avoids bouncing a
+  // beta user during the brief status fetch).
+  const { isBeta, isLoading: betaLoading } = useBetaStatus();
   const subs = useNewsSubscriptions();
   const { data, isLoading } = useQuery<NewsResponse>({
     queryKey: ["/api/news"],
     queryFn: () => apiRequest("GET", "/api/news"),
+    enabled: isBeta,
     staleTime: 10 * 60_000,
   });
+  useEffect(() => {
+    if (!betaLoading && !isBeta) setLocation("/dashboard");
+  }, [betaLoading, isBeta, setLocation]);
   const items = data?.items ?? [];
   const sources = data?.sources ?? [];
   const primarySource = sources[0] ?? null;
+
+  // Hold a calm shell while beta status resolves / a non-beta user is
+  // being redirected, rather than flashing the feed.
+  if (betaLoading || !isBeta) {
+    return (
+      <div style={{ minHeight: "100dvh", background: PALETTE.bg, color: PALETTE.warm, fontFamily: FONT, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p style={{ color: PALETTE.faint, fontSize: 13 }}>Loading…</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: "100dvh", background: PALETTE.bg, color: PALETTE.warm, fontFamily: FONT, display: "flex", flexDirection: "column" }}>

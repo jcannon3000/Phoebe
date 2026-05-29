@@ -107,7 +107,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const logout = useLogout();
   const [, setLocation] = useLocation();
-  const { isAdmin: isBetaAdmin, rawIsAdmin, rawIsBeta } = useBetaStatus();
+  const { isAdmin: isBetaAdmin, rawIsAdmin, rawIsBeta, isBeta } = useBetaStatus();
   const { t } = useTranslation();
   // Offices-only accounts 403 on /api/groups, /api/me/pending-…,
   // and /api/prayer-feeds/mine (requireBeta). Firing them on every
@@ -490,11 +490,14 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   to everyone; the "Beta" badge stays so readers know
                   the index is still growing. */}
               <MenuSection emoji="📚" label={t("menu.resources", { defaultValue: "Resources" })}>
-                <MenuRow
-                  emoji="📰"
-                  label={t("menu.news_actions", { defaultValue: "News & Actions" })}
-                  onClick={() => navigate("/news")}
-                />
+                {isBeta && (
+                  <MenuRow
+                    emoji="📰"
+                    label={t("menu.news_actions", { defaultValue: "News & Actions" })}
+                    badge={t("menu.beta")}
+                    onClick={() => navigate("/news")}
+                  />
+                )}
                 <MenuRow
                   emoji="📅"
                   label={t("menu.sunday_lectionary", { defaultValue: "Sunday Lectionary" })}

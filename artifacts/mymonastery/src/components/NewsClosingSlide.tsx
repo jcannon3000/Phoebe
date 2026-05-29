@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { useNewsSubscriptions, getNewsSeenAt, markNewsSeen } from "@/lib/newsPrefs";
 
 // ── End-of-prayer "News & Actions" slide ──
@@ -35,20 +36,24 @@ type NewsResponse = {
 // slide's content. Returns [] when the user follows nothing — the query
 // is disabled then, so non-subscribers pay nothing.
 export function useUnseenNews(): { items: NewsItem[]; hasUnseen: boolean } {
+  // News & Actions is a beta feature — non-beta users never get the
+  // slide (the query stays disabled and items stay empty for them).
+  const { isBeta } = useBetaStatus();
   const subs = useNewsSubscriptions();
   const { data } = useQuery<NewsResponse>({
     queryKey: ["/api/news"],
     queryFn: () => apiRequest("GET", "/api/news"),
-    enabled: subs.length > 0,
+    enabled: isBeta && subs.length > 0,
     staleTime: 10 * 60_000,
   });
   const seenAt = getNewsSeenAt();
   const items = useMemo(() => {
+    if (!isBeta) return [];
     return (data?.items ?? [])
       .filter((it) => subs.includes(it.sourceSlug))
       .filter((it) => (it.publishedAt ? Date.parse(it.publishedAt) : 0) > seenAt)
       .slice(0, 3);
-  }, [data, subs, seenAt]);
+  }, [data, subs, seenAt, isBeta]);
   return { items, hasUnseen: items.length > 0 };
 }
 
