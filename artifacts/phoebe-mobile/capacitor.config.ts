@@ -19,8 +19,8 @@ const config: CapacitorConfig = {
   // which is the pattern Apple rejects under Guideline 4.2. Instead we ship
   // the bundled mymonastery build and only hit the API for data.
   ios: {
-    // Prod serves the bundled assets from the app bundle under the local
-    // https origin configured in `server` below (no remote server.url).
+    // Allow http://localhost only if a dev server is running; prod uses
+    // the bundled assets served from the app bundle via capacitor://.
     contentInset: "never",
     // WKWebView's default is grey; Phoebe's dark theme needs a matching
     // background so there's no flash between splash teardown and app
@@ -116,27 +116,16 @@ const config: CapacitorConfig = {
   // opens the app instead of Safari. The deep-link handler in
   // src/native-shell.ts routes the path into Wouter.
   server: {
-    // Serve the bundled app under a real withphoebe.app subdomain instead
-    // of the default `localhost`. Content still loads from the app BUNDLE
-    // (we set no `server.url`, so this is NOT a thin web-view that Apple
-    // rejects under 4.2) — `hostname` only relabels the WebView's ORIGIN.
+    // iOS: serve from https://localhost so cross-origin embeds (YouTube
+    // iframes, etc.) work. The default `capacitor://` custom scheme is
+    // not recognised as a valid origin by YouTube's embed player, causing
+    // a blank iframe. Changing to `https` fixes that.
     //
-    // Why: YouTube's embed player rejects `https://localhost` as an
-    // embedding origin — that's the cathedral broadcast's "Error 153 —
-    // Video player configuration error." We'd already switched the
-    // `capacitor://` custom scheme to `https` for the same reason (it
-    // wasn't recognised as a valid origin either); a real-domain origin
-    // is the rest of that fix. Bonus: the WebView is now the same
-    // registrable domain as the withphoebe.app API, so auth cookies are
-    // same-site rather than cross-site.
-    //
-    // NOTE: localStorage is origin-scoped, so it starts empty after an
-    // origin change — resume positions, drafts, and prefs reset once
-    // (same one-time cost as the earlier capacitor:// → https switch).
-    // Auth is unaffected: CapacitorHttp + CapacitorCookies route cookies
-    // through NSHTTPCookieStorage keyed by the withphoebe.app request
-    // domain, independent of the WebView origin.
-    hostname: "app.withphoebe.app",
+    // NOTE: localStorage is origin-scoped. Existing test devices will
+    // start with empty localStorage after this change (resume positions,
+    // prefs, etc. reset). Auth cookies are NOT affected — CapacitorHttp +
+    // CapacitorCookies route cookies through NSHTTPCookieStorage, keyed
+    // by `withphoebe.app` domain, not by the local scheme.
     iosScheme: "https",
     androidScheme: "https",
   },
