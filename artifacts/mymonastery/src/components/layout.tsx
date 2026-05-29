@@ -491,6 +491,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   the index is still growing. */}
               <MenuSection emoji="📚" label={t("menu.resources", { defaultValue: "Resources" })}>
                 <MenuRow
+                  emoji="📰"
+                  label={t("menu.news_actions", { defaultValue: "News & Actions" })}
+                  onClick={() => navigate("/news")}
+                />
+                <MenuRow
                   emoji="📅"
                   label={t("menu.sunday_lectionary", { defaultValue: "Sunday Lectionary" })}
                   onClick={() => { onClose(); openExternal("https://withphoebe.app/api/lectionary/today"); }}
