@@ -166,7 +166,45 @@ function ShowTile({ show, onOpen }: { show: ShowCard; onOpen: () => void }) {
 // this episode auto-loaded in the player.
 function EpisodeRow({ ep, onOpen }: { ep: EpisodeHit; onOpen: () => void }) {
   const { t } = useTranslation();
+  const qc = useQueryClient();
+  const [added, setAdded] = useState(false);
   const meta = [ep.show.title, fmtDate(ep.publishedAt), fmtDuration(ep.durationSeconds)].filter(Boolean).join(" · ");
+
+  // Add to Listen List. Search hits don't carry the episode's audio URL,
+  // so resolve it from the show feed first — otherwise the queued item
+  // would be unplayable. The POST is idempotent server-side
+  // (onConflictDoNothing), so a repeat tap is harmless.
+  const addMut = useMutation({
+    mutationFn: async () => {
+      let episodeAudioUrl: string | undefined;
+      let episodeImageUrl: string | undefined;
+      try {
+        const res = (await apiRequest("GET", `/api/podcasts/show/${encodeURIComponent(ep.show.slug)}`)) as {
+          episodes?: Array<{ id: string; audioUrl: string | null; imageUrl: string | null }>;
+        };
+        const full = (res.episodes ?? []).find((e) => e.id === ep.id);
+        episodeAudioUrl = full?.audioUrl ?? undefined;
+        episodeImageUrl = full?.imageUrl ?? undefined;
+      } catch { /* fall back to a metadata-only add */ }
+      return apiRequest("POST", "/api/podcasts/listen-list", {
+        showSlug: ep.show.slug,
+        episodeId: ep.id,
+        episodeTitle: ep.title ?? undefined,
+        episodeAudioUrl,
+        episodeImageUrl,
+        durationSeconds: ep.durationSeconds ?? undefined,
+        publishedAt: ep.publishedAt ?? undefined,
+        showTitle: ep.show.title ?? undefined,
+        showArtwork: ep.show.artwork ?? undefined,
+      });
+    },
+    onSuccess: () => {
+      setAdded(true);
+      qc.invalidateQueries({ queryKey: ["/api/podcasts/me"] });
+      qc.invalidateQueries({ queryKey: ["/api/podcasts/listen-list"] });
+    },
+  });
+
   return (
     <div
       role="button"
@@ -194,7 +232,29 @@ function EpisodeRow({ ep, onOpen }: { ep: EpisodeHit; onOpen: () => void }) {
           </p>
         )}
       </div>
-      <span style={{ color: "rgba(143,175,150,0.5)", fontSize: 16, flexShrink: 0, marginTop: 2 }}>▶</span>
+      {/* Add to Listen List — on the right. stopPropagation so it
+          doesn't trigger the row's open-episode tap. */}
+      <button
+        type="button"
+        aria-label={added
+          ? t("podcasts.in_listen_list", { defaultValue: "In Listen List" })
+          : t("podcasts.add_to_listen_list", { defaultValue: "Add to Listen List" })}
+        onClick={(e) => { e.stopPropagation(); if (!added && !addMut.isPending) addMut.mutate(); }}
+        disabled={added || addMut.isPending}
+        style={{
+          flexShrink: 0,
+          width: 30, height: 30, borderRadius: 999,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 18, lineHeight: 1, fontWeight: 600, marginTop: 2,
+          cursor: added ? "default" : "pointer",
+          background: added ? "rgba(46,107,64,0.30)" : "rgba(46,107,64,0.16)",
+          border: "1px solid rgba(46,107,64,0.45)",
+          color: "#A8C5A0",
+          fontFamily: FONT,
+        }}
+      >
+        {added ? "✓" : addMut.isPending ? "…" : "+"}
+      </button>
     </div>
   );
 }
