@@ -5,7 +5,6 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
-import { bibleUrlSegments } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import i18n from "@/i18n";
@@ -2087,80 +2086,58 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
               />
             );
           })()}
-          {/* On lesson slides we link out to YouVersion (bible.com)
-              for the appointed passage in NRSVUE. The URL is
-              computed client-side from the slide title (the
-              reference) so it works even when the server-cached
-              slide pre-dates the metadata.readUrl field. We render
-              an actual <a> with href so iOS won't swallow the
-              click — onClick still goes through openExternal so the
-              iOS shell shows SFSafariViewController instead of
-              bouncing the user out to mobile Safari. */}
+          {/* On lesson slides we embed Forward Movement's daily-readings
+              page (the appointed passages in full, all on one page) right
+              on the slide, rather than bouncing out to Bible.com. FM holds
+              the licensed translation text, so embedding their page shows
+              it without us licensing scripture ourselves. It's a JS app on
+              a different origin, so we can't auto-scroll it to THIS slide's
+              reading — the caption names the passage to scroll to, and the
+              "Open ↗" link is the fallback if a device blocks the embed.
+              Compline lesson BODY slides already render their short text
+              inline, so they get no embed. */}
           {(currentSlide.type === "lesson" || currentSlide.type === "lesson_title") && (() => {
-            // Bible.com pills on the lesson title card. A reference
-            // with more than one contiguous range — multi-range
-            // ("Num. 11:16-17, 24-29") or cross-chapter
-            // ("John 7:14-8:2") — gets one pill PER range, because
-            // Bible.com only resolves a single contiguous range per
-            // URL (the old single-link build silently dropped every
-            // range after the first). A plain single-range reference
-            // keeps the simple "Read on Bible.com →" pill.
-            //
-            // Compline lesson BODY slides render the scripture text
-            // inline (the four BCP short lessons are 1-3 verses) so
-            // a Bible.com pill below them is redundant. The title
-            // card keeps the pill as a discoverable jump-out.
             if (currentSlide.type === "lesson" && currentSlide.metadata?.compline) {
               return null;
             }
-            const segments = currentSlide.title
-              ? bibleUrlSegments(currentSlide.title)
-              : [];
-            if (segments.length === 0) return null;
-            const multi = segments.length > 1;
+            const FM_READINGS_URL = "https://prayer.forwardmovement.org/daily-readings";
+            const reference = currentSlide.title;
             return (
               <div
                 style={{
+                  width: "100%",
+                  maxWidth: 560,
+                  margin: "8px auto 0",
+                  alignSelf: "center",
                   display: "flex",
                   flexDirection: "column",
-                  alignItems: "center",
-                  gap: 8,
-                  marginTop: 4,
+                  gap: 6,
                 }}
               >
-                {segments.map((seg, i) => (
+                <iframe
+                  src={FM_READINGS_URL}
+                  title="Today's readings — Forward Movement"
+                  loading="lazy"
+                  style={{
+                    width: "100%",
+                    height: "min(62vh, 540px)",
+                    border: "1px solid rgba(46,107,64,0.4)",
+                    borderRadius: 14,
+                    background: "#fff",
+                  }}
+                />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ color: "rgba(143,175,150,0.85)", fontFamily: SPACE_GROTESK, fontSize: 12 }}>
+                    {reference ? `Scroll to ${reference}` : "Today's readings"} · Forward Movement
+                  </span>
                   <a
-                    key={`${seg.url}-${i}`}
-                    href={seg.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => {
-                      // Always intercept on native + web. openExternal
-                      // routes through SFSafariViewController on iOS
-                      // and window.open on the web. preventDefault
-                      // stops the iOS WebView from also navigating.
-                      e.preventDefault();
-                      openExternal(seg.url);
-                    }}
-                    style={{
-                      padding: "10px 18px",
-                      borderRadius: 999,
-                      background: "rgba(46,107,64,0.18)",
-                      border: "1px solid rgba(46,107,64,0.45)",
-                      color: WARM_TEXT,
-                      fontFamily: SPACE_GROTESK,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      textDecoration: "none",
-                      display: "inline-block",
-                    }}
+                    href={FM_READINGS_URL}
+                    onClick={(e) => { e.preventDefault(); openExternal(FM_READINGS_URL); }}
+                    style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}
                   >
-                    {/* Single range → the plain label. Multiple →
-                        each pill names the range it opens so the
-                        reader knows which part they're reading. */}
-                    {multi ? `Read ${seg.label} →` : "Read on Bible.com →"}
+                    Open ↗
                   </a>
-                ))}
+                </div>
               </div>
             );
           })()}
