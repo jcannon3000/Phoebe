@@ -105,19 +105,12 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "cac-cosmic-we",
     ],
   },
-  // Forward Day by Day + Forward Movement's wider network and affiliated
-  // shows (formation, scripture, church history). Positioned under CAC in
-  // the browse order.
+  // Forward Day by Day — Forward Movement's daily devotional podcast.
   "forward-movement-shows": {
     title: "Forward Movement",
     emoji: "📖",
     showSlugs: [
       "forward-day-by-day",
-      "bcp-and-me",
-      "bible-love",
-      "accessible-altar",
-      "road-to-nicea",
-      "in-simeons-wake",
     ],
   },
 };
@@ -294,46 +287,6 @@ const SHOWS: Record<string, Show> = {
     publisher: "forward-movement-shows",
     feedUrl: "https://feeds.megaphone.fm/forwarddaybyday",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b5/43/37/b5433758-400b-4d1b-c397-d3e6190ea0e7/mza_10011273729972074725.jpg/600x600bb.jpg",
-  },
-  "bcp-and-me": {
-    slug: "bcp-and-me",
-    title: "The BCP and Me",
-    artist: "Fr. Tyler Richards & Fr. Joshua Nelson",
-    publisher: "forward-movement-shows",
-    feedUrl: "https://feeds.megaphone.fm/FDMV4607079996",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts116/v4/a4/4b/dd/a44bddc0-40e1-5882-6800-ad78c0a6cc1e/mza_143157393724264311.jpeg/600x600bb.jpg",
-  },
-  "bible-love": {
-    slug: "bible-love",
-    title: "Bible Love: A Scripture Podcast",
-    artist: "Mary Balfour Dunlap & Alan Bentrup",
-    publisher: "forward-movement-shows",
-    feedUrl: "https://feeds.megaphone.fm/FDMV5348973155",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts122/v4/cf/d8/dd/cfd8dde2-01c5-02c4-f2e3-cc740e0d0371/mza_7734107707451804495.jpeg/600x600bb.jpg",
-  },
-  "accessible-altar": {
-    slug: "accessible-altar",
-    title: "The Accessible Altar",
-    artist: "The Accessible Altar",
-    publisher: "forward-movement-shows",
-    feedUrl: "https://feeds.megaphone.fm/FDMV6116092706",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts221/v4/a3/a6/f1/a3a6f10e-f28d-bcf9-4db7-11fe2206df0d/mza_4296437157268551874.jpg/600x600bb.jpg",
-  },
-  "road-to-nicea": {
-    slug: "road-to-nicea",
-    title: "The Road to Nicea",
-    artist: "Ben Wyatt",
-    publisher: "forward-movement-shows",
-    feedUrl: "https://feeds.megaphone.fm/theroadtonicea",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/88/c8/6e/88c86e44-ccaa-5307-0cc0-9a7558ed75e9/mza_12766525199424893060.jpg/600x600bb.jpg",
-  },
-  "in-simeons-wake": {
-    slug: "in-simeons-wake",
-    title: "In Simeon's Wake",
-    artist: "Ben Wyatt",
-    publisher: "forward-movement-shows",
-    feedUrl: "https://feeds.megaphone.fm/FDMV9347838435",
-    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/66/a3/75/66a375ae-f491-7d8f-2599-74cde082814d/mza_7712378198484043002.png/600x600bb.jpg",
   },
 };
 
