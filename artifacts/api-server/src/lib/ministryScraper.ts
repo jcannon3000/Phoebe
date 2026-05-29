@@ -15,8 +15,9 @@
 // Anything we can't pin to a date is skipped; past events are filtered out.
 // The draft-review step absorbs imperfect parses.
 
-import { db, prayerFeedsTable, prayerFeedEventsTable, ministrySourcesTable } from "@workspace/db";
+import { db, prayerFeedsTable, prayerFeedEventsTable, ministrySourcesTable, sharedMomentsTable } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
+import crypto from "crypto";
 import type { MinistrySource } from "@workspace/db";
 
 const FETCH_TIMEOUT_MS = 9000;
@@ -197,6 +198,77 @@ export function parseEvents(html: string, baseUrl: string, now: Date = new Date(
   return parseWpPostEvents(html, baseUrl, now);
 }
 
+// ── News / articles ───────────────────────────────────────────────────
+export type ParsedArticle = { title: string; url: string; excerpt: string | null };
+
+function isArticleType(t: unknown): boolean {
+  const test = (x: unknown) => typeof x === "string" && /(Article|BlogPosting)$/i.test(x);
+  return Array.isArray(t) ? t.some(test) : test(t);
+}
+function parseJsonLdArticles(html: string, baseUrl: string): ParsedArticle[] {
+  const out: ParsedArticle[] = [];
+  const seen = new Set<string>();
+  const re = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let m: RegExpExecArray | null;
+  const nodes: Record<string, unknown>[] = [];
+  while ((m = re.exec(html)) !== null) {
+    try { flattenLd(JSON.parse(m[1].trim()), nodes); } catch { /* malformed block */ }
+  }
+  for (const node of nodes) {
+    if (!isArticleType(node["@type"])) continue;
+    const title = typeof node.headline === "string" ? node.headline
+      : typeof node.name === "string" ? node.name : "";
+    const url = typeof node.url === "string" ? node.url
+      : typeof node.mainEntityOfPage === "string" ? node.mainEntityOfPage : "";
+    if (!title.trim() || !url.trim()) continue;
+    const abs = absolutize(url.trim(), baseUrl);
+    if (seen.has(abs)) continue;
+    seen.add(abs);
+    out.push({
+      title: title.trim().slice(0, 120),
+      url: abs,
+      excerpt: typeof node.description === "string" ? stripTags(node.description).slice(0, 300) || null : null,
+    });
+  }
+  return out;
+}
+function parseWpPostArticles(html: string, baseUrl: string): ParsedArticle[] {
+  const out: ParsedArticle[] = [];
+  const seen = new Set<string>();
+  const origin = originOf(baseUrl).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  if (!origin) return out;
+  const linkRe = new RegExp(`href="(${origin}/[a-z0-9-]+/)"`, "i");
+  const blockRe = /<li\b[^>]*class="[^"]*wp-block-post[^"]*"[^>]*>([\s\S]*?)<\/li>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = blockRe.exec(html)) !== null) {
+    const block = m[1];
+    const urlMatch = block.match(linkRe);
+    if (!urlMatch) continue;
+    const url = urlMatch[1];
+    if (seen.has(url)) continue;
+    let title = "";
+    const anchorRe = /<a\b[^>]*>([\s\S]*?)<\/a>/gi;
+    let a: RegExpExecArray | null;
+    while ((a = anchorRe.exec(block)) !== null) {
+      const t = stripTags(a[1]);
+      if (t) { title = t; break; }
+    }
+    if (!title) continue;
+    seen.add(url);
+    const text = stripTags(block);
+    const excerpt = (text.startsWith(title) ? text.slice(title.length) : text).trim();
+    out.push({ title: title.slice(0, 120), url, excerpt: excerpt.slice(0, 300) || null });
+  }
+  return out;
+}
+// Articles, newest-first as they appear on the page. JSON-LD Article markup
+// preferred; WordPress-post HTML heuristic as fallback (RMM's shape).
+export function parseNews(html: string, baseUrl: string): ParsedArticle[] {
+  const ld = parseJsonLdArticles(html, baseUrl);
+  if (ld.length > 0) return ld;
+  return parseWpPostArticles(html, baseUrl);
+}
+
 async function fetchPage(url: string): Promise<string> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
@@ -236,46 +308,116 @@ export async function ensureFeedForMinistry(name: string): Promise<number> {
   return row.id;
 }
 
-export type SyncResult = { found: number; created: number; skipped: number; error?: string };
+export type SyncResult = {
+  // events
+  found: number; created: number; skipped: number;
+  // news
+  newsFound: number; newsCreated: number;
+  error?: string;
+};
 
 function statusText(r: SyncResult): string {
   if (r.error) return `Error: ${r.error}`;
-  return `Found ${r.found}, added ${r.created} draft${r.created === 1 ? "" : "s"}`;
+  const parts = [`${r.created} event draft${r.created === 1 ? "" : "s"} (of ${r.found})`];
+  if (r.newsFound > 0 || r.newsCreated > 0) parts.push(`${r.newsCreated} news`);
+  return `Added ${parts.join(", ")}`;
 }
 
-// Scrape one source and upsert upcoming events as drafts on its feed, deduped
-// by joinUrl (the event's source URL). Stamps last_status / last_synced_at.
+function genToken(): string {
+  return crypto.randomBytes(16).toString("hex");
+}
+
+// Scrape upcoming events → draft events on the feed, deduped by joinUrl.
+async function syncEvents(source: MinistrySource): Promise<{ found: number; created: number; skipped: number }> {
+  const html = await fetchPage(source.eventsUrl);
+  const parsed = parseEvents(html, source.eventsUrl);
+  if (parsed.length === 0) return { found: 0, created: 0, skipped: 0 };
+  const urls = parsed.map((e) => e.sourceUrl);
+  const existingRows = await db.select({ joinUrl: prayerFeedEventsTable.joinUrl })
+    .from(prayerFeedEventsTable)
+    .where(and(eq(prayerFeedEventsTable.feedId, source.feedId), inArray(prayerFeedEventsTable.joinUrl, urls)));
+  const existing = new Set(existingRows.map((r) => r.joinUrl));
+  const toInsert = parsed.filter((e) => !existing.has(e.sourceUrl));
+  if (toInsert.length > 0) {
+    await db.insert(prayerFeedEventsTable).values(toInsert.map((e) => ({
+      feedId: source.feedId,
+      title: e.title,
+      description: e.description,
+      startsAt: e.startsAt,
+      endsAt: e.endsAt,
+      location: e.location,
+      joinUrl: e.sourceUrl,
+      state: "draft",
+      createdByUserId: null,
+    })));
+  }
+  return { found: parsed.length, created: toInsert.length, skipped: parsed.length - toInsert.length };
+}
+
+// Turn a scraped article into an auto-published feed card with a "Learn
+// more →" link to the article (intercessionSource "custom" + learnMoreUrl).
+// Deduped by learnMoreUrl. Returns true if newly inserted.
+async function createNewsIntercession(feedId: number, article: ParsedArticle): Promise<boolean> {
+  const [existing] = await db.select({ id: sharedMomentsTable.id })
+    .from(sharedMomentsTable)
+    .where(and(eq(sharedMomentsTable.prayerFeedId, feedId), eq(sharedMomentsTable.learnMoreUrl, article.url)));
+  if (existing) return false;
+  const [moment] = await db.insert(sharedMomentsTable).values({
+    prayerFeedId: feedId,
+    groupId: null,
+    name: article.title,
+    intention: article.title,
+    intercessionTopic: article.title,
+    intercessionFullText: article.excerpt ?? "",
+    intercessionSource: "custom",
+    templateType: "intercession",
+    loggingType: "photo",
+    frequency: "daily",
+    scheduledTime: "09:30",
+    timezone: "America/New_York",
+    windowMinutes: 60,
+    goalDays: 30,
+    state: "active",
+    momentToken: genToken(),
+    learnMoreUrl: article.url,
+    learnMoreTitle: article.title,
+    // Scraped news doesn't fan out a "new intercession" push — it would
+    // spam subscribers with every article. The cards just appear in-feed.
+    notifySubscribersAt: null,
+    publishedByUserId: null,
+  }).returning({ id: sharedMomentsTable.id });
+  // Give subscribers tokens so the card behaves like any feed intercession.
+  // Best-effort: a failure still leaves the card visible.
+  try {
+    const { reconcileFeedPracticeMembers } = await import("../routes/groups");
+    await reconcileFeedPracticeMembers(moment.id);
+  } catch { /* tokens reconcile on next subscribe */ }
+  return true;
+}
+
+// Scrape the news page (if set) → auto-publish new articles as feed cards.
+async function syncNews(source: MinistrySource): Promise<{ found: number; created: number }> {
+  if (!source.newsUrl) return { found: 0, created: 0 };
+  const html = await fetchPage(source.newsUrl);
+  const articles = parseNews(html, source.newsUrl).slice(0, 12);
+  let created = 0;
+  for (const a of articles) {
+    if (await createNewsIntercession(source.feedId, a)) created++;
+  }
+  return { found: articles.length, created };
+}
+
+// Scrape one source's events (drafts) + news (auto-published) and stamp
+// last_status / last_synced_at. News failures don't fail the whole run.
 export async function syncMinistrySource(source: MinistrySource): Promise<SyncResult> {
   let result: SyncResult;
   try {
-    const html = await fetchPage(source.eventsUrl);
-    const parsed = parseEvents(html, source.eventsUrl);
-    if (parsed.length === 0) {
-      result = { found: 0, created: 0, skipped: 0 };
-    } else {
-      const urls = parsed.map((e) => e.sourceUrl);
-      const existingRows = await db.select({ joinUrl: prayerFeedEventsTable.joinUrl })
-        .from(prayerFeedEventsTable)
-        .where(and(eq(prayerFeedEventsTable.feedId, source.feedId), inArray(prayerFeedEventsTable.joinUrl, urls)));
-      const existing = new Set(existingRows.map((r) => r.joinUrl));
-      const toInsert = parsed.filter((e) => !existing.has(e.sourceUrl));
-      if (toInsert.length > 0) {
-        await db.insert(prayerFeedEventsTable).values(toInsert.map((e) => ({
-          feedId: source.feedId,
-          title: e.title,
-          description: e.description,
-          startsAt: e.startsAt,
-          endsAt: e.endsAt,
-          location: e.location,
-          joinUrl: e.sourceUrl,
-          state: "draft",
-          createdByUserId: null,
-        })));
-      }
-      result = { found: parsed.length, created: toInsert.length, skipped: parsed.length - toInsert.length };
-    }
+    const ev = await syncEvents(source);
+    let news = { found: 0, created: 0 };
+    try { news = await syncNews(source); } catch { /* news is best-effort */ }
+    result = { ...ev, newsFound: news.found, newsCreated: news.created };
   } catch (err) {
-    result = { found: 0, created: 0, skipped: 0, error: err instanceof Error ? err.message : String(err) };
+    result = { found: 0, created: 0, skipped: 0, newsFound: 0, newsCreated: 0, error: err instanceof Error ? err.message : String(err) };
   }
   await db.update(ministrySourcesTable)
     .set({ lastStatus: statusText(result), lastSyncedAt: new Date(), updatedAt: new Date() })
@@ -284,10 +426,10 @@ export async function syncMinistrySource(source: MinistrySource): Promise<SyncRe
 }
 
 // Add a ministry: create its feed, the source row, and run an initial sync.
-export async function createMinistrySource(name: string, eventsUrl: string): Promise<{ source: MinistrySource; result: SyncResult }> {
+export async function createMinistrySource(name: string, eventsUrl: string, newsUrl?: string | null): Promise<{ source: MinistrySource; result: SyncResult }> {
   const feedId = await ensureFeedForMinistry(name);
   const [source] = await db.insert(ministrySourcesTable)
-    .values({ name: name.slice(0, 120), eventsUrl, feedId })
+    .values({ name: name.slice(0, 120), eventsUrl, newsUrl: newsUrl || null, feedId })
     .returning();
   const result = await syncMinistrySource(source);
   return { source, result };

@@ -13,6 +13,9 @@ export const ministrySourcesTable = pgTable("ministry_sources", {
   name: text("name").notNull(),
   // The page scraped for events.
   eventsUrl: text("events_url").notNull(),
+  // Optional page scraped for news/articles. When set, recent articles are
+  // auto-published to the feed as "Learn more →" cards.
+  newsUrl: text("news_url"),
   // The prayer feed scraped events attach to — one feed per source.
   feedId: integer("feed_id").notNull()
     .references(() => prayerFeedsTable.id, { onDelete: "cascade" }),

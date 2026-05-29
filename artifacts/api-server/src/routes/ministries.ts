@@ -40,10 +40,12 @@ const requireAdmin: RequestHandler = async (req, res, next) => {
 const createSchema = z.object({
   name: z.string().trim().min(1).max(120),
   eventsUrl: z.string().trim().url().max(500),
+  newsUrl: z.string().trim().url().max(500).optional().nullable(),
 });
 const updateSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   eventsUrl: z.string().trim().url().max(500).optional(),
+  newsUrl: z.string().trim().url().max(500).optional().nullable(),
   enabled: z.boolean().optional(),
 });
 
@@ -53,6 +55,7 @@ router.get("/ministries", requireAdmin, async (_req, res): Promise<void> => {
     id: ministrySourcesTable.id,
     name: ministrySourcesTable.name,
     eventsUrl: ministrySourcesTable.eventsUrl,
+    newsUrl: ministrySourcesTable.newsUrl,
     feedId: ministrySourcesTable.feedId,
     enabled: ministrySourcesTable.enabled,
     lastStatus: ministrySourcesTable.lastStatus,
@@ -69,7 +72,7 @@ router.get("/ministries", requireAdmin, async (_req, res): Promise<void> => {
 router.post("/ministries", requireAdmin, async (req, res): Promise<void> => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input", issues: parsed.error.issues }); return; }
-  const { source, result } = await createMinistrySource(parsed.data.name, parsed.data.eventsUrl);
+  const { source, result } = await createMinistrySource(parsed.data.name, parsed.data.eventsUrl, parsed.data.newsUrl ?? null);
   res.json({ source, result });
 });
 

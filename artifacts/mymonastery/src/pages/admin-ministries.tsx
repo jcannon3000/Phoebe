@@ -22,6 +22,7 @@ type MinistrySource = {
   id: number;
   name: string;
   eventsUrl: string;
+  newsUrl: string | null;
   feedId: number;
   enabled: boolean;
   lastStatus: string | null;
@@ -44,6 +45,7 @@ export default function AdminMinistriesPage() {
 
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
+  const [newsUrl, setNewsUrl] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,10 +64,10 @@ export default function AdminMinistriesPage() {
   const sources = listQ.data?.sources ?? [];
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["/api/ministries"] });
-  const resetForm = () => { setName(""); setUrl(""); setEditingId(null); setError(null); };
+  const resetForm = () => { setName(""); setUrl(""); setNewsUrl(""); setEditingId(null); setError(null); };
 
   const createMut = useMutation({
-    mutationFn: (body: { name: string; eventsUrl: string }) => apiRequest("POST", "/api/ministries", body),
+    mutationFn: (body: { name: string; eventsUrl: string; newsUrl: string | null }) => apiRequest("POST", "/api/ministries", body),
     onSuccess: (r: { result?: { found: number; created: number } }) => {
       invalidate();
       resetForm();
@@ -98,13 +100,16 @@ export default function AdminMinistriesPage() {
   function submit() {
     const n = name.trim();
     const u = url.trim();
+    const nu = newsUrl.trim();
     if (!n || !u) { setError("A name and an events-page URL are required."); return; }
-    if (!/^https?:\/\//i.test(u)) { setError("The URL must start with http:// or https://"); return; }
-    if (editingId != null) updateMut.mutate({ id: editingId, body: { name: n, eventsUrl: u } });
-    else createMut.mutate({ name: n, eventsUrl: u });
+    if (!/^https?:\/\//i.test(u)) { setError("The events URL must start with http:// or https://"); return; }
+    if (nu && !/^https?:\/\//i.test(nu)) { setError("The news URL must start with http:// or https://"); return; }
+    const body = { name: n, eventsUrl: u, newsUrl: nu || null };
+    if (editingId != null) updateMut.mutate({ id: editingId, body });
+    else createMut.mutate(body);
   }
   function startEdit(s: MinistrySource) {
-    setEditingId(s.id); setName(s.name); setUrl(s.eventsUrl); setError(null);
+    setEditingId(s.id); setName(s.name); setUrl(s.eventsUrl); setNewsUrl(s.newsUrl ?? ""); setError(null);
     if (typeof window !== "undefined") window.scrollTo(0, 0);
   }
 
@@ -138,6 +143,11 @@ export default function AdminMinistriesPage() {
           <input
             type="url" value={url} onChange={(e) => setUrl(e.target.value)} maxLength={500}
             placeholder="Events page URL, e.g. https://ruralmigrantministry.org/events/"
+            className="w-full rounded-xl px-3.5 py-2.5 text-[15px] mb-2" style={inputStyle}
+          />
+          <input
+            type="url" value={newsUrl} onChange={(e) => setNewsUrl(e.target.value)} maxLength={500}
+            placeholder="News page URL (optional) — auto-publishes articles to the feed"
             className="w-full rounded-xl px-3.5 py-2.5 text-[15px]" style={inputStyle}
           />
           {error && <p className="text-xs mt-2" style={{ color: "#E8B872", fontFamily: FONT }}>{error}</p>}
