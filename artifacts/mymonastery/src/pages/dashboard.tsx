@@ -9,6 +9,7 @@ import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { ScrollStrip } from "@/components/ScrollStrip";
 import { PodcastsRail } from "@/components/PodcastsRail";
+import { NewsRail } from "@/components/NewsRail";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
@@ -6023,6 +6024,11 @@ export default function Dashboard() {
             available shows, near the bottom of the home. Taps open the
             show's episode list + player; "See all" → /podcasts. */}
         {filter === null && <PodcastsRail />}
+
+        {/* News — partner-org stories as a horizontal cover-image carousel,
+            same square-tile vocabulary as the podcasts rail. Taps open the
+            article in the in-app browser; "See all" → /news. */}
+        {filter === null && <NewsRail />}
 
         {/* Customize pill — opens the home-screen customization page
             (reorder / show-hide modules, pick what leads). Only on the
