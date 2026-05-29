@@ -105,12 +105,14 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "cac-cosmic-we",
     ],
   },
-  // Forward Movement's wider podcast network — formation, scripture,
-  // and church-history shows beyond the daily offices.
+  // Forward Day by Day + Forward Movement's wider network and affiliated
+  // shows (formation, scripture, church history). Positioned under CAC in
+  // the browse order.
   "forward-movement-shows": {
-    title: "Forward Movement",
+    title: "Forward and Affiliated Podcasts",
     emoji: "📖",
     showSlugs: [
+      "forward-day-by-day",
       "bcp-and-me",
       "bible-love",
       "accessible-altar",
@@ -284,7 +286,15 @@ const SHOWS: Record<string, Show> = {
     artwork: "/podcast-art/roundtables.jpg",
     kind: "scrape-roundtables",
   },
-  // ── Forward Movement network — formation / scripture / history ──────
+  // ── Forward + affiliated podcasts (Discover section under CAC) ──────
+  "forward-day-by-day": {
+    slug: "forward-day-by-day",
+    title: "Forward Day by Day",
+    artist: "Forward Movement",
+    publisher: "forward-movement-shows",
+    feedUrl: "https://feeds.megaphone.fm/forwarddaybyday",
+    artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/b5/43/37/b5433758-400b-4d1b-c397-d3e6190ea0e7/mza_10011273729972074725.jpg/600x600bb.jpg",
+  },
   "bcp-and-me": {
     slug: "bcp-and-me",
     title: "The BCP and Me",
