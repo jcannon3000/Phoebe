@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
+import { useNewsSubscriptions, toggleNewsSubscription } from "@/lib/newsPrefs";
 
 // ── /news — News & Actions ──
 //
@@ -96,13 +97,15 @@ function StoryCard({ item }: { item: NewsItem }) {
 
 export default function NewsPage() {
   const [, setLocation] = useLocation();
+  const subs = useNewsSubscriptions();
   const { data, isLoading } = useQuery<NewsResponse>({
     queryKey: ["/api/news"],
     queryFn: () => apiRequest("GET", "/api/news"),
     staleTime: 10 * 60_000,
   });
   const items = data?.items ?? [];
-  const primarySource = data?.sources?.[0] ?? null;
+  const sources = data?.sources ?? [];
+  const primarySource = sources[0] ?? null;
 
   return (
     <div style={{ minHeight: "100dvh", background: PALETTE.bg, color: PALETTE.warm, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
@@ -123,9 +126,50 @@ export default function NewsPage() {
 
       <main style={{ flex: 1, padding: "8px 20px 40px", maxWidth: 640, width: "100%", margin: "0 auto" }}>
         <h1 style={{ fontSize: 30, fontWeight: 800, margin: "8px 0 4px", letterSpacing: "-0.02em" }}>News &amp; Actions</h1>
-        <p style={{ fontSize: 14, color: PALETTE.sage, margin: "0 0 20px", lineHeight: 1.5 }}>
+        <p style={{ fontSize: 14, color: PALETTE.sage, margin: "0 0 18px", lineHeight: 1.5 }}>
           Recent stories and ways to act from partners in ministry.
         </p>
+
+        {/* Follow toggles — following a source surfaces its new stories
+            as a short slide at the end of your prayer. */}
+        {sources.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 22 }}>
+            {sources.map((s) => {
+              const following = subs.includes(s.slug);
+              return (
+                <div
+                  key={s.slug}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
+                    borderRadius: 14, background: PALETTE.cardBg, border: `1px solid ${PALETTE.cardBorder}`,
+                  }}
+                >
+                  <span style={{ fontSize: 20, flexShrink: 0 }}>{s.emoji}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: PALETTE.warm, margin: 0, fontFamily: FONT }}>{s.name}</p>
+                    <p style={{ fontSize: 11.5, color: PALETTE.faint, margin: "2px 0 0", lineHeight: 1.35 }}>
+                      {following ? "New stories appear at the end of your prayer" : "Follow to see new stories at the end of prayer"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => toggleNewsSubscription(s.slug)}
+                    className="rounded-full"
+                    style={{
+                      flexShrink: 0, fontFamily: FONT, fontSize: 12.5, fontWeight: 600,
+                      padding: "6px 14px", cursor: "pointer", whiteSpace: "nowrap",
+                      background: following ? "rgba(46,107,64,0.30)" : "transparent",
+                      border: `1px solid ${following ? "rgba(46,107,64,0.55)" : "rgba(143,175,150,0.4)"}`,
+                      color: following ? PALETTE.accent : PALETTE.sage,
+                    }}
+                  >
+                    {following ? "✓ Following" : "Follow"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {isLoading && items.length === 0 ? (
           <p style={{ color: PALETTE.faint, fontSize: 13, marginTop: 24 }}>Loading stories…</p>

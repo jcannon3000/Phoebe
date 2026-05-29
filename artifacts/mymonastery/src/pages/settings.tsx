@@ -1526,6 +1526,33 @@ export default function SettingsPage() {
             the audio player can also switch it live. */}
         <OfficeAudioSourceSettings />
 
+        {/* ── News & Actions ──
+            Follow partner ministries to get their new stories as a short
+            slide at the end of prayer. The follow toggles live on the
+            News & Actions page; this is the discoverable pointer to them. */}
+        <SectionHeader label="News & Actions" />
+        <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+          Follow ministries to see their latest news at the close of your prayer. Nothing appears until you follow a source.
+        </p>
+        <SettingsCard>
+          <button
+            type="button"
+            onClick={() => setLocation("/news")}
+            className="w-full flex items-center gap-3 py-2.5 text-left"
+            style={{ background: "transparent", cursor: "pointer" }}
+          >
+            <span style={{ fontSize: 18 }}>📰</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                Manage news sources →
+              </p>
+              <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+                Follow or unfollow on the News &amp; Actions page.
+              </p>
+            </div>
+          </button>
+        </SettingsCard>
+
         {/* ── Language (beta) ── */}
         <LanguageSettings />
 
