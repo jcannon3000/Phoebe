@@ -215,6 +215,7 @@ const BetaAdminPage = lazy(() => import("./pages/beta-admin"));
 const WaitlistAdminPage = lazy(() => import("./pages/waitlist-admin"));
 const BetaClaimPage = lazy(() => import("./pages/beta-claim"));
 const AdminToolsPage = lazy(() => import("./pages/admin-tools"));
+const AdminMinistriesPage = lazy(() => import("./pages/admin-ministries"));
 const AdminUserMetricsPage = lazy(() => import("./pages/admin-user-metrics"));
 const MyPrayerFeedsPage = lazy(() => import("./pages/my-prayer-feeds"));
 const AdminNewsletterPage = lazy(() => import("./pages/admin-newsletter"));
@@ -558,6 +559,7 @@ function Router() {
       <Route path="/people/:email/report" component={ReportUserPage} />
       <Route path="/admin/reports" component={ReportsAdminPage} />
       <Route path="/admin/tools" component={AdminToolsPage} />
+      <Route path="/admin/ministries" component={AdminMinistriesPage} />
       <Route path="/admin/users" component={AdminUserMetricsPage} />
       <Route path="/my-prayer-feeds" component={MyPrayerFeedsPage} />
       <Route path="/admin/newsletter" component={AdminNewsletterPage} />

@@ -1,9 +1,8 @@
-import { useState } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { ChevronRight } from "lucide-react";
 
@@ -94,20 +93,6 @@ export default function AdminToolsPage() {
     staleTime: 60_000,
   });
   const myFeeds = myFeedsData?.feeds ?? [];
-
-  // Rural & Migrant Ministry — scrape their events page into draft events
-  // and open the feed to review. Doubles as the first-run bootstrap: the
-  // feed is auto-created on the first sync, after which it shows up under
-  // "Manage Prayer Feeds" like any other.
-  const [rmmMsg, setRmmMsg] = useState<string | null>(null);
-  const rmmSync = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/rmm/sync"),
-    onSuccess: (r: { found: number; created: number }) => {
-      setRmmMsg(`Found ${r.found}, added ${r.created} draft${r.created === 1 ? "" : "s"}. Opening…`);
-      setTimeout(() => setLocation("/prayer-feeds/rmm/manage"), 700);
-    },
-    onError: () => setRmmMsg("Couldn't reach the RMM site. Try again in a moment."),
-  });
 
   const isCommunityAdmin = (groupsData?.groups ?? []).some(
     g => g.myRole === "admin" || g.myRole === "hidden_admin",
@@ -233,13 +218,9 @@ export default function AdminToolsPage() {
                 />
                 <LinkRow
                   emoji="🌾"
-                  label="Sync RMM events"
-                  description={
-                    rmmSync.isPending
-                      ? "Syncing…"
-                      : (rmmMsg ?? "Import upcoming events from ruralmigrantministry.org as drafts")
-                  }
-                  onClick={() => { if (!rmmSync.isPending) { setRmmMsg(null); rmmSync.mutate(); } }}
+                  label="Scraped Ministries"
+                  description="Add ministry websites, scrape their events into drafts to review"
+                  onClick={() => setLocation("/admin/ministries")}
                 />
               </>
             )}

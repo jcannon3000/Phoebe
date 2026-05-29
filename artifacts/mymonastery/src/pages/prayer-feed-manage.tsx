@@ -1006,9 +1006,6 @@ function FeedEventsSection({ slug }: { slug: string }) {
   // When set, the composer is editing this event (PATCH) rather than
   // creating a new one (POST).
   const [editingId, setEditingId] = useState<number | null>(null);
-  // RMM is the one feed wired to a scraper — surface a "Sync" button there.
-  const isRmm = slug === "rmm";
-  const [syncMsg, setSyncMsg] = useState<string | null>(null);
 
   function invalidateEvents() {
     qc.invalidateQueries({ queryKey: [`/api/prayer-feeds/${slug}/events`, "manage"] });
@@ -1065,17 +1062,6 @@ function FeedEventsSection({ slug }: { slug: string }) {
     mutationFn: (id: number) =>
       apiRequest("PATCH", `/api/prayer-feeds/${slug}/events/${id}`, { state: "published" }),
     onSuccess: invalidateEvents,
-  });
-
-  // RMM only: scrape ruralmigrantministry.org/events/ and pull new
-  // upcoming events in as drafts to review here.
-  const syncMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/rmm/sync"),
-    onSuccess: (r: { found: number; created: number; skipped: number }) => {
-      setSyncMsg(`Checked RMM — found ${r.found}, added ${r.created} new draft${r.created === 1 ? "" : "s"}.`);
-      invalidateEvents();
-    },
-    onError: () => setSyncMsg("Couldn't reach the RMM site. Try again in a moment."),
   });
 
   const cancelMutation = useMutation({
@@ -1135,26 +1121,6 @@ function FeedEventsSection({ slug }: { slug: string }) {
       <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
         Vigils, days of prayer, webinars. Subscribers see upcoming events and get a heads-up push.
       </p>
-
-      {isRmm && (
-        <div className="mb-3">
-          <button
-            type="button"
-            onClick={() => { setSyncMsg(null); syncMutation.mutate(); }}
-            disabled={syncMutation.isPending}
-            className="text-xs font-semibold rounded-full px-3.5 py-2 transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: "rgba(120,80,180,0.18)", border: "1px solid rgba(120,80,180,0.45)", color: "#D8C8F0" }}
-          >
-            {syncMutation.isPending ? "Checking RMM…" : "⟳ Sync events from RMM website"}
-          </button>
-          {syncMsg && (
-            <p className="text-[11px] mt-1.5" style={{ color: "rgba(143,175,150,0.8)" }}>{syncMsg}</p>
-          )}
-          <p className="text-[11px] mt-1.5 italic" style={{ color: "rgba(143,175,150,0.55)" }}>
-            Imported events arrive as drafts — fix the time/location, then Publish.
-          </p>
-        </div>
-      )}
 
       <div className="space-y-2 mb-3">
         {events.map((ev) => {
