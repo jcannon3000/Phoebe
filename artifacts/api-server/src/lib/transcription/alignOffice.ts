@@ -5,18 +5,18 @@
 // start time of each part of the office.
 //
 // Two aligners:
-//   • alignWithClaude — the smart path. Hands Claude the office outline +
-//     the timestamped transcript and lets it reason about where each section
-//     begins. Robust to paraphrase, different psalm/Bible translations, and
-//     the reader's spoken framing ("Let us confess our sins", "Here begins
-//     the first lesson"). Uses the existing @workspace/integrations-anthropic-ai
-//     client; inert when that integration isn't provisioned.
+//   • alignWithOpenAI — the smart path. Hands an OpenAI chat model the office
+//     outline + the timestamped transcript and lets it reason about where each
+//     section begins. Robust to paraphrase, different psalm/Bible translations,
+//     and the reader's spoken framing ("Let us confess our sins", "Here begins
+//     the first lesson"). Uses the same OPENAI_API_KEY as transcription, so one
+//     key powers the whole pipeline; inert when the key is absent.
 //   • alignWithHeuristic — a no-LLM fallback. Monotonic fuzzy search of each
 //     section's opening words against the transcript token stream. Reliable
 //     for the fixed liturgical texts; less so for the variable psalms/lessons.
 //
-// alignOffice() prefers Claude and falls back to the heuristic, so the
-// pipeline always produces something.
+// alignOffice() prefers the OpenAI aligner and falls back to the heuristic,
+// so the pipeline always produces something.
 
 import type { OfficeAlignmentSection } from "@workspace/db";
 import type { Transcript } from "./transcribeAudio";
@@ -131,65 +131,54 @@ export function alignWithHeuristic(slides: OfficeSlideLite[], transcript: Transc
   return out;
 }
 
-// ── Claude aligner ─────────────────────────────────────────────────────────
+// ── OpenAI aligner (LLM) ────────────────────────────────────────────────────
 
-function claudeEnabled(): boolean {
-  return Boolean(
-    process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY &&
-      process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
-  );
-}
-
-export async function alignWithClaude(
+export async function alignWithOpenAI(
   slides: OfficeSlideLite[],
   transcript: Transcript,
 ): Promise<OfficeAlignmentSection[] | null> {
-  // Guard on the env BEFORE importing — the client module throws at load
-  // time when the integration isn't provisioned, so a bare import would
-  // crash callers. With the env unset we just bow out and let the caller
-  // fall back to the heuristic.
-  if (!claudeEnabled()) return null;
-  let anthropic;
-  try {
-    ({ anthropic } = await import("@workspace/integrations-anthropic-ai"));
-  } catch (e) {
-    console.warn("[office-align] anthropic client unavailable:", e);
-    return null;
-  }
+  // Same OPENAI_API_KEY as transcription — one key powers the whole pipeline
+  // (Whisper listens, GPT matches). Bows out when the key is absent so the
+  // caller can fall back to the heuristic.
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) return null;
 
   const secs = locatableSections(slides);
   if (secs.length === 0) return [];
-  const model = process.env.OFFICE_ALIGN_MODEL || "claude-sonnet-4-6";
+  const model = process.env.OFFICE_ALIGN_MODEL || "gpt-4o-mini";
 
   const outline = secs
     .map((s, i) => `${i + 1}. id=${s.id} | ${s.type} | ${s.title ?? ""} | "${s.snippet}"`)
     .join("\n");
   const tx = transcript.segments.map((seg) => `[${seg.start.toFixed(1)}] ${seg.text}`).join("\n");
 
-  // Static instructions get cache_control so repeated daily runs reuse the
-  // cached system prompt (the per-episode transcript is the only varying part).
-  const system = [
-    {
-      type: "text" as const,
-      text:
-        "You align a spoken Daily Office (Morning or Evening Prayer) recording to its written structure.\n" +
-        "You are given (A) an ordered list of office SECTIONS — each with an id, a type, a title, and the opening words of its written text — and (B) a TRANSCRIPT of the recording where every line is prefixed with its start time in seconds, like \"[83.4] text...\".\n" +
-        "For each section you can confidently locate, return the start time in seconds, copied from the transcript line where that section begins. Sections occur in order, so their start times must be strictly increasing. Match on meaning, not exact words: the reader may paraphrase, use a different psalm or Bible translation, or add framing such as \"Let us confess our sins\" or \"Here begins the first lesson\". If you genuinely cannot find a section, omit it.\n" +
-        "Respond with ONLY a JSON object and no other prose: {\"sections\":[{\"id\":\"<section id>\",\"startSeconds\":<number>,\"confidence\":<0..1>}]}",
-      cache_control: { type: "ephemeral" as const },
-    },
-  ];
+  const system =
+    "You align a spoken Daily Office (Morning or Evening Prayer) recording to its written structure.\n" +
+    "You are given (A) an ordered list of office SECTIONS — each with an id, a type, a title, and the opening words of its written text — and (B) a TRANSCRIPT of the recording where every line is prefixed with its start time in seconds, like \"[83.4] text...\".\n" +
+    "For each section you can confidently locate, return the start time in seconds, copied from the transcript line where that section begins. Sections occur in order, so their start times must be strictly increasing. Match on meaning, not exact words: the reader may paraphrase, use a different psalm or Bible translation, or add framing such as \"Let us confess our sins\" or \"Here begins the first lesson\". If you genuinely cannot find a section, omit it.\n" +
+    "Respond with ONLY a JSON object: {\"sections\":[{\"id\":\"<section id>\",\"startSeconds\":<number>,\"confidence\":<0..1>}]}";
   const user = `SECTIONS:\n${outline}\n\nTRANSCRIPT:\n${tx}`;
 
-  const resp = await anthropic.messages.create({
-    model,
-    max_tokens: 2048,
-    system,
-    messages: [{ role: "user", content: user }],
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      model,
+      temperature: 0,
+      response_format: { type: "json_object" },
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+    }),
   });
-
-  const text = resp.content.map((b) => (b.type === "text" ? b.text : "")).join("");
-  const parsed = extractJson(text);
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    console.warn(`[office-align] OpenAI alignment ${res.status}: ${body.slice(0, 200)}`);
+    return null;
+  }
+  const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
+  const parsed = extractJson(data.choices?.[0]?.message?.content ?? "");
   if (!parsed || !Array.isArray(parsed.sections)) return null;
 
   const byId = new Map(secs.map((s) => [s.id, s]));
@@ -212,17 +201,17 @@ export async function alignWithClaude(
   return out;
 }
 
-// Prefer Claude; fall back to the heuristic so the pipeline always yields
-// something even when the Anthropic integration isn't provisioned.
+// Prefer the LLM (OpenAI) aligner; fall back to the heuristic so the pipeline
+// always yields something even without an API key.
 export async function alignOffice(
   slides: OfficeSlideLite[],
   transcript: Transcript,
 ): Promise<{ sections: OfficeAlignmentSection[]; aligner: string }> {
   try {
-    const viaClaude = await alignWithClaude(slides, transcript);
-    if (viaClaude && viaClaude.length > 0) return { sections: viaClaude, aligner: "claude" };
+    const viaLLM = await alignWithOpenAI(slides, transcript);
+    if (viaLLM && viaLLM.length > 0) return { sections: viaLLM, aligner: "openai" };
   } catch (e) {
-    console.warn("[office-align] claude alignment failed, falling back to heuristic:", e);
+    console.warn("[office-align] OpenAI alignment failed, falling back to heuristic:", e);
   }
   return { sections: alignWithHeuristic(slides, transcript), aligner: "heuristic" };
 }
