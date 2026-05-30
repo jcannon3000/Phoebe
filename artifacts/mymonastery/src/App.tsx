@@ -151,6 +151,7 @@ const PrayerChooserPage = lazy(() => import("./pages/prayer-chooser"));
 const NcmpWatchPage = lazy(() => import("./pages/ncmp-watch"));
 const OfficePodcastPage = lazy(() => import("./pages/office-podcast"));
 const OfficePrayAlongPage = lazy(() => import("./pages/office-pray-along"));
+const OfficeFmPage = lazy(() => import("./pages/office-fm"));
 const PodcastsPage = lazy(() => import("./pages/podcasts"));
 const BuildingFaithPage = lazy(() => import("./pages/building-faith"));
 const NewsPage = lazy(() => import("./pages/news"));
@@ -508,6 +509,7 @@ function Router() {
       <Route path="/ncmp/watch" component={NcmpWatchPage} />
       <Route path="/podcast/morning-office" component={OfficePrayAlongPage} />
       <Route path="/podcast/evening-office" component={OfficePrayAlongPage} />
+      <Route path="/office/forward" component={OfficeFmPage} />
       {/* Podcast content browser. Exact /podcasts is the Discover
           index; /show/:slug must precede /:publisher so "show" isn't
           captured as a publisher slug. */}

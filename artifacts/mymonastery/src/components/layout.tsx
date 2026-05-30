@@ -479,6 +479,12 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   onClick={() => navigate("/podcasts")}
                 />
                 <MenuRow
+                  emoji="📿"
+                  label={t("menu.forward_office", { defaultValue: "Forward Movement Office" })}
+                  sub={t("menu.forward_office_sub", { defaultValue: "Read today's Daily Prayer" })}
+                  onClick={() => navigate("/office/forward")}
+                />
+                <MenuRow
                   emoji="🕯️"
                   label={t("menu.reflect_sit", { defaultValue: "Reflect & Sit" })}
                   onClick={() => navigate("/reflect/fdd")}
