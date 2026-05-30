@@ -54,6 +54,9 @@ function sundayStart(d: Date): Date {
   x.setDate(x.getDate() - x.getDay());
   return x;
 }
+function addDays(d: Date, n: number): Date { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function addWeeks(d: Date, n: number): Date { return addDays(d, n * 7); }
+const DAILY_KEPT_THRESHOLD = 5; // ≥5 of 7 daily completions = a week kept (matches the home cards)
 function fmtTime(hhmm: string): string {
   const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm);
   if (!m) return hhmm;
@@ -235,6 +238,39 @@ export default function HomeBetaSectionPage() {
   const prayerNames = activePrayers.map((p) => p.recipientName).filter(Boolean).slice(0, 3) as string[];
   const feeds = (feedsQ.data?.feeds ?? []).slice(0, 3);
 
+  // ── Consistency — quiet "weeks kept" + a small recent-history strip ─────
+  const weekStartDate = sundayStart(new Date());
+  const keptWeek = (weekStartYmd: string): boolean => {
+    if (def.daily) {
+      return rows.filter((r) => r.section === def.key && r.weekStart === weekStartYmd).length >= DAILY_KEPT_THRESHOLD;
+    }
+    return rows.some((r) => r.section === def.key && r.localDate === weekStartYmd);
+  };
+  let weeksKept = 0;
+  {
+    const startD = keptWeek(thisWeekStart) ? weekStartDate : addWeeks(weekStartDate, -1);
+    for (let i = 0; i < 60; i++) {
+      if (keptWeek(ymd(addWeeks(startD, -i)))) weeksKept++;
+      else break;
+    }
+  }
+  // Daily sections show this week's 7 days; weekly sections show the last 8 weeks.
+  const dayCells = def.daily
+    ? Array.from({ length: 7 }, (_, i) => {
+        const cy = ymd(addDays(weekStartDate, i));
+        const isToday = cy === today;
+        let cellDone = rows.some((r) => r.section === def.key && r.localDate === cy);
+        if (def.key === "learn_pray" && isToday && officePrayedToday) cellDone = true;
+        return { key: cy, label: DAY_ABBR[i][0], done: cellDone, future: cy > today, isToday };
+      })
+    : [];
+  const weekCells = def.daily
+    ? []
+    : Array.from({ length: 8 }, (_, i) => {
+        const ws = ymd(addWeeks(weekStartDate, -(7 - i)));
+        return { key: ws, kept: keptWeek(ws), isCurrent: i === 7 };
+      });
+
   return (
     <div style={{ position: "relative", minHeight: "100dvh", background: BG, color: WARM, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
       <AnimatedBackground base={BG} variant="pronounced" fadeTop />
@@ -286,6 +322,47 @@ export default function HomeBetaSectionPage() {
               ? (def.daily ? t("home_beta.done_today_tap", { defaultValue: "✓ Done today — tap to undo" }) : t("home_beta.done_week_tap", { defaultValue: "✓ Done this week — tap to undo" }))
               : (def.daily ? t("home_beta.mark_today", { defaultValue: "Mark done today" }) : t("home_beta.mark_week", { defaultValue: "I did this this week" }))}
         </button>
+
+        {/* Consistency — quiet; no streak headline / fire / leaderboard */}
+        <p style={{ ...eyebrow, margin: "28px 0 10px" }}>
+          {t("home_beta.consistency", { defaultValue: "Your rhythm" })}
+        </p>
+        <div style={infoCard}>
+          <p style={{ color: WARM, fontSize: 14.5, fontFamily: FONT, margin: 0 }}>
+            {weeksKept > 0
+              ? t("home_beta.weeks_kept", { defaultValue: "Kept for {{count}} weeks", count: weeksKept })
+              : t("home_beta.building", { defaultValue: "Building your rhythm" })}
+          </p>
+          {def.daily ? (
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              {dayCells.map((c) => (
+                <div key={c.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, flex: 1 }}>
+                  <div style={{
+                    width: 16, height: 16, borderRadius: 999,
+                    background: c.done ? DONE_BG : "transparent",
+                    border: `1.5px solid ${c.done ? DONE_B : c.future ? "rgba(143,175,150,0.18)" : "rgba(143,175,150,0.38)"}`,
+                    boxShadow: c.isToday ? `0 0 0 2px ${BG}, 0 0 0 3px rgba(143,175,150,0.5)` : "none",
+                  }} />
+                  <span style={{ color: c.future ? "rgba(143,175,150,0.3)" : SAGE_DIM, fontSize: 10, fontFamily: FONT }}>{c.label}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 12 }}>
+              {weekCells.map((c) => (
+                <div key={c.key} style={{
+                  width: 14, height: 14, borderRadius: 999,
+                  background: c.kept ? DONE_BG : "transparent",
+                  border: `1.5px solid ${c.kept ? DONE_B : "rgba(143,175,150,0.32)"}`,
+                  boxShadow: c.isCurrent ? `0 0 0 2px ${BG}, 0 0 0 3px rgba(143,175,150,0.5)` : "none",
+                }} />
+              ))}
+              <span style={{ color: SAGE_DIM, fontSize: 10.5, fontFamily: FONT, marginLeft: 4 }}>
+                {t("home_beta.last_8_weeks", { defaultValue: "last 8 weeks" })}
+              </span>
+            </div>
+          )}
+        </div>
 
         {/* Practices — the section's reused surfaces (+ live previews) */}
         <p style={{ ...eyebrow, margin: "28px 0 10px" }}>
