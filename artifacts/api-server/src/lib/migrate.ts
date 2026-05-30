@@ -2279,6 +2279,26 @@ export async function migrate() {
         WHERE gathering_id IS NULL
     `);
 
+    // ── Forward Day by Day audio marks ────────────────────────────────────────
+    // Per-episode skip points (scripture start + donation-appeal start) so
+    // Reflect & Sit can skip the FDD intro/outro. Precomputed by the worker.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS fdd_audio_marks (
+        id                  SERIAL PRIMARY KEY,
+        episode_date        TEXT NOT NULL UNIQUE,
+        episode_guid        TEXT,
+        audio_url           TEXT,
+        status              TEXT NOT NULL DEFAULT 'pending',
+        scripture_start_sec INTEGER,
+        appeal_start_sec    INTEGER,
+        duration_seconds    INTEGER,
+        detector            TEXT,
+        error               TEXT,
+        created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

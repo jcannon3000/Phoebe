@@ -10,7 +10,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { findBcpPrayer, localizeBcpPrayer } from "@/lib/bcp-prayers";
 import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { openExternal } from "@/lib/openExternal";
-import { usePodcastPlayer } from "@/components/PodcastPlayer";
+import { isNativeShell } from "@/lib/isNativeShell";
+import FddJournalSheet from "@/components/FddJournalSheet";
 import { useEffectiveReflectionSource } from "@/lib/officePrefs";
 import {
   CAC_TODAY_URL,
@@ -1735,40 +1736,13 @@ function ReflectionSlide({
     else markCacRead();
   }, [source]);
 
-  // Forward Day by Day also has an audio edition. Fetch today's episode
-  // (newest from the FDD feed) so the "Listen" button can hand it to the
-  // global player. expand:false keeps the reflection on screen — the audio
-  // rides in the mini-bar (revealed once they Continue past this slide).
-  const player = usePodcastPlayer();
-  const { data: fddToday } = useQuery<{
-    title: string | null; audioUrl: string | null; durationSeconds: number | null;
-    publishedAt: string | null; imageUrl: string | null;
-  }>({
-    queryKey: ["/api/podcast/forward-day-by-day/today"],
-    queryFn: () => apiRequest("GET", "/api/podcast/forward-day-by-day/today"),
-    enabled: source === "fdd",
-    staleTime: 30 * 60_000,
-  });
-  const fddAudio = fddToday?.audioUrl ?? null;
-  const fddIsCurrent = !!fddAudio && player.isCurrent("forward-day-by-day", fddAudio);
-  const fddPlaying = fddIsCurrent && player.isPlaying;
-  function listenFdd() {
-    if (!fddAudio) return;
-    if (fddIsCurrent) { player.toggle(); return; }
-    player.play({
-      showSlug: "forward-day-by-day",
-      episodeId: fddAudio,
-      title: fddToday?.title ?? heading,
-      audioUrl: fddAudio,
-      imageUrl: fddToday?.imageUrl,
-      showTitle: "Forward Day by Day",
-      showArtwork: fddToday?.imageUrl,
-      durationSeconds: fddToday?.durationSeconds,
-      publishedAt: fddToday?.publishedAt,
-      skipHistory: true,    // quick listen from the office close — not history
-      hideRecommend: true,  // recommend lives on the FDD show page, not here
-    }, { expand: false });
-  }
+  // A quick reflection-journal popup, opened from the bottom bar so the
+  // reader can jot today's reflection without leaving the office.
+  const [journalOpen, setJournalOpen] = useState(false);
+
+  // The embed runs full-bleed (edge-to-edge) in the native app, but keeps a
+  // padded, rounded card on web where the surrounding chrome has room.
+  const fullBleed = isNativeShell();
 
   // CAC can't be iframed (cac.org sends X-Frame-Options), so instead of an
   // embed we show today's scraped title + a "Read now" CTA into the in-app
@@ -1815,7 +1789,20 @@ function ReflectionSlide({
           framed (cac.org sends X-Frame-Options), so it shows today's
           scraped title + a Read-now CTA with no box. */}
       {canEmbed ? (
-        <div style={{ flex: 1, minHeight: 0, position: "relative", margin: "0 12px", borderRadius: 16, overflow: "hidden", border: "1px solid rgba(46,107,64,0.3)", background: "#fff" }}>
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            position: "relative",
+            overflow: "hidden",
+            background: "#fff",
+            // Native app: edge-to-edge, top/bottom hairlines only. Web: a
+            // padded, rounded card.
+            ...(fullBleed
+              ? { borderTop: "1px solid rgba(46,107,64,0.3)", borderBottom: "1px solid rgba(46,107,64,0.3)" }
+              : { margin: "0 12px", borderRadius: 16, border: "1px solid rgba(46,107,64,0.3)" }),
+          }}
+        >
           <iframe
             key={url}
             src={url}
@@ -1855,18 +1842,16 @@ function ReflectionSlide({
         </div>
       )}
 
-      {/* Bottom bar — Listen (today's FDD audio) + Continue to the summary. */}
+      {/* Bottom bar — Journal (jot today's reflection) + Continue to the summary. */}
       <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 10, padding: "14px 16px max(16px, env(safe-area-inset-bottom))" }}>
-        {source === "fdd" && fddAudio && (
-          <button
-            type="button"
-            onClick={listenFdd}
-            className="px-7 py-3.5 rounded-full text-sm font-semibold tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-            style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.5)", fontFamily: RFONT }}
-          >
-            {fddPlaying ? "⏸ Pause" : "▶ Listen"}
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setJournalOpen(true)}
+          className="px-7 py-3.5 rounded-full text-sm font-semibold tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+          style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.5)", fontFamily: RFONT }}
+        >
+          {t("fdd_journal.button", { defaultValue: "✎ Journal" })}
+        </button>
         <button
           type="button"
           onClick={onContinue}
@@ -1876,6 +1861,14 @@ function ReflectionSlide({
           {t("common.continue", { defaultValue: "Continue" })} →
         </button>
       </div>
+
+      {journalOpen && (
+        <FddJournalSheet
+          promptTag={`Reflecting on ${heading}`}
+          onClose={() => setJournalOpen(false)}
+          onSaved={() => { setJournalOpen(false); onContinue(); }}
+        />
+      )}
     </div>
   );
 }

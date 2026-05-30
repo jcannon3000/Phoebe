@@ -29,6 +29,11 @@ type FddToday = {
   title: string | null;
   audioUrl: string | null;
   durationSeconds: number | null;
+  // Skip-marks computed server-side (Whisper + detection). When present,
+  // playback starts at the scripture reading and stops at the donation
+  // appeal so the intro + outro are skipped. Absent → play the whole thing.
+  scriptureStartSec?: number | null;
+  appealStartSec?: number | null;
 };
 
 const BG = "#0C1F12";
@@ -98,6 +103,8 @@ export default function FddSitPage() {
       // short). begin() is called inside the Begin button's onClick, which
       // satisfies iOS's user-gesture requirement for audio.play().
       audioDurationSeconds={data.durationSeconds}
+      audioStartSec={data.scriptureStartSec ?? null}
+      audioEndSec={data.appealStartSec ?? null}
       onClose={() => setLocation("/dashboard")}
     />
   );

@@ -84,6 +84,8 @@ export function ContemplationTimer({
   audioTitle,
   eyebrowLabel,
   audioDurationSeconds,
+  audioStartSec,
+  audioEndSec,
 }: {
   open: boolean;
   // `completed` is true when the user actually sat (reached the closing
@@ -101,6 +103,12 @@ export function ContemplationTimer({
   // to begin() = ceil(audioDurationSeconds/60) + chosen silence minutes,
   // so the timer is always long enough for the reflection to complete.
   audioDurationSeconds?: number | null;
+  // FDD skip-marks (seconds). audioStartSec seeks past the intro to the
+  // scripture reading when playback begins; audioEndSec flows into the silent
+  // timer when the meditation + closing prayer finish, before the donation
+  // appeal. Either may be null/absent — then the full episode plays.
+  audioStartSec?: number | null;
+  audioEndSec?: number | null;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -361,7 +369,8 @@ export function ContemplationTimer({
       void acquireWakeLock();
       const a = audioElRef.current;
       if (a) {
-        try { a.currentTime = 0; } catch { /* ignore */ }
+        // Skip the intro: start at the scripture reading when we have a mark.
+        try { a.currentTime = Math.max(0, audioStartSec ?? 0); } catch { /* ignore */ }
         // Runs inside the Begin tap's user gesture, so iOS lets it play.
         a.play().then(() => setAudioPlaying(true)).catch(() => {
           // Couldn't play (gated/offline) — fall through to the silence.
@@ -545,7 +554,17 @@ export function ContemplationTimer({
             preload="auto"
             onPlay={() => setAudioPlaying(true)}
             onPause={() => setAudioPlaying(false)}
-            onTimeUpdate={(e) => setAudioElapsed(e.currentTarget.currentTime)}
+            onTimeUpdate={(e) => {
+              const tNow = e.currentTarget.currentTime;
+              setAudioElapsed(tNow);
+              // Stop at the donation appeal (keeping the closing prayer) and
+              // flow into silence, exactly as a natural end would.
+              if (audioEndSec != null && tNow >= audioEndSec && phaseRef.current === "reflection") {
+                stopAudio();
+                setAudioPlaying(false);
+                startSilence(silenceMinRef.current);
+              }
+            }}
             onEnded={() => {
               setAudioPlaying(false);
               // Reflection finished → flow into the silent contemplation.
@@ -843,24 +862,32 @@ export function ContemplationTimer({
               )}
 
               {/* Progress bar + time readout (when we know the duration). */}
-              {audioDurationSeconds != null && audioDurationSeconds > 0 && (
-                <div className="w-full max-w-xs mb-2">
-                  <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: "rgba(143,175,150,0.18)" }}>
-                    <div
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${Math.min(100, (audioElapsed / audioDurationSeconds) * 100)}%`,
-                        background: "rgba(96,141,209,0.85)",
-                        transition: "width 0.3s linear",
-                      }}
-                    />
+              {audioDurationSeconds != null && audioDurationSeconds > 0 && (() => {
+                // Track progress over the PLAYED window (scripture → appeal),
+                // not the raw file, so a trimmed intro/outro reads correctly.
+                const winStart = Math.max(0, audioStartSec ?? 0);
+                const winEnd = audioEndSec ?? audioDurationSeconds;
+                const winLen = Math.max(1, winEnd - winStart);
+                const winElapsed = Math.min(Math.max(0, audioElapsed - winStart), winLen);
+                return (
+                  <div className="w-full max-w-xs mb-2">
+                    <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ background: "rgba(143,175,150,0.18)" }}>
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.min(100, (winElapsed / winLen) * 100)}%`,
+                          background: "rgba(96,141,209,0.85)",
+                          transition: "width 0.3s linear",
+                        }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-1.5 tabular-nums" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK, fontSize: 12 }}>
+                      <span>{mmss(winElapsed)}</span>
+                      <span>−{mmss(Math.max(0, winLen - winElapsed))}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between mt-1.5 tabular-nums" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK, fontSize: 12 }}>
-                    <span>{mmss(audioElapsed)}</span>
-                    <span>−{mmss(Math.max(0, audioDurationSeconds - audioElapsed))}</span>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Play / pause the reflection. */}
               <button

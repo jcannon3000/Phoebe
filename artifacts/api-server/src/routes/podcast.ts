@@ -30,6 +30,8 @@
 // through decodeXmlText before we hand it to the client.
 
 import { Router, type IRouter, type Request, type Response } from "express";
+import { db, fddAudioMarksTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
@@ -61,16 +63,23 @@ export type Show = {
 // Centralized here (rather than a field per show) to keep tagging in
 // one place.
 const SHOW_THEMES: Record<string, string[]> = {
-  "roundtables-on-race": ["justice"],
-  "cac-love-period": ["justice"],
-  "cac-cosmic-we": ["justice", "contemplation"],
-  "way-of-love-curry": ["justice", "prayer"],
-  "vts-love-your-neighbor": ["justice"],
-  "cac-learning-how-to-see": ["justice", "contemplation"],
-  "cac-turning-to-the-mystics": ["contemplation", "mystics"],
-  "cac-everything-belongs": ["contemplation"],
-  "cac-another-name": ["contemplation"],
-  "experiencing-jesus": ["scripture", "prayer"],
+  "roundtables-on-race": ["justice", "go", "bless"],
+  "cac-love-period": ["justice", "bless"],
+  "cac-cosmic-we": ["justice", "contemplation", "pray"],
+  // Way of Love is literally Bishop Curry's whole subject — tag every stage.
+  "way-of-love-curry": ["justice", "prayer", "turn", "learn", "pray", "worship", "bless", "go", "rest"],
+  "vts-love-your-neighbor": ["justice", "bless", "go"],
+  "cac-learning-how-to-see": ["justice", "contemplation", "learn"],
+  "cac-turning-to-the-mystics": ["contemplation", "mystics", "pray", "rest"],
+  "cac-everything-belongs": ["contemplation", "rest"],
+  "cac-another-name": ["contemplation", "pray"],
+  // Bishop Budde — discipleship, spiritual practice, encountering Jesus.
+  "experiencing-jesus": ["scripture", "prayer", "pray", "learn", "turn", "worship"],
+  "morning-office": ["pray", "worship"],
+  "evening-office": ["pray", "worship", "rest"],
+  "nc-crossroads": ["learn", "worship"],
+  "living-church": ["learn", "worship"],
+  "forward-day-by-day": ["pray", "learn"],
 };
 function showThemes(slug: string): string[] {
   return SHOW_THEMES[slug] ?? [];
@@ -145,6 +154,25 @@ function isHiddenEpisode(title: string | null): boolean {
 // broad/stemmed (e.g. "contempl" catches contemplate/contemplation/
 // contemplative).
 const THEMES: Array<{ key: string; label: string; emoji: string; keywords: string[] }> = [
+  // ── Way of Love — the 7 stages of The Episcopal Church's Rule of Life ──
+  // These surface as the primary suggestion pills on the podcast Discover
+  // page. Keywords are intentionally broad so they catch episode-level
+  // matching even when a show isn't explicitly tagged.
+  { key: "turn", label: "Turn", emoji: "🔄",
+    keywords: ["repent", "return", "conversion", "transform", "renewal", "new life", "metanoia", "turning", "begin again", "reconcil", "confession"] },
+  { key: "learn", label: "Learn", emoji: "📖",
+    keywords: ["formation", "discipleship", "study", "discern", "education", "catechesis", "scripture", "gospel", "bible", "lectionary", "reading", "teaching", "baptism", "confirmation"] },
+  { key: "pray", label: "Pray", emoji: "🙏",
+    keywords: ["prayer", "pray", "contemplat", "intercession", "spiritual practice", "daily office", "morning prayer", "evening prayer", "compline", "vespers", "rule of life", "examen", "rosary"] },
+  { key: "worship", label: "Worship", emoji: "⛪",
+    keywords: ["worship", "eucharist", "liturgy", "preach", "sermon", "sunday", "praise", "hymn", "sacrament", "communion", "gathering", "mass", "rite", "blessing"] },
+  { key: "bless", label: "Bless", emoji: "🤲",
+    keywords: ["bless", "neighbor", "welcome", "hospitality", "generosity", "stewardship", "tithe", "community", "service", "care", "beloved"] },
+  { key: "go", label: "Go", emoji: "🌍",
+    keywords: ["mission", "witness", "justice", "reconcil", "outreach", "evangelism", "serve", "immigrant", "poverty", "racial", "equity", "liberation", "peace"] },
+  { key: "rest", label: "Rest", emoji: "🌙",
+    keywords: ["sabbath", "rest", "retreat", "sabbatical", "solitude", "silence", "renewal", "delight", "play", "joy", "nature", "creation", "stillness", "sabbath"] },
+  // ── Deeper thematic search (still used by future search UI if needed) ──
   { key: "contemplation", label: "Contemplation", emoji: "🕯️",
     keywords: ["contempl", "silence", "mystic", "meditat", "stillness", "presence", "centering prayer", "solitude"] },
   { key: "justice", label: "Justice & Race", emoji: "🫱🏽‍🫲🏿",
@@ -537,6 +565,30 @@ router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<
 
   const feed = await loadFeed(show, 1);
   const ep = feed.episodes[0];
+
+  // Forward Day by Day: attach the precomputed skip-marks (scripture start +
+  // donation-appeal start) so Reflect & Sit can skip the intro/outro. Matched
+  // to today's episode by guid; absent until the worker has analyzed it (and
+  // it stays absent when transcription isn't provisioned — the client then
+  // just plays the whole episode).
+  let scriptureStartSec: number | null = null;
+  let appealStartSec: number | null = null;
+  if (slug === "forward-day-by-day") {
+    try {
+      const guid = ep?.id ?? ep?.audioUrl ?? null;
+      const [mark] = await db
+        .select()
+        .from(fddAudioMarksTable)
+        .where(eq(fddAudioMarksTable.episodeDate, new Date().toISOString().slice(0, 10)));
+      if (mark && mark.status === "done" && (mark.episodeGuid == null || mark.episodeGuid === guid)) {
+        scriptureStartSec = mark.scriptureStartSec;
+        appealStartSec = mark.appealStartSec;
+      }
+    } catch (err) {
+      logger.warn({ err }, "[podcast] fdd marks lookup failed");
+    }
+  }
+
   res.json({
     feedTitle: feed.feedTitle ?? show.title,
     title: ep?.title ?? null,
@@ -544,6 +596,8 @@ router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<
     durationSeconds: ep?.durationSeconds ?? null,
     publishedAt: ep?.publishedAt ?? null,
     imageUrl: ep?.imageUrl ?? feed.feedImage ?? show.artwork ?? null,
+    scriptureStartSec,
+    appealStartSec,
   });
 });
 

@@ -18,6 +18,9 @@
 //   • goalCleanup (hourly tick → cancel calendar events for stale
 //     goals)
 //   • prayerHeldScanner (10-min tick → batched "held in prayer" push)
+//   • officeAlignmentScheduler (hourly tick → transcribe + align today's
+//     Forward Movement morning/evening office episode; idempotent, skips
+//     gracefully if OPENAI_API_KEY not set)
 //
 // What does NOT run here:
 //   • Express / HTTP. This process is headless. Use the web service
@@ -37,6 +40,7 @@ import { startLetterWindowScheduler } from "./lib/letterWindowSender";
 import { startGoalCleanupScheduler } from "./lib/goalCleanup";
 import { startPrayerHeldScanner } from "./lib/prayerHeldScanner";
 import { startMinistrySyncScheduler } from "./lib/ministryScraper";
+import { startOfficeAlignmentScheduler } from "./lib/officeAlignmentScheduler";
 
 // Sentry first so any boot-time scheduler failure (DB pool exhausted,
 // invalid env var, missing seed file) lands as a Sentry issue rather
@@ -61,6 +65,7 @@ startLetterWindowScheduler();
 startGoalCleanupScheduler();
 startPrayerHeldScanner();
 startMinistrySyncScheduler();
+startOfficeAlignmentScheduler();
 logger.info("[worker] schedulers running — process will stay alive on setIntervals");
 
 // We don't open an HTTP port — the worker is internal-only. Railway's

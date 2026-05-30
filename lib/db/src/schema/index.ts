@@ -57,3 +57,4 @@ export * from "./podcast_engagement";
 export * from "./gatherings";
 export * from "./gathering_members";
 export * from "./availability_patterns";
+export * from "./fdd_audio_marks";

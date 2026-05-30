@@ -27,6 +27,19 @@ const PALETTE = {
 };
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
+// Way of Love — the 7 stages of The Episcopal Church's Rule of Life.
+// Rendered as suggestion pills under the podcast search box; each one
+// fires a theme-keyed search across the whole episode library.
+const WOL_STAGES = [
+  { key: "turn",    label: "Turn",    emoji: "🔄" },
+  { key: "learn",   label: "Learn",   emoji: "📖" },
+  { key: "pray",    label: "Pray",    emoji: "🙏" },
+  { key: "worship", label: "Worship", emoji: "⛪" },
+  { key: "bless",   label: "Bless",   emoji: "🤲" },
+  { key: "go",      label: "Go",      emoji: "🌍" },
+  { key: "rest",    label: "Rest",    emoji: "🌙" },
+] as const;
+
 type ShowCard = { slug: string; title: string; artist: string; artwork: string | null };
 type Publisher = { slug: string; title: string; emoji: string; shows: ShowCard[] };
 type PodcastsResponse = { publishers: Publisher[] };
@@ -398,6 +411,10 @@ export default function PodcastsPage() {
   });
 
   const [query, setQuery] = useState("");
+  // Active Way of Love stage pill — when set, fires a theme search even
+  // with no free-text query. Cleared when the user starts typing (so
+  // free-text takes over) or taps the same pill again to toggle it off.
+  const [activeTheme, setActiveTheme] = useState<string | null>(null);
 
   // Debounce the free-text query so we don't fire a library-wide episode
   // search on every keystroke.
@@ -407,11 +424,17 @@ export default function PodcastsPage() {
     return () => clearTimeout(t);
   }, [query]);
 
-  const searching = debouncedQ.length > 0;
+  // Either free text OR an active theme pill is enough to trigger a search.
+  const searching = debouncedQ.length > 0 || activeTheme !== null;
 
   const { data: searchData, isLoading: searchLoading } = useQuery<SearchResponse>({
-    queryKey: ["/api/podcasts/search", debouncedQ],
-    queryFn: () => apiRequest("GET", `/api/podcasts/search?q=${encodeURIComponent(debouncedQ)}`),
+    queryKey: ["/api/podcasts/search", debouncedQ, activeTheme],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (debouncedQ) params.set("q", debouncedQ);
+      if (activeTheme) params.set("theme", activeTheme);
+      return apiRequest("GET", `/api/podcasts/search?${params.toString()}`);
+    },
     enabled: !!user && searching,
     staleTime: 5 * 60_000,
   });
@@ -567,7 +590,7 @@ export default function PodcastsPage() {
         ) : (
         <>
         {/* Search across shows AND episodes. */}
-        <div style={{ position: "relative", marginBottom: 12 }}>
+        <div style={{ position: "relative", marginBottom: 10 }}>
           <span
             aria-hidden
             style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 15, opacity: 0.6 }}
@@ -589,13 +612,55 @@ export default function PodcastsPage() {
           />
         </div>
 
+        {/* Way of Love — 7-stage suggestion pills. Always visible on the
+            Discover tab (not hidden when results show) so the user can
+            switch between stages without clearing search. Horizontal scroll
+            so all 7 fit on a narrow phone. */}
+        <div
+          style={{
+            display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4,
+            marginBottom: 16, WebkitOverflowScrolling: "touch", scrollbarWidth: "none",
+          }}
+          role="group"
+          aria-label="Way of Love stages"
+        >
+          {WOL_STAGES.map((stage) => {
+            const active = activeTheme === stage.key;
+            return (
+              <button
+                key={stage.key}
+                type="button"
+                onClick={() => setActiveTheme(active ? null : stage.key)}
+                aria-pressed={active}
+                style={{
+                  flexShrink: 0,
+                  display: "flex", alignItems: "center", gap: 5,
+                  padding: "7px 13px", borderRadius: 999,
+                  fontSize: 13, fontWeight: active ? 700 : 600,
+                  fontFamily: FONT, cursor: "pointer", whiteSpace: "nowrap",
+                  background: active ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.10)",
+                  border: `1px solid ${active ? "rgba(46,107,64,0.75)" : "rgba(46,107,64,0.30)"}`,
+                  color: active ? PALETTE.warm : PALETTE.sage,
+                  boxShadow: active ? "0 0 0 1px rgba(46,107,64,0.3)" : "none",
+                  transition: "background 0.15s, border-color 0.15s",
+                }}
+              >
+                <span aria-hidden style={{ fontSize: 14 }}>{stage.emoji}</span>
+                {stage.label}
+              </button>
+            );
+          })}
+        </div>
+
         {searching ? (
           // ── Search / theme results ──────────────────────────────────
           searchLoading ? (
             <p style={{ fontSize: 14, color: PALETTE.faint, marginTop: 24, textAlign: "center" }}>{t("podcasts.searching")}</p>
           ) : (showHits.length === 0 && episodeHits.length === 0) ? (
             <p style={{ fontSize: 14, color: PALETTE.faint, marginTop: 24, textAlign: "center" }}>
-              {t("podcasts.no_results_for", { q: debouncedQ })}
+              {activeTheme && !debouncedQ
+                ? `No episodes found for "${WOL_STAGES.find((s) => s.key === activeTheme)?.label ?? activeTheme}" yet.`
+                : t("podcasts.no_results_for", { q: debouncedQ })}
             </p>
           ) : (
             <>
