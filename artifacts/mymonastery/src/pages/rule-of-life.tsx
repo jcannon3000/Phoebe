@@ -80,12 +80,15 @@ interface RecommendResult {
 // Matches the rest of the app: Space Grotesk for UI text, Georgia italic for
 // contemplative prayer lines, warm cream + sage on a deep-green ground.
 
-const EP_BG = "#0F2818";
+const EP_BG = "#091A10"; // match the daily office slides' background
 const CREAM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SAGE_DIM = "rgba(143,175,150,0.55)";
 const SANS = "'Space Grotesk', system-ui, sans-serif";
-const SERIF = "Georgia, serif";
+// The builder uses Space Grotesk throughout (matching the office UI); the
+// "serif" token now points at Space Grotesk too, so the italic contemplative
+// lines render as oblique Space Grotesk rather than Georgia.
+const SERIF = "'Space Grotesk', system-ui, sans-serif";
 const CHIP_DEFAULT = "rgba(46,107,64,0.14)";
 const CHIP_BORDER = "rgba(46,107,64,0.28)";
 const CHIP_ACTIVE = "rgba(46,107,64,0.52)";
@@ -436,7 +439,7 @@ export default function RuleOfLifePage() {
   if (phase === "mode") {
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
-        <AnimatedBackground base={EP_BG} variant="pronounced" />
+        <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
             <Link href="/daily-practice">
@@ -496,7 +499,7 @@ export default function RuleOfLifePage() {
   if (phase === "name") {
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
-        <AnimatedBackground base={EP_BG} variant="pronounced" />
+        <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
           <button onClick={handleBack} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "8px 0", display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
             <ChevronLeft size={18} />
@@ -560,7 +563,7 @@ export default function RuleOfLifePage() {
 
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
-        <AnimatedBackground base={EP_BG} variant="pronounced" />
+        <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -656,7 +659,7 @@ export default function RuleOfLifePage() {
     const errored = recommendMutation.isError;
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <AnimatedBackground base={EP_BG} variant="pronounced" />
+        <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
         <div style={{ position: "relative", zIndex: 1, textAlign: "center", padding: 24, maxWidth: 420 }}>
           {errored ? (
             <>
@@ -713,7 +716,7 @@ export default function RuleOfLifePage() {
 
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
-        <AnimatedBackground base={EP_BG} variant="pronounced" />
+        <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
           <button onClick={handleBack} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "8px 0", display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
             <ChevronLeft size={18} />
@@ -748,7 +751,7 @@ export default function RuleOfLifePage() {
   if (phase === "email" && result) {
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
-        <AnimatedBackground base={EP_BG} variant="pronounced" />
+        <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
           <button onClick={handleBack} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "8px 0", display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
             <ChevronLeft size={18} />
@@ -824,7 +827,7 @@ export default function RuleOfLifePage() {
   if (phase === "result" && result) {
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative" }}>
-        <AnimatedBackground base={EP_BG} variant="pronounced" />
+        <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
         <div style={{ position: "relative", zIndex: 1, padding: "24px 20px 60px", maxWidth: 560, margin: "0 auto" }}>
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
