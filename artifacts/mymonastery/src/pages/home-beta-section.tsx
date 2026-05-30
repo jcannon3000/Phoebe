@@ -31,6 +31,7 @@ import {
   type CompletionRow,
 } from "./home-beta";
 import { computeTurnConsistency, engagementDays } from "@/lib/turnConsistency";
+import BlessSubScreen from "@/components/BlessSubScreen";
 
 const BG = "#091A10";
 const WARM = "#F0EDE6";
@@ -228,6 +229,7 @@ export default function HomeBetaSectionPage() {
   // Turn is the consistency spine — kept by engaging ANY practice that day, not
   // a thing you "set" or tick. Its history + counts read from engagement.
   const isTurn = def.key === "turn";
+  const isBless = def.key === "bless"; // weekly intention cycle owns the body
   const turnEngaged = isTurn
     ? engagementDays(rows.map((r) => r.localDate), officeQ.data?.days ?? [])
     : null;
@@ -301,9 +303,17 @@ export default function HomeBetaSectionPage() {
         </h1>
         <p style={{ color: SAGE, fontSize: 14.5, fontFamily: FONT, lineHeight: 1.5, margin: 0 }}>{def.definition}</p>
 
-        {/* Commitment + mark-complete — every section except Turn, which is
-            the auto-tracked spine (kept by doing anything, never ticked). */}
-        {!isTurn && (<>
+        {/* Bless — the weekly "bless your community" intention cycle owns the
+            body (set → mark off → end-of-week review → set next week). */}
+        {isBless && (
+          <div style={{ marginTop: 22 }}>
+            <BlessSubScreen weekStart={thisWeekStart} today={today} />
+          </div>
+        )}
+
+        {/* Commitment + mark-complete — every section except Turn (the auto
+            spine) and Bless (the intention cycle drives its own completion). */}
+        {!isTurn && !isBless && (<>
         <p style={{ ...eyebrow, margin: "24px 0 8px" }}>
           {t("home_beta.your_commitment", { defaultValue: "Your commitment" })}
         </p>

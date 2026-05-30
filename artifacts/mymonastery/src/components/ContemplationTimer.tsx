@@ -138,6 +138,10 @@ export function ContemplationTimer({
   type Companion = { userId: number; name: string | null; avatarUrl: string | null };
   const [companions, setCompanions] = useState<Companion[]>([]);
   const [otherCount, setOtherCount] = useState(0);
+  // Daily contemplation goal (minutes; 0 = off) + today's total seconds incl.
+  // this sit — fetched after the sit logs, to show goal progress on the close.
+  const [dailyGoalMin, setDailyGoalMin] = useState(0);
+  const [dailyTotalSeconds, setDailyTotalSeconds] = useState<number | null>(null);
   // Per-session visibility — toggleable on the summary screen. The
   // initial value comes from localStorage so the user's last choice
   // sticks (if you always pray privately, it stays Private on the next
@@ -312,8 +316,26 @@ export function ContemplationTimer({
         queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
         // Refresh the History list so the just-finished sit appears.
         queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+        // Today's total INCLUDING this just-logged sit — drives the goal
+        // progress line on the closing screen. Fetched after the POST resolves
+        // so the new session is counted.
+        const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+        let tz = "UTC";
+        try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { /* keep UTC */ }
+        apiRequest<{ todaySeconds?: number }>(
+          "GET",
+          `/api/me/contemplation-stats?todaySince=${encodeURIComponent(midnight.toISOString())}&tz=${encodeURIComponent(tz)}`,
+        )
+          .then((s) => setDailyTotalSeconds(s?.todaySeconds ?? null))
+          .catch(() => { /* non-fatal — the progress line just won't show */ });
       })
       .catch(() => { /* best-effort — a dropped stat shouldn't break the close */ });
+
+    // Daily goal (minutes; 0 = off) — fetched in parallel; doesn't depend on
+    // the sit being logged.
+    apiRequest<{ contemplationGoalMinutes?: number }>("GET", "/api/me/office-prefs")
+      .then((p) => setDailyGoalMin(p?.contemplationGoalMinutes ?? 0))
+      .catch(() => { /* non-fatal */ });
 
     // Companion lookup — who else was sitting alongside this exact
     // window? Garden members come back with avatars (rendered as a
@@ -349,6 +371,7 @@ export function ContemplationTimer({
     // summary screen before the fetch for THIS sit returns.
     setCompanions([]);
     setOtherCount(0);
+    setDailyTotalSeconds(null);
     // Clear the previous row id — a stale id here would route a
     // toggle PATCH to a different sit. Don't reset isPrivate (it
     // persists across sits per the user's preference).
@@ -999,6 +1022,29 @@ export function ContemplationTimer({
               <p className="text-[13px] mb-5" style={{ color: "rgba(143,175,150,0.65)", fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 300 }}>
                 {t("contemplation_timer.carry_the_quiet")}
               </p>
+
+              {/* Daily goal progress — only when a goal is set and today's
+                  total (incl. this sit) has loaded. A quiet reinforcement of
+                  the contemplation habit at the moment of completion. */}
+              {dailyGoalMin > 0 && dailyTotalSeconds !== null && (() => {
+                const goalSec = dailyGoalMin * 60;
+                const met = dailyTotalSeconds >= goalSec;
+                const doneMin = Math.floor(dailyTotalSeconds / 60);
+                const remainMin = Math.max(1, dailyGoalMin - doneMin);
+                const pct = Math.min(100, Math.round((dailyTotalSeconds / goalSec) * 100));
+                return (
+                  <div className="mb-6" style={{ width: "100%", maxWidth: 280 }}>
+                    <div className="rounded-full overflow-hidden mb-2" style={{ height: 6, background: "rgba(46,107,64,0.2)" }}>
+                      <div style={{ width: `${pct}%`, height: "100%", background: met ? "#6FAF85" : "#2D5E3F", transition: "width 0.4s ease" }} />
+                    </div>
+                    <p className="text-[12px]" style={{ color: met ? "#A8C5A0" : "rgba(143,175,150,0.75)", fontFamily: SPACE_GROTESK }}>
+                      {met
+                        ? t("contemplation_timer.goal_reached", { defaultValue: "Daily goal reached 🌿" })
+                        : t("contemplation_timer.goal_progress", { defaultValue: `${doneMin} of ${dailyGoalMin} min today — ${remainMin} to go` })}
+                    </p>
+                  </div>
+                );
+              })()}
 
               {/* Public/private toggle — pill pair, same shape as the
                   "anyone in your garden" / "anyone else" affordances

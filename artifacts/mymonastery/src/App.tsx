@@ -160,6 +160,7 @@ const MenuAudioPage = lazy(() => import("./pages/menu-audio"));
 const MenuResourcesPage = lazy(() => import("./pages/menu-resources"));
 const HomeBetaPage = lazy(() => import("./pages/home-beta"));
 const HomeBetaSectionPage = lazy(() => import("./pages/home-beta-section"));
+const WayOfLoveWeekPage = lazy(() => import("./pages/way-of-love-week"));
 const OfficeFmPage = lazy(() => import("./pages/office-fm"));
 const PodcastsPage = lazy(() => import("./pages/podcasts"));
 const BuildingFaithPage = lazy(() => import("./pages/building-faith"));
@@ -537,11 +538,16 @@ function Router() {
       <Route path="/building-faith" component={BuildingFaithPage} />
       <Route path="/podcasts/:publisher" component={PodcastPublisherPage} />
       <Route path="/dashboard" component={Dashboard} />
-      {/* BETA: Way of Love home — gated on rawIsBeta inside the page, runs
-          alongside the existing /dashboard. /:section page first so the param
-          route isn't shadowed. */}
+      {/* BETA: Way of Love. The DAILY half folded back into /dashboard (Turn
+          streak + the existing office / Contemplation / reflection cards); the
+          WEEKLY half lives on /this-week. The combined /home-beta home is
+          retired (redirects to /dashboard), but its detail sub-screens
+          (/home-beta/turn, /home-beta/:section) stay — the streak + weekly
+          page link into them. /:section first so the param route isn't
+          shadowed. */}
+      <Route path="/this-week" component={WayOfLoveWeekPage} />
       <Route path="/home-beta/:section" component={HomeBetaSectionPage} />
-      <Route path="/home-beta" component={HomeBetaPage} />
+      <Route path="/home-beta">{() => <RedirectTo to="/dashboard" />}</Route>
       {/* Phoebe Parish — simplified tier. /parish is the dashboard
           for parish-only users; /parish/onboarding is the parish
           picker. The router-level gate (ParishGate below) redirects

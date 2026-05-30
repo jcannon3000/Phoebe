@@ -422,6 +422,31 @@ export const es: Translations = {
   // Inicio BETA del Camino del Amor (/home-beta) — las tarjetas de sección y
   // las páginas por sección. Prácticas diarias/semanales, compromisos,
   // cumplimiento y la vista serena de constancia.
+  bless: {
+    add: "Añade una bendición",
+    add_more: "+ Añade una bendición",
+    edit: "Edita esta bendición",
+    placeholder: "Una forma concreta de servir a alguien esta semana…",
+    recipient: "Para alguien (opcional)",
+    recipient_hint: "En tu lista de oración: {{names}} — ¿les envías ánimo?",
+    prompt: "¿Cómo puedes bendecir a tu comunidad esta semana?",
+    progress: "{{done}} de {{total}} esta semana",
+    type: { note: "Nota", visit: "Visita", give: "Dar", serve: "Servir", other: "Otro" },
+    suggest: {
+      note: "Escribe una nota de ánimo",
+      volunteer: "Sé voluntario en algún lugar esta semana",
+      check: "Acompaña a alguien que lo está pasando mal",
+      give: "Da a alguien que lo necesita",
+      meal: "Comparte una comida con alguien",
+    },
+    review_open: "Repaso de fin de semana →",
+    reviewed: "✓ Repasado esta semana — repasar de nuevo",
+    review_title: "¿Cómo fue esta semana?",
+    review_sub: "Marca lo que hiciste. Pasa o suelta el resto — sin culpa.",
+    carry_label: "¿Pasar a la próxima semana?",
+    carry: "Pasar",
+    review_done: "Listo → preparar la próxima semana",
+  },
   home_beta: {
     eyebrow: "Tu Camino del Amor",
     turn_framing: "El regreso diario — guardado cada vez que haces espacio para Dios.",

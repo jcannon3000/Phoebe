@@ -886,6 +886,33 @@ export async function migrate() {
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_practice_completion ON practice_completion (user_id, section, local_date)`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_practice_completion_user_week ON practice_completion (user_id, week_start)`);
 
+    // ── Bless — the weekly "bless your community" intention cycle ──────────
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS bless_intention (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        week_start TEXT NOT NULL,
+        text TEXT NOT NULL,
+        type TEXT,
+        recipient TEXT,
+        reminder_time TEXT,
+        done_at TIMESTAMPTZ,
+        carried_from INTEGER,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_bless_intention_user_week ON bless_intention (user_id, week_start)`);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS bless_week (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        week_start TEXT NOT NULL,
+        reviewed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_bless_week ON bless_week (user_id, week_start)`);
+
     // ── prayers_for — private, directed prayers one user holds for another
     await run(client, `
       CREATE TABLE IF NOT EXISTS prayers_for (
@@ -1465,9 +1492,11 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_time TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_sent_date TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_sent_date TEXT`);
-    // Daily contemplation goal (minutes; 0 = off) + per-day nudge dedup stamp.
+    // Daily contemplation goal (minutes; 0 = off) + per-day nudge dedup stamp
+    // + whether the ~7pm nudge is enabled (default true).
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_goal_minutes INTEGER NOT NULL DEFAULT 0`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_goal_sent_date TEXT`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_reminder_enabled BOOLEAN NOT NULL DEFAULT true`);
     // YYYY-MM-DD (parish TZ) of the last Saturday-evening parish-recap
     // push we fired for this user. NULL = never sent. Added separately
     // because the column was introduced in 62639d5 without a migrate.ts

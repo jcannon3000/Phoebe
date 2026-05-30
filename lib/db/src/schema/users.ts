@@ -161,6 +161,10 @@ export const usersTable = pgTable("users", {
   // Idempotency for the 15-min scheduler tick — at most one nudge per local
   // day. NULL = never sent.
   contemplationGoalSentDate: text("contemplation_goal_sent_date"),
+  // Whether the ~7pm "haven't hit your goal" nudge is on. Defaults true so a
+  // freshly-set goal nudges by default; the user can keep a goal for tracking
+  // while silencing the reminder from Settings → Daily reminders.
+  contemplationReminderEnabled: boolean("contemplation_reminder_enabled").notNull().default(true),
   // YYYY-MM-DD (parish TZ) of the last Saturday-evening "your parish
   // prayed with you this week" recap we fired for this user. NULL =
   // never sent. Idempotent on the local Saturday so a parishioner

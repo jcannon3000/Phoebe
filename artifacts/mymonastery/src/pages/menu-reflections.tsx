@@ -1,27 +1,15 @@
-import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { MenuHub } from "@/components/MenuHub";
-import { playOpeningSwell } from "@/lib/amenFeedback";
 
-// Daily reflections from across the church. A "View all" CTA opens a reader
-// that flips through Forward Day by Day, SSJE, and CAC (CAC last — it can't be
-// embedded inline, so it shows a "Read now" card there). Arriving here plays
-// the lowest octave of the slideshow chime; selecting a reflection plays it an
-// octave up.
+// Daily reflections from across the church. "View all" opens a reader that
+// flips through Forward Day by Day, SSJE, and CAC (CAC last — it can't be
+// embedded inline, so it shows a "Read now" card there). The select sound is
+// handled centrally by MenuHub (the highest octave of the slideshow chime),
+// matching the menu's pill → category → item ladder.
 export default function MenuReflectionsPage() {
   const [, setLocation] = useLocation();
-
-  // Entering Reflections from the menu sounds the slideshow chime at its
-  // lowest octave — a soft, grounded "you've arrived" tone.
-  useEffect(() => {
-    playOpeningSwell(0);
-  }, []);
-
-  // Selecting a reflection climbs an octave, then opens the reader.
-  const openReflection = (source: "fdd" | "ssje" | "cac" | "all") => {
-    playOpeningSwell(1);
+  const openReflection = (source: "fdd" | "ssje" | "cac" | "all") =>
     setLocation(`/menu/reflections/${source}`);
-  };
 
   return (
     <MenuHub

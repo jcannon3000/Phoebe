@@ -971,14 +971,15 @@ export async function runContemplationGoalSender(opts: { forceNow?: boolean } = 
         userId: usersTable.id,
         userTimezone: usersTable.timezone,
         goalMinutes: usersTable.contemplationGoalMinutes,
+        reminderEnabled: usersTable.contemplationReminderEnabled,
         sentDate: usersTable.contemplationGoalSentDate,
       })
       .from(usersTable)
-      .where(sql`${usersTable.contemplationGoalMinutes} > 0`);
+      .where(sql`${usersTable.contemplationGoalMinutes} > 0 AND ${usersTable.contemplationReminderEnabled} = true`);
 
     for (const r of rows) {
       const goalMinutes = r.goalMinutes ?? 0;
-      if (goalMinutes <= 0) continue;
+      if (goalMinutes <= 0 || !r.reminderEnabled) continue;
 
       const tz = r.userTimezone || "America/New_York";
       const today = todayInZone(tz);

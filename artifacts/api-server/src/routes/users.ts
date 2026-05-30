@@ -270,6 +270,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
         showConfession: usersTable.bcpShowConfession,
         defaultPrayerLevel: usersTable.defaultPrayerLevel,
         contemplationGoalMinutes: usersTable.contemplationGoalMinutes,
+        contemplationReminderEnabled: usersTable.contemplationReminderEnabled,
       })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
@@ -357,6 +358,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
       showConfession: u?.showConfession ?? false,
       defaultPrayerLevel: u?.defaultPrayerLevel ?? "ask",
       contemplationGoalMinutes: u?.contemplationGoalMinutes ?? 0,
+      contemplationReminderEnabled: u?.contemplationReminderEnabled ?? true,
       lastPrayedMorning,
       lastPrayedEvening,
       officeStreak,
@@ -402,6 +404,9 @@ router.put("/me/office-prefs", async (req, res): Promise<void> => {
   // stray value can't be written; the UI offers 5/10/15/20/30 presets.
   if (typeof body.contemplationGoalMinutes === "number" && Number.isFinite(body.contemplationGoalMinutes)) {
     update.contemplationGoalMinutes = Math.max(0, Math.min(180, Math.round(body.contemplationGoalMinutes)));
+  }
+  if (typeof body.contemplationReminderEnabled === "boolean") {
+    update.contemplationReminderEnabled = body.contemplationReminderEnabled;
   }
   if (Object.keys(update).length === 0) { res.json({ ok: true }); return; }
   try {

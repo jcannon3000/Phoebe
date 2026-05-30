@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { playOpeningSwell } from "@/lib/amenFeedback";
 
 // ── Category page transition ────────────────────────────────────────────────
 //
@@ -14,38 +15,10 @@ const FADE_EVENT = "phoebe:page-fade";
 const COVER_MS = 260;   // current page fades out
 const REVEAL_MS = 640;  // new page fades up — deliberately slower
 
-// Soft two-tone rising cue. Self-contained WebAudio; the category tap is a
-// user gesture, so creating/resuming the context here is allowed on iOS.
-let audioCtx: AudioContext | null = null;
-export function playNavSound() {
-  try {
-    const AC = window.AudioContext
-      ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AC) return;
-    audioCtx = audioCtx ?? new AC();
-    const ctx = audioCtx;
-    if (ctx.state === "suspended") void ctx.resume();
-    const t = ctx.currentTime;
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = "sine";
-    o.frequency.setValueAtTime(523.25, t);                       // C5
-    o.frequency.exponentialRampToValueAtTime(783.99, t + 0.16);  // → G5, a soft rise
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.09, t + 0.03);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.start(t);
-    o.stop(t + 0.42);
-  } catch {
-    /* audio is optional — never block navigation on it */
-  }
-}
-
-// Play the cue, fade the curtain in, run `navigate` under cover, then reveal.
+// Play the category-select cue — the slideshow chime, one octave up — then
+// fade the curtain in, run `navigate` under cover, and reveal.
 export function triggerCategoryTransition(navigate: () => void) {
-  playNavSound();
+  playOpeningSwell(1);
   window.dispatchEvent(new CustomEvent(FADE_EVENT, { detail: "cover" }));
   window.setTimeout(() => {
     navigate();

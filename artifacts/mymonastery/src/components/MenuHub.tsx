@@ -1,5 +1,6 @@
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
+import { playOpeningSwell } from "@/lib/amenFeedback";
 
 // ── MenuHub — the shared "list of cards" page ───────────────────────────────
 //
@@ -76,7 +77,7 @@ export function MenuHub({
                   <button
                     key={ii}
                     type="button"
-                    onClick={it.onClick}
+                    onClick={() => { playOpeningSwell(2); it.onClick(); }}
                     className="w-full transition-opacity hover:opacity-90"
                     style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer", background: CARD_BG, border: `1px solid ${CARD_BORDER}`, borderRadius: 16, padding: "16px 18px" }}
                   >

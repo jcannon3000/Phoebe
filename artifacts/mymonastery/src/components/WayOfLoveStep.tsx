@@ -81,7 +81,10 @@ export interface WayOfLoveStepProps {
   onDone: () => void;
 }
 
-type Step = "choose" | "covenant" | "committed";
+type Step = "choose" | "silence-goal" | "covenant" | "committed";
+
+// Minute presets for the daily contemplative-silence goal slide.
+const SILENCE_GOAL_PRESETS = [5, 10, 15, 20, 30] as const;
 
 // One personal line under the area heading, assembled from what they shared in
 // the Desire movement. Deterministic — picks the first signal that resonates.
@@ -127,6 +130,12 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
   const suggested = useMemo(() => suggestedPractices([primary]), [primary]);
 
   const [step, setStep] = useState<Step>("choose");
+  // Daily contemplative-silence goal (minutes), set on its own slide when the
+  // "Keep contemplative silence" practice is kept. Defaults from the user's
+  // available-time answer, floored at the smallest preset.
+  const [silenceGoalMin, setSilenceGoalMin] = useState<number>(
+    () => Math.max(SILENCE_GOAL_PRESETS[0], silenceMinutesForMinutes(props.minutes)),
+  );
   // The Way of Love is presented as a seven-slide walk — one practice per
   // slide, every practice "on". For each, the person keeps/changes a prefilled
   // option (one or more) or writes their own commitment.
@@ -185,7 +194,8 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
               setSideReflection(side, o.reflectionSource ?? "fdd");
               break;
             case "silence":
-              setSideMinutes(side, silenceMinutesForMinutes(props.minutes));
+              // Per-sit office silence default mirrors the daily goal they set.
+              setSideMinutes(side, silenceGoalMin);
               break;
             case "podcasts":
               break;
@@ -206,6 +216,15 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
       }
     }
     apiRequest("PUT", "/api/rule-of-life/wol", { selections }).catch(() => {/* ignore */});
+    // If they kept contemplative silence, establish the daily contemplation
+    // goal (and turn on the ~7pm nudge) from the minutes they chose. Same
+    // server field the Contemplation page + Settings read/write.
+    if (selected.has("pray-silence")) {
+      apiRequest("PUT", "/api/me/office-prefs", {
+        contemplationGoalMinutes: silenceGoalMin,
+        contemplationReminderEnabled: true,
+      }).catch(() => {/* ignore */});
+    }
     setStep("committed");
   };
 
@@ -297,7 +316,12 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
     const isSuggested = suggested.has(pid);
     const isLast = practiceIndex === PRACTICE_ORDER.length - 1;
     const progressPct = ((practiceIndex + 1) / PRACTICE_ORDER.length) * 100;
-    const goNext = () => (isLast ? setStep("covenant") : setPracticeIndex((i) => i + 1));
+    // After the last practice: detour to the silence-goal slide if they kept
+    // contemplative silence, otherwise straight to the covenant.
+    const goNext = () =>
+      isLast
+        ? setStep(selected.has("pray-silence") ? "silence-goal" : "covenant")
+        : setPracticeIndex((i) => i + 1);
     const goBack = () => (practiceIndex === 0 ? props.onBack() : setPracticeIndex((i) => i - 1));
     return shell(
       <>
@@ -380,6 +404,66 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
     );
   }
 
+  // ── Step 1.5 — set the daily contemplative-silence goal ──
+  // Only reached when "Keep contemplative silence" is kept. The minutes here
+  // become the daily contemplation goal (and the per-sit office default), and
+  // turn on the gentle ~7pm nudge.
+  if (step === "silence-goal") {
+    return shell(
+      <>
+        {backRow(() => setStep("choose"))}
+        <div style={{ flex: 1, maxWidth: 480, margin: "0 auto", width: "100%", display: "flex", flexDirection: "column" }}>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key="silence-goal"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              style={{ flex: 1, display: "flex", flexDirection: "column" }}
+            >
+              <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.2px", margin: 0, fontFamily: SANS }}>
+                {t("way_of_love.silence_goal_eyebrow", { defaultValue: "Pray · contemplative silence" })}
+              </p>
+              <h1 style={{ color: CREAM, fontSize: 28, fontWeight: 600, fontFamily: SANS, margin: "12px 0 0" }}>
+                {t("way_of_love.silence_goal_title", { defaultValue: "How much silence a day?" })}
+              </h1>
+              <p style={{ color: SAGE, fontSize: 15, fontFamily: SERIF, fontStyle: "italic", lineHeight: 1.55, margin: "8px 0 0" }}>
+                {t("way_of_love.silence_goal_sub", { defaultValue: "You chose to keep contemplative silence. Set a daily goal — we'll gently remind you around 7pm on days you haven't reached it." })}
+              </p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 26 }}>
+                {SILENCE_GOAL_PRESETS.map((m) => {
+                  const on = silenceGoalMin === m;
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => setSilenceGoalMin(m)}
+                      style={{
+                        background: on ? CHIP_ACTIVE : "transparent",
+                        border: `1px solid ${on ? CHIP_BORDER_ACTIVE : CHIP_BORDER}`,
+                        color: CREAM, borderRadius: 14, padding: "12px 18px", fontSize: 15, fontWeight: 600,
+                        fontFamily: SANS, cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                        transition: "background 0.15s, border-color 0.15s",
+                      }}
+                    >
+                      {on && <Check size={14} strokeWidth={2.5} />}
+                      {m} min
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          </AnimatePresence>
+          <button
+            onClick={() => setStep("covenant")}
+            style={{ marginTop: 20, background: CTA, border: `1px solid ${CHIP_BORDER_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "14px 20px", fontSize: 16, fontWeight: 600, fontFamily: SANS, cursor: "pointer" }}
+          >
+            {t("ruleOfLife.continue", { defaultValue: "Continue" })}
+          </button>
+        </div>
+      </>,
+    );
+  }
+
   // ── Step 2 — the assembled rule + covenant ──
   if (step === "covenant") {
     const appCount = chosen.reduce(
@@ -388,7 +472,7 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
     );
     return shell(
       <>
-        {backRow(() => setStep("choose"))}
+        {backRow(() => setStep(selected.has("pray-silence") ? "silence-goal" : "choose"))}
         <AnimatePresence mode="wait">
           <motion.div
             key="covenant"

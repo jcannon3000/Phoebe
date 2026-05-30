@@ -2381,6 +2381,29 @@ function NewPrayerRequestsCard({
 // default; surfaced (and pinnable to the top) from the Customize page so
 // someone whose daily rhythm is silent prayer can lead with it.
 export function ContemplationHomeCard() {
+  // When a daily contemplation goal is set, show live progress under the title
+  // ("8 of 15 min today" / "Goal reached"). Reads the same office-prefs goal +
+  // contemplation-stats the Contemplation page uses, so they never disagree.
+  const { data: prefs } = useQuery<{ contemplationGoalMinutes?: number }>({
+    queryKey: ["/api/me/office-prefs"],
+    queryFn: () => apiRequest("GET", "/api/me/office-prefs") as Promise<{ contemplationGoalMinutes?: number }>,
+    staleTime: 5 * 60_000,
+  });
+  const goalMin = prefs?.contemplationGoalMinutes ?? 0;
+
+  const todaySince = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); })();
+  const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
+  const { data: stats } = useQuery<{ todaySeconds?: number }>({
+    queryKey: ["/api/me/contemplation-stats", todaySince.slice(0, 10), tz],
+    queryFn: () => apiRequest("GET", `/api/me/contemplation-stats?todaySince=${encodeURIComponent(todaySince)}&tz=${encodeURIComponent(tz)}`) as Promise<{ todaySeconds?: number }>,
+    enabled: goalMin > 0,
+    staleTime: 60_000,
+  });
+
+  const doneMin = Math.floor((stats?.todaySeconds ?? 0) / 60);
+  const met = goalMin > 0 && doneMin >= goalMin;
+  const progressLabel = goalMin <= 0 ? null : met ? "Goal reached 🌿" : `${doneMin} of ${goalMin} min today`;
+
   return (
     <Link href="/contemplation" className="block">
       <div
@@ -2390,12 +2413,22 @@ export function ContemplationHomeCard() {
         style={{ background: "rgba(62,124,122,0.12)", border: "1px solid rgba(62,124,122,0.35)" }}
       >
         <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
-          <p
-            className="font-semibold min-w-0 truncate"
-            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
-          >
-            Contemplation 🕯️
-          </p>
+          <div className="min-w-0">
+            <p
+              className="font-semibold min-w-0 truncate"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
+            >
+              Contemplation 🕯️
+            </p>
+            {progressLabel && (
+              <p
+                className="truncate"
+                style={{ color: met ? "#A8C5A0" : "rgba(143,175,150,0.8)", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12 }}
+              >
+                {progressLabel}
+              </p>
+            )}
+          </div>
           <div
             className="rounded-full text-center shrink-0"
             style={{

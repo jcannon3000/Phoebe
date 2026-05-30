@@ -9,6 +9,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
+import { playOpeningSwell } from "@/lib/amenFeedback";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
 
@@ -273,17 +274,17 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => navigate("/home-beta")}
+                  onClick={() => navigate("/this-week")}
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-opacity hover:opacity-90"
                   style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.28)", marginTop: 8 }}
                 >
-                  <span className="text-lg leading-none w-5 text-center" aria-hidden>🏠</span>
+                  <span className="text-lg leading-none w-5 text-center" aria-hidden>🗓️</span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-                      {t("menu.home_beta", { defaultValue: "Home (beta)" })}
+                      {t("menu.this_week", { defaultValue: "This week" })}
                     </p>
                     <p className="text-[11px]" style={{ color: "#8FAF96", margin: 0 }}>
-                      {t("menu.home_beta_sub", { defaultValue: "Your Way of Love, day by day" })}
+                      {t("menu.this_week_sub", { defaultValue: "Worship, Bless, Go & Rest" })}
                     </p>
                   </div>
                   <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.4)", flexShrink: 0 }} />
@@ -616,7 +617,7 @@ export function Layout({ children }: { children: ReactNode }) {
               </Link>
             )}
             <button
-              onClick={() => setDrawerOpen(true)}
+              onClick={() => { playOpeningSwell(0); setDrawerOpen(true); }}
               className="flex items-center justify-center transition-colors"
               style={{ background: "none", border: "none", padding: 0 }}
               aria-label="Open menu"

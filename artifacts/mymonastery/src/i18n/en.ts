@@ -428,6 +428,31 @@ export const en = {
   // BETA Way of Love home (/home-beta) — the section cards + the per-section
   // pages. Daily/weekly practices, commitments, completion, and the quiet
   // consistency view.
+  bless: {
+    add: "Add a blessing",
+    add_more: "+ Add a blessing",
+    edit: "Edit this blessing",
+    placeholder: "A concrete way to serve someone this week…",
+    recipient: "For someone (optional)",
+    recipient_hint: "On your prayer list: {{names}} — send encouragement?",
+    prompt: "How can you bless your community this week?",
+    progress: "{{done}} of {{total}} this week",
+    type: { note: "Note", visit: "Visit", give: "Give", serve: "Serve", other: "Other" },
+    suggest: {
+      note: "Write a note of encouragement",
+      volunteer: "Volunteer somewhere this week",
+      check: "Check on someone who's struggling",
+      give: "Give to someone in need",
+      meal: "Share a meal with someone",
+    },
+    review_open: "End-of-week review →",
+    reviewed: "✓ Reviewed this week — review again",
+    review_title: "How did this week go?",
+    review_sub: "Check off what you did. Carry over or release the rest — no guilt.",
+    carry_label: "Carry into next week?",
+    carry: "Carry over",
+    review_done: "Done reviewing → set next week",
+  },
   home_beta: {
     eyebrow: "Your Way of Love",
     turn_framing: "The daily return — kept whenever you make space for God.",
