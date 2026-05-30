@@ -206,7 +206,10 @@ export default function HomeBetaPage() {
   return (
     <Layout>
       <div style={{ position: "relative", minHeight: "70vh" }}>
-        <AnimatedBackground base={BG} variant="pronounced" fadeTop />
+        {/* subtle (not pronounced): this page renders inside Layout's
+            opacity 0→1 mount fade, so a high-alpha gradient would visibly
+            "flash" in. The component's own guidance is subtle for home. */}
+        <AnimatedBackground base={BG} variant="subtle" fadeTop />
         <div style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "0 auto", width: "100%", padding: "4px 2px 28px" }}>
           <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 700, fontFamily: FONT, margin: "4px 0 2px" }}>
             {t("home_beta.eyebrow", { defaultValue: "Your Way of Love" })}
