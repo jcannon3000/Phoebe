@@ -7,8 +7,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight, ChevronDown } from "lucide-react";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
-import { openExternal } from "@/lib/openExternal";
-import { FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead, CAC_TODAY_URL, markCacRead } from "@/lib/cacReadState";
 import { isNativeShell } from "@/lib/isNativeShell";
 
 // ─── Color palette (all greens) ───────────────────────────────────────────────
@@ -438,93 +436,13 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   above Practices since the office is the spine of
                   the daily rhythm — users open it first, the
                   contemplative practices are supplemental. */}
-              <MenuSection emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })}>
-                <MenuRow emoji="🌅" label={t("menu.daily_offices")} onClick={() => navigate("/bcp/daily-office")} />
-                <MenuRow emoji="📖" label={t("menu.bcp_prayers")} onClick={() => navigate("/bcp/intercessions")} />
-                <MenuRow emoji="📜" label={t("menu.psalter")} onClick={() => navigate("/bcp/psalter")} />
-                <MenuRow emoji="🙏" label={t("menu.bcp_collects")} onClick={() => navigate("/bcp/collects")} />
-              </MenuSection>
-              <MenuSection emoji="🕯️" label={t("menu.practices")}>
-                <MenuRow emoji="🕯️" label={t("menu.contemplation")} onClick={() => navigate("/contemplation")} />
-                <MenuRow emoji="🌾" label={t("menu.gratitude")} onClick={() => navigate("/gratitude")} />
-                <MenuRow emoji="📓" label={t("menu.journal", { defaultValue: "Journal" })} onClick={() => navigate("/journal")} />
-                <MenuRow emoji="🤔" label={t("menu.examen")} onClick={() => navigate("/examen")} />
-              </MenuSection>
-              {/* Reflections — daily external readings. All three open
-                  via SFSafariView (Browser.open) and stamp today as
-                  read so each source's home card flips to "Read
-                  again." Drawer closes first so the Safari sheet
-                  isn't competing with it for the viewport. */}
-              <MenuSection emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })}>
-                <MenuRow
-                  emoji="📔"
-                  label={t("menu.fdd_daily", { defaultValue: "Forward Day by Day" })}
-                  onClick={() => { onClose(); markFddRead(); openExternal(FDD_TODAY_URL); }}
-                />
-                <MenuRow
-                  emoji="🌵"
-                  label={t("menu.cac_daily", { defaultValue: "CAC Daily Reflection" })}
-                  onClick={() => { onClose(); markCacRead(); openExternal(CAC_TODAY_URL); }}
-                />
-                <MenuRow
-                  emoji="✍🏽"
-                  label={t("menu.ssje_word", { defaultValue: "SSJE Reflections" })}
-                  onClick={() => { onClose(); markSsjeRead(); openExternal(SSJE_TODAY_URL); }}
-                />
-              </MenuSection>
-              {/* Audio — everything to listen to, in one place. The
-                  Forward Movement daily offices read aloud (Morning /
-                  Evening Prayer) plus the full podcast library.
-                  "Podcasts" is a DIRECT link to the searchable
-                  /podcasts library (not a per-publisher dropdown — the
-                  library page groups + searches every publisher
-                  itself). */}
-              <MenuSection emoji="🎧" label={t("menu.audio", { defaultValue: "Audio" })}>
-                <MenuRow
-                  emoji="🌅"
-                  label={t("menu.audio_morning_prayer", { defaultValue: "Morning Prayer" })}
-                  onClick={() => navigate("/podcast/morning-office")}
-                />
-                <MenuRow
-                  emoji="🌙"
-                  label={t("menu.audio_evening_prayer", { defaultValue: "Evening Prayer" })}
-                  onClick={() => navigate("/podcast/evening-office")}
-                />
-                <MenuRow
-                  emoji="🎙️"
-                  label={t("menu.podcasts", { defaultValue: "Podcasts" })}
-                  onClick={() => navigate("/podcasts")}
-                />
-                <MenuRow
-                  emoji="🕯️"
-                  label={t("menu.reflect_sit", { defaultValue: "Reflect & Sit" })}
-                  onClick={() => navigate("/reflect/fdd")}
-                />
-              </MenuSection>
-              {/* Resources — non-prayer, non-reflection reference
-                  surfaces. Sunday Lectionary opens externally to
-                  lectionarypage.net via /api/lectionary/today (the
-                  server resolves "this Sunday" from the seed and 302s
-                  to the canonical reader). Find a Church links to the
-                  Episcopal Church's national parish finder — a flat
-                  URL, no redirect needed because the finder picks the
-                  user's location client-side. Saints is now visible
-                  to everyone; the "Beta" badge stays so readers know
-                  the index is still growing. */}
-              <MenuSection emoji="📚" label={t("menu.resources", { defaultValue: "Resources" })}>
-                <MenuRow
-                  emoji="📅"
-                  label={t("menu.sunday_lectionary", { defaultValue: "Sunday Lectionary" })}
-                  onClick={() => { onClose(); openExternal("https://withphoebe.app/api/lectionary/today"); }}
-                />
-                <MenuRow
-                  emoji="⛪"
-                  label={t("menu.find_a_church", { defaultValue: "Find a Church" })}
-                  onClick={() => { onClose(); openExternal("https://www.episcopalchurch.org/find-a-church/"); }}
-                />
-                <MenuRow emoji="😇" label={t("menu.saints")} badge={t("menu.beta")} onClick={() => navigate("/saints")} />
-                <MenuRow emoji="📰" label={t("menu.building_faith", { defaultValue: "Building Faith" })} onClick={() => navigate("/building-faith")} />
-              </MenuSection>
+              {/* Each category is a single row that navigates to its own
+                  list page (MenuHub style) rather than expanding inline. */}
+              <MenuRow emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })} onClick={() => navigate("/menu/bcp")} />
+              <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => navigate("/menu/practices")} />
+              <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => navigate("/menu/reflections")} />
+              <MenuRow emoji="🎧" label={t("menu.audio", { defaultValue: "Audio" })} onClick={() => navigate("/menu/audio")} />
+              <MenuRow emoji="📚" label={t("menu.resources", { defaultValue: "Resources" })} onClick={() => navigate("/menu/resources")} />
               {showLetters && (
                 <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
               )}
@@ -706,20 +624,25 @@ export function Layout({ children }: { children: ReactNode }) {
                 {t("header.people")}
               </Link>
             )}
-            <Link
-              href="/menu"
-              className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
-              style={{
-                fontFamily: "'Space Grotesk', sans-serif",
-                letterSpacing: "-0.01em",
-                background: "rgba(200,212,192,0.08)",
-                color: "#C8D4C0",
-                border: "1px solid rgba(46,107,64,0.3)",
-              }}
+            <button
+              onClick={() => setDrawerOpen(true)}
+              className="flex items-center justify-center transition-colors"
+              style={{ background: "none", border: "none", padding: 0 }}
               aria-label="Open menu"
             >
-              {t("header.menu")}
-            </Link>
+              <span
+                className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  letterSpacing: "-0.01em",
+                  background: "rgba(200,212,192,0.08)",
+                  color: "#C8D4C0",
+                  border: "1px solid rgba(46,107,64,0.3)",
+                }}
+              >
+                {t("header.menu")}
+              </span>
+            </button>
           </div>
         )}
       </header>

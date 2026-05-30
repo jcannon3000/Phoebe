@@ -2,19 +2,24 @@
  * BETA home — organized by The Episcopal Church's Way of Love.
  *
  * A flagged, beta-only alternative to /dashboard (gated on rawIsBeta), living
- * ALONGSIDE the existing home. Six sections in Bishop Budde's daily/weekly
- * order — Turn, Learn & Pray (daily); Worship, Bless, Go, Rest (weekly) —
- * each a card showing the user's rule-of-life commitment, whether it's done
- * (today / this week), and a quiet "weeks kept" consistency line. Tapping a
- * card opens that section's page (/home-beta/:section); the completion circle
- * toggles done.
+ * ALONGSIDE the existing home. The Way of Love's daily/weekly order, but in the
+ * production home's card LANGUAGE rather than six identical rows:
+ *
+ *   • Turn — a thin daily card.
+ *   • Learn & Pray — an unboxed section header over the REUSED production
+ *     office hero (PrayerOfficeCard), Contemplation, and CAC cards.
+ *   • Worship & Gather — an unboxed section header over the REUSED service /
+ *     gathering cards (Sunday worship, Wednesday meal, …) + an "I worshipped
+ *     this week" affordance.
+ *   • Bless / Go / Rest — full weekly cards with action chips.
  *
  * Reads, never rebuilds: commitments from /api/rule-of-life/wol, completion
  * from /api/practice-completion (+ Learn & Pray derived from the office
- * history so the user never double-logs prayer they already prayed).
+ * history so the user never double-logs prayer they already prayed). All the
+ * grouped cards are IMPORTED from the production home, not re-implemented.
  */
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -24,6 +29,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { PRACTICES, type PracticeId } from "@/lib/wayOfLove";
+// Reused production home cards + helpers (exported from dashboard, not rebuilt).
+import {
+  PrayerOfficeCard,
+  ContemplationHomeCard,
+  CacHomeCard,
+  ServiceCard,
+  ConsolidatedServiceCard,
+  GatheringCard,
+  ConsolidatedServiceDetailModal,
+  nextOccurrenceDate,
+  computeNextGatheringDate,
+  type ServiceSchedule,
+} from "@/pages/dashboard";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -32,8 +50,12 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 const BG = "#091A10";
 const CARD = "rgba(46,107,64,0.12)";
 const CARD_B = "rgba(46,107,64,0.26)";
-const DONE_BG = "rgba(46,107,64,0.5)";
-const DONE_B = "rgba(168,197,160,0.7)";
+const DONE_TINT = "rgba(46,107,64,0.22)"; // done card surface — a touch greener
+const DONE_TINT_B = "rgba(168,197,160,0.45)";
+const DONE_BG = "rgba(46,107,64,0.55)"; // filled completion check
+const DONE_B = "rgba(168,197,160,0.8)";
+const CHIP_BG = "rgba(46,107,64,0.20)";
+const CHIP_B = "rgba(46,107,64,0.45)";
 
 export type SectionKey = "turn" | "learn_pray" | "worship" | "bless" | "go" | "rest";
 
@@ -48,11 +70,11 @@ export type SectionDef = {
 };
 
 // Order matters — Turn leads, then the combined daily Learn & Pray, then the
-// four weekly practices.
+// weekly practices.
 export const SECTIONS: SectionDef[] = [
   { key: "turn", practices: ["turn"], theme: "turn", daily: true, emoji: "🔄", title: "Turn", definition: "Pause, listen, and return to the way of Jesus." },
   { key: "learn_pray", practices: ["learn", "pray"], theme: "learn", daily: true, emoji: "📖", title: "Learn & Pray", definition: "Sit with Scripture and dwell with God each day." },
-  { key: "worship", practices: ["worship"], theme: "worship", daily: false, emoji: "⛪", title: "Worship", definition: "Gather with others to thank, praise, and dwell with God." },
+  { key: "worship", practices: ["worship"], theme: "worship", daily: false, emoji: "⛪", title: "Worship & gather", definition: "Gather with others to thank and praise God." },
   { key: "bless", practices: ["bless"], theme: "bless", daily: false, emoji: "🤲", title: "Bless", definition: "Share faith, and give and serve generously." },
   { key: "go", practices: ["go"], theme: "go", daily: false, emoji: "🌍", title: "Go", definition: "Cross boundaries, listen deeply, and live like Jesus." },
   { key: "rest", practices: ["rest"], theme: "rest", daily: false, emoji: "🌙", title: "Rest", definition: "Receive the gift of God's grace, peace, and restoration." },
@@ -72,6 +94,7 @@ function addWeeks(d: Date, n: number): Date {
   x.setDate(x.getDate() + n * 7);
   return x;
 }
+function startOfDay(d: Date): Date { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
 
 const DAILY_KEPT_THRESHOLD = 5; // ≥5 of 7 daily completions = a week kept (gracious)
 
@@ -92,6 +115,48 @@ export function commitmentLines(def: SectionDef, sel: WolSelections): string[] {
     if (s.custom?.trim()) out.push(s.custom.trim());
   }
   return out;
+}
+
+// ── Worship & Gather items — same consolidation the production feed uses,
+// scoped to just this section: services grouped by day-of-week, gatherings by
+// their next meetup, future-only, soonest first. Reuses the exported pure
+// date helpers so the cards land on the same dates as the real home.
+type WorshipItem =
+  | { kind: "service"; schedule: ServiceSchedule; nextDate: Date; isOnDate: boolean }
+  | { kind: "services"; schedules: ServiceSchedule[]; nextDate: Date; isOnDate: boolean }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- ritual shape mirrors dashboard's `any[]` rituals
+  | { kind: "gathering"; r: any; nextDate: Date; isOnDate: boolean };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mirrors dashboard's rituals typing
+function buildWorshipItems(schedules: ServiceSchedule[], rituals: any[]): WorshipItem[] {
+  const todayMs = startOfDay(new Date()).getTime();
+  const items: WorshipItem[] = [];
+
+  const byDow = new Map<number, ServiceSchedule[]>();
+  for (const s of schedules) {
+    if (!s.times?.length) continue;
+    const arr = byDow.get(s.dayOfWeek) ?? [];
+    arr.push(s);
+    byDow.set(s.dayOfWeek, arr);
+  }
+  for (const [dow, list] of byDow.entries()) {
+    const nextDate = nextOccurrenceDate(dow);
+    const isOnDate = nextDate.getTime() === todayMs;
+    items.push(list.length === 1
+      ? { kind: "service", schedule: list[0]!, nextDate, isOnDate }
+      : { kind: "services", schedules: list, nextDate, isOnDate });
+  }
+
+  for (const r of rituals) {
+    const next = computeNextGatheringDate(r);
+    if (!next) continue;
+    const d = startOfDay(next);
+    if (d.getTime() < todayMs) continue; // past
+    items.push({ kind: "gathering", r, nextDate: next, isOnDate: d.getTime() === todayMs });
+  }
+
+  items.sort((a, b) => a.nextDate.getTime() - b.nextDate.getTime());
+  return items.slice(0, 4);
 }
 
 export default function HomeBetaPage() {
@@ -125,9 +190,45 @@ export default function HomeBetaPage() {
     enabled: !!user,
     staleTime: 30_000,
   });
+  // Worship & Gather sources — same endpoints the production home reads.
+  const svcQ = useQuery<{ schedules: ServiceSchedule[] }>({
+    queryKey: ["/api/me/service-schedules"],
+    queryFn: () => apiRequest("GET", "/api/me/service-schedules"),
+    enabled: !!user,
+    staleTime: 5 * 60_000,
+  });
+  const ritualsQ = useQuery<any[]>({
+    queryKey: ["/api/rituals", user?.id],
+    queryFn: () => apiRequest("GET", `/api/rituals?ownerId=${user!.id}`),
+    enabled: !!user,
+    staleTime: 5 * 60_000,
+  });
+  // Bless chip count — active prayer requests on the viewer's list.
+  const prayerQ = useQuery<unknown>({
+    queryKey: ["/api/prayer-requests"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests"),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
 
   const selections = wolQ.data?.selections ?? {};
   const rows = useMemo(() => compQ.data?.completions ?? [], [compQ.data]);
+
+  const worshipItems = useMemo(
+    () => buildWorshipItems(svcQ.data?.schedules ?? [], ritualsQ.data ?? []),
+    [svcQ.data, ritualsQ.data],
+  );
+  const prayerListCount = useMemo(() => {
+    const d = prayerQ.data as unknown;
+    if (Array.isArray(d)) return d.length;
+    if (d && typeof d === "object" && Array.isArray((d as { requests?: unknown[] }).requests)) {
+      return (d as { requests: unknown[] }).requests.length;
+    }
+    return 0;
+  }, [prayerQ.data]);
+
+  // Service-card tap → the same detail modal the production home opens.
+  const [openSvc, setOpenSvc] = useState<{ schedules: ServiceSchedule[]; nextDate: Date } | null>(null);
 
   const today = ymd(new Date());
   const thisWeekStart = ymd(sundayStart(new Date()));
@@ -139,7 +240,6 @@ export default function HomeBetaPage() {
     return !!last && last.ymd === today && (last.morning || last.evening);
   }, [officeQ.data, today]);
 
-  // Set membership helpers over the completion rows.
   const has = (section: string, localDate: string) =>
     rows.some((r) => r.section === section && r.localDate === localDate);
 
@@ -166,12 +266,10 @@ export default function HomeBetaPage() {
 
   // For each section: done?, the localDate the toggle acts on, and weeks-kept.
   function sectionState(def: SectionDef) {
-    const periodDate = def.daily ? today : thisWeekStart; // the row key for "this period"
+    const periodDate = def.daily ? today : thisWeekStart;
     let done = has(def.key, periodDate);
     if (def.key === "learn_pray" && officePrayedToday) done = true;
 
-    // weeks kept — current run of consecutive kept weeks (gracious: an
-    // in-progress, not-yet-kept current week doesn't break the run).
     const keptWeek = (weekStartYmd: string): boolean => {
       if (def.daily) {
         const n = rows.filter((r) => r.section === def.key && r.weekStart === weekStartYmd).length;
@@ -190,8 +288,7 @@ export default function HomeBetaPage() {
 
   const toggle = (def: SectionDef, done: boolean, periodDate: string) => {
     if (done) {
-      // Learn & Pray "done" can come from the office; only the manual row is removable.
-      if (def.key === "learn_pray" && officePrayedToday) return;
+      if (def.key === "learn_pray" && officePrayedToday) return; // office-derived; not manually removable
       unmark.mutate({ section: def.key, localDate: periodDate });
     } else {
       mark.mutate({ section: def.key, localDate: periodDate, weekStart: thisWeekStart });
@@ -203,94 +300,280 @@ export default function HomeBetaPage() {
   const loading = wolQ.isLoading || compQ.isLoading || officeQ.isLoading;
   const dateLabel = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
 
+  // ── Small shared pieces (anchored left, production language) ──────────────
+
+  const checkCircle = (done: boolean, onClick: () => void, size = 26) => (
+    <button
+      type="button"
+      aria-label={done ? "Mark not done" : "Mark done"}
+      onClick={onClick}
+      style={{
+        flexShrink: 0, width: size, height: size, borderRadius: 999, cursor: "pointer", padding: 0,
+        background: done ? DONE_BG : "transparent",
+        border: `2px solid ${done ? DONE_B : "rgba(143,175,150,0.4)"}`,
+        color: WARM, display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: size * 0.55, lineHeight: 1,
+      }}
+    >
+      {done ? "✓" : ""}
+    </button>
+  );
+
+  const tag = (label: string) => (
+    <span style={{ color: SAGE_DIM, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, fontFamily: FONT, border: `1px solid ${CARD_B}`, borderRadius: 999, padding: "2px 7px" }}>
+      {label}
+    </span>
+  );
+
+  const statusLine = (def: SectionDef, done: boolean, weeksKept: number) => (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      <span style={{ color: done ? SAGE : SAGE_DIM, fontSize: 11.5, fontFamily: FONT }}>
+        {done
+          ? (def.daily ? t("home_beta.done_today", { defaultValue: "Done today" }) : t("home_beta.done_week", { defaultValue: "Done this week" }))
+          : (def.daily ? t("home_beta.not_today", { defaultValue: "Not yet today" }) : t("home_beta.not_week", { defaultValue: "Not yet this week" }))}
+      </span>
+      {weeksKept > 0 && (
+        <span style={{ color: SAGE_DIM, fontSize: 11.5, fontFamily: FONT, display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <span aria-hidden style={{ fontSize: 11 }}>🌱</span>
+          {t("home_beta.weeks_kept", { defaultValue: "Kept for {{count}} weeks", count: weeksKept })}
+        </span>
+      )}
+    </div>
+  );
+
+  const commitmentOrSet = (def: SectionDef, lines: string[]) =>
+    lines.length > 0 ? (
+      <p style={{ color: WARM, fontSize: 13.5, fontFamily: FONT, margin: 0, lineHeight: 1.45 }}>{lines.join(" · ")}</p>
+    ) : (
+      <button
+        type="button"
+        onClick={() => setLocation("/rule-of-life")}
+        style={{ background: "none", border: "none", padding: 0, color: "rgba(168,197,160,0.95)", fontSize: 13, fontFamily: FONT, textDecoration: "underline", cursor: "pointer", textAlign: "left" }}
+      >
+        {t("home_beta.set_practice", { defaultValue: "Set your {{title}} practice →", title: def.title })}
+      </button>
+    );
+
+  const chip = (label: string, onClick: () => void, filled = false) => (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        background: filled ? CHIP_BG : "transparent", border: `1px solid ${CHIP_B}`, color: filled ? WARM : SAGE,
+        borderRadius: 999, padding: "7px 13px", fontSize: 12.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer", whiteSpace: "nowrap",
+      }}
+    >
+      {label}
+    </button>
+  );
+
+  // A full weekly boxed card (Bless / Go / Rest) with action chips beneath.
+  const boxedCard = (def: SectionDef, chips: React.ReactNode) => {
+    const { done, periodDate, weeksKept } = sectionState(def);
+    const lines = commitmentLines(def, selections);
+    return (
+      <div key={def.key} style={{ background: done ? DONE_TINT : CARD, border: `1px solid ${done ? DONE_TINT_B : CARD_B}`, borderRadius: 18, padding: "14px 16px" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+          {checkCircle(done, () => toggle(def, done, periodDate))}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 18 }}>{def.emoji}</span>
+              <span style={{ color: WARM, fontSize: 16, fontWeight: 700, fontFamily: FONT }}>{def.title}</span>
+              {tag(t("home_beta.weekly", { defaultValue: "weekly" }))}
+            </div>
+            {commitmentOrSet(def, lines)}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{chips}</div>
+            {statusLine(def, done, weeksKept)}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // An unboxed section header (Learn & Pray / Worship & Gather).
+  const sectionHeader = (def: SectionDef, subtitle: string) => {
+    const { done, periodDate, weeksKept } = sectionState(def);
+    return (
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "2px 2px 0" }}>
+        {checkCircle(done, () => toggle(def, done, periodDate), 24)}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 17 }}>{def.emoji}</span>
+            <h2 style={{ color: WARM, fontSize: 17, fontWeight: 700, fontFamily: FONT, margin: 0 }}>{def.title}</h2>
+            {tag(def.daily ? t("home_beta.daily", { defaultValue: "daily" }) : t("home_beta.weekly", { defaultValue: "weekly" }))}
+          </div>
+          <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, margin: "4px 0 6px", lineHeight: 1.4 }}>{subtitle}</p>
+          {statusLine(def, done, weeksKept)}
+        </div>
+      </div>
+    );
+  };
+
+  const turnDef = SECTIONS.find((s) => s.key === "turn")!;
+  const learnPrayDef = SECTIONS.find((s) => s.key === "learn_pray")!;
+  const worshipDef = SECTIONS.find((s) => s.key === "worship")!;
+  const blessDef = SECTIONS.find((s) => s.key === "bless")!;
+  const goDef = SECTIONS.find((s) => s.key === "go")!;
+  const restDef = SECTIONS.find((s) => s.key === "rest")!;
+
+  // ── Turn — a thin, single-row daily card ──
+  const turnState = sectionState(turnDef);
+  const turnLines = commitmentLines(turnDef, selections);
+  const turnCard = (
+    <div style={{ background: turnState.done ? DONE_TINT : CARD, border: `1px solid ${turnState.done ? DONE_TINT_B : CARD_B}`, borderRadius: 18, padding: "11px 14px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+        {checkCircle(turnState.done, () => toggle(turnDef, turnState.done, turnState.periodDate), 24)}
+        <span style={{ fontSize: 17 }}>{turnDef.emoji}</span>
+        <span style={{ color: WARM, fontSize: 15.5, fontWeight: 700, fontFamily: FONT }}>{turnDef.title}</span>
+        {tag(t("home_beta.daily", { defaultValue: "daily" }))}
+        <span style={{ marginLeft: "auto", color: SAGE_DIM, fontSize: 16 }}>›</span>
+      </div>
+      <div style={{ paddingLeft: 35, marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
+        {commitmentOrSet(turnDef, turnLines)}
+        {statusLine(turnDef, turnState.done, turnState.weeksKept)}
+      </div>
+    </div>
+  );
+
   return (
     <Layout>
       <div style={{ position: "relative", minHeight: "70vh" }}>
-        {/* subtle (not pronounced): this page renders inside Layout's
-            opacity 0→1 mount fade, so a high-alpha gradient would visibly
-            "flash" in. The component's own guidance is subtle for home. */}
         <AnimatedBackground base={BG} variant="subtle" fadeTop />
         <div style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "0 auto", width: "100%", padding: "4px 2px 28px" }}>
           <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 700, fontFamily: FONT, margin: "4px 0 2px" }}>
             {t("home_beta.eyebrow", { defaultValue: "Your Way of Love" })}
           </p>
-          <h1 style={{ color: WARM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: "0 0 16px" }}>{dateLabel}</h1>
+          <h1 style={{ color: WARM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: "0 0 18px" }}>{dateLabel}</h1>
 
           {loading ? (
             <p style={{ color: SAGE_DIM, fontSize: 14, fontFamily: FONT }}>{t("common.loading", { defaultValue: "Loading…" })}</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {SECTIONS.map((def) => {
-                const { done, periodDate, weeksKept } = sectionState(def);
-                const lines = commitmentLines(def, selections);
-                const hasCommitment = lines.length > 0;
-                const prominent = def.key === "turn"; // Turn leads — show consistency most
-                return (
-                  <div key={def.key} style={{ background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 16, overflow: "hidden" }}>
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "14px 16px" }}>
-                      {/* Completion circle — toggles done */}
-                      <button
-                        type="button"
-                        aria-label={done ? "Mark not done" : "Mark done"}
-                        onClick={() => toggle(def, done, periodDate)}
-                        style={{
-                          flexShrink: 0, marginTop: 2, width: 26, height: 26, borderRadius: 999, cursor: "pointer",
-                          background: done ? DONE_BG : "transparent",
-                          border: `2px solid ${done ? DONE_B : "rgba(143,175,150,0.4)"}`,
-                          color: WARM, display: "flex", alignItems: "center", justifyContent: "center", padding: 0, fontSize: 14, lineHeight: 1,
-                        }}
-                      >
-                        {done ? "✓" : ""}
-                      </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+              {/* 1 — TURN (thin daily card) */}
+              {turnCard}
 
-                      {/* Body — taps into the section page */}
-                      <button
-                        type="button"
-                        onClick={() => setLocation(`/home-beta/${def.key}`)}
-                        style={{ flex: 1, minWidth: 0, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontSize: 18 }}>{def.emoji}</span>
-                          <span style={{ color: WARM, fontSize: 16, fontWeight: 700, fontFamily: FONT }}>
-                            {t(`home_beta.section.${def.key}`, { defaultValue: def.title })}
-                          </span>
-                          <span style={{ marginLeft: "auto", color: SAGE_DIM, fontSize: 16 }}>›</span>
-                        </div>
-                        <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, margin: "4px 0 0", lineHeight: 1.4 }}>{def.definition}</p>
+              {/* 2 — LEARN & PRAY (header + reused production cards) */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+                {sectionHeader(learnPrayDef, t("home_beta.learn_pray_sub", { defaultValue: "Sit with Scripture and dwell with God each day." }))}
+                <PrayerOfficeCard />
+                <ContemplationHomeCard />
+                <CacHomeCard />
+              </div>
 
-                        {hasCommitment ? (
-                          <p style={{ color: WARM, fontSize: 13.5, fontFamily: FONT, margin: "9px 0 0", lineHeight: 1.45 }}>
-                            {lines.join(" · ")}
-                          </p>
-                        ) : (
-                          <span
-                            onClick={(e) => { e.stopPropagation(); setLocation("/rule-of-life"); }}
-                            style={{ display: "inline-block", color: "rgba(168,197,160,0.95)", fontSize: 13, fontFamily: FONT, margin: "9px 0 0", textDecoration: "underline" }}
-                          >
-                            {t("home_beta.set_practice", { defaultValue: "Set your {{title}} practice →", title: def.title })}
-                          </span>
-                        )}
+              {/* 3 — WORSHIP & GATHER (header + reused service/gathering cards) */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+                {sectionHeader(worshipDef, t("home_beta.worship_sub", { defaultValue: "Gather with others to thank and praise God." }))}
+                {worshipItems.length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setLocation("/communities")}
+                    style={{ background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 18, padding: "14px 16px", color: SAGE, fontSize: 13.5, fontFamily: FONT, textAlign: "left", cursor: "pointer" }}
+                  >
+                    {t("home_beta.worship_empty", { defaultValue: "Find a community to worship with →" })}
+                  </button>
+                ) : (
+                  worshipItems.map((item, i) => {
+                    if (item.kind === "service") {
+                      return (
+                        <ServiceCard
+                          key={`wol-svc-${item.schedule.id}`}
+                          schedule={item.schedule}
+                          nextDate={item.nextDate}
+                          isOnDate={item.isOnDate}
+                          keyPrefix="wol-worship"
+                          onOpen={() => setOpenSvc({ schedules: [item.schedule], nextDate: item.nextDate })}
+                        />
+                      );
+                    }
+                    if (item.kind === "services") {
+                      return (
+                        <ConsolidatedServiceCard
+                          key={`wol-svcs-${item.schedules.map((s) => s.id).join("-")}`}
+                          schedules={item.schedules}
+                          nextDate={item.nextDate}
+                          isOnDate={item.isOnDate}
+                          keyPrefix="wol-worship"
+                          onOpen={() => setOpenSvc({ schedules: item.schedules, nextDate: item.nextDate })}
+                        />
+                      );
+                    }
+                    return (
+                      <GatheringCard
+                        key={`wol-gathering-${item.r.id ?? i}`}
+                        r={item.r}
+                        keyPrefix="wol-worship"
+                        onOpen={() => setLocation(`/gatherings/${item.r.id}`)}
+                      />
+                    );
+                  })
+                )}
+                {/* Gentle weekly-complete affordance */}
+                {(() => {
+                  const { done, periodDate } = sectionState(worshipDef);
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => toggle(worshipDef, done, periodDate)}
+                      style={{ alignSelf: "flex-start", background: done ? CHIP_BG : "transparent", border: `1px solid ${CHIP_B}`, color: done ? WARM : SAGE, borderRadius: 999, padding: "8px 14px", fontSize: 12.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer", marginTop: 2 }}
+                    >
+                      {done
+                        ? t("home_beta.worshipped_done", { defaultValue: "✓ Worshipped this week" })
+                        : t("home_beta.worshipped_mark", { defaultValue: "I worshipped this week" })}
+                    </button>
+                  );
+                })()}
+              </div>
 
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "9px 0 0" }}>
-                          <span style={{ color: done ? SAGE : SAGE_DIM, fontSize: 11.5, fontFamily: FONT }}>
-                            {done
-                              ? (def.daily ? t("home_beta.done_today", { defaultValue: "Done today" }) : t("home_beta.done_week", { defaultValue: "Done this week" }))
-                              : (def.daily ? t("home_beta.not_today", { defaultValue: "Not yet today" }) : t("home_beta.not_week", { defaultValue: "Not yet this week" }))}
-                          </span>
-                          {weeksKept > 0 && (
-                            <span style={{ color: SAGE_DIM, fontSize: 11.5, fontFamily: FONT, fontWeight: prominent ? 700 : 400 }}>
-                              · {t("home_beta.weeks_kept", { defaultValue: "Kept for {{count}} weeks", count: weeksKept })}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+              {/* 4 — BLESS (weekly card + chips) */}
+              {boxedCard(blessDef, (
+                <>
+                  {chip(
+                    prayerListCount > 0
+                      ? t("home_beta.bless_pray_n", { defaultValue: "Pray for {{count}} on your list →", count: prayerListCount })
+                      : t("home_beta.bless_pray", { defaultValue: "Pray for your list →" }),
+                    () => setLocation("/prayer-list"),
+                  )}
+                  {chip(t("home_beta.mark_done", { defaultValue: "Mark done" }), () => {
+                    const { done, periodDate } = sectionState(blessDef);
+                    toggle(blessDef, done, periodDate);
+                  }, true)}
+                </>
+              ))}
+
+              {/* 5 — GO (weekly card + justice-feed chips) */}
+              {boxedCard(goDef, (
+                <>
+                  {chip(t("home_beta.go_creation", { defaultValue: "Creation Care →" }), () => setLocation("/prayer-feeds/phoebe-climate"))}
+                  {chip(t("home_beta.go_justice", { defaultValue: "Racial Justice →" }), () => setLocation("/prayer-feeds"))}
+                </>
+              ))}
+
+              {/* 6 — REST (weekly card + carve-out chip) */}
+              {boxedCard(restDef, (
+                <>
+                  {chip(t("home_beta.rest_carve", { defaultValue: "Carve out a time →" }), () => setLocation("/bcp/daily-office/settings?side=evening"))}
+                </>
+              ))}
+
+              {/* Footer */}
+              <button
+                type="button"
+                onClick={() => setLocation("/rule-of-life")}
+                style={{ alignSelf: "center", background: "none", border: "none", color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, textDecoration: "underline", cursor: "pointer", marginTop: 4 }}
+              >
+                {t("home_beta.customize", { defaultValue: "Customize your Way of Love" })}
+              </button>
             </div>
           )}
         </div>
+
+        {openSvc && (
+          <ConsolidatedServiceDetailModal
+            schedules={openSvc.schedules}
+            nextDate={openSvc.nextDate}
+            onClose={() => setOpenSvc(null)}
+          />
+        )}
       </div>
     </Layout>
   );
