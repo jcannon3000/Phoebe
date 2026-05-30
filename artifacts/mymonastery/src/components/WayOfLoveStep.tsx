@@ -133,7 +133,10 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
   const [practiceIndex, setPracticeIndex] = useState(0);
   // All seven on: default each practice to its first prefilled option.
   const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(PRACTICE_ORDER.map((pid) => PRACTICES[pid].options[0]?.id).filter(Boolean) as string[]),
+    // Every practice defaults to its first prefilled option — EXCEPT Turn,
+    // which is the framing/spine, not a thing you "set". Its confession /
+    // examen / psalm-51 options stay available but optional (unselected).
+    () => new Set(PRACTICE_ORDER.filter((pid) => pid !== "turn").map((pid) => PRACTICES[pid].options[0]?.id).filter(Boolean) as string[]),
   );
   // Per-practice "write your own" commitments, keyed by practice id.
   const [custom, setCustom] = useState<Record<string, string>>({});

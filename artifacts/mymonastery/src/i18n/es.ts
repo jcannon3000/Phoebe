@@ -424,6 +424,9 @@ export const es: Translations = {
   // cumplimiento y la vista serena de constancia.
   home_beta: {
     eyebrow: "Tu Camino del Amor",
+    turn_framing: "El regreso diario — guardado cada vez que haces espacio para Dios.",
+    turn_made_space: "Has hecho espacio {{count}} veces",
+    turn_begin: "Haz espacio para Dios hoy",
     daily: "diario",
     weekly: "semanal",
     learn_pray_sub: "Siéntate con la Escritura y mora con Dios cada día.",

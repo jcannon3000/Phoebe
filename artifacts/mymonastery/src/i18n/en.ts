@@ -430,6 +430,9 @@ export const en = {
   // consistency view.
   home_beta: {
     eyebrow: "Your Way of Love",
+    turn_framing: "The daily return — kept whenever you make space for God.",
+    turn_made_space: "You've made space {{count}} times",
+    turn_begin: "Make space for God today",
     daily: "daily",
     weekly: "weekly",
     learn_pray_sub: "Sit with Scripture and dwell with God each day.",

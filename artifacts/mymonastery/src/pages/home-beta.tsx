@@ -29,6 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { PRACTICES, type PracticeId } from "@/lib/wayOfLove";
+import { computeTurnConsistency, engagementDays } from "@/lib/turnConsistency";
 // Reused production home cards + helpers (exported from dashboard, not rebuilt).
 import {
   PrayerOfficeCard,
@@ -38,6 +39,7 @@ import {
   ConsolidatedServiceCard,
   GatheringCard,
   ConsolidatedServiceDetailModal,
+  SectionHeader,
   nextOccurrenceDate,
   computeNextGatheringDate,
   type ServiceSchedule,
@@ -390,22 +392,18 @@ export default function HomeBetaPage() {
     );
   };
 
-  // An unboxed section header (Learn & Pray / Worship & Gather).
-  const sectionHeader = (def: SectionDef, subtitle: string) => {
-    const { done, periodDate, weeksKept } = sectionState(def);
+  // Right-aligned completion status for a section divider header. The
+  // "today" vs "this week" phrasing carries the daily/weekly distinction, so
+  // there's no separate pill; the check rides with the status.
+  const headerStatus = (def: SectionDef) => {
+    const { done } = sectionState(def);
+    const label = done
+      ? (def.daily ? t("home_beta.done_today", { defaultValue: "Done today" }) : t("home_beta.done_week", { defaultValue: "Done this week" }))
+      : (def.daily ? t("home_beta.not_today", { defaultValue: "Not yet today" }) : t("home_beta.not_week", { defaultValue: "Not yet this week" }));
     return (
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "2px 2px 0" }}>
-        {checkCircle(done, () => toggle(def, done, periodDate), 24)}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 17 }}>{def.emoji}</span>
-            <h2 style={{ color: WARM, fontSize: 17, fontWeight: 700, fontFamily: FONT, margin: 0 }}>{def.title}</h2>
-            {tag(def.daily ? t("home_beta.daily", { defaultValue: "daily" }) : t("home_beta.weekly", { defaultValue: "weekly" }))}
-          </div>
-          <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, margin: "4px 0 6px", lineHeight: 1.4 }}>{subtitle}</p>
-          {statusLine(def, done, weeksKept)}
-        </div>
-      </div>
+      <span style={{ color: done ? SAGE : SAGE_DIM, fontSize: 12, fontFamily: FONT, whiteSpace: "nowrap", flexShrink: 0 }}>
+        {label}{done ? " ✓" : ""}
+      </span>
     );
   };
 
@@ -416,30 +414,72 @@ export default function HomeBetaPage() {
   const goDef = SECTIONS.find((s) => s.key === "go")!;
   const restDef = SECTIONS.find((s) => s.key === "rest")!;
 
-  // ── Turn — a thin, single-row daily card ──
-  const turnState = sectionState(turnDef);
-  const turnLines = commitmentLines(turnDef, selections);
-  const turnCard = (
-    <div style={{ background: turnState.done ? DONE_TINT : CARD, border: `1px solid ${turnState.done ? DONE_TINT_B : CARD_B}`, borderRadius: 18, padding: "11px 14px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-        {checkCircle(turnState.done, () => toggle(turnDef, turnState.done, turnState.periodDate), 24)}
-        <span style={{ fontSize: 17 }}>{turnDef.emoji}</span>
-        <span style={{ color: WARM, fontSize: 15.5, fontWeight: 700, fontFamily: FONT }}>{turnDef.title}</span>
-        {tag(t("home_beta.daily", { defaultValue: "daily" }))}
+  // ── Turn — the consistency crown (auto-filled; never "set" or ticked) ──
+  // Turn is the daily return, kept by DOING any practice. It reads engagement
+  // from the same data the sections already fetch — no separate tracking, no
+  // toggle, no "set your Turn practice."
+  // Plain computation (NOT a hook) — this runs after the early return above, so
+  // a useMemo here would violate the rules of hooks. engagementDays is cheap.
+  const turnEngaged = engagementDays(rows.map((r) => r.localDate), officeQ.data?.days ?? []);
+  const turn = computeTurnConsistency(turnEngaged);
+  const turnWeek = Array.from({ length: 7 }, (_, i) => {
+    const d = sundayStart(new Date()); d.setDate(d.getDate() + i);
+    const key = ymd(d);
+    return { key, done: turnEngaged.has(key), isToday: key === today, future: key > today };
+  });
+  const turnCrown = (
+    <button
+      type="button"
+      onClick={() => setLocation("/home-beta/turn")}
+      style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "linear-gradient(180deg, rgba(46,107,64,0.24), rgba(46,107,64,0.10))", border: `1px solid ${DONE_TINT_B}`, borderRadius: 18, padding: "16px 18px" }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 18 }}>{turnDef.emoji}</span>
+        <span style={{ color: WARM, fontSize: 16, fontWeight: 700, fontFamily: FONT }}>
+          {t("home_beta.section.turn", { defaultValue: "Turn" })}
+        </span>
         <span style={{ marginLeft: "auto", color: SAGE_DIM, fontSize: 16 }}>›</span>
       </div>
-      <div style={{ paddingLeft: 35, marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
-        {commitmentOrSet(turnDef, turnLines)}
-        {statusLine(turnDef, turnState.done, turnState.weeksKept)}
+      <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, margin: "5px 0 0", lineHeight: 1.4 }}>
+        {t("home_beta.turn_framing", { defaultValue: "The daily return — kept whenever you make space for God." })}
+      </p>
+      <p style={{ color: WARM, fontSize: 19, fontWeight: 700, fontFamily: FONT, margin: "12px 0 0", lineHeight: 1.2 }}>
+        {turn.madeSpaceCount > 0
+          ? t("home_beta.turn_made_space", { defaultValue: "You've made space {{count}} times", count: turn.madeSpaceCount })
+          : t("home_beta.turn_begin", { defaultValue: "Make space for God today" })}
+      </p>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0 0" }}>
+        {turnWeek.map((c) => (
+          <div key={c.key} style={{ flex: 1, display: "flex", justifyContent: "center" }}>
+            <div style={{ width: 15, height: 15, borderRadius: 999, background: c.done ? DONE_BG : "transparent", border: `1.5px solid ${c.done ? DONE_B : c.future ? "rgba(143,175,150,0.18)" : "rgba(143,175,150,0.38)"}`, boxShadow: c.isToday ? `0 0 0 2px ${BG}, 0 0 0 3px rgba(143,175,150,0.45)` : "none" }} />
+          </div>
+        ))}
       </div>
-    </div>
+      {turn.weeksKept > 0 && (
+        <p style={{ color: SAGE_DIM, fontSize: 11.5, fontFamily: FONT, margin: "10px 0 0", display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <span aria-hidden style={{ fontSize: 11 }}>🌱</span>
+          {t("home_beta.weeks_kept", { defaultValue: "Kept for {{count}} weeks", count: turn.weeksKept })}
+        </p>
+      )}
+    </button>
   );
 
   return (
     <Layout>
+      {/* Match the production home's content width exactly (same .dash-shell
+          rule: full-width on mobile, capped + centered at 56rem on desktop). */}
+      <style>{`
+        @media (min-width: 768px) {
+          .dash-shell {
+            max-width: 56rem;
+            margin-left: auto;
+            margin-right: auto;
+          }
+        }
+      `}</style>
       <div style={{ position: "relative", minHeight: "70vh" }}>
         <AnimatedBackground base={BG} variant="subtle" fadeTop />
-        <div style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "0 auto", width: "100%", padding: "4px 2px 28px" }}>
+        <div className="dash-shell" style={{ position: "relative", zIndex: 1, width: "100%", padding: "4px 2px 28px" }}>
           <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 700, fontFamily: FONT, margin: "4px 0 2px" }}>
             {t("home_beta.eyebrow", { defaultValue: "Your Way of Love" })}
           </p>
@@ -449,12 +489,12 @@ export default function HomeBetaPage() {
             <p style={{ color: SAGE_DIM, fontSize: 14, fontFamily: FONT }}>{t("common.loading", { defaultValue: "Loading…" })}</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-              {/* 1 — TURN (thin daily card) */}
-              {turnCard}
+              {/* 1 — TURN (consistency crown — auto, frames the rest) */}
+              {turnCrown}
 
               {/* 2 — LEARN & PRAY (header + reused production cards) */}
               <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                {sectionHeader(learnPrayDef, t("home_beta.learn_pray_sub", { defaultValue: "Sit with Scripture and dwell with God each day." }))}
+                <SectionHeader label={learnPrayDef.title} right={headerStatus(learnPrayDef)} />
                 <PrayerOfficeCard />
                 <ContemplationHomeCard />
                 <CacHomeCard />
@@ -462,7 +502,7 @@ export default function HomeBetaPage() {
 
               {/* 3 — WORSHIP & GATHER (header + reused service/gathering cards) */}
               <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                {sectionHeader(worshipDef, t("home_beta.worship_sub", { defaultValue: "Gather with others to thank and praise God." }))}
+                <SectionHeader label={worshipDef.title} right={headerStatus(worshipDef)} />
                 {worshipItems.length === 0 ? (
                   <button
                     type="button"

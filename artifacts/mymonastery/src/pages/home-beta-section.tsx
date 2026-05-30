@@ -30,6 +30,7 @@ import {
   type WolSelections,
   type CompletionRow,
 } from "./home-beta";
+import { computeTurnConsistency, engagementDays } from "@/lib/turnConsistency";
 
 const BG = "#091A10";
 const WARM = "#F0EDE6";
@@ -151,7 +152,7 @@ export default function HomeBetaSectionPage() {
   const officeQ = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean }> }>({
     queryKey: ["/api/me/office-history-week"],
     queryFn: () => apiRequest("GET", "/api/me/office-history-week"),
-    enabled: !!user && def?.key === "learn_pray",
+    enabled: !!user && (def?.key === "learn_pray" || def?.key === "turn"),
     staleTime: 30_000,
   });
   const svcQ = useQuery<{ schedules: ServiceSchedule[] }>({
@@ -224,6 +225,14 @@ export default function HomeBetaSectionPage() {
 
   if (authLoading || !user || !def || (!betaLoading && !rawIsBeta)) return null;
 
+  // Turn is the consistency spine — kept by engaging ANY practice that day, not
+  // a thing you "set" or tick. Its history + counts read from engagement.
+  const isTurn = def.key === "turn";
+  const turnEngaged = isTurn
+    ? engagementDays(rows.map((r) => r.localDate), officeQ.data?.days ?? [])
+    : null;
+  const turnC = turnEngaged ? computeTurnConsistency(turnEngaged) : null;
+
   const periodDate = def.daily ? today : thisWeekStart;
   const lockedDone = def.key === "learn_pray" && officePrayedToday; // office-derived; not removable here
   const done = lockedDone || rows.some((r) => r.section === def.key && r.localDate === periodDate);
@@ -251,8 +260,8 @@ export default function HomeBetaSectionPage() {
     }
     return rows.some((r) => r.section === def.key && r.localDate === weekStartYmd);
   };
-  let weeksKept = 0;
-  {
+  let weeksKept = turnC ? turnC.weeksKept : 0;
+  if (!turnC) {
     const startD = keptWeek(thisWeekStart) ? weekStartDate : addWeeks(weekStartDate, -1);
     for (let i = 0; i < 60; i++) {
       if (keptWeek(ymd(addWeeks(startD, -i)))) weeksKept++;
@@ -264,7 +273,7 @@ export default function HomeBetaSectionPage() {
     ? Array.from({ length: 7 }, (_, i) => {
         const cy = ymd(addDays(weekStartDate, i));
         const isToday = cy === today;
-        let cellDone = rows.some((r) => r.section === def.key && r.localDate === cy);
+        let cellDone = turnEngaged ? turnEngaged.has(cy) : rows.some((r) => r.section === def.key && r.localDate === cy);
         if (def.key === "learn_pray" && isToday && officePrayedToday) cellDone = true;
         return { key: cy, label: dayInitial(i), done: cellDone, future: cy > today, isToday };
       })
@@ -292,7 +301,9 @@ export default function HomeBetaSectionPage() {
         </h1>
         <p style={{ color: SAGE, fontSize: 14.5, fontFamily: FONT, lineHeight: 1.5, margin: 0 }}>{def.definition}</p>
 
-        {/* Commitment */}
+        {/* Commitment + mark-complete — every section except Turn, which is
+            the auto-tracked spine (kept by doing anything, never ticked). */}
+        {!isTurn && (<>
         <p style={{ ...eyebrow, margin: "24px 0 8px" }}>
           {t("home_beta.your_commitment", { defaultValue: "Your commitment" })}
         </p>
@@ -327,13 +338,21 @@ export default function HomeBetaSectionPage() {
               ? (def.daily ? t("home_beta.done_today_tap", { defaultValue: "✓ Done today — tap to undo" }) : t("home_beta.done_week_tap", { defaultValue: "✓ Done this week — tap to undo" }))
               : (def.daily ? t("home_beta.mark_today", { defaultValue: "Mark done today" }) : t("home_beta.mark_week", { defaultValue: "I did this this week" }))}
         </button>
+        </>)}
 
         {/* Consistency — quiet; no streak headline / fire / leaderboard */}
         <p style={{ ...eyebrow, margin: "28px 0 10px" }}>
           {t("home_beta.consistency", { defaultValue: "Your rhythm" })}
         </p>
         <div style={infoCard}>
-          <p style={{ color: WARM, fontSize: 14.5, fontFamily: FONT, margin: 0 }}>
+          {turnC && (
+            <p style={{ color: WARM, fontSize: 18, fontWeight: 700, fontFamily: FONT, margin: "0 0 8px", lineHeight: 1.25 }}>
+              {turnC.madeSpaceCount > 0
+                ? t("home_beta.turn_made_space", { defaultValue: "You've made space {{count}} times", count: turnC.madeSpaceCount })
+                : t("home_beta.turn_begin", { defaultValue: "Make space for God today" })}
+            </p>
+          )}
+          <p style={{ color: turnC ? SAGE : WARM, fontSize: 14.5, fontFamily: FONT, margin: 0 }}>
             {weeksKept > 0
               ? t("home_beta.weeks_kept", { defaultValue: "Kept for {{count}} weeks", count: weeksKept })
               : t("home_beta.building", { defaultValue: "Building your rhythm" })}

@@ -841,13 +841,17 @@ function ProfilePicturePrompt({ onDone }: { onDone: () => void }) {
 
 // ─── Section header ───────────────────────────────────────────────────────────
 
-function SectionHeader({ label }: { label: string }) {
+// Title on the left, a thin rule filling the rest, and an optional
+// right-aligned CTA/status. Exported so other home surfaces (the Way of Love
+// home) reuse the exact divider style.
+export function SectionHeader({ label, right }: { label: string; right?: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 mb-2">
       <h2 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
         {label}
       </h2>
       <div className="flex-1 h-px" style={{ background: "rgba(200, 212, 192, 0.15)" }} />
+      {right}
     </div>
   );
 }

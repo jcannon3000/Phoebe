@@ -105,7 +105,10 @@ export const PRACTICES: Record<PracticeId, Practice> = {
   turn: {
     id: "turn",
     title: txt("way_of_love.turn.title", "Turn"),
-    definition: txt("way_of_love.turn.def", "Pause, listen, and choose to follow Jesus."),
+    // Turn is the framing/spine, not a practice you "set": the daily return is
+    // enacted BY every other practice. Confession / Examen / Psalm 51 below are
+    // OPTIONAL turnings for those who want a specific one.
+    definition: txt("way_of_love.turn.def", "The daily return to God — the turning every other practice enacts."),
     options: [
       { id: "turn-confession", label: txt("way_of_love.turn.confession", "Pray the Confession daily (BCP p. 79)"), defaultCadence: "daily", home: "app", setting: "confession", completionSignal: "officeToday" },
       { id: "turn-examen", label: txt("way_of_love.turn.examen", "Pray a daily Examen"), defaultCadence: "daily", home: "app", completionSignal: "examenToday" },
