@@ -370,9 +370,21 @@ export function ContemplationTimer({
       const a = audioElRef.current;
       if (a) {
         // Skip the intro: start at the scripture reading when we have a mark.
-        try { a.currentTime = Math.max(0, audioStartSec ?? 0); } catch { /* ignore */ }
+        // iOS/Safari (WKWebView) silently DROPS a currentTime set before the
+        // media has loaded metadata — so the episode would play from 0. Apply
+        // the seek defensively: now (works once loaded), again on
+        // loadedmetadata, and once more right after play() starts. The
+        // `< seekTo - 1` guard makes the repeats no-ops once it has landed.
+        const seekTo = Math.max(0, audioStartSec ?? 0);
+        const applyStartSeek = () => {
+          try { if (seekTo > 0 && a.currentTime < seekTo - 1) a.currentTime = seekTo; } catch { /* ignore */ }
+        };
+        applyStartSeek();
+        if (seekTo > 0 && a.readyState < 1 /* HAVE_METADATA */) {
+          a.addEventListener("loadedmetadata", applyStartSeek, { once: true });
+        }
         // Runs inside the Begin tap's user gesture, so iOS lets it play.
-        a.play().then(() => setAudioPlaying(true)).catch(() => {
+        a.play().then(() => { setAudioPlaying(true); applyStartSeek(); }).catch(() => {
           // Couldn't play (gated/offline) — fall through to the silence.
           startSilence(silenceMinRef.current);
         });

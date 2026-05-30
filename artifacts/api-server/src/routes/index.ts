@@ -44,6 +44,7 @@ import groupReflectionsRouter from "./group-reflections";
 import betaMessagesRouter from "./beta-messages";
 import journalRouter from "./journal";
 import officeAlignmentRouter from "./office-alignment";
+import practiceCompletionRouter from "./practice-completion";
 import ruleOfLifeRouter from "./ruleOfLife";
 import buildfaithRouter from "./buildfaith";
 
@@ -165,6 +166,7 @@ router.use(groupReflectionsRouter);
 router.use(betaMessagesRouter);
 router.use(journalRouter);
 router.use(officeAlignmentRouter);
+router.use(practiceCompletionRouter);
 router.use(buildfaithRouter);
 router.use("/rule-of-life", ruleOfLifeRouter);
 

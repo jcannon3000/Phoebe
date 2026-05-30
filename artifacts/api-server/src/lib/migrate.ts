@@ -872,6 +872,20 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_office_alignment_episode ON office_audio_alignments (show, source, episode_date)`);
 
+    // ── Practice completion (Way of Love beta home) ───────────────────────
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS practice_completion (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        section TEXT NOT NULL,
+        local_date TEXT NOT NULL,
+        week_start TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_practice_completion ON practice_completion (user_id, section, local_date)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_practice_completion_user_week ON practice_completion (user_id, week_start)`);
+
     // ── prayers_for — private, directed prayers one user holds for another
     await run(client, `
       CREATE TABLE IF NOT EXISTS prayers_for (

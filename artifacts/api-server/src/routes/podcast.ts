@@ -196,7 +196,7 @@ export const SHOWS: Record<string, Show> = {
     title: "Daily Morning Prayer",
     artist: "Forward Movement",
     publisher: "forward-movement",
-    feedUrl: "https://feeds.megaphone.fm/FDMV8366345804",
+    feedUrl: "https://feeds.megaphone.fm/FDMV7144883457",
     artwork: null,
   },
   "evening-office": {
