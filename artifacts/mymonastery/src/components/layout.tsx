@@ -430,6 +430,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               </MenuSection>
               <MenuSection emoji="🕯️" label={t("menu.practices")}>
                 <MenuRow emoji="🕯️" label={t("menu.contemplation")} onClick={() => navigate("/contemplation")} />
+                <MenuRow emoji="📓" label={t("menu.journal", { defaultValue: "Journal" })} onClick={() => navigate("/journal")} />
                 <MenuRow emoji="🌾" label={t("menu.gratitude")} onClick={() => navigate("/gratitude")} />
                 <MenuRow emoji="🤔" label={t("menu.examen")} onClick={() => navigate("/examen")} />
               </MenuSection>
