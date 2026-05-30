@@ -273,6 +273,23 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   </div>
                   <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.4)", flexShrink: 0 }} />
                 </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/home-beta")}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-opacity hover:opacity-90"
+                  style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.28)", marginTop: 8 }}
+                >
+                  <span className="text-lg leading-none w-5 text-center" aria-hidden>🏠</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                      {t("menu.home_beta", { defaultValue: "Home (beta)" })}
+                    </p>
+                    <p className="text-[11px]" style={{ color: "#8FAF96", margin: 0 }}>
+                      {t("menu.home_beta_sub", { defaultValue: "Your Way of Love, day by day" })}
+                    </p>
+                  </div>
+                  <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.4)", flexShrink: 0 }} />
+                </button>
               </div>
             )}
 

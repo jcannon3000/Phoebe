@@ -150,7 +150,8 @@ const ResetPassword = lazy(() => import("./pages/reset-password"));
 const PrayerChooserPage = lazy(() => import("./pages/prayer-chooser"));
 const NcmpWatchPage = lazy(() => import("./pages/ncmp-watch"));
 const OfficePodcastPage = lazy(() => import("./pages/office-podcast"));
-const OfficePrayAlongPage = lazy(() => import("./pages/office-pray-along"));
+const HomeBetaPage = lazy(() => import("./pages/home-beta"));
+const HomeBetaSectionPage = lazy(() => import("./pages/home-beta-section"));
 const OfficeFmPage = lazy(() => import("./pages/office-fm"));
 const PodcastsPage = lazy(() => import("./pages/podcasts"));
 const BuildingFaithPage = lazy(() => import("./pages/building-faith"));
@@ -507,8 +508,8 @@ function Router() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/prayer-chooser" component={PrayerChooserPage} />
       <Route path="/ncmp/watch" component={NcmpWatchPage} />
-      <Route path="/podcast/morning-office" component={OfficePrayAlongPage} />
-      <Route path="/podcast/evening-office" component={OfficePrayAlongPage} />
+      <Route path="/podcast/morning-office" component={OfficePodcastPage} />
+      <Route path="/podcast/evening-office" component={OfficePodcastPage} />
       <Route path="/office/forward" component={OfficeFmPage} />
       {/* Podcast content browser. Exact /podcasts is the Discover
           index; /show/:slug must precede /:publisher so "show" isn't
@@ -521,6 +522,11 @@ function Router() {
       <Route path="/building-faith" component={BuildingFaithPage} />
       <Route path="/podcasts/:publisher" component={PodcastPublisherPage} />
       <Route path="/dashboard" component={Dashboard} />
+      {/* BETA: Way of Love home — gated on rawIsBeta inside the page, runs
+          alongside the existing /dashboard. /:section page first so the param
+          route isn't shadowed. */}
+      <Route path="/home-beta/:section" component={HomeBetaSectionPage} />
+      <Route path="/home-beta" component={HomeBetaPage} />
       {/* Phoebe Parish — simplified tier. /parish is the dashboard
           for parish-only users; /parish/onboarding is the parish
           picker. The router-level gate (ParishGate below) redirects

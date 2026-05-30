@@ -59,10 +59,11 @@ function Fallback({ hidden }: { hidden?: boolean }) {
 
 export function PodcastsRail() {
   const [, setLocation] = useLocation();
-  const { data } = useQuery<PodcastsResponse>({
+  const { data, isLoading, isError, refetch } = useQuery<PodcastsResponse>({
     queryKey: ["/api/podcasts"],
     queryFn: () => apiRequest("GET", "/api/podcasts"),
     staleTime: 60 * 60_000,
+    retry: 2,
   });
 
   // Flatten every publisher's shows, de-duped, capped for the rail.
@@ -77,18 +78,59 @@ export function PodcastsRail() {
     }
     if (shows.length >= 16) break;
   }
-  if (shows.length === 0) return null;
+  // Shared header so the rail keeps its identity across loading / error /
+  // loaded states instead of silently vanishing (a failed or slow fetch used
+  // to read as "podcasts gone").
+  const header = (
+    <div className="flex items-center justify-between mb-3">
+      <h2 className="text-lg font-bold" style={{ color: "#F0EDE6", fontFamily: FONT }}>
+        🎧 Podcasts
+      </h2>
+      <Link href="/podcasts" className="text-sm font-semibold" style={{ color: "#A8C5A0", fontFamily: FONT }}>
+        See all →
+      </Link>
+    </div>
+  );
+
+  if (shows.length === 0) {
+    // Still fetching — show placeholder tiles so the section is visibly there.
+    if (isLoading) {
+      return (
+        <section className="mt-10">
+          {header}
+          <div style={{ display: "flex", gap: 14, overflow: "hidden" }}>
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} style={{ width: CARD_W, flexShrink: 0 }}>
+                <div style={{ width: CARD_W, height: CARD_W, borderRadius: 14, background: "rgba(143,175,150,0.10)" }} />
+                <div style={{ height: 12, width: "75%", borderRadius: 4, background: "rgba(143,175,150,0.10)", margin: "10px 0 0" }} />
+              </div>
+            ))}
+          </div>
+        </section>
+      );
+    }
+    // Loaded but the fetch errored — offer a retry instead of disappearing.
+    if (isError) {
+      return (
+        <section className="mt-10">
+          {header}
+          <button
+            type="button"
+            onClick={() => refetch()}
+            style={{ width: "100%", textAlign: "left", background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.3)", borderRadius: 14, padding: "14px 16px", color: "#A8C5A0", fontFamily: FONT, fontSize: 14, cursor: "pointer" }}
+          >
+            Couldn't load podcasts. Tap to retry →
+          </button>
+        </section>
+      );
+    }
+    // Loaded successfully with genuinely no shows — nothing to show.
+    return null;
+  }
 
   return (
     <section className="mt-10">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-bold" style={{ color: "#F0EDE6", fontFamily: FONT }}>
-          🎧 Podcasts
-        </h2>
-        <Link href="/podcasts" className="text-sm font-semibold" style={{ color: "#A8C5A0", fontFamily: FONT }}>
-          See all →
-        </Link>
-      </div>
+      {header}
       <div
         style={{ display: "flex", gap: 14, overflowX: "auto", paddingBottom: 6, WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}
       >

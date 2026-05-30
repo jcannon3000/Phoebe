@@ -57,6 +57,11 @@ export type PlayingEpisode = {
   // Override the "view show" link target — offices have no /podcasts/show
   // page, so they link back to their own player route.
   showHref?: string;
+  // Where to go once this episode finishes playing (used by the daily
+  // office: when the read-aloud office ends, hand off to its closing flow /
+  // newsletter). Only navigated if the full-screen player is still open, so
+  // a backgrounded listen doesn't yank the user mid-task.
+  afterEndHref?: string;
 };
 
 type PlayerCtx = {
@@ -464,6 +469,15 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       queueIndexRef.current = nextIdx;
       const next = queueRef.current[nextIdx];
       if (next) setTimeout(() => startEpisode(next), 400);
+      return;
+    }
+    // Post-playback hand-off (the daily office → its closing flow / whatever
+    // the user has set next). Only when the full-screen player is still open,
+    // so a backgrounded listen that happens to finish doesn't yank the user.
+    const after = current?.afterEndHref;
+    if (after && expanded) {
+      setExpanded(false);
+      setLocation(after);
     }
   };
 

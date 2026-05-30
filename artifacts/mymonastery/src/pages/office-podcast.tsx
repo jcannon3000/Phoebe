@@ -133,6 +133,9 @@ export default function OfficePodcastPage() {
       skipHistory: true,
       hideRecommend: true,
       showHref: `/podcast/${show.apiSlug}`,
+      // When the office finishes, hand off to the closing flow (reflection /
+      // whatever the user has set after the office), same as before.
+      afterEndHref: `/prayer-mode?afterOffice=1&side=${show.side}`,
     });
   }
 
