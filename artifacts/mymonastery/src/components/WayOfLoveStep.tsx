@@ -41,12 +41,15 @@ import {
 } from "@/lib/wayOfLove";
 
 // ── Style tokens (mirrors the maker; kept local to stay decoupled) ───────────
-const EP_BG = "#0F2818";
+const EP_BG = "#091A10"; // match the daily office slides' background
 const CREAM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SAGE_DIM = "rgba(143,175,150,0.55)";
 const SANS = "'Space Grotesk', system-ui, sans-serif";
-const SERIF = "Georgia, serif";
+// These slides use Space Grotesk throughout (to match the office UI); the
+// "serif" token now points at Space Grotesk too, so the italic contemplative
+// lines render as oblique Space Grotesk rather than Georgia.
+const SERIF = "'Space Grotesk', system-ui, sans-serif";
 const CHIP_DEFAULT = "rgba(46,107,64,0.14)";
 const CHIP_BORDER = "rgba(46,107,64,0.28)";
 const CHIP_ACTIVE = "rgba(46,107,64,0.52)";
@@ -196,7 +199,7 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
 
   const shell = (children: ReactNode) => (
     <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
-      <AnimatedBackground base={EP_BG} variant="pronounced" />
+      <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
       <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
         {children}
       </div>
