@@ -49,28 +49,14 @@ type WolStageData = { optionIds: string[]; custom: string };
 type WolSelections = Partial<Record<PracticeId, WolStageData>>;
 type WolResponse = { selections: WolSelections };
 
+// Only `loggedToday` is used now (drives the Pray CTA's label + href); the
+// other fields remain for the endpoint's shape.
 type PrayerStreak = {
   streak: number;
   lastPrayedDate: string | null;
   loggedToday?: boolean;
   gardenPrayedTodayCount?: number;
 };
-
-function localDateStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function formatLastPrayed(dateStr: string | null): string | null {
-  if (!dateStr) return null;
-  const today = new Date();
-  if (dateStr === localDateStr(today)) return "today";
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  if (dateStr === localDateStr(yesterday)) return "yesterday";
-  const [y, m, d] = dateStr.split("-").map(Number);
-  if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
 
 // ── One WOL stage card ────────────────────────────────────────────────────
 function StageCard({
@@ -269,6 +255,9 @@ export default function DailyPracticePage() {
     queryKey: ["/api/rule-of-life/wol"],
     queryFn: () => apiRequest("GET", "/api/rule-of-life/wol") as Promise<WolResponse>,
     staleTime: 5 * 60_000,
+    // Fail fast rather than sitting on "Loading…" through retry backoff —
+    // an empty/usable page beats a long spinner if the fetch errors.
+    retry: 1,
   });
 
   const saveMut = useMutation({
@@ -277,10 +266,7 @@ export default function DailyPracticePage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/rule-of-life/wol"] }),
   });
 
-  const streak = streakData?.streak ?? 0;
   const loggedToday = !!streakData?.loggedToday;
-  const gardenCount = streakData?.gardenPrayedTodayCount ?? 0;
-  const lastPrayedLabel = formatLastPrayed(streakData?.lastPrayedDate ?? null);
   const beginHref = loggedToday ? "/prayer-mode?reset=1" : "/prayer-mode";
 
   const selections: WolSelections = wolData?.selections ?? {};
@@ -307,39 +293,6 @@ export default function DailyPracticePage() {
         <p className="text-sm mb-5" style={{ color: SAGE }}>
           Seven practices for a Jesus-centered life — see what you've committed to and refine it any time.
         </p>
-
-        {/* Streak */}
-        <div className="rounded-2xl px-5 py-5 mb-3" style={{ background: BG_CARD, border: `1px solid ${BORDER}` }}>
-          <div className="flex items-center gap-4">
-            <div
-              className="flex flex-col items-center justify-center rounded-2xl shrink-0"
-              style={{ width: 80, height: 80, background: "rgba(46,107,64,0.18)", border: `1px solid ${BORDER}` }}
-            >
-              <span style={{ fontSize: 26, lineHeight: 1 }}>🔥</span>
-              <span style={{ fontSize: 24, fontWeight: 800, color: WARM, fontFamily: FONT, lineHeight: 1.2 }}>
-                {streak}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-lg font-bold" style={{ color: WARM, fontFamily: FONT, margin: 0 }}>
-                {streak > 0 ? `${streak}-day streak` : "Start your streak"}
-              </p>
-              <p className="text-sm" style={{ color: loggedToday ? "#A8C5A0" : SAGE, margin: "2px 0 0" }}>
-                {loggedToday ? "You've prayed today ✓" : "You haven't prayed yet today"}
-              </p>
-              {lastPrayedLabel && (
-                <p className="text-xs" style={{ color: SAGE_DIM, margin: "4px 0 0" }}>
-                  Last prayed {lastPrayedLabel}
-                </p>
-              )}
-            </div>
-          </div>
-          {gardenCount > 0 && (
-            <p className="text-[13px] mt-4 pt-3" style={{ color: SAGE, borderTop: "1px solid rgba(200,212,192,0.12)" }}>
-              🌿 {gardenCount} {gardenCount === 1 ? "person" : "people"} in your circle prayed today
-            </p>
-          )}
-        </div>
 
         <Link
           href={beginHref}

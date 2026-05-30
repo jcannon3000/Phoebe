@@ -117,10 +117,15 @@ export async function buildOfficeAlignment(opts: {
       return { show: opts.show, episodeDate, status: "skipped", reason: "transcription disabled" };
     }
 
+    // Align against the FULL office, Confession of Sin included (override the
+    // per-user pref, which for the synthetic user 0 would default it OFF).
+    // Forward Movement prays the Confession (the BCP default), so an assembly
+    // without it is missing a ~2-minute block at the top — which both loses
+    // the Confession pill AND shoves every later slide out of sync.
     const { slides } =
       opts.show === "morning-office"
-        ? await assembleMorningPrayer(date, 0)
-        : await assembleEveningPrayer(date, 0);
+        ? await assembleMorningPrayer(date, 0, "en", true)
+        : await assembleEveningPrayer(date, 0, "en", true);
 
     const { sections, aligner } = await alignOffice(slides, transcript);
     const durationSeconds = Math.round(transcript.durationSeconds);

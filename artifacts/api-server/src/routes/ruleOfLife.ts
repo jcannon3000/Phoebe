@@ -299,6 +299,53 @@ router.get("/list", async (req, res): Promise<void> => {
 });
 
 // GET /api/rule-of-life/:id
+// ── Way of Love selections ──────────────────────────────────────────────────
+// NOTE: these literal routes MUST stay above the "/:id" wildcard below —
+// otherwise GET /wol matches /:id (id="wol"), parseInt → NaN → 400, and the
+// real handler never runs.
+//
+// GET /api/rule-of-life/wol — load persisted WOL selections. Returns
+// { selections } mapping each practiceId → { optionIds, custom }. Empty if
+// never saved.
+router.get("/wol", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const { rows } = await pool.query(
+      `SELECT selections FROM user_wol WHERE user_id = $1`,
+      [user.id],
+    );
+    res.json({ selections: rows[0]?.selections ?? {} });
+  } catch (err) {
+    console.error("[rule-of-life] GET /wol failed:", err);
+    res.status(500).json({ error: "Failed to load Way of Love" });
+  }
+});
+
+// PUT /api/rule-of-life/wol — upsert the whole selections map.
+router.put("/wol", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const { selections } = req.body as { selections?: Record<string, unknown> };
+  if (!selections || typeof selections !== "object") {
+    res.status(400).json({ error: "selections must be an object" }); return;
+  }
+  try {
+    await pool.query(
+      `INSERT INTO user_wol (user_id, selections, updated_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (user_id)
+       DO UPDATE SET selections = $2, updated_at = NOW()`,
+      [user.id, JSON.stringify(selections)],
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[rule-of-life] PUT /wol failed:", err);
+    res.status(500).json({ error: "Failed to save Way of Love" });
+  }
+});
+
+// GET /api/rule-of-life/:id
 router.get("/:id", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -391,49 +438,6 @@ router.post("/:id/email", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("[rule-of-life] email failed:", err);
     res.status(500).json({ error: "Failed to send email" });
-  }
-});
-
-// ── GET /api/rule-of-life/wol — load persisted WOL selections ────────────────
-// Returns { selections: WolSelections } where WolSelections maps each practiceId
-// to { optionIds: string[], custom: string }. Empty object if never saved.
-router.get("/wol", async (req: Request, res) => {
-  const user = (req as Request & { user?: { id: number } }).user;
-  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
-  try {
-    const result = await pool.query(
-      `SELECT selections FROM user_wol WHERE user_id = $1`,
-      [user.id],
-    );
-    const selections = result.rows[0]?.selections ?? {};
-    res.json({ selections });
-  } catch (err) {
-    console.error("[rule-of-life] GET /wol failed:", err);
-    res.status(500).json({ error: "Failed to load Way of Love" });
-  }
-});
-
-// ── PUT /api/rule-of-life/wol — save WOL selections ──────────────────────────
-// Body: { selections: WolSelections }. Upserts the whole selections map.
-router.put("/wol", async (req: Request, res) => {
-  const user = (req as Request & { user?: { id: number } }).user;
-  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const { selections } = req.body as { selections: Record<string, unknown> };
-  if (!selections || typeof selections !== "object") {
-    res.status(400).json({ error: "selections must be an object" }); return;
-  }
-  try {
-    await pool.query(
-      `INSERT INTO user_wol (user_id, selections, updated_at)
-       VALUES ($1, $2, NOW())
-       ON CONFLICT (user_id)
-       DO UPDATE SET selections = $2, updated_at = NOW()`,
-      [user.id, JSON.stringify(selections)],
-    );
-    res.json({ ok: true });
-  } catch (err) {
-    console.error("[rule-of-life] PUT /wol failed:", err);
-    res.status(500).json({ error: "Failed to save Way of Love" });
   }
 });
 
