@@ -2299,6 +2299,19 @@ export async function migrate() {
       )
     `);
 
+    // ── user_wol — persisted Way of Love selections ──────────────────────
+    // One row per user. `selections` is a JSONB map of practiceId →
+    // { optionIds: string[], custom: string } so the daily-practice page
+    // can show + edit what each person committed to without requiring a
+    // new rule-of-life session.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS user_wol (
+        user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        selections JSONB NOT NULL DEFAULT '{}',
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

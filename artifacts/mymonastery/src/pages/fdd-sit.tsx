@@ -75,6 +75,15 @@ export default function FddSitPage() {
     queryFn: () => apiRequest("GET", "/api/podcast/forward-day-by-day/today"),
     enabled: !!user,
     staleTime: 30 * 60_000,
+    // Opening the page triggers the skip-mark computation on demand. Poll a
+    // few times while marks are still null so a user sitting on the picker
+    // gets the intro/outro skip once it lands (begin() reads the latest data).
+    // Stops as soon as the marks arrive (or there's no audio to skip).
+    refetchInterval: (q) => {
+      const d = q.state.data;
+      if (!d?.audioUrl) return false;
+      return d.scriptureStartSec == null ? 6000 : false;
+    },
   });
 
   if (authLoading || !user) return null;

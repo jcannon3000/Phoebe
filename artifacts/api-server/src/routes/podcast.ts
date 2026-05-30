@@ -576,13 +576,22 @@ router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<
   if (slug === "forward-day-by-day") {
     try {
       const guid = ep?.id ?? ep?.audioUrl ?? null;
+      const today = new Date().toISOString().slice(0, 10);
       const [mark] = await db
         .select()
         .from(fddAudioMarksTable)
-        .where(eq(fddAudioMarksTable.episodeDate, new Date().toISOString().slice(0, 10)));
+        .where(eq(fddAudioMarksTable.episodeDate, today));
       if (mark && mark.status === "done" && (mark.episodeGuid == null || mark.episodeGuid === guid)) {
         scriptureStartSec = mark.scriptureStartSec;
         appealStartSec = mark.appealStartSec;
+      } else if (!mark || mark.status === "pending") {
+        // On-demand fallback (no worker): kick off the transcribe+detect in
+        // the background so a later poll / the next open gets the marks. The
+        // dynamic import breaks a circular dependency — buildFddAlignment
+        // imports SHOWS/loadFeed from this file.
+        const { triggerOnce } = await import("../lib/transcription/alignInFlight");
+        const { buildFddAlignment } = await import("../lib/transcription/buildFddAlignment");
+        triggerOnce(`fdd:${today}`, () => buildFddAlignment());
       }
     } catch (err) {
       logger.warn({ err }, "[podcast] fdd marks lookup failed");

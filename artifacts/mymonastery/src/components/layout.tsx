@@ -251,10 +251,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               {/* Pilot view / community admin toggles moved to Admin Tools page */}
             </div>
 
-            {/* ── Daily Practice (beta) ── Progress + build-your-rhythm
-                hub. Its own section above Communities. Gated on rawIsBeta
-                (like Phoebe Parish below) so every beta tester sees it
-                regardless of the beta-view preview toggle. */}
+            {/* ── Your Way of Love (beta) ── Streak + per-stage WOL view/edit.
+                Gated on rawIsBeta so every beta tester sees it regardless
+                of the beta-view preview toggle. */}
             {rawIsBeta && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
                 <button
@@ -263,13 +262,13 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-opacity hover:opacity-90"
                   style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.28)" }}
                 >
-                  <span className="text-lg leading-none w-5 text-center" aria-hidden>🌱</span>
+                  <span className="text-lg leading-none w-5 text-center" aria-hidden>🌿</span>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-                      {t("menu.daily_practice", { defaultValue: "Daily Practice" })}
+                      {t("menu.daily_practice", { defaultValue: "Your Way of Love" })}
                     </p>
                     <p className="text-[11px]" style={{ color: "#8FAF96", margin: 0 }}>
-                      {t("menu.daily_practice_sub", { defaultValue: "Your progress & rhythm" })}
+                      {t("menu.daily_practice_sub", { defaultValue: "Your seven practices" })}
                     </p>
                   </div>
                   <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.4)", flexShrink: 0 }} />
@@ -507,6 +506,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   onClick={() => { onClose(); openExternal("https://www.episcopalchurch.org/find-a-church/"); }}
                 />
                 <MenuRow emoji="😇" label={t("menu.saints")} badge={t("menu.beta")} onClick={() => navigate("/saints")} />
+                <MenuRow emoji="📰" label={t("menu.building_faith", { defaultValue: "Building Faith" })} onClick={() => navigate("/building-faith")} />
               </MenuSection>
               {showLetters && (
                 <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />

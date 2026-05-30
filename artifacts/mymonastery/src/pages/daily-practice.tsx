@@ -1,37 +1,53 @@
 /**
- * Daily Practice — the hub for a person's prayer rhythm.
+ * Your Way of Love — the hub for a person's prayer rhythm.
  *
- * Reached from the "Daily Practice" entry under the user's name in the
+ * Reached from the "Your Way of Love" entry under the user's name in the
  * drawer menu. Two jobs:
  *
  *   1. Show progress — current streak, whether they've prayed today,
- *      when they last prayed, and how many in their circle prayed
- *      today. All from GET /api/prayer-streak (the same endpoint the
- *      header streak chip uses, so it's usually already cached when the
- *      user lands here — no load flash).
+ *      when they last prayed, and how many in their circle prayed today.
  *
- *   2. Build the practice — entry points into the existing
- *      customization surfaces rather than re-implementing them:
- *        • /bcp/daily-office/settings — default prayer, reminders,
- *          confession, reflections, gratitude slide.
- *        • /customize-home — reorder home modules and pick the
- *          featured feed that leads the prayer slideshow.
- *
- * Visual language mirrors office-settings / customize-home (warm/sage
- * palette, Space Grotesk, rounded-xl cards) so the three feel like one
- * connected "shape your practice" flow.
+ *   2. View + edit WOL commitments — all 7 Way of Love stages displayed
+ *      as inline-editable cards. Tap any stage to see what was committed
+ *      and change it without re-running the full Rule of Life wizard.
+ *      Saved to GET/PUT /api/rule-of-life/wol.
  */
 
+import { useState } from "react";
 import { Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { useBetaStatus } from "@/hooks/useDemo";
+import {
+  PRACTICES,
+  PRACTICE_ORDER,
+  WAY_OF_LOVE_ATTRIBUTION,
+  type PracticeId,
+} from "@/lib/wayOfLove";
 
-const WARM = "#F0EDE6";
-const SAGE = "#8FAF96";
-const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
+// ── Design tokens (match WayOfLoveStep) ─────────────────────────────────
+const BG_CARD  = "rgba(46,107,64,0.10)";
+const BORDER   = "rgba(46,107,64,0.22)";
+const CHIP_ON  = "rgba(46,107,64,0.45)";
+const CHIP_ON_B = "rgba(46,107,64,0.75)";
+const CHIP_OFF  = "rgba(46,107,64,0.08)";
+const CHIP_OFF_B = "rgba(46,107,64,0.28)";
+const WARM   = "#F0EDE6";
+const SAGE   = "#8FAF96";
+const SAGE_DIM = "rgba(143,175,150,0.55)";
+const CTA    = "#2D5E3F";
+const FONT   = "'Space Grotesk', system-ui, sans-serif";
+
+const STAGE_EMOJIS: Record<PracticeId, string> = {
+  turn: "🔄", learn: "📖", pray: "🙏",
+  worship: "⛪", bless: "🤲", go: "🌍", rest: "🌙",
+};
+
+// ── Types ────────────────────────────────────────────────────────────────
+type WolStageData = { optionIds: string[]; custom: string };
+type WolSelections = Partial<Record<PracticeId, WolStageData>>;
+type WolResponse = { selections: WolSelections };
 
 type PrayerStreak = {
   streak: number;
@@ -40,8 +56,6 @@ type PrayerStreak = {
   gardenPrayedTodayCount?: number;
 };
 
-// Local YYYY-MM-DD, matching the user-tz window date the streak endpoint
-// stamps — so the today/yesterday comparison lines up with the server.
 function localDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
@@ -58,77 +72,223 @@ function formatLastPrayed(dateStr: string | null): string | null {
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function SectionHeader({ label }: { label: string }) {
+// ── One WOL stage card ────────────────────────────────────────────────────
+function StageCard({
+  pid,
+  data,
+  onSave,
+}: {
+  pid: PracticeId;
+  data: WolStageData;
+  onSave: (d: WolStageData) => void;
+}) {
+  const practice = PRACTICES[pid];
+  const [editing, setEditing] = useState(false);
+  const [localSelected, setLocalSelected] = useState<Set<string>>(() => new Set(data.optionIds));
+  const [localCustom, setLocalCustom] = useState(data.custom);
+
+  const openEdit = () => {
+    setLocalSelected(new Set(data.optionIds));
+    setLocalCustom(data.custom);
+    setEditing(true);
+  };
+
+  const save = () => {
+    onSave({ optionIds: Array.from(localSelected), custom: localCustom.trim() });
+    setEditing(false);
+  };
+
+  const cancel = () => setEditing(false);
+
+  const toggle = (id: string) =>
+    setLocalSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
+  const hasCommitment = data.optionIds.length > 0 || data.custom.trim().length > 0;
+
   return (
-    <div className="flex items-center gap-3 mb-3 mt-7">
-      <h2 className="text-lg font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-        {label}
-      </h2>
-      <div className="flex-1 h-px" style={{ background: "rgba(200, 212, 192, 0.15)" }} />
+    <div style={{ background: BG_CARD, border: `1px solid ${BORDER}`, borderRadius: 16, overflow: "hidden" }}>
+      {/* Header — always visible, tapping opens/closes edit panel */}
+      <button
+        type="button"
+        onClick={() => (editing ? cancel() : openEdit())}
+        style={{
+          width: "100%", display: "flex", alignItems: "center", gap: 10,
+          padding: "14px 16px", background: "none", border: "none",
+          cursor: "pointer", textAlign: "left",
+        }}
+      >
+        <span style={{ fontSize: 20, flexShrink: 0 }}>{STAGE_EMOJIS[pid]}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ color: WARM, fontSize: 15, fontWeight: 700, fontFamily: FONT, margin: 0 }}>
+            {practice.title.default}
+          </p>
+          <p style={{ color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "2px 0 0", fontStyle: "italic" }}>
+            {practice.definition.default}
+          </p>
+        </div>
+        {editing
+          ? <ChevronUp size={16} style={{ color: SAGE_DIM, flexShrink: 0 }} />
+          : <ChevronDown size={16} style={{ color: SAGE_DIM, flexShrink: 0 }} />}
+      </button>
+
+      {/* Committed practices — shown in view mode */}
+      {!editing && hasCommitment && (
+        <div style={{ padding: "0 16px 14px", display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {data.optionIds.map((id) => {
+            const opt = practice.options.find((o) => o.id === id);
+            if (!opt) return null;
+            return (
+              <span
+                key={id}
+                style={{
+                  background: CHIP_ON, border: `1px solid ${CHIP_ON_B}`,
+                  color: WARM, borderRadius: 999, padding: "5px 11px",
+                  fontSize: 12.5, fontFamily: FONT,
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                }}
+              >
+                <Check size={11} strokeWidth={2.5} />
+                {opt.label.default}
+              </span>
+            );
+          })}
+          {data.custom.trim() && (
+            <span
+              style={{
+                color: SAGE, fontSize: 12.5, fontFamily: FONT, fontStyle: "italic",
+                padding: "5px 2px", lineHeight: 1.4, width: "100%",
+              }}
+            >
+              {data.custom}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Empty state */}
+      {!editing && !hasCommitment && (
+        <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, padding: "0 16px 14px", margin: 0 }}>
+          Nothing committed yet — tap to add
+        </p>
+      )}
+
+      {/* Edit panel */}
+      {editing && (
+        <div style={{ padding: "0 16px 16px", borderTop: `1px solid ${BORDER}` }}>
+          <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: FONT, margin: "14px 0 10px" }}>
+            Choose a practice
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            {practice.options.map((o) => {
+              const on = localSelected.has(o.id);
+              return (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => toggle(o.id)}
+                  style={{
+                    background: on ? CHIP_ON : CHIP_OFF,
+                    border: `1px solid ${on ? CHIP_ON_B : CHIP_OFF_B}`,
+                    color: WARM, borderRadius: 10, padding: "9px 12px",
+                    fontSize: 13.5, fontFamily: FONT, cursor: "pointer",
+                    textAlign: "left", display: "flex", alignItems: "center",
+                    justifyContent: "space-between", gap: 8,
+                    transition: "background 0.12s, border-color 0.12s",
+                  }}
+                >
+                  <span style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                    {on && <Check size={13} strokeWidth={2.5} />}
+                    {o.label.default}
+                  </span>
+                  <span style={{ color: SAGE_DIM, fontSize: 11, whiteSpace: "nowrap" }}>
+                    {o.defaultCadence === "daily" ? "Daily"
+                      : o.defaultCadence === "weekly" ? "Weekly"
+                      : "Now and then"}
+                  </span>
+                </button>
+              );
+            })}
+            <textarea
+              value={localCustom}
+              onChange={(e) => setLocalCustom(e.target.value)}
+              placeholder="Or write your own…"
+              rows={2}
+              style={{
+                background: CHIP_OFF, border: `1px solid ${CHIP_OFF_B}`,
+                borderRadius: 10, padding: "9px 12px", color: WARM,
+                fontFamily: FONT, fontSize: 13.5, lineHeight: 1.5,
+                resize: "none", outline: "none", marginTop: 2,
+              }}
+            />
+          </div>
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button
+              type="button"
+              onClick={save}
+              style={{
+                flex: 1, background: CTA, border: `1px solid ${CHIP_ON_B}`,
+                color: WARM, borderRadius: 10, padding: "10px 16px",
+                fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer",
+              }}
+            >
+              Save
+            </button>
+            <button
+              type="button"
+              onClick={cancel}
+              style={{
+                background: "none", border: `1px solid ${CHIP_OFF_B}`,
+                color: SAGE, borderRadius: 10, padding: "10px 16px",
+                fontSize: 14, fontFamily: FONT, cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function Blurb({ children }: { children: React.ReactNode }) {
-  return (
-    <p
-      className="text-[13px] mb-3"
-      style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}
-    >
-      {children}
-    </p>
-  );
-}
-
-// Link row in the customize-home aesthetic: rounded-xl card, emoji,
-// label/sub, chevron. Routes to an existing customization screen.
-function PracticeLinkRow({
-  emoji,
-  label,
-  sub,
-  href,
-}: {
-  emoji: string;
-  label: string;
-  sub: string;
-  href: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="w-full flex items-center gap-3 rounded-xl px-3 py-3 select-none transition-opacity hover:opacity-90"
-      style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
-    >
-      <span style={{ fontSize: 20 }}>{emoji}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
-          {label}
-        </p>
-        <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>
-          {sub}
-        </p>
-      </div>
-      <ChevronRight size={16} style={{ color: "rgba(143,175,150,0.5)", flexShrink: 0 }} />
-    </Link>
-  );
-}
-
+// ── Page ─────────────────────────────────────────────────────────────────
 export default function DailyPracticePage() {
-  const { isBeta } = useBetaStatus();
-  const { data } = useQuery<PrayerStreak>({
+  const qc = useQueryClient();
+
+  const { data: streakData } = useQuery<PrayerStreak>({
     queryKey: ["/api/prayer-streak"],
     queryFn: () => apiRequest("GET", "/api/prayer-streak") as Promise<PrayerStreak>,
     staleTime: 60_000,
   });
 
-  const streak = data?.streak ?? 0;
-  const loggedToday = !!data?.loggedToday;
-  const gardenCount = data?.gardenPrayedTodayCount ?? 0;
-  const lastPrayedLabel = formatLastPrayed(data?.lastPrayedDate ?? null);
-  // Mirror the dashboard CTA: a fresh slideshow if they haven't prayed
-  // today, otherwise replay (?reset=1) so "pray again" doesn't resume
-  // mid-list.
+  const { data: wolData, isLoading: wolLoading } = useQuery<WolResponse>({
+    queryKey: ["/api/rule-of-life/wol"],
+    queryFn: () => apiRequest("GET", "/api/rule-of-life/wol") as Promise<WolResponse>,
+    staleTime: 5 * 60_000,
+  });
+
+  const saveMut = useMutation({
+    mutationFn: (selections: WolSelections) =>
+      apiRequest("PUT", "/api/rule-of-life/wol", { selections }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/rule-of-life/wol"] }),
+  });
+
+  const streak = streakData?.streak ?? 0;
+  const loggedToday = !!streakData?.loggedToday;
+  const gardenCount = streakData?.gardenPrayedTodayCount ?? 0;
+  const lastPrayedLabel = formatLastPrayed(streakData?.lastPrayedDate ?? null);
   const beginHref = loggedToday ? "/prayer-mode?reset=1" : "/prayer-mode";
+
+  const selections: WolSelections = wolData?.selections ?? {};
+
+  const handleSaveStage = (pid: PracticeId, stageData: WolStageData) => {
+    const next: WolSelections = { ...selections, [pid]: stageData };
+    saveMut.mutate(next);
+  };
 
   return (
     <Layout>
@@ -140,47 +300,42 @@ export default function DailyPracticePage() {
         >
           <ChevronLeft size={14} /> Home
         </Link>
-        <h1 className="text-2xl font-bold mb-1" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-          Daily Practice 🌱
+
+        <h1 className="text-2xl font-bold mb-1" style={{ color: WARM, fontFamily: FONT }}>
+          Your Way of Love 🌿
         </h1>
-        <p className="text-sm mb-2" style={{ color: SAGE }}>
-          See how your rhythm is growing — and shape the practice that fits you.
+        <p className="text-sm mb-5" style={{ color: SAGE }}>
+          Seven practices for a Jesus-centered life — see what you've committed to and refine it any time.
         </p>
 
-        <SectionHeader label="Your progress" />
-        <div
-          className="rounded-2xl px-5 py-5"
-          style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
-        >
+        {/* Streak */}
+        <div className="rounded-2xl px-5 py-5 mb-3" style={{ background: BG_CARD, border: `1px solid ${BORDER}` }}>
           <div className="flex items-center gap-4">
             <div
               className="flex flex-col items-center justify-center rounded-2xl shrink-0"
-              style={{ width: 84, height: 84, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.3)" }}
+              style={{ width: 80, height: 80, background: "rgba(46,107,64,0.18)", border: `1px solid ${BORDER}` }}
             >
-              <span style={{ fontSize: 28, lineHeight: 1 }}>🔥</span>
-              <span style={{ fontSize: 26, fontWeight: 800, color: WARM, fontFamily: SPACE_GROTESK, lineHeight: 1.15 }}>
+              <span style={{ fontSize: 26, lineHeight: 1 }}>🔥</span>
+              <span style={{ fontSize: 24, fontWeight: 800, color: WARM, fontFamily: FONT, lineHeight: 1.2 }}>
                 {streak}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-lg font-bold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+              <p className="text-lg font-bold" style={{ color: WARM, fontFamily: FONT, margin: 0 }}>
                 {streak > 0 ? `${streak}-day streak` : "Start your streak"}
               </p>
               <p className="text-sm" style={{ color: loggedToday ? "#A8C5A0" : SAGE, margin: "2px 0 0" }}>
                 {loggedToday ? "You've prayed today ✓" : "You haven't prayed yet today"}
               </p>
               {lastPrayedLabel && (
-                <p className="text-xs" style={{ color: "rgba(143,175,150,0.7)", margin: "4px 0 0" }}>
+                <p className="text-xs" style={{ color: SAGE_DIM, margin: "4px 0 0" }}>
                   Last prayed {lastPrayedLabel}
                 </p>
               )}
             </div>
           </div>
           {gardenCount > 0 && (
-            <p
-              className="text-[13px] mt-4 pt-3"
-              style={{ color: SAGE, borderTop: "1px solid rgba(200,212,192,0.12)" }}
-            >
+            <p className="text-[13px] mt-4 pt-3" style={{ color: SAGE, borderTop: "1px solid rgba(200,212,192,0.12)" }}>
               🌿 {gardenCount} {gardenCount === 1 ? "person" : "people"} in your circle prayed today
             </p>
           )}
@@ -188,37 +343,74 @@ export default function DailyPracticePage() {
 
         <Link
           href={beginHref}
-          className="block text-center mt-3 rounded-xl px-4 py-3 font-semibold transition-opacity hover:opacity-90"
-          style={{ background: "#2D5E3F", color: WARM, fontFamily: SPACE_GROTESK }}
+          className="block text-center mb-7 rounded-xl px-4 py-3 font-semibold transition-opacity hover:opacity-90"
+          style={{ background: CTA, color: WARM, fontFamily: FONT }}
         >
           {loggedToday ? "Pray again →" : "Begin today's prayer →"}
         </Link>
 
-        <SectionHeader label="Build your practice" />
-        <Blurb>
-          Set your morning and evening rhythms separately — depth, reminder, way to pray, and a reflection for each.
-        </Blurb>
+        {/* WOL stages */}
+        <div className="flex items-center gap-3 mb-3">
+          <h2 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT, margin: 0 }}>
+            The seven practices
+          </h2>
+          <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+        </div>
+        <p className="text-[13px] mb-4" style={{ color: SAGE_DIM, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+          Tap any practice to view or change what you've committed to.
+        </p>
+
+        {wolLoading ? (
+          <p style={{ color: SAGE_DIM, fontSize: 14, textAlign: "center", padding: "24px 0" }}>Loading…</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {PRACTICE_ORDER.map((pid) => (
+              <StageCard
+                key={pid}
+                pid={pid}
+                data={selections[pid] ?? { optionIds: [], custom: "" }}
+                onSave={(d) => handleSaveStage(pid, d)}
+              />
+            ))}
+          </div>
+        )}
+
+        <p className="text-[11px] text-center mt-6" style={{ color: SAGE_DIM, fontFamily: FONT }}>
+          {WAY_OF_LOVE_ATTRIBUTION}
+        </p>
+
+        {/* Prayer settings shortcuts */}
+        <div className="flex items-center gap-3 mb-3 mt-8">
+          <h2 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT, margin: 0 }}>
+            Prayer settings
+          </h2>
+          <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+        </div>
         <div className="flex flex-col gap-2">
-          {isBeta && (
-            <PracticeLinkRow
-              emoji="✦"
-              label="Start a conversation about prayer"
-              sub="A guided reflection that ends in a personal rule of life"
-              href="/rule-of-life"
-            />
-          )}
-          <PracticeLinkRow
-            emoji="🌅"
-            label="Morning"
-            sub="Depth, reminder, way to pray, and reflection"
-            href="/bcp/daily-office/settings?side=morning&from=practice"
-          />
-          <PracticeLinkRow
-            emoji="🌙"
-            label="Evening"
-            sub="Depth, reminder, way to pray, and reflection"
-            href="/bcp/daily-office/settings?side=evening&from=practice"
-          />
+          <Link
+            href="/bcp/daily-office/settings?side=morning"
+            className="w-full flex items-center gap-3 rounded-xl px-3 py-3 transition-opacity hover:opacity-90"
+            style={{ background: BG_CARD, border: `1px solid ${BORDER}` }}
+          >
+            <span style={{ fontSize: 20 }}>🌅</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: FONT, margin: 0 }}>Morning</p>
+              <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>Depth, reminder, way to pray, and reflection</p>
+            </div>
+            <ChevronLeft size={16} style={{ color: SAGE_DIM, flexShrink: 0, transform: "rotate(180deg)" }} />
+          </Link>
+          <Link
+            href="/bcp/daily-office/settings?side=evening"
+            className="w-full flex items-center gap-3 rounded-xl px-3 py-3 transition-opacity hover:opacity-90"
+            style={{ background: BG_CARD, border: `1px solid ${BORDER}` }}
+          >
+            <span style={{ fontSize: 20 }}>🌙</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: FONT, margin: 0 }}>Evening</p>
+              <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>Depth, reminder, way to pray, and reflection</p>
+            </div>
+            <ChevronLeft size={16} style={{ color: SAGE_DIM, flexShrink: 0, transform: "rotate(180deg)" }} />
+          </Link>
         </div>
       </div>
     </Layout>

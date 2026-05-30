@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db, officeAudioAlignmentsTable } from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { buildOfficeAlignment, type OfficeShow } from "../lib/transcription/buildOfficeAlignment";
+import { triggerOnce } from "../lib/transcription/alignInFlight";
 import { assembleMorningPrayer } from "../lib/assembleMorningPrayer";
 import { assembleEveningPrayer } from "../lib/assembleEveningPrayer";
 import { SHOWS, loadFeed } from "./podcast";
@@ -53,7 +54,19 @@ router.get("/podcast/office/:side/timestamps", async (req: Request, res: Respons
     );
 
   if (!row || row.status !== "done") {
-    res.json({ show, episodeDate, status: row?.status ?? "none", sections: [] });
+    const status = row?.status ?? "none";
+    // On-demand fallback: with no worker computing alignments, the first
+    // open of the read-along kicks off the transcribe+align in the
+    // background (guarded so repeated polls don't duplicate it) and the
+    // client polls until it flips to "done". Only for today's episode, and
+    // not when a prior attempt already "failed" (avoid a retry/cost loop —
+    // those need the explicit POST /align with force).
+    if ((status === "none" || status === "pending") && episodeDate === todayYmd()) {
+      triggerOnce(`office:${show}:${episodeDate}`, () => buildOfficeAlignment({ show }));
+      res.json({ show, episodeDate, status: "building", sections: [] });
+      return;
+    }
+    res.json({ show, episodeDate, status, sections: [] });
     return;
   }
   // Aligned episodes are stable for the day — let clients cache them.

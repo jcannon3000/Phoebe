@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { apiRequest } from "@/lib/queryClient";
 import {
   setSideLevel,
   setSideReflection,
@@ -187,6 +188,19 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
         }
       }
     }
+    // Persist the selections so the "Your Way of Love" page can show/edit them.
+    // Fire-and-forget — a save failure doesn't block the committed screen.
+    const selections: Record<string, { optionIds: string[]; custom: string }> = {};
+    for (const pid of PRACTICE_ORDER) {
+      const optionIds = PRACTICES[pid].options
+        .filter((o) => selected.has(o.id))
+        .map((o) => o.id);
+      const customText = (custom[pid] ?? "").trim();
+      if (optionIds.length > 0 || customText) {
+        selections[pid] = { optionIds, custom: customText };
+      }
+    }
+    apiRequest("PUT", "/api/rule-of-life/wol", { selections }).catch(() => {/* ignore */});
     setStep("committed");
   };
 

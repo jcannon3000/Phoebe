@@ -152,6 +152,7 @@ const NcmpWatchPage = lazy(() => import("./pages/ncmp-watch"));
 const OfficePodcastPage = lazy(() => import("./pages/office-podcast"));
 const OfficePrayAlongPage = lazy(() => import("./pages/office-pray-along"));
 const PodcastsPage = lazy(() => import("./pages/podcasts"));
+const BuildingFaithPage = lazy(() => import("./pages/building-faith"));
 const NewsPage = lazy(() => import("./pages/news"));
 const PodcastPublisherPage = lazy(() => import("./pages/podcast-publisher"));
 const PodcastShowPage = lazy(() => import("./pages/podcast-show"));
@@ -515,6 +516,7 @@ function Router() {
       <Route path="/journal" component={JournalPage} />
       <Route path="/podcasts/show/:slug" component={PodcastShowPage} />
       <Route path="/news" component={NewsPage} />
+      <Route path="/building-faith" component={BuildingFaithPage} />
       <Route path="/podcasts/:publisher" component={PodcastPublisherPage} />
       <Route path="/dashboard" component={Dashboard} />
       {/* Phoebe Parish — simplified tier. /parish is the dashboard

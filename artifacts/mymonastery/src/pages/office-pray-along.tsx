@@ -111,6 +111,13 @@ export default function OfficePrayAlongPage() {
     queryFn: () => apiRequest("GET", `/api/podcast/office/${side}/timestamps`),
     enabled: !!user,
     staleTime: 5 * 60_000,
+    // The first open computes the alignment on demand (status "building").
+    // Poll until it's "done" (or "failed") so the read-along fills in without
+    // a manual refresh; stop polling once resolved.
+    refetchInterval: (q) => {
+      const s = q.state.data?.status;
+      return s === "done" || s === "failed" ? false : 6000;
+    },
   });
 
   const audioUrl = episodeQ.data?.audioUrl ?? null;
