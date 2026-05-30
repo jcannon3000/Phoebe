@@ -47,6 +47,23 @@ export type PhoebeSettingTarget =
 
 export type Cadence = "daily" | "weekly" | "occasional";
 
+// How an "app" option's completion is detected — read by the Way of Love home
+// + sub-screens to (a) decide which content card the section resolves to and
+// (b) derive "done" automatically from an existing app signal. This same
+// engagement also credits Turn (the consistency spine). Options with no
+// completionSignal (every "offline"/custom option) get a manual "mark done".
+export type CompletionSignal =
+  | "officeToday"          // an office was completed today (any depth)
+  | "reflectionToday"      // a daily reflection (CAC/FDD/SSJE) was read today
+  | "contemplationToday"   // a contemplation sit was finished today
+  | "examenToday"          // the Ignatian Examen was prayed today
+  | "communityPrayedWeek"  // prayed for your worshipping community this week
+  | "prayerListWeek"       // prayed through your prayer list this week
+  | "feedEngagedWeek";     // engaged a prayer feed this week
+
+// Which office depth a Pray option maps to (drives the office-settings sync).
+export type OptionOfficeLevel = "office" | "devotion" | "intercessions" | "reflect-sit" | "journal";
+
 // An i18n label: a key plus the English default rendered via t().
 export type I18nText = { key: string; default: string };
 
@@ -61,6 +78,13 @@ export type PracticeOption = {
   // For the reflection-source option, which source it selects (the maker's
   // existing reflection picker resolves the final value).
   reflectionSource?: "cac" | "fdd" | "ssje";
+  // How completion is detected for an "app" option (absent ⇒ manual). Every
+  // surface reads this instead of hardcoding the section's content/signal.
+  completionSignal?: CompletionSignal;
+  // For Pray office-depth options: the office level this commits the side to.
+  officeLevel?: OptionOfficeLevel;
+  // For Go feed options: the prayer-feed slug this engages.
+  feedSlug?: string;
 };
 
 export type Practice = {
@@ -83,8 +107,8 @@ export const PRACTICES: Record<PracticeId, Practice> = {
     title: txt("way_of_love.turn.title", "Turn"),
     definition: txt("way_of_love.turn.def", "Pause, listen, and choose to follow Jesus."),
     options: [
-      { id: "turn-confession", label: txt("way_of_love.turn.confession", "Pray the Confession daily (BCP p. 79)"), defaultCadence: "daily", home: "app", setting: "confession" },
-      { id: "turn-examen", label: txt("way_of_love.turn.examen", "Pray a daily Examen"), defaultCadence: "daily", home: "offline" },
+      { id: "turn-confession", label: txt("way_of_love.turn.confession", "Pray the Confession daily (BCP p. 79)"), defaultCadence: "daily", home: "app", setting: "confession", completionSignal: "officeToday" },
+      { id: "turn-examen", label: txt("way_of_love.turn.examen", "Pray a daily Examen"), defaultCadence: "daily", home: "app", completionSignal: "examenToday" },
       { id: "turn-psalm51", label: txt("way_of_love.turn.psalm51", "Read Psalm 51 morning and night"), defaultCadence: "daily", home: "offline" },
       { id: "turn-forgive", label: txt("way_of_love.turn.forgive", "Work on forgiving a wrong"), defaultCadence: "occasional", home: "offline" },
     ],
@@ -94,8 +118,8 @@ export const PRACTICES: Record<PracticeId, Practice> = {
     title: txt("way_of_love.learn.title", "Learn"),
     definition: txt("way_of_love.learn.def", "Reflect on Scripture daily, especially Jesus' life and teachings."),
     options: [
-      { id: "learn-office-readings", label: txt("way_of_love.learn.office_readings", "Read the Daily Office readings"), defaultCadence: "daily", home: "app", setting: "office" },
-      { id: "learn-devotional", label: txt("way_of_love.learn.devotional", "Read a daily devotional (CAC, Forward Day by Day, or SSJE)"), defaultCadence: "daily", home: "app", setting: "reflectionSource" },
+      { id: "learn-office-readings", label: txt("way_of_love.learn.office_readings", "Read the Daily Office readings"), defaultCadence: "daily", home: "app", setting: "office", officeLevel: "office", completionSignal: "officeToday" },
+      { id: "learn-devotional", label: txt("way_of_love.learn.devotional", "Read a daily devotional (CAC, Forward Day by Day, or SSJE)"), defaultCadence: "daily", home: "app", setting: "reflectionSource", completionSignal: "reflectionToday" },
       { id: "learn-podcast", label: txt("way_of_love.learn.podcast", "Follow a Scripture podcast"), defaultCadence: "daily", home: "app", setting: "podcasts" },
       { id: "learn-reading-plan", label: txt("way_of_love.learn.reading_plan", "Follow a Bible reading plan"), defaultCadence: "daily", home: "offline" },
       { id: "learn-lectio", label: txt("way_of_love.learn.lectio", "Practice lectio divina"), defaultCadence: "daily", home: "offline" },
@@ -106,8 +130,8 @@ export const PRACTICES: Record<PracticeId, Practice> = {
     title: txt("way_of_love.pray.title", "Pray"),
     definition: txt("way_of_love.pray.def", "Dwell intentionally with God daily."),
     options: [
-      { id: "pray-silence", label: txt("way_of_love.pray.silence", "Keep contemplative silence for a set time"), defaultCadence: "daily", home: "app", setting: "silence" },
-      { id: "pray-office", label: txt("way_of_love.pray.office", "Pray the Daily Office"), defaultCadence: "daily", home: "app", setting: "office" },
+      { id: "pray-silence", label: txt("way_of_love.pray.silence", "Keep contemplative silence for a set time"), defaultCadence: "daily", home: "app", setting: "silence", completionSignal: "contemplationToday" },
+      { id: "pray-office", label: txt("way_of_love.pray.office", "Pray the Daily Office"), defaultCadence: "daily", home: "app", setting: "office", officeLevel: "office", completionSignal: "officeToday" },
       { id: "pray-devotions-136", label: txt("way_of_love.pray.devotions_136", "Pray the BCP Daily Devotions for Individuals & Families (p. 136)"), defaultCadence: "daily", home: "offline" },
       { id: "pray-beads", label: txt("way_of_love.pray.beads", "Pray with prayer beads"), defaultCadence: "daily", home: "offline" },
       { id: "pray-walking", label: txt("way_of_love.pray.walking", "Walk and pray"), defaultCadence: "occasional", home: "offline" },
@@ -121,7 +145,7 @@ export const PRACTICES: Record<PracticeId, Practice> = {
     options: [
       { id: "worship-weekly", label: txt("way_of_love.worship.weekly", "Attend worship each week"), defaultCadence: "weekly", home: "offline" },
       { id: "worship-arrive-early", label: txt("way_of_love.worship.arrive_early", "Arrive early for silence and thanksgiving"), defaultCadence: "weekly", home: "offline" },
-      { id: "worship-pray-community", label: txt("way_of_love.worship.pray_community", "Pray for your worshipping community daily"), defaultCadence: "daily", home: "offline" },
+      { id: "worship-pray-community", label: txt("way_of_love.worship.pray_community", "Pray for your worshipping community daily"), defaultCadence: "daily", home: "app", completionSignal: "communityPrayedWeek" },
     ],
   },
   bless: {
@@ -129,6 +153,7 @@ export const PRACTICES: Record<PracticeId, Practice> = {
     title: txt("way_of_love.bless.title", "Bless"),
     definition: txt("way_of_love.bless.def", "Share your faith, and unselfishly give and serve."),
     options: [
+      { id: "bless-prayer-list", label: txt("way_of_love.bless.prayer_list", "Pray for the people on your prayer list"), defaultCadence: "weekly", home: "app", completionSignal: "prayerListWeek" },
       { id: "bless-volunteer", label: txt("way_of_love.bless.volunteer", "Keep a regular volunteer shift"), defaultCadence: "weekly", home: "offline" },
       { id: "bless-neighbor", label: txt("way_of_love.bless.neighbor", "Check on a neighbor"), defaultCadence: "weekly", home: "offline" },
       { id: "bless-coffee", label: txt("way_of_love.bless.coffee", "Invite someone to coffee to hear their life"), defaultCadence: "weekly", home: "offline" },
@@ -143,7 +168,7 @@ export const PRACTICES: Record<PracticeId, Practice> = {
     options: [
       { id: "go-learn-community", label: txt("way_of_love.go.learn_community", "Learn about a community unlike your own — attend, read, or reach out"), defaultCadence: "occasional", home: "offline" },
       { id: "go-share-faith", label: txt("way_of_love.go.share_faith", "Share your faith with one person a week"), defaultCadence: "weekly", home: "offline" },
-      { id: "go-justice-feed", label: txt("way_of_love.go.justice_feed", "Follow a Creation Care or justice prayer feed"), defaultCadence: "daily", home: "offline" },
+      { id: "go-justice-feed", label: txt("way_of_love.go.justice_feed", "Follow a Creation Care or justice prayer feed"), defaultCadence: "daily", home: "app", completionSignal: "feedEngagedWeek", feedSlug: "phoebe-climate" },
     ],
   },
   rest: {

@@ -8,6 +8,7 @@ import { X, LogOut, ChevronRight, ChevronDown } from "lucide-react";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
 
@@ -141,6 +142,14 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   function navigate(path: string) {
     onClose();
     setLocation(path);
+  }
+
+  // Category rows fade the current page down, then the destination up (slower),
+  // with a soft rising cue. Closes the drawer first so it slides away under
+  // the cover.
+  function goCategory(path: string) {
+    onClose();
+    triggerCategoryTransition(() => setLocation(path));
   }
 
   // Climate used to be a separate top-level feature with its own
@@ -429,11 +438,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   contemplative practices are supplemental. */}
               {/* Each category is a single row that navigates to its own
                   list page (MenuHub style) rather than expanding inline. */}
-              <MenuRow emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })} onClick={() => navigate("/menu/bcp")} />
-              <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => navigate("/menu/practices")} />
-              <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => navigate("/menu/reflections")} />
-              <MenuRow emoji="🎧" label={t("menu.audio", { defaultValue: "Audio" })} onClick={() => navigate("/menu/audio")} />
-              <MenuRow emoji="📚" label={t("menu.resources", { defaultValue: "Resources" })} onClick={() => navigate("/menu/resources")} />
+              <MenuRow emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })} onClick={() => goCategory("/menu/bcp")} />
+              <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
+              <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
+              <MenuRow emoji="🎧" label={t("menu.audio", { defaultValue: "Audio" })} onClick={() => goCategory("/menu/audio")} />
+              <MenuRow emoji="📚" label={t("menu.resources", { defaultValue: "Resources" })} onClick={() => goCategory("/menu/resources")} />
               {showLetters && (
                 <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
               )}

@@ -13,6 +13,7 @@ import { BottomPromptStack } from "@/components/BottomPromptStack";
 import { AppOpenTracker } from "@/components/AppOpenTracker";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
+import { PageFadeOverlay } from "@/components/PageFadeOverlay";
 import { PodcastPlayerProvider } from "@/components/PodcastPlayer";
 import { Component, useEffect, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
 import { isChunkLoadError, recoverFromStaleChunk } from "@/lib/staleChunk";
@@ -773,6 +774,7 @@ function App() {
           <ForegroundRefresh />
           <NotificationTapPrewarm />
           <PullToRefresh />
+          <PageFadeOverlay />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <ScrollToTopOnNavigate />
             {/* Bottom-anchored prompt cards (live broadcast banner + App
