@@ -30,11 +30,9 @@ import {
 import {
   PRACTICES,
   PRACTICE_ORDER,
-  CONNECTION_LABELS,
   COVENANT,
   WAY_OF_LOVE_ATTRIBUTION,
   suggestedPractices,
-  defaultSelectedOptionIds,
   silenceMinutesForMinutes,
   type Connection,
   type PracticeId,
@@ -123,12 +121,18 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
 
   const primary = FOCUS_TO_CONNECTION[props.focus];
   const suggested = useMemo(() => suggestedPractices([primary]), [primary]);
-  const suggestedList = PRACTICE_ORDER.filter((p) => suggested.has(p));
-  const otherList = PRACTICE_ORDER.filter((p) => !suggested.has(p));
 
   const [step, setStep] = useState<Step>("choose");
-  const [selected, setSelected] = useState<Set<string>>(() => defaultSelectedOptionIds([primary]));
-  const [showAll, setShowAll] = useState(false);
+  // The Way of Love is presented as a seven-slide walk — one practice per
+  // slide, every practice "on". For each, the person keeps/changes a prefilled
+  // option (one or more) or writes their own commitment.
+  const [practiceIndex, setPracticeIndex] = useState(0);
+  // All seven on: default each practice to its first prefilled option.
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(PRACTICE_ORDER.map((pid) => PRACTICES[pid].options[0]?.id).filter(Boolean) as string[]),
+  );
+  // Per-practice "write your own" commitments, keyed by practice id.
+  const [custom, setCustom] = useState<Record<string, string>>({});
 
   const toggle = (id: string) =>
     setSelected((prev) => {
@@ -144,8 +148,9 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
       PRACTICE_ORDER.map((pid) => ({
         pid,
         options: PRACTICES[pid].options.filter((o) => selected.has(o.id)),
-      })).filter((g) => g.options.length > 0),
-    [selected],
+        custom: (custom[pid] ?? "").trim(),
+      })).filter((g) => g.options.length > 0 || g.custom.length > 0),
+    [selected, custom],
   );
 
   const sides: OfficeSide[] =
@@ -260,56 +265,87 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
     );
   };
 
-  // ── Step 1 — choose the practices ──
+  // ── Step 1 — walk the seven practices, one slide each ──
   if (step === "choose") {
-    const blurb = focusBlurb(props);
+    const pid = PRACTICE_ORDER[practiceIndex];
+    const p = PRACTICES[pid];
+    const isSuggested = suggested.has(pid);
+    const isLast = practiceIndex === PRACTICE_ORDER.length - 1;
+    const progressPct = ((practiceIndex + 1) / PRACTICE_ORDER.length) * 100;
+    const goNext = () => (isLast ? setStep("covenant") : setPracticeIndex((i) => i + 1));
+    const goBack = () => (practiceIndex === 0 ? props.onBack() : setPracticeIndex((i) => i - 1));
     return shell(
       <>
-        {backRow(props.onBack)}
+        {backRow(goBack)}
         <div style={{ flex: 1, maxWidth: 480, margin: "0 auto", width: "100%", display: "flex", flexDirection: "column" }}>
-          <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.2px", margin: 0, fontFamily: SANS }}>
-            {t("way_of_love.area_label", { defaultValue: "The area to tend" })}
-          </p>
-          <h1 style={{ color: CREAM, fontSize: 24, fontWeight: 500, lineHeight: 1.35, fontFamily: SERIF, fontStyle: "italic", margin: "10px 0 0" }}>
-            {t("way_of_love.area_heading", {
-              defaultValue: "Your connection {{which}}.",
-              which: T(CONNECTION_LABELS[primary]),
-            })}
-          </h1>
-          <p style={{ color: SAGE, fontSize: 15, lineHeight: 1.6, margin: "12px 0 4px", fontFamily: SANS }}>{T(blurb)}</p>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
-            {suggestedList.map((pid) => practiceCard(pid, true))}
-
-            {!showAll ? (
-              <button
-                onClick={() => setShowAll(true)}
-                style={{ background: "none", border: `1px dashed ${CHIP_BORDER}`, color: SAGE, borderRadius: 12, padding: "12px 16px", fontSize: 14, fontFamily: SANS, cursor: "pointer" }}
-              >
-                {t("way_of_love.show_all", { defaultValue: "Browse all seven practices" })}
-              </button>
-            ) : (
-              otherList.map((pid) => practiceCard(pid, false))
-            )}
+          <div style={{ height: 3, background: CHIP_BORDER, borderRadius: 2, overflow: "hidden", marginBottom: 16 }}>
+            <div style={{ width: `${progressPct}%`, height: "100%", background: SAGE, transition: "width 0.3s ease" }} />
           </div>
-
+          <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.2px", margin: 0, fontFamily: SANS }}>
+            {t("way_of_love.walk_label", { defaultValue: "The Way of Love" })} · {practiceIndex + 1}/{PRACTICE_ORDER.length}
+            {isSuggested ? `  ·  ${t("way_of_love.suggested", { defaultValue: "For you" })}` : ""}
+          </p>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pid}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={{ duration: 0.2 }}
+              style={{ flex: 1, display: "flex", flexDirection: "column" }}
+            >
+              <h1 style={{ color: CREAM, fontSize: 28, fontWeight: 600, fontFamily: SANS, margin: "12px 0 0" }}>{T(p.title)}</h1>
+              <p style={{ color: SAGE, fontSize: 15, fontFamily: SERIF, fontStyle: "italic", lineHeight: 1.55, margin: "8px 0 0" }}>{T(p.definition)}</p>
+              {practiceIndex === 0 && (
+                <p style={{ color: SAGE, fontSize: 14, lineHeight: 1.6, margin: "12px 0 0", fontFamily: SANS }}>{T(focusBlurb(props))}</p>
+              )}
+              <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "20px 0 10px", fontFamily: SANS }}>
+                {t("way_of_love.pick_label", { defaultValue: "Choose a practice — or write your own" })}
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {p.options.map((o) => {
+                  const on = selected.has(o.id);
+                  return (
+                    <button
+                      key={o.id}
+                      onClick={() => toggle(o.id)}
+                      style={{
+                        background: on ? CHIP_ACTIVE : "transparent",
+                        border: `1px solid ${on ? CHIP_BORDER_ACTIVE : CHIP_BORDER}`,
+                        color: CREAM, borderRadius: 12, padding: "11px 14px", fontSize: 14, fontFamily: SANS,
+                        cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center",
+                        justifyContent: "space-between", gap: 10, transition: "background 0.15s, border-color 0.15s",
+                      }}
+                    >
+                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        {on && <Check size={14} strokeWidth={2.5} />}
+                        {T(o.label)}
+                      </span>
+                      <span style={{ color: SAGE_DIM, fontSize: 12, whiteSpace: "nowrap" }}>{cadenceLabel(o.defaultCadence)}</span>
+                    </button>
+                  );
+                })}
+                <textarea
+                  value={custom[pid] ?? ""}
+                  onChange={(e) => setCustom((prev) => ({ ...prev, [pid]: e.target.value }))}
+                  placeholder={t("way_of_love.custom_placeholder", { defaultValue: "Or write your own…" })}
+                  rows={2}
+                  style={{
+                    background: CHIP_DEFAULT, border: `1px solid ${CHIP_BORDER}`, borderRadius: 12,
+                    padding: "10px 12px", color: CREAM, fontFamily: SANS, fontSize: 14, lineHeight: 1.5,
+                    resize: "none", outline: "none", marginTop: 2,
+                  }}
+                />
+              </div>
+            </motion.div>
+          </AnimatePresence>
           <button
-            onClick={() => setStep("covenant")}
-            disabled={chosen.length === 0}
-            style={{
-              marginTop: 24,
-              background: chosen.length ? CTA : CHIP_DEFAULT,
-              border: `1px solid ${chosen.length ? CHIP_BORDER_ACTIVE : CHIP_BORDER}`,
-              color: chosen.length ? CREAM : SAGE_DIM,
-              borderRadius: 12,
-              padding: "14px 20px",
-              fontSize: 16,
-              fontWeight: 600,
-              fontFamily: SANS,
-              cursor: chosen.length ? "pointer" : "not-allowed",
-            }}
+            onClick={goNext}
+            style={{ marginTop: 20, background: CTA, border: `1px solid ${CHIP_BORDER_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "14px 20px", fontSize: 16, fontWeight: 600, fontFamily: SANS, cursor: "pointer" }}
           >
-            {t("way_of_love.to_covenant", { defaultValue: "See my Way of Love" })}
+            {isLast
+              ? t("way_of_love.to_covenant", { defaultValue: "See my Way of Love" })
+              : t("ruleOfLife.continue", { defaultValue: "Continue" })}
           </button>
           <p style={{ color: SAGE_DIM, fontSize: 12, textAlign: "center", margin: "12px 0 0", fontFamily: SANS }}>
             {WAY_OF_LOVE_ATTRIBUTION}
@@ -341,7 +377,7 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10, margin: "16px 0 20px" }}>
-              {chosen.map(({ pid, options }) => (
+              {chosen.map(({ pid, options, custom: c }) => (
                 <div key={pid} style={{ background: CHIP_DEFAULT, border: `1px solid ${CHIP_BORDER}`, borderRadius: 12, padding: "12px 14px" }}>
                   <p style={{ color: SAGE, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 6px", fontFamily: SANS }}>
                     {T(PRACTICES[pid].title)}
@@ -352,6 +388,9 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
                       <span style={{ color: SAGE_DIM, whiteSpace: "nowrap" }}>{cadenceLabel(o.defaultCadence)}</span>
                     </p>
                   ))}
+                  {c && (
+                    <p style={{ color: CREAM, fontSize: 14, fontFamily: SERIF, fontStyle: "italic", margin: "0 0 4px", lineHeight: 1.45 }}>{c}</p>
+                  )}
                 </div>
               ))}
             </div>
