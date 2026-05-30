@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { getSideLevel, type OfficeSide } from "@/lib/officePrefs";
+import { getSideLevel, getSideEntry, type OfficeSide } from "@/lib/officePrefs";
 
 // /begin-prayer — landing page for the iOS "Begin prayer" home-screen
 // shortcut. iOS quick actions are static (configured in Info.plist),
@@ -127,7 +127,14 @@ export default function BeginPrayerPage() {
     const officeModeForLink = isMorning ? "morning" : "evening";
     const reset = prayedToday ? "&reset=1" : "";
     const devotionHref = `/bcp/daily-devotions?mode=${devotionMode}${reset}`;
-    const officeHref = `/bcp/daily-office?mode=${officeModeForLink}${reset}`;
+    // When this side's way-to-pray is "listen", begin-prayer drops straight
+    // into the synced "pray along" office and flags the full daily flow
+    // (flow=daily) so it continues into the community intercessions + closing
+    // afterward. Otherwise the text office (which runs the same full flow via
+    // its intercessions portal).
+    const officeHref = getSideEntry(side) === "listen"
+      ? `/podcast/${officeModeForLink}-office?flow=daily`
+      : `/bcp/daily-office?mode=${officeModeForLink}${reset}`;
     const complineHref = `/bcp/daily-office?mode=compline${reset}`;
     const intercessionsHref = prayedToday ? "/prayer-mode?reset=1" : "/prayer-mode";
 

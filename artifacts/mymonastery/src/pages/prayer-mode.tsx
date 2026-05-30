@@ -2161,6 +2161,22 @@ export default function PrayerModePage() {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("closingOnly") === "1";
   })();
+  // afterOffice=1 → the user just finished the read-aloud office ("pray
+  // along") from the home-screen Begin-prayer flow and is now praying the
+  // community intercessions. Run the full prayer walk, then continue into
+  // the news + weekly-progress (habit) tail at the end — the same closing
+  // sequence the text office's handoff produces.
+  const afterOffice = (() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("afterOffice") === "1";
+  })();
+  // progressOnly=1 → jump straight to the weekly-progress (habit) slide,
+  // skipping the prayer rotation and the closing recap. Used when an office
+  // was prayed on its own (chosen directly, no community intercessions).
+  const progressOnly = (() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("progressOnly") === "1";
+  })();
   // ?side=evening → the office just finished was an evening one. The
   // habit slide uses this to surface an evening-only "Pray the Examen"
   // pill. Falls back to the local hour when the param is absent (older
@@ -3248,7 +3264,7 @@ export default function PrayerModePage() {
     ? officePrefsQuery.data?.morning
     : officePrefsQuery.data?.evening;
   const showSetReminder = closingOnly && sidePref === "none";
-  const [phase, setPhase] = useState<"prayer" | "closing" | "news" | "habit">(() => closingOnly ? "closing" : "prayer");
+  const [phase, setPhase] = useState<"prayer" | "closing" | "news" | "habit">(() => progressOnly ? "habit" : closingOnly ? "closing" : "prayer");
   // New stories from followed news sources, if any — gates the optional
   // "As you go" news slide between the closing summary and the habit
   // rhythm screen. Empty (and free) for anyone who follows nothing.
@@ -3265,7 +3281,7 @@ export default function PrayerModePage() {
   // "closing" means offices-only feed-walkers still pray their whole list
   // first; the reflection appears the moment they reach the summary.
   const showReflectionGate =
-    (closingOnly || officesOnly) && phase === "closing" && reflectionSource !== "none" && !reflectionDone;
+    (closingOnly || officesOnly || afterOffice) && phase === "closing" && reflectionSource !== "none" && !reflectionDone;
   // Contemplation timer overlay — opened from the pause slide's
   // quick-start card. Rendered at the page root below so it covers the
   // whole screen regardless of which slide is showing. startMinutes is
@@ -3969,14 +3985,14 @@ export default function PrayerModePage() {
             //     habit page so they can see today's rhythm
             // Otherwise it exits to the home screen.
             onDone={
-              closingOnly || officesOnly
+              closingOnly || officesOnly || afterOffice
                 ? () => setPhase(unseenNews.hasUnseen ? "news" : "habit")
                 : handleDone
             }
             visible={slideVisible}
             showSetReminder={showSetReminder}
             reminderSide={reminderSide}
-            doneLabel={closingOnly || officesOnly ? t("common.continue") : t("common.done")}
+            doneLabel={closingOnly || officesOnly || afterOffice ? t("common.continue") : t("common.done")}
           />
         )}
         {/* Optional "As you go" news slide — only when a followed source

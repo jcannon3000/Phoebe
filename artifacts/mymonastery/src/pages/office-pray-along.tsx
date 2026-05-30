@@ -79,6 +79,14 @@ export default function OfficePrayAlongPage() {
   const [location, setLocation] = useLocation();
   const side: "morning" | "evening" = location.includes("evening") ? "evening" : "morning";
   const apiSlug = `${side}-office`;
+  // flow=daily → reached from the home-screen "Begin prayer" full daily flow;
+  // on completion continue into the community intercessions + closing tail.
+  // Absent (chosen directly from the chooser/menu) → office-only: jump to the
+  // weekly-progress slide.
+  const fullFlow = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("flow") === "daily";
+  }, []);
   const { t } = useTranslation();
   const { user, isLoading: authLoading } = useAuth();
 
@@ -179,6 +187,20 @@ export default function OfficePrayAlongPage() {
     }
   }, [activeIdx]);
 
+  // On completion: stamp the office prayed-today flag (sync-immediate; the
+  // server already credits via usePrayerSession), then hand off. Office-only
+  // jumps straight to the weekly-progress slide; the full daily flow waits on
+  // the card below to continue into the community intercessions.
+  useEffect(() => {
+    if (!complete) return;
+    try {
+      const d = new Date();
+      const ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      localStorage.setItem(`phoebe:office-completed:${side}:${ymd}`, "1");
+    } catch { /* private mode */ }
+    if (!fullFlow) setLocation(`/prayer-mode?progressOnly=1&side=${side}`);
+  }, [complete, fullFlow, side, setLocation]);
+
   if (authLoading || !user) return null;
 
   const loading = episodeQ.isLoading || officeQ.isLoading || alignQ.isLoading;
@@ -211,21 +233,25 @@ export default function OfficePrayAlongPage() {
             {t("podcasts.office_error", { defaultValue: "Today's recording isn't available yet." })}
           </p>
         ) : complete ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-            <div style={{ fontSize: 40 }}>🕯️</div>
-            <p style={{ fontSize: 19, fontWeight: 600, margin: 0 }}>{t("prayalong.complete", { defaultValue: "The office is complete." })}</p>
-            <p style={{ fontSize: 14, color: SAGE, lineHeight: 1.5, margin: 0, maxWidth: 320 }}>
-              {t("prayalong.complete_sub", { defaultValue: "Continue into the prayers your community is holding." })}
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6, width: "100%", maxWidth: 320 }}>
-              <button type="button" onClick={() => setLocation("/prayer-mode")} style={{ padding: "13px 0", borderRadius: 14, background: "#2D5E3F", color: WARM, border: "1px solid rgba(168,197,160,0.4)", fontFamily: FONT, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-                {t("prayalong.to_intercessions", { defaultValue: "Community intercessions →" })}
-              </button>
-              <button type="button" onClick={() => setLocation("/dashboard")} style={{ padding: "11px 0", borderRadius: 14, background: "transparent", color: SAGE, border: "none", fontFamily: FONT, fontSize: 14, cursor: "pointer" }}>
-                {t("common.done", { defaultValue: "Done" })}
-              </button>
+          fullFlow ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+              <div style={{ fontSize: 40 }}>🕯️</div>
+              <p style={{ fontSize: 19, fontWeight: 600, margin: 0 }}>{t("prayalong.complete", { defaultValue: "The office is complete." })}</p>
+              <p style={{ fontSize: 14, color: SAGE, lineHeight: 1.5, margin: 0, maxWidth: 320 }}>
+                {t("prayalong.complete_sub", { defaultValue: "Continue into the prayers your community is holding." })}
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6, width: "100%", maxWidth: 320 }}>
+                <button type="button" onClick={() => setLocation(`/prayer-mode?afterOffice=1&side=${side}`)} style={{ padding: "13px 0", borderRadius: 14, background: "#2D5E3F", color: WARM, border: "1px solid rgba(168,197,160,0.4)", fontFamily: FONT, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                  {t("prayalong.to_intercessions", { defaultValue: "Community intercessions →" })}
+                </button>
+                <button type="button" onClick={() => setLocation("/dashboard")} style={{ padding: "11px 0", borderRadius: 14, background: "transparent", color: SAGE, border: "none", fontFamily: FONT, fontSize: 14, cursor: "pointer" }}>
+                  {t("common.done", { defaultValue: "Done" })}
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <p style={{ color: FAINT, fontSize: 14 }}>{t("common.loading", { defaultValue: "Loading…" })}</p>
+          )
         ) : notAligned ? (
           <div style={{ color: FAINT, fontSize: 14, lineHeight: 1.6 }}>
             <div style={{ fontSize: 34, marginBottom: 10 }}>🎧</div>
