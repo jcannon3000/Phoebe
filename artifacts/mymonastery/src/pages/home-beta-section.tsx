@@ -42,8 +42,7 @@ const CTA = "#2D5E3F";
 const DONE_BG = "rgba(46,107,64,0.5)";
 const DONE_B = "rgba(168,197,160,0.7)";
 
-const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAY_NAMES_EN = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const REST_DAY_KEY = "phoebe:rest-day";
 
 function pad(n: number): string { return String(n).padStart(2, "0"); }
@@ -114,6 +113,12 @@ export default function HomeBetaSectionPage() {
   const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
   const { t } = useTranslation();
   const qc = useQueryClient();
+
+  // Localized day names — full name drives the abbreviation + initial so one
+  // set of keys covers the picker, the weekday strip, and the service line.
+  const dayFull = (i: number) => t(`home_beta.dow.${i}`, { defaultValue: DAY_NAMES_EN[i] ?? "Sunday" });
+  const dayAbbr = (i: number) => dayFull(i).slice(0, 3);
+  const dayInitial = (i: number) => dayFull(i).slice(0, 1);
 
   const def = SECTIONS.find((s) => s.key === (params?.section as SectionKey));
 
@@ -261,7 +266,7 @@ export default function HomeBetaSectionPage() {
         const isToday = cy === today;
         let cellDone = rows.some((r) => r.section === def.key && r.localDate === cy);
         if (def.key === "learn_pray" && isToday && officePrayedToday) cellDone = true;
-        return { key: cy, label: DAY_ABBR[i][0], done: cellDone, future: cy > today, isToday };
+        return { key: cy, label: dayInitial(i), done: cellDone, future: cy > today, isToday };
       })
     : [];
   const weekCells = def.daily
@@ -374,10 +379,10 @@ export default function HomeBetaSectionPage() {
             <div key={s.id} style={infoCard}>
               <p style={{ ...eyebrow, fontSize: 10.5, margin: 0 }}>{s.groupEmoji ?? "⛪"} {s.groupName}</p>
               <p style={{ color: WARM, fontSize: 14.5, fontWeight: 600, fontFamily: FONT, margin: "4px 0 0" }}>
-                {s.name || `${DAY_NAMES[s.dayOfWeek] ?? "Sunday"} Worship`}
+                {s.name || t("home_beta.services", { defaultValue: "Services" })}
               </p>
               <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, margin: "2px 0 0" }}>
-                {DAY_NAMES[s.dayOfWeek] ?? "Sunday"} · {s.times.map((tm) => fmtTime(tm.time)).join(", ")}
+                {dayFull(s.dayOfWeek)} · {s.times.map((tm) => fmtTime(tm.time)).join(", ")}
               </p>
               {s.location && <p style={{ color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "2px 0 0" }}>{s.location}</p>}
             </div>
@@ -419,7 +424,7 @@ export default function HomeBetaSectionPage() {
                 {t("home_beta.rest_carveout_sub", { defaultValue: "Choose a day each week to set down work and receive rest." })}
               </p>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 12 }}>
-                {DAY_ABBR.map((d, i) => {
+                {DAY_NAMES_EN.map((_, i) => {
                   const sel = restDay === i;
                   return (
                     <button
@@ -433,14 +438,14 @@ export default function HomeBetaSectionPage() {
                         color: sel ? WARM : SAGE,
                       }}
                     >
-                      {d}
+                      {dayAbbr(i)}
                     </button>
                   );
                 })}
               </div>
               {restDay !== null && (
                 <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, margin: "12px 0 0" }}>
-                  {t("home_beta.rest_chosen", { defaultValue: "Your sabbath: {{day}}", day: DAY_NAMES[restDay] })}
+                  {t("home_beta.rest_chosen", { defaultValue: "Your sabbath: {{day}}", day: dayFull(restDay) })}
                 </p>
               )}
             </div>
