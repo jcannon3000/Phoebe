@@ -269,6 +269,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
         eveningTime: usersTable.parishOfficeEveningTime,
         showConfession: usersTable.bcpShowConfession,
         defaultPrayerLevel: usersTable.defaultPrayerLevel,
+        contemplationGoalMinutes: usersTable.contemplationGoalMinutes,
       })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
@@ -355,6 +356,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
       eveningTime: u?.eveningTime ?? null,
       showConfession: u?.showConfession ?? false,
       defaultPrayerLevel: u?.defaultPrayerLevel ?? "ask",
+      contemplationGoalMinutes: u?.contemplationGoalMinutes ?? 0,
       lastPrayedMorning,
       lastPrayedEvening,
       officeStreak,
@@ -395,6 +397,11 @@ router.put("/me/office-prefs", async (req, res): Promise<void> => {
   const allowedLevels = new Set(["ask", "devotion", "office", "intercessions", "reflect-sit", "journal"]);
   if (typeof body.defaultPrayerLevel === "string" && allowedLevels.has(body.defaultPrayerLevel)) {
     update.defaultPrayerLevel = body.defaultPrayerLevel;
+  }
+  // Daily contemplation goal in minutes (0 = off). Clamp to a sane 0–180 so a
+  // stray value can't be written; the UI offers 5/10/15/20/30 presets.
+  if (typeof body.contemplationGoalMinutes === "number" && Number.isFinite(body.contemplationGoalMinutes)) {
+    update.contemplationGoalMinutes = Math.max(0, Math.min(180, Math.round(body.contemplationGoalMinutes)));
   }
   if (Object.keys(update).length === 0) { res.json({ ok: true }); return; }
   try {

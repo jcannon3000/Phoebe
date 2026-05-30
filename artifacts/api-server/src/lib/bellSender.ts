@@ -27,6 +27,7 @@ import {
   sendLectioEveningReminderPush,
   sendPrayerRenewalNudgePush,
   sendParishOfficeReminderPush,
+  sendContemplationGoalReminderPush,
   sendParishEveningRecapPush,
   sendGatheringTomorrowPush,
   sendFeedEventTomorrowPush,
@@ -956,6 +957,86 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
   }
 }
 
+// ─── Daily contemplation goal — ~7pm "haven't hit your goal" nudge ──────────
+// Fires for any user with contemplation_goal_minutes > 0. At ~19:00 in their
+// timezone, if today's logged contemplation minutes are still below the goal,
+// send one gentle nudge. Deduped per local day via contemplation_goal_sent_date
+// (stamped on a successful send, or when the goal is already met).
+const CONTEMPLATION_GOAL_TIME = "19:00";
+
+export async function runContemplationGoalSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  try {
+    const rows = await db
+      .select({
+        userId: usersTable.id,
+        userTimezone: usersTable.timezone,
+        goalMinutes: usersTable.contemplationGoalMinutes,
+        sentDate: usersTable.contemplationGoalSentDate,
+      })
+      .from(usersTable)
+      .where(sql`${usersTable.contemplationGoalMinutes} > 0`);
+
+    for (const r of rows) {
+      const goalMinutes = r.goalMinutes ?? 0;
+      if (goalMinutes <= 0) continue;
+
+      const tz = r.userTimezone || "America/New_York";
+      const today = todayInZone(tz);
+      if (r.sentDate === today) continue;
+      if (!opts.forceNow && !isWithinTickWindow(tz, CONTEMPLATION_GOAL_TIME)) continue;
+
+      // Sum today's contemplation seconds in the user's LOCAL day. Approximate
+      // UTC start of today (covers UTC-14) to bound the scan, then filter to
+      // the tz-local calendar day — same approach the office sender uses.
+      const sinceUtc = new Date(`${today}T00:00:00Z`);
+      sinceUtc.setUTCHours(sinceUtc.getUTCHours() - 14);
+      const sits = await db
+        .select({
+          endedAt: prayerSessionsTable.endedAt,
+          durationSeconds: prayerSessionsTable.durationSeconds,
+        })
+        .from(prayerSessionsTable)
+        .where(
+          and(
+            eq(prayerSessionsTable.userId, r.userId),
+            eq(prayerSessionsTable.surface, "contemplation"),
+            gte(prayerSessionsTable.endedAt, sinceUtc),
+          ),
+        );
+      let secondsToday = 0;
+      for (const s of sits) {
+        if (!s.endedAt) continue;
+        if (new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(s.endedAt) === today) {
+          secondsToday += s.durationSeconds ?? 0;
+        }
+      }
+      const doneMinutes = Math.floor(secondsToday / 60);
+
+      if (doneMinutes >= goalMinutes) {
+        // Goal already met — stamp so we don't re-evaluate on later ticks.
+        await db
+          .update(usersTable)
+          .set({ contemplationGoalSentDate: today })
+          .where(eq(usersTable.id, r.userId));
+        continue;
+      }
+
+      try {
+        await sendContemplationGoalReminderPush(r.userId, { goalMinutes, doneMinutes });
+        await db
+          .update(usersTable)
+          .set({ contemplationGoalSentDate: today })
+          .where(eq(usersTable.id, r.userId));
+      } catch (err) {
+        // No stamp on failure → a later tick within the window may retry.
+        logger.warn({ err, userId: r.userId }, "[contemplation-goal] push failed");
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "[contemplation-goal] sender failed");
+  }
+}
+
 // ─── Phoebe Parish — 8pm prayed-today recap ────────────────────────────────
 //
 // Once per parish per local day, when the parish's clock crosses 20:00,
@@ -1597,6 +1678,7 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   { name: "lectio-evening",        run: runLectioEveningReminderSender },
   { name: "renewal-nudge",         run: runPrayerRenewalNudgeSender },
   { name: "parish-office",         run: runParishOfficeReminderSender },
+  { name: "contemplation-goal",    run: runContemplationGoalSender },
   { name: "parish-evening",        run: runParishEveningRecapSender },
   { name: "gathering-reminder",    run: runGatheringReminderSender },
   { name: "feed-event-reminder",   run: runFeedEventReminderSender },

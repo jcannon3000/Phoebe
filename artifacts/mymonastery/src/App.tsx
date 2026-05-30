@@ -155,6 +155,7 @@ const MenuPage = lazy(() => import("./pages/menu"));
 const MenuBcpPage = lazy(() => import("./pages/menu-bcp"));
 const MenuPracticesPage = lazy(() => import("./pages/menu-practices"));
 const MenuReflectionsPage = lazy(() => import("./pages/menu-reflections"));
+const ReflectionReadPage = lazy(() => import("./pages/reflection-read"));
 const MenuAudioPage = lazy(() => import("./pages/menu-audio"));
 const MenuResourcesPage = lazy(() => import("./pages/menu-resources"));
 const HomeBetaPage = lazy(() => import("./pages/home-beta"));
@@ -521,6 +522,7 @@ function Router() {
       <Route path="/menu/bcp" component={MenuBcpPage} />
       <Route path="/menu/practices" component={MenuPracticesPage} />
       <Route path="/menu/reflections" component={MenuReflectionsPage} />
+      <Route path="/menu/reflections/:source" component={ReflectionReadPage} />
       <Route path="/menu/audio" component={MenuAudioPage} />
       <Route path="/menu/resources" component={MenuResourcesPage} />
       <Route path="/office/forward" component={OfficeFmPage} />

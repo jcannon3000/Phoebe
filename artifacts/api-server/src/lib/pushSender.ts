@@ -972,6 +972,27 @@ export function sendParishOfficeReminderPush(
   });
 }
 
+// Daily contemplation goal — a gentle ~7pm nudge on days the user hasn't yet
+// reached their minutes goal of silent prayer. Deep-links to the Contemplation
+// page so a tap can begin a sit. Deduped to once per local day by the sender.
+export function sendContemplationGoalReminderPush(
+  userId: number,
+  opts: { goalMinutes: number; doneMinutes: number }
+) {
+  const remaining = Math.max(1, opts.goalMinutes - opts.doneMinutes);
+  const body = opts.doneMinutes > 0
+    ? `${remaining} more min to reach your ${opts.goalMinutes}-minute goal today.`
+    : `A few quiet minutes to reach your ${opts.goalMinutes}-minute goal today.`;
+  return sendPushToUser(userId, {
+    title: "Time to be still",
+    body,
+    path: "/contemplation",
+    threadId: "contemplation-goal",
+    collapseId: `contemplation-goal-${userId}`,
+    sound: PHOEBE_SOUND_LOW,
+  });
+}
+
 // Phoebe Parish — 8pm "your parish prayed today" recap. Fires once
 // per parish per local day, only to parishioners who themselves
 // prayed today, and only when 4+ distinct parishioners prayed. Body

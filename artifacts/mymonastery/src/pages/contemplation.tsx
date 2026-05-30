@@ -150,6 +150,85 @@ function StatTile({ label, value }: { label: string; value: string }) {
   );
 }
 
+// Minute presets offered for the daily goal (besides "Off").
+const GOAL_PRESETS = [5, 10, 15, 20, 30] as const;
+
+function GoalChip({ label, active, disabled, onClick }: { label: string; active: boolean; disabled: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+      style={{
+        background: active ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.12)",
+        border: `1px solid ${active ? "rgba(46,107,64,0.8)" : "rgba(46,107,64,0.3)"}`,
+        color: active ? WARM : SAGE,
+        fontFamily: SPACE_GROTESK,
+        cursor: disabled ? "default" : "pointer",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+// Daily goal card — set a minutes/day target and see today's progress toward
+// it. Setting a goal (> 0) turns on a gentle ~7pm reminder on days it's unmet.
+function DailyGoalCard({
+  goalMinutes, todaySeconds, onSet, saving,
+}: {
+  goalMinutes: number;
+  todaySeconds: number;
+  onSet: (m: number) => void;
+  saving: boolean;
+}) {
+  const { t } = useTranslation();
+  const hasGoal = goalMinutes > 0;
+  const doneMin = Math.floor(todaySeconds / 60);
+  const pct = hasGoal ? Math.min(100, Math.round((doneMin / goalMinutes) * 100)) : 0;
+  const met = hasGoal && doneMin >= goalMinutes;
+  return (
+    <div className="rounded-2xl p-4 mt-4" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+          {t("contemplation.goal_title", { defaultValue: "Daily goal" })}
+        </p>
+        {hasGoal && (
+          <span className="text-[12px] font-semibold" style={{ color: met ? "#A8C5A0" : SAGE, fontFamily: SPACE_GROTESK }}>
+            {met
+              ? t("contemplation.goal_reached", { defaultValue: "Reached today" })
+              : t("contemplation.goal_progress", { defaultValue: `${doneMin} of ${goalMinutes} min today` })}
+          </span>
+        )}
+      </div>
+
+      {hasGoal ? (
+        <div className="rounded-full overflow-hidden mb-3" style={{ height: 6, background: "rgba(46,107,64,0.20)" }}>
+          <div style={{ width: `${pct}%`, height: "100%", background: met ? "#6FAF85" : "#2D5E3F", transition: "width 0.3s" }} />
+        </div>
+      ) : (
+        <p className="text-[12px]" style={{ color: SAGE, margin: "0 0 12px" }}>
+          {t("contemplation.goal_prompt", { defaultValue: "Set a daily minutes goal — we'll nudge you around 7pm on days you haven't reached it." })}
+        </p>
+      )}
+
+      <div className="flex gap-2 flex-wrap">
+        <GoalChip label={t("contemplation.goal_off", { defaultValue: "Off" })} active={!hasGoal} disabled={saving} onClick={() => onSet(0)} />
+        {GOAL_PRESETS.map((m) => (
+          <GoalChip key={m} label={`${m} min`} active={goalMinutes === m} disabled={saving} onClick={() => onSet(m)} />
+        ))}
+      </div>
+
+      {hasGoal && (
+        <p className="text-[11px] mt-3" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK, margin: "12px 0 0" }}>
+          {t("contemplation.goal_reminder_note", { defaultValue: "If you haven't reached your goal, we'll send a gentle reminder around 7pm." })}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // One History card: date + time on the left, duration on the right, with
 // a two-tap delete (tap the trash, then confirm) so an errant manual log
 // can be removed without a stray tap nuking a real sit.
@@ -323,6 +402,19 @@ export default function ContemplationPage() {
     onSuccess: refreshContemplation,
   });
 
+  // Daily contemplation goal (minutes; 0 = off). Stored with the user's office
+  // prefs; setting one turns on a gentle ~7pm reminder on days it's unmet.
+  const { data: officePrefs } = useQuery<{ contemplationGoalMinutes: number }>({
+    queryKey: ["/api/me/office-prefs"],
+    queryFn: () => apiRequest("GET", "/api/me/office-prefs") as Promise<{ contemplationGoalMinutes: number }>,
+  });
+  const goalMinutes = officePrefs?.contemplationGoalMinutes ?? 0;
+  const goalMutation = useMutation({
+    mutationFn: (minutes: number) =>
+      apiRequest("PUT", "/api/me/office-prefs", { contemplationGoalMinutes: minutes }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/me/office-prefs"] }),
+  });
+
   return (
     <Layout>
       <div className="max-w-xl mx-auto w-full">
@@ -388,6 +480,13 @@ export default function ContemplationPage() {
         <p className="text-[12px] mt-4 text-center" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
           {t("contemplation.caption")}
         </p>
+
+        <DailyGoalCard
+          goalMinutes={goalMinutes}
+          todaySeconds={stats?.todaySeconds ?? 0}
+          onSet={(m) => goalMutation.mutate(m)}
+          saving={goalMutation.isPending}
+        />
 
         {/* Section selector — History · Stats · Learn. The Begin card
             leads; these reveal the supporting surfaces below it. */}

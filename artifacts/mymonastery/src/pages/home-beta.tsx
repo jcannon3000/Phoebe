@@ -30,6 +30,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { PRACTICES, type PracticeId } from "@/lib/wayOfLove";
 import { computeTurnConsistency, engagementDays } from "@/lib/turnConsistency";
+import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
 // Reused production home cards + helpers (exported from dashboard, not rebuilt).
 import {
   PrayerOfficeCard,
@@ -212,6 +213,17 @@ export default function HomeBetaPage() {
     enabled: !!user,
     staleTime: 60_000,
   });
+  // Contemplation today (seconds sat) — a daily Learn & Pray signal.
+  const contemplationQ = useQuery<{ todaySeconds?: number }>({
+    queryKey: ["/api/me/contemplation-stats", ymd(new Date())],
+    queryFn: () => {
+      const since = new Date(); since.setHours(0, 0, 0, 0);
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      return apiRequest("GET", `/api/me/contemplation-stats?todaySince=${encodeURIComponent(since.toISOString())}&tz=${encodeURIComponent(tz)}`);
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
 
   const selections = wolQ.data?.selections ?? {};
   const rows = useMemo(() => compQ.data?.completions ?? [], [compQ.data]);
@@ -242,6 +254,14 @@ export default function HomeBetaPage() {
     return !!last && last.ymd === today && (last.morning || last.evening);
   }, [officeQ.data, today]);
 
+  // Any daily Learn & Pray practice done today via its app signal — the office,
+  // a reflection read (CAC/FDD/SSJE), or a contemplation sit. All complete
+  // Learn & Pray (and so credit Turn). Single source of truth: the option's
+  // completionSignal, surfaced here.
+  const reflectionReadToday = hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday();
+  const contemplationDoneToday = (contemplationQ.data?.todaySeconds ?? 0) > 0;
+  const dailyPrayerEngaged = officePrayedToday || reflectionReadToday || contemplationDoneToday;
+
   const has = (section: string, localDate: string) =>
     rows.some((r) => r.section === section && r.localDate === localDate);
 
@@ -260,17 +280,17 @@ export default function HomeBetaPage() {
   // yet, log it once — so the user never double-logs and consistency accrues.
   useEffect(() => {
     if (!user || compQ.isLoading || officeQ.isLoading) return;
-    if (officePrayedToday && !has("learn_pray", today)) {
+    if (dailyPrayerEngaged && !has("learn_pray", today)) {
       mark.mutate({ section: "learn_pray", localDate: today, weekStart: thisWeekStart });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [officePrayedToday, compQ.isLoading, officeQ.isLoading, user]);
+  }, [dailyPrayerEngaged, compQ.isLoading, officeQ.isLoading, user]);
 
   // For each section: done?, the localDate the toggle acts on, and weeks-kept.
   function sectionState(def: SectionDef) {
     const periodDate = def.daily ? today : thisWeekStart;
     let done = has(def.key, periodDate);
-    if (def.key === "learn_pray" && officePrayedToday) done = true;
+    if (def.key === "learn_pray" && dailyPrayerEngaged) done = true;
 
     const keptWeek = (weekStartYmd: string): boolean => {
       if (def.daily) {
@@ -290,7 +310,7 @@ export default function HomeBetaPage() {
 
   const toggle = (def: SectionDef, done: boolean, periodDate: string) => {
     if (done) {
-      if (def.key === "learn_pray" && officePrayedToday) return; // office-derived; not manually removable
+      if (def.key === "learn_pray" && dailyPrayerEngaged) return; // office-derived; not manually removable
       unmark.mutate({ section: def.key, localDate: periodDate });
     } else {
       mark.mutate({ section: def.key, localDate: periodDate, weekStart: thisWeekStart });
@@ -422,45 +442,26 @@ export default function HomeBetaPage() {
   // a useMemo here would violate the rules of hooks. engagementDays is cheap.
   const turnEngaged = engagementDays(rows.map((r) => r.localDate), officeQ.data?.days ?? []);
   const turn = computeTurnConsistency(turnEngaged);
-  const turnWeek = Array.from({ length: 7 }, (_, i) => {
-    const d = sundayStart(new Date()); d.setDate(d.getDate() + i);
-    const key = ymd(d);
-    return { key, done: turnEngaged.has(key), isToday: key === today, future: key > today };
-  });
+  // Turn — the daily return. Same thin-row format as the Contemplation card,
+  // with a fire streak (current run of days space was made) on the right.
   const turnCrown = (
     <button
       type="button"
       onClick={() => setLocation("/home-beta/turn")}
-      style={{ width: "100%", textAlign: "left", cursor: "pointer", background: "linear-gradient(180deg, rgba(46,107,64,0.24), rgba(46,107,64,0.10))", border: `1px solid ${DONE_TINT_B}`, borderRadius: 18, padding: "16px 18px" }}
+      className="relative flex rounded-xl overflow-hidden cursor-pointer w-full"
+      style={{ background: CARD, border: `1px solid ${CARD_B}`, textAlign: "left" }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ fontSize: 18 }}>{turnDef.emoji}</span>
-        <span style={{ color: WARM, fontSize: 16, fontWeight: 700, fontFamily: FONT }}>
-          {t("home_beta.section.turn", { defaultValue: "Turn" })}
-        </span>
-        <span style={{ marginLeft: "auto", color: SAGE_DIM, fontSize: 16 }}>›</span>
-      </div>
-      <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, margin: "5px 0 0", lineHeight: 1.4 }}>
-        {t("home_beta.turn_framing", { defaultValue: "The daily return — kept whenever you make space for God." })}
-      </p>
-      <p style={{ color: WARM, fontSize: 19, fontWeight: 700, fontFamily: FONT, margin: "12px 0 0", lineHeight: 1.2 }}>
-        {turn.madeSpaceCount > 0
-          ? t("home_beta.turn_made_space", { defaultValue: "You've made space {{count}} times", count: turn.madeSpaceCount })
-          : t("home_beta.turn_begin", { defaultValue: "Make space for God today" })}
-      </p>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "10px 0 0" }}>
-        {turnWeek.map((c) => (
-          <div key={c.key} style={{ flex: 1, display: "flex", justifyContent: "center" }}>
-            <div style={{ width: 15, height: 15, borderRadius: 999, background: c.done ? DONE_BG : "transparent", border: `1.5px solid ${c.done ? DONE_B : c.future ? "rgba(143,175,150,0.18)" : "rgba(143,175,150,0.38)"}`, boxShadow: c.isToday ? `0 0 0 2px ${BG}, 0 0 0 3px rgba(143,175,150,0.45)` : "none" }} />
-          </div>
-        ))}
-      </div>
-      {turn.weeksKept > 0 && (
-        <p style={{ color: SAGE_DIM, fontSize: 11.5, fontFamily: FONT, margin: "10px 0 0", display: "inline-flex", alignItems: "center", gap: 4 }}>
-          <span aria-hidden style={{ fontSize: 11 }}>🌱</span>
-          {t("home_beta.weeks_kept", { defaultValue: "Kept for {{count}} weeks", count: turn.weeksKept })}
+      <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
+        <p className="font-semibold min-w-0 truncate" style={{ color: WARM, fontFamily: FONT, margin: 0, lineHeight: 1.2, fontSize: 16 }}>
+          {t("home_beta.section.turn", { defaultValue: "Turn" })} {turnDef.emoji}
         </p>
-      )}
+        <div
+          className="rounded-full text-center shrink-0"
+          style={{ background: CHIP_BG, color: WARM, fontFamily: FONT, fontSize: 13, fontWeight: 600, padding: "6px 14px", border: `1px solid ${CHIP_B}`, whiteSpace: "nowrap" }}
+        >
+          <span aria-hidden>🔥</span> {turn.currentRunDays}
+        </div>
+      </div>
     </button>
   );
 

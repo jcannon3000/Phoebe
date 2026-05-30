@@ -1465,6 +1465,9 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_time TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_morning_sent_date TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_office_evening_sent_date TEXT`);
+    // Daily contemplation goal (minutes; 0 = off) + per-day nudge dedup stamp.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_goal_minutes INTEGER NOT NULL DEFAULT 0`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_goal_sent_date TEXT`);
     // YYYY-MM-DD (parish TZ) of the last Saturday-evening parish-recap
     // push we fired for this user. NULL = never sent. Added separately
     // because the column was introduced in 62639d5 without a migrate.ts

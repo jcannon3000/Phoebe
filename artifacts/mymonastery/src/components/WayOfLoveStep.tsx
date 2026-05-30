@@ -177,7 +177,9 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
               setSideConfession(side, true);
               break;
             case "office":
-              setSideLevel(side, "office");
+              // Honor the option's chosen depth (full Office / Devotion /
+              // Reflect & Sit / Intercessions / Journal), not always "office".
+              setSideLevel(side, o.officeLevel ?? "office");
               break;
             case "reflectionSource":
               setSideReflection(side, o.reflectionSource ?? "fdd");
