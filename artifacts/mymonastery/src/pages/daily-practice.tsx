@@ -211,13 +211,13 @@ export default function DailyPracticePage() {
             emoji="🌅"
             label="Morning"
             sub="Depth, reminder, way to pray, and reflection"
-            href="/bcp/daily-office/settings?side=morning"
+            href="/bcp/daily-office/settings?side=morning&from=practice"
           />
           <PracticeLinkRow
             emoji="🌙"
             label="Evening"
             sub="Depth, reminder, way to pray, and reflection"
-            href="/bcp/daily-office/settings?side=evening"
+            href="/bcp/daily-office/settings?side=evening&from=practice"
           />
         </div>
       </div>

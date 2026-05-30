@@ -247,7 +247,15 @@ export default function OfficeSettingsPage() {
 
   const goNext = () => { setDir(1); setStep((s) => Math.min(s + 1, TOTAL - 1)); };
   const goBack = () => { setDir(-1); setStep((s) => Math.max(s - 1, 0)); };
-  const close = () => setLocation("/bcp/daily-office");
+  // Return to wherever the wizard was opened from: the practice page sends
+  // ?from=practice, so finishing a per-side build lands back on /daily-practice;
+  // the office list's "Customize" pill sends nothing, so it returns to the
+  // office list as before.
+  const close = () => {
+    let from = "";
+    try { from = new URLSearchParams(window.location.search).get("from") ?? ""; } catch { /* ignore */ }
+    setLocation(from === "practice" ? "/daily-practice" : "/bcp/daily-office");
+  };
   // Single-choice questions auto-advance after a short beat so the
   // selection is visible before the slide slides away.
   const autoAdvance = () => window.setTimeout(goNext, 320);
