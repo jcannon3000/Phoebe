@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, X, Check, Share2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { useBetaStatus } from "@/hooks/useDemo";
 import {
@@ -812,18 +813,21 @@ export default function RuleOfLifePage() {
 
   if (phase === "practices") {
     // Opens here directly (no questionnaire). When a maker result exists it
-    // personalizes; otherwise it runs on sensible defaults.
+    // personalizes; otherwise it runs on sensible defaults. Wrapped in Layout
+    // so the Phoebe top bar (logo + nav pills) shows on this page.
     return (
-      <WayOfLoveStep
-        focus={result?.connectionFocus ?? "transcendent"}
-        timeOfDay={answers.timeOfDay ?? "both"}
-        minutes={typeof answers.minutes === "number" ? answers.minutes : 10}
-        carrying={Array.isArray(answers.carrying) ? answers.carrying : undefined}
-        godMoments={Array.isArray(answers.godMoments) ? answers.godMoments : undefined}
-        longing={Array.isArray(answers.longing) ? answers.longing : undefined}
-        onBack={() => (result ? setPhase("result") : setLocation("/daily-practice"))}
-        onDone={() => setLocation("/daily-practice")}
-      />
+      <Layout>
+        <WayOfLoveStep
+          focus={result?.connectionFocus ?? "transcendent"}
+          timeOfDay={answers.timeOfDay ?? "both"}
+          minutes={typeof answers.minutes === "number" ? answers.minutes : 10}
+          carrying={Array.isArray(answers.carrying) ? answers.carrying : undefined}
+          godMoments={Array.isArray(answers.godMoments) ? answers.godMoments : undefined}
+          longing={Array.isArray(answers.longing) ? answers.longing : undefined}
+          onBack={() => (result ? setPhase("result") : setLocation("/daily-practice"))}
+          onDone={() => setLocation("/daily-practice")}
+        />
+      </Layout>
     );
   }
 

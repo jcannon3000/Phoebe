@@ -212,7 +212,10 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
         : t("way_of_love.cadence.occasional", { defaultValue: "Now and then" });
 
   const shell = (children: ReactNode) => (
-    <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
+    // flex:1 (not 100dvh) so this fills the space under the Phoebe top bar
+    // when rendered inside <Layout> — forcing a full viewport here would push
+    // a second screen below the header and cause an awkward scroll.
+    <div style={{ flex: 1, minHeight: 0, background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
       <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
       <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
         {children}

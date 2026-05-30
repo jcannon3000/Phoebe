@@ -9,15 +9,6 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 
-// ─── Color palette (all greens) ───────────────────────────────────────────────
-const SECTION_COLORS = {
-  letters:    "#8E9E42",   // warm olive-green
-  practices:  "#2E6B40",   // deep forest-green
-  gatherings: "#6FAF85",   // light sage-green
-  people:     "#4A9E84",   // muted teal-green
-  prayer:     "#5A8C72",   // mid-sage
-};
-
 // ─── Drawer building blocks ─────────────────────────────────────────────────
 
 // A tappable menu row — a standalone link, or a child inside a section.
@@ -105,7 +96,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const logout = useLogout();
   const [, setLocation] = useLocation();
-  const { isAdmin: isBetaAdmin, rawIsAdmin, rawIsBeta, isBeta } = useBetaStatus();
+  const { rawIsAdmin, rawIsBeta } = useBetaStatus();
   const { t } = useTranslation();
   // Offices-only accounts 403 on /api/groups, /api/me/pending-…,
   // and /api/prayer-feeds/mine (requireBeta). Firing them on every
@@ -505,7 +496,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 export function Layout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const { isBeta } = useBetaStatus();
   const [location] = useLocation();
   const { t } = useTranslation();
   // Offices-only tier: no personal prayer requests + no garden. The
@@ -520,14 +510,6 @@ export function Layout({ children }: { children: ReactNode }) {
   const onCommunitiesPage =
     location === "/communities" || location.startsWith("/communities/");
 
-  // Personal streak = consecutive days I've finished a prayer-list slideshow.
-  const { data: streakData } = useQuery<{ streak: number; lastPrayedDate: string | null }>({
-    queryKey: ["/api/prayer-streak"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak"),
-    enabled: !!user,
-    staleTime: 60_000,
-  });
-  const prayerStreak = streakData?.streak ?? 0;
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10" }}>

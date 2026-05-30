@@ -269,7 +269,7 @@ router.post("/recommend", async (req, res): Promise<void> => {
       `INSERT INTO rule_of_life_sessions
          (created_by_user_id, subject_name, mode, locale, answers, narrative, plain_summary, settings, connection_focus, anchor)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
-      [user.id, answers.subjectName ?? null, answers.mode, user.locale ?? "en",
+      [user.id, answers.subjectName ?? null, answers.mode ?? "self", user.locale ?? "en",
        JSON.stringify(rawAnswers), narrative, plainSummary,
        JSON.stringify(settings), connectionFocus, anchor],
     );

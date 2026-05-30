@@ -11,6 +11,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { ChevronLeft, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { useBetaStatus } from "@/hooks/useDemo";
 import {
@@ -129,35 +130,40 @@ export default function RuleOfLifeViewPage() {
 
   if (isLoading) {
     return (
-      <div style={{ minHeight: "100dvh", background: EP_BG, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <AnimatedBackground base={EP_BG} variant="pronounced" />
-        <p style={{ color: SAGE_DIM, fontFamily: "Georgia, serif", fontStyle: "italic", position: "relative", zIndex: 1 }}>
-          {t("ruleOfLife.loading", { defaultValue: "Holding what you've shared…" })}
-        </p>
-      </div>
+      <Layout>
+        <div style={{ flex: 1, minHeight: 0, background: EP_BG, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <AnimatedBackground base={EP_BG} variant="pronounced" />
+          <p style={{ color: SAGE_DIM, fontFamily: "Georgia, serif", fontStyle: "italic", position: "relative", zIndex: 1 }}>
+            {t("ruleOfLife.loading", { defaultValue: "Holding what you've shared…" })}
+          </p>
+        </div>
+      </Layout>
     );
   }
 
   if (isError || !session) {
     return (
-      <div style={{ minHeight: "100dvh", background: EP_BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 24 }}>
-        <AnimatedBackground base={EP_BG} variant="pronounced" />
-        <p style={{ color: CREAM, fontFamily: "system-ui, sans-serif", position: "relative", zIndex: 1 }}>
-          {t("ruleOfLife.not_found", { defaultValue: "This rule of life couldn't be found." })}
-        </p>
-        <Link href="/rule-of-life">
-          <button style={{ position: "relative", zIndex: 1, background: CHIP_DEFAULT, border: `1px solid ${CHIP_BORDER}`, color: CREAM, borderRadius: 12, padding: "12px 18px", fontFamily: "system-ui, sans-serif", cursor: "pointer" }}>
-            {t("ruleOfLife.start_new", { defaultValue: "Start a new conversation" })}
-          </button>
-        </Link>
-      </div>
+      <Layout>
+        <div style={{ flex: 1, minHeight: 0, background: EP_BG, position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: 24 }}>
+          <AnimatedBackground base={EP_BG} variant="pronounced" />
+          <p style={{ color: CREAM, fontFamily: "system-ui, sans-serif", position: "relative", zIndex: 1 }}>
+            {t("ruleOfLife.not_found", { defaultValue: "This rule of life couldn't be found." })}
+          </p>
+          <Link href="/rule-of-life">
+            <button style={{ position: "relative", zIndex: 1, background: CHIP_DEFAULT, border: `1px solid ${CHIP_BORDER}`, color: CREAM, borderRadius: 12, padding: "12px 18px", fontFamily: "system-ui, sans-serif", cursor: "pointer" }}>
+              {t("ruleOfLife.start_new", { defaultValue: "Start a new conversation" })}
+            </button>
+          </Link>
+        </div>
+      </Layout>
     );
   }
 
   const alreadyApplied = !!session.applied_at || applyDone;
 
   return (
-    <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative" }}>
+    <Layout>
+    <div style={{ flex: 1, minHeight: 0, background: EP_BG, position: "relative" }}>
       <AnimatedBackground base={EP_BG} variant="pronounced" />
       <div style={{ position: "relative", zIndex: 1, padding: "24px 20px 60px", maxWidth: 560, margin: "0 auto" }}>
         {/* Header */}
@@ -269,5 +275,6 @@ export default function RuleOfLifeViewPage() {
         </div>
       </div>
     </div>
+    </Layout>
   );
 }
