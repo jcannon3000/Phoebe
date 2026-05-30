@@ -258,9 +258,9 @@ const PRACTICE_EMOJI: Record<string, string> = {
 
 // ─── Service schedules (e.g. Sunday Services) ───────────────────────────────
 
-type ServiceTime = { label: string; time: string; location?: string };
+export type ServiceTime = { label: string; time: string; location?: string };
 
-type ServiceSchedule = {
+export type ServiceSchedule = {
   id: number;
   groupId: number;
   groupName: string;
@@ -280,7 +280,7 @@ const DAY_OF_WEEK_NAMES: Record<number, string> = {
   4: "Thursday", 5: "Friday", 6: "Saturday",
 };
 
-function nextOccurrenceDate(dayOfWeek: number, today: Date = new Date()): Date {
+export function nextOccurrenceDate(dayOfWeek: number, today: Date = new Date()): Date {
   const out = startOfDay(today);
   const diff = (dayOfWeek - out.getDay() + 7) % 7;
   return addDays(out, diff);
@@ -292,7 +292,7 @@ function nextOccurrenceDate(dayOfWeek: number, today: Date = new Date()): Date {
 // ritual's rhythm so a freshly created gathering — where the first meetup
 // has already passed or hasn't been created yet — still anchors to a
 // sensible upcoming slot, the same way ServiceCard renders one.
-function computeNextGatheringDate(r: {
+export function computeNextGatheringDate(r: {
   nextMeetupDate?: string | null;
   dayPreference?: string | null;
   rhythm?: string | null;
@@ -1598,7 +1598,7 @@ export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment;
 
 // ─── Gathering card ─────────────────────────────────────────────────────────
 
-function GatheringCard({
+export function GatheringCard({
   r,
   keyPrefix,
   badge,
@@ -1963,7 +1963,7 @@ function ServiceTimesPillRow({ schedule, nextDate }: { schedule: ServiceSchedule
 // schedule. Shows group + schedule name and a teaser of the first service
 // time. Clicking fires onOpen to reveal every time in the schedule.
 
-function ServiceCard({
+export function ServiceCard({
   schedule,
   nextDate,
   isOnDate,
@@ -2109,7 +2109,7 @@ function CyclingCommunityLabel({ schedules }: { schedules: ServiceSchedule[] }) 
   );
 }
 
-function ConsolidatedServiceCard({
+export function ConsolidatedServiceCard({
   schedules,
   nextDate,
   isOnDate,
@@ -2170,7 +2170,7 @@ function ConsolidatedServiceCard({
 // Opened from ConsolidatedServiceCard. Lists every service time in every
 // community's schedule, grouped by community.
 
-function ConsolidatedServiceDetailModal({
+export function ConsolidatedServiceDetailModal({
   schedules,
   nextDate,
   onClose,
@@ -2376,7 +2376,7 @@ function NewPrayerRequestsCard({
 // A one-line card that taps through to /contemplation. Hidden by
 // default; surfaced (and pinnable to the top) from the Customize page so
 // someone whose daily rhythm is silent prayer can lead with it.
-function ContemplationHomeCard() {
+export function ContemplationHomeCard() {
   return (
     <Link href="/contemplation" className="block">
       <div
@@ -2495,7 +2495,7 @@ function ExamenHomeCard() {
 // Listens for `phoebe:cac-read` so multiple instances of the card
 // (or the MP closing pill, which writes the same flag) stay in sync
 // without a full re-render.
-function CacHomeCard() {
+export function CacHomeCard() {
   const [hasRead, setHasRead] = useState(() => hasReadCacToday());
   useEffect(() => {
     const refresh = () => setHasRead(hasReadCacToday());
@@ -4159,7 +4159,7 @@ function FeedTodayCard({
 // Full list of every service time in a group's schedule. Opened from
 // ServiceCard; dismissed by tapping the backdrop or the close button.
 
-function ServiceDetailModal({
+export function ServiceDetailModal({
   schedule,
   nextDate,
   onClose,

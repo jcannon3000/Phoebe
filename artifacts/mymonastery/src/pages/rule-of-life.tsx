@@ -325,7 +325,10 @@ export default function RuleOfLifePage() {
     if (!betaLoading && !isBeta) setLocation("/daily-practice");
   }, [betaLoading, isBeta, setLocation]);
 
-  const [phase, setPhase] = useState<Phase>("mode");
+  // Skip the questionnaire — open straight on the Way of Love sections.
+  // (The questionnaire phases below stay in the file but are no longer
+  // reached; WayOfLoveStep is self-contained and runs fine with defaults.)
+  const [phase, setPhase] = useState<Phase>("practices");
   const [mode, setMode] = useState<Mode>("self");
   const [subjectName, setSubjectName] = useState("");
   const [slideIndex, setSlideIndex] = useState(0);
@@ -807,16 +810,18 @@ export default function RuleOfLifePage() {
 
   // ── Way of Love — address the thin connection ────────────────────────────────
 
-  if (phase === "practices" && result) {
+  if (phase === "practices") {
+    // Opens here directly (no questionnaire). When a maker result exists it
+    // personalizes; otherwise it runs on sensible defaults.
     return (
       <WayOfLoveStep
-        focus={result.connectionFocus}
-        timeOfDay={answers.timeOfDay ?? "morning"}
+        focus={result?.connectionFocus ?? "transcendent"}
+        timeOfDay={answers.timeOfDay ?? "both"}
         minutes={typeof answers.minutes === "number" ? answers.minutes : 10}
         carrying={Array.isArray(answers.carrying) ? answers.carrying : undefined}
         godMoments={Array.isArray(answers.godMoments) ? answers.godMoments : undefined}
         longing={Array.isArray(answers.longing) ? answers.longing : undefined}
-        onBack={() => setPhase("result")}
+        onBack={() => (result ? setPhase("result") : setLocation("/daily-practice"))}
         onDone={() => setLocation("/daily-practice")}
       />
     );
