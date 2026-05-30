@@ -15,7 +15,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
-import { getSideEntry, getSideConfession } from "@/lib/officePrefs";
+import { getSideEntry, getSideConfession, getSideLevel } from "@/lib/officePrefs";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
@@ -2681,28 +2681,59 @@ export default function BcpDailyOfficePage() {
     now: isNight,
   };
 
-  const OptionButton = ({ opt }: { opt: OfficeOption }) => (
-    <button
-      onClick={() => { if (opt.navigateTo) setLocation(opt.navigateTo); else if (opt.mode) setShowMode(opt.mode); }}
-      className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
-      style={{
-        background: opt.now ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.08)",
-        border: `1px solid ${opt.now ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.18)"}`,
-      }}
-    >
-      <div className="flex items-center gap-4">
-        <span className="text-3xl">{opt.emoji}</span>
-        <div className="flex-1">
-          <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-            {opt.label}
-          </p>
-          <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>{opt.sub}</p>
-          {opt.now && <p className="text-xs mt-1.5 font-medium" style={{ color: "#6FAF85" }}>Available now</p>}
+  // Per-side default highlight. The Morning/Evening wizard sets each side's
+  // depth + way-to-pray; the option that matches gets a more pronounced
+  // border. A "default key" is an option's mode ("morning"/"evening"/
+  // "morning-devotion"/…) or navigateTo ("/podcast/morning-office",
+  // "/ncmp/watch"). Per-side OVERRIDES only — an unset side (ask / global
+  // fallback / intercessions) isn't badged.
+  const defaultKeys = (() => {
+    const keys = new Set<string>();
+    for (const s of ["morning", "evening"] as const) {
+      const lvl = getSideLevel(s);
+      if (lvl === "devotion") {
+        keys.add(s === "morning" ? "morning-devotion" : "early-evening-devotion");
+      } else if (lvl === "office") {
+        const entry = getSideEntry(s);
+        if (entry === "listen") keys.add(`/podcast/${s}-office`);
+        else if (entry === "watch" && s === "morning") keys.add("/ncmp/watch");
+        else keys.add(s); // "read" → the full office mode
+      }
+    }
+    return keys;
+  })();
+  const optIsDefault = (opt: OfficeOption): boolean =>
+    !!((opt.mode && defaultKeys.has(opt.mode)) || (opt.navigateTo && defaultKeys.has(opt.navigateTo)));
+
+  const OptionButton = ({ opt }: { opt: OfficeOption }) => {
+    const isDefault = optIsDefault(opt);
+    return (
+      <button
+        onClick={() => { if (opt.navigateTo) setLocation(opt.navigateTo); else if (opt.mode) setShowMode(opt.mode); }}
+        className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
+        style={{
+          background: opt.now ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.08)",
+          border: isDefault
+            ? "2px solid #A8C5A0"
+            : `1px solid ${opt.now ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.18)"}`,
+        }}
+      >
+        <div className="flex items-center gap-4">
+          <span className="text-3xl">{opt.emoji}</span>
+          <div className="flex-1">
+            <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              {opt.label}
+            </p>
+            <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>{opt.sub}</p>
+            {isDefault
+              ? <p className="text-xs mt-1.5 font-semibold" style={{ color: "#A8C5A0" }}>Your default</p>
+              : opt.now && <p className="text-xs mt-1.5 font-medium" style={{ color: "#6FAF85" }}>Available now</p>}
+          </div>
+          <span className="text-sm" style={{ color: "#8FAF96" }}>→</span>
         </div>
-        <span className="text-sm" style={{ color: "#8FAF96" }}>→</span>
-      </div>
-    </button>
-  );
+      </button>
+    );
+  };
 
   const SectionLabel = ({ children }: { children: string }) => (
     <p
@@ -2784,7 +2815,9 @@ export default function BcpDailyOfficePage() {
               className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
               style={{
                 background: "rgba(120,80,180,0.14)",
-                border: "1px solid rgba(120,80,180,0.40)",
+                border: defaultKeys.has("/ncmp/watch")
+                  ? "2px solid rgba(190,150,240,0.9)"
+                  : "1px solid rgba(120,80,180,0.40)",
               }}
             >
               <div className="flex items-center gap-4">
@@ -2813,6 +2846,9 @@ export default function BcpDailyOfficePage() {
                   <p className="text-sm mt-0.5" style={{ color: "rgba(199,176,235,0.85)" }}>
                     Weekday live broadcast · Washington National Cathedral
                   </p>
+                  {defaultKeys.has("/ncmp/watch") && (
+                    <p className="text-xs mt-1.5 font-semibold" style={{ color: "rgba(210,190,240,0.95)" }}>Your default</p>
+                  )}
                 </div>
                 <span className="text-sm" style={{ color: "#D0BFEF" }}>→</span>
               </div>

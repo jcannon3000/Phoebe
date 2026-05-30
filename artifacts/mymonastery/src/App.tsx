@@ -150,6 +150,12 @@ const ResetPassword = lazy(() => import("./pages/reset-password"));
 const PrayerChooserPage = lazy(() => import("./pages/prayer-chooser"));
 const NcmpWatchPage = lazy(() => import("./pages/ncmp-watch"));
 const OfficePodcastPage = lazy(() => import("./pages/office-podcast"));
+const MenuPage = lazy(() => import("./pages/menu"));
+const MenuBcpPage = lazy(() => import("./pages/menu-bcp"));
+const MenuPracticesPage = lazy(() => import("./pages/menu-practices"));
+const MenuReflectionsPage = lazy(() => import("./pages/menu-reflections"));
+const MenuAudioPage = lazy(() => import("./pages/menu-audio"));
+const MenuResourcesPage = lazy(() => import("./pages/menu-resources"));
 const HomeBetaPage = lazy(() => import("./pages/home-beta"));
 const HomeBetaSectionPage = lazy(() => import("./pages/home-beta-section"));
 const OfficeFmPage = lazy(() => import("./pages/office-fm"));
@@ -510,6 +516,12 @@ function Router() {
       <Route path="/ncmp/watch" component={NcmpWatchPage} />
       <Route path="/podcast/morning-office" component={OfficePodcastPage} />
       <Route path="/podcast/evening-office" component={OfficePodcastPage} />
+      <Route path="/menu" component={MenuPage} />
+      <Route path="/menu/bcp" component={MenuBcpPage} />
+      <Route path="/menu/practices" component={MenuPracticesPage} />
+      <Route path="/menu/reflections" component={MenuReflectionsPage} />
+      <Route path="/menu/audio" component={MenuAudioPage} />
+      <Route path="/menu/resources" component={MenuResourcesPage} />
       <Route path="/office/forward" component={OfficeFmPage} />
       {/* Podcast content browser. Exact /podcasts is the Discover
           index; /show/:slug must precede /:publisher so "show" isn't

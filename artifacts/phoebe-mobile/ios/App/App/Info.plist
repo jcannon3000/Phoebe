@@ -44,6 +44,16 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 
+	<!-- Force dark appearance app-wide. Phoebe is a dark-only app, so we
+	     never want the system to render the WKWebView (or native UI like
+	     the keyboard and menus) in light mode. Crucially this also makes
+	     embedded cross-origin reflections that follow prefers-color-scheme
+	     in their default "auto" theme — Forward Day by Day, SSJE — render
+	     dark inline: we can't set their cross-origin theme storage, but a
+	     dark WebView reports `prefers-color-scheme: dark` to every frame. -->
+	<key>UIUserInterfaceStyle</key>
+	<string>Dark</string>
+
 	<!-- Usage descriptions — shown in system permission prompts. Apple
 	     rejects builds missing these when the corresponding API is
 	     referenced. Copy here must match the feature in context. -->
