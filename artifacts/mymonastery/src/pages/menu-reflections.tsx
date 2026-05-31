@@ -1,15 +1,21 @@
 import { useLocation } from "wouter";
 import { MenuHub } from "@/components/MenuHub";
+import { openExternal } from "@/lib/openExternal";
+import { CAC_TODAY_URL, markCacRead } from "@/lib/cacReadState";
 
 // Daily reflections from across the church. "View all" opens a reader that
-// flips through Forward Day by Day, SSJE, and CAC (CAC last — it can't be
-// embedded inline, so it shows a "Read now" card there). The select sound is
-// handled centrally by MenuHub (the highest octave of the slideshow chime),
-// matching the menu's pill → category → item ladder.
+// flips through Forward Day by Day and SSJE inline, with a "Next" button that
+// walks Forward → SSJE → CAC; CAC is last and opens in a new page (the in-app
+// browser) since cac.org can't be embedded. The CAC card here opens that page
+// directly. The select sound is handled centrally by MenuHub (the highest
+// octave of the slideshow chime), matching the menu's pill → category → item
+// ladder.
 export default function MenuReflectionsPage() {
   const [, setLocation] = useLocation();
-  const openReflection = (source: "fdd" | "ssje" | "cac" | "all") =>
+  const openReflection = (source: "fdd" | "ssje" | "all") =>
     setLocation(`/menu/reflections/${source}`);
+  // CAC can't be embedded inline — open it in a new page (the in-app browser).
+  const openCac = () => { markCacRead(); openExternal(CAC_TODAY_URL); };
 
   return (
     <MenuHub
@@ -29,8 +35,8 @@ export default function MenuReflectionsPage() {
           items: [
             { emoji: "📔", label: "Forward Day by Day", sub: "Today's meditation from Forward Movement", onClick: () => openReflection("fdd") },
             { emoji: "✍🏽", label: "SSJE Reflections", sub: "Today's Brother, Give Us a Word", onClick: () => openReflection("ssje") },
-            // CAC last — it can't be embedded inline (cac.org sends X-Frame-Options).
-            { emoji: "🌵", label: "CAC Daily Reflection", sub: "Center for Action & Contemplation", onClick: () => openReflection("cac") },
+            // CAC last — opens in a new page (can't be embedded inline).
+            { emoji: "🌵", label: "CAC Daily Reflection", sub: "Center for Action & Contemplation", onClick: openCac },
           ],
         },
       ]}

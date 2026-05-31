@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { openExternal } from "@/lib/openExternal";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -13,60 +11,58 @@ import {
 
 // ── /menu/reflections/:source — read all of today's reflections ─────────────
 //
-// One surface for today's reflections from across the church. A segmented
-// switcher flips between Forward Day by Day, SSJE, and CAC — CAC last, because
-// cac.org sends X-Frame-Options and can't be embedded inline. FDD + SSJE set no
-// framing restrictions, so they render in an <iframe>; CAC shows today's
-// scraped title with a "Read now" CTA into the in-app browser. A bottom bar
-// offers Back (to the Reflections menu) and Journal. The slideshows' animated
-// gradient drifts behind it all.
+// One surface for today's reflections from across the church. Forward Day by
+// Day and SSJE embed inline (they set no framing restrictions); a segmented
+// switcher plus a "Next" button walk through them in order: Forward → SSJE →
+// CAC. CAC is last and can't be framed (cac.org sends X-Frame-Options), so
+// reaching it — via Next from SSJE, or by tapping the CAC tab — opens it in a
+// new page (the in-app browser) rather than rendering inline. A bottom bar
+// offers Back (to the Reflections menu), Journal, and Next. The slideshows'
+// animated gradient drifts behind it all.
 //
-// :source picks the starting tab — "fdd" | "ssje" | "cac", or "all" to open at
-// the first reflection. Mirrors the visual language of prayer-mode's
-// ReflectionSlide, minus the slideshow-continue plumbing.
+// :source picks the starting reflection — "ssje" starts on SSJE; "fdd"/"all"/
+// anything else starts on Forward Day by Day.
 
 const BG = "#0C1F12";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
 type Source = "fdd" | "ssje" | "cac";
+type Embeddable = "fdd" | "ssje";
 
-const TABS: Array<{ key: Source; emoji: string; short: string; full: string }> = [
+const TABS: Array<{ key: Source; emoji: string; short: string; full: string; external?: boolean }> = [
   { key: "fdd", emoji: "📔", short: "Forward", full: "Forward Day by Day" },
   { key: "ssje", emoji: "✍🏽", short: "SSJE", full: "Brother, Give Us a Word" },
-  // CAC last — it can't be framed, so it's the "Read now" card at the end.
-  { key: "cac", emoji: "🌵", short: "CAC", full: "CAC Daily Meditation" },
+  // CAC last — it can't be framed, so its tab opens in a new page.
+  { key: "cac", emoji: "🌵", short: "CAC", full: "CAC Daily Meditation", external: true },
 ];
 
 export default function ReflectionReadPage() {
   const [, setLocation] = useLocation();
   const { source: rawSource } = useParams<{ source: string }>();
-  const initial: Source =
-    rawSource === "ssje" ? "ssje" : rawSource === "cac" ? "cac" : "fdd";
+  const initial: Embeddable = rawSource === "ssje" ? "ssje" : "fdd";
 
-  const [active, setActive] = useState<Source>(initial);
+  const [active, setActive] = useState<Embeddable>(initial);
   const tab = TABS.find((t) => t.key === active) ?? TABS[0];
+  const url = active === "ssje" ? SSJE_TODAY_URL : FDD_TODAY_URL;
 
   // Whichever reflection is in view counts as "read" — flips the home card /
   // dashboard module to "Read again", same as opening it in the browser did.
   useEffect(() => {
     if (active === "fdd") markFddRead();
-    else if (active === "ssje") markSsjeRead();
-    else markCacRead();
+    else markSsjeRead();
   }, [active]);
 
-  // CAC can't be iframed, so we show today's scraped title + a Read-now CTA.
-  // Title comes from the CAC daily-meditations RSS feed (falls back to a
-  // generic label if the endpoint isn't reachable).
-  const { data: cacMeta } = useQuery<{ title: string; url: string }>({
-    queryKey: ["/api/cac/today-meta"],
-    queryFn: () => apiRequest("GET", "/api/cac/today-meta"),
-    enabled: active === "cac",
-    staleTime: 30 * 60_000,
-  });
-  const cacTitle = cacMeta?.title ?? "";
+  // CAC can't be iframed, so it always opens in a new page (the in-app
+  // browser) rather than rendering inline.
+  const openCac = () => { markCacRead(); openExternal(CAC_TODAY_URL); };
 
-  const url = active === "ssje" ? SSJE_TODAY_URL : active === "cac" ? CAC_TODAY_URL : FDD_TODAY_URL;
+  // "Next" walks Forward → SSJE → CAC. The final step opens CAC in a new page.
+  const goNext = () => {
+    if (active === "fdd") setActive("ssje");
+    else openCac();
+  };
+  const nextLabel = active === "fdd" ? "Next →" : "CAC ↗";
 
   // Edge-to-edge in the native app; a padded, rounded card on web.
   const fullBleed = isNativeShell();
@@ -101,7 +97,7 @@ export default function ReflectionReadPage() {
         </button>
       </div>
 
-      {/* Segmented switcher — flip through today's reflections, CAC last. */}
+      {/* Segmented switcher — Forward / SSJE inline, CAC opens in a new page. */}
       <div style={{ display: "flex", gap: 6, padding: "0 14px 10px", flexShrink: 0 }}>
         {TABS.map((tt) => {
           const isActive = tt.key === active;
@@ -109,7 +105,7 @@ export default function ReflectionReadPage() {
             <button
               key={tt.key}
               type="button"
-              onClick={() => setActive(tt.key)}
+              onClick={() => { if (tt.key === "cac") openCac(); else setActive(tt.key); }}
               className="transition-opacity hover:opacity-90 active:scale-[0.98]"
               style={{
                 flex: 1,
@@ -130,80 +126,58 @@ export default function ReflectionReadPage() {
               }}
             >
               <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>{tt.emoji}</span>
-              {tt.short}
+              {tt.short}{tt.external ? " ↗" : ""}
             </button>
           );
         })}
       </div>
 
-      {/* Body — FDD/SSJE embed inline; CAC shows a Read-now card. */}
-      {active !== "cac" ? (
-        <div
-          style={{
-            flex: 1,
-            minHeight: 0,
-            position: "relative",
-            overflow: "hidden",
-            background: "#fff",
-            ...(fullBleed
-              ? { borderTop: "1px solid rgba(46,107,64,0.3)", borderBottom: "1px solid rgba(46,107,64,0.3)" }
-              : { margin: "0 12px", borderRadius: 16, border: "1px solid rgba(46,107,64,0.3)" }),
-          }}
-        >
-          <iframe
-            key={url}
-            src={url}
-            title={tab.full}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
-          />
-        </div>
-      ) : (
-        <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, padding: "0 34px", textAlign: "center" }}>
-          <p style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.16em", color: "rgba(143,175,150,0.7)", margin: 0, fontFamily: FONT }}>
-            Center for Action and Contemplation
-          </p>
-          {cacTitle ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: SAGE, margin: 0, fontFamily: FONT }}>
-                Today’s Daily Meditation
-              </p>
-              <h2 style={{ fontSize: 25, fontWeight: 700, lineHeight: 1.3, color: "#F0EDE6", margin: 0, fontFamily: FONT }}>
-                {cacTitle}
-              </h2>
-            </div>
-          ) : (
-            <h2 style={{ fontSize: 25, fontWeight: 700, lineHeight: 1.3, color: "#F0EDE6", margin: 0, fontFamily: FONT }}>
-              Today’s Daily Meditation
-            </h2>
-          )}
-          <button
-            type="button"
-            onClick={() => { markCacRead(); openExternal(CAC_TODAY_URL); }}
-            className="px-8 py-3.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
-            style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: FONT, marginTop: 4 }}
-          >
-            Read now →
-          </button>
-        </div>
-      )}
+      {/* Body — Forward / SSJE embed inline. */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          position: "relative",
+          overflow: "hidden",
+          background: "#fff",
+          ...(fullBleed
+            ? { borderTop: "1px solid rgba(46,107,64,0.3)", borderBottom: "1px solid rgba(46,107,64,0.3)" }
+            : { margin: "0 12px", borderRadius: 16, border: "1px solid rgba(46,107,64,0.3)" }),
+        }}
+      >
+        <iframe
+          key={url}
+          src={url}
+          title={tab.full}
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
+        />
+      </div>
 
-      {/* Bottom bar — Back to the Reflections menu + Journal. */}
-      <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 10, padding: "14px 16px max(16px, env(safe-area-inset-bottom))" }}>
+      {/* Bottom bar — Back · Journal · Next (Next advances to the next reflection). */}
+      <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", alignItems: "center", gap: 8, padding: "14px 14px max(16px, env(safe-area-inset-bottom))" }}>
         <button
           type="button"
           onClick={() => setLocation("/menu/reflections")}
-          className="px-7 py-3.5 rounded-full text-sm font-semibold tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.5)", fontFamily: FONT }}
+          className="transition-opacity hover:opacity-90 active:scale-[0.98]"
+          style={{ background: "none", border: "none", color: "#A8C5A0", fontFamily: FONT, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "12px 8px", whiteSpace: "nowrap" }}
         >
           ← Back
         </button>
         <button
           type="button"
-          onClick={() => setLocation("/journal")}
-          className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: FONT }}
+          onClick={() => setLocation(`/journal?source=${active}`)}
+          className="px-6 py-3.5 rounded-full text-sm font-semibold tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+          style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.5)", fontFamily: FONT }}
         >
           ✎ Journal
+        </button>
+        <button
+          type="button"
+          onClick={goNext}
+          className="px-7 py-3.5 rounded-full text-sm font-semibold tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+          style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: FONT, whiteSpace: "nowrap" }}
+        >
+          {nextLabel}
         </button>
       </div>
     </div>
