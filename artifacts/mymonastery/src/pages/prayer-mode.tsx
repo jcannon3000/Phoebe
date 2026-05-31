@@ -1795,7 +1795,9 @@ function ReflectionSlide({
             minHeight: 0,
             position: "relative",
             overflow: "hidden",
-            background: "#fff",
+            // FDD has no dark theme; the iframe below is inverted to dark, so
+            // back it with the dark ground (not white) to avoid a flash.
+            background: source === "fdd" ? "#0C1F12" : "#fff",
             // Native app: edge-to-edge, top/bottom hairlines only. Web: a
             // padded, rounded card.
             ...(fullBleed
@@ -1807,7 +1809,16 @@ function ReflectionSlide({
             key={url}
             src={url}
             title={heading}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
+            style={{
+              position: "absolute", inset: 0, width: "100%", height: "100%", border: "none",
+              // Forward Day by Day ships light-only — force dark with invert +
+              // hue-rotate so it doesn't glare mid-office (whites → near-black,
+              // text → light). White iframe bg inverts to black (no flash).
+              // SSJE renders untouched.
+              ...(source === "fdd"
+                ? { filter: "invert(1) hue-rotate(180deg)", background: "#fff" }
+                : {}),
+            }}
           />
         </div>
       ) : (

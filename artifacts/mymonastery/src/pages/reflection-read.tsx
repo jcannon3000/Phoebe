@@ -132,14 +132,17 @@ export default function ReflectionReadPage() {
         })}
       </div>
 
-      {/* Body — Forward / SSJE embed inline. */}
+      {/* Body — Forward / SSJE embed inline. Forward Day by Day ships a
+          bright, light-only page; force it to dark mode (see the iframe
+          filter below) so it doesn't glare inside the dark reader. SSJE is
+          left untouched. */}
       <div
         style={{
           flex: 1,
           minHeight: 0,
           position: "relative",
           overflow: "hidden",
-          background: "#fff",
+          background: active === "fdd" ? BG : "#fff",
           ...(fullBleed
             ? { borderTop: "1px solid rgba(46,107,64,0.3)", borderBottom: "1px solid rgba(46,107,64,0.3)" }
             : { margin: "0 12px", borderRadius: 16, border: "1px solid rgba(46,107,64,0.3)" }),
@@ -149,7 +152,16 @@ export default function ReflectionReadPage() {
           key={url}
           src={url}
           title={tab.full}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
+          style={{
+            position: "absolute", inset: 0, width: "100%", height: "100%", border: "none",
+            // FDD has no dark theme — invert + hue-rotate flips its white page
+            // to dark (whites → near-black, text → light) while keeping hues
+            // roughly intact. The white iframe background inverts to black so
+            // there's no flash before the page paints. Scoped to FDD only.
+            ...(active === "fdd"
+              ? { filter: "invert(1) hue-rotate(180deg)", background: "#fff" }
+              : {}),
+          }}
         />
       </div>
 
