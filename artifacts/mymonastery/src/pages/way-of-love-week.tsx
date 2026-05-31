@@ -14,7 +14,7 @@
  * day it's done.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -34,6 +34,7 @@ import {
   type ServiceSchedule,
 } from "@/pages/dashboard";
 import BlessSubScreen from "@/components/BlessSubScreen";
+import { PRACTICES } from "@/lib/wayOfLove";
 import { SECTIONS, commitmentLines, type SectionKey, type WolSelections, type CompletionRow } from "./home-beta";
 
 const WARM = "#F0EDE6";
@@ -135,6 +136,14 @@ export default function WayOfLoveWeekPage() {
     enabled: !!user,
     staleTime: 30 * 60_000,
   });
+  // Go signal — the viewer's OWN per-feed "prayed today" engagement, used to
+  // auto-credit Go when their committed Creation Care / justice feed is prayed.
+  const subscribedFeedsQ = useQuery<{ subscriptions: Array<{ slug: string; prayedToday: boolean }> }>({
+    queryKey: ["/api/prayer-feeds/subscribed"],
+    queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed"),
+    enabled: !!user,
+    staleTime: 60_000,
+  });
 
   const selections = wolQ.data?.selections ?? {};
   const rows = useMemo(() => compQ.data?.completions ?? [], [compQ.data]);
@@ -162,6 +171,22 @@ export default function WayOfLoveWeekPage() {
       apiRequest("DELETE", "/api/practice-completion", v),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/practice-completion"] }),
   });
+
+  // Go auto-complete: if a committed Go feed (Creation Care / justice) was
+  // prayed today, credit Go for the week (and so Turn) — the same "engagement
+  // marks the section" pattern as the office reconcile. Today-scoped.
+  const goFeedSlugs = (selections.go?.optionIds ?? [])
+    .map((id) => PRACTICES.go.options.find((o) => o.id === id)?.feedSlug)
+    .filter((s): s is string => !!s);
+  const goFeedEngaged = (subscribedFeedsQ.data?.subscriptions ?? [])
+    .some((f) => goFeedSlugs.includes(f.slug) && f.prayedToday);
+  useEffect(() => {
+    if (!user) return;
+    if (goFeedEngaged && !doneThisWeek("go")) {
+      mark.mutate({ section: "go", localDate: today, weekStart: thisWeekStart });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goFeedEngaged, user]);
 
   const toggle = (key: SectionKey) => {
     if (doneThisWeek(key)) {
