@@ -242,11 +242,6 @@ function DailyGoalCard({
         </button>
       )}
 
-      {hasGoal && (
-        <p className="text-[11px] mt-3" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK, margin: "12px 0 0" }}>
-          {t("contemplation.goal_reminder_note", { defaultValue: "If you haven't reached your goal, we'll send a gentle reminder around 7pm." })}
-        </p>
-      )}
     </div>
   );
 }
