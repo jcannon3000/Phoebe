@@ -1,18 +1,16 @@
 /**
- * Your Way of Love — launch pad for a person's daily prayer rhythm.
+ * Your Way of Love — launch pad for shaping a person's daily prayer rhythm.
  *
  * Reached from the "Your Way of Love" entry under the user's name in the
- * drawer menu. Begins today's prayer (or "Pray again" once logged today) and
- * links to the morning / evening office settings. The seven Way of Love
- * practice commitments are set in the Rule of Life flow and shown on the home
- * screen — they're no longer edited here.
+ * drawer menu. From here you customize your Rule of Life (the Way of Love
+ * practices setup that lives at /rule-of-life) and tune the morning /
+ * evening office settings. There's no "pray" CTA — praying happens from the
+ * home screen; this page is for shaping the rhythm, not starting a session.
  */
 
 import { Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 import { Layout } from "@/components/layout";
-import { apiRequest } from "@/lib/queryClient";
 
 // ── Design tokens (match WayOfLoveStep) ─────────────────────────────────
 const BG_CARD  = "rgba(46,107,64,0.10)";
@@ -23,25 +21,7 @@ const SAGE_DIM = "rgba(143,175,150,0.55)";
 const CTA    = "#2D5E3F";
 const FONT   = "'Space Grotesk', system-ui, sans-serif";
 
-// Only `loggedToday` is used (drives the Pray CTA's label + href); the other
-// fields remain for the endpoint's shape.
-type PrayerStreak = {
-  streak: number;
-  lastPrayedDate: string | null;
-  loggedToday?: boolean;
-  gardenPrayedTodayCount?: number;
-};
-
 export default function DailyPracticePage() {
-  const { data: streakData } = useQuery<PrayerStreak>({
-    queryKey: ["/api/prayer-streak"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak") as Promise<PrayerStreak>,
-    staleTime: 60_000,
-  });
-
-  const loggedToday = !!streakData?.loggedToday;
-  const beginHref = loggedToday ? "/prayer-mode?reset=1" : "/prayer-mode";
-
   return (
     <Layout>
       <div className="flex flex-col w-full max-w-2xl mx-auto pb-24 px-4 sm:px-0">
@@ -57,15 +37,17 @@ export default function DailyPracticePage() {
           Your Way of Love 🌿
         </h1>
         <p className="text-sm mb-5" style={{ color: SAGE }}>
-          Begin today's prayer, and tune your morning and evening offices.
+          Shape your Rule of Life, and tune your morning and evening offices.
         </p>
 
+        {/* Primary action — open the Rule of Life setup (WayOfLoveStep, the
+            seven Way of Love practices). This page is the home for it. */}
         <Link
-          href={beginHref}
+          href="/rule-of-life"
           className="block text-center mb-7 rounded-xl px-4 py-3 font-semibold transition-opacity hover:opacity-90"
           style={{ background: CTA, color: WARM, fontFamily: FONT }}
         >
-          {loggedToday ? "Pray again →" : "Begin today's prayer →"}
+          Customize your Rule of Life →
         </Link>
 
         {/* Prayer settings shortcuts */}
