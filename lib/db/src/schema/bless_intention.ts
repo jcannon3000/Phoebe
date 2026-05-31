@@ -24,6 +24,9 @@ export const blessIntentionTable = pgTable("bless_intention", {
   recipient: text("recipient"),
   // HH:MM (24h, user-local) reminder time (optional)
   reminderTime: text("reminder_time"),
+  // YYYY-MM-DD (user-local) the reminder push was last sent — fire-once dedup
+  // for the bless reminder scheduler; null = never fired.
+  reminderFiredDate: text("reminder_fired_date"),
   // when the person marked it done (null = open)
   doneAt: timestamp("done_at", { withTimezone: true }),
   // the intention id this one was carried over from, if any (gracious carry-over)

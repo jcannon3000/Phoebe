@@ -77,7 +77,7 @@ router.patch("/bless/:id", async (req, res): Promise<void> => {
   if (typeof b.text === "string") { const t = str(b.text, 280); if (t) patch.text = t; }
   if ("type" in b) patch.type = str(b.type, 20);
   if ("recipient" in b) patch.recipient = str(b.recipient, 120);
-  if ("reminderTime" in b) patch.reminderTime = str(b.reminderTime, 5);
+  if ("reminderTime" in b) { patch.reminderTime = str(b.reminderTime, 5); patch.reminderFiredDate = null; }
   if ("done" in b) patch.doneAt = b.done ? new Date() : null;
   if (Object.keys(patch).length === 0) { res.json({ ok: true }); return; }
   const [row] = await db.update(blessIntentionTable).set(patch)

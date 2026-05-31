@@ -896,11 +896,13 @@ export async function migrate() {
         type TEXT,
         recipient TEXT,
         reminder_time TEXT,
+        reminder_fired_date TEXT,
         done_at TIMESTAMPTZ,
         carried_from INTEGER,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    await run(client, `ALTER TABLE bless_intention ADD COLUMN IF NOT EXISTS reminder_fired_date TEXT`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_bless_intention_user_week ON bless_intention (user_id, week_start)`);
     await run(client, `
       CREATE TABLE IF NOT EXISTS bless_week (
