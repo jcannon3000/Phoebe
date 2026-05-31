@@ -127,6 +127,14 @@ export default function WayOfLoveWeekPage() {
     enabled: !!user,
     staleTime: 5 * 60_000,
   });
+  // Materials — Bless-tagged podcasts (service / generosity), via the same
+  // tagging the section sub-screens use.
+  const matsQ = useQuery<{ shows: Array<{ slug: string; title: string; artist: string; artwork: string | null }> }>({
+    queryKey: ["/api/podcasts/search", "bless"],
+    queryFn: () => apiRequest("GET", "/api/podcasts/search?theme=bless"),
+    enabled: !!user,
+    staleTime: 30 * 60_000,
+  });
 
   const selections = wolQ.data?.selections ?? {};
   const rows = useMemo(() => compQ.data?.completions ?? [], [compQ.data]);
@@ -320,6 +328,28 @@ export default function WayOfLoveWeekPage() {
               <>{chip(t("home_beta.rest_carve", { defaultValue: "Carve out a time →" }), () => setLocation("/bcp/daily-office/settings?side=evening"))}</>
             ))}
           </div>
+
+          {/* Materials — practice-tagged resources to go deeper */}
+          {(matsQ.data?.shows?.length ?? 0) > 0 && (
+            <div style={{ marginTop: 26 }}>
+              <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 700, fontFamily: FONT, margin: "0 0 10px" }}>
+                {t("home_beta.materials", { defaultValue: "To go deeper" })}
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {matsQ.data!.shows.slice(0, 5).map((s) => (
+                  <button key={s.slug} type="button" onClick={() => setLocation(`/podcasts/show/${s.slug}`)} style={{ display: "flex", alignItems: "center", gap: 12, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "10px 12px", cursor: "pointer", textAlign: "left", width: "100%" }}>
+                    {s.artwork
+                      ? <img src={s.artwork} alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
+                      : <div style={{ width: 40, height: 40, borderRadius: 8, background: "rgba(46,107,64,0.3)", flexShrink: 0 }} />}
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ color: WARM, fontSize: 14, fontWeight: 600, fontFamily: FONT, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.title}</p>
+                      <p style={{ color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.artist}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {openSvc && (
