@@ -2546,6 +2546,15 @@ export function CacHomeCard() {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, []);
+  // Today's actual meditation title (scraped from the CAC RSS feed). When
+  // present it becomes the card's headline and "CAC Daily Reflection"
+  // drops to an eyebrow; until it loads we just show the generic label.
+  const { data: cacMeta } = useQuery<{ title: string; url: string }>({
+    queryKey: ["/api/cac/today-meta"],
+    queryFn: () => apiRequest("GET", "/api/cac/today-meta"),
+    staleTime: 30 * 60_000,
+  });
+  const cacTitle = cacMeta?.title ?? "";
   const onClick = () => {
     markCacRead();
     openExternal(CAC_TODAY_URL);
@@ -2565,12 +2574,30 @@ export function CacHomeCard() {
       style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.40)" }}
     >
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
-        <p
-          className="font-semibold min-w-0 truncate"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
-        >
-          CAC Daily Reflection 🌵
-        </p>
+        <div className="min-w-0">
+          {cacTitle ? (
+            <>
+              <p
+                style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 11.5, letterSpacing: "0.04em" }}
+              >
+                CAC Daily Reflection 🌵
+              </p>
+              <p
+                className="font-semibold truncate"
+                style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: "3px 0 0", lineHeight: 1.2, fontSize: 16 }}
+              >
+                {cacTitle}
+              </p>
+            </>
+          ) : (
+            <p
+              className="font-semibold truncate"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
+            >
+              CAC Daily Reflection 🌵
+            </p>
+          )}
+        </div>
         <div
           className="rounded-full text-center shrink-0"
           style={{
