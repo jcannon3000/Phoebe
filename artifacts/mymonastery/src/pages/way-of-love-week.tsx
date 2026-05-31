@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, Check } from "lucide-react";
+import { Check } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
@@ -306,15 +306,48 @@ export default function WayOfLoveWeekPage() {
       <div style={{ position: "relative", minHeight: "70vh" }}>
         <AnimatedBackground base={BG} variant="subtle" fadeTop />
         <div style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "0 auto", width: "100%", padding: "4px 2px 28px" }}>
-          <button type="button" onClick={() => setLocation("/dashboard")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: "4px 0 2px" }}>
-            <ChevronLeft size={16} /> {t("common.home", { defaultValue: "Home" })}
-          </button>
-          <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 700, fontFamily: FONT, margin: "4px 0 2px" }}>
-            {t("week.eyebrow", { defaultValue: "This week" })}
-          </p>
-          <h1 style={{ color: WARM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: 0 }}>{range}</h1>
+          <h1 style={{ color: WARM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: "6px 0 0" }}>
+            {t("week.title", { defaultValue: "Weekly rule progress" })}
+          </h1>
           <p style={{ color: SAGE, fontSize: 13.5, fontFamily: FONT, margin: "6px 0 18px" }}>
-            {t("week.status", { defaultValue: "{{done}} of {{total}} practices this week", done: doneCount, total: WEEKLY_KEYS.length })}
+            {range} · {t("week.status", { defaultValue: "{{done}} of {{total}} practices this week", done: doneCount, total: WEEKLY_KEYS.length })}
+          </p>
+
+          {/* Daily practices — the spine of the rule (Turn + Learn & Pray),
+              tracked day-to-day on the home screen. Surfaced here so the page
+              reflects the WHOLE rule, not just the weekly half. */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
+            <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 700, fontFamily: FONT, margin: 0 }}>
+              {t("week.daily_label", { defaultValue: "Daily" })}
+            </p>
+            {(["turn", "learn_pray"] as SectionKey[]).map((key) => {
+              const d = def(key);
+              const lines = commitmentLines(d, selections);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setLocation("/dashboard")}
+                  style={{ display: "flex", alignItems: "center", gap: 12, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "11px 14px", cursor: "pointer", textAlign: "left", width: "100%" }}
+                >
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>{d.emoji}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ color: WARM, fontSize: 15, fontWeight: 700, fontFamily: FONT, margin: 0 }}>{t(`home_beta.section.${key}`, { defaultValue: d.title })}</p>
+                    <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, margin: "2px 0 0", lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {lines.length > 0 ? lines.join(" · ") : d.definition}
+                    </p>
+                  </div>
+                  <span style={{ color: SAGE_DIM, fontSize: 16, flexShrink: 0 }} aria-hidden>›</span>
+                </button>
+              );
+            })}
+            <p style={{ color: SAGE_DIM, fontSize: 11.5, fontFamily: FONT, margin: "2px 0 0" }}>
+              {t("week.daily_note", { defaultValue: "Tracked each day on your home screen." })}
+            </p>
+          </div>
+
+          <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 700, fontFamily: FONT, margin: "0 0 12px" }}>
+            {t("week.weekly_label", { defaultValue: "Weekly" })}
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>

@@ -21,7 +21,9 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SAGE_DIM = "rgba(143,175,150,0.55)";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
-const SERIF = "Georgia, serif";
+// The "serif" token points at Space Grotesk too, so the italic prompt/intention
+// lines render as oblique Space Grotesk (not Georgia) — one consistent typeface.
+const SERIF = "'Space Grotesk', system-ui, sans-serif";
 const CARD = "rgba(46,107,64,0.12)";
 const CARD_B = "rgba(46,107,64,0.26)";
 const CTA = "#2D5E3F";

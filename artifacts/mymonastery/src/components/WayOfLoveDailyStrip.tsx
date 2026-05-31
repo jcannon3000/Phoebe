@@ -75,7 +75,7 @@ export function WayOfLoveDailyStrip() {
     && !blessQ.data?.reviewedAt;
 
   return (
-    <div style={{ display: "flex", gap: 10, margin: "0 0 14px" }}>
+    <div style={{ display: "flex", gap: 10, margin: "18px 0 14px" }}>
       {/* Turn fire streak → Turn detail */}
       <button
         type="button"
