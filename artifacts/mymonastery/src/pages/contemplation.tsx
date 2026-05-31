@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
@@ -150,31 +150,10 @@ function StatTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-// Minute presets offered for the daily goal (besides "Off").
-const GOAL_PRESETS = [5, 10, 15, 20, 30] as const;
-
-function GoalChip({ label, active, disabled, onClick }: { label: string; active: boolean; disabled: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
-      style={{
-        background: active ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.12)",
-        border: `1px solid ${active ? "rgba(46,107,64,0.8)" : "rgba(46,107,64,0.3)"}`,
-        color: active ? WARM : SAGE,
-        fontFamily: SPACE_GROTESK,
-        cursor: disabled ? "default" : "pointer",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
-
 // Daily goal card — set a minutes/day target and see today's progress toward
-// it. Setting a goal (> 0) turns on a gentle ~7pm reminder on days it's unmet.
+// it. Setting a goal (> 0) turns on a gentle ~7pm reminder ONLY on days it's
+// still unmet (no nudge once the goal is reached). The target is a free field —
+// the user types any number of minutes; there are no presets.
 function DailyGoalCard({
   goalMinutes, todaySeconds, onSet, saving,
 }: {
@@ -188,6 +167,14 @@ function DailyGoalCard({
   const doneMin = Math.floor(todaySeconds / 60);
   const pct = hasGoal ? Math.min(100, Math.round((doneMin / goalMinutes) * 100)) : 0;
   const met = hasGoal && doneMin >= goalMinutes;
+
+  // Free-form minutes field (no presets). Kept in sync with the saved goal;
+  // the user types any target and taps Set (or Enter).
+  const [draft, setDraft] = useState<string>(hasGoal ? String(goalMinutes) : "");
+  useEffect(() => { setDraft(hasGoal ? String(goalMinutes) : ""); }, [goalMinutes, hasGoal]);
+  const parsed = Math.min(600, Math.max(0, Math.floor(Number(draft))));
+  const canSet = !saving && Number.isFinite(parsed) && parsed > 0 && parsed !== goalMinutes;
+
   return (
     <div className="rounded-2xl p-4 mt-4" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
       <div className="flex items-center justify-between mb-2">
@@ -213,12 +200,47 @@ function DailyGoalCard({
         </p>
       )}
 
-      <div className="flex gap-2 flex-wrap">
-        <GoalChip label={t("contemplation.goal_off", { defaultValue: "Off" })} active={!hasGoal} disabled={saving} onClick={() => onSet(0)} />
-        {GOAL_PRESETS.map((m) => (
-          <GoalChip key={m} label={`${m} min`} active={goalMinutes === m} disabled={saving} onClick={() => onSet(m)} />
-        ))}
+      {/* Minutes target — a free field, no presets. */}
+      <div className="flex items-center gap-2">
+        <input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          max={600}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && canSet) onSet(parsed); }}
+          placeholder={t("contemplation.goal_placeholder", { defaultValue: "Minutes" })}
+          aria-label={t("contemplation.goal_field_label", { defaultValue: "Daily goal in minutes" })}
+          disabled={saving}
+          className="rounded-xl px-3 py-2 text-sm"
+          style={{ width: 96, background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.35)", color: WARM, fontFamily: SPACE_GROTESK, outline: "none" }}
+        />
+        <span className="text-[13px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+          {t("contemplation.goal_unit", { defaultValue: "min / day" })}
+        </span>
+        <button
+          type="button"
+          onClick={() => onSet(parsed)}
+          disabled={!canSet}
+          className="rounded-full px-4 py-2 text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-40 ml-auto"
+          style={{ background: "#2D5E3F", color: WARM, fontFamily: SPACE_GROTESK, cursor: canSet ? "pointer" : "default" }}
+        >
+          {t("common.set", { defaultValue: "Set" })}
+        </button>
       </div>
+
+      {hasGoal && (
+        <button
+          type="button"
+          onClick={() => onSet(0)}
+          disabled={saving}
+          className="text-[12px] mt-2 transition-opacity hover:opacity-80 disabled:opacity-50"
+          style={{ background: "none", border: "none", padding: 0, color: SAGE, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
+        >
+          {t("contemplation.goal_turn_off", { defaultValue: "Turn off goal" })}
+        </button>
+      )}
 
       {hasGoal && (
         <p className="text-[11px] mt-3" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK, margin: "12px 0 0" }}>
