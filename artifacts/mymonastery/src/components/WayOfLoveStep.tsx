@@ -19,8 +19,10 @@ import { useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
+import { computeTurnConsistency, engagementDays, type EngagementOfficeDay } from "@/lib/turnConsistency";
 import {
   setSideLevel,
   setSideReflection,
@@ -86,48 +88,32 @@ type Step = "choose" | "silence-goal" | "covenant" | "committed";
 // Minute presets for the daily contemplative-silence goal slide.
 const SILENCE_GOAL_PRESETS = [5, 10, 15, 20, 30] as const;
 
-// One personal line under the area heading, assembled from what they shared in
-// the Desire movement. Deterministic — picks the first signal that resonates.
-function focusBlurb(p: WayOfLoveStepProps): I18nText {
-  const carrying = p.carrying ?? [];
-  const moments = p.godMoments ?? [];
-  const longing = p.longing ?? [];
-  if (carrying.some((c) => c === "family" || c === "friends" || c === "suffering")) {
-    return {
-      key: "way_of_love.blurb.carrying",
-      default: "You named people you're carrying — these practices turn that love into something you do.",
-    };
-  }
-  if (moments.includes("silence") || longing.includes("peace") || longing.includes("heal")) {
-    return {
-      key: "way_of_love.blurb.rest",
-      default: "You long for peace and quiet with God — these practices make room for it.",
-    };
-  }
-  if (moments.includes("service") || longing.includes("give-back")) {
-    return {
-      key: "way_of_love.blurb.serve",
-      default: "You come alive in serving — these practices send you toward it on purpose.",
-    };
-  }
-  if (moments.includes("scripture") || longing.includes("grow") || longing.includes("direction")) {
-    return {
-      key: "way_of_love.blurb.learn",
-      default: "You want to grow and find your way — these practices keep you close to Jesus' life.",
-    };
-  }
-  return {
-    key: "way_of_love.blurb.default",
-    default: "The Way of Love offers seven practices; here are the ones that tend this part of your life.",
-  };
-}
-
 export default function WayOfLoveStep(props: WayOfLoveStepProps) {
   const { t } = useTranslation();
   const T = (x: I18nText) => t(x.key, { defaultValue: x.default });
 
   const primary = FOCUS_TO_CONNECTION[props.focus];
   const suggested = useMemo(() => suggestedPractices([primary]), [primary]);
+
+  // Turn isn't a practice you set — it's the daily return to God, enacted every
+  // time you pray in Phoebe. Read the same engagement signals the home Turn
+  // card uses so the Turn slide can show the LIVE streak instead of options.
+  const turnCompletionsQ = useQuery<{ completions: { localDate: string }[] }>({
+    queryKey: ["/api/practice-completion"],
+    queryFn: () => apiRequest("GET", "/api/practice-completion"),
+    staleTime: 15_000,
+  });
+  const turnOfficeQ = useQuery<{ days: EngagementOfficeDay[] }>({
+    queryKey: ["/api/me/office-history-week"],
+    queryFn: () => apiRequest("GET", "/api/me/office-history-week"),
+    staleTime: 30_000,
+  });
+  const turn = computeTurnConsistency(
+    engagementDays(
+      (turnCompletionsQ.data?.completions ?? []).map((r) => r.localDate),
+      turnOfficeQ.data?.days ?? [],
+    ),
+  );
 
   const [step, setStep] = useState<Step>("choose");
   // Daily contemplative-silence goal (minutes), set on its own slide when the
@@ -345,47 +331,76 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
             >
               <h1 style={{ color: CREAM, fontSize: 28, fontWeight: 600, fontFamily: SANS, margin: "12px 0 0" }}>{T(p.title)}</h1>
               <p style={{ color: SAGE, fontSize: 15, fontFamily: SERIF, fontStyle: "italic", lineHeight: 1.55, margin: "8px 0 0" }}>{T(p.definition)}</p>
-              {practiceIndex === 0 && (
-                <p style={{ color: SAGE, fontSize: 14, lineHeight: 1.6, margin: "12px 0 0", fontFamily: SANS }}>{T(focusBlurb(props))}</p>
-              )}
-              <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "20px 0 10px", fontFamily: SANS }}>
-                {t("way_of_love.pick_label", { defaultValue: "Choose a practice — or write your own" })}
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {p.options.map((o) => {
-                  const on = selected.has(o.id);
-                  return (
-                    <button
-                      key={o.id}
-                      onClick={() => toggle(o.id)}
-                      style={{
-                        background: on ? CHIP_ACTIVE : "transparent",
-                        border: `1px solid ${on ? CHIP_BORDER_ACTIVE : CHIP_BORDER}`,
-                        color: CREAM, borderRadius: 12, padding: "11px 14px", fontSize: 14, fontFamily: SANS,
-                        cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center",
-                        justifyContent: "space-between", gap: 10, transition: "background 0.15s, border-color 0.15s",
-                      }}
-                    >
-                      <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        {on && <Check size={14} strokeWidth={2.5} />}
-                        {T(o.label)}
+              {pid === "turn" ? (
+                // Turn is the spine, not a practice you pick. Explain it and
+                // show the live streak (same engagement signal as the home Turn
+                // card) — no options, nothing to set.
+                <>
+                  <p style={{ color: SAGE, fontSize: 14, lineHeight: 1.65, margin: "14px 0 0", fontFamily: SANS }}>
+                    {t("way_of_love.turn_body", { defaultValue: "Turn isn't something you choose or check off. It's the daily return to God — and you make it every time you open Phoebe to pray. There's nothing to set here; just keep showing up, and the rest of the Way of Love grows from it." })}
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, background: CHIP_DEFAULT, border: `1px solid ${CHIP_BORDER}`, borderRadius: 14, padding: "16px 18px", margin: "22px 0 0" }}>
+                    <span style={{ fontSize: 30, lineHeight: 1 }} aria-hidden>🔥</span>
+                    <div>
+                      <p style={{ color: CREAM, fontSize: 26, fontWeight: 700, fontFamily: SANS, margin: 0, lineHeight: 1 }}>{turn.currentRunDays}</p>
+                      <p style={{ color: SAGE_DIM, fontSize: 11, fontFamily: SANS, margin: "3px 0 0", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                        {t("week.turn_streak", { defaultValue: "day streak" })}
+                      </p>
+                    </div>
+                    {turn.engagedToday && (
+                      <span style={{ marginLeft: "auto", color: SAGE, fontSize: 12.5, fontFamily: SANS, display: "flex", alignItems: "center", gap: 5 }}>
+                        <Check size={14} strokeWidth={2.5} /> {t("way_of_love.turn_today", { defaultValue: "Today" })}
                       </span>
-                      <span style={{ color: SAGE_DIM, fontSize: 12, whiteSpace: "nowrap" }}>{cadenceLabel(o.defaultCadence)}</span>
-                    </button>
-                  );
-                })}
-                <textarea
-                  value={custom[pid] ?? ""}
-                  onChange={(e) => setCustom((prev) => ({ ...prev, [pid]: e.target.value }))}
-                  placeholder={t("way_of_love.custom_placeholder", { defaultValue: "Or write your own…" })}
-                  rows={2}
-                  style={{
-                    background: CHIP_DEFAULT, border: `1px solid ${CHIP_BORDER}`, borderRadius: 12,
-                    padding: "10px 12px", color: CREAM, fontFamily: SANS, fontSize: 14, lineHeight: 1.5,
-                    resize: "none", outline: "none", marginTop: 2,
-                  }}
-                />
-              </div>
+                    )}
+                  </div>
+                  {turn.madeSpaceCount > 0 && (
+                    <p style={{ color: SAGE_DIM, fontSize: 13, fontFamily: SANS, margin: "12px 0 0", lineHeight: 1.5 }}>
+                      {t("way_of_love.turn_made_space", { defaultValue: "You've made space for God {{count}} days in Phoebe.", count: turn.madeSpaceCount })}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <>
+                  <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "20px 0 10px", fontFamily: SANS }}>
+                    {t("way_of_love.pick_label", { defaultValue: "Choose a practice — or write your own" })}
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {p.options.map((o) => {
+                      const on = selected.has(o.id);
+                      return (
+                        <button
+                          key={o.id}
+                          onClick={() => toggle(o.id)}
+                          style={{
+                            background: on ? CHIP_ACTIVE : "transparent",
+                            border: `1px solid ${on ? CHIP_BORDER_ACTIVE : CHIP_BORDER}`,
+                            color: CREAM, borderRadius: 12, padding: "11px 14px", fontSize: 14, fontFamily: SANS,
+                            cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center",
+                            justifyContent: "space-between", gap: 10, transition: "background 0.15s, border-color 0.15s",
+                          }}
+                        >
+                          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            {on && <Check size={14} strokeWidth={2.5} />}
+                            {T(o.label)}
+                          </span>
+                          <span style={{ color: SAGE_DIM, fontSize: 12, whiteSpace: "nowrap" }}>{cadenceLabel(o.defaultCadence)}</span>
+                        </button>
+                      );
+                    })}
+                    <textarea
+                      value={custom[pid] ?? ""}
+                      onChange={(e) => setCustom((prev) => ({ ...prev, [pid]: e.target.value }))}
+                      placeholder={t("way_of_love.custom_placeholder", { defaultValue: "Or write your own…" })}
+                      rows={2}
+                      style={{
+                        background: CHIP_DEFAULT, border: `1px solid ${CHIP_BORDER}`, borderRadius: 12,
+                        padding: "10px 12px", color: CREAM, fontFamily: SANS, fontSize: 14, lineHeight: 1.5,
+                        resize: "none", outline: "none", marginTop: 2,
+                      }}
+                    />
+                  </div>
+                </>
+              )}
             </motion.div>
           </AnimatePresence>
           <button
