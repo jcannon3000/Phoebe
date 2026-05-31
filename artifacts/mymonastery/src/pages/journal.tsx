@@ -39,6 +39,21 @@ export default function JournalPage() {
   const { t } = useTranslation();
   const qc = useQueryClient();
 
+  // When the journal is opened from a reflection (the "Journal" button on
+  // the Reflections reader passes ?source=fdd|ssje|cac), name that source
+  // next to the date so the entry reads as a response to it.
+  const reflectionSource = (() => {
+    try { return new URLSearchParams(window.location.search).get("source"); }
+    catch { return null; }
+  })();
+  const SOURCE_TITLES: Record<string, string> = {
+    fdd: "Forward Day by Day",
+    forward: "Forward Day by Day",
+    ssje: "SSJE",
+    cac: "CAC Daily Meditation",
+  };
+  const sourceTitle = reflectionSource ? (SOURCE_TITLES[reflectionSource] ?? null) : null;
+
   useEffect(() => { if (!authLoading && !user) setLocation("/"); }, [user, authLoading, setLocation]);
 
   const [view, setView] = useState<"write" | "past">("write");
@@ -166,16 +181,20 @@ export default function JournalPage() {
             </div>
           ) : (
             <>
-              <p style={{ fontSize: 13, color: MUTED, margin: "0 0 12px" }}>{fmtDate(new Date().toISOString())}</p>
+              <p style={{ fontSize: 13, color: MUTED, margin: "0 0 12px" }}>
+                {fmtDate(new Date().toISOString())}{sourceTitle ? ` · ${sourceTitle}` : ""}
+              </p>
               <textarea
                 ref={textareaRef}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder={t("journal.placeholder", { defaultValue: "Write as much or as little as you like…" })}
                 autoFocus
                 rows={8}
-                className="w-full resize-none focus:outline-none placeholder:italic block"
-                style={{ width: "100%", boxSizing: "border-box", background: "transparent", border: "none", padding: 0, color: INK, caretColor: SAGE, fontFamily: SANS, fontSize: 18, lineHeight: 1.6, outline: "none", overflow: "hidden" }}
+                className="w-full resize-none focus:outline-none block"
+                // boxShadow:none overrides the global `textarea`/`textarea:focus`
+                // box-shadow (index.css) — otherwise autoFocus draws a floating
+                // box around the clean writing surface.
+                style={{ width: "100%", boxSizing: "border-box", background: "transparent", border: "none", boxShadow: "none", padding: 0, color: INK, caretColor: SAGE, fontFamily: SANS, fontSize: 18, lineHeight: 1.6, outline: "none", overflow: "hidden" }}
               />
               <button
                 type="button"
