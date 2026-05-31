@@ -5929,8 +5929,11 @@ export default function Dashboard() {
           {/* Show the feast/Sunday/commemoration when there is one;
               otherwise fall back to the brand tagline. Plain ferial
               seasonal labels ("The Fourth Week of Easter") are
-              suppressed in favor of the tagline. */}
-          <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
+              suppressed in favor of the tagline. Extra bottom space
+              so the feast line breathes above the cards below it. */}
+          <div style={{ marginBottom: 20 }}>
+            <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
+          </div>
 
           {/* Way of Love (beta): the Turn fire streak (→ Turn detail) + the
               "This week" doorway into the weekly page. Beta-gated inside the
