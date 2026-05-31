@@ -1,6 +1,14 @@
 // AUTO-GENERATED from bcponline.org/Collects/seasonsc.html +
-// holydaysc.html via /tmp/collect-scrape/. Do NOT hand-edit; if the
-// upstream BCP text changes, re-run the scraper and regenerate.
+// holydaysc.html via /tmp/collect-scrape/. Mostly do-not-hand-edit;
+// re-run the scraper if the upstream BCP text changes.
+//
+// EXCEPTION — 8 collects were completed by hand: easter_3, epiphany_8,
+// proper_2, proper_9, proper_16, proper_23, saint_luke, visitation.
+// bcponline.org's own HTML truncates each of these mid-conclusion
+// (e.g. "...through Jesus Christ our Lord, who"), so the scrape captured
+// a cut-off prayer. The full text was restored verbatim from the
+// scanned 1979 BCP. A blind re-scrape will RE-TRUNCATE them — re-apply
+// the conclusions below if you ever regenerate this file.
 //
 // Keys match liturgicalCalendar.ts's getCollectKey() output. The
 // migrate.ts pipeline upserts these into bcp_texts on every
@@ -104,7 +112,7 @@ export const BCP_COLLECTS: BcpCollect[] = [
     title: "Third Sunday of Easter",
     bcpReference: "BCP p. 223",
     content:
-      "O God, whose blessed Son made himself known to his disciples in the breaking of bread: Open the eyes of our faith, that we may behold him in all his redeeming work; who lives",
+      "O God, whose blessed Son made himself known to his disciples in the breaking of bread: Open the eyes of our faith, that we may behold him in all his redeeming work; who lives and reigns with you, in the unity of the Holy Spirit, one God, now and for ever. Amen.",
   },
   {
     collectKey: "collect_easter_4",
@@ -202,7 +210,7 @@ export const BCP_COLLECTS: BcpCollect[] = [
     title: "Eighth Sunday after the Epiphany",
     bcpReference: "BCP p. 215",
     content:
-      "Most loving Father, whose will it is for us to give thanks for all things, to fear nothing but the loss of you, and to cast all",
+      "Most loving Father, whose will it is for us to give thanks for all things, to fear nothing but the loss of you, and to cast all our care on you who care for us: Preserve us from faithless fears and worldly anxieties, that no clouds of this mortal life may hide from us the light of that love which is immortal, and which you have manifested to us in your Son Jesus Christ our Lord; who lives and reigns with you, in the unity of the Holy Spirit, one God, now and for ever. Amen.",
   },
   {
     collectKey: "collect_good_friday",
@@ -391,7 +399,7 @@ export const BCP_COLLECTS: BcpCollect[] = [
     title: "Proper 16",
     bcpReference: "BCP p. 231",
     content:
-      "Grant, O merciful God, that your Church, being gathered together in unity by your Holy Spirit, may show forth your power among all peoples, to the glory of your Name;",
+      "Grant, O merciful God, that your Church, being gathered together in unity by your Holy Spirit, may show forth your power among all peoples, to the glory of your Name; through Jesus Christ our Lord, who lives and reigns with you and the Holy Spirit, one God, for ever and ever. Amen.",
   },
   {
     collectKey: "collect_proper_17",
@@ -419,7 +427,7 @@ export const BCP_COLLECTS: BcpCollect[] = [
     title: "Proper 2",
     bcpReference: "BCP p. 227",
     content:
-      "Almighty and merciful God, in your goodness keep us, we pray, from all things that may hurt us, that we, being ready",
+      "Almighty and merciful God, in your goodness keep us, we pray, from all things that may hurt us, that we, being ready both in mind and body, may accomplish with free hearts those things which belong to your purpose; through Jesus Christ our Lord, who lives and reigns with you and the Holy Spirit, one God, now and for ever. Amen.",
   },
   {
     collectKey: "collect_proper_20",
@@ -447,7 +455,7 @@ export const BCP_COLLECTS: BcpCollect[] = [
     title: "Proper 23",
     bcpReference: "BCP p. 233",
     content:
-      "Lord, we pray that your grace may always precede and follow us, that we may continually be given to good works;",
+      "Lord, we pray that your grace may always precede and follow us, that we may continually be given to good works; through Jesus Christ our Lord, who lives and reigns with you and the Holy Spirit, one God, now and for ever. Amen.",
   },
   {
     collectKey: "collect_proper_24",
@@ -538,7 +546,7 @@ export const BCP_COLLECTS: BcpCollect[] = [
     title: "Proper 9",
     bcpReference: "BCP p. 229",
     content:
-      "O God, you have taught us to keep all your commandments by loving you and our neighbor: Grant us the grace of your Holy Spirit, that we may be devoted to you with our whole",
+      "O God, you have taught us to keep all your commandments by loving you and our neighbor: Grant us the grace of your Holy Spirit, that we may be devoted to you with our whole heart, and united to one another with pure affection; through Jesus Christ our Lord, who lives and reigns with you and the Holy Spirit, one God, for ever and ever. Amen.",
   },
   {
     collectKey: "collect_saint_andrew",
@@ -559,7 +567,7 @@ export const BCP_COLLECTS: BcpCollect[] = [
     title: "Saint Luke",
     bcpReference: "BCP p. 243",
     content:
-      "Almighty God, who inspired your servant Luke the physician to set forth in the Gospel the love and healing power of your Son: Graciously continue in your Church this love and power",
+      "Almighty God, who inspired your servant Luke the physician to set forth in the Gospel the love and healing power of your Son: Graciously continue in your Church this love and power to heal, to the praise and glory of your Name; through Jesus Christ our Lord, who lives and reigns with you, in the unity of the Holy Spirit, one God, now and for ever. Amen.",
   },
   {
     collectKey: "collect_saint_mary",
@@ -622,7 +630,7 @@ export const BCP_COLLECTS: BcpCollect[] = [
     title: "The Visitation",
     bcpReference: "BCP p. 239",
     content:
-      "Father in heaven, by your grace the virgin mother of your incarnate Son was blessed in bearing him, but still more blessed in keeping your word: Grant us who honor the exaltation of her lowliness to follow the example of her devotion to your will; through Jesus Christ our Lord, who",
+      "Father in heaven, by your grace the virgin mother of your incarnate Son was blessed in bearing him, but still more blessed in keeping your word: Grant us who honor the exaltation of her lowliness to follow the example of her devotion to your will; through Jesus Christ our Lord, who lives and reigns with you and the Holy Spirit, one God, for ever and ever. Amen.",
   },
   {
     collectKey: "collect_wednesday_holy_week",
