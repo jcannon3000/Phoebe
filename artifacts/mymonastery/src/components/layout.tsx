@@ -419,6 +419,13 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     </MenuSection>
                   );
                 })()}
+                {/* People — find and connect with people. Moved here from the
+                    former header pill; lives under the user's communities. */}
+                <MenuRow
+                  emoji="👥"
+                  label={t("header.people")}
+                  onClick={() => navigate("/people")}
+                />
               </div>
             )}
 
@@ -596,26 +603,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 {t("header.prayer_list")}
               </Link>
             )}
-            {/* People pill — sits between Prayer list and Menu. Same
-                gating as the drawer entry it replaces: hidden for the
-                offices-only tier, who have no community. Also hidden
-                on the communities surface, where the Home pill above
-                takes its slot (different position, different action). */}
-            {!officesOnly && !onCommunitiesPage && (
-              <Link
-                href="/people"
-                className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
-                style={{
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  letterSpacing: "-0.01em",
-                  background: "rgba(200,212,192,0.08)",
-                  color: "#C8D4C0",
-                  border: "1px solid rgba(46,107,64,0.3)",
-                }}
-              >
-                {t("header.people")}
-              </Link>
-            )}
+            {/* (People moved into the drawer's Communities section.) */}
             <button
               onClick={() => { playOpeningSwell(0); setDrawerOpen(true); }}
               className="flex items-center justify-center transition-colors"

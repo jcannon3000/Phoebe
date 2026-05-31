@@ -40,7 +40,8 @@ const KEYFRAMES = `
 @keyframes phoebe-bg-pronounced-1 { 0% { transform: translate(-14%, -11%) scale(1); } 50% { transform: translate(17%, 15%) scale(1.36); } 100% { transform: translate(-14%, -11%) scale(1); } }
 @keyframes phoebe-bg-pronounced-2 { 0% { transform: translate(12%, 9%) scale(1.2); } 50% { transform: translate(-19%, -15%) scale(0.72); } 100% { transform: translate(12%, 9%) scale(1.2); } }
 @keyframes phoebe-bg-pronounced-3 { 0% { transform: translate(10%, -15%) scale(0.84); } 50% { transform: translate(-14%, 17%) scale(1.32); } 100% { transform: translate(10%, -15%) scale(0.84); } }
-@media (prefers-reduced-motion: reduce) { .phoebe-bg-blob { animation: none !important; } }
+@keyframes phoebe-bg-fadein { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .phoebe-bg-blob { animation: none !important; opacity: 1 !important; } }
 `;
 
 export function AnimatedBackground({ base, variant = "subtle", fadeTop = false }: { base: string; variant?: Variant; fadeTop?: boolean }) {
@@ -78,9 +79,10 @@ export function AnimatedBackground({ base, variant = "subtle", fadeTop = false }
             left: b.left,
             borderRadius: "50%",
             filter: "blur(64px)",
-            willChange: "transform",
+            willChange: "transform, opacity",
             background: `radial-gradient(circle at center, rgba(${b.rgb},${b.alpha}) 0%, rgba(${b.rgb},0) 70%)`,
-            animation: `phoebe-bg-${variant}-${b.n} ${b.dur} ease-in-out infinite`,
+            // Ease the blobs in (no flash/pop on mount), then drift forever.
+            animation: `phoebe-bg-fadein 0.9s ease-out both, phoebe-bg-${variant}-${b.n} ${b.dur} ease-in-out infinite`,
           }}
         />
       ))}

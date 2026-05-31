@@ -424,10 +424,18 @@ export const en = {
     beta: "beta",
     home_beta: "Home (beta)",
     home_beta_sub: "Your Way of Love, day by day",
+    this_week: "This week",
+    this_week_sub: "Worship, Bless, Go & Rest",
   },
   // BETA Way of Love home (/home-beta) — the section cards + the per-section
   // pages. Daily/weekly practices, commitments, completion, and the quiet
   // consistency view.
+  week: {
+    eyebrow: "This week",
+    status: "{{done}} of {{total}} practices this week",
+    strip_status: "{{done}} of {{total}} practices",
+    turn_streak: "day streak",
+  },
   bless: {
     add: "Add a blessing",
     add_more: "+ Add a blessing",

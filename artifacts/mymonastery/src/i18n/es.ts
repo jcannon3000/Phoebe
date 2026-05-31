@@ -418,10 +418,18 @@ export const es: Translations = {
     beta: "beta",
     home_beta: "Inicio (beta)",
     home_beta_sub: "Tu Camino del Amor, día a día",
+    this_week: "Esta semana",
+    this_week_sub: "Adorar, Bendecir, Ir y Descansar",
   },
   // Inicio BETA del Camino del Amor (/home-beta) — las tarjetas de sección y
   // las páginas por sección. Prácticas diarias/semanales, compromisos,
   // cumplimiento y la vista serena de constancia.
+  week: {
+    eyebrow: "Esta semana",
+    status: "{{done}} de {{total}} prácticas esta semana",
+    strip_status: "{{done}} de {{total}} prácticas",
+    turn_streak: "días seguidos",
+  },
   bless: {
     add: "Añade una bendición",
     add_more: "+ Añade una bendición",
