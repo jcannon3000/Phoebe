@@ -95,6 +95,19 @@ const ACTIONS: Record<SectionKey, ActionDef[]> = {
   ],
 };
 
+// Traveling the Way of Love (The Episcopal Church, Season One) — one episode per
+// practice, embedded inline from Wistia (channel wkxcjht52w). The documentary
+// episodes don't carry practice labels, so each is paired to the practice it
+// best embodies; "Pray: Pop Up Prayer" is the one exact match.
+const SECTION_VIDEO: Record<SectionKey, { id: string; title: string }> = {
+  turn: { id: "u04ilt0dvb", title: "Presiding Bishop Michael Curry" },
+  learn_pray: { id: "q4zzab2h1y", title: "Pray: Pop Up Prayer" },
+  worship: { id: "pisvfusoig", title: "St. Lydia's, Brooklyn" },
+  bless: { id: "2ckcg82pkz", title: "Thistle Farms, Nashville" },
+  go: { id: "b1l0elf3jd", title: "Bishop Walker School" },
+  rest: { id: "duye4nftap", title: "Honore Farm and Mill" },
+};
+
 type ShowHit = { slug: string; title: string; artist: string; artwork: string | null };
 type ServiceSchedule = {
   id: number; groupName: string; groupSlug: string | null; groupEmoji: string | null;
@@ -241,6 +254,7 @@ export default function HomeBetaSectionPage() {
   const lines = commitmentLines(def, wolQ.data?.selections ?? {});
   const shows = matsQ.data?.shows ?? [];
   const actions = ACTIONS[def.key] ?? [];
+  const sectionVideo = SECTION_VIDEO[def.key];
 
   const toggle = () => {
     if (lockedDone) return;
@@ -302,6 +316,28 @@ export default function HomeBetaSectionPage() {
           {t(`home_beta.section.${def.key}`, { defaultValue: def.title })}
         </h1>
         <p style={{ color: SAGE, fontSize: 14.5, fontFamily: FONT, lineHeight: 1.5, margin: 0 }}>{def.definition}</p>
+
+        {/* Watch — the practice's episode from "Traveling the Way of Love",
+            embedded inline from Wistia. */}
+        {sectionVideo && (
+          <div style={{ marginTop: 20 }}>
+            <p style={{ ...eyebrow, margin: "0 0 8px" }}>
+              {t("home_beta.watch", { defaultValue: "Watch" })}
+            </p>
+            <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", borderRadius: 14, overflow: "hidden", border: `1px solid ${CARD_B}`, background: "#000" }}>
+              <iframe
+                src={`https://fast.wistia.net/embed/iframe/${sectionVideo.id}?seo=false&videoFoam=true`}
+                title={sectionVideo.title}
+                allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                allowFullScreen
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
+              />
+            </div>
+            <p style={{ color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "8px 0 0" }}>
+              {t("home_beta.watch_caption", { defaultValue: "Traveling the Way of Love" })} · {sectionVideo.title}
+            </p>
+          </div>
+        )}
 
         {/* Bless — the weekly "bless your community" intention cycle owns the
             body (set → mark off → end-of-week review → set next week). */}
