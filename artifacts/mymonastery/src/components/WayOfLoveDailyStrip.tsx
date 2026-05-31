@@ -39,6 +39,7 @@ export function WayOfLoveDailyStrip() {
   const { user } = useAuth();
   const { rawIsBeta } = useBetaStatus();
   const { t } = useTranslation();
+  const thisWeekStart = ymd(sundayStart(new Date()));
 
   const compQ = useQuery<{ completions: CompletionRow[] }>({
     queryKey: ["/api/practice-completion"],
@@ -52,13 +53,26 @@ export function WayOfLoveDailyStrip() {
     enabled: !!user && rawIsBeta,
     staleTime: 30_000,
   });
+  // This week's Bless cycle — drives the gentle end-of-week review nudge.
+  const blessQ = useQuery<{ intentions: unknown[]; reviewedAt: string | null }>({
+    queryKey: ["/api/bless", thisWeekStart],
+    queryFn: () => apiRequest("GET", `/api/bless?weekStart=${thisWeekStart}`),
+    enabled: !!user && rawIsBeta,
+    staleTime: 60_000,
+  });
 
   if (!user || !rawIsBeta) return null;
 
   const rows = compQ.data?.completions ?? [];
   const turn = computeTurnConsistency(engagementDays(rows.map((r) => r.localDate), officeQ.data?.days ?? []));
-  const thisWeekStart = ymd(sundayStart(new Date()));
   const weekDone = WEEKLY.filter((k) => rows.some((r) => r.section === k && r.weekStart === thisWeekStart)).length;
+  // Fri–Sun, when there are intentions set but the week isn't reviewed yet, the
+  // "This week" doorway becomes a gentle review nudge (the bell/push nudge is
+  // separate). Never forced — it's an invitation.
+  const dow = new Date().getDay();
+  const needsReview = (dow === 5 || dow === 6 || dow === 0)
+    && (blessQ.data?.intentions?.length ?? 0) > 0
+    && !blessQ.data?.reviewedAt;
 
   return (
     <div style={{ display: "flex", gap: 10, margin: "0 0 14px" }}>
@@ -77,17 +91,21 @@ export function WayOfLoveDailyStrip() {
         </div>
       </button>
 
-      {/* This week → weekly page */}
+      {/* This week → weekly page (becomes a review nudge near week's end) */}
       <button
         type="button"
         onClick={() => setLocation("/this-week")}
-        style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "10px 14px", cursor: "pointer", textAlign: "left" }}
+        style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10, background: needsReview ? "rgba(46,107,64,0.24)" : CARD, border: `1px solid ${needsReview ? "rgba(168,197,160,0.5)" : CARD_B}`, borderRadius: 14, padding: "10px 14px", cursor: "pointer", textAlign: "left" }}
       >
-        <span style={{ fontSize: 18 }} aria-hidden>🗓️</span>
+        <span style={{ fontSize: 18 }} aria-hidden>{needsReview ? "🌿" : "🗓️"}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ color: WARM, fontSize: 14, fontWeight: 600, fontFamily: FONT, margin: 0 }}>{t("week.eyebrow", { defaultValue: "This week" })}</p>
+          <p style={{ color: WARM, fontSize: 14, fontWeight: 600, fontFamily: FONT, margin: 0 }}>
+            {needsReview ? t("week.review_nudge", { defaultValue: "Review this week" }) : t("week.eyebrow", { defaultValue: "This week" })}
+          </p>
           <p style={{ color: SAGE, fontSize: 11.5, fontFamily: FONT, margin: "2px 0 0" }}>
-            {t("week.strip_status", { defaultValue: "{{done}} of {{total}} practices", done: weekDone, total: WEEKLY.length })}
+            {needsReview
+              ? t("week.review_nudge_sub", { defaultValue: "Look back, carry over, set next week" })
+              : t("week.strip_status", { defaultValue: "{{done}} of {{total}} practices", done: weekDone, total: WEEKLY.length })}
           </p>
         </div>
         <span style={{ color: SAGE_DIM, fontSize: 16, flexShrink: 0 }}>›</span>

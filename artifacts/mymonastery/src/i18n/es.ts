@@ -429,6 +429,8 @@ export const es: Translations = {
     status: "{{done}} de {{total}} prácticas esta semana",
     strip_status: "{{done}} de {{total}} prácticas",
     turn_streak: "días seguidos",
+    review_nudge: "Repasa esta semana",
+    review_nudge_sub: "Mira atrás, pasa lo pendiente, prepara la próxima",
   },
   bless: {
     add: "Añade una bendición",

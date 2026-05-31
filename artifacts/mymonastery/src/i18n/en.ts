@@ -435,6 +435,8 @@ export const en = {
     status: "{{done}} of {{total}} practices this week",
     strip_status: "{{done}} of {{total}} practices",
     turn_streak: "day streak",
+    review_nudge: "Review this week",
+    review_nudge_sub: "Look back, carry over, set next week",
   },
   bless: {
     add: "Add a blessing",
