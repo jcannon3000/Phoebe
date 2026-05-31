@@ -397,6 +397,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
     resolvedMode === "early-evening-devotion"
       ? "evening"
       : "morning";
+  // The National Cathedral broadcasts Morning Prayer Mon–Fri only, so the
+  // in-office "Watch" shortcut hides on weekends (nothing to watch live).
+  const isWeekday = (() => { const d = new Date().getDay(); return d >= 1 && d <= 5; })();
 
   // Phoebe Parish — when the user is in the parish-only tier we
   // route them to the parish celebration screen on Amen instead of
@@ -1091,7 +1094,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
                 >
                   🎧 Listen
                 </button>
-                {officeSide === "morning" && (
+                {officeSide === "morning" && isWeekday && (
                   <button
                     type="button"
                     onClick={() => setViewerLocation("/ncmp/watch")}
@@ -2590,7 +2593,10 @@ export default function BcpDailyOfficePage() {
           setLocation(`/podcast/${mode}-office`);
           return;
         }
-        if (pref === "watch" && mode === "morning") {
+        // The Cathedral only broadcasts Mon–Fri, so a "watch" default on a
+        // weekend falls through to the text office (nothing to watch live).
+        const isWeekday = (() => { const d = new Date().getDay(); return d >= 1 && d <= 5; })();
+        if (pref === "watch" && mode === "morning" && isWeekday) {
           setLocation("/ncmp/watch");
           return;
         }

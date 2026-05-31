@@ -50,6 +50,9 @@ export default function OfficesPage() {
   const isMorning = hour < 14;
   const isNight = hour >= 20;
   const isEvening = !isMorning && !isNight;
+  // The National Cathedral only broadcasts Morning Prayer Mon–Fri, so the
+  // "Watch" option is hidden on weekends (nothing to watch live).
+  const weekday = (() => { const d = new Date().getDay(); return d >= 1 && d <= 5; })();
 
   const morningOffice: CardSpec = {
     emoji: "🌅",
@@ -126,13 +129,14 @@ export default function OfficesPage() {
                   label: t("offices.listen_forward", { defaultValue: "Listen · Forward" }),
                   href: "/podcast/morning-office",
                 },
-                {
-                  variant: "purple",
+                // Only Mon–Fri — the Cathedral doesn't broadcast on weekends.
+                ...(weekday ? [{
+                  variant: "purple" as const,
                   emoji: "📺",
                   label: t("offices.watch_ncmp", { defaultValue: "Watch · Nat'l Cathedral" }),
                   href: "/ncmp/watch",
                   onClick: isNativeShell() ? () => openExternal(NCMP_LIVE_URL) : undefined,
-                },
+                }] : []),
               ]}
             />
           </div>
