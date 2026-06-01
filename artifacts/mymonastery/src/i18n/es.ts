@@ -455,6 +455,7 @@ export const es: Translations = {
     review_sub: "Marca lo que hiciste. Pasa o suelta el resto — sin culpa.",
     carry_label: "¿Pasar a la próxima semana?",
     carry: "Pasar",
+    carried: "✓ Pasado",
     review_done: "Listo → preparar la próxima semana",
   },
   home_beta: {

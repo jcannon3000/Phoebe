@@ -181,12 +181,14 @@ export default function WayOfLoveWeekPage() {
   const goFeedEngaged = (subscribedFeedsQ.data?.subscriptions ?? [])
     .some((f) => goFeedSlugs.includes(f.slug) && f.prayedToday);
   useEffect(() => {
-    if (!user) return;
+    // Wait for completions to load — otherwise doneThisWeek("go") reads empty
+    // and we fire a redundant (server-idempotent, but pointless) mark.
+    if (!user || !compQ.isSuccess) return;
     if (goFeedEngaged && !doneThisWeek("go")) {
       mark.mutate({ section: "go", localDate: today, weekStart: thisWeekStart });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goFeedEngaged, user]);
+  }, [goFeedEngaged, user, compQ.isSuccess]);
 
   const toggle = (key: SectionKey) => {
     if (doneThisWeek(key)) {

@@ -55,6 +55,18 @@ router.post("/bless", async (req, res): Promise<void> => {
   const text = str(b.text, 280);
   if (!weekStart) { res.status(400).json({ error: "weekStart required" }); return; }
   if (!text) { res.status(400).json({ error: "text required" }); return; }
+  const carriedFrom = typeof b.carriedFrom === "number" ? b.carriedFrom : null;
+  // Carry-over is idempotent: if this source intention was already carried into
+  // this week, return the existing row instead of inserting a duplicate — a
+  // double-tap or a re-review must not stack copies into next week.
+  if (carriedFrom !== null) {
+    const [existing] = await db.select().from(blessIntentionTable).where(and(
+      eq(blessIntentionTable.userId, user.id),
+      eq(blessIntentionTable.weekStart, weekStart),
+      eq(blessIntentionTable.carriedFrom, carriedFrom),
+    ));
+    if (existing) { res.json({ intention: existing }); return; }
+  }
   const [row] = await db.insert(blessIntentionTable).values({
     userId: user.id,
     weekStart,
@@ -62,7 +74,7 @@ router.post("/bless", async (req, res): Promise<void> => {
     type: str(b.type, 20),
     recipient: str(b.recipient, 120),
     reminderTime: str(b.reminderTime, 5),
-    carriedFrom: typeof b.carriedFrom === "number" ? b.carriedFrom : null,
+    carriedFrom,
   }).returning();
   res.json({ intention: row });
 });

@@ -117,8 +117,12 @@ export default function BlessSubScreen({
     onSuccess: invalidate,
   });
   // Marking the first intention done this week credits Bless (and so Turn).
+  // Invalidate after the credit lands so the Turn strip reflects it — the
+  // patch's own invalidate can race ahead of this POST committing.
   const creditBless = () =>
-    apiRequest("POST", "/api/practice-completion", { section: "bless", localDate: today, weekStart }).catch(() => {});
+    apiRequest("POST", "/api/practice-completion", { section: "bless", localDate: today, weekStart })
+      .then(() => qc.invalidateQueries({ queryKey: ["/api/practice-completion"] }))
+      .catch(() => {});
 
   // ── Add / edit form ──
   const [adding, setAdding] = useState(false);
@@ -128,6 +132,9 @@ export default function BlessSubScreen({
   const [fRecipient, setFRecipient] = useState("");
   const [fReminder, setFReminder] = useState("");
   const [reviewing, setReviewing] = useState(false);
+  // Source-intention ids already carried into next week this session, so the
+  // button can't be tapped twice (the server is also idempotent on carriedFrom).
+  const [carriedIds, setCarriedIds] = useState<Set<number>>(() => new Set());
 
   const openAdd = (preset?: { text: string; type: string }) => {
     setEditId(null);
@@ -167,6 +174,8 @@ export default function BlessSubScreen({
   };
 
   const carryOver = (i: Intention) => {
+    if (carriedIds.has(i.id)) return;
+    setCarriedIds((prev) => new Set(prev).add(i.id));
     addMut.mutate({ text: i.text, type: i.type, recipient: i.recipient, reminderTime: i.reminderTime, weekStart: nextWeekStart, carriedFrom: i.id });
   };
 
@@ -284,14 +293,17 @@ export default function BlessSubScreen({
             <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, fontFamily: FONT, margin: 0 }}>
               {t("bless.carry_label", { defaultValue: "Carry into next week?" })}
             </p>
-            {unfinished.map((i) => (
-              <div key={i.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ flex: 1, color: WARM, fontSize: 13.5, fontFamily: FONT, minWidth: 0 }}>{i.text}</span>
-                <button type="button" onClick={() => carryOver(i)} style={{ background: CHIP_ON, border: `1px solid ${CHIP_ON_B}`, color: WARM, borderRadius: 999, padding: "5px 11px", fontSize: 12, fontFamily: FONT, cursor: "pointer", whiteSpace: "nowrap" }}>
-                  {t("bless.carry", { defaultValue: "Carry over" })}
-                </button>
-              </div>
-            ))}
+            {unfinished.map((i) => {
+              const carried = carriedIds.has(i.id);
+              return (
+                <div key={i.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ flex: 1, color: WARM, fontSize: 13.5, fontFamily: FONT, minWidth: 0 }}>{i.text}</span>
+                  <button type="button" disabled={carried} onClick={() => carryOver(i)} style={{ background: carried ? CHIP_OFF : CHIP_ON, border: `1px solid ${carried ? CHIP_OFF_B : CHIP_ON_B}`, color: carried ? SAGE : WARM, borderRadius: 999, padding: "5px 11px", fontSize: 12, fontFamily: FONT, cursor: carried ? "default" : "pointer", whiteSpace: "nowrap" }}>
+                    {carried ? t("bless.carried", { defaultValue: "✓ Carried" }) : t("bless.carry", { defaultValue: "Carry over" })}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
         <button type="button" onClick={() => { reviewMut.mutate(); setReviewing(false); }} style={{ background: CTA, border: "none", color: WARM, borderRadius: 12, padding: "12px 16px", fontSize: 14.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>

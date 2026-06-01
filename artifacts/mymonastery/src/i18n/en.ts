@@ -461,6 +461,7 @@ export const en = {
     review_sub: "Check off what you did. Carry over or release the rest — no guilt.",
     carry_label: "Carry into next week?",
     carry: "Carry over",
+    carried: "✓ Carried",
     review_done: "Done reviewing → set next week",
   },
   home_beta: {

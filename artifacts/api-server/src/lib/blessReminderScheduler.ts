@@ -61,7 +61,13 @@ async function tick(): Promise<void> {
     const m = /^(\d{1,2}):(\d{2})$/.exec(r.reminderTime);
     if (!m) continue;
     const { hour, minute } = getCurrentTimeInTz(tz);
-    if (hour !== parseInt(m[1]!, 10) || minute !== parseInt(m[2]!, 10)) continue;
+    if (hour < 0) continue; // tz parse failed
+    // Fire at the reminder minute OR within a few minutes after, so a delayed
+    // 60s tick or a restart spanning that exact minute doesn't silently drop
+    // the nudge. firedDate still guarantees it fires at most once.
+    const remMinOfDay = parseInt(m[1]!, 10) * 60 + parseInt(m[2]!, 10);
+    const nowMinOfDay = hour * 60 + minute;
+    if (nowMinOfDay < remMinOfDay || nowMinOfDay > remMinOfDay + 5) continue;
 
     const today = todayDateInTz(tz);
     if (!today) continue;
