@@ -303,9 +303,47 @@ export default function WayOfLoveWeekPage() {
     );
   };
 
+  // The Daily block (Turn + Learn & Pray — the rule's spine) leads the page for
+  // someone still finding the rhythm; once they've engaged the weekly categories
+  // — committed to or completed any — it drops below them so the weekly half leads.
+  const hasEngagedWeekly =
+    rows.some((r) => (WEEKLY_KEYS as readonly string[]).includes(r.section)) ||
+    WEEKLY_KEYS.some((k) => commitmentLines(def(k), selections).length > 0);
+  const dailyBlock = (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, margin: hasEngagedWeekly ? "26px 0 0" : "0 0 24px" }}>
+      <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 700, fontFamily: FONT, margin: 0 }}>
+        {t("week.daily_label", { defaultValue: "Daily" })}
+      </p>
+      {(["turn", "learn_pray"] as SectionKey[]).map((key) => {
+        const d = def(key);
+        const lines = commitmentLines(d, selections);
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setLocation(`/home-beta/${key}`)}
+            style={{ display: "flex", alignItems: "center", gap: 12, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "11px 14px", cursor: "pointer", textAlign: "left", width: "100%" }}
+          >
+            <span style={{ fontSize: 18, flexShrink: 0 }}>{d.emoji}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ color: WARM, fontSize: 15, fontWeight: 700, fontFamily: FONT, margin: 0 }}>{t(`home_beta.section.${key}`, { defaultValue: d.title })}</p>
+              <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, margin: "2px 0 0", lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {lines.length > 0 ? lines.join(" · ") : d.definition}
+              </p>
+            </div>
+            <span style={{ color: SAGE_DIM, fontSize: 16, flexShrink: 0 }} aria-hidden>›</span>
+          </button>
+        );
+      })}
+      <p style={{ color: SAGE_DIM, fontSize: 11.5, fontFamily: FONT, margin: "2px 0 0" }}>
+        {t("week.daily_note", { defaultValue: "Tracked each day on your home screen." })}
+      </p>
+    </div>
+  );
+
   return (
     <Layout>
-      <div style={{ position: "relative", minHeight: "70vh" }}>
+      <div style={{ position: "relative", minHeight: "70vh", isolation: "isolate" }}>
         <AnimatedBackground base={BG} variant="subtle" fadeTop />
         <div style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "0 auto", width: "100%", padding: "4px 2px 28px" }}>
           <h1 style={{ color: WARM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: "6px 0 0" }}>
@@ -325,38 +363,10 @@ export default function WayOfLoveWeekPage() {
             {t("week.begin_review", { defaultValue: "Review the week & set the next →" })}
           </button>
 
-          {/* Daily practices — the spine of the rule (Turn + Learn & Pray),
-              tracked day-to-day on the home screen. Surfaced here so the page
-              reflects the WHOLE rule, not just the weekly half. */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
-            <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 700, fontFamily: FONT, margin: 0 }}>
-              {t("week.daily_label", { defaultValue: "Daily" })}
-            </p>
-            {(["turn", "learn_pray"] as SectionKey[]).map((key) => {
-              const d = def(key);
-              const lines = commitmentLines(d, selections);
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setLocation(`/home-beta/${key}`)}
-                  style={{ display: "flex", alignItems: "center", gap: 12, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "11px 14px", cursor: "pointer", textAlign: "left", width: "100%" }}
-                >
-                  <span style={{ fontSize: 18, flexShrink: 0 }}>{d.emoji}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ color: WARM, fontSize: 15, fontWeight: 700, fontFamily: FONT, margin: 0 }}>{t(`home_beta.section.${key}`, { defaultValue: d.title })}</p>
-                    <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, margin: "2px 0 0", lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {lines.length > 0 ? lines.join(" · ") : d.definition}
-                    </p>
-                  </div>
-                  <span style={{ color: SAGE_DIM, fontSize: 16, flexShrink: 0 }} aria-hidden>›</span>
-                </button>
-              );
-            })}
-            <p style={{ color: SAGE_DIM, fontSize: 11.5, fontFamily: FONT, margin: "2px 0 0" }}>
-              {t("week.daily_note", { defaultValue: "Tracked each day on your home screen." })}
-            </p>
-          </div>
+          {/* Daily practices (Turn + Learn & Pray) — lead the page for a
+              newcomer; once the weekly categories are engaged, dailyBlock
+              drops below them (rendered after Materials). */}
+          {!hasEngagedWeekly && dailyBlock}
 
           <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 700, fontFamily: FONT, margin: "0 0 12px" }}>
             {t("week.weekly_label", { defaultValue: "Weekly" })}
@@ -420,6 +430,10 @@ export default function WayOfLoveWeekPage() {
               </div>
             </div>
           )}
+
+          {/* Once the weekly categories are in use, the daily spine sits here at
+              the bottom as a quiet reference. */}
+          {hasEngagedWeekly && dailyBlock}
         </div>
 
         {openSvc && (

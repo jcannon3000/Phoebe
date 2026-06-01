@@ -390,14 +390,14 @@ export default function HomeBetaSectionPage() {
     <Layout>
       {/* Wrapped in the standard Layout so the practice pages keep the Phoebe
           top bar + pills; the pronounced gradient + back link live inside. */}
-      <div style={{ position: "relative", minHeight: "70vh" }}>
+      <div style={{ position: "relative", minHeight: "70vh", isolation: "isolate" }}>
         <AnimatedBackground base={BG} variant="pronounced" fadeTop />
         <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 560, margin: "0 auto", padding: "2px 0 36px", color: WARM, fontFamily: FONT }}>
           <button type="button" onClick={() => setLocation("/home-beta")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: "0 0 8px" }}>
             <ChevronLeft size={16} /> {t("home_beta.back", { defaultValue: "Way of Love" })}
           </button>
-          <div style={{ fontSize: 34 }}>{def.emoji}</div>
-        <h1 style={{ color: WARM, fontSize: 26, fontWeight: 700, fontFamily: FONT, margin: "8px 0 4px" }}>
+        <h1 style={{ color: WARM, fontSize: 26, fontWeight: 700, fontFamily: FONT, margin: "8px 0 4px", display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 30, flexShrink: 0 }} aria-hidden>{def.emoji}</span>
           {t(`home_beta.section.${def.key}`, { defaultValue: def.title })}
         </h1>
         <p style={{ color: SAGE, fontSize: 14.5, fontFamily: FONT, lineHeight: 1.5, margin: 0 }}>{def.definition}</p>
