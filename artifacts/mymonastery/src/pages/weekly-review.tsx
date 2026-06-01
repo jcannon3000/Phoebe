@@ -92,13 +92,17 @@ export default function WeeklyReviewPage() {
 
   const def = (key: SectionKey) => SECTIONS.find((s) => s.key === key)!;
   const doneLastWeek = (key: SectionKey) => rows.some((r) => r.section === key && r.weekStart === lastWeekStart);
-  // Consecutive weeks kept, counting back from last week.
+  // Consecutive weeks kept. Counts the current week when it's already kept,
+  // otherwise falls back to the run ending last week — identical to the
+  // /this-week page (way-of-love-week.tsx) so the same streak reads the same
+  // on both screens instead of diverging by one mid-week.
   const weeksKept = (key: SectionKey): number => {
     let run = 0;
     const ws = sundayStart(new Date());
-    for (let i = 1; i < 60; i++) {
-      if (rows.some((r) => r.section === key && r.weekStart === ymd(addWeeks(ws, -i)))) run++;
-      else break;
+    for (let i = 0; i < 60; i++) {
+      const has = rows.some((r) => r.section === key && r.weekStart === ymd(addWeeks(ws, -i)));
+      if (has) run++;
+      else if (i > 0) break;
     }
     return run;
   };

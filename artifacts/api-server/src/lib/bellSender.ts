@@ -803,6 +803,17 @@ function todayInZone(tz: string): string {
   }
 }
 
+// Sunday (start of the local week) on-or-before today, as YYYY-MM-DD in
+// the given tz. Date-only math off a UTC anchor avoids tz drift. The
+// weekly-review client writes its practice_completion row with this exact
+// weekStart, so matching it here keeps the "already reviewed this week"
+// dedup correct even when forceNow bypasses the Sunday-only tick gate.
+function weekStartInZone(tz: string): string {
+  const d = new Date(`${todayInZone(tz)}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - dowInTz(tz)); // dowInTz: 0 = Sunday
+  return d.toISOString().slice(0, 10);
+}
+
 // Default morning hour when the user hasn't set parish_office_morning_time.
 // 07:00 lines up with the existing daily-prayer bell default.
 const DEFAULT_MORNING_TIME = "07:00";
@@ -1066,11 +1077,14 @@ export async function runWeeklyReviewSender(opts: { forceNow?: boolean } = {}): 
         if (dowInTz(tz) !== 0) continue;
         if (!isWithinTickWindow(tz, WEEKLY_REVIEW_TIME)) continue;
       }
-      // On Sunday, sundayStart === today, so this week's weekStart is today.
       const today = todayInZone(tz);
       if (r.sentDate === today) continue;
 
       // Already reviewed this week? Then just stamp and skip the nudge.
+      // The client records weekly_review keyed to this week's Sunday, which
+      // equals `today` on a real Sunday tick but not when forceNow fires the
+      // sender off-Sunday — so match on the computed weekStart, not today.
+      const weekStart = weekStartInZone(tz);
       const reviewed = await db
         .select({ userId: practiceCompletionTable.userId })
         .from(practiceCompletionTable)
@@ -1078,7 +1092,7 @@ export async function runWeeklyReviewSender(opts: { forceNow?: boolean } = {}): 
           and(
             eq(practiceCompletionTable.userId, r.userId),
             eq(practiceCompletionTable.section, "weekly_review"),
-            eq(practiceCompletionTable.weekStart, today),
+            eq(practiceCompletionTable.weekStart, weekStart),
           ),
         )
         .limit(1);
