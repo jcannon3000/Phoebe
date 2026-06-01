@@ -33,6 +33,7 @@ import {
 import { computeTurnConsistency, engagementDays } from "@/lib/turnConsistency";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
+import { Layout } from "@/components/layout";
 import BlessSubScreen from "@/components/BlessSubScreen";
 
 const BG = "#091A10";
@@ -132,7 +133,7 @@ const SECTION_VIDEO: Record<SectionKey, PracticeVideo[]> = {
   worship: [{ id: "pisvfusoig", title: "St. Lydia's, Brooklyn" }],
   bless: [{ id: "2ckcg82pkz", title: "Thistle Farms, Nashville" }],
   go: [{ id: "b1l0elf3jd", title: "Bishop Walker School" }],
-  rest: [{ id: "duye4nftap", title: "Honoré Farm & Mill" }],
+  rest: [], // no Watch video — the "To Rest" audio + sabbath carve-out carry the page
 };
 
 // Bishop Mariann Budde — "The Way of Love: A Rule of Life" (Diocese of
@@ -386,16 +387,16 @@ export default function HomeBetaSectionPage() {
       });
 
   return (
-    <div style={{ position: "relative", minHeight: "100dvh", background: BG, color: WARM, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
-      <AnimatedBackground base={BG} variant="pronounced" fadeTop />
-      <header style={{ position: "relative", zIndex: 1, padding: "max(1.1rem, calc(env(safe-area-inset-top) + 0.5rem)) 18px 6px" }}>
-        <button type="button" onClick={() => setLocation("/home-beta")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}>
-          <ChevronLeft size={16} /> {t("home_beta.back", { defaultValue: "Way of Love" })}
-        </button>
-      </header>
-
-      <main style={{ position: "relative", zIndex: 1, flex: 1, width: "100%", maxWidth: 560, margin: "0 auto", padding: "8px 20px 36px", boxSizing: "border-box" }}>
-        <div style={{ fontSize: 34 }}>{def.emoji}</div>
+    <Layout>
+      {/* Wrapped in the standard Layout so the practice pages keep the Phoebe
+          top bar + pills; the pronounced gradient + back link live inside. */}
+      <div style={{ position: "relative", minHeight: "70vh" }}>
+        <AnimatedBackground base={BG} variant="pronounced" fadeTop />
+        <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 560, margin: "0 auto", padding: "2px 0 36px", color: WARM, fontFamily: FONT }}>
+          <button type="button" onClick={() => setLocation("/home-beta")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: "0 0 8px" }}>
+            <ChevronLeft size={16} /> {t("home_beta.back", { defaultValue: "Way of Love" })}
+          </button>
+          <div style={{ fontSize: 34 }}>{def.emoji}</div>
         <h1 style={{ color: WARM, fontSize: 26, fontWeight: 700, fontFamily: FONT, margin: "8px 0 4px" }}>
           {t(`home_beta.section.${def.key}`, { defaultValue: def.title })}
         </h1>
@@ -696,7 +697,8 @@ export default function HomeBetaSectionPage() {
             </div>
           </>
         )}
-      </main>
-    </div>
+        </div>
+      </div>
+    </Layout>
   );
 }
