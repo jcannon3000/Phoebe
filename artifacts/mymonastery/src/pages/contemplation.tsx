@@ -260,6 +260,20 @@ function DailyGoalCard({
   const parsed = Math.min(600, Math.max(0, Math.floor(Number(draft))));
   const canSet = !saving && Number.isFinite(parsed) && parsed > 0 && parsed !== goalMinutes;
 
+  // iOS only: offer to connect Apple Health so meditation-app minutes (Calm,
+  // Insight Timer, Apple Mindfulness) can count toward the goal. HealthKit
+  // doesn't expose read-grant state, so once they've been through the connect
+  // prompt we remember it locally and stop showing the nudge.
+  const [healthConnected, setHealthConnected] = useState<boolean>(() => {
+    try { return localStorage.getItem("phoebe:health-connected") === "1"; } catch { return false; }
+  });
+  const connectHealth = async () => {
+    try { await requestMindfulAuthorization(); } catch { /* user may cancel */ }
+    try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* private mode */ }
+    setHealthConnected(true);
+  };
+  const showHealthConnect = appleHealthAvailable() && !healthConnected;
+
   return (
     <div className="rounded-2xl p-4 mt-4" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
       <div className="flex items-center justify-between mb-2">
@@ -324,6 +338,28 @@ function DailyGoalCard({
           style={{ background: "none", border: "none", padding: 0, color: SAGE, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
         >
           {t("contemplation.goal_turn_off", { defaultValue: "Turn off goal" })}
+        </button>
+      )}
+
+      {/* iOS: connect Apple Health so meditation-app minutes count toward the
+          goal. Shown until the user has gone through the connect prompt. */}
+      {showHealthConnect && (
+        <button
+          type="button"
+          onClick={connectHealth}
+          className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 mt-3 text-left transition-opacity hover:opacity-90"
+          style={{ background: "rgba(46,107,64,0.12)", border: "1px dashed rgba(46,107,64,0.4)", cursor: "pointer" }}
+        >
+          <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>🍎</span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span className="block text-[13px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+              {t("contemplation.health_connect", { defaultValue: "Connect meditation app data" })}
+            </span>
+            <span className="block text-[11px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK, marginTop: 1, lineHeight: 1.35 }}>
+              {t("contemplation.health_connect_sub", { defaultValue: "Count Calm, Insight Timer & Apple Mindfulness toward your goal" })}
+            </span>
+          </span>
+          <span aria-hidden style={{ color: SAGE, fontSize: 16, flexShrink: 0 }}>›</span>
         </button>
       )}
 
