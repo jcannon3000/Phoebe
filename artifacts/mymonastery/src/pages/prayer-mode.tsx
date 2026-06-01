@@ -1744,6 +1744,17 @@ function ReflectionSlide({
   // padded, rounded card on web where the surrounding chrome has room.
   const fullBleed = isNativeShell();
 
+  // SSJE's /word/ page shows a cookie-consent bar across the very top. Inside
+  // the native WKWebView its (third-party) storage is partitioned, so the bar
+  // reappears every single visit and we can't reach into the cross-origin frame
+  // to dismiss it. So we crop: shift the iframe up so the top chrome (cookie bar
+  // + site header) clips off above the fold and the reflection itself fills the
+  // frame — the container already clips overflow. Native only: on the web build
+  // the consent persists after one dismissal, so there's nothing to hide. Tune
+  // SSJE_TOP_CROP_PX if SSJE changes their banner/header height.
+  const SSJE_TOP_CROP_PX = 88;
+  const ssjeCrop = source === "ssje" && fullBleed;
+
   // CAC can't be iframed (cac.org sends X-Frame-Options), so instead of an
   // embed we show today's scraped title + a "Read now" CTA into the in-app
   // browser. Title comes from the CAC daily-meditations RSS feed.
@@ -1810,7 +1821,12 @@ function ReflectionSlide({
             src={url}
             title={heading}
             style={{
-              position: "absolute", inset: 0, width: "100%", height: "100%", border: "none",
+              position: "absolute", left: 0, right: 0, width: "100%", border: "none",
+              // SSJE: shift up to clip its top chrome (cookie bar + header);
+              // otherwise fill the container normally.
+              ...(ssjeCrop
+                ? { top: -SSJE_TOP_CROP_PX, height: `calc(100% + ${SSJE_TOP_CROP_PX}px)` }
+                : { top: 0, height: "100%" }),
               // Forward Day by Day ships light-only — force dark with invert +
               // hue-rotate so it doesn't glare mid-office (whites → near-black,
               // text → light). White iframe bg inverts to black (no flash).
