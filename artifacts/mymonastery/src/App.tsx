@@ -299,6 +299,14 @@ const queryClient = new QueryClient({
       // Don't give up just because navigator.onLine lies — captive
       // portals often keep `onLine=true` while silently dropping TLS.
       networkMode: "always",
+      // Default freshness window. Without this, staleTime defaults to 0, so
+      // every query refetched on each component mount — navigating between
+      // pages (or returning to the dashboard, which fires ~28 queries) re-ran
+      // them all. 30s suppresses those redundant passive refetches; mutations
+      // still invalidate the keys they touch, so user-edited data refreshes
+      // immediately, and call sites that need real-time data set their own
+      // shorter staleTime / refetchInterval (those override this default).
+      staleTime: 30_000,
     },
     mutations: {
       // Don't auto-retry mutations — they can be non-idempotent. The
