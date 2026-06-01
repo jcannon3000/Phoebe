@@ -420,6 +420,13 @@ export const es: Translations = {
     home_beta_sub: "Tu Camino del Amor, día a día",
     this_week: "Esta semana",
     this_week_sub: "Adorar, Bendecir, Ir y Descansar",
+    videos: "Videos",
+    videos_sub: "Recorriendo el Camino del Amor",
+  },
+  videos: {
+    title: "Videos",
+    subtitle: "Recorriendo el Camino del Amor",
+    play: "Reproducir {{title}}",
   },
   // Inicio BETA del Camino del Amor (/home-beta) — las tarjetas de sección y
   // las páginas por sección. Prácticas diarias/semanales, compromisos,

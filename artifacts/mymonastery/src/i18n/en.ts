@@ -426,6 +426,13 @@ export const en = {
     home_beta_sub: "Your Way of Love, day by day",
     this_week: "This week",
     this_week_sub: "Worship, Bless, Go & Rest",
+    videos: "Videos",
+    videos_sub: "Traveling the Way of Love",
+  },
+  videos: {
+    title: "Videos",
+    subtitle: "Traveling the Way of Love",
+    play: "Play {{title}}",
   },
   // BETA Way of Love home (/home-beta) — the section cards + the per-section
   // pages. Daily/weekly practices, commitments, completion, and the quiet

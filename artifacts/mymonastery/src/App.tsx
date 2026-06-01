@@ -161,6 +161,7 @@ const MenuResourcesPage = lazy(() => import("./pages/menu-resources"));
 const HomeBetaPage = lazy(() => import("./pages/home-beta"));
 const HomeBetaSectionPage = lazy(() => import("./pages/home-beta-section"));
 const WayOfLoveWeekPage = lazy(() => import("./pages/way-of-love-week"));
+const VideosPage = lazy(() => import("./pages/videos"));
 const OfficeFmPage = lazy(() => import("./pages/office-fm"));
 const PodcastsPage = lazy(() => import("./pages/podcasts"));
 const BuildingFaithPage = lazy(() => import("./pages/building-faith"));
@@ -546,6 +547,7 @@ function Router() {
           page link into them. /:section first so the param route isn't
           shadowed. */}
       <Route path="/this-week" component={WayOfLoveWeekPage} />
+      <Route path="/videos" component={VideosPage} />
       <Route path="/home-beta/:section" component={HomeBetaSectionPage} />
       <Route path="/home-beta">{() => <RedirectTo to="/dashboard" />}</Route>
       {/* Phoebe Parish — simplified tier. /parish is the dashboard
