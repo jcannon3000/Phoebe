@@ -7,7 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { getSideMinutes } from "@/lib/officePrefs";
 import { openExternal } from "@/lib/openExternal";
-import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday } from "@/lib/appleHealth";
+import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday, writeMindfulSession } from "@/lib/appleHealth";
 
 // Curated "Learn" resources — talks, videos, and guides on contemplative /
 // centering prayer. Opened externally (SFSafariViewController on iOS via
@@ -216,7 +216,7 @@ function AppleHealthCard() {
       ) : (
         <>
           <p className="text-[12px]" style={{ color: SAGE, margin: "0 0 12px" }}>
-            {t("contemplation.health_prompt", { defaultValue: "Count meditation from other apps — pull today's Mindful Minutes from Apple Health." })}
+            {t("contemplation.health_prompt", { defaultValue: "Connect Apple Health to count meditation from other apps — and save your Phoebe sits back to Health." })}
           </p>
           <button
             type="button"
@@ -489,11 +489,17 @@ export default function ContemplationPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
   };
   const logMutation = useMutation({
-    mutationFn: () =>
-      apiRequest("POST", "/api/me/contemplation-sessions", {
-        durationSeconds: Math.round(Math.min(720, parseInt(logMinutes, 10) || 0) * 60),
-        occurredAt: new Date(logWhen).toISOString(),
-      }),
+    mutationFn: () => {
+      const mins = Math.min(720, parseInt(logMinutes, 10) || 0);
+      const start = new Date(logWhen);
+      // Mirror the manually-logged time into Apple Health too (iOS only,
+      // best-effort). Spans start → start + minutes.
+      void writeMindfulSession(start, new Date(start.getTime() + mins * 60_000));
+      return apiRequest("POST", "/api/me/contemplation-sessions", {
+        durationSeconds: Math.round(mins * 60),
+        occurredAt: start.toISOString(),
+      });
+    },
     onSuccess: () => {
       refreshContemplation();
       setLogOpen(false);

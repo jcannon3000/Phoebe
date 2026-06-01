@@ -5,6 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { playOpeningSwell, primeAudio } from "@/lib/amenFeedback";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { writeMindfulSession } from "@/lib/appleHealth";
 
 // Silent contemplation timer — Insight-Timer-style. The slideshow's
 // chapel-exhale swell opens the sit, a glowing countdown title holds
@@ -300,6 +301,10 @@ export function ContemplationTimer({
     if (sat < 5) return;
     const startedAt = startedAtRef.current ?? new Date(Date.now() - sat * 1000);
     const endedAt = new Date();
+    // Mirror the sit into Apple Health as a Mindful Session (iOS only, best-
+    // effort — no-ops until the user has connected Health). Fire-and-forget so
+    // it never blocks the closing screen.
+    void writeMindfulSession(startedAt, endedAt);
     // Capture the chosen visibility AT POST TIME — if the user later
     // toggles, we fire a PATCH with the new value rather than waiting
     // for them to dismiss the screen.

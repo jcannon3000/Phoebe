@@ -67,6 +67,8 @@
 	<string>Phoebe uses your photos so you can choose a profile picture.</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Phoebe reads your Mindful Minutes from Apple Health so time you spend in meditation or silence — including in apps like Calm or Insight Timer — can count toward your daily contemplation goal.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Phoebe saves your contemplative sits to Apple Health as Mindful Minutes, so the silence you keep here shows up alongside your other mindfulness time.</string>
 
 	<!-- Background modes:
 	     • remote-notification — silent push wake-up; bell scheduling uses it.

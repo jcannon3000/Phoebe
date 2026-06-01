@@ -35,6 +35,7 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "requestAuthorization", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "mindfulMinutesToday", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "writeMindfulSession", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openApp", returnType: CAPPluginReturnPromise),
     ]
 
@@ -53,8 +54,10 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
             call.resolve(["requested": false])
             return
         }
-        // Read-only: empty share set, mindful sessions in the read set.
-        healthStore.requestAuthorization(toShare: [], read: [type]) { success, error in
+        // Read AND write mindful sessions: read pulls in minutes logged by other
+        // apps (Calm, Insight Timer); write lets Phoebe save its own sits back to
+        // Apple Health so they show in the user's Mindful Minutes too.
+        healthStore.requestAuthorization(toShare: [type], read: [type]) { success, error in
             if let error = error {
                 call.reject("Authorization failed: \(error.localizedDescription)")
                 return
@@ -94,6 +97,40 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
             call.resolve(["minutes": minutes, "sessions": sessions.count])
         }
         healthStore.execute(query)
+    }
+
+    // Write a finished Phoebe sit to Apple Health as a Mindful Session so it
+    // counts toward the user's Mindful Minutes (same as Calm/Insight Timer do).
+    // start/end are epoch MILLISECONDS (Date.getTime() on the JS side) to avoid
+    // ISO-8601 fractional-second parsing pitfalls. Best-effort: a save needs
+    // write authorization, so it silently no-ops (written:false) until the user
+    // has connected Apple Health.
+    @objc func writeMindfulSession(_ call: CAPPluginCall) {
+        guard HKHealthStore.isHealthDataAvailable(), let type = mindfulType else {
+            call.resolve(["written": false])
+            return
+        }
+        guard let startMs = call.getDouble("startMs"),
+              let endMs = call.getDouble("endMs"),
+              endMs > startMs else {
+            call.reject("Missing or invalid startMs/endMs")
+            return
+        }
+        let start = Date(timeIntervalSince1970: startMs / 1000.0)
+        let end = Date(timeIntervalSince1970: endMs / 1000.0)
+        let sample = HKCategorySample(
+            type: type,
+            value: HKCategoryValue.notApplicable.rawValue,
+            start: start,
+            end: end
+        )
+        healthStore.save(sample) { success, error in
+            if let error = error {
+                call.reject("Save failed: \(error.localizedDescription)")
+                return
+            }
+            call.resolve(["written": success])
+        }
     }
 
     // Launch a companion meditation app (Calm, Hallow, Insight Timer, Headspace,

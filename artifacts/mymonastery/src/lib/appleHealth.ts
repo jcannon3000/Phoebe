@@ -22,6 +22,7 @@ interface MindfulHealthPlugin {
   isAvailable: () => Promise<{ available: boolean }>;
   requestAuthorization: () => Promise<{ requested: boolean }>;
   mindfulMinutesToday: () => Promise<{ minutes: number; sessions: number }>;
+  writeMindfulSession: (opts: { startMs: number; endMs: number }) => Promise<{ written: boolean }>;
 }
 
 function getPlugin(): MindfulHealthPlugin | null {
@@ -72,5 +73,22 @@ export async function getMindfulMinutesToday(): Promise<{ minutes: number; sessi
     return await p.mindfulMinutesToday();
   } catch {
     return null;
+  }
+}
+
+/**
+ * Save a finished contemplative sit to Apple Health as a Mindful Session.
+ * Best-effort + fire-and-forget: no-ops on web, and silently fails (returns
+ * false) until the user has connected Apple Health (write needs authorization).
+ * Safe to call after every logged sit.
+ */
+export async function writeMindfulSession(start: Date, end: Date): Promise<boolean> {
+  const p = getPlugin();
+  if (!p) return false;
+  try {
+    const r = await p.writeMindfulSession({ startMs: start.getTime(), endMs: end.getTime() });
+    return !!r?.written;
+  } catch {
+    return false;
   }
 }
