@@ -32,6 +32,7 @@ import {
 } from "./home-beta";
 import { computeTurnConsistency, engagementDays } from "@/lib/turnConsistency";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
+import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import BlessSubScreen from "@/components/BlessSubScreen";
 
 const BG = "#091A10";
@@ -73,9 +74,10 @@ function fmtTime(hhmm: string): string {
 // Rest gets the carve-out picker.)
 type ActionDef = { emoji: string; label: string; sub: string; route: string; tkey: string };
 const ACTIONS: Record<SectionKey, ActionDef[]> = {
-  turn: [
-    { emoji: "🕯️", label: "Pray the Examen", sub: "A gentle review of your day", route: "/examen", tkey: "examen" },
-  ],
+  // Turn has no action — it's kept simply by showing up in Phoebe (engaging any
+  // practice that day credits Turn), so the page leads with the reflection +
+  // Bishop Budde's "Turn" episode rather than a thing to tick off.
+  turn: [],
   learn_pray: [
     { emoji: "📿", label: "Pray the Daily Office", sub: "Morning or Evening Prayer", route: "/prayer-chooser", tkey: "office" },
     { emoji: "📖", label: "Today's reflection", sub: "Forward Day by Day", route: "/reflect/fdd", tkey: "reflection" },
@@ -133,6 +135,26 @@ const SECTION_VIDEO: Record<SectionKey, PracticeVideo[]> = {
   rest: [{ id: "duye4nftap", title: "Honoré Farm & Mill" }],
 };
 
+// Bishop Mariann Budde — "The Way of Love: A Rule of Life" (Diocese of
+// Washington; the experiencing-jesus show). One episode per practice; tapping
+// plays it in the persistent mini-player without leaving the page. Audio URLs
+// come straight from the show's feed (feeds.simplecast.com/1CBZhkXf).
+type PracticeEpisode = { episodeId: string; title: string; audioUrl: string; label?: string };
+const BUDDE_BASE = "https://cdn.simplecast.com/audio/899e16/899e16b0-b49f-487d-8f53-9bf4b5143dee";
+const SECTION_PODCAST: Record<SectionKey, PracticeEpisode[]> = {
+  turn: [{ episodeId: "budde-turn", title: "The Way of Love: Turn", audioUrl: `${BUDDE_BASE}/6cdde8bf-e73c-4b75-86ef-7e1271db6edf/wol-turn_tc.mp3?aid=rss_feed` }],
+  learn_pray: [
+    { episodeId: "budde-learn", title: "The Way of Love: To Learn", audioUrl: `${BUDDE_BASE}/e84cc489-7736-4f38-8644-0127091928cb/wol-learn-final_tc.mp3?aid=rss_feed`, label: "Learn" },
+    { episodeId: "budde-pray", title: "The Way of Love: To Pray", audioUrl: `${BUDDE_BASE}/657bf9e7-4982-442b-a08e-6cf1b7e5d82f/wol-prayfinal-mixdown_tc.mp3?aid=rss_feed`, label: "Pray" },
+  ],
+  learn: [{ episodeId: "budde-learn", title: "The Way of Love: To Learn", audioUrl: `${BUDDE_BASE}/e84cc489-7736-4f38-8644-0127091928cb/wol-learn-final_tc.mp3?aid=rss_feed` }],
+  pray: [{ episodeId: "budde-pray", title: "The Way of Love: To Pray", audioUrl: `${BUDDE_BASE}/657bf9e7-4982-442b-a08e-6cf1b7e5d82f/wol-prayfinal-mixdown_tc.mp3?aid=rss_feed` }],
+  worship: [{ episodeId: "budde-worship", title: "The Way of Love: To Worship", audioUrl: `${BUDDE_BASE}/a8b12a6d-28fb-401d-aec0-cdcba53e23a3/wol-worship_tc.mp3?aid=rss_feed` }],
+  bless: [{ episodeId: "budde-bless", title: "The Way of Love: To Bless", audioUrl: `${BUDDE_BASE}/f40d733d-733a-480a-9abc-28ffee35fe2e/wol-to-bless-final_tc.mp3?aid=rss_feed` }],
+  go: [{ episodeId: "budde-go", title: "The Way of Love: To Go", audioUrl: `${BUDDE_BASE}/c4bc1bcb-d3c6-48ac-ab15-d6a09a0deb28/wol-to-go_tc.mp3?aid=rss_feed` }],
+  rest: [{ episodeId: "budde-rest", title: "The Way of Love: To Rest", audioUrl: `${BUDDE_BASE}/191abf04-6578-492f-b2f1-6b3d28983c22/wol-rest-final-mixdown_tc.mp3?aid=rss_feed` }],
+};
+
 type ShowHit = { slug: string; title: string; artist: string; artwork: string | null };
 type ServiceSchedule = {
   id: number; groupName: string; groupSlug: string | null; groupEmoji: string | null;
@@ -153,6 +175,7 @@ export default function HomeBetaSectionPage() {
   const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
   const { t } = useTranslation();
   const qc = useQueryClient();
+  const player = usePodcastPlayer();
 
   // Localized day names — full name drives the abbreviation + initial so one
   // set of keys covers the picker, the weekday strip, and the service line.
@@ -312,6 +335,10 @@ export default function HomeBetaSectionPage() {
   const shows = matsQ.data?.shows ?? [];
   const actions = ACTIONS[def.key] ?? [];
   const sectionVideos = SECTION_VIDEO[def.key] ?? [];
+  const sectionEpisodes = SECTION_PODCAST[def.key] ?? [];
+  // Turn intentionally has no actions and no live preview, so its "Practices"
+  // section would be an empty header — hide it there.
+  const hasPractices = actions.length > 0 || def.key === "worship" || def.key === "bless" || def.key === "go" || def.key === "rest";
 
   const toggle = () => {
     if (lockedDone) return;
@@ -402,6 +429,45 @@ export default function HomeBetaSectionPage() {
                     {t("home_beta.watch_caption", { defaultValue: "Traveling the Way of Love" })} · {v.title}
                   </p>
                 </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Listen — Bishop Mariann Budde's Way of Love episode for this
+            practice. Plays in the persistent mini-player so the page stays put. */}
+        {sectionEpisodes.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <p style={{ ...eyebrow, margin: "0 0 8px" }}>
+              {t("home_beta.listen", { defaultValue: "Listen" })}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {sectionEpisodes.map((ep) => (
+                <button
+                  key={ep.episodeId}
+                  type="button"
+                  onClick={() => player.play({
+                    showSlug: "experiencing-jesus",
+                    episodeId: ep.episodeId,
+                    title: ep.title,
+                    audioUrl: ep.audioUrl,
+                    imageUrl: "/podcast-art/budde.jpg",
+                    showTitle: "The Way of Love: A Rule of Life",
+                    showArtwork: "/podcast-art/budde.jpg",
+                  }, { expand: false })}
+                  style={linkCard}
+                >
+                  <img src="/podcast-art/budde.jpg" alt="" style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", flexShrink: 0 }} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <p style={{ color: WARM, fontSize: 14, fontWeight: 600, fontFamily: FONT, margin: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {ep.label ? `${ep.label} · ` : ""}Bishop Mariann Budde
+                    </p>
+                    <p style={{ color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {ep.title}
+                    </p>
+                  </div>
+                  <span aria-hidden style={{ color: SAGE, fontSize: 18, flexShrink: 0 }}>▶</span>
+                </button>
               ))}
             </div>
           </div>
@@ -502,10 +568,13 @@ export default function HomeBetaSectionPage() {
           )}
         </div>
 
-        {/* Practices — the section's reused surfaces (+ live previews) */}
-        <p style={{ ...eyebrow, margin: "28px 0 10px" }}>
-          {t("home_beta.practices", { defaultValue: "Practices" })}
-        </p>
+        {/* Practices — the section's reused surfaces (+ live previews). Hidden
+            for Turn, which has no actions or live preview of its own. */}
+        {hasPractices && (
+          <p style={{ ...eyebrow, margin: "28px 0 10px" }}>
+            {t("home_beta.practices", { defaultValue: "Practices" })}
+          </p>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {/* Worship — this week's services */}
           {def.key === "worship" && schedules.map((s) => (
