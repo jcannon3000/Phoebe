@@ -2574,7 +2574,11 @@ export function CacHomeCard() {
       style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.40)" }}
     >
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
-        <div className="min-w-0">
+        {/* flex-1 + min-w-0 (not just min-w-0): the headline is now a long
+            nowrap line ("CAC Daily Reflection 🌵"); on iOS Safari a min-w-0-only
+            flex item won't shrink under a long nowrap child, so it overflows and
+            shoves the shrink-0 button. flex-1 forces a 0 basis so it truncates. */}
+        <div className="flex-1 min-w-0">
           {/* Title + subtitle mirrors ContemplationHomeCard: the section name
               is the headline, and today's meditation title sits under it as a
               small muted subtitle (like "8 of 15 min today" on Contemplation). */}
