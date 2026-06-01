@@ -290,23 +290,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   </div>
                   <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.4)", flexShrink: 0 }} />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => navigate("/videos")}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-opacity hover:opacity-90"
-                  style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.28)", marginTop: 8 }}
-                >
-                  <span className="text-lg leading-none w-5 text-center" aria-hidden>🎬</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-                      {t("menu.videos", { defaultValue: "Videos" })}
-                    </p>
-                    <p className="text-[11px]" style={{ color: "#8FAF96", margin: 0 }}>
-                      {t("menu.videos_sub", { defaultValue: "Traveling the Way of Love" })}
-                    </p>
-                  </div>
-                  <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.4)", flexShrink: 0 }} />
-                </button>
               </div>
             )}
 
@@ -477,6 +460,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
               <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
               <MenuRow emoji="🎧" label={t("menu.audio", { defaultValue: "Audio" })} onClick={() => goCategory("/menu/audio")} />
+              {/* Videos — sits directly under Audio. Beta-gated like the Way of
+                  Love surface it belongs to (moved here from a top card). */}
+              {rawIsBeta && (
+                <MenuRow emoji="🎬" label={t("menu.videos", { defaultValue: "Videos" })} onClick={() => navigate("/videos")} />
+              )}
               <MenuRow emoji="📚" label={t("menu.resources", { defaultValue: "Resources" })} onClick={() => goCategory("/menu/resources")} />
               {showLetters && (
                 <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
