@@ -67,6 +67,8 @@ type OfficePrefs = {
   // hit your goal" nudge is on. Shares the office-prefs query/mutation.
   contemplationGoalMinutes?: number;
   contemplationReminderEnabled?: boolean;
+  // Sunday-evening weekly Way of Love review reminder (opt-out).
+  weeklyReviewReminder?: boolean;
 };
 
 // Small inline row used by OfficeReminderSettings. Renders a labeled
@@ -636,6 +638,37 @@ function OfficeReminderSettings() {
             </div>
           </button>
         )}
+      </SettingsCard>
+
+      {/* Weekly Way of Love review — the Sunday-evening examen reminder
+          (opt-out). Shares the same office-prefs query/mutation. */}
+      <SectionHeader label={t("settings.weekly_review", { defaultValue: "Weekly review" })} />
+      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+        {t("settings.weekly_review_blurb", { defaultValue: "A gentle Sunday-evening prompt to look back on your week and set the one ahead." })}
+      </p>
+      <SettingsCard>
+        <button
+          type="button"
+          onClick={() => save.mutate({ weeklyReviewReminder: !(data?.weeklyReviewReminder ?? true) })}
+          className="w-full flex items-center justify-between gap-3 py-2.5 text-left"
+          style={{ background: "transparent", cursor: "pointer" }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+              {t("settings.weekly_review_toggle", { defaultValue: "Remind me Sunday evening" })}
+            </p>
+          </div>
+          <div
+            aria-hidden
+            style={{
+              width: 42, height: 24, borderRadius: 999, position: "relative", flexShrink: 0, transition: "background 0.15s",
+              background: (data?.weeklyReviewReminder ?? true) ? "#2D5E3F" : "rgba(143,175,150,0.25)",
+              border: `1px solid ${(data?.weeklyReviewReminder ?? true) ? "rgba(168,197,160,0.5)" : "rgba(143,175,150,0.3)"}`,
+            }}
+          >
+            <div style={{ width: 18, height: 18, borderRadius: 999, background: "#F0EDE6", position: "absolute", top: 2, left: (data?.weeklyReviewReminder ?? true) ? 22 : 2, transition: "left 0.15s" }} />
+          </div>
+        </button>
       </SettingsCard>
 
       {/* Companion meditation apps — one-tap launchers to start a session in an

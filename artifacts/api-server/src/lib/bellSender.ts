@@ -18,6 +18,7 @@ import {
   betaUsersTable,
   prayerFeedSubscriptionsTable,
   prayerFeedEventsTable,
+  practiceCompletionTable,
 } from "@workspace/db";
 import { eq, and, gte, ne, sql, isNull, inArray, isNotNull } from "drizzle-orm";
 import {
@@ -28,6 +29,7 @@ import {
   sendPrayerRenewalNudgePush,
   sendParishOfficeReminderPush,
   sendContemplationGoalReminderPush,
+  sendWeeklyReviewPush,
   sendParishEveningRecapPush,
   sendGatheringTomorrowPush,
   sendFeedEventTomorrowPush,
@@ -1038,6 +1040,65 @@ export async function runContemplationGoalSender(opts: { forceNow?: boolean } = 
   }
 }
 
+// ─── Weekly Way of Love review — Sunday-evening examen nudge ─────────────────
+// Once a week (Sunday ~20:00 in the user's tz) invite beta users who've opted in
+// to look back on the week and set the one ahead. Skipped if they already did
+// the review this week (a `weekly_review` practice_completion for this Sunday's
+// weekStart). Deduped per Sunday via weekly_review_nudge_sent_date.
+const WEEKLY_REVIEW_TIME = "20:00";
+
+export async function runWeeklyReviewSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  try {
+    const rows = await db
+      .select({
+        userId: usersTable.id,
+        userTimezone: usersTable.timezone,
+        sentDate: usersTable.weeklyReviewNudgeSentDate,
+      })
+      .from(usersTable)
+      .innerJoin(betaUsersTable, sql`LOWER(${usersTable.email}) = LOWER(${betaUsersTable.email})`)
+      .where(eq(usersTable.weeklyReviewReminder, true));
+
+    for (const r of rows) {
+      const tz = r.userTimezone || "America/New_York";
+      // Sundays only (dow 0), within the ~20:00 tick window.
+      if (!opts.forceNow) {
+        if (dowInTz(tz) !== 0) continue;
+        if (!isWithinTickWindow(tz, WEEKLY_REVIEW_TIME)) continue;
+      }
+      // On Sunday, sundayStart === today, so this week's weekStart is today.
+      const today = todayInZone(tz);
+      if (r.sentDate === today) continue;
+
+      // Already reviewed this week? Then just stamp and skip the nudge.
+      const reviewed = await db
+        .select({ userId: practiceCompletionTable.userId })
+        .from(practiceCompletionTable)
+        .where(
+          and(
+            eq(practiceCompletionTable.userId, r.userId),
+            eq(practiceCompletionTable.section, "weekly_review"),
+            eq(practiceCompletionTable.weekStart, today),
+          ),
+        )
+        .limit(1);
+      if (reviewed.length > 0) {
+        await db.update(usersTable).set({ weeklyReviewNudgeSentDate: today }).where(eq(usersTable.id, r.userId));
+        continue;
+      }
+
+      try {
+        await sendWeeklyReviewPush(r.userId);
+        await db.update(usersTable).set({ weeklyReviewNudgeSentDate: today }).where(eq(usersTable.id, r.userId));
+      } catch (err) {
+        logger.warn({ err, userId: r.userId }, "[weekly-review] push failed");
+      }
+    }
+  } catch (err) {
+    logger.error({ err }, "[weekly-review] sender failed");
+  }
+}
+
 // ─── Phoebe Parish — 8pm prayed-today recap ────────────────────────────────
 //
 // Once per parish per local day, when the parish's clock crosses 20:00,
@@ -1680,6 +1741,7 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   { name: "renewal-nudge",         run: runPrayerRenewalNudgeSender },
   { name: "parish-office",         run: runParishOfficeReminderSender },
   { name: "contemplation-goal",    run: runContemplationGoalSender },
+  { name: "weekly-review",         run: runWeeklyReviewSender },
   { name: "parish-evening",        run: runParishEveningRecapSender },
   { name: "gathering-reminder",    run: runGatheringReminderSender },
   { name: "feed-event-reminder",   run: runFeedEventReminderSender },

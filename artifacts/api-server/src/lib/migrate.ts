@@ -1499,6 +1499,9 @@ export async function migrate() {
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_goal_minutes INTEGER NOT NULL DEFAULT 0`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_goal_sent_date TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_reminder_enabled BOOLEAN NOT NULL DEFAULT true`);
+    // Weekly Way of Love review — Sunday-evening reminder (opt-out) + per-week dedup stamp.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_review_reminder BOOLEAN NOT NULL DEFAULT true`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_review_nudge_sent_date TEXT`);
     // YYYY-MM-DD (parish TZ) of the last Saturday-evening parish-recap
     // push we fired for this user. NULL = never sent. Added separately
     // because the column was introduced in 62639d5 without a migrate.ts

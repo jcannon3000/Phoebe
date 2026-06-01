@@ -165,6 +165,11 @@ export const usersTable = pgTable("users", {
   // freshly-set goal nudges by default; the user can keep a goal for tracking
   // while silencing the reminder from Settings → Daily reminders.
   contemplationReminderEnabled: boolean("contemplation_reminder_enabled").notNull().default(true),
+  // Weekly Way of Love review (the Sunday-evening examen). Reminder on by
+  // default; opt out in Settings. The sent-date (YYYY-MM-DD of the Sunday we
+  // last nudged, user TZ) dedups the once-a-week push across 15-min ticks.
+  weeklyReviewReminder: boolean("weekly_review_reminder").notNull().default(true),
+  weeklyReviewNudgeSentDate: text("weekly_review_nudge_sent_date"),
   // YYYY-MM-DD (parish TZ) of the last Saturday-evening "your parish
   // prayed with you this week" recap we fired for this user. NULL =
   // never sent. Idempotent on the local Saturday so a parishioner

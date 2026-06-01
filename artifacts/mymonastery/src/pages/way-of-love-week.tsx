@@ -311,9 +311,19 @@ export default function WayOfLoveWeekPage() {
           <h1 style={{ color: WARM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: "6px 0 0" }}>
             {t("week.title", { defaultValue: "Weekly rule progress" })}
           </h1>
-          <p style={{ color: SAGE, fontSize: 13.5, fontFamily: FONT, margin: "6px 0 18px" }}>
+          <p style={{ color: SAGE, fontSize: 13.5, fontFamily: FONT, margin: "6px 0 14px" }}>
             {range} · {t("week.status", { defaultValue: "{{done}} of {{total}} practices this week", done: doneCount, total: WEEKLY_KEYS.length })}
           </p>
+
+          {/* Guided weekly review — the Sunday examen. Reachable any time, not
+              just from the push. */}
+          <button
+            type="button"
+            onClick={() => setLocation("/this-week/review")}
+            style={{ width: "100%", background: "#2D5E3F", border: "1px solid rgba(168,197,160,0.4)", color: WARM, borderRadius: 12, padding: "12px 16px", fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer", marginBottom: 18 }}
+          >
+            {t("week.begin_review", { defaultValue: "Review the week & set the next →" })}
+          </button>
 
           {/* Daily practices — the spine of the rule (Turn + Learn & Pray),
               tracked day-to-day on the home screen. Surfaced here so the page

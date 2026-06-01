@@ -993,6 +993,20 @@ export function sendContemplationGoalReminderPush(
   });
 }
 
+// Weekly Way of Love review — the Sunday-evening examen nudge. Invites the user
+// to look back on the week and set the one ahead. Deep-links into the review;
+// deduped to once per Sunday by the sender.
+export function sendWeeklyReviewPush(userId: number) {
+  return sendPushToUser(userId, {
+    title: "A new week begins",
+    body: "Look back on your Way of Love, and set the week ahead.",
+    path: "/this-week/review",
+    threadId: "weekly-review",
+    collapseId: `weekly-review-${userId}`,
+    sound: PHOEBE_SOUND_LOW,
+  });
+}
+
 // Phoebe Parish — 8pm "your parish prayed today" recap. Fires once
 // per parish per local day, only to parishioners who themselves
 // prayed today, and only when 4+ distinct parishioners prayed. Body

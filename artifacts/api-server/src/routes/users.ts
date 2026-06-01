@@ -271,6 +271,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
         defaultPrayerLevel: usersTable.defaultPrayerLevel,
         contemplationGoalMinutes: usersTable.contemplationGoalMinutes,
         contemplationReminderEnabled: usersTable.contemplationReminderEnabled,
+        weeklyReviewReminder: usersTable.weeklyReviewReminder,
       })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
@@ -359,6 +360,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
       defaultPrayerLevel: u?.defaultPrayerLevel ?? "ask",
       contemplationGoalMinutes: u?.contemplationGoalMinutes ?? 0,
       contemplationReminderEnabled: u?.contemplationReminderEnabled ?? true,
+      weeklyReviewReminder: u?.weeklyReviewReminder ?? true,
       lastPrayedMorning,
       lastPrayedEvening,
       officeStreak,
@@ -407,6 +409,9 @@ router.put("/me/office-prefs", async (req, res): Promise<void> => {
   }
   if (typeof body.contemplationReminderEnabled === "boolean") {
     update.contemplationReminderEnabled = body.contemplationReminderEnabled;
+  }
+  if (typeof body.weeklyReviewReminder === "boolean") {
+    update.weeklyReviewReminder = body.weeklyReviewReminder;
   }
   if (Object.keys(update).length === 0) { res.json({ ok: true }); return; }
   try {

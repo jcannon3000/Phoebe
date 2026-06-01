@@ -161,6 +161,7 @@ const MenuResourcesPage = lazy(() => import("./pages/menu-resources"));
 const HomeBetaPage = lazy(() => import("./pages/home-beta"));
 const HomeBetaSectionPage = lazy(() => import("./pages/home-beta-section"));
 const WayOfLoveWeekPage = lazy(() => import("./pages/way-of-love-week"));
+const WeeklyReviewPage = lazy(() => import("./pages/weekly-review"));
 const VideosPage = lazy(() => import("./pages/videos"));
 const OfficeFmPage = lazy(() => import("./pages/office-fm"));
 const PodcastsPage = lazy(() => import("./pages/podcasts"));
@@ -546,6 +547,7 @@ function Router() {
           (/home-beta/turn, /home-beta/:section) stay — the streak + weekly
           page link into them. /:section first so the param route isn't
           shadowed. */}
+      <Route path="/this-week/review" component={WeeklyReviewPage} />
       <Route path="/this-week" component={WayOfLoveWeekPage} />
       <Route path="/videos" component={VideosPage} />
       <Route path="/home-beta/:section" component={HomeBetaSectionPage} />
