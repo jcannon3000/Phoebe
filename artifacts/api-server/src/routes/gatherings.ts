@@ -11,6 +11,7 @@ import {
 import { eq, and, inArray, or } from "drizzle-orm";
 import { z } from "zod/v4";
 import { parseIcal, normalizeCalendarUrl, type ICalEvent } from "../lib/ical";
+import { assertPublicHttpUrl } from "../lib/ssrfGuard";
 
 const router: IRouter = Router();
 
@@ -35,6 +36,16 @@ router.post("/gatherings/calendars", async (req, res): Promise<void> => {
   if (!rawUrl) { res.status(400).json({ error: "url is required" }); return; }
 
   const url = normalizeCalendarUrl(rawUrl);
+
+  // SSRF guard — this URL is user-submitted and we're about to fetch it from
+  // the server. Reject anything that resolves to an internal / non-routable
+  // address (cloud metadata, localhost, private ranges) before the fetch.
+  try {
+    await assertPublicHttpUrl(url);
+  } catch {
+    res.status(400).json({ error: "That calendar URL isn't allowed." });
+    return;
+  }
 
   // Quick validation: try to fetch a few events to confirm it works
   let calendarName = (req.body.name as string | undefined)?.trim() ?? "";
@@ -110,6 +121,9 @@ router.get("/gatherings/calendar-events", async (req, res): Promise<void> => {
 
   await Promise.all(subs.map(async (sub) => {
     try {
+      // Re-check at fetch time too (a sub stored before this guard existed,
+      // or a name that has since rebound to an internal address).
+      await assertPublicHttpUrl(sub.url);
       const resp = await fetch(sub.url, { signal: AbortSignal.timeout(8000) });
       if (!resp.ok) return;
       const text = await resp.text();

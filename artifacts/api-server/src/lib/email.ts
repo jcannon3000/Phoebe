@@ -542,7 +542,7 @@ export async function sendAnnouncementEmail(opts: {
               <div style="margin-bottom:28px;">
                 <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
               </div>
-              <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">${opts.subject}</h1>
+              <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">${escapeHtml(opts.subject)}</h1>
               <p style="margin:0 0 28px;font-size:15px;color:#3a3632;line-height:1.7;">${safeBody}</p>
               ${bulkFooterHtml(unsubUrl)}
             </td>
