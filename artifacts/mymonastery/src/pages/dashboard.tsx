@@ -2575,26 +2575,21 @@ export function CacHomeCard() {
     >
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
         <div className="min-w-0">
-          {cacTitle ? (
-            <>
-              <p
-                style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 11.5, letterSpacing: "0.04em" }}
-              >
-                CAC Daily Reflection 🌵
-              </p>
-              <p
-                className="font-semibold truncate"
-                style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: "3px 0 0", lineHeight: 1.2, fontSize: 16 }}
-              >
-                {cacTitle}
-              </p>
-            </>
-          ) : (
+          {/* Title + subtitle mirrors ContemplationHomeCard: the section name
+              is the headline, and today's meditation title sits under it as a
+              small muted subtitle (like "8 of 15 min today" on Contemplation). */}
+          <p
+            className="font-semibold min-w-0 truncate"
+            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
+          >
+            CAC Daily Reflection 🌵
+          </p>
+          {cacTitle && (
             <p
-              className="font-semibold truncate"
-              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
+              className="truncate"
+              style={{ color: "rgba(143,175,150,0.8)", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12 }}
             >
-              CAC Daily Reflection 🌵
+              {cacTitle}
             </p>
           )}
         </div>
