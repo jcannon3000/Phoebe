@@ -575,6 +575,13 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
     enabled: !!user && open,
     staleTime: 60_000,
   });
+  // Has the user set up a Rule of Life yet? (any saved Way of Love selections)
+  const wolQ = useQuery<{ selections: Record<string, unknown> }>({
+    queryKey: ["/api/rule-of-life/wol"],
+    queryFn: () => apiRequest("GET", "/api/rule-of-life/wol"),
+    enabled: !!user && open,
+    staleTime: 60_000,
+  });
 
   const today = wolYmd(new Date());
   const weekStart = wolYmd(wolSundayStart(new Date()));
@@ -584,6 +591,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
   const officePrayedToday = !!lastOffice && lastOffice.ymd === today && (lastOffice.morning || lastOffice.evening);
   const reflectionReadToday = hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday();
   const contemplationDoneToday = (contemplationQ.data?.todaySeconds ?? 0) > 0;
+  const hasRuleOfLife = Object.keys(wolQ.data?.selections ?? {}).length > 0;
 
   const turnDone = true; // opening the app counts as turning toward God today
   const learnDone = officePrayedToday || reflectionReadToday;
@@ -683,7 +691,9 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
                 <span className="text-lg leading-none w-6 text-center" aria-hidden>📜</span>
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                    {t("wol.rule_of_life", { defaultValue: "A Rule of Life" })}
+                    {hasRuleOfLife
+                      ? t("wol.rule_of_life", { defaultValue: "A Rule of Life" })
+                      : t("wol.rule_of_life_setup", { defaultValue: "Set up your Rule of Life" })}
                   </span>
                   <span className="block text-[11px]" style={{ color: "rgba(143,175,150,0.6)" }}>
                     {t("wol.rule_of_life_sub", { defaultValue: "Bishop Michael Curry" })}
