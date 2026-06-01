@@ -14,6 +14,7 @@ import { AppOpenTracker } from "@/components/AppOpenTracker";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
 import { PageFadeOverlay } from "@/components/PageFadeOverlay";
+import { WidgetSync } from "@/lib/widgetSync";
 import { PodcastPlayerProvider } from "@/components/PodcastPlayer";
 import { Component, useEffect, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
 import { isChunkLoadError, recoverFromStaleChunk } from "@/lib/staleChunk";
@@ -776,6 +777,7 @@ function App() {
           <GlobalButtonHaptics />
           <LocaleSync />
           <AppOpenTracker />
+          <WidgetSync />
           <PushPermissionPrompt />
           <WebPushPermissionPrompt />
           <DesktopAppPrompt />

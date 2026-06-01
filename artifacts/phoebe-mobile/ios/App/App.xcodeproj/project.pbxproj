@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		1906F0DF4B109027829D0BEC /* PhoebeWidgetPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF59DA4399194D23B4DC93F2 /* PhoebeWidgetPlugin.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -14,17 +15,44 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		789CBB0D0CBBCF49C2F0ACD3 /* PhoebeWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A26067A9F1FCAF26F282B857 /* PhoebeWidget.swift */; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
+		A3408F17935107AAD445C6FD /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A44DB453757BC9B288B8B10F /* Foundation.framework */; };
 		ADF3D1BD2F9AF27500B85EDF /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = ADF3D1BC2F9AF27500B85EDF /* PrivacyInfo.xcprivacy */; };
 		B1B1E0010000000000000002 /* BibleWebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000001 /* BibleWebViewController.swift */; };
 		B1B1E0010000000000000004 /* BibleBrowserPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000003 /* BibleBrowserPlugin.swift */; };
 		B1B1E0010000000000000006 /* PhoebeBadgePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000005 /* PhoebeBadgePlugin.swift */; };
 		B1B1E0010000000000000008 /* PhoebeAudioPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000007 /* PhoebeAudioPlugin.swift */; };
 		B1B1E001000000000000000A /* MindfulHealthPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000009 /* MindfulHealthPlugin.swift */; };
+		DDDE5045232BE6609109A4F0 /* PhoebeWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 72701FD9A9DF4B3EB7605138 /* PhoebeWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		PB0EBE7515E0001000000001 /* PhoebeRising.caf in Resources */ = {isa = PBXBuildFile; fileRef = PB0EBE7515E0001000000002 /* PhoebeRising.caf */; };
 		PB0EBE7515E0001000000004 /* PhoebeRising-low.caf in Resources */ = {isa = PBXBuildFile; fileRef = PB0EBE7515E0001000000003 /* PhoebeRising-low.caf */; };
 		PB0EBE7515E0001000000006 /* PhoebeRising-high.caf in Resources */ = {isa = PBXBuildFile; fileRef = PB0EBE7515E0001000000005 /* PhoebeRising-high.caf */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		24A3CA25E6C12C2E2EB258CE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 50EA64061AE68BF7A1959494;
+			remoteInfo = PhoebeWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		F5CEE7323171C0E70A427274 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				DDDE5045232BE6609109A4F0 /* PhoebeWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
@@ -36,6 +64,10 @@
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		723D51D80F039BB835FE6A6C /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		72701FD9A9DF4B3EB7605138 /* PhoebeWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PhoebeWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A26067A9F1FCAF26F282B857 /* PhoebeWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PhoebeWidget.swift; sourceTree = "<group>"; };
+		A44DB453757BC9B288B8B10F /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		ADF3D1BB2F9AF27500B85EDF /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		ADF3D1BC2F9AF27500B85EDF /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_App.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -45,7 +77,9 @@
 		B1B1E0010000000000000005 /* PhoebeBadgePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoebeBadgePlugin.swift; sourceTree = "<group>"; };
 		B1B1E0010000000000000007 /* PhoebeAudioPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoebeAudioPlugin.swift; sourceTree = "<group>"; };
 		B1B1E0010000000000000009 /* MindfulHealthPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MindfulHealthPlugin.swift; sourceTree = "<group>"; };
+		CD6994986DD0CAC2938F8675 /* PhoebeWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = PhoebeWidget.entitlements; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
+		FF59DA4399194D23B4DC93F2 /* PhoebeWidgetPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PhoebeWidgetPlugin.swift; sourceTree = "<group>"; };
 		PB0EBE7515E0001000000002 /* PhoebeRising.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = PhoebeRising.caf; sourceTree = "<group>"; };
 		PB0EBE7515E0001000000003 /* PhoebeRising-low.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PhoebeRising-low.caf"; sourceTree = "<group>"; };
 		PB0EBE7515E0001000000005 /* PhoebeRising-high.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PhoebeRising-high.caf"; sourceTree = "<group>"; };
@@ -60,6 +94,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C9B0C4FE5C8D25F6E978BC44 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A3408F17935107AAD445C6FD /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -67,6 +109,7 @@
 			isa = PBXGroup;
 			children = (
 				AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */,
+				F21451CF1198C552F03A22B8 /* iOS */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -78,6 +121,7 @@
 				504EC3051FED79650016851F /* Products */,
 				7F8756D8B27F46E3366F6CEA /* Pods */,
 				27E2DDA53C4D2A4D1A88CE4A /* Frameworks */,
+				A8768E6707C3C9EF4D868278 /* PhoebeWidget */,
 			);
 			sourceTree = "<group>";
 		};
@@ -85,6 +129,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				72701FD9A9DF4B3EB7605138 /* PhoebeWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -110,6 +155,7 @@
 				PB0EBE7515E0001000000002 /* PhoebeRising.caf */,
 				PB0EBE7515E0001000000003 /* PhoebeRising-low.caf */,
 				PB0EBE7515E0001000000005 /* PhoebeRising-high.caf */,
+				FF59DA4399194D23B4DC93F2 /* PhoebeWidgetPlugin.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -121,6 +167,25 @@
 				AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */,
 			);
 			name = Pods;
+			sourceTree = "<group>";
+		};
+		A8768E6707C3C9EF4D868278 /* PhoebeWidget */ = {
+			isa = PBXGroup;
+			children = (
+				A26067A9F1FCAF26F282B857 /* PhoebeWidget.swift */,
+				723D51D80F039BB835FE6A6C /* Info.plist */,
+				CD6994986DD0CAC2938F8675 /* PhoebeWidget.entitlements */,
+			);
+			name = PhoebeWidget;
+			path = PhoebeWidget;
+			sourceTree = "<group>";
+		};
+		F21451CF1198C552F03A22B8 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				A44DB453757BC9B288B8B10F /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -135,15 +200,34 @@
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
 				9592DBEFFC6D2A0C8D5DEB22 /* [CP] Embed Pods Frameworks */,
+				F5CEE7323171C0E70A427274 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				1608692B6CF75CF681868639 /* PBXTargetDependency */,
 			);
 			name = App;
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		50EA64061AE68BF7A1959494 /* PhoebeWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B35C58812D59BF2A814E9F14 /* Build configuration list for PBXNativeTarget "PhoebeWidget" */;
+			buildPhases = (
+				6E469C14158D51DE689ACC4E /* Sources */,
+				C9B0C4FE5C8D25F6E978BC44 /* Frameworks */,
+				D11EC10A8C9A405306880957 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PhoebeWidget;
+			productName = PhoebeWidget;
+			productReference = 72701FD9A9DF4B3EB7605138 /* PhoebeWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -170,13 +254,12 @@
 				Base,
 			);
 			mainGroup = 504EC2FB1FED79650016851F;
-			packageReferences = (
-			);
 			productRefGroup = 504EC3051FED79650016851F /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				50EA64061AE68BF7A1959494 /* PhoebeWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -196,6 +279,13 @@
 				PB0EBE7515E0001000000001 /* PhoebeRising.caf in Resources */,
 				PB0EBE7515E0001000000004 /* PhoebeRising-low.caf in Resources */,
 				PB0EBE7515E0001000000006 /* PhoebeRising-high.caf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D11EC10A8C9A405306880957 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -248,10 +338,28 @@
 				B1B1E0010000000000000006 /* PhoebeBadgePlugin.swift in Sources */,
 				B1B1E0010000000000000008 /* PhoebeAudioPlugin.swift in Sources */,
 				B1B1E001000000000000000A /* MindfulHealthPlugin.swift in Sources */,
+				1906F0DF4B109027829D0BEC /* PhoebeWidgetPlugin.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6E469C14158D51DE689ACC4E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				789CBB0D0CBBCF49C2F0ACD3 /* PhoebeWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		1608692B6CF75CF681868639 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = PhoebeWidget;
+			target = 50EA64061AE68BF7A1959494 /* PhoebeWidget */;
+			targetProxy = 24A3CA25E6C12C2E2EB258CE /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
@@ -425,6 +533,53 @@
 			};
 			name = Release;
 		};
+		5736E3EC894DE2B7CAFA6AF3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = PhoebeWidget/PhoebeWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 9K32R59ARV;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PhoebeWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 5.1;
+				PRODUCT_BUNDLE_IDENTIFIER = app.withphoebe.mobile.PhoebeWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		E6FFD0F6518502511DFBA634 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = PhoebeWidget/PhoebeWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 9K32R59ARV;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PhoebeWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 5.1;
+				PRODUCT_BUNDLE_IDENTIFIER = app.withphoebe.mobile.PhoebeWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -442,6 +597,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B35C58812D59BF2A814E9F14 /* Build configuration list for PBXNativeTarget "PhoebeWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5736E3EC894DE2B7CAFA6AF3 /* Release */,
+				E6FFD0F6518502511DFBA634 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

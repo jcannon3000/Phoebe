@@ -1157,6 +1157,11 @@ declare global {
         lectioStage?: string | null;
         lectioPrompt?: string | null;
         nextPracticeName?: string | null;
+        // Prayer-rhythm stats for the Lock/Home Screen widget (PhoebeWidget).
+        streakDays?: number | null;
+        prayedToday?: boolean | null;
+        nextOffice?: string | null;
+        updatedAt?: string | null;
       }) => void;
       isNative: () => boolean;
       // Synchronous front door for Browser.open. The previous bridge
@@ -1227,12 +1232,21 @@ function exposePublicApi() {
           lectioStage: state.lectioStage ?? null,
           lectioPrompt: state.lectioPrompt ?? null,
           nextPracticeName: state.nextPracticeName ?? null,
+          streakDays: state.streakDays ?? null,
+          prayedToday: state.prayedToday ?? null,
+          nextOffice: state.nextOffice ?? null,
+          updatedAt: state.updatedAt ?? null,
         });
         window.localStorage.setItem("phoebe:persist:widget", payload);
         // Belt-and-suspenders: also write directly to Preferences in case
         // the wireDurableStorage interceptor hasn't installed yet (e.g.
         // a very early call during bootstrap).
         Preferences.set({ key: "phoebe:persist:widget", value: payload }).catch(() => {});
+        // Write to the shared App Group + refresh the widget via the native
+        // plugin — Capacitor Preferences only touches UserDefaults.standard,
+        // which the widget extension (a separate process) cannot read.
+        const cap = (window as unknown as { Capacitor?: { Plugins?: Record<string, { update?: (o: { data: string }) => Promise<void> }> } }).Capacitor;
+        cap?.Plugins?.PhoebeWidget?.update?.({ data: payload })?.catch(() => {});
       } catch {
         /* ignore — widget updates are best-effort */
       }
