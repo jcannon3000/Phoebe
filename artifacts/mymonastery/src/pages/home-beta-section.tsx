@@ -95,17 +95,25 @@ const ACTIONS: Record<SectionKey, ActionDef[]> = {
   ],
 };
 
-// Traveling the Way of Love (The Episcopal Church, Season One) — one episode per
-// practice, embedded inline from Wistia (channel wkxcjht52w). The documentary
-// episodes don't carry practice labels, so each is paired to the practice it
-// best embodies; "Pray: Pop Up Prayer" is the one exact match.
+// Traveling the Way of Love (The Episcopal Church, Season One) — one video per
+// practice, embedded inline from Wistia (channel wkxcjht52w). The episodes are
+// documentary visits to ministries, not per-practice explainers, so each is
+// paired to the ministry that best embodies the practice:
+//   • Pray: Pop Up Prayer — the one explicit match (Learn & Pray)
+//   • St. Lydia's dinner church → Worship (gathering at the table)
+//   • Thistle Farms → Bless (radical love + service to survivors)
+//   • Bishop Walker School → Go (crossing boundaries to serve)
+//   • Honoré Farm & Mill → Rest (land sabbath + restoration)
+// Turn uses the series TRAILER — its "come along as we begin" invitation fits
+// the turn-and-return practice better than any single ministry episode (the
+// Presiding Bishop Curry overview read as a generic "learn" clip on Turn).
 const SECTION_VIDEO: Record<SectionKey, { id: string; title: string }> = {
-  turn: { id: "u04ilt0dvb", title: "Presiding Bishop Michael Curry" },
+  turn: { id: "trfrpfx6q1", title: "Series trailer" },
   learn_pray: { id: "q4zzab2h1y", title: "Pray: Pop Up Prayer" },
   worship: { id: "pisvfusoig", title: "St. Lydia's, Brooklyn" },
   bless: { id: "2ckcg82pkz", title: "Thistle Farms, Nashville" },
   go: { id: "b1l0elf3jd", title: "Bishop Walker School" },
-  rest: { id: "duye4nftap", title: "Honore Farm and Mill" },
+  rest: { id: "duye4nftap", title: "Honoré Farm & Mill" },
 };
 
 type ShowHit = { slug: string; title: string; artist: string; artwork: string | null };
