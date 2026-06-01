@@ -18,6 +18,7 @@
 import { db, prayerFeedsTable, prayerFeedEventsTable, ministrySourcesTable, sharedMomentsTable } from "@workspace/db";
 import { and, eq, inArray } from "drizzle-orm";
 import crypto from "crypto";
+import { assertPublicHttpUrl } from "./ssrfGuard";
 import type { MinistrySource } from "@workspace/db";
 
 const FETCH_TIMEOUT_MS = 9000;
@@ -270,6 +271,9 @@ export function parseNews(html: string, baseUrl: string): ParsedArticle[] {
 }
 
 async function fetchPage(url: string): Promise<string> {
+  // SSRF guard — url is an admin-configured ministry_sources page; still
+  // reject internal/non-routable hosts before the server fetches it.
+  await assertPublicHttpUrl(url);
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   try {
