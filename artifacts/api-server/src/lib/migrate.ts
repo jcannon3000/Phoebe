@@ -1560,6 +1560,12 @@ export async function migrate() {
     // true so existing users keep their notifications; sendPushToUser
     // suppresses every push when false.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS push_enabled BOOLEAN NOT NULL DEFAULT true`);
+    // Master switch for non-essential ("bulk") email — newsletters,
+    // announcements, weekly digest, prayer-invite prompts. The email-channel
+    // sibling of push_enabled. Default true; the email footer's Unsubscribe
+    // link (and Settings → Emails) flips it false. Transactional mail is not
+    // gated by this. See lib/email.ts for the send-side gate.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS email_enabled BOOLEAN NOT NULL DEFAULT true`);
 
     // App-open metrics (admin metrics page). One row per user per 15-min
     // window; the unique (user_id, bucket) index dedups rapid re-opens so

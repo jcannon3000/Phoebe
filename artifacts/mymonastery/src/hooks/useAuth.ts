@@ -51,6 +51,9 @@ export interface AuthUser {
   homeLayout: { order: string[]; hidden: string[] } | null;
   // Master notifications switch (Settings → Notifications).
   pushEnabled: boolean;
+  // Master switch for non-essential email (Settings → Emails / the
+  // Unsubscribe link in any bulk email). Transactional mail is unaffected.
+  emailEnabled: boolean;
   // BCP-47 locale code driving i18next. "en" default; "es" is beta-only.
   // Settings → Language toggle PATCHes /api/auth/me/locale; an effect in
   // App.tsx mirrors the change to localStorage + i18n.changeLanguage.

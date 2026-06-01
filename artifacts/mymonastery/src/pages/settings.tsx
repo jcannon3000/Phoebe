@@ -346,6 +346,72 @@ function NotificationsSettings() {
   );
 }
 
+// ── EmailSettings ──────────────────────────────────────────────────────────
+// Master opt-in/out for non-essential EMAIL — newsletters, the weekly
+// prayer-feed digest, announcements, and community prayer-invite prompts.
+// Reads emailEnabled off /auth/me; saves via PATCH /api/auth/me/email-enabled.
+// The in-app twin of the "Unsubscribe" link at the bottom of every bulk email
+// (both flip users.email_enabled). Transactional mail — password resets, magic
+// links — is never affected.
+function EmailSettings() {
+  const { user } = useAuth();
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const save = useMutation({
+    mutationFn: (emailEnabled: boolean) => apiRequest("PATCH", "/api/auth/me/email-enabled", { emailEnabled }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }),
+  });
+  const enabled = user?.emailEnabled ?? true;
+  const options: Array<{ value: boolean; label: string; sub: string }> = [
+    { value: true, label: t("settings.email_on", { defaultValue: "Occasional emails on" }), sub: t("settings.email_on_sub", { defaultValue: "Newsletters, the weekly prayer-feed digest, and community prompts." }) },
+    { value: false, label: t("settings.email_off", { defaultValue: "Unsubscribe from emails" }), sub: t("settings.email_off_sub", { defaultValue: "Stops non-essential email. Account & security emails still arrive." }) },
+  ];
+  return (
+    <>
+      <SectionHeader label={t("settings.emails", { defaultValue: "Emails" })} />
+      <p
+        className="text-[13px] mb-3"
+        style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}
+      >
+        {t("settings.email_blurb", { defaultValue: "Choose whether Phoebe sends you occasional emails. You can also unsubscribe from the link at the bottom of any email." })}
+      </p>
+      <SettingsCard>
+        {options.map((opt, i) => {
+          const isSelected = enabled === opt.value;
+          return (
+            <button
+              key={String(opt.value)}
+              type="button"
+              onClick={() => save.mutate(opt.value)}
+              className="w-full flex items-center gap-3 py-2.5 text-left"
+              style={{ borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)", background: "transparent", cursor: "pointer" }}
+            >
+              <div
+                style={{
+                  width: 18, height: 18, borderRadius: "50%",
+                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
+                  background: isSelected ? "#A8C5A0" : "transparent",
+                  flexShrink: 0,
+                }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                  {opt.label}
+                </p>
+                {opt.sub && (
+                  <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+                    {opt.sub}
+                  </p>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </SettingsCard>
+    </>
+  );
+}
+
 // ── DefaultPrayerLevelSettings ─────────────────────────────────────────────
 // Three-way radio for which depth the home-screen office card's "Begin
 // prayer" CTA drops the user into. Mirrors the visual rhythm of the
@@ -1739,6 +1805,11 @@ export default function SettingsPage() {
             Kept at the bottom of the settings (below the other prefs,
             above the account actions) per direction. ── */}
         <NotificationsSettings />
+        <div className="mb-8" />
+
+        {/* ── Email opt-in/out — the email-channel twin of the notifications
+            switch + the Unsubscribe link in every bulk email. ── */}
+        <EmailSettings />
         <div className="mb-8" />
 
         {/* ── Sign out ── */}

@@ -28,13 +28,21 @@ import type { Request, Response, NextFunction } from "express";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
+// Endpoints authenticated by a signed token in the URL (not the session
+// cookie) and designed to be POSTed cross-origin by third parties — e.g. the
+// RFC 8058 one-click List-Unsubscribe-Post that Gmail / Apple Mail send to
+// /api/email/unsubscribe. CSRF protects cookie-authed state changes; a
+// token-authed endpoint isn't a CSRF target, and an allowlist Origin check
+// would only 403 the legitimate provider POST. Exempt by exact path.
+const CSRF_EXEMPT_PATHS = new Set<string>(["/api/email/unsubscribe"]);
+
 /**
  * Build the CSRF middleware. Pass the same allowed-origins set as
  * CORS so the two stay in lockstep.
  */
 export function buildCsrfMiddleware(allowedOrigins: Set<string>) {
   return function csrfGuard(req: Request, res: Response, next: NextFunction): void {
-    if (SAFE_METHODS.has(req.method)) {
+    if (SAFE_METHODS.has(req.method) || CSRF_EXEMPT_PATHS.has(req.path)) {
       next();
       return;
     }

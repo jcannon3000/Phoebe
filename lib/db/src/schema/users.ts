@@ -32,6 +32,15 @@ export const usersTable = pgTable("users", {
   // words of comfort, everything. Default true so existing users keep
   // receiving notifications until they opt out.
   pushEnabled: boolean("push_enabled").notNull().default(true),
+  // Master switch for non-essential ("bulk") EMAIL — newsletters,
+  // announcements, the weekly prayer-feed digest, and community
+  // prayer-invite prompts. The email-channel sibling of pushEnabled:
+  // when false those sends are suppressed (the single gate lives in
+  // lib/email.ts). Transactional mail (password reset, magic links) is
+  // NOT gated — it always sends. Default true so existing users keep
+  // receiving until they unsubscribe (the footer link on every bulk
+  // email, or Settings → Emails). The unsubscribe link flips this false.
+  emailEnabled: boolean("email_enabled").notNull().default(true),
   dailyBellTime: text("daily_bell_time"),           // HH:MM format, e.g. "07:00"
   timezone: text("timezone"),                        // IANA timezone, e.g. "America/New_York"
   bellCalendarEventId: text("bell_calendar_event_id"), // Google Calendar event ID for the daily bell

@@ -1,6 +1,82 @@
 import { google } from "googleapis";
+import { createHmac, timingSafeEqual } from "node:crypto";
+import { db, usersTable } from "@workspace/db";
+import { sql } from "drizzle-orm";
 import { INVITES_FROM_HEADER, getInvitesRefreshToken } from "./invitesAccount";
 import type { FeedDigest } from "./feedDigest";
+
+// ── Unsubscribe (non-essential email opt-out) ────────────────────────────────
+// Bulk emails (newsletters, announcements, the weekly digest, prayer-invite
+// prompts) carry an Unsubscribe link + a List-Unsubscribe header, and are
+// suppressed for any recipient whose users.email_enabled is false. The link
+// is authenticated by a stateless HMAC of the user id (no DB token to store
+// or expire), so it works from a logged-out inbox and from Gmail/Apple Mail's
+// one-click List-Unsubscribe-Post. Transactional mail (password resets, magic
+// links) never calls the gate and never carries the footer.
+const APP_BASE_URL = (process.env["APP_BASE_URL"] ?? "https://withphoebe.app").replace(/\/$/, "");
+const UNSUB_SECRET =
+  process.env["EMAIL_UNSUB_SECRET"] || process.env["SESSION_SECRET"] || "dev-unsub-secret-change-me";
+
+export function emailUnsubToken(userId: number): string {
+  return createHmac("sha256", UNSUB_SECRET).update(`email-unsub:${userId}`).digest("base64url");
+}
+
+export function verifyEmailUnsubToken(userId: number, token: string): boolean {
+  if (!Number.isFinite(userId) || !token) return false;
+  const a = Buffer.from(token);
+  const b = Buffer.from(emailUnsubToken(userId));
+  if (a.length !== b.length) return false;
+  try { return timingSafeEqual(a, b); } catch { return false; }
+}
+
+export function unsubscribeUrl(userId: number): string {
+  return `${APP_BASE_URL}/api/email/unsubscribe?u=${userId}&t=${emailUnsubToken(userId)}`;
+}
+
+// Resolve a recipient email to its account (case-insensitive). Returns the
+// user id + whether bulk email is suppressed for them. Non-users (arbitrary
+// addresses) → null (send, but no unsubscribe footer — there's no account to
+// unsubscribe). A DB hiccup also returns null so a send path never crashes on
+// the lookup; the worst case is one email without a footer link.
+async function resolveBulkRecipient(to: string): Promise<{ userId: number; suppressed: boolean } | null> {
+  const email = (to ?? "").trim().toLowerCase();
+  if (!email) return null;
+  try {
+    const [u] = await db
+      .select({ id: usersTable.id, emailEnabled: usersTable.emailEnabled })
+      .from(usersTable)
+      .where(sql`lower(${usersTable.email}) = ${email}`)
+      .limit(1);
+    if (!u) return null;
+    return { userId: u.id, suppressed: u.emailEnabled === false };
+  } catch (err) {
+    console.error("[email] resolveBulkRecipient failed:", err);
+    return null;
+  }
+}
+
+// Footer for bulk/non-essential email. With a userId we append a one-click
+// Unsubscribe link; for non-user recipients we keep the plain membership line.
+function bulkFooterHtml(unsubUrl: string | null): string {
+  const unsub = unsubUrl
+    ? ` <a href="${unsubUrl}" style="color:#6b6460;text-decoration:underline;">Unsubscribe</a> from these emails.`
+    : "";
+  return `<p style="margin:8px 0 0;font-size:12px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">You're receiving this because you're a member of Phoebe.${unsub}</p>`;
+}
+function bulkFooterText(unsubUrl: string | null): string {
+  return `You're receiving this because you're a member of Phoebe.${unsubUrl ? `\nUnsubscribe: ${unsubUrl}` : ""}`;
+}
+
+// RFC 8058 one-click unsubscribe headers — set on every bulk email so Gmail /
+// Apple Mail show their native "Unsubscribe" affordance (and so bulk-sender
+// reputation requirements are met). Empty when there's no per-user link.
+function listUnsubHeaders(unsubUrl: string | null): Record<string, string> {
+  if (!unsubUrl) return {};
+  return {
+    "List-Unsubscribe": `<${unsubUrl}>`,
+    "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+  };
+}
 
 // Escape a string before interpolating it into email HTML. Names,
 // group names, and admin-chosen prompts are all user-controlled; an
@@ -158,13 +234,20 @@ export function encodeMimeMessage(options: {
   subject: string;
   html: string;
   text: string;
+  headers?: Record<string, string>;
 }): string {
-  const { to, subject, html, text } = options;
+  const { to, subject, html, text, headers } = options;
   const boundary = "PhoebeBoundary";
+  // Extra top-level headers (e.g. List-Unsubscribe). Newlines stripped so a
+  // header value can't inject additional headers / break the MIME structure.
+  const extraHeaders = headers
+    ? Object.entries(headers).map(([k, v]) => `${k}: ${String(v).replace(/[\r\n]+/g, " ")}`)
+    : [];
   const message = [
     `To: ${to}`,
     `From: ${INVITES_FROM_HEADER}`,
     `Subject: ${subject}`,
+    ...extraHeaders,
     `MIME-Version: 1.0`,
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
     ``,
@@ -294,6 +377,11 @@ export async function sendNewsletterEmail(opts: {
     return false;
   }
 
+  // Respect the recipient's email opt-out; build their unsubscribe link.
+  const gate = await resolveBulkRecipient(opts.to);
+  if (gate?.suppressed) { console.log("[email] newsletter skipped (unsubscribed):", opts.to); return false; }
+  const unsubUrl = gate ? unsubscribeUrl(gate.userId) : null;
+
   const bodyHtml = renderMarkdownToEmailHtml(opts.bodyMarkdown);
 
   const html = `
@@ -315,9 +403,7 @@ export async function sendNewsletterEmail(opts: {
               </div>
               <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">${escapeHtml(opts.subject)}</h1>
               ${bodyHtml}
-              <p style="margin:8px 0 0;font-size:12px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">
-                You're receiving this because you're a member of Phoebe.
-              </p>
+              ${bulkFooterHtml(unsubUrl)}
             </td>
           </tr>
         </table>
@@ -334,11 +420,11 @@ export async function sendNewsletterEmail(opts: {
     opts.bodyMarkdown,
     "",
     "---",
-    "You're receiving this because you're a member of Phoebe.",
+    bulkFooterText(unsubUrl),
   ].join("\n");
 
   try {
-    const raw = encodeMimeMessage({ to: opts.to, subject: opts.subject, html, text });
+    const raw = encodeMimeMessage({ to: opts.to, subject: opts.subject, html, text, headers: listUnsubHeaders(unsubUrl) });
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return true;
   } catch (err) {
@@ -367,6 +453,11 @@ export async function sendNewsletterEmailDiagnostic(opts: {
     };
   }
 
+  // Diagnostic send: resolve the unsubscribe link so the preview shows the
+  // real footer, but don't suppress — the admin explicitly asked to see it.
+  const gate = await resolveBulkRecipient(opts.to);
+  const unsubUrl = gate ? unsubscribeUrl(gate.userId) : null;
+
   const bodyHtml = renderMarkdownToEmailHtml(opts.bodyMarkdown);
   const html = `
 <!DOCTYPE html>
@@ -387,9 +478,7 @@ export async function sendNewsletterEmailDiagnostic(opts: {
               </div>
               <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">${escapeHtml(opts.subject)}</h1>
               ${bodyHtml}
-              <p style="margin:8px 0 0;font-size:12px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">
-                You're receiving this because you're a member of Phoebe.
-              </p>
+              ${bulkFooterHtml(unsubUrl)}
             </td>
           </tr>
         </table>
@@ -405,11 +494,11 @@ export async function sendNewsletterEmailDiagnostic(opts: {
     opts.bodyMarkdown,
     "",
     "---",
-    "You're receiving this because you're a member of Phoebe.",
+    bulkFooterText(unsubUrl),
   ].join("\n");
 
   try {
-    const raw = encodeMimeMessage({ to: opts.to, subject: opts.subject, html, text });
+    const raw = encodeMimeMessage({ to: opts.to, subject: opts.subject, html, text, headers: listUnsubHeaders(unsubUrl) });
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return { ok: true };
   } catch (err) {
@@ -427,6 +516,10 @@ export async function sendAnnouncementEmail(opts: {
 }): Promise<boolean> {
   const gmail = await getGmailClient();
   if (!gmail) return false;
+
+  const gate = await resolveBulkRecipient(opts.to);
+  if (gate?.suppressed) { console.log("[email] announcement skipped (unsubscribed):", opts.to); return false; }
+  const unsubUrl = gate ? unsubscribeUrl(gate.userId) : null;
 
   const safeBody = opts.body
     .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -451,9 +544,7 @@ export async function sendAnnouncementEmail(opts: {
               </div>
               <h1 style="margin:0 0 24px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">${opts.subject}</h1>
               <p style="margin:0 0 28px;font-size:15px;color:#3a3632;line-height:1.7;">${safeBody}</p>
-              <p style="margin:0;font-size:12px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">
-                You're receiving this because you're a member of Phoebe.
-              </p>
+              ${bulkFooterHtml(unsubUrl)}
             </td>
           </tr>
         </table>
@@ -470,11 +561,11 @@ export async function sendAnnouncementEmail(opts: {
     opts.body,
     "",
     "---",
-    "You're receiving this because you're a member of Phoebe.",
+    bulkFooterText(unsubUrl),
   ].join("\n");
 
   try {
-    const raw = encodeMimeMessage({ to: opts.to, subject: opts.subject, html, text });
+    const raw = encodeMimeMessage({ to: opts.to, subject: opts.subject, html, text, headers: listUnsubHeaders(unsubUrl) });
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return true;
   } catch (err) {
@@ -583,6 +674,10 @@ export async function sendPrayerInviteEmail(opts: {
     return false;
   }
 
+  const gate = await resolveBulkRecipient(opts.to);
+  if (gate?.suppressed) { console.log("[email] prayer-invite skipped (unsubscribed):", opts.to); return false; }
+  const unsubUrl = gate ? unsubscribeUrl(gate.userId) : null;
+
   const firstName = (opts.recipientName ?? "").trim().split(/\s+/)[0] || "friend";
   const adminFirst = (opts.adminName ?? "").trim().split(/\s+/)[0] || "Someone";
   const prompt = (opts.prompt ?? "").trim() || "How can we pray for you?";
@@ -628,6 +723,7 @@ export async function sendPrayerInviteEmail(opts: {
               <p style="margin:28px 0 0;font-size:13px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">
                 Nothing is too small to be held together.
               </p>
+              ${unsubUrl ? `<p style="margin:10px 0 0;font-size:12px;color:#9a9390;line-height:1.6;"><a href="${unsubUrl}" style="color:#6b6460;text-decoration:underline;">Unsubscribe</a> from these emails.</p>` : ""}
             </td>
           </tr>
         </table>
@@ -647,10 +743,11 @@ export async function sendPrayerInviteEmail(opts: {
     opts.shareUrl,
     "",
     "— Phoebe",
+    ...(unsubUrl ? ["", `Unsubscribe from these emails: ${unsubUrl}`] : []),
   ].join("\n");
 
   try {
-    const raw = encodeMimeMessage({ to: opts.to, subject, html, text });
+    const raw = encodeMimeMessage({ to: opts.to, subject, html, text, headers: listUnsubHeaders(unsubUrl) });
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return true;
   } catch (err) {
@@ -675,6 +772,10 @@ export async function sendWeeklyDigestEmail(opts: {
     console.warn("Gmail client unavailable — skipping weekly digest email");
     return false;
   }
+
+  const gate = await resolveBulkRecipient(opts.to);
+  if (gate?.suppressed) { console.log("[email] weekly digest skipped (unsubscribed):", opts.to); return false; }
+  const unsubUrl = gate ? unsubscribeUrl(gate.userId) : null;
 
   const { digest } = opts;
   const n = digest.entries.length;
@@ -765,7 +866,7 @@ export async function sendWeeklyDigestEmail(opts: {
               </a>
               <p style="margin:28px 0 0;font-size:13px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">
                 You're getting this because you subscribe to prayer feeds on Phoebe.
-                <a href="${eSettings}" style="color:#6b6460;text-decoration:underline;">Update your weekly preferences</a>.
+                <a href="${eSettings}" style="color:#6b6460;text-decoration:underline;">Update your weekly preferences</a>.${unsubUrl ? ` <a href="${unsubUrl}" style="color:#6b6460;text-decoration:underline;">Unsubscribe</a> from all emails.` : ""}
               </p>
             </td>
           </tr>
@@ -799,10 +900,11 @@ export async function sendWeeklyDigestEmail(opts: {
   lines.push("— Phoebe");
   lines.push("");
   lines.push(`Update your weekly preferences: ${settingsUrl}`);
+  if (unsubUrl) { lines.push(""); lines.push(`Unsubscribe from all emails: ${unsubUrl}`); }
   const text = lines.join("\n");
 
   try {
-    const raw = encodeMimeMessage({ to: opts.to, subject, html, text });
+    const raw = encodeMimeMessage({ to: opts.to, subject, html, text, headers: listUnsubHeaders(unsubUrl) });
     await gmail.users.messages.send({ userId: "me", requestBody: { raw } });
     return true;
   } catch (err) {

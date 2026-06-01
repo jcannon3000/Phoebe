@@ -203,6 +203,7 @@ router.get("/auth/me", async (req, res) => {
     feedFirstHome: boolean;
     homeLayout: { order: string[]; hidden: string[] } | null;
     pushEnabled: boolean;
+    emailEnabled: boolean;
   };
   // Phoebe Parish access tier. Computed server-side so every page that
   // calls useAuth() knows immediately whether to render the simplified
@@ -254,6 +255,9 @@ router.get("/auth/me", async (req, res) => {
     homeLayout: u.homeLayout ?? null,
     // Master notifications switch (Settings → Notifications).
     pushEnabled: u.pushEnabled ?? true,
+    // Master switch for non-essential email (Settings → Emails / the
+    // Unsubscribe link). Transactional mail is unaffected.
+    emailEnabled: u.emailEnabled ?? true,
   });
 });
 
@@ -316,6 +320,26 @@ router.patch("/auth/me/bell-enabled", async (req, res): Promise<void> => {
     (req.user as Record<string, unknown>).bellEnabled = bellEnabled;
   }
   res.json({ bellEnabled });
+});
+
+// PATCH /auth/me/email-enabled — master opt-in/out for non-essential email
+// (newsletters, the weekly digest, announcements, prayer-invite prompts). The
+// email footer's Unsubscribe link sets this false without a login; this is the
+// in-app equivalent (Settings → Emails). Transactional mail (password resets,
+// magic links) is never gated by this flag.
+router.patch("/auth/me/email-enabled", async (req, res): Promise<void> => {
+  if (!req.user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const userId = (req.user as { id: number }).id;
+  const { emailEnabled } = req.body as { emailEnabled?: unknown };
+  if (typeof emailEnabled !== "boolean") {
+    res.status(400).json({ error: "emailEnabled must be a boolean" });
+    return;
+  }
+  await db.update(usersTable).set({ emailEnabled } as Record<string, unknown>).where(eq(usersTable.id, userId));
+  if (req.user) {
+    (req.user as Record<string, unknown>).emailEnabled = emailEnabled;
+  }
+  res.json({ emailEnabled });
 });
 
 // PATCH /auth/me/locale — switch the user's UI language. Currently

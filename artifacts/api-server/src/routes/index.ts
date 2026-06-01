@@ -1,5 +1,6 @@
 import { Router, type IRouter, type RequestHandler } from "express";
 import healthRouter from "./health";
+import emailRouter from "./email";
 import usersRouter from "./users";
 import ritualsRouter from "./rituals";
 import authRouter from "./auth";
@@ -124,6 +125,7 @@ router.use(blockOfficesOnly);
 
 router.use(authRouter);
 router.use(healthRouter);
+router.use(emailRouter);
 router.use(usersRouter);
 router.use(ritualsRouter);
 router.use(peopleRouter);
