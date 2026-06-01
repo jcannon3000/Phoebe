@@ -8,9 +8,11 @@
  * home screen; this page is for shaping the rhythm, not starting a session.
  */
 
-import { Link } from "wouter";
+import { useEffect } from "react";
+import { Link, useLocation } from "wouter";
 import { ChevronLeft } from "lucide-react";
 import { Layout } from "@/components/layout";
+import { useBetaStatus } from "@/hooks/useDemo";
 
 // ── Design tokens (match WayOfLoveStep) ─────────────────────────────────
 const BG_CARD  = "rgba(46,107,64,0.10)";
@@ -22,6 +24,19 @@ const CTA    = "#2D5E3F";
 const FONT   = "'Space Grotesk', system-ui, sans-serif";
 
 export default function DailyPracticePage() {
+  const [, setLocation] = useLocation();
+  const { isBeta, isLoading: betaLoading } = useBetaStatus();
+
+  // Way of Love launch pad — beta-only, and follows the beta-view toggle.
+  // Previously ungated, so a non-beta user (or a beta user previewing the
+  // regular experience) could land here and see the Way of Love. Send them
+  // home and render nothing so none of it is reachable outside beta.
+  useEffect(() => {
+    if (!betaLoading && !isBeta) setLocation("/dashboard");
+  }, [betaLoading, isBeta, setLocation]);
+
+  if (!betaLoading && !isBeta) return null;
+
   return (
     <Layout>
       <div className="flex flex-col w-full max-w-2xl mx-auto pb-24 px-4 sm:px-0">

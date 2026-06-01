@@ -100,7 +100,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const logout = useLogout();
   const [, setLocation] = useLocation();
-  const { rawIsAdmin, rawIsBeta } = useBetaStatus();
+  const { rawIsAdmin, rawIsBeta, isBeta } = useBetaStatus();
   const { t } = useTranslation();
   // Offices-only accounts 403 on /api/groups, /api/me/pending-…,
   // and /api/prayer-feeds/mine (requireBeta). Firing them on every
@@ -253,9 +253,11 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             </div>
 
             {/* ── Your Way of Love (beta) ── Streak + per-stage WOL view/edit.
-                Gated on rawIsBeta so every beta tester sees it regardless
-                of the beta-view preview toggle. */}
-            {rawIsBeta && (
+                Gated on isBeta so it follows the beta-view preview toggle:
+                hidden whenever a beta user previews the regular (non-beta)
+                experience, matching the dashboard and the rest of the Way of
+                Love. Non-beta users never see it. */}
+            {isBeta && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
                 <button
                   type="button"
@@ -731,9 +733,10 @@ export function Layout({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   // Beta testers get the "Way of Love" header pill (opens the progress
   // drawer) in place of the "Prayer list" pill; everyone else keeps Prayer
-  // list. The Way of Love detail pages are beta-gated, so non-beta users
-  // wouldn't be able to use the drawer's cards anyway.
-  const { rawIsBeta } = useBetaStatus();
+  // list. Gated on isBeta so previewing the regular experience (beta-view
+  // toggle off) falls back to the Prayer list pill and hides the Way of Love
+  // entirely — non-beta users never see the pill.
+  const { isBeta } = useBetaStatus();
   // Offices-only tier: no personal prayer requests + no garden. The
   // header "Prayer list" pill links into a surface they can't use, so
   // we hide it for that tier. Drawer filtering happens above.
@@ -808,7 +811,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 tier — they have no personal prayer requests and no
                 garden, so the pill would land on an empty page. */}
             {!officesOnly && (
-              rawIsBeta ? (
+              isBeta ? (
                 // Way of Love pill — opens the progress drawer (replaces the
                 // Prayer list pill for beta; Prayer list moved into the menu).
                 <button

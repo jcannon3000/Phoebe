@@ -174,7 +174,7 @@ export default function HomeBetaSectionPage() {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/home-beta/:section");
   const { user, isLoading: authLoading } = useAuth();
-  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
+  const { isBeta, isLoading: betaLoading } = useBetaStatus();
   const { t } = useTranslation();
   const qc = useQueryClient();
   const player = usePodcastPlayer();
@@ -189,9 +189,9 @@ export default function HomeBetaSectionPage() {
 
   useEffect(() => {
     if (!authLoading && !user) { setLocation("/"); return; }
-    if (!authLoading && !betaLoading && user && !rawIsBeta) { setLocation("/dashboard"); return; }
+    if (!authLoading && !betaLoading && user && !isBeta) { setLocation("/dashboard"); return; }
     if (!authLoading && user && !def) setLocation("/home-beta");
-  }, [authLoading, betaLoading, user, rawIsBeta, def, setLocation]);
+  }, [authLoading, betaLoading, user, isBeta, def, setLocation]);
 
   const wolQ = useQuery<{ selections: WolSelections }>({
     queryKey: ["/api/rule-of-life/wol"],
@@ -316,7 +316,7 @@ export default function HomeBetaSectionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dailyPrayerEngaged, reflectionReadToday, contemplationDoneToday, healthMindfulToday, officePrayedToday, rows, today, thisWeekStart, compQ.isLoading, officeQ.isLoading, user, def]);
 
-  if (authLoading || !user || !def || (!betaLoading && !rawIsBeta)) return null;
+  if (authLoading || !user || !def || (!betaLoading && !isBeta)) return null;
 
   // Turn is the consistency spine — kept by engaging ANY practice that day, not
   // a thing you "set" or tick. Its history + counts read from engagement.

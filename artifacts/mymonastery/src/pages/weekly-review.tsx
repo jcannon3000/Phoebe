@@ -67,7 +67,7 @@ const eyebrow = { color: SAGE_DIM, fontSize: 11, textTransform: "uppercase" as c
 export default function WeeklyReviewPage() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
-  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
+  const { isBeta, isLoading: betaLoading } = useBetaStatus();
   const qc = useQueryClient();
 
   const wolQ = useQuery<{ selections: WolSelections }>({
@@ -136,7 +136,7 @@ export default function WeeklyReviewPage() {
     },
   });
 
-  if (authLoading || !user || (!betaLoading && !rawIsBeta)) return null;
+  if (authLoading || !user || (!betaLoading && !isBeta)) return null;
 
   const next = () => { if (!isLast) setIndex((i) => i + 1); };
   const back = () => { if (index === 0) setLocation("/this-week"); else setIndex((i) => i - 1); };

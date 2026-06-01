@@ -84,16 +84,16 @@ function applySettings(settings: SessionRow["settings"]): void {
 export default function RuleOfLifeViewPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
-  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
+  const { isBeta, isLoading: betaLoading } = useBetaStatus();
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
 
-  // Gate on rawIsBeta (server beta flag), not isBeta — matches the Rule of
-  // Life builder and the rest of the Way of Love, so the beta-view preview
-  // toggle no longer bounces the user off this page.
+  // Gate on isBeta so this follows the beta-view toggle and the dashboard:
+  // hidden when a beta user previews the regular experience, never shown to
+  // non-beta. Redirect home rather than to /daily-practice (also gated).
   useEffect(() => {
-    if (!betaLoading && !rawIsBeta) setLocation("/daily-practice");
-  }, [betaLoading, rawIsBeta, setLocation]);
+    if (!betaLoading && !isBeta) setLocation("/dashboard");
+  }, [betaLoading, isBeta, setLocation]);
 
   const [applyDone, setApplyDone] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
