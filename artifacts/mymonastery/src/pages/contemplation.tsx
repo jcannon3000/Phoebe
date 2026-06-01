@@ -103,6 +103,21 @@ function formatSessionTime(iso: string): string {
   return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
 
+// Whole-day difference from today (0 = today, 1 = yesterday, ≥2 = older).
+function dayDiff(iso: string): number {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return Infinity;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const that = new Date(d); that.setHours(0, 0, 0, 0);
+  return Math.round((today.getTime() - that.getTime()) / 86400000);
+}
+// Stable per-local-day key for grouping older sessions.
+function dayKey(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+}
+
 // <input type="datetime-local"> wants LOCAL "YYYY-MM-DDTHH:mm".
 function localDatetimeValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -506,6 +521,29 @@ export default function ContemplationPage() {
     queryFn: () => apiRequest("GET", "/api/me/contemplation-sessions") as Promise<Session[]>,
   });
 
+  // History grouping: today's & yesterday's sits stay as individual cards;
+  // every older day collapses into ONE summary card (date + sit count + total
+  // minutes). Sessions arrive newest-first, so day groups land newest-first.
+  const historyGroups = (() => {
+    const recent: Session[] = [];
+    const olderDays: Array<{ key: string; iso: string; totalSeconds: number; count: number }> = [];
+    const seen = new Map<string, number>();
+    for (const s of sessions) {
+      const w = s.startedAt ?? s.endedAt;
+      if (!w || dayDiff(w) <= 1) { recent.push(s); continue; }
+      const k = dayKey(w);
+      let idx = seen.get(k);
+      if (idx === undefined) {
+        idx = olderDays.length;
+        seen.set(k, idx);
+        olderDays.push({ key: k, iso: w, totalSeconds: 0, count: 0 });
+      }
+      olderDays[idx].totalSeconds += s.durationSeconds ?? 0;
+      olderDays[idx].count += 1;
+    }
+    return { recent, olderDays };
+  })();
+
   // Manual-log form state.
   const queryClient = useQueryClient();
   const [logOpen, setLogOpen] = useState(false);
@@ -808,13 +846,36 @@ export default function ContemplationPage() {
             </p>
           ) : (
             <div className="space-y-2">
-              {sessions.map((s) => (
+              {/* Today & yesterday — individual sits (with per-entry delete). */}
+              {historyGroups.recent.map((s) => (
                 <SessionRow
                   key={s.id}
                   s={s}
                   onDelete={() => deleteMutation.mutate(s.id)}
                   deleting={deleteMutation.isPending}
                 />
+              ))}
+              {/* Older — one condensed summary card per day. */}
+              {historyGroups.olderDays.map((g) => (
+                <div
+                  key={g.key}
+                  className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
+                  style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.20)" }}
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+                      {formatSessionDate(g.iso, t)}
+                    </p>
+                    <p className="text-[12px] mt-0.5" style={{ color: SAGE, margin: 0 }}>
+                      {g.count === 1
+                        ? t("contemplation.day_one_sit", { defaultValue: "1 sit" })
+                        : t("contemplation.day_n_sits", { count: g.count, defaultValue: `${g.count} sits` })}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+                    {humanMinutes(g.totalSeconds)}
+                  </span>
+                </div>
               ))}
             </div>
           )}
