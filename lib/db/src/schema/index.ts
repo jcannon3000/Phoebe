@@ -61,3 +61,4 @@ export * from "./availability_patterns";
 export * from "./fdd_audio_marks";
 export * from "./bless_intention";
 export * from "./bless_week";
+export * from "./gather";
