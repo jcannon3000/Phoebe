@@ -320,11 +320,18 @@ type Phase = "mode" | "name" | "slides" | "loading" | "result" | "apply-confirm"
 export default function RuleOfLifePage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
-  const { isBeta, isLoading: betaLoading } = useBetaStatus();
+  const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
 
+  // Gate on rawIsBeta (the server beta flag), NOT isBeta. The Rule of Life
+  // is part of the Way of Love and must behave like /this-week, the weekly
+  // review, and the drawer entries — all of which use rawIsBeta and stay
+  // available even when a beta user flips the beta-view toggle off to preview
+  // the regular experience. Using isBeta here made the Rule of Life the one
+  // Way of Love surface that "needs beta mode," bouncing the user to
+  // /daily-practice the moment that toggle was off.
   useEffect(() => {
-    if (!betaLoading && !isBeta) setLocation("/daily-practice");
-  }, [betaLoading, isBeta, setLocation]);
+    if (!betaLoading && !rawIsBeta) setLocation("/daily-practice");
+  }, [betaLoading, rawIsBeta, setLocation]);
 
   // Skip the questionnaire — open straight on the Way of Love sections.
   // (The questionnaire phases below stay in the file but are no longer
