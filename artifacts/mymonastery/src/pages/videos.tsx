@@ -102,7 +102,7 @@ export default function VideosPage() {
                         src={thumbs[v.id]}
                         alt=""
                         loading="lazy"
-                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
+                        onError={() => setThumbs((m) => { const n = { ...m }; delete n[v.id]; return n; })}
                         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
                       />
                       <span aria-hidden style={{ position: "absolute", inset: 0, background: "rgba(18,26,20,0.28)" }} />

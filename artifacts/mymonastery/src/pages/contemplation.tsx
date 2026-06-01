@@ -206,8 +206,8 @@ function AppleHealthCard() {
           </p>
           <p className="text-[12px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK, margin: "4px 0 0" }}>
             {sessions > 0
-              ? t("contemplation.health_sub", { defaultValue: `${sessions} session(s) · from Calm, Insight Timer, etc.` })
-              : t("contemplation.health_sub_empty", { defaultValue: "Meditate in Calm, Insight Timer, or Apple Mindfulness and it appears here." })}
+              ? t("contemplation.health_sub", { defaultValue: `${sessions} session(s) in Apple Health (Phoebe, Calm, Insight Timer…)` })
+              : t("contemplation.health_sub_empty", { defaultValue: "Sits here — and meditation in Calm, Insight Timer, or Apple Mindfulness — appear once connected." })}
           </p>
           <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK, margin: "8px 0 0" }}>
             {t("contemplation.health_preview_note", { defaultValue: "Preview — not yet counted toward your goal." })}
