@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
+import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
 
@@ -309,6 +310,15 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               </div>
             )}
 
+            {/* ── Prayer list ── moved here from the header pill (which now
+                opens the Way of Love drawer). Sits above Communities; hidden
+                for offices-only, who have no personal list. */}
+            {!officesOnly && (
+              <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
+                <MenuRow emoji="🙏" label={t("menu.prayer_list", { defaultValue: "Prayer list" })} onClick={() => navigate("/prayer-list")} />
+              </div>
+            )}
+
             {/* ── Communities ── lists the user's communities.
                 Offices-only tier has none, so the whole block is
                 hidden. Rendering branches on count:
@@ -525,13 +535,184 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
+// ─── Way of Love drawer ──────────────────────────────────────────────────────
+//
+// A second slide-out drawer (opened from the header "Way of Love" pill) that
+// shows progress across the seven practices as a checklist. Three DAILY cards
+// (Turn, Learn, Pray) over four WEEKLY cards (Worship, Bless, Go, Rest). A done
+// card is bordered + checked; an undone card is faded + unchecked. Each card
+// taps through to that practice's detail sub-page (/home-beta/:section).
+//
+// Daily completion mirrors the Way of Love home's signals:
+//   • Turn  — done whenever you've opened the app today (you're here).
+//   • Learn — a scripture reading (an office, or a Forward/SSJE reflection) or
+//             a CAC meditation read today.
+//   • Pray  — an office or a contemplation sit today.
+// Weekly completion = a logged practice-completion for that section this week.
+
+function wolYmd(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+function wolSundayStart(d: Date): Date {
+  const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - x.getDay()); return x;
+}
+
+function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { user } = useAuth();
+  const [, setLocation] = useLocation();
+  const { t } = useTranslation();
+  const go = (path: string) => { onClose(); setLocation(path); };
+
+  type CompletionRow = { section: string; localDate: string; weekStart: string };
+  const compQ = useQuery<{ completions: CompletionRow[] }>({
+    queryKey: ["/api/practice-completion"],
+    queryFn: () => apiRequest("GET", "/api/practice-completion"),
+    enabled: !!user && open,
+    staleTime: 15_000,
+  });
+  const officeQ = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean }> }>({
+    queryKey: ["/api/me/office-history-week"],
+    queryFn: () => apiRequest("GET", "/api/me/office-history-week"),
+    enabled: !!user && open,
+    staleTime: 30_000,
+  });
+  const contemplationQ = useQuery<{ todaySeconds?: number }>({
+    queryKey: ["/api/me/contemplation-stats", wolYmd(new Date())],
+    queryFn: () => {
+      const since = new Date(); since.setHours(0, 0, 0, 0);
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      return apiRequest("GET", `/api/me/contemplation-stats?todaySince=${encodeURIComponent(since.toISOString())}&tz=${encodeURIComponent(tz)}`);
+    },
+    enabled: !!user && open,
+    staleTime: 60_000,
+  });
+
+  const today = wolYmd(new Date());
+  const weekStart = wolYmd(wolSundayStart(new Date()));
+  const rows = compQ.data?.completions ?? [];
+  const days = officeQ.data?.days ?? [];
+  const lastOffice = days[days.length - 1];
+  const officePrayedToday = !!lastOffice && lastOffice.ymd === today && (lastOffice.morning || lastOffice.evening);
+  const reflectionReadToday = hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday();
+  const contemplationDoneToday = (contemplationQ.data?.todaySeconds ?? 0) > 0;
+
+  const turnDone = true; // opening the app counts as turning toward God today
+  const learnDone = officePrayedToday || reflectionReadToday;
+  const prayDone = officePrayedToday || contemplationDoneToday;
+  const weeklyDone = (section: string) => rows.some((r) => r.section === section && r.weekStart === weekStart);
+
+  type WolCard = { key: string; emoji: string; label: string; done: boolean; route: string };
+  const daily: WolCard[] = [
+    { key: "turn", emoji: "🔄", label: t("wol.turn", { defaultValue: "Turn" }), done: turnDone, route: "/home-beta/turn" },
+    { key: "learn", emoji: "📖", label: t("wol.learn", { defaultValue: "Learn" }), done: learnDone, route: "/home-beta/learn_pray" },
+    { key: "pray", emoji: "🙏", label: t("wol.pray", { defaultValue: "Pray" }), done: prayDone, route: "/home-beta/learn_pray" },
+  ];
+  const weekly: WolCard[] = [
+    { key: "worship", emoji: "⛪", label: t("wol.worship", { defaultValue: "Worship" }), done: weeklyDone("worship"), route: "/home-beta/worship" },
+    { key: "bless", emoji: "🤲", label: t("wol.bless", { defaultValue: "Bless" }), done: weeklyDone("bless"), route: "/home-beta/bless" },
+    { key: "go", emoji: "🌍", label: t("wol.go", { defaultValue: "Go" }), done: weeklyDone("go"), route: "/home-beta/go" },
+    { key: "rest", emoji: "🌙", label: t("wol.rest", { defaultValue: "Rest" }), done: weeklyDone("rest"), route: "/home-beta/rest" },
+  ];
+
+  const renderCard = (c: WolCard) => (
+    <button
+      key={c.key}
+      type="button"
+      onClick={() => go(c.route)}
+      className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-opacity hover:opacity-90 active:scale-[0.99]"
+      style={{
+        background: c.done ? "rgba(46,107,64,0.22)" : "rgba(46,107,64,0.06)",
+        border: `1px solid ${c.done ? "rgba(168,197,160,0.7)" : "rgba(46,107,64,0.18)"}`,
+        opacity: c.done ? 1 : 0.55,
+      }}
+    >
+      <span className="text-lg leading-none w-6 text-center" aria-hidden>{c.emoji}</span>
+      <span className="flex-1 text-sm font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{c.label}</span>
+      <span
+        aria-hidden
+        style={{
+          width: 20, height: 20, borderRadius: 999, flexShrink: 0,
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          fontSize: 12, fontWeight: 700,
+          color: c.done ? "#0C1F12" : "transparent",
+          background: c.done ? "#A8C5A0" : "transparent",
+          border: c.done ? "none" : "1.5px solid rgba(143,175,150,0.4)",
+        }}
+      >
+        {c.done ? "✓" : ""}
+      </span>
+    </button>
+  );
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={onClose} />
+          <motion.div
+            key="wol-drawer"
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "tween", duration: 0.25, ease: "easeOut" }}
+            className="fixed top-0 right-0 bottom-0 z-50 flex flex-col overflow-y-auto"
+            style={{ width: "min(340px, 90vw)", background: "#040D06", borderLeft: "1px solid rgba(46,107,64,0.18)" }}
+          >
+            <div
+              className="flex items-center justify-between px-5 pb-2"
+              style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top) + 0.5rem))" }}
+            >
+              <span className="text-base font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.01em" }}>
+                {t("wol.title", { defaultValue: "Way of Love" })}
+              </span>
+              <button onClick={onClose} className="p-2 rounded-xl transition-colors" style={{ color: "#8FAF96" }} aria-label="Close">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="px-5 pt-1 pb-8 space-y-5">
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {t("wol.daily", { defaultValue: "Daily" })}
+                </p>
+                {daily.map(renderCard)}
+              </div>
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {t("wol.weekly", { defaultValue: "Weekly" })}
+                </p>
+                {weekly.map(renderCard)}
+              </div>
+              <button
+                type="button"
+                onClick={() => go("/home-beta")}
+                className="w-full text-center text-xs font-semibold py-2 transition-opacity hover:opacity-80"
+                style={{ color: "#A8C5A0", background: "none", border: "none", fontFamily: "'Space Grotesk', sans-serif" }}
+              >
+                {t("wol.open_home", { defaultValue: "Open your Way of Love →" })}
+              </button>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
 // ─── Layout ──────────────────────────────────────────────────────────────────
 
 export function Layout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [wolDrawerOpen, setWolDrawerOpen] = useState(false);
   const [location] = useLocation();
   const { t } = useTranslation();
+  // Beta testers get the "Way of Love" header pill (opens the progress
+  // drawer) in place of the "Prayer list" pill; everyone else keeps Prayer
+  // list. The Way of Love detail pages are beta-gated, so non-beta users
+  // wouldn't be able to use the drawer's cards anyway.
+  const { rawIsBeta } = useBetaStatus();
   // Offices-only tier: no personal prayer requests + no garden. The
   // header "Prayer list" pill links into a surface they can't use, so
   // we hide it for that tier. Drawer filtering happens above.
@@ -606,19 +787,39 @@ export function Layout({ children }: { children: ReactNode }) {
                 tier — they have no personal prayer requests and no
                 garden, so the pill would land on an empty page. */}
             {!officesOnly && (
-              <Link
-                href="/prayer-list"
-                className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
-                style={{
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  letterSpacing: "-0.01em",
-                  background: "rgba(200,212,192,0.08)",
-                  color: "#C8D4C0",
-                  border: "1px solid rgba(46,107,64,0.3)",
-                }}
-              >
-                {t("header.prayer_list")}
-              </Link>
+              rawIsBeta ? (
+                // Way of Love pill — opens the progress drawer (replaces the
+                // Prayer list pill for beta; Prayer list moved into the menu).
+                <button
+                  type="button"
+                  onClick={() => { playOpeningSwell(0); setWolDrawerOpen(true); }}
+                  className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+                  style={{
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    letterSpacing: "-0.01em",
+                    background: "rgba(200,212,192,0.08)",
+                    color: "#C8D4C0",
+                    border: "1px solid rgba(46,107,64,0.3)",
+                  }}
+                  aria-label="Open Way of Love"
+                >
+                  {t("header.way_of_love", { defaultValue: "Way of Love" })}
+                </button>
+              ) : (
+                <Link
+                  href="/prayer-list"
+                  className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+                  style={{
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    letterSpacing: "-0.01em",
+                    background: "rgba(200,212,192,0.08)",
+                    color: "#C8D4C0",
+                    border: "1px solid rgba(46,107,64,0.3)",
+                  }}
+                >
+                  {t("header.prayer_list")}
+                </Link>
+              )
             )}
             {/* (People moved into the drawer's Communities section.) */}
             <button
@@ -645,6 +846,7 @@ export function Layout({ children }: { children: ReactNode }) {
       </header>
 
       <DrawerMenu open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <WayOfLoveDrawer open={wolDrawerOpen} onClose={() => setWolDrawerOpen(false)} />
 
       <main className="flex-1 flex flex-col pt-2 pb-12 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full">
         <motion.div
