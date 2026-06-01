@@ -57,13 +57,15 @@ export default function VideosPage() {
           {t("videos.source", { defaultValue: `A documentary series produced by ${SERIES_SOURCE}.` })}
         </p>
 
-        <div className="flex flex-col gap-5">
+        {/* Podcast-episode-style list: a compact row per video (small 16:9
+            thumbnail + title/blurb); tapping a row expands it into the player. */}
+        <div className="flex flex-col gap-2.5">
           {WAY_OF_LOVE_VIDEOS.map((v) => {
             const playing = playingId === v.id;
-            return (
-              <div key={v.id}>
-                <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", borderRadius: 16, overflow: "hidden", border: `1px solid ${CARD_B}`, background: "#000" }}>
-                  {playing ? (
+            if (playing) {
+              return (
+                <div key={v.id} className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${CARD_B}`, background: "#000" }}>
+                  <div style={{ position: "relative", width: "100%", paddingTop: "56.25%" }}>
                     <iframe
                       src={wistiaEmbedUrl(v.id, true)}
                       title={v.title}
@@ -71,42 +73,55 @@ export default function VideosPage() {
                       allowFullScreen
                       style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
                     />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setPlayingId(v.id)}
-                      aria-label={t("videos.play", { defaultValue: "Play {{title}}", title: v.title })}
-                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, cursor: "pointer", border: "none", background: "radial-gradient(circle at 50% 38%, rgba(46,107,64,0.5), rgba(18,26,20,0.94))" }}
-                    >
-                      {thumbs[v.id] ? (
-                        <>
-                          <img
-                            src={thumbs[v.id]}
-                            alt=""
-                            loading="lazy"
-                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
-                            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-                          />
-                          {/* slight darken so the play button stays legible over the photo */}
-                          <span aria-hidden style={{ position: "absolute", inset: 0, background: "rgba(18,26,20,0.30)" }} />
-                        </>
-                      ) : (
-                        <span style={{ fontSize: 38 }} aria-hidden>{v.emoji}</span>
+                  </div>
+                  <div style={{ padding: "10px 14px", background: "rgba(46,107,64,0.10)" }}>
+                    <div className="flex items-baseline gap-2">
+                      {v.label && (
+                        <span style={{ color: SAGE_DIM, fontSize: 11, fontWeight: 700, fontFamily: FONT, textTransform: "uppercase", letterSpacing: "0.08em" }}>{v.label}</span>
                       )}
-                      <span style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: 52, height: 52, borderRadius: 999, background: "rgba(240,237,230,0.16)", border: "1px solid rgba(240,237,230,0.4)" }}>
-                        <Play size={22} fill={WARM} color={WARM} style={{ marginLeft: 3 }} />
-                      </span>
-                    </button>
-                  )}
+                      <p className="min-w-0 truncate" style={{ color: WARM, fontSize: 15, fontWeight: 600, fontFamily: FONT, margin: 0 }}>{v.title}</p>
+                    </div>
+                    <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, margin: "2px 0 0" }}>{v.blurb}</p>
+                  </div>
                 </div>
-                <div className="flex items-baseline gap-2 mt-2">
+              );
+            }
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setPlayingId(v.id)}
+                aria-label={t("videos.play", { defaultValue: "Play {{title}}", title: v.title })}
+                className="w-full rounded-2xl p-2.5 flex items-center gap-3 text-left transition-opacity hover:opacity-90"
+                style={{ background: "rgba(46,107,64,0.08)", border: `1px solid ${CARD_B}`, cursor: "pointer" }}
+              >
+                <div style={{ position: "relative", width: 104, height: 58, flexShrink: 0, borderRadius: 10, overflow: "hidden", background: "radial-gradient(circle at 50% 38%, rgba(46,107,64,0.5), rgba(18,26,20,0.94))", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {thumbs[v.id] ? (
+                    <>
+                      <img
+                        src={thumbs[v.id]}
+                        alt=""
+                        loading="lazy"
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = "hidden"; }}
+                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                      <span aria-hidden style={{ position: "absolute", inset: 0, background: "rgba(18,26,20,0.28)" }} />
+                    </>
+                  ) : (
+                    <span style={{ fontSize: 22 }} aria-hidden>{v.emoji}</span>
+                  )}
+                  <span style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 999, background: "rgba(240,237,230,0.18)", border: "1px solid rgba(240,237,230,0.45)" }}>
+                    <Play size={14} fill={WARM} color={WARM} style={{ marginLeft: 2 }} />
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1">
                   {v.label && (
-                    <span style={{ color: SAGE_DIM, fontSize: 11, fontWeight: 700, fontFamily: FONT, textTransform: "uppercase", letterSpacing: "0.08em" }}>{v.label}</span>
+                    <span style={{ color: SAGE_DIM, fontSize: 10.5, fontWeight: 700, fontFamily: FONT, textTransform: "uppercase", letterSpacing: "0.08em" }}>{v.label}</span>
                   )}
-                  <p className="min-w-0 truncate" style={{ color: WARM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT, margin: 0 }}>{v.title}</p>
+                  <p className="min-w-0" style={{ color: WARM, fontSize: 15, fontWeight: 600, fontFamily: FONT, margin: v.label ? "1px 0 0" : 0, lineHeight: 1.25 }}>{v.title}</p>
+                  <p style={{ color: SAGE, fontSize: 12, fontFamily: FONT, margin: "2px 0 0", lineHeight: 1.35, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{v.blurb}</p>
                 </div>
-                <p style={{ color: SAGE, fontSize: 12.5, fontFamily: FONT, margin: "2px 0 0" }}>{v.blurb}</p>
-              </div>
+              </button>
             );
           })}
         </div>
