@@ -55,6 +55,74 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     // "accept cookies" choice so banners don't reappear every time.
     private static let sharedProcessPool = WKProcessPool()
 
+    // The persistent store above is supposed to keep a site's "accept" choice,
+    // but iOS tracking prevention clears the script/third-party storage these
+    // sources (CAC, Bible.com, SSJE) park consent in, so the bar returns every
+    // visit. This web view is OURS and the page is its top document, so we may
+    // inject a stylesheet that hides the consent UI on every load — by known
+    // CMP selector (Bible.com is TrustArc; OneTrust/CookieYes/Complianz/Cybot/
+    // Osano/etc. are covered too) plus a constrained heuristic for the ones CAC
+    // and SSJE inject at runtime — and release the scroll-lock some apply.
+    private static let cookieHideJS = """
+    (function () {
+      var KNOWN = [
+        '#onetrust-consent-sdk','#onetrust-banner-sdk',
+        '.cky-consent-container','.cky-overlay',
+        '#cookie-law-info-bar','#cookie-law-info-again',
+        '.cc-window','.cc-banner',
+        '#cookie-notice','.cookie-notice-container',
+        '#cmplz-cookiebanner-container','.cmplz-cookiebanner',
+        '#moove_gdpr_cookie_info_bar','.moove-gdpr-dom-on-top',
+        '#hs-eu-cookie-confirmation',
+        '[id^="sp_message_container"]',
+        '#truste-consent-track','.truste_overlay','.truste_box_overlay','#consent_blackbar','.truste-banner',
+        '.osano-cm-window','.osano-cm-dialog',
+        '#usercentrics-root','.fc-consent-root',
+        '#gdpr-cookie-message',
+        '#CybotCookiebotDialog','#CybotCookiebotDialogBodyUnderlay',
+        '#termly-code-snippet-support'
+      ];
+      var style = document.createElement('style');
+      style.setAttribute('data-phoebe-cookie-hide','');
+      style.textContent = KNOWN.join(',') + '{display:none !important;visibility:hidden !important;}'
+                        + 'html,body{overflow:auto !important;}';
+      (document.head || document.documentElement).appendChild(style);
+
+      function unlock() {
+        [document.documentElement, document.body].forEach(function (el) {
+          if (el && el.style) { el.style.overflow = ''; el.style.position = ''; }
+        });
+      }
+      function sweep() {
+        var nodes = document.querySelectorAll('div,section,aside');
+        for (var i = 0; i < nodes.length; i++) {
+          var el = nodes[i];
+          if (el.getAttribute('data-phoebe-swept')) continue;
+          if (getComputedStyle(el).position !== 'fixed') continue;
+          var txt = (el.textContent || '').toLowerCase();
+          if (txt.length > 600 || !/cookie|consent|gdpr/.test(txt)) continue;
+          if (!el.querySelector('button,a,[role="button"]')) continue;
+          el.setAttribute('data-phoebe-swept','1');
+          el.style.setProperty('display','none','important');
+          unlock();
+        }
+      }
+      var pending = false;
+      function schedule() { if (pending) return; pending = true; setTimeout(function () { pending = false; try { sweep(); } catch (e) {} }, 200); }
+      if (document.readyState !== 'loading') schedule();
+      document.addEventListener('DOMContentLoaded', schedule);
+      var obs = new MutationObserver(schedule);
+      try { obs.observe(document.documentElement, { childList: true, subtree: true }); } catch (e) {}
+      setTimeout(function () { obs.disconnect(); }, 8000);
+    })();
+    """
+
+    private static let cookieHideScript = WKUserScript(
+        source: cookieHideJS,
+        injectionTime: .atDocumentStart,
+        forMainFrameOnly: true
+    )
+
     init(url: URL) {
         self.url = url
         super.init(nibName: nil, bundle: nil)
@@ -98,6 +166,10 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         config.allowsInlineMediaPlayback = true
         config.processPool = BibleWebViewController.sharedProcessPool
         config.websiteDataStore = WKWebsiteDataStore.default()   // persistent
+        // Hide cookie-consent banners on every load (see cookieHideJS).
+        let content = WKUserContentController()
+        content.addUserScript(BibleWebViewController.cookieHideScript)
+        config.userContentController = content
         webView = WKWebView(frame: .zero, configuration: config)
         webView.translatesAutoresizingMaskIntoConstraints = false
         webView.navigationDelegate = self
