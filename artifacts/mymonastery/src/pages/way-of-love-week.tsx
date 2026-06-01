@@ -327,7 +327,7 @@ export default function WayOfLoveWeekPage() {
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setLocation("/dashboard")}
+                  onClick={() => setLocation(`/home-beta/${key}`)}
                   style={{ display: "flex", alignItems: "center", gap: 12, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "11px 14px", cursor: "pointer", textAlign: "left", width: "100%" }}
                 >
                   <span style={{ fontSize: 18, flexShrink: 0 }}>{d.emoji}</span>
