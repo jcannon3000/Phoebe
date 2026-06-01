@@ -7,6 +7,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { MEDITATION_APPS, openMeditationApp } from "@/lib/meditationApps";
 import i18n from "@/i18n";
 import { LogOut, Camera, Pencil, Trash2, Download } from "lucide-react";
 import {
@@ -635,6 +636,35 @@ function OfficeReminderSettings() {
             </div>
           </button>
         )}
+      </SettingsCard>
+
+      {/* Companion meditation apps — one-tap launchers to start a session in an
+          app the user already uses (Hallow, Calm, Insight Timer, …). Once Apple
+          Health is connected, the Mindful Minutes logged there flow back toward
+          the contemplation goal. Renders below the goal so the two sit together. */}
+      <SectionHeader label={t("settings.meditation_apps", { defaultValue: "Meditation apps" })} />
+      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+        {t("settings.meditation_apps_blurb", { defaultValue: "Prefer another app for silence? Open one here to start a session — connect Apple Health and those minutes count toward your goal." })}
+      </p>
+      <SettingsCard>
+        {MEDITATION_APPS.map((app, i) => (
+          <button
+            key={app.key}
+            type="button"
+            onClick={() => openMeditationApp(app)}
+            className="w-full flex items-center gap-3 py-2.5 text-left"
+            style={{ background: "transparent", cursor: "pointer", borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)" }}
+          >
+            <span style={{ fontSize: 20, flexShrink: 0, width: 24, textAlign: "center" }}>{app.emoji}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>{app.name}</p>
+              <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>{app.blurb}</p>
+            </div>
+            <span style={{ color: "rgba(143,175,150,0.65)", fontSize: 13, fontWeight: 600, flexShrink: 0, fontFamily: "'Space Grotesk', sans-serif" }}>
+              {t("settings.open_app", { defaultValue: "Open" })} →
+            </span>
+          </button>
+        ))}
       </SettingsCard>
 
       {/* Confession of Sin — opt-out. On by default so the office opens

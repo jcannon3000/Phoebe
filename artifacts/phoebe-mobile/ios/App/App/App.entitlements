@@ -53,5 +53,17 @@
 	<array>
 		<string>group.app.withphoebe.mobile</string>
 	</array>
+
+	<!-- HealthKit: read-only access to "Mindful Minutes"
+	     (HKCategoryType .mindfulSession). Meditation apps (Calm, Insight
+	     Timer, Apple Mindfulness) write their sessions here, so reading
+	     them lets Phoebe count silence kept elsewhere toward the
+	     contemplation goal. Requires the HealthKit capability on the App
+	     ID + provisioning profile (Apple Developer portal) for device /
+	     TestFlight builds. We request no write access. -->
+	<key>com.apple.developer.healthkit</key>
+	<true/>
+	<key>com.apple.developer.healthkit.access</key>
+	<array/>
 </dict>
 </plist>

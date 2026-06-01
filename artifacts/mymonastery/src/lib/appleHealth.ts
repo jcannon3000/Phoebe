@@ -1,0 +1,76 @@
+// Apple Health — Mindful Minutes (read-only).
+//
+// Thin typed wrapper over the native MindfulHealth Capacitor plugin
+// (ios/App/App/MindfulHealthPlugin.swift). Meditation apps — Calm, Insight
+// Timer, Apple's Mindfulness — write their sessions to Apple Health as
+// "Mindful Minutes"; this lets Phoebe READ today's total so silence kept
+// elsewhere can be reflected against the contemplation goal.
+//
+// iOS-native ONLY. On the web (`withphoebe.app`) or any non-native shell,
+// `window.Capacitor` is absent and every call here no-ops / returns null, so
+// callers can use these unconditionally and just hide the UI when
+// `appleHealthAvailable()` is false.
+//
+// This is the read-only prototype: it can request read access and read the
+// daily total. It does NOT upload anything or touch the goal — wiring the
+// minutes into the goal/streak (with de-duplication of Phoebe's own in-app
+// sits) is a deliberate follow-up.
+
+import { isNativeShell } from "@/lib/isNativeShell";
+
+interface MindfulHealthPlugin {
+  isAvailable: () => Promise<{ available: boolean }>;
+  requestAuthorization: () => Promise<{ requested: boolean }>;
+  mindfulMinutesToday: () => Promise<{ minutes: number; sessions: number }>;
+}
+
+function getPlugin(): MindfulHealthPlugin | null {
+  if (!isNativeShell()) return null;
+  const cap = (window as unknown as {
+    Capacitor?: { Plugins?: Record<string, unknown> };
+  }).Capacitor;
+  return (cap?.Plugins?.MindfulHealth as MindfulHealthPlugin | undefined) ?? null;
+}
+
+/** True only inside the iOS native shell where the plugin is registered. */
+export function appleHealthAvailable(): boolean {
+  return getPlugin() !== null;
+}
+
+/** Whether HealthKit data is available on this device (false on web/simulator-less). */
+export async function isMindfulDataAvailable(): Promise<boolean> {
+  const p = getPlugin();
+  if (!p) return false;
+  try {
+    return (await p.isAvailable()).available;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Prompt for READ access to mindful sessions. Resolves true when the prompt was
+ * shown — NOT necessarily that access was granted (HealthKit hides read-grant
+ * state by design). Infer grant from whether getMindfulMinutesToday() returns
+ * data on a day the user has logged mindful time elsewhere.
+ */
+export async function requestMindfulAuthorization(): Promise<boolean> {
+  const p = getPlugin();
+  if (!p) return false;
+  try {
+    return (await p.requestAuthorization()).requested;
+  } catch {
+    return false;
+  }
+}
+
+/** Today's mindful minutes (+ session count) from Apple Health, or null off-native. */
+export async function getMindfulMinutesToday(): Promise<{ minutes: number; sessions: number } | null> {
+  const p = getPlugin();
+  if (!p) return null;
+  try {
+    return await p.mindfulMinutesToday();
+  } catch {
+    return null;
+  }
+}

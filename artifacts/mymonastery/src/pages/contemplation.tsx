@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { getSideMinutes } from "@/lib/officePrefs";
 import { openExternal } from "@/lib/openExternal";
+import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday } from "@/lib/appleHealth";
 
 // Curated "Learn" resources — talks, videos, and guides on contemplative /
 // centering prayer. Opened externally (SFSafariViewController on iOS via
@@ -146,6 +147,90 @@ function StatTile({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] mt-1.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK, margin: 0 }}>
         {label}
       </p>
+    </div>
+  );
+}
+
+// Apple Health (iOS native shell only) — read-only preview of today's Mindful
+// Minutes from OTHER apps (Calm, Insight Timer, Apple Mindfulness all write to
+// HealthKit). Hidden on web. This proves the read pipeline end-to-end; it does
+// NOT yet feed the goal — wiring it in (with de-dup of Phoebe's own sits, and
+// uploading to the server so the 7pm nudge sees it) is the deliberate next step.
+function AppleHealthCard() {
+  const { t } = useTranslation();
+  const [connecting, setConnecting] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [minutes, setMinutes] = useState(0);
+  const [sessions, setSessions] = useState(0);
+
+  if (!appleHealthAvailable()) return null;
+
+  const sync = async () => {
+    setConnecting(true);
+    try {
+      await requestMindfulAuthorization();
+      const r = await getMindfulMinutesToday();
+      setMinutes(r?.minutes ?? 0);
+      setSessions(r?.sessions ?? 0);
+      setLoaded(true);
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl p-4 mt-3" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+          {t("contemplation.health_title", { defaultValue: "Apple Health" })}
+        </p>
+        {loaded && (
+          <button
+            type="button"
+            onClick={sync}
+            disabled={connecting}
+            className="text-[12px] transition-opacity hover:opacity-80 disabled:opacity-50"
+            style={{ background: "none", border: "none", padding: 0, color: SAGE, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
+          >
+            {t("common.refresh", { defaultValue: "Refresh" })}
+          </button>
+        )}
+      </div>
+
+      {loaded ? (
+        <>
+          <p className="text-sm" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+            {minutes > 0
+              ? t("contemplation.health_minutes", { defaultValue: `${minutes} mindful min today`, count: minutes })
+              : t("contemplation.health_none", { defaultValue: "No mindful minutes in Apple Health today." })}
+          </p>
+          <p className="text-[12px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK, margin: "4px 0 0" }}>
+            {sessions > 0
+              ? t("contemplation.health_sub", { defaultValue: `${sessions} session(s) · from Calm, Insight Timer, etc.` })
+              : t("contemplation.health_sub_empty", { defaultValue: "Meditate in Calm, Insight Timer, or Apple Mindfulness and it appears here." })}
+          </p>
+          <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK, margin: "8px 0 0" }}>
+            {t("contemplation.health_preview_note", { defaultValue: "Preview — not yet counted toward your goal." })}
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="text-[12px]" style={{ color: SAGE, margin: "0 0 12px" }}>
+            {t("contemplation.health_prompt", { defaultValue: "Count meditation from other apps — pull today's Mindful Minutes from Apple Health." })}
+          </p>
+          <button
+            type="button"
+            onClick={sync}
+            disabled={connecting}
+            className="rounded-full px-4 py-2 text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ background: "#2D5E3F", color: WARM, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
+          >
+            {connecting
+              ? t("contemplation.health_connecting", { defaultValue: "Connecting…" })
+              : t("contemplation.health_connect", { defaultValue: "Sync from Apple Health" })}
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -388,7 +473,9 @@ export default function ContemplationPage() {
   // Manual-log form state.
   const queryClient = useQueryClient();
   const [logOpen, setLogOpen] = useState(false);
-  const [logMinutes, setLogMinutes] = useState(20);
+  // Free string so the field can be cleared to blank and retyped; parsed to a
+  // number where one's needed (mutation + submit-enabled check).
+  const [logMinutes, setLogMinutes] = useState("20");
   const [logWhen, setLogWhen] = useState(() => localDatetimeValue(new Date()));
   const inputStyle = {
     background: "rgba(0,0,0,0.25)",
@@ -404,13 +491,13 @@ export default function ContemplationPage() {
   const logMutation = useMutation({
     mutationFn: () =>
       apiRequest("POST", "/api/me/contemplation-sessions", {
-        durationSeconds: Math.round(logMinutes * 60),
+        durationSeconds: Math.round(Math.min(720, parseInt(logMinutes, 10) || 0) * 60),
         occurredAt: new Date(logWhen).toISOString(),
       }),
     onSuccess: () => {
       refreshContemplation();
       setLogOpen(false);
-      setLogMinutes(20);
+      setLogMinutes("20");
       setLogWhen(localDatetimeValue(new Date()));
     },
   });
@@ -504,6 +591,8 @@ export default function ContemplationPage() {
           onSet={(m) => goalMutation.mutate(m)}
           saving={goalMutation.isPending}
         />
+
+        <AppleHealthCard />
 
         {/* Section selector — History · Stats · Learn. The Begin card
             leads; these reveal the supporting surfaces below it. */}
@@ -609,15 +698,15 @@ export default function ContemplationPage() {
                 {t("contemplation.how_long")}
               </p>
               <div className="grid grid-cols-4 gap-2 mb-3">
-                {[5, 10, 15, 20, 30, 45, 60, 90].map((m) => (
+                {[5, 10, 15, 20].map((m) => (
                   <button
                     key={m}
                     type="button"
-                    onClick={() => setLogMinutes(m)}
+                    onClick={() => setLogMinutes(String(m))}
                     className="rounded-lg py-2 text-sm transition-opacity hover:opacity-90"
                     style={{
-                      background: logMinutes === m ? "rgba(46,107,64,0.38)" : "rgba(46,107,64,0.12)",
-                      border: `1px solid ${logMinutes === m ? "rgba(46,107,64,0.7)" : "rgba(46,107,64,0.3)"}`,
+                      background: Number(logMinutes) === m ? "rgba(46,107,64,0.38)" : "rgba(46,107,64,0.12)",
+                      border: `1px solid ${Number(logMinutes) === m ? "rgba(46,107,64,0.7)" : "rgba(46,107,64,0.3)"}`,
                       color: WARM, fontFamily: SPACE_GROTESK, cursor: "pointer",
                     }}
                   >
@@ -628,10 +717,11 @@ export default function ContemplationPage() {
               <div className="flex items-center gap-2 mb-3">
                 <input
                   type="number"
+                  inputMode="numeric"
                   min={1}
                   max={720}
                   value={logMinutes}
-                  onChange={(e) => setLogMinutes(Math.max(1, Math.min(720, parseInt(e.target.value || "0", 10) || 0)))}
+                  onChange={(e) => setLogMinutes(e.target.value)}
                   className="w-20 rounded-lg px-3 py-2 text-sm"
                   style={inputStyle}
                 />
@@ -652,7 +742,7 @@ export default function ContemplationPage() {
                 <button
                   type="button"
                   onClick={() => logMutation.mutate()}
-                  disabled={logMutation.isPending || logMinutes < 1}
+                  disabled={logMutation.isPending || (parseInt(logMinutes, 10) || 0) < 1}
                   className="flex-1 rounded-xl py-2.5 text-center transition-opacity hover:opacity-90 disabled:opacity-40"
                   style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
                 >
