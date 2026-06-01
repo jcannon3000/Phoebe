@@ -11,6 +11,7 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
+import { useHealthMindfulToday } from "@/lib/appleHealth";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
 
@@ -591,11 +592,14 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
   const officePrayedToday = !!lastOffice && lastOffice.ymd === today && (lastOffice.morning || lastOffice.evening);
   const reflectionReadToday = hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday();
   const contemplationDoneToday = (contemplationQ.data?.todaySeconds ?? 0) > 0;
+  // iOS + Health connected: meditation logged in other apps (Insight Timer,
+  // Calm, Apple Mindfulness) counts toward Pray too.
+  const healthMindfulToday = useHealthMindfulToday();
   const hasRuleOfLife = Object.keys(wolQ.data?.selections ?? {}).length > 0;
 
   const turnDone = true; // opening the app counts as turning toward God today
   const learnDone = officePrayedToday || reflectionReadToday;
-  const prayDone = officePrayedToday || contemplationDoneToday;
+  const prayDone = officePrayedToday || contemplationDoneToday || healthMindfulToday;
   const weeklyDone = (section: string) => rows.some((r) => r.section === section && r.weekStart === weekStart);
 
   type WolCard = { key: string; emoji: string; label: string; done: boolean; route: string };

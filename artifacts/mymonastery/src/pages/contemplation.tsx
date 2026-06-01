@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
@@ -524,7 +524,7 @@ export default function ContemplationPage() {
   // History grouping: today's & yesterday's sits stay as individual cards;
   // every older day collapses into ONE summary card (date + sit count + total
   // minutes). Sessions arrive newest-first, so day groups land newest-first.
-  const historyGroups = (() => {
+  const historyGroups = useMemo(() => {
     const recent: Session[] = [];
     const olderDays: Array<{ key: string; iso: string; totalSeconds: number; count: number }> = [];
     const seen = new Map<string, number>();
@@ -542,7 +542,7 @@ export default function ContemplationPage() {
       olderDays[idx].count += 1;
     }
     return { recent, olderDays };
-  })();
+  }, [sessions]);
 
   // Manual-log form state.
   const queryClient = useQueryClient();
@@ -672,7 +672,8 @@ export default function ContemplationPage() {
           saving={goalMutation.isPending}
         />
 
-        <AppleHealthCard />
+        {/* (Apple Health connect now lives on the goal card above; the
+            standalone AppleHealthCard is no longer rendered.) */}
 
         {/* Section selector — History · Stats · Learn. The Begin card
             leads; these reveal the supporting surfaces below it. */}

@@ -16,6 +16,7 @@
 // minutes into the goal/streak (with de-duplication of Phoebe's own in-app
 // sits) is a deliberate follow-up.
 
+import { useQuery } from "@tanstack/react-query";
 import { isNativeShell } from "@/lib/isNativeShell";
 
 interface MindfulHealthPlugin {
@@ -91,4 +92,26 @@ export async function writeMindfulSession(start: Date, end: Date): Promise<boole
   } catch {
     return false;
   }
+}
+
+/**
+ * React hook — true when Apple Health reports any mindful minutes TODAY and the
+ * user has connected Health. iOS-native only: false on web and until they've
+ * gone through the connect prompt (the `phoebe:health-connected` flag set by
+ * the contemplation goal card). Shared so surfaces like the Way of Love "Pray"
+ * practice can count meditation logged in OTHER apps (Insight Timer, Calm,
+ * Apple Mindfulness) without each re-implementing the read. The query is gated,
+ * so it no-ops entirely on web / when not connected.
+ */
+export function useHealthMindfulToday(): boolean {
+  let connected = false;
+  try { connected = localStorage.getItem("phoebe:health-connected") === "1"; } catch { /* private mode */ }
+  const q = useQuery<{ minutes: number; sessions: number } | null>({
+    // Keyed by local day so it refetches across a midnight rollover.
+    queryKey: ["apple-health-mindful-today", new Date().toLocaleDateString("en-CA")],
+    queryFn: () => getMindfulMinutesToday(),
+    enabled: appleHealthAvailable() && connected,
+    staleTime: 5 * 60_000,
+  });
+  return (q.data?.minutes ?? 0) > 0;
 }
