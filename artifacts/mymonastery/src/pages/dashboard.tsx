@@ -845,12 +845,28 @@ function ProfilePicturePrompt({ onDone }: { onDone: () => void }) {
 // Title on the left, a thin rule filling the rest, and an optional
 // right-aligned CTA/status. Exported so other home surfaces (the Way of Love
 // home) reuse the exact divider style.
-export function SectionHeader({ label, right }: { label: string; right?: React.ReactNode }) {
+export function SectionHeader({ label, right, onOpen }: { label: string; right?: React.ReactNode; onOpen?: () => void }) {
   return (
     <div className="flex items-center gap-3 mb-2">
-      <h2 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-        {label}
-      </h2>
+      {onOpen ? (
+        // Tappable header — drills into the section's detail sub-page. The
+        // chevron signals there's more (e.g. the Way of Love practice video).
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex items-center gap-1.5 transition-opacity hover:opacity-90 active:scale-[0.99]"
+          style={{ background: "none", border: "none", padding: 0, cursor: "pointer" }}
+        >
+          <h2 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+            {label}
+          </h2>
+          <span aria-hidden style={{ color: "rgba(143,175,150,0.7)", fontSize: 18, lineHeight: 1 }}>›</span>
+        </button>
+      ) : (
+        <h2 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+          {label}
+        </h2>
+      )}
       <div className="flex-1 h-px" style={{ background: "rgba(200, 212, 192, 0.15)" }} />
       {right}
     </div>

@@ -399,8 +399,16 @@ export default function HomeBetaPage() {
           {checkCircle(done, () => toggle(def, done, periodDate))}
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 18 }}>{def.emoji}</span>
-              <span style={{ color: WARM, fontSize: 16, fontWeight: 700, fontFamily: FONT }}>{def.title}</span>
+              <button
+                type="button"
+                onClick={() => setLocation(`/home-beta/${def.key}`)}
+                className="transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", padding: 0, cursor: "pointer", minWidth: 0 }}
+              >
+                <span style={{ fontSize: 18 }}>{def.emoji}</span>
+                <span style={{ color: WARM, fontSize: 16, fontWeight: 700, fontFamily: FONT }}>{def.title}</span>
+                <span aria-hidden style={{ color: "rgba(143,175,150,0.7)", fontSize: 16, lineHeight: 1 }}>›</span>
+              </button>
               {tag(t("home_beta.weekly", { defaultValue: "weekly" }))}
             </div>
             {commitmentOrSet(def, lines)}
@@ -495,7 +503,7 @@ export default function HomeBetaPage() {
 
               {/* 2 — LEARN & PRAY (header + reused production cards) */}
               <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                <SectionHeader label={learnPrayDef.title} right={headerStatus(learnPrayDef)} />
+                <SectionHeader label={learnPrayDef.title} right={headerStatus(learnPrayDef)} onOpen={() => setLocation("/home-beta/learn_pray")} />
                 <PrayerOfficeCard />
                 <ContemplationHomeCard />
                 <CacHomeCard />
@@ -503,7 +511,7 @@ export default function HomeBetaPage() {
 
               {/* 3 — WORSHIP & GATHER (header + reused service/gathering cards) */}
               <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                <SectionHeader label={worshipDef.title} right={headerStatus(worshipDef)} />
+                <SectionHeader label={worshipDef.title} right={headerStatus(worshipDef)} onOpen={() => setLocation("/home-beta/worship")} />
                 {worshipItems.length === 0 ? (
                   <button
                     type="button"
