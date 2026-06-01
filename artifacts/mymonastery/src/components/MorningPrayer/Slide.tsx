@@ -1,4 +1,4 @@
-import { forwardRef, useRef, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import type { Slide as SlideData, MemberPresence } from "./types";
 import { CallAndResponse } from "./CallAndResponse";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
@@ -77,6 +77,13 @@ function FddMeditationSlide({ slide, theme }: { slide: SlideData; theme: "mornin
   const audioUrl = slide.metadata?.audioUrl as string | undefined;
   const totalSecs = (slide.metadata?.durationSeconds as number | null) ?? 0;
   const isEvening = theme === "evening";
+
+  // Reaching the Forward Day by Day meditation slide counts as opening
+  // today's reflection — flip the home FDD card to "Read again", the same
+  // way the closing pill and the /menu/reflections reader already do. The
+  // slideshow mounts only the current slide (keyed by id in
+  // MorningPrayerSlideshow), so this fires exactly when the user gets here.
+  useEffect(() => { markFddRead(); }, []);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);

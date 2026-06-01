@@ -7,16 +7,11 @@
 // show on /news. Empty by default — nothing appears in prayer until the
 // user follows a source. Per-device (localStorage); promote to a server
 // column only if cross-device sync becomes important.
-//
-// Also tracks per-story "hidden" state: the user can dismiss individual
-// stories from the home-screen rail with the eye-off button. Hidden IDs
-// are stored in the same event bus so NewsRail re-renders immediately.
 
 import { useEffect, useState } from "react";
 
 const KEY_SUBSCRIPTIONS = "phoebe:news:subscriptions"; // JSON string[] of source slugs
 const KEY_SEEN_AT = "phoebe:news:seen-at"; // ms timestamp of last view
-const KEY_HIDDEN_IDS = "phoebe:news:hidden-ids"; // JSON string[] of hidden story IDs
 
 export const NEWS_PREFS_EVENT = "phoebe:news-prefs";
 
@@ -71,59 +66,6 @@ export function markNewsSeen(): void {
   } catch {
     /* non-fatal */
   }
-}
-
-// ── Hidden story IDs ──────────────────────────────────────────────────────────
-
-export function getHiddenStoryIds(): Set<string> {
-  try {
-    const raw = localStorage.getItem(KEY_HIDDEN_IDS);
-    if (!raw) return new Set();
-    const arr = JSON.parse(raw);
-    return new Set(Array.isArray(arr) ? arr.filter((s): s is string => typeof s === "string") : []);
-  } catch {
-    return new Set();
-  }
-}
-
-export function hideStory(id: string): void {
-  try {
-    const cur = getHiddenStoryIds();
-    cur.add(id);
-    localStorage.setItem(KEY_HIDDEN_IDS, JSON.stringify(Array.from(cur)));
-    emit();
-  } catch { /* non-fatal */ }
-}
-
-export function unhideStory(id: string): void {
-  try {
-    const cur = getHiddenStoryIds();
-    cur.delete(id);
-    localStorage.setItem(KEY_HIDDEN_IDS, JSON.stringify(Array.from(cur)));
-    emit();
-  } catch { /* non-fatal */ }
-}
-
-export function clearHiddenStories(): void {
-  try {
-    localStorage.removeItem(KEY_HIDDEN_IDS);
-    emit();
-  } catch { /* non-fatal */ }
-}
-
-/** Reactive — re-renders when any story is hidden/unhidden. */
-export function useHiddenStoryIds(): Set<string> {
-  const [hidden, setHidden] = useState<Set<string>>(getHiddenStoryIds);
-  useEffect(() => {
-    const refresh = () => setHidden(getHiddenStoryIds());
-    window.addEventListener(NEWS_PREFS_EVENT, refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener(NEWS_PREFS_EVENT, refresh);
-      window.removeEventListener("storage", refresh);
-    };
-  }, []);
-  return hidden;
 }
 
 // ── Subscriptions ─────────────────────────────────────────────────────────────
