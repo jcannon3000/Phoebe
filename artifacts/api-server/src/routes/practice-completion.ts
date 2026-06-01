@@ -14,7 +14,9 @@ import { and, eq, gte } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-const SECTIONS = new Set(["turn", "learn_pray", "worship", "bless", "go", "rest"]);
+// "learn" and "pray" are the split daily practices (their own detail pages);
+// "learn_pray" remains for the combined home section.
+const SECTIONS = new Set(["turn", "learn_pray", "learn", "pray", "worship", "bless", "go", "rest"]);
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
 function uid(req: Request): number | null {

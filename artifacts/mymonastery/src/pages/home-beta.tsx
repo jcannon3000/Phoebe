@@ -60,7 +60,7 @@ const DONE_B = "rgba(168,197,160,0.8)";
 const CHIP_BG = "rgba(46,107,64,0.20)";
 const CHIP_B = "rgba(46,107,64,0.45)";
 
-export type SectionKey = "turn" | "learn_pray" | "worship" | "bless" | "go" | "rest";
+export type SectionKey = "turn" | "learn_pray" | "learn" | "pray" | "worship" | "bless" | "go" | "rest";
 
 export type SectionDef = {
   key: SectionKey;
@@ -77,6 +77,10 @@ export type SectionDef = {
 export const SECTIONS: SectionDef[] = [
   { key: "turn", practices: ["turn"], theme: "turn", daily: true, emoji: "🔄", title: "Turn", definition: "Pause, listen, and return to the way of Jesus." },
   { key: "learn_pray", practices: ["learn", "pray"], theme: "learn", daily: true, emoji: "📖", title: "Learn & Pray", definition: "Sit with Scripture and dwell with God each day." },
+  // Learn and Pray also stand alone (their own detail pages, reached from the
+  // Way of Love drawer); the combined learn_pray above still drives the home.
+  { key: "learn", practices: ["learn"], theme: "learn", daily: true, emoji: "📖", title: "Learn", definition: "Reflect on Scripture and the life and teachings of Jesus." },
+  { key: "pray", practices: ["pray"], theme: "pray", daily: true, emoji: "🙏", title: "Pray", definition: "Dwell intentionally with God in prayer each day." },
   { key: "worship", practices: ["worship"], theme: "worship", daily: false, emoji: "⛪", title: "Worship & gather", definition: "Gather with others to thank and praise God." },
   { key: "bless", practices: ["bless"], theme: "bless", daily: false, emoji: "🤲", title: "Bless", definition: "Share faith, and give and serve generously." },
   { key: "go", practices: ["go"], theme: "go", daily: false, emoji: "🌍", title: "Go", definition: "Cross boundaries, listen deeply, and live like Jesus." },

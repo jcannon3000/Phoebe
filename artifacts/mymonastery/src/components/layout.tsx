@@ -593,8 +593,8 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
   type WolCard = { key: string; emoji: string; label: string; done: boolean; route: string };
   const daily: WolCard[] = [
     { key: "turn", emoji: "🔄", label: t("wol.turn", { defaultValue: "Turn" }), done: turnDone, route: "/home-beta/turn" },
-    { key: "learn", emoji: "📖", label: t("wol.learn", { defaultValue: "Learn" }), done: learnDone, route: "/home-beta/learn_pray" },
-    { key: "pray", emoji: "🙏", label: t("wol.pray", { defaultValue: "Pray" }), done: prayDone, route: "/home-beta/learn_pray" },
+    { key: "learn", emoji: "📖", label: t("wol.learn", { defaultValue: "Learn" }), done: learnDone, route: "/home-beta/learn" },
+    { key: "pray", emoji: "🙏", label: t("wol.pray", { defaultValue: "Pray" }), done: prayDone, route: "/home-beta/pray" },
   ];
   const weekly: WolCard[] = [
     { key: "worship", emoji: "⛪", label: t("wol.worship", { defaultValue: "Worship" }), done: weeklyDone("worship"), route: "/home-beta/worship" },
@@ -672,6 +672,25 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
                 </p>
                 {weekly.map(renderCard)}
               </div>
+              {/* A Rule of Life — the Way of Love's foundational commitment
+                  (Bishop Michael Curry). Opens the in-app Rule of Life builder. */}
+              <button
+                type="button"
+                onClick={() => go("/rule-of-life")}
+                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.28)" }}
+              >
+                <span className="text-lg leading-none w-6 text-center" aria-hidden>📜</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    {t("wol.rule_of_life", { defaultValue: "A Rule of Life" })}
+                  </span>
+                  <span className="block text-[11px]" style={{ color: "rgba(143,175,150,0.6)" }}>
+                    {t("wol.rule_of_life_sub", { defaultValue: "Bishop Michael Curry" })}
+                  </span>
+                </span>
+                <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.4)", flexShrink: 0 }} />
+              </button>
               <button
                 type="button"
                 onClick={() => go("/home-beta")}

@@ -31,6 +31,7 @@ import {
   type CompletionRow,
 } from "./home-beta";
 import { computeTurnConsistency, engagementDays } from "@/lib/turnConsistency";
+import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
 import BlessSubScreen from "@/components/BlessSubScreen";
 
 const BG = "#091A10";
@@ -80,6 +81,16 @@ const ACTIONS: Record<SectionKey, ActionDef[]> = {
     { emoji: "📖", label: "Today's reflection", sub: "Forward Day by Day", route: "/reflect/fdd", tkey: "reflection" },
     { emoji: "🤍", label: "Sit in silence", sub: "Contemplative prayer", route: "/contemplation", tkey: "contemplation" },
   ],
+  learn: [
+    { emoji: "📖", label: "Today's reflection", sub: "Forward Day by Day", route: "/reflect/fdd", tkey: "reflection" },
+    { emoji: "📿", label: "Pray the Daily Office", sub: "Scripture lessons & prayers", route: "/prayer-chooser", tkey: "office" },
+    { emoji: "🌅", label: "More reflections", sub: "From across the church", route: "/menu/reflections", tkey: "reflections" },
+  ],
+  pray: [
+    { emoji: "📿", label: "Pray the Daily Office", sub: "Morning or Evening Prayer", route: "/prayer-chooser", tkey: "office" },
+    { emoji: "🤍", label: "Sit in silence", sub: "Contemplative prayer", route: "/contemplation", tkey: "contemplation" },
+    { emoji: "🙏", label: "Your prayer list", sub: "Pray for others", route: "/prayer-list", tkey: "prayer_list" },
+  ],
   worship: [
     { emoji: "⛪", label: "Find a gathering", sub: "Services and communities", route: "/gatherings", tkey: "gatherings" },
   ],
@@ -106,14 +117,16 @@ const ACTIONS: Record<SectionKey, ActionDef[]> = {
 //   • Thistle Farms → Bless (radical love + service to survivors)
 //   • Bishop Walker School → Go (crossing boundaries to serve)
 //   • Honoré Farm & Mill → Rest (land sabbath + restoration)
-//   • Turn → series Trailer (the "come along as we begin" invitation)
+//   • Turn → no episode (the series trailer that used to sit here was removed)
 type PracticeVideo = { id: string; title: string; label?: string };
 const SECTION_VIDEO: Record<SectionKey, PracticeVideo[]> = {
-  turn: [{ id: "trfrpfx6q1", title: "Series trailer" }],
+  turn: [],
   learn_pray: [
     { id: "u04ilt0dvb", title: "Presiding Bishop Michael Curry", label: "Learn" },
     { id: "q4zzab2h1y", title: "Pray: Pop Up Prayer", label: "Pray" },
   ],
+  learn: [{ id: "u04ilt0dvb", title: "Presiding Bishop Michael Curry" }],
+  pray: [{ id: "q4zzab2h1y", title: "Pray: Pop Up Prayer" }],
   worship: [{ id: "pisvfusoig", title: "St. Lydia's, Brooklyn" }],
   bless: [{ id: "2ckcg82pkz", title: "Thistle Farms, Nashville" }],
   go: [{ id: "b1l0elf3jd", title: "Bishop Walker School" }],
@@ -178,7 +191,7 @@ export default function HomeBetaSectionPage() {
   const officeQ = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean }> }>({
     queryKey: ["/api/me/office-history-week"],
     queryFn: () => apiRequest("GET", "/api/me/office-history-week"),
-    enabled: !!user && (def?.key === "learn_pray" || def?.key === "turn"),
+    enabled: !!user && (def?.key === "learn_pray" || def?.key === "learn" || def?.key === "pray" || def?.key === "turn"),
     staleTime: 30_000,
   });
   const svcQ = useQuery<{ schedules: ServiceSchedule[] }>({
@@ -199,6 +212,17 @@ export default function HomeBetaSectionPage() {
     enabled: !!user && def?.key === "go",
     staleTime: 5 * 60_000,
   });
+  // Contemplation minutes today — a "Pray" completion signal (mirrors the home).
+  const contemplationQ = useQuery<{ todaySeconds?: number }>({
+    queryKey: ["/api/me/contemplation-stats", ymd(new Date())],
+    queryFn: () => {
+      const since = new Date(); since.setHours(0, 0, 0, 0);
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      return apiRequest("GET", `/api/me/contemplation-stats?todaySince=${encodeURIComponent(since.toISOString())}&tz=${encodeURIComponent(tz)}`);
+    },
+    enabled: !!user && (def?.key === "learn_pray" || def?.key === "pray"),
+    staleTime: 60_000,
+  });
 
   const rows = useMemo(() => compQ.data?.completions ?? [], [compQ.data]);
   const today = ymd(new Date());
@@ -210,6 +234,13 @@ export default function HomeBetaSectionPage() {
     const last = days[days.length - 1];
     return !!last && last.ymd === today && (last.morning || last.evening);
   }, [officeQ.data, today]);
+
+  // Daily Learn/Pray signals — mirror the Way of Love home + drawer so the
+  // detail pages agree with them. Learn counts a scripture reading (an office
+  // or a Forward/SSJE/CAC reflection); Pray counts an office or a sit.
+  const reflectionReadToday = hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday();
+  const contemplationDoneToday = (contemplationQ.data?.todaySeconds ?? 0) > 0;
+  const dailyPrayerEngaged = officePrayedToday || reflectionReadToday || contemplationDoneToday;
 
   // Rest carve-out — a device-local preference for v1 (no push scheduler yet).
   const [restDay, setRestDay] = useState<number | null>(() => {
@@ -238,16 +269,24 @@ export default function HomeBetaSectionPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/practice-completion"] }),
   });
 
-  // Reconcile Learn & Pray: if the office was prayed today but isn't logged
-  // yet, log it once (idempotent server-side) — same as the home cards.
+  // Reconcile the auto-derived daily practices (the combined Learn & Pray, and
+  // the split Learn / Pray pages): when a practice's signal is met today but
+  // isn't logged yet, log it once (idempotent server-side) so the consistency
+  // history reflects it — same as the home cards.
   useEffect(() => {
-    if (!user || !def || def.key !== "learn_pray") return;
+    if (!user || !def) return;
     if (compQ.isLoading || officeQ.isLoading) return;
-    if (officePrayedToday && !rows.some((r) => r.section === "learn_pray" && r.localDate === today)) {
-      mark.mutate({ section: "learn_pray", localDate: today, weekStart: thisWeekStart });
+    const sec = def.key;
+    const auto =
+      sec === "learn_pray" ? dailyPrayerEngaged
+        : sec === "learn" ? (reflectionReadToday || officePrayedToday)
+          : sec === "pray" ? (officePrayedToday || contemplationDoneToday)
+            : false;
+    if (auto && !rows.some((r) => r.section === sec && r.localDate === today)) {
+      mark.mutate({ section: sec, localDate: today, weekStart: thisWeekStart });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [officePrayedToday, compQ.isLoading, officeQ.isLoading, user, def]);
+  }, [dailyPrayerEngaged, reflectionReadToday, contemplationDoneToday, officePrayedToday, compQ.isLoading, officeQ.isLoading, user, def]);
 
   if (authLoading || !user || !def || (!betaLoading && !rawIsBeta)) return null;
 
@@ -261,7 +300,13 @@ export default function HomeBetaSectionPage() {
   const turnC = turnEngaged ? computeTurnConsistency(turnEngaged) : null;
 
   const periodDate = def.daily ? today : thisWeekStart;
-  const lockedDone = def.key === "learn_pray" && officePrayedToday; // office-derived; not removable here
+  // Auto-derived "done" for the daily prayer practices — signal-driven, not
+  // removable here. Learn = a scripture reading or CAC meditation; Pray = an
+  // office or a contemplation sit; the combined Learn & Pray = any of those.
+  const lockedDone =
+    (def.key === "learn_pray" && dailyPrayerEngaged) ||
+    (def.key === "learn" && (reflectionReadToday || officePrayedToday)) ||
+    (def.key === "pray" && (officePrayedToday || contemplationDoneToday));
   const done = lockedDone || rows.some((r) => r.section === def.key && r.localDate === periodDate);
   const lines = commitmentLines(def, wolQ.data?.selections ?? {});
   const shows = matsQ.data?.shows ?? [];
