@@ -95,25 +95,29 @@ const ACTIONS: Record<SectionKey, ActionDef[]> = {
   ],
 };
 
-// Traveling the Way of Love (The Episcopal Church, Season One) — one video per
-// practice, embedded inline from Wistia (channel wkxcjht52w). The episodes are
-// documentary visits to ministries, not per-practice explainers, so each is
-// paired to the ministry that best embodies the practice:
-//   • Pray: Pop Up Prayer — the one explicit match (Learn & Pray)
+// Traveling the Way of Love (The Episcopal Church, Season One) — embedded inline
+// from Wistia (channel wkxcjht52w). The episodes are documentary visits to
+// ministries, not per-practice explainers, so each is paired to the practice it
+// best embodies. Most pages carry one video; Learn & Pray carries two — since it
+// combines two practices, it gets a Learn video (Presiding Bishop Curry's
+// teaching) AND a Pray video (Pop Up Prayer):
+//   • Learn & Pray → Curry (Learn) + Pray: Pop Up Prayer (Pray)
 //   • St. Lydia's dinner church → Worship (gathering at the table)
 //   • Thistle Farms → Bless (radical love + service to survivors)
 //   • Bishop Walker School → Go (crossing boundaries to serve)
 //   • Honoré Farm & Mill → Rest (land sabbath + restoration)
-// Turn uses the series TRAILER — its "come along as we begin" invitation fits
-// the turn-and-return practice better than any single ministry episode (the
-// Presiding Bishop Curry overview read as a generic "learn" clip on Turn).
-const SECTION_VIDEO: Record<SectionKey, { id: string; title: string }> = {
-  turn: { id: "trfrpfx6q1", title: "Series trailer" },
-  learn_pray: { id: "q4zzab2h1y", title: "Pray: Pop Up Prayer" },
-  worship: { id: "pisvfusoig", title: "St. Lydia's, Brooklyn" },
-  bless: { id: "2ckcg82pkz", title: "Thistle Farms, Nashville" },
-  go: { id: "b1l0elf3jd", title: "Bishop Walker School" },
-  rest: { id: "duye4nftap", title: "Honoré Farm & Mill" },
+//   • Turn → series Trailer (the "come along as we begin" invitation)
+type PracticeVideo = { id: string; title: string; label?: string };
+const SECTION_VIDEO: Record<SectionKey, PracticeVideo[]> = {
+  turn: [{ id: "trfrpfx6q1", title: "Series trailer" }],
+  learn_pray: [
+    { id: "u04ilt0dvb", title: "Presiding Bishop Michael Curry", label: "Learn" },
+    { id: "q4zzab2h1y", title: "Pray: Pop Up Prayer", label: "Pray" },
+  ],
+  worship: [{ id: "pisvfusoig", title: "St. Lydia's, Brooklyn" }],
+  bless: [{ id: "2ckcg82pkz", title: "Thistle Farms, Nashville" }],
+  go: [{ id: "b1l0elf3jd", title: "Bishop Walker School" }],
+  rest: [{ id: "duye4nftap", title: "Honoré Farm & Mill" }],
 };
 
 type ShowHit = { slug: string; title: string; artist: string; artwork: string | null };
@@ -262,7 +266,7 @@ export default function HomeBetaSectionPage() {
   const lines = commitmentLines(def, wolQ.data?.selections ?? {});
   const shows = matsQ.data?.shows ?? [];
   const actions = ACTIONS[def.key] ?? [];
-  const sectionVideo = SECTION_VIDEO[def.key];
+  const sectionVideos = SECTION_VIDEO[def.key] ?? [];
 
   const toggle = () => {
     if (lockedDone) return;
@@ -325,25 +329,36 @@ export default function HomeBetaSectionPage() {
         </h1>
         <p style={{ color: SAGE, fontSize: 14.5, fontFamily: FONT, lineHeight: 1.5, margin: 0 }}>{def.definition}</p>
 
-        {/* Watch — the practice's episode from "Traveling the Way of Love",
-            embedded inline from Wistia. */}
-        {sectionVideo && (
+        {/* Watch — the practice's video(s) from "Traveling the Way of Love",
+            embedded inline from Wistia. Learn & Pray carries two (Learn + Pray). */}
+        {sectionVideos.length > 0 && (
           <div style={{ marginTop: 20 }}>
             <p style={{ ...eyebrow, margin: "0 0 8px" }}>
               {t("home_beta.watch", { defaultValue: "Watch" })}
             </p>
-            <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", borderRadius: 14, overflow: "hidden", border: `1px solid ${CARD_B}`, background: "#000" }}>
-              <iframe
-                src={`https://fast.wistia.net/embed/iframe/${sectionVideo.id}?seo=false&videoFoam=true`}
-                title={sectionVideo.title}
-                allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                allowFullScreen
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
-              />
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {sectionVideos.map((v) => (
+                <div key={v.id}>
+                  {v.label && (
+                    <p style={{ color: SAGE, fontSize: 12.5, fontWeight: 600, fontFamily: FONT, margin: "0 0 6px" }}>
+                      {v.label}
+                    </p>
+                  )}
+                  <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", borderRadius: 14, overflow: "hidden", border: `1px solid ${CARD_B}`, background: "#000" }}>
+                    <iframe
+                      src={`https://fast.wistia.net/embed/iframe/${v.id}?seo=false&videoFoam=true`}
+                      title={v.title}
+                      allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                      allowFullScreen
+                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
+                    />
+                  </div>
+                  <p style={{ color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "8px 0 0" }}>
+                    {t("home_beta.watch_caption", { defaultValue: "Traveling the Way of Love" })} · {v.title}
+                  </p>
+                </div>
+              ))}
             </div>
-            <p style={{ color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "8px 0 0" }}>
-              {t("home_beta.watch_caption", { defaultValue: "Traveling the Way of Love" })} · {sectionVideo.title}
-            </p>
           </div>
         )}
 
