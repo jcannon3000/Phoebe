@@ -21,7 +21,6 @@ import {
   SSJE_TODAY_URL, SSJE_READ_EVENT, hasReadSsjeToday, markSsjeRead,
 } from "@/lib/cacReadState";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
-import { WayOfLoveDailyStrip } from "@/components/WayOfLoveDailyStrip";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
 import { ParishWeeklyCard } from "@/components/ParishWeeklyCard";
 import { RsvpBlock, RsvpSummaryStrip, useDashboardRsvpSummary } from "@/components/RsvpBlock";
@@ -5950,10 +5949,9 @@ export default function Dashboard() {
             <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
           </div>
 
-          {/* Way of Love (beta): the Turn fire streak (→ Turn detail) + the
-              "This week" doorway into the weekly page. Beta-gated inside the
-              component, so it's invisible to everyone else. */}
-          <WayOfLoveDailyStrip />
+          {/* The Way of Love daily/weekly progress strip was removed from the
+              home top — that progress now lives in the Way of Love drawer
+              (the header pill). */}
 
           {/* Menu pill strip removed — nav lives in the side Menu. */}
 
