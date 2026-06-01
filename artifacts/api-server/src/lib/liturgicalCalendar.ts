@@ -41,6 +41,9 @@ export interface LiturgicalDay {
   sundayLabel: string;
   weekdayLabel: string;
   useAlleluia: boolean;
+  // Proper Daily Office readings when today is a (possibly transferred) major
+  // Holy Day; null on ordinary days (the weekday cycle via lectionaryWeekKey).
+  holyDayReadings: HolyDayReadings | null;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -422,6 +425,152 @@ function getFixedFeast(date: Date): FeastInfo | null {
 
   return feasts[`${m}-${d}`] ?? null;
 }
+
+// ── Feast precedence & transfer (BCP pp. 15-18) ───────────────────────────────
+//
+// A Major Feast on a fixed date can be outranked by the day it falls on, and is
+// then transferred to the next open day — e.g. the Visitation (May 31) moves to
+// June 1 in a year when May 31 is Trinity Sunday. Principal Feasts and the days
+// of Holy Week and Easter Week displace every sanctoral feast; the privileged
+// Sundays of Advent/Lent/Easter displace even the Feasts of our Lord; ordinary
+// Sundays displace the saints' feasts but not the Feasts of our Lord.
+
+function isSameDay(a: Date, b: Date): boolean {
+  return startOfDay(a).getTime() === startOfDay(b).getTime();
+}
+
+// Movable Principal Feasts — the only Principal Feasts that can share a fixed
+// sanctoral feast's calendar date (and so displace it). The fixed Principal
+// Feasts (Christmas, Epiphany, All Saints) already sit in the feast table, so a
+// would-be transfer onto them is caught by the "already a Major Feast" guard.
+function isMovablePrincipalFeast(date: Date): boolean {
+  const easter = computeEaster(date.getFullYear());
+  return isSameDay(date, easter)              // Easter Day
+    || isSameDay(date, addDays(easter, 39))   // Ascension Day
+    || isSameDay(date, addDays(easter, 49))   // The Day of Pentecost
+    || isSameDay(date, addDays(easter, 56));  // Trinity Sunday
+}
+
+// Feasts of our Lord keep an ordinary Sunday; the other Major Feasts give way.
+const FEASTS_OF_OUR_LORD = new Set<string>([
+  "collect_holy_name", "collect_epiphany", "collect_presentation",
+  "collect_annunciation", "collect_visitation", "collect_transfiguration",
+  "collect_holy_cross",
+]);
+// The three fixed Principal Feasts are never displaced from their own day.
+const FIXED_PRINCIPAL_FEASTS = new Set<string>([
+  "collect_christmas_1", "collect_epiphany", "collect_all_saints",
+]);
+
+// Holy Week or Easter Week — feasts there defer to the week after Easter 2.
+function isHolyOrEasterWeek(date: Date): boolean {
+  if (getSeason(date) === "holy_week") return true;
+  const easter = computeEaster(date.getFullYear());
+  return date >= startOfDay(easter) && date <= startOfDay(addDays(easter, 6));
+}
+
+// Is `feast` displaced from its own native `date` by a higher observance?
+function isFeastDisplaced(feast: FeastInfo, date: Date): boolean {
+  if (FIXED_PRINCIPAL_FEASTS.has(feast.collectKey)) return false; // never displaced
+  if (isMovablePrincipalFeast(date)) return true;
+  if (isHolyOrEasterWeek(date)) return true;
+  if (date.getDay() === 0) {
+    const season = getSeason(date);
+    if (season === "advent" || season === "lent" || season === "easter") return true;
+    return !FEASTS_OF_OUR_LORD.has(feast.collectKey);
+  }
+  return false;
+}
+
+// Can a transferred feast land on `date`? Never onto a Sunday, a movable
+// Principal Feast, Holy/Easter Week, or a day already claimed by a Major Feast.
+function isOpenForTransfer(date: Date): boolean {
+  if (date.getDay() === 0) return false;
+  if (isMovablePrincipalFeast(date)) return false;
+  if (isHolyOrEasterWeek(date)) return false;
+  return !getFixedFeast(date)?.isMajor;
+}
+
+function firstOpenDayAfter(from: Date): Date {
+  let d = addDays(from, 1);
+  for (let i = 0; i < 40 && !isOpenForTransfer(d); i++) d = addDays(d, 1);
+  return d;
+}
+
+// The Major Feast actually OBSERVED on `date`, honoring transfers: a feast
+// displaced from an earlier date whose first open day is today wins; otherwise
+// today's native feast, unless it is itself displaced. Minor feasts ride along
+// unchanged (they only yield to a Major Feast transferred onto their day).
+export function getObservedFeast(date: Date): FeastInfo | null {
+  const d = startOfDay(date);
+  for (let back = 1; back <= 35; back++) {
+    const src = addDays(d, -back);
+    const f = getFixedFeast(src);
+    if (f?.isMajor && isFeastDisplaced(f, src) && isSameDay(firstOpenDayAfter(src), d)) {
+      return f;
+    }
+  }
+  const native = getFixedFeast(d);
+  if (native?.isMajor && isFeastDisplaced(native, d)) return null;
+  return native;
+}
+
+// ── Holy Days lectionary (BCP Daily Office, pp. 996-1000) ─────────────────────
+//
+// Proper Daily Office readings for the sanctoral Major Feasts — fixed every year
+// (unlike the 2-year weekday cycle). Morning Prayer shows both MP lessons; our
+// Evening Prayer renders one lesson, so it serves the second EP lesson (the New
+// Testament / gospel one). Christmas, Holy Name, and the Epiphany are NOT here:
+// they are seasonal day-by-day entries the date-keyed weekday lectionary already
+// covers. Where the BCP gives an EP alternative (St. Mary, St. Michael) the
+// first option is used.
+export interface HolyDayReadings {
+  mpPsalms: string[];
+  mpLesson1: string;
+  mpLesson2: string;
+  epPsalms: string[];
+  epLesson1: string; // the BCP's first EP lesson (kept for the record)
+  epLesson2: string; // the EP lesson our single-lesson Evening Prayer renders
+}
+
+const HOLY_DAY_READINGS: Record<string, HolyDayReadings> = {
+  collect_presentation: {
+    mpPsalms: ["42", "43"], mpLesson1: "1 Sam. 2:1-10", mpLesson2: "John 8:31-36",
+    epPsalms: ["48", "87"], epLesson1: "Hag. 2:1-9", epLesson2: "1 John 3:1-8",
+  },
+  collect_annunciation: {
+    mpPsalms: ["85", "87"], mpLesson1: "Isa. 52:7-12", mpLesson2: "Heb. 2:5-10",
+    epPsalms: ["110:1-5(6-7)", "132"], epLesson1: "Wisd. 9:1-12", epLesson2: "John 1:9-14",
+  },
+  collect_visitation: {
+    mpPsalms: ["72"], mpLesson1: "1 Sam. 1:1-20", mpLesson2: "Heb. 3:1-6",
+    epPsalms: ["146", "147"], epLesson1: "Zech. 2:10-13", epLesson2: "John 3:25-30",
+  },
+  collect_nativity_baptist: {
+    mpPsalms: ["82", "98"], mpLesson1: "Mal. 3:1-5", mpLesson2: "John 3:22-30",
+    epPsalms: ["80"], epLesson1: "Mal. 4:1-6", epLesson2: "Matt. 11:2-19",
+  },
+  collect_transfiguration: {
+    mpPsalms: ["2", "24"], mpLesson1: "Exod. 24:12-18", mpLesson2: "2 Cor. 4:1-6",
+    epPsalms: ["72"], epLesson1: "Dan. 7:9-10, 13-14", epLesson2: "John 12:27-36a",
+  },
+  collect_saint_mary: {
+    mpPsalms: ["113", "115"], mpLesson1: "1 Sam. 2:1-10", mpLesson2: "John 2:1-12",
+    epPsalms: ["45"], epLesson1: "Jer. 31:1-14", epLesson2: "John 19:23-27",
+  },
+  collect_holy_cross: {
+    mpPsalms: ["66"], mpLesson1: "Num. 21:4-9", mpLesson2: "John 3:11-17",
+    epPsalms: ["118"], epLesson1: "Gen. 3:1-15", epLesson2: "1 Pet. 3:17-22",
+  },
+  collect_michaelmas: {
+    mpPsalms: ["8", "148"], mpLesson1: "Job 38:1-7", mpLesson2: "Heb. 1:1-14",
+    epPsalms: ["34", "150"], epLesson1: "Dan. 12:1-3", epLesson2: "Mark 13:21-27",
+  },
+  collect_all_saints: {
+    mpPsalms: ["111", "112"], mpLesson1: "2 Esdras 2:42-47", mpLesson2: "Heb. 11:32-12:2",
+    epPsalms: ["148", "150"], epLesson1: "Wisd. 5:1-5, 14-16", epLesson2: "Rev. 21:1-4, 22-22:5",
+  },
+};
 
 // ── Collect Key ────────────────────────────────────────────────────────────────
 
@@ -820,7 +969,8 @@ export function getOfficeDay(date: Date): LiturgicalDay {
   const season = getSeason(d);
   const weekInSeason = getWeekInSeason(d, season);
   const properNumber = getProperNumber(d);
-  const feast = getFixedFeast(d);
+  const feast = getObservedFeast(d);
+  const holyDayReadings = feast ? HOLY_DAY_READINGS[feast.collectKey] ?? null : null;
   const liturgicalYear = getLiturgicalYear(d);
   const collectKey = getCollectKey(
     season,
@@ -875,5 +1025,6 @@ export function getOfficeDay(date: Date): LiturgicalDay {
     sundayLabel,
     weekdayLabel,
     useAlleluia,
+    holyDayReadings,
   };
 }

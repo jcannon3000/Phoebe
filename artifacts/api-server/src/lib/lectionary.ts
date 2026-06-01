@@ -33,6 +33,17 @@ export function getLectionaryReadings(
   // regular weekday entry. eveLectionaryKey is non-null exactly on those
   // dates; we prefer it for evening, ignore it for morning.
   const isEveOverride = office === "evening" && !!officeDay.eveLectionaryKey;
+
+  // Major Holy Days carry their own proper readings (BCP Daily Office Holy Days
+  // table), which replace the weekday cycle. MP shows both lessons; our single-
+  // lesson EP serves the second (NT/gospel) EP lesson via lesson3.
+  if (officeDay.holyDayReadings && !isEveOverride) {
+    const h = officeDay.holyDayReadings;
+    return office === "evening"
+      ? { psalms: h.epPsalms, lesson1: "", lesson2: "", lesson3: h.epLesson2, weekKey: "holy_day", isEveOverride: false }
+      : { psalms: h.mpPsalms, lesson1: h.mpLesson1, lesson2: h.mpLesson2, lesson3: "", weekKey: "holy_day", isEveOverride: false };
+  }
+
   const key = isEveOverride
     ? (officeDay.eveLectionaryKey as string)
     : officeDay.lectionaryWeekKey;
