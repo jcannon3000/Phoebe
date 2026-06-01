@@ -1947,6 +1947,27 @@ router.get("/moments", async (req, res): Promise<void> => {
       }
     }
 
+    // Batch-load members / windows / posts for ALL moments in one query each
+    // (grouped by moment id below), instead of 3-4 per-moment round-trips
+    // inside the map. This endpoint backs the dashboard + /practices, so that
+    // per-moment fan-out was the app's hottest N+1.
+    const _allMomentIds = flatMoments.map((m) => m.id);
+    const _membersAll = _allMomentIds.length
+      ? await db.select().from(momentUserTokensTable).where(inArray(momentUserTokensTable.momentId, _allMomentIds))
+      : [];
+    const _windowsAll = _allMomentIds.length
+      ? await db.select().from(momentWindowsTable).where(inArray(momentWindowsTable.momentId, _allMomentIds))
+      : [];
+    const _postsAll = _allMomentIds.length
+      ? await db.select().from(momentPostsTable).where(inArray(momentPostsTable.momentId, _allMomentIds))
+      : [];
+    const _membersByMoment = new Map<number, typeof _membersAll>();
+    const _windowsByMoment = new Map<number, typeof _windowsAll>();
+    const _postsByMoment = new Map<number, typeof _postsAll>();
+    for (const r of _membersAll) { const a = _membersByMoment.get(r.momentId); if (a) a.push(r); else _membersByMoment.set(r.momentId, [r]); }
+    for (const r of _windowsAll) { const a = _windowsByMoment.get(r.momentId); if (a) a.push(r); else _windowsByMoment.set(r.momentId, [r]); }
+    for (const r of _postsAll) { const a = _postsByMoment.get(r.momentId); if (a) a.push(r); else _postsByMoment.set(r.momentId, [r]); }
+
     // Enrich each moment INDEPENDENTLY. If any single moment's enrichment
     // throws (bad timezone, computeWindowOpen edge case, a null-dereference
     // we didn't anticipate, etc.), we log it and fall back to the raw row
@@ -1954,21 +1975,21 @@ router.get("/moments", async (req, res): Promise<void> => {
     // one broken moment takes down the entire dashboard + /practices page.
     const enriched = await Promise.all(flatMoments.map(async (m) => {
       try {
-        const allMembers = await db.select().from(momentUserTokensTable)
-          .where(eq(momentUserTokensTable.momentId, m.id));
+        const allMembers = _membersByMoment.get(m.id) ?? [];
 
-        const todayPosts = await db.select().from(momentPostsTable)
-          .where(and(eq(momentPostsTable.momentId, m.id), eq(momentPostsTable.windowDate, todayDateInTz(m.timezone || "UTC"))));
+        const todayPosts = (_postsByMoment.get(m.id) ?? []).filter(
+          (p) => p.windowDate === todayDateInTz(m.timezone || "UTC"),
+        );
 
-        const windows = await db.select().from(momentWindowsTable)
-          .where(eq(momentWindowsTable.momentId, m.id));
+        // slice() — the streak/bloom code below sorts + splices this in place.
+        const windows = (_windowsByMoment.get(m.id) ?? []).slice();
         const latestWindow = windows.sort((a, b) => b.windowDate.localeCompare(a.windowDate))[0] ?? null;
 
         const myToken = userTokenRows.find(t => t.momentId === m.id);
 
         // Personal streak
         const todayDate = todayDateInTz(m.timezone || "UTC");
-        const allPosts = await db.select().from(momentPostsTable).where(eq(momentPostsTable.momentId, m.id));
+        const allPosts = _postsByMoment.get(m.id) ?? [];
         const myPostDates = new Set(allPosts.filter(p => p.userToken === myToken?.userToken).map(p => p.windowDate));
         const todayILogged = myPostDates.has(todayDate);
 
@@ -4830,6 +4851,12 @@ router.get("/prayer-streak", async (req, res): Promise<void> => {
       const dd = String(dt.getUTCDate()).padStart(2, "0");
       return `${yy}-${mm}-${dd}`;
     };
+
+    // A request-only session today (POST /prayer-streak/log) writes no check-in
+    // post, so `dates` won't include today even though the user prayed. Fold it
+    // in so the streak walk counts today (fixes an undercount-by-1, and a false
+    // 0 when today's prayer was request-only with no prior check-in days).
+    if (userRowLoggedToday) dates.add(today);
 
     let cursor = today;
     if (!dates.has(cursor)) cursor = stepBack(cursor);

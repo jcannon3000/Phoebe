@@ -4,12 +4,28 @@ import { z } from "zod/v4";
 import {
   db, sharedMomentsTable, momentUserTokensTable,
   groupsTable, groupMembersTable, circleDailyFocusTable, circleIntentionsTable, usersTable,
+  betaUsersTable,
 } from "@workspace/db";
 import { pool } from "@workspace/db";
 import { deleteCalendarEvent, getCalendarEventAttendees, findActiveBellEventForUser } from "../lib/calendar";
 import { runBellSender, runLectioReminderSender, runLectioEveningReminderSender } from "../lib/bellSender";
 
 const router: IRouter = Router();
+
+// Super-admin gate (beta_users.is_admin) — same check newsletter.ts / reports
+// use. The fire-now endpoints below trigger a real push to the entire user
+// base, so they must be admin-only, not just any logged-in session.
+async function isBetaAdmin(userId: number): Promise<boolean> {
+  const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, userId));
+  if (!u) return false;
+  try {
+    const [beta] = await db
+      .select({ isAdmin: betaUsersTable.isAdmin })
+      .from(betaUsersTable)
+      .where(eq(betaUsersTable.email, u.email.toLowerCase()));
+    return beta?.isAdmin === true;
+  } catch { return false; }
+}
 
 // ─── Auth helper ────────────────────────────────────────────────────────────
 function getUser(req: any): { id: number } | null {
@@ -452,6 +468,7 @@ router.post("/bell/clear-today", async (req, res): Promise<void> => {
 router.post("/bell/fire-now", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(await isBetaAdmin(user.id))) { res.status(403).json({ error: "Admin only" }); return; }
   try {
     await runBellSender({ forceNow: true });
     res.json({ ok: true });
@@ -470,6 +487,7 @@ router.post("/bell/fire-now", async (req, res): Promise<void> => {
 router.post("/bell/lectio-fire-now", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(await isBetaAdmin(user.id))) { res.status(403).json({ error: "Admin only" }); return; }
   const bypassReflectionGate = req.query.force === "all";
   try {
     await runLectioReminderSender({ forceNow: true, bypassReflectionGate });
@@ -484,6 +502,7 @@ router.post("/bell/lectio-fire-now", async (req, res): Promise<void> => {
 router.post("/bell/lectio-evening-fire-now", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  if (!(await isBetaAdmin(user.id))) { res.status(403).json({ error: "Admin only" }); return; }
   try {
     await runLectioEveningReminderSender({ forceNow: true });
     res.json({ ok: true });

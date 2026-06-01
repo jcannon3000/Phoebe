@@ -362,6 +362,12 @@ export async function migrate() {
     await run(client, `ALTER TABLE moment_posts ADD CONSTRAINT moment_posts_moment_id_fkey FOREIGN KEY (moment_id) REFERENCES shared_moments(id) ON DELETE CASCADE`);
     await run(client, `ALTER TABLE moment_windows DROP CONSTRAINT IF EXISTS moment_windows_moment_id_fkey`);
     await run(client, `ALTER TABLE moment_windows ADD CONSTRAINT moment_windows_moment_id_fkey FOREIGN KEY (moment_id) REFERENCES shared_moments(id) ON DELETE CASCADE`);
+    // Postgres does NOT auto-index FK columns. moment_id is the hottest filter
+    // in the app (GET /api/moments fans out per-moment reads of both tables),
+    // so without these every lookup was a sequential scan. Composite on posts
+    // also serves the per-window (moment_id, window_date) "today's posts" read.
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_moment_posts_moment_id ON moment_posts(moment_id, window_date)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_moment_windows_moment_id ON moment_windows(moment_id)`);
     // Fix guest_name NOT NULL on existing rows (backfill then add constraint)
     await run(client, `UPDATE moment_posts SET guest_name = 'Unknown' WHERE guest_name IS NULL`);
     await run(client, `ALTER TABLE moment_posts ALTER COLUMN guest_name SET NOT NULL`);
@@ -914,6 +920,66 @@ export async function migrate() {
       )
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_bless_week ON bless_week (user_id, week_start)`);
+
+    // ── Gather — propose a get-together, collect availability, confirm ──────
+    // Ad-hoc, guest-friendly, share-token scheduling (distinct from the
+    // community-scoped scheduled_gatherings / gathering_members tables).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS gather (
+        id SERIAL PRIMARY KEY,
+        organizer_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        note TEXT,
+        place TEXT,
+        status TEXT NOT NULL DEFAULT 'open',
+        share_token TEXT NOT NULL,
+        confirmed_option_id INTEGER,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_gather_share_token ON gather (share_token)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_gather_organizer ON gather (organizer_user_id)`);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS gather_option (
+        id SERIAL PRIMARY KEY,
+        gather_id INTEGER NOT NULL REFERENCES gather(id) ON DELETE CASCADE,
+        datetime TIMESTAMPTZ NOT NULL,
+        label TEXT
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_gather_option_gather ON gather_option (gather_id)`);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS gather_response (
+        id SERIAL PRIMARY KEY,
+        gather_id INTEGER NOT NULL REFERENCES gather(id) ON DELETE CASCADE,
+        respondent_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        guest_name TEXT,
+        guest_email TEXT,
+        suggested_time TEXT,
+        response_token TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_gather_response_token ON gather_response (response_token)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_gather_response_gather ON gather_response (gather_id)`);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS gather_response_option (
+        response_id INTEGER NOT NULL REFERENCES gather_response(id) ON DELETE CASCADE,
+        option_id INTEGER NOT NULL REFERENCES gather_option(id) ON DELETE CASCADE,
+        availability TEXT NOT NULL,
+        PRIMARY KEY (response_id, option_id)
+      )
+    `);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS gather_invitee (
+        id SERIAL PRIMARY KEY,
+        gather_id INTEGER NOT NULL REFERENCES gather(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        email TEXT,
+        notified_at TIMESTAMPTZ
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_gather_invitee_gather ON gather_invitee (gather_id)`);
 
     // ── prayers_for — private, directed prayers one user holds for another
     await run(client, `

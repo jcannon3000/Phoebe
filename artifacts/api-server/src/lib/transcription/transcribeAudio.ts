@@ -11,6 +11,8 @@
 // opt in by provisioning the key. Claude cannot do this step — the Anthropic
 // API has no audio input — so some STT engine is always required here.
 
+import { assertPublicHttpUrl } from "../ssrfGuard";
+
 export type TranscriptSegment = { start: number; end: number; text: string };
 export type Transcript = {
   durationSeconds: number;
@@ -34,8 +36,18 @@ export async function transcribeAudio(audioUrl: string): Promise<Transcript | nu
     return null;
   }
 
-  const audioRes = await fetch(audioUrl);
+  // SSRF guard — audioUrl comes from a podcast feed's <enclosure>; reject any
+  // host that resolves to an internal/non-routable address before fetching.
+  await assertPublicHttpUrl(audioUrl);
+  const audioRes = await fetch(audioUrl, { signal: AbortSignal.timeout(30_000) });
   if (!audioRes.ok) throw new Error(`audio fetch failed: ${audioRes.status}`);
+  // Reject oversize via Content-Length before buffering the whole body.
+  const declaredLen = Number(audioRes.headers.get("content-length") ?? "0");
+  if (Number.isFinite(declaredLen) && declaredLen > WHISPER_MAX_BYTES) {
+    throw new Error(
+      `audio is ${(declaredLen / 1e6).toFixed(1)} MB (Content-Length), over Whisper's 25 MB limit`,
+    );
+  }
   const bytes = Buffer.from(await audioRes.arrayBuffer());
   if (bytes.length > WHISPER_MAX_BYTES) {
     throw new Error(

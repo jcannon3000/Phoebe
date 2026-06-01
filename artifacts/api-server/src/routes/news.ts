@@ -16,6 +16,7 @@
 
 import { Router, type IRouter, type Request, type Response } from "express";
 import { logger } from "../lib/logger";
+import { assertPublicHttpUrl } from "../lib/ssrfGuard";
 
 const router: IRouter = Router();
 
@@ -136,6 +137,7 @@ async function resolveOgImage(url: string): Promise<string | null> {
   const hit = imgCache.get(url);
   if (hit && Date.now() - hit.at < IMG_TTL_MS) return hit.img;
   try {
+    await assertPublicHttpUrl(url); // SSRF guard on the feed-derived article URL
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 4500);
     const res = await fetch(url, { headers: { "user-agent": UA }, signal: ctrl.signal });

@@ -138,23 +138,32 @@ export function useGardenSocket(user: AuthUser | null, gardenEmails: Set<string>
 
     const unsub = subscribe(handleMessage);
 
-    // Track presence once socket is ready
+    // Track presence once socket is ready. Both the poll interval and its
+    // 10s give-up timeout are captured here so the effect cleanup can clear
+    // them — otherwise an unmount within 10s leaves the 200ms poll firing
+    // (and calling track()/resetIdleTimer) after the component is gone.
+    let openCheckInterval: ReturnType<typeof setInterval> | null = null;
+    let openCheckTimeout: ReturnType<typeof setTimeout> | null = null;
     const trackWhenReady = () => {
       if (sharedSocket?.readyState === WebSocket.OPEN && user.showPresence) {
         track();
         resetIdleTimer();
       } else {
         // Wait for socket to open
-        const check = setInterval(() => {
+        openCheckInterval = setInterval(() => {
           if (sharedSocket?.readyState === WebSocket.OPEN) {
-            clearInterval(check);
+            if (openCheckInterval) clearInterval(openCheckInterval);
+            openCheckInterval = null;
             if (user.showPresence) {
               track();
               resetIdleTimer();
             }
           }
         }, 200);
-        setTimeout(() => clearInterval(check), 10000); // give up after 10s
+        openCheckTimeout = setTimeout(() => {
+          if (openCheckInterval) clearInterval(openCheckInterval);
+          openCheckInterval = null;
+        }, 10000); // give up after 10s
       }
     };
     trackWhenReady();
@@ -179,6 +188,8 @@ export function useGardenSocket(user: AuthUser | null, gardenEmails: Set<string>
     return () => {
       unsub();
       untrack();
+      if (openCheckInterval) clearInterval(openCheckInterval);
+      if (openCheckTimeout) clearTimeout(openCheckTimeout);
       document.removeEventListener("visibilitychange", handleVisibility);
       events.forEach(e => window.removeEventListener(e, handleActivity));
       if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
