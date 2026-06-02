@@ -280,24 +280,14 @@ async function registerForPushIfRequested() {
         // The `pushNotificationActionPerformed` listener is wired at boot
         // by `wirePushActionListener`, not here — see that function for why.
 
-        // Foreground delivery: iOS suppresses the OS banner while the app is
-        // open, so without this listener a push arriving during active use
-        // is silently dropped from the user's view. Forward the payload to
-        // the web layer as `phoebe:push-received` so we can render an
-        // in-app toast (see App.tsx). Background and locked-screen pushes
-        // are unaffected — those go straight through APNs.
-        await PushNotifications.addListener("pushNotificationReceived", notification => {
-          const data = (notification.data ?? {}) as Record<string, string>;
-          window.dispatchEvent(
-            new CustomEvent("phoebe:push-received", {
-              detail: {
-                title: notification.title ?? "",
-                body: notification.body ?? "",
-                path: data["path"] ?? "",
-              },
-            }),
-          );
-        });
+        // Foreground delivery is handled by iOS itself: capacitor.config's
+        // PushNotifications.presentationOptions includes "alert", so a push
+        // arriving while the app is open shows the system banner like any
+        // other. We used to also forward it to the web layer as
+        // `phoebe:push-received` for an in-app toast, but that doubled the
+        // banner up. The in-app toast (ForegroundPushToast) is now web-only —
+        // where a focused tab gets no OS banner — so no native forwarding is
+        // needed. Background and locked-screen pushes go straight through APNs.
       }
 
       await PushNotifications.register();
