@@ -428,6 +428,8 @@ export const en = {
     this_week_sub: "Connect, Serve, Bridge & Rest",
     videos: "Videos",
     videos_sub: "Traveling the Way of Love",
+    wol_journey: "Way of Love",
+    wol_journey_sub: "8-week devotional journey",
   },
   videos: {
     title: "Videos",
@@ -473,6 +475,23 @@ export const en = {
     nudge: "Nudge {{n}} who haven't replied",
     nudged: "Reminded {{n}} people.",
     avail: { yes: "Yes", maybe: "Maybe", no: "No" },
+  },
+  wol_journey: {
+    title: "The Way of Love",
+    sub: "An 8-week journey · {{n}} of {{total}} days",
+    entry_title: "The 8-week journey",
+    entry_sub: "A daily devotion through each practice",
+    week_label: "Week {{n}} · {{practice}}",
+    day_label: "Day {{d}} of 5",
+    reflect: "Reflect in your journal",
+    prayer_label: "A Prayer for Today",
+    listen: "Listen: Bishop Budde on {{practice}} →",
+    complete: "Mark complete & continue",
+    next: "Next day →",
+    rule_invite: "You've walked {{practice}} for a week. Make it part of your Rule of Life?",
+    rule_cta: "Add to my Rule →",
+    prev: "Previous",
+    skip: "Next",
   },
   // BETA Way of Love home (/home-beta) — the section cards + the per-section
   // pages. Daily/weekly practices, commitments, completion, and the quiet
@@ -756,6 +775,10 @@ export const en = {
     climate_title: "Prayer for the climate",
     climate_blurb: "Pray today's intercession alongside the wider community caring for creation.",
     sign_in_blurb: "Already with Phoebe? Pick up where you left off.",
+    learn_title: "Learn about Phoebe",
+    learn_blurb: "A quick tour of how Phoebe helps you pray and stay connected.",
+    appstore_title: "Download on the App Store",
+    appstore_blurb: "Get the Phoebe app for iPhone.",
     footer: "A relational app that cultivates connections between Sundays.",
   },
   // Group reflection page (pages/community-reflection.tsx).

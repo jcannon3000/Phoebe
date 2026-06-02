@@ -372,6 +372,20 @@ export default function WayOfLoveWeekPage() {
             {t("week.begin_review", { defaultValue: "Review the week & set the next →" })}
           </button>
 
+          {/* The 8-week devotional journey (EDOW) — the formation on-ramp. */}
+          <button
+            type="button"
+            onClick={() => setLocation("/way-of-love")}
+            style={{ width: "100%", display: "flex", alignItems: "center", gap: 11, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 14px", cursor: "pointer", textAlign: "left", marginBottom: 18 }}
+          >
+            <span style={{ fontSize: 20, flexShrink: 0 }} aria-hidden>🌱</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ color: WARM, fontSize: 14.5, fontWeight: 600, fontFamily: FONT, margin: 0 }}>{t("wol_journey.entry_title", { defaultValue: "The 8-week journey" })}</p>
+              <p style={{ color: SAGE, fontSize: 12, fontFamily: FONT, margin: "2px 0 0" }}>{t("wol_journey.entry_sub", { defaultValue: "A daily devotion through each practice" })}</p>
+            </div>
+            <span style={{ color: SAGE_DIM, fontSize: 16, flexShrink: 0 }} aria-hidden>›</span>
+          </button>
+
           {/* Daily practices (Turn + Learn & Pray) — lead the page for a
               newcomer; once the weekly categories are engaged, dailyBlock
               drops below them (rendered after Materials). */}
