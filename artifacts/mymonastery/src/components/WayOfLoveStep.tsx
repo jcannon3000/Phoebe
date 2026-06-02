@@ -276,7 +276,9 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
     // when rendered inside <Layout> — forcing a full viewport here would push
     // a second screen below the header and cause an awkward scroll.
     <div style={{ flex: 1, minHeight: 0, background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
-      <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
+      {/* No fadeTop: rendered under <Layout>'s opaque header, so the top frame
+          is already handled — a fade here would blank the content's top band. */}
+      <AnimatedBackground base={EP_BG} variant="subtle" />
       <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
         {children}
       </div>

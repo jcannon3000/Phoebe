@@ -353,7 +353,9 @@ export default function WayOfLoveWeekPage() {
   return (
     <Layout>
       <div style={{ position: "relative", minHeight: "70vh", isolation: "isolate" }}>
-        <AnimatedBackground base={BG} variant="subtle" fadeTop />
+        {/* No fadeTop inside <Layout> — the sticky header frames the top; a
+            fade here would blank the content's top band (the "off" gradient). */}
+        <AnimatedBackground base={BG} variant="subtle" />
         <div style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "0 auto", width: "100%", padding: "4px 2px 28px" }}>
           <h1 style={{ color: WARM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: "6px 0 0" }}>
             {t("week.title", { defaultValue: "Weekly rule progress" })}

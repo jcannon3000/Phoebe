@@ -367,7 +367,10 @@ export default function HomeBetaSectionPage() {
       {/* Wrapped in the standard Layout so the practice pages keep the Phoebe
           top bar + pills; the pronounced gradient + back link live inside. */}
       <div style={{ position: "relative", minHeight: "70vh", isolation: "isolate" }}>
-        <AnimatedBackground base={BG} variant="pronounced" fadeTop />
+        {/* No fadeTop: under <Layout>'s opaque sticky header, a top fade would
+            carve a flat band into the content and push the glow down. Fill
+            uniformly so each practice slide reads consistently. */}
+        <AnimatedBackground base={BG} variant="pronounced" />
         <div style={{ position: "relative", zIndex: 1, width: "100%", maxWidth: 560, margin: "0 auto", padding: "2px 0 36px", color: WARM, fontFamily: FONT }}>
           <button type="button" onClick={() => setLocation("/home-beta")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: "0 0 8px" }}>
             <ChevronLeft size={16} /> {t("home_beta.back", { defaultValue: "Way of Love" })}

@@ -84,7 +84,11 @@ export default function WayOfLoveJourneyPage() {
   return (
     <Layout>
       <div style={{ position: "relative", minHeight: "70vh", isolation: "isolate" }}>
-        <AnimatedBackground base={BG} variant="subtle" fadeTop />
+        {/* No fadeTop: inside <Layout> the opaque sticky header already frames
+            the top, so a fadeTop here would blank ~220px of the content and
+            shove the glow low (the "off" gradient). Let it fill uniformly,
+            matching the full-screen slideshow's look beneath its notch fade. */}
+        <AnimatedBackground base={BG} variant="subtle" />
         <div style={{ position: "relative", zIndex: 1, maxWidth: 560, margin: "0 auto", width: "100%", padding: "4px 2px 40px" }}>
           <button type="button" onClick={() => setLocation("/this-week")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: "4px 0 8px" }}>
             <ChevronLeft size={16} /> {t("common.back", { defaultValue: "Back" })}
