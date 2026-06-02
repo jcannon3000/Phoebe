@@ -14,7 +14,7 @@ import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
-import { getNcmpState } from "@/lib/officePrefs";
+import { getNcmpState, getSideLevel } from "@/lib/officePrefs";
 import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, markCacRead,
   FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, markFddRead,
@@ -2983,6 +2983,13 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
     staleTime: 60_000,
   });
   const officeStreak = officePrefs?.officeStreak ?? 0;
+  // "Programmed an office" = the user explicitly chose the daily office as their
+  // prayer — either the global default or either per-side level. Everyone else
+  // gets the communal "Pray Together" default on this card (once a day).
+  const programmedOffice =
+    officePrefs?.defaultPrayerLevel === "office" ||
+    getSideLevel("morning") === "office" ||
+    getSideLevel("evening") === "office";
 
   const { data: communityPrayedData } = useQuery<{ people: { id: number; name: string; avatarUrl: string | null }[] }>({
     queryKey: ["/api/prayer-streak/community-prayed-week"],
@@ -3037,7 +3044,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _stateTick = stateTick; // reads below depend on this for re-render
 
-  const prayedToday = (() => {
+  const prayedTodayHalf = (() => {
     if (typeof window === "undefined") return false;
     const d = new Date();
     const todayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -3067,6 +3074,27 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
     }
   })();
 
+  // "Pray Together" (no programmed office) is once a DAY, not split into
+  // morning/evening — so it reads as prayed once either side was prayed today.
+  const prayedTodayAny = (() => {
+    if (typeof window === "undefined") return false;
+    const d = new Date();
+    const todayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const serverDays = officeHistory?.days ?? [];
+    const todayServer = serverDays[serverDays.length - 1];
+    if (todayServer && todayServer.ymd === todayKey && (todayServer.morning || todayServer.evening)) return true;
+    try {
+      for (const mode of ["morning", "morning-devotion", "evening", "early-evening-devotion", "compline"]) {
+        if (localStorage.getItem(`phoebe:office-completed:${mode}:${todayKey}`)) return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  })();
+
+  const prayedToday = programmedOffice ? prayedTodayHalf : prayedTodayAny;
+
   // CTA destination respects the user's Settings → Default prayer
   // picker. Three levels:
   //   • devotion      — BCP short form (default; gentle daily rhythm).
@@ -3094,7 +3122,12 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
   // intercessions) drops straight in. Time-of-day buckets and ?reset
   // semantics live there (and per-option inside the chooser), so we
   // don't duplicate that logic on the card anymore.
-  const ctaHref = "/begin-prayer";
+  // Programmed office → the routing brain (/begin-prayer → their office).
+  // Otherwise "Pray Together" opens the community prayer slideshow; re-tapping
+  // after a completed pass starts fresh via ?reset=1.
+  const ctaHref = programmedOffice
+    ? "/begin-prayer"
+    : (prayedToday ? "/prayer-mode?reset=1" : "/prayer-mode");
   const ctaCopy = "Begin prayer";
 
   // Compact one-line variant — used when feed-first home promotes a
@@ -3105,7 +3138,9 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
   // people. The full data (streak, community-prayed) is intentionally
   // dropped here — it lives on the full card.
   if (compact) {
-    const title = isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙";
+    const title = programmedOffice
+      ? (isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙")
+      : "Pray Together 🙏";
     return (
       <Link href={ctaHref} className="block">
         <div
@@ -3172,7 +3207,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
               {eyebrow}
             </p>
             <Link
-              href="/settings"
+              href="/prayer-list"
               className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center shrink-0 transition-opacity hover:opacity-80"
               style={{
                 background: "rgba(46,107,64,0.22)",
@@ -3181,7 +3216,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
                 fontFamily: "'Space Grotesk', sans-serif",
               }}
             >
-              {t("dashboard.reminders")}
+              {t("dashboard.prayer_list", { defaultValue: "Prayer list" })}
             </Link>
           </div>
           {/* LEFT  column = title + "N people prayed with you this week"
@@ -3217,7 +3252,9 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
                     className="text-2xl font-semibold"
                     style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}
                   >
-                    {isMorning ? `${t("offices.morning_prayer")} 🌅` : `${t("offices.evening_prayer")} 🌙`}
+                    {programmedOffice
+                      ? (isMorning ? `${t("offices.morning_prayer")} 🌅` : `${t("offices.evening_prayer")} 🌙`)
+                      : `${t("dashboard.pray_together", { defaultValue: "Pray Together" })} 🙏`}
                   </p>
                   {countCopy && (
                     <p

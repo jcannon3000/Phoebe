@@ -3908,6 +3908,20 @@ export default function PrayerModePage() {
         ×
       </button>
 
+      {/* First slide only: a "Pray a liturgy" shortcut into the full BCP
+          office options (the chooser), opposite the exit button. */}
+      {index === 0 && phase === "prayer" && (
+        <button
+          type="button"
+          onClick={() => setLocation("/prayer-chooser")}
+          aria-label="Pray a liturgy"
+          className="absolute top-6 left-6 z-10 inline-flex items-center rounded-full transition-opacity hover:opacity-90 active:scale-[0.98]"
+          style={{ padding: "7px 13px", fontSize: 12.5, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", color: "#A8C5A0", background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.5)", cursor: "pointer" }}
+        >
+          Pray a liturgy →
+        </button>
+      )}
+
       {/* Daily reflection — embedded in-app as the slide BEFORE the closing
           summary (covers the whole screen with its own Continue bar). Only
           on the office-finish walk, when a reflection source is turned on. */}
