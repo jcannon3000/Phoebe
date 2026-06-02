@@ -993,7 +993,7 @@ function TaggedRow({
           return (
             <div
               key={tag.id}
-              className="flex items-center gap-2 px-2.5 py-1 rounded-full"
+              className="flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full"
               style={{
                 background: "rgba(46,107,64,0.18)",
                 border: "1px solid rgba(46,107,64,0.4)",
@@ -1004,11 +1004,11 @@ function TaggedRow({
                 <img
                   src={tag.avatarUrl}
                   alt={tag.name ?? ""}
-                  className="w-6 h-6 rounded-full object-cover"
+                  className="w-9 h-9 rounded-full object-cover"
                 />
               ) : (
                 <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-semibold"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-semibold"
                   style={{ background: "#1A4A2E", color: "#A8C5A0" }}
                 >
                   {(tag.name ?? "?").trim().charAt(0).toUpperCase() || "?"}

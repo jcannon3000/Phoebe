@@ -16,12 +16,10 @@ import { useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { Layout } from "@/components/layout";
 
-const BG = "#091A10";
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SAGE_DIM = "rgba(143,175,150,0.55)";
@@ -69,15 +67,8 @@ export default function PrayedForMapPage() {
   const graticuleLat = [30, 60, 120, 150]; // y; 90 (equator) drawn separately
 
   return (
-    <div style={{ position: "relative", minHeight: "100dvh", background: BG, color: WARM, fontFamily: FONT, display: "flex", flexDirection: "column" }}>
-      <AnimatedBackground base={BG} variant="subtle" fadeTop />
-      <header style={{ position: "relative", zIndex: 1, padding: "max(1.1rem, calc(env(safe-area-inset-top) + 0.5rem)) 18px 6px" }}>
-        <button type="button" onClick={() => setLocation("/prayer-list")} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}>
-          <ChevronLeft size={16} /> {t("prayed_for_map.back", { defaultValue: "Prayer list" })}
-        </button>
-      </header>
-
-      <main style={{ position: "relative", zIndex: 1, flex: 1, width: "100%", maxWidth: 640, margin: "0 auto", padding: "8px 18px 40px", boxSizing: "border-box" }}>
+    <Layout>
+      <div style={{ width: "100%", maxWidth: 640, margin: "0 auto", padding: "4px 2px 28px" }}>
         <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 700, margin: "4px 0 2px" }}>
           {t("prayed_for_map.eyebrow", { defaultValue: "A constellation of care" })}
         </p>
@@ -151,7 +142,7 @@ export default function PrayedForMapPage() {
               : t("prayed_for_map.empty", { defaultValue: "No places yet. Lights appear here when someone who's turned on location sharing prays for you." })}
           </p>
         )}
-      </main>
-    </div>
+      </div>
+    </Layout>
   );
 }
