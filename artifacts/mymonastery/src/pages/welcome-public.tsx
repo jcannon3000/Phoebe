@@ -8,20 +8,18 @@ import { isNativeShell } from "@/lib/isNativeShell";
 // ── First-open chooser ───────────────────────────────────────────────────────
 //
 // What a visitor sees when they open the iOS app for the first time
-// (or hit withphoebe.app while signed out). Three cards:
+// (or hit withphoebe.app while signed out):
 //
 //   1. The time-appropriate office  → /pray?start=office
 //      Morning before 14:00, Evening after. Drops them straight into
 //      the BCP liturgy via PublicPrayerPage; at the close they're
 //      invited to sign up.
-//   2. Prayer for the climate       → /feed/phoebe-climate
-//      The public-feed landing for the Phoebe Climate feed —
-//      walks the visitor through today's intercessions, then offers
-//      a one-tap "subscribe + create offices-only account" signup
-//      so they can pray it every day.
-//   3. Sign in / sign up            → /signin
+//   2. Sign in / sign up            → /signin
 //      For visitors who already have an account, or want to skip the
 //      try-before-buy path and go straight to the full app.
+//
+// Then, below a hairline divider: "Learn about Phoebe" (the features
+// deck) and — on web only — a "Download on the App Store" link.
 //
 // Signed-in users skip this entirely and land on /dashboard.
 const BG = "#091A10";
@@ -116,43 +114,34 @@ export default function WelcomePublicPage() {
             primary
           />
 
-          {/* Card 2 — Phoebe Climate */}
-          <ChoiceCard
-            href="/feed/phoebe-climate"
-            emoji="🌿"
-            title={t("welcome_public.climate_title")}
-            blurb={t("welcome_public.climate_blurb")}
-            delay={0.12}
-          />
-
-          {/* Card 3 — sign in (or sign up via the same form) */}
+          {/* Card 2 — sign in (or sign up via the same form) */}
           <ChoiceCard
             href="/signin"
             emoji="🔑"
             title={t("welcome_public.sign_in")}
             blurb={t("welcome_public.sign_in_blurb")}
-            delay={0.19}
+            delay={0.12}
             muted
           />
         </div>
 
         {/* Separated group — about Phoebe + get the app. A hairline divider
-            sets these apart from the three "start praying" cards above. */}
+            sets these apart from the options above. */}
         <div
           className="mt-6 pt-6 flex flex-col gap-3"
           style={{ borderTop: "1px solid rgba(200,212,192,0.12)" }}
         >
-          {/* Card 4 — learn about Phoebe (the features deck) */}
+          {/* Card 3 — learn about Phoebe (the features deck) */}
           <ChoiceCard
             href="/learn/features"
             emoji="✨"
             title={t("welcome_public.learn_title")}
             blurb={t("welcome_public.learn_blurb")}
-            delay={0.26}
+            delay={0.19}
             muted
           />
 
-          {/* Card 5 — download on the App Store. Web only: telling someone
+          {/* Card 4 — download on the App Store. Web only: telling someone
               already inside the native app to "download the app" makes no
               sense, mirroring the install-banner gating elsewhere. */}
           {!isNativeShell() && (
@@ -161,7 +150,7 @@ export default function WelcomePublicPage() {
               emoji="📲"
               title={t("welcome_public.appstore_title")}
               blurb={t("welcome_public.appstore_blurb")}
-              delay={0.33}
+              delay={0.26}
               muted
             />
           )}
