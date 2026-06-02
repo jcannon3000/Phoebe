@@ -771,6 +771,7 @@ export const es: Translations = {
     sign_in: "Iniciar sesión",
     title: "Reúnete con Phoebe.",
     subtitle: "Elige por dónde empezar — sin necesidad de cuenta.",
+    prayed_subtitle: "{{n}} personas han orado con Phoebe este mes.",
     office_blurb_morning: "Comienza el día con los salmos, lecturas y oraciones del Libro de Oración Común.",
     office_blurb_evening: "Cierra el día con los salmos, lecturas y oraciones del Libro de Oración Común.",
     climate_title: "Oración por el clima",

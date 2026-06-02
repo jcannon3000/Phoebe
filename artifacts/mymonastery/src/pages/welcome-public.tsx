@@ -2,7 +2,9 @@ import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
 
 // ── First-open chooser ───────────────────────────────────────────────────────
@@ -52,6 +54,16 @@ export default function WelcomePublicPage() {
     }
   }, [user, isLoading, setLocation]);
 
+  // Live social proof — how many people have prayed with Phoebe this month.
+  // Public, cached endpoint; falls back to the static subtitle when absent or
+  // too small. (Hook stays above the early return so hook order is stable.)
+  const { data: prayedStats } = useQuery<{ count: number }>({
+    queryKey: ["/api/stats/prayed-this-month"],
+    queryFn: () => apiRequest("GET", "/api/stats/prayed-this-month"),
+    staleTime: 30 * 60_000,
+  });
+  const prayedCount = prayedStats?.count ?? 0;
+
   // Don't paint the chooser while we're still resolving the auth
   // state — avoids a brief flash before the redirect above fires.
   if (isLoading || user) return null;
@@ -100,7 +112,9 @@ export default function WelcomePublicPage() {
             {t("welcome_public.title")}
           </h1>
           <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
-            {t("welcome_public.subtitle")}
+            {prayedCount > 1
+              ? t("welcome_public.prayed_subtitle", { defaultValue: "{{n}} people have prayed with Phoebe this month.", n: prayedCount.toLocaleString() })
+              : t("welcome_public.subtitle")}
           </p>
         </motion.div>
 

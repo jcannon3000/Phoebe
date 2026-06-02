@@ -779,6 +779,7 @@ export const en = {
     sign_in: "Sign in",
     title: "Be together with Phoebe.",
     subtitle: "Pick a place to start — no account needed.",
+    prayed_subtitle: "{{n}} people have prayed with Phoebe this month.",
     office_blurb_morning: "Begin the day with the psalms, lessons, and prayers from the Book of Common Prayer.",
     office_blurb_evening: "Close the day with the psalms, lessons, and prayers from the Book of Common Prayer.",
     climate_title: "Prayer for the climate",
@@ -1230,7 +1231,7 @@ export const en = {
   // Customize home page (pages/customize-home.tsx).
   customize_home: {
     title: "Customize home",
-    subtitle: "Reorder, show or hide the cards on your home screen. The top one leads.",
+    subtitle: "Reorder, show or hide the panels on your home screen. The top one leads.",
     leads: "Leads",
     drag_hint: "Drag to reorder · tap the eye to show or hide",
     show: "Show",
