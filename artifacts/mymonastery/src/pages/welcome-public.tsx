@@ -146,9 +146,9 @@ export default function WelcomePublicPage() {
           className="mt-6 pt-6 flex flex-col gap-3"
           style={{ borderTop: "1px solid rgba(200,212,192,0.12)" }}
         >
-          {/* Card 3 — learn about Phoebe (the features deck) */}
+          {/* Card 3 — learn about Phoebe → the church deck slideshow */}
           <ChoiceCard
-            href="/learn/features"
+            href="/church-deck"
             emoji="✨"
             title={t("welcome_public.learn_title")}
             blurb={t("welcome_public.learn_blurb")}
