@@ -2572,7 +2572,10 @@ export function CacHomeCard() {
   const cacTitle = cacMeta?.title ?? "";
   const onClick = () => {
     recordCacOpened({ flagReturn: true });
-    openExternal(CAC_TODAY_URL);
+    // Open today's resolved permalink directly when we already have it — the
+    // today-meta query above prefetches it on home load, so this skips the
+    // /api/cac/today server redirect + RSS fetch and opens noticeably faster.
+    openExternal(cacMeta?.url || CAC_TODAY_URL);
   };
   return (
     <div
