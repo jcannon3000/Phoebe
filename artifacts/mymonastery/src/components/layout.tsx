@@ -302,6 +302,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             {!officesOnly && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
                 <MenuRow emoji="🙏" label={t("menu.prayer_list", { defaultValue: "Prayer list" })} onClick={() => navigate("/prayer-list")} />
+                <MenuRow emoji="🗺️" label={t("menu.prayed_for_map", { defaultValue: "Prayed-for map" })} onClick={() => navigate("/prayed-for-map")} />
               </div>
             )}
 
