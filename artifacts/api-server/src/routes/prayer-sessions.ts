@@ -390,6 +390,61 @@ router.get("/me/contemplation-companions", async (req, res): Promise<void> => {
   }
 });
 
+// ── Contemplation presence ("who's sitting right now") ─────────────────────
+// Ephemeral, in-memory heartbeat registry. While a sit is RUNNING the client
+// POSTs a heartbeat every ~20s; anyone whose last beat is within PRESENCE_TTL
+// counts as "currently sitting." This powers the live faces shown DURING a sit
+// and means two people sitting at the same time see each other immediately —
+// no longer waiting for a session to be recorded on finish (which is why the
+// first finisher previously saw no companion). In-memory on purpose: presence
+// is transient, so a restart just clears it (faces reappear on the next beat).
+// Assumes a single server instance (true for our deploy); a shared store would
+// be needed to scale out.
+const sittingNow = new Map<number, number>();
+const PRESENCE_TTL_MS = 60_000;
+
+router.post("/me/contemplation-presence", (req, res): void => {
+  const uid = req.user ? (req.user as { id: number }).id : null;
+  if (!uid) { res.status(401).json({ error: "Unauthorized" }); return; }
+  sittingNow.set(uid, Date.now());
+  res.json({ ok: true });
+});
+
+router.get("/me/contemplation-presence", async (req, res): Promise<void> => {
+  const uid = req.user ? (req.user as { id: number }).id : null;
+  if (!uid) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const now = Date.now();
+    // Prune stale beats while collecting the live set (excluding the viewer).
+    const liveIds: number[] = [];
+    for (const [id, last] of sittingNow) {
+      if (now - last > PRESENCE_TTL_MS) { sittingNow.delete(id); continue; }
+      if (id !== uid) liveIds.push(id);
+    }
+    if (liveIds.length === 0) { res.json({ companions: [], otherCount: 0 }); return; }
+    const gardenIds = new Set(await getGardenUserIds(uid));
+    const gardenCompanionIds: number[] = [];
+    let otherCount = 0;
+    for (const id of liveIds) {
+      if (gardenIds.has(id)) gardenCompanionIds.push(id);
+      else otherCount += 1;
+    }
+    type Companion = { userId: number; name: string | null; avatarUrl: string | null };
+    let companions: Companion[] = [];
+    if (gardenCompanionIds.length > 0) {
+      const userRows = await db
+        .select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+        .from(usersTable)
+        .where(inArray(usersTable.id, gardenCompanionIds));
+      companions = userRows.slice(0, 6).map((u) => ({ userId: u.id, name: u.name ?? null, avatarUrl: u.avatarUrl ?? null }));
+    }
+    res.json({ companions, otherCount });
+  } catch (err) {
+    console.error("[/me/contemplation-presence GET] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // POST /api/me/contemplation-sessions — manually log a sit that wasn't
 // timed in-app (e.g. you sat away from your phone). Body: how long it was
 // and when it happened. Stored as an ordinary contemplation session so it

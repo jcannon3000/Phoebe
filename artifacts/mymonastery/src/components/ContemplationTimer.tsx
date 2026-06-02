@@ -139,6 +139,42 @@ export function ContemplationTimer({
   type Companion = { userId: number; name: string | null; avatarUrl: string | null };
   const [companions, setCompanions] = useState<Companion[]>([]);
   const [otherCount, setOtherCount] = useState(0);
+  // Live presence — who's sitting RIGHT NOW (refreshed while the sit runs), so
+  // companions appear during the sit and both sitters see each other without
+  // waiting for either session to finish. `liveSeenRef` accumulates everyone
+  // seen during the sit so the closing summary credits them too (fixing the
+  // old asymmetry where the first finisher saw no one).
+  const [liveCompanions, setLiveCompanions] = useState<Companion[]>([]);
+  const liveSeenRef = useRef<Companion[]>([]);
+  const mergeCompanions = (a: Companion[], b: Companion[]): Companion[] => {
+    const seen = new Set(a.map((c) => c.userId));
+    return [...a, ...b.filter((c) => !seen.has(c.userId))].slice(0, 6);
+  };
+  // While the sit is RUNNING: heartbeat presence (~20s) and poll who else is
+  // sitting right now (~15s) so companions show live. Cleared when the sit
+  // ends or the timer unmounts (the server expires a beat after ~60s anyway).
+  useEffect(() => {
+    if (phase !== "running") return;
+    liveSeenRef.current = [];
+    let cancelled = false;
+    const beat = () => { void apiRequest("POST", "/api/me/contemplation-presence").catch(() => { /* offline ok */ }); };
+    const poll = () => {
+      apiRequest<{ companions: Companion[]; otherCount: number }>("GET", "/api/me/contemplation-presence")
+        .then((d) => {
+          if (cancelled) return;
+          const list = d.companions ?? [];
+          setLiveCompanions(list);
+          if (list.length) liveSeenRef.current = mergeCompanions(liveSeenRef.current, list);
+        })
+        .catch(() => { /* offline ok */ });
+    };
+    beat(); poll();
+    const beatId = window.setInterval(beat, 20_000);
+    const pollId = window.setInterval(poll, 15_000);
+    return () => { cancelled = true; window.clearInterval(beatId); window.clearInterval(pollId); setLiveCompanions([]); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
   // Daily contemplation goal (minutes; 0 = off) + today's total seconds incl.
   // this sit — fetched after the sit logs, to show goal progress on the close.
   const [dailyGoalMin, setDailyGoalMin] = useState(0);
@@ -353,10 +389,16 @@ export function ContemplationTimer({
       `/api/me/contemplation-companions?startedAt=${encodeURIComponent(startedAt.toISOString())}&endedAt=${encodeURIComponent(endedAt.toISOString())}`,
     )
       .then((data) => {
-        setCompanions(data.companions ?? []);
+        // Union the finished-overlap result with everyone seen sitting LIVE
+        // during this sit, so the first finisher still sees companions who
+        // haven't recorded their own session yet.
+        setCompanions(mergeCompanions(data.companions ?? [], liveSeenRef.current));
         setOtherCount(data.otherCount ?? 0);
       })
-      .catch(() => { /* non-fatal — summary just shows the existing copy */ });
+      .catch(() => {
+        // Network hiccup — fall back to whoever we saw live during the sit.
+        if (liveSeenRef.current.length) setCompanions(liveSeenRef.current);
+      });
   }
 
   // Entry point from the picker / quick buttons. In audio (FDD) mode
@@ -1010,6 +1052,28 @@ export function ContemplationTimer({
                 >
                   {reachedGoal ? t("contemplation_timer.stay_as_long") : t("contemplation_timer.be_still")}
                 </p>
+              )}
+              {/* Live companions — garden members sitting at the same moment,
+                  refreshed every ~15s. "You're not alone in the silence." */}
+              {liveCompanions.length > 0 && (
+                <div style={{ marginTop: 22, display: "flex", flexDirection: "column", alignItems: "center", gap: 7 }}>
+                  <div className="-space-x-2" style={{ display: "flex", alignItems: "center" }}>
+                    {liveCompanions.slice(0, 5).map((c) => (
+                      c.avatarUrl ? (
+                        <img key={c.userId} src={c.avatarUrl} alt={c.name ?? ""} className="w-7 h-7 rounded-full object-cover" style={{ border: "1.5px solid #0E2016" }} />
+                      ) : (
+                        <div key={c.userId} className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid #0E2016" }}>
+                          {(c.name ?? "?").trim().charAt(0).toUpperCase() || "·"}
+                        </div>
+                      )
+                    ))}
+                  </div>
+                  <p className="text-[12px]" style={{ color: SAGE, fontFamily: "Georgia, serif", fontStyle: "italic", margin: 0 }}>
+                    {liveCompanions.length === 1
+                      ? `${(liveCompanions[0].name ?? "Someone").split(" ")[0]} is praying with you now`
+                      : `${liveCompanions.length} people are praying with you now`}
+                  </p>
+                </div>
               )}
             </>
           )}
