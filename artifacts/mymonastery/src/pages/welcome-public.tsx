@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { isNativeShell } from "@/lib/isNativeShell";
 
 // ── First-open chooser ───────────────────────────────────────────────────────
 //
@@ -29,6 +30,9 @@ const SAGE = "#8FAF96";
 const BRIGHT_SAGE = "#6FAF85";
 const FAINT = "rgba(143,175,150,0.55)";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
+
+// Apple App Store listing (same URL the install prompts use).
+const APP_STORE_URL = "https://apps.apple.com/us/app/phoebe-prayer-together/id6763552921";
 
 // Same 14:00 cutoff the Office / Devotion pickers use elsewhere so a
 // visitor's idea of "morning" matches what the BCP variants resolve to.
@@ -132,6 +136,37 @@ export default function WelcomePublicPage() {
           />
         </div>
 
+        {/* Separated group — about Phoebe + get the app. A hairline divider
+            sets these apart from the three "start praying" cards above. */}
+        <div
+          className="mt-6 pt-6 flex flex-col gap-3"
+          style={{ borderTop: "1px solid rgba(200,212,192,0.12)" }}
+        >
+          {/* Card 4 — learn about Phoebe (the features deck) */}
+          <ChoiceCard
+            href="/learn/features"
+            emoji="✨"
+            title={t("welcome_public.learn_title")}
+            blurb={t("welcome_public.learn_blurb")}
+            delay={0.26}
+            muted
+          />
+
+          {/* Card 5 — download on the App Store. Web only: telling someone
+              already inside the native app to "download the app" makes no
+              sense, mirroring the install-banner gating elsewhere. */}
+          {!isNativeShell() && (
+            <ChoiceCard
+              href={APP_STORE_URL}
+              emoji="📲"
+              title={t("welcome_public.appstore_title")}
+              blurb={t("welcome_public.appstore_blurb")}
+              delay={0.33}
+              muted
+            />
+          )}
+        </div>
+
         <p
           className="text-[12px] text-center mt-8"
           style={{ color: FAINT }}
@@ -170,41 +205,50 @@ function ChoiceCard({
     : muted
       ? "1px solid rgba(200,212,192,0.15)"
       : "1px solid rgba(46,107,64,0.25)";
+  // External links (e.g. the App Store) open in a new tab via a real anchor;
+  // internal routes use wouter's client-side Link.
+  const isExternal = /^https?:\/\//.test(href);
+  const cls = "block rounded-2xl px-5 py-5 transition-opacity hover:opacity-95 active:scale-[0.99]";
+  const inner = (
+    <div className="flex items-start gap-3">
+      <span className="text-[28px] flex-shrink-0 leading-none mt-0.5" aria-hidden="true">
+        {emoji}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p
+          className="text-[16px] font-semibold leading-snug mb-1"
+          style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK }}
+        >
+          {title}
+        </p>
+        <p className="text-[13px] leading-snug" style={{ color: SAGE }}>
+          {blurb}
+        </p>
+      </div>
+      <span
+        className="text-lg flex-shrink-0"
+        style={{ color: primary ? BRIGHT_SAGE : FAINT }}
+        aria-hidden="true"
+      >
+        →
+      </span>
+    </div>
+  );
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay }}
     >
-      <Link
-        href={href}
-        className="block rounded-2xl px-5 py-5 transition-opacity hover:opacity-95 active:scale-[0.99]"
-        style={{ background: bg, border }}
-      >
-        <div className="flex items-start gap-3">
-          <span className="text-[28px] flex-shrink-0 leading-none mt-0.5" aria-hidden="true">
-            {emoji}
-          </span>
-          <div className="min-w-0 flex-1">
-            <p
-              className="text-[16px] font-semibold leading-snug mb-1"
-              style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK }}
-            >
-              {title}
-            </p>
-            <p className="text-[13px] leading-snug" style={{ color: SAGE }}>
-              {blurb}
-            </p>
-          </div>
-          <span
-            className="text-lg flex-shrink-0"
-            style={{ color: primary ? BRIGHT_SAGE : FAINT }}
-            aria-hidden="true"
-          >
-            →
-          </span>
-        </div>
-      </Link>
+      {isExternal ? (
+        <a href={href} target="_blank" rel="noopener noreferrer" className={cls} style={{ background: bg, border }}>
+          {inner}
+        </a>
+      ) : (
+        <Link href={href} className={cls} style={{ background: bg, border }}>
+          {inner}
+        </Link>
+      )}
     </motion.div>
   );
 }
