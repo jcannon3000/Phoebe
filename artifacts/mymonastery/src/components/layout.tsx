@@ -482,9 +482,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               {rawIsBeta && (
                 <MenuRow emoji="🎬" label={t("menu.videos", { defaultValue: "Videos" })} onClick={() => navigate("/videos")} />
               )}
-              {rawIsBeta && (
-                <MenuRow emoji="🌱" label={t("menu.wol_journey", { defaultValue: "Way of Love" })} sub={t("menu.wol_journey_sub", { defaultValue: "8-week devotional journey" })} onClick={() => navigate("/way-of-love")} />
-              )}
               <MenuRow emoji="📚" label={t("menu.resources", { defaultValue: "Resources" })} onClick={() => goCategory("/menu/resources")} />
               {showLetters && (
                 <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
