@@ -110,33 +110,6 @@ const ACTIONS: Record<SectionKey, ActionDef[]> = {
   ],
 };
 
-// Traveling the Way of Love (The Episcopal Church, Season One) — embedded inline
-// from Wistia (channel wkxcjht52w). The episodes are documentary visits to
-// ministries, not per-practice explainers, so each is paired to the practice it
-// best embodies. Most pages carry one video; Learn & Pray carries two — since it
-// combines two practices, it gets a Learn video (Presiding Bishop Curry's
-// teaching) AND a Pray video (Pop Up Prayer):
-//   • Learn & Pray → Curry (Learn) + Pray: Pop Up Prayer (Pray)
-//   • St. Lydia's dinner church → Worship (gathering at the table)
-//   • Thistle Farms → Bless (radical love + service to survivors)
-//   • Bishop Walker School → Go (crossing boundaries to serve)
-//   • Honoré Farm & Mill → Rest (land sabbath + restoration)
-//   • Turn → no episode (the series trailer that used to sit here was removed)
-type PracticeVideo = { id: string; title: string; label?: string };
-const SECTION_VIDEO: Record<SectionKey, PracticeVideo[]> = {
-  turn: [],
-  learn_pray: [
-    { id: "u04ilt0dvb", title: "Presiding Bishop Michael Curry", label: "Learn" },
-    { id: "q4zzab2h1y", title: "Pray: Pop Up Prayer", label: "Pray" },
-  ],
-  learn: [{ id: "u04ilt0dvb", title: "Presiding Bishop Michael Curry" }],
-  pray: [{ id: "q4zzab2h1y", title: "Pray: Pop Up Prayer" }],
-  worship: [{ id: "pisvfusoig", title: "St. Lydia's, Brooklyn" }],
-  bless: [{ id: "2ckcg82pkz", title: "Thistle Farms, Nashville" }],
-  go: [{ id: "b1l0elf3jd", title: "Bishop Walker School" }],
-  rest: [], // no Watch video — the "To Rest" audio + sabbath carve-out carry the page
-};
-
 // Bishop Mariann Budde — "The Way of Love: A Rule of Life" (Diocese of
 // Washington; the experiencing-jesus show). One episode per practice; tapping
 // plays it in the persistent mini-player without leaving the page. Audio URLs
@@ -339,7 +312,6 @@ export default function HomeBetaSectionPage() {
   const lines = commitmentLines(def, wolQ.data?.selections ?? {});
   const shows = matsQ.data?.shows ?? [];
   const actions = ACTIONS[def.key] ?? [];
-  const sectionVideos = SECTION_VIDEO[def.key] ?? [];
   const sectionEpisodes = SECTION_PODCAST[def.key] ?? [];
   // Turn intentionally has no actions and no live preview, so its "Practices"
   // section would be an empty header — hide it there.
@@ -405,39 +377,6 @@ export default function HomeBetaSectionPage() {
           {t(`home_beta.section.${def.key}`, { defaultValue: def.title })}
         </h1>
         <p style={{ color: SAGE, fontSize: 14.5, fontFamily: FONT, lineHeight: 1.5, margin: 0 }}>{def.definition}</p>
-
-        {/* Watch — the practice's video(s) from "Traveling the Way of Love",
-            embedded inline from Wistia. Learn & Pray carries two (Learn + Pray). */}
-        {sectionVideos.length > 0 && (
-          <div style={{ marginTop: 20 }}>
-            <p style={{ ...eyebrow, margin: "0 0 8px" }}>
-              {t("home_beta.watch", { defaultValue: "Watch" })}
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {sectionVideos.map((v) => (
-                <div key={v.id}>
-                  {v.label && (
-                    <p style={{ color: SAGE, fontSize: 12.5, fontWeight: 600, fontFamily: FONT, margin: "0 0 6px" }}>
-                      {v.label}
-                    </p>
-                  )}
-                  <div style={{ position: "relative", width: "100%", paddingTop: "56.25%", borderRadius: 14, overflow: "hidden", border: `1px solid ${CARD_B}`, background: "#000" }}>
-                    <iframe
-                      src={`https://fast.wistia.net/embed/iframe/${v.id}?seo=false&videoFoam=true`}
-                      title={v.title}
-                      allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                      allowFullScreen
-                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none" }}
-                    />
-                  </div>
-                  <p style={{ color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "8px 0 0" }}>
-                    {t("home_beta.watch_caption", { defaultValue: "Traveling the Way of Love" })} · {v.title}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Listen — Bishop Mariann Budde's Way of Love episode for this
             practice. Plays in the persistent mini-player so the page stays put. */}

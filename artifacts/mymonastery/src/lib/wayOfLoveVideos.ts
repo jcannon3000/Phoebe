@@ -2,11 +2,10 @@
  * "Traveling the Way of Love" (The Episcopal Church, Season One) — the video
  * library the /videos page lists. The episodes are documentary visits to
  * ministries, each paired to the Way of Love practice it best embodies. Kept
- * as a flat, ordered list so the page renders straight from it.
- *
- * NOTE: the per-practice detail screen (home-beta-section.tsx) keeps its own
- * section→videos map for the inline "Watch" embed; if you add an episode,
- * update both. (They share the same Wistia channel, wkxcjht52w.)
+ * as a flat, ordered list so the page renders straight from it. The series
+ * lives only on the /videos page now — the inline per-practice "Watch" embed
+ * that used to mirror this list on the home-beta practice slides was removed.
+ * (All episodes share the same Wistia channel, wkxcjht52w.)
  */
 import type { SectionKey } from "@/pages/home-beta";
 
