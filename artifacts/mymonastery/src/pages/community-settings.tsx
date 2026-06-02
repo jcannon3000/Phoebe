@@ -21,6 +21,11 @@ type Group = {
   isPrayerCircle?: boolean;
   intention?: string | null;
   circleDescription?: string | null;
+  // ── Contemplation community (beta) — admins can flip a community into a
+  // contemplation template (shared minute goal + CAC feed) or back. focus
+  // is null on standard communities, "contemplation" on the template.
+  focus?: string | null;
+  contemplationGoalMinutes?: number | null;
 };
 
 type Intention = {
@@ -58,6 +63,10 @@ export default function CommunitySettingsPage() {
   const [calendarUrl, setCalendarUrl] = useState("");
   // ── Prayer Circle (beta) admin controls ─────────────────────────────
   const [isPrayerCircle, setIsPrayerCircle] = useState(false);
+  // ── Contemplation community (beta) admin controls ────────────────────
+  const [isContemplation, setIsContemplation] = useState(false);
+  const [contemplationGoalMinutes, setContemplationGoalMinutes] = useState(20);
+  const GOAL_PRESETS = [10, 15, 20, 30];
   const [saved, setSaved] = useState(false);
 
   // Add-intention dialog state. Shape mirrors the intercession flow —
@@ -123,6 +132,8 @@ export default function CommunitySettingsPage() {
       setEmoji(group.emoji ?? "🏘️");
       setCalendarUrl(group.calendarUrl ?? "");
       setIsPrayerCircle(!!group.isPrayerCircle);
+      setIsContemplation(group.focus === "contemplation");
+      if (group.contemplationGoalMinutes) setContemplationGoalMinutes(group.contemplationGoalMinutes);
     }
   }, [group]);
 
@@ -138,6 +149,11 @@ export default function CommunitySettingsPage() {
       // only when transitioning to a circle with no active intentions yet —
       // our normal save skips the `intention` field entirely so we don't
       // create duplicates on every settings save.
+      // Contemplation template: send "contemplation" to enable, null to
+      // revert. The server pins the CAC reflection source on enable and
+      // clears the goal on disable.
+      focus: isContemplation ? "contemplation" : null,
+      contemplationGoalMinutes: isContemplation ? contemplationGoalMinutes : null,
     }),
     onSuccess: () => {
       setSaved(true);
@@ -412,7 +428,10 @@ export default function CommunitySettingsPage() {
             <input
               type="checkbox"
               checked={isPrayerCircle}
-              onChange={e => setIsPrayerCircle(e.target.checked)}
+              onChange={e => {
+                setIsPrayerCircle(e.target.checked);
+                if (e.target.checked) setIsContemplation(false);
+              }}
               className="mt-1 w-4 h-4 flex-shrink-0 rounded"
               style={{ accentColor: "#2D5E3F" }}
             />
@@ -517,6 +536,67 @@ export default function CommunitySettingsPage() {
             </p>
           </>
         )}
+
+        {/* ── Contemplation community (beta) ─────────────────────────────────
+            A template that swaps the daily offices for a shared contemplation
+            goal + the CAC meditation the community reflects on together.
+            Enabling it pins the CAC reflection source server-side; disabling
+            reverts to a standard community and clears the goal. Mutually
+            exclusive with prayer circle in the UI. */}
+        <div
+          className="rounded-xl px-4 py-3.5 mb-4"
+          style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+        >
+          <label className="flex items-start gap-3 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={isContemplation}
+              onChange={e => {
+                setIsContemplation(e.target.checked);
+                if (e.target.checked) setIsPrayerCircle(false);
+              }}
+              className="mt-1 w-4 h-4 flex-shrink-0 rounded"
+              style={{ accentColor: "#2D5E3F" }}
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
+                Contemplation community
+              </p>
+              <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
+                Members hold a shared daily contemplation goal and gather around the day's Center for Action and Contemplation meditation to reflect together — in place of the daily offices.
+              </p>
+            </div>
+          </label>
+
+          {isContemplation && (
+            <div className="mt-3.5 pl-7">
+              <label className="text-[11px] font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(143,175,150,0.6)" }}>
+                Shared daily goal
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {GOAL_PRESETS.map(min => (
+                  <button
+                    key={min}
+                    type="button"
+                    onClick={() => setContemplationGoalMinutes(min)}
+                    className="px-3.5 py-1.5 rounded-full text-sm transition-all"
+                    style={{
+                      background: contemplationGoalMinutes === min ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                      border: `1px solid ${contemplationGoalMinutes === min ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.15)"}`,
+                      color: contemplationGoalMinutes === min ? "#F0EDE6" : "#8FAF96",
+                      fontFamily: FONT,
+                    }}
+                  >
+                    {min} min
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] italic mt-2.5" style={{ color: "rgba(143,175,150,0.65)" }}>
+                Contemplation communities are a beta feature. We are learning what makes them flourish — we would love your feedback.
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* ── Add intention dialog ─────────────────────────────────────────
             Intercession-shaped: title (the prayer itself) plus an optional

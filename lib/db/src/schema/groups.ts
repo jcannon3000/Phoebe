@@ -56,6 +56,17 @@ export const groupsTable = pgTable("groups", {
   // the bell scanner to dedup — without it a Sun 18:00–23:00 window
   // would re-push every 15-minute tick.
   sundayReflectionNotifiedAt: timestamp("sunday_reflection_notified_at", { withTimezone: true }),
+  // ── Contemplation community (beta) ────────────────────────────────────
+  // A community template that prioritizes shared silent contemplation over
+  // the daily offices. When focus = "contemplation" the detail Home swaps
+  // the service/office cards for a shared daily contemplation goal + the CAC
+  // daily meditation the community reflects on together (group_reflections
+  // pinned to "cac" at create). Null = a standard, office-shaped community.
+  focus: text("focus"), // null | "contemplation"
+  // The shared daily contemplation target (minutes) every member holds; the
+  // community Home shows collective progress toward it. Null unless
+  // focus = "contemplation".
+  contemplationGoalMinutes: integer("contemplation_goal_minutes"),
 });
 
 // ── Group join requests ────────────────────────────────────────────────────

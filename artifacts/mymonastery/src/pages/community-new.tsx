@@ -22,6 +22,14 @@ export default function CommunityNewPage() {
   const [isPrayerCircle, setIsPrayerCircle] = useState(false);
   const [intention, setIntention] = useState("");
   const [circleDescription, setCircleDescription] = useState("");
+  // ── Contemplation community (beta) — a template that replaces the daily
+  // offices with a shared contemplation goal (everyone sits N minutes) and
+  // a CAC-pinned reflection feed the community discusses together. Mutually
+  // exclusive with the prayer-circle template in the UI: turning one on
+  // turns the other off.
+  const [isContemplation, setIsContemplation] = useState(false);
+  const [contemplationGoalMinutes, setContemplationGoalMinutes] = useState(20);
+  const GOAL_PRESETS = [10, 15, 20, 30];
 
   const EMOJI_OPTIONS = ["🏘️","⛪","✝️","🕊️","🙏🏽","🌿","🌱","🕯️","📖","🫂","💒","🌾","🔔","🫙","🌻","🍃","🏔️","🌊","☀️","🌙"];
   // Localized example intentions for the prayer-circle composer.
@@ -49,6 +57,8 @@ export default function CommunityNewPage() {
       isPrayerCircle,
       intention: isPrayerCircle ? intention.trim() : undefined,
       circleDescription: isPrayerCircle && circleDescription.trim() ? circleDescription.trim() : undefined,
+      focus: isContemplation ? "contemplation" : undefined,
+      contemplationGoalMinutes: isContemplation ? contemplationGoalMinutes : undefined,
     }),
     onSuccess: (data: any) => {
       setLocation(`/communities/${data.group.slug}`);
@@ -148,7 +158,10 @@ export default function CommunityNewPage() {
               <input
                 type="checkbox"
                 checked={isPrayerCircle}
-                onChange={e => setIsPrayerCircle(e.target.checked)}
+                onChange={e => {
+                  setIsPrayerCircle(e.target.checked);
+                  if (e.target.checked) setIsContemplation(false);
+                }}
                 className="mt-1 w-4 h-4 flex-shrink-0 rounded"
                 style={{ accentColor: "#2D5E3F" }}
               />
@@ -161,6 +174,62 @@ export default function CommunityNewPage() {
                 </p>
               </div>
             </label>
+          </div>
+
+          {/* ── Contemplation community toggle (beta) ─────────────────────── */}
+          <div
+            className="rounded-xl px-4 py-3.5"
+            style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+          >
+            <label className="flex items-start gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isContemplation}
+                onChange={e => {
+                  setIsContemplation(e.target.checked);
+                  if (e.target.checked) setIsPrayerCircle(false);
+                }}
+                className="mt-1 w-4 h-4 flex-shrink-0 rounded"
+                style={{ accentColor: "#2D5E3F" }}
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
+                  {t("community_new.contemplation_toggle")}
+                </p>
+                <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
+                  {t("community_new.contemplation_blurb")}
+                </p>
+              </div>
+            </label>
+
+            {isContemplation && (
+              <div className="mt-3.5 pl-7">
+                <label className="text-xs font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(200,212,192,0.5)" }}>
+                  {t("community_new.contemplation_goal_label")}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {GOAL_PRESETS.map(min => (
+                    <button
+                      key={min}
+                      type="button"
+                      onClick={() => setContemplationGoalMinutes(min)}
+                      className="px-3.5 py-1.5 rounded-full text-sm transition-all"
+                      style={{
+                        background: contemplationGoalMinutes === min ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                        border: `1px solid ${contemplationGoalMinutes === min ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.15)"}`,
+                        color: contemplationGoalMinutes === min ? "#F0EDE6" : "#8FAF96",
+                        fontFamily: "'Space Grotesk', sans-serif",
+                      }}
+                    >
+                      {t("community_new.contemplation_goal_minutes", { min })}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] italic mt-2.5" style={{ color: "rgba(143,175,150,0.65)" }}>
+                  {t("community_new.contemplation_beta_note")}
+                </p>
+              </div>
+            )}
           </div>
 
           {isPrayerCircle && (
@@ -234,7 +303,11 @@ export default function CommunityNewPage() {
           >
             {createMutation.isPending
               ? t("community_new.creating")
-              : isPrayerCircle ? t("community_new.create_circle_button") : t("community_new.create_community_button")}
+              : isPrayerCircle
+                ? t("community_new.create_circle_button")
+                : isContemplation
+                  ? t("community_new.create_contemplation_button")
+                  : t("community_new.create_community_button")}
           </button>
 
           {createMutation.isError && (

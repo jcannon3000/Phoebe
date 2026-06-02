@@ -4,6 +4,7 @@ import {
   db,
   groupsTable,
   groupMembersTable,
+  groupReflectionSourcesTable,
   groupAnnouncementsTable,
   groupAdminNotificationsAckTable,
   groupServiceSchedulesTable,
@@ -398,6 +399,10 @@ router.post("/groups", perUserRateLimit("groups_create", {
       isPrayerCircle: z.boolean().optional(),
       intention: z.string().max(500).optional(),
       circleDescription: z.string().max(2000).optional(),
+      // Contemplation community template (mutually exclusive with circle in
+      // the UI). When set, the Home swaps to a shared contemplation goal + CAC.
+      focus: z.enum(["contemplation"]).optional(),
+      contemplationGoalMinutes: z.number().int().min(1).max(180).optional(),
     }).refine(
       (d) => !d.isPrayerCircle || (d.intention && d.intention.trim().length > 0),
       { message: "Prayer circles require an intention", path: ["intention"] },
@@ -408,6 +413,7 @@ router.post("/groups", perUserRateLimit("groups_create", {
     const slug = await uniqueSlug(parsed.data.name);
 
     const isCircle = parsed.data.isPrayerCircle === true;
+    const isContemplation = parsed.data.focus === "contemplation";
 
     // Atomic create: group row, admin member, and (for circles) the
     // initial intention all commit together. Without the transaction,
@@ -429,6 +435,8 @@ router.post("/groups", perUserRateLimit("groups_create", {
         isPrayerCircle: isCircle,
         intention: isCircle ? (parsed.data.intention?.trim() ?? null) : null,
         circleDescription: isCircle ? (parsed.data.circleDescription?.trim() || null) : null,
+        focus: isContemplation ? "contemplation" : null,
+        contemplationGoalMinutes: isContemplation ? (parsed.data.contemplationGoalMinutes ?? 20) : null,
         createdByUserId: user.id,
       }).returning();
 
@@ -455,6 +463,16 @@ router.post("/groups", perUserRateLimit("groups_create", {
           description: parsed.data.circleDescription?.trim() || null,
           createdByUserId: user.id,
           sortOrder: 0,
+        });
+      }
+
+      // Contemplation communities pin their daily reflection feed to CAC, so
+      // the discussion lands on the day's meditation from the very first day.
+      if (isContemplation) {
+        await tx.insert(groupReflectionSourcesTable).values({
+          groupId: insertedGroup.id,
+          source: "cac",
+          setByUserId: user.id,
         });
       }
 
@@ -1229,6 +1247,9 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
     isPrayerCircle: z.boolean().optional(),
     intention: z.string().max(500).optional().or(z.literal("")),
     circleDescription: z.string().max(2000).optional().or(z.literal("")),
+    // Contemplation template: null clears it back to a standard community.
+    focus: z.enum(["contemplation"]).nullable().optional(),
+    contemplationGoalMinutes: z.number().int().min(1).max(180).nullable().optional(),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
@@ -1280,8 +1301,48 @@ router.patch("/groups/:slug", async (req, res): Promise<void> => {
     updates.circleDescription = null;
   }
 
+  // Contemplation template toggle. focus = "contemplation" turns the
+  // community into a shared-contemplation template (CAC feed + shared
+  // minute goal) and guarantees a goal default; focus = null reverts to a
+  // standard, office-shaped community and clears the goal.
+  if (parsed.data.focus !== undefined) {
+    updates.focus = parsed.data.focus;
+    if (parsed.data.focus === "contemplation") {
+      updates.contemplationGoalMinutes =
+        parsed.data.contemplationGoalMinutes
+        ?? result.group.contemplationGoalMinutes
+        ?? 20;
+    } else {
+      updates.contemplationGoalMinutes = null;
+    }
+  } else if (parsed.data.contemplationGoalMinutes !== undefined) {
+    // Goal-only edit (focus unchanged).
+    updates.contemplationGoalMinutes = parsed.data.contemplationGoalMinutes;
+  }
+
   if (Object.keys(updates).length > 0) {
     await db.update(groupsTable).set(updates).where(eq(groupsTable.id, result.group.id));
+  }
+
+  // Enabling the contemplation template pins the community's shared
+  // reflection feed to the CAC daily meditation when one isn't set yet —
+  // mirrors what the create flow does so the home tab has a source to render.
+  if (parsed.data.focus === "contemplation") {
+    try {
+      const existingSource = await db.select({ id: groupReflectionSourcesTable.id })
+        .from(groupReflectionSourcesTable)
+        .where(eq(groupReflectionSourcesTable.groupId, result.group.id))
+        .limit(1);
+      if (existingSource.length === 0) {
+        await db.insert(groupReflectionSourcesTable).values({
+          groupId: result.group.id,
+          source: "cac",
+          setByUserId: user.id,
+        });
+      }
+    } catch (err) {
+      console.error("PATCH contemplation CAC source seed error:", err);
+    }
   }
 
   // If this PATCH turns the circle on (or was already on) and an `intention`

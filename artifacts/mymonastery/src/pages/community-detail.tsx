@@ -31,6 +31,12 @@ type Group = {
   isPrayerCircle?: boolean;
   intention?: string | null;
   circleDescription?: string | null;
+  // ── Contemplation community (beta) ──────────────────────────────────────
+  // When `focus === "contemplation"` the Home tab swaps the office/practice
+  // feed for a shared contemplation goal + the CAC meditation the community
+  // reflects on together. Null on standard, office-shaped communities.
+  focus?: string | null;
+  contemplationGoalMinutes?: number | null;
 };
 // Shape of an entry in GET /api/groups/:slug/focus. `subject` is populated
 // when focusType === "person"; the other types carry their subject in
@@ -556,6 +562,105 @@ function ReflectionEntryCard({ slug }: { slug: string }) {
           </div>
           <span className="text-sm shrink-0" style={{ color: "#8FAF96" }}>→</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Contemplation-community Home (beta). For communities created with
+// focus = "contemplation" this replaces the office/practice feed: a
+// shared daily contemplation goal the whole community holds together,
+// a CTA into the timer, and the CAC meditation they reflect on as a
+// group (reusing the shared ReflectionEntryCard). Self-contained so the
+// 3k-line page body doesn't grow another inline branch.
+function ContemplationCommunityHome({ slug, group }: { slug: string; group: Group }) {
+  const [, setLocation] = useLocation();
+  const goalMinutes = group.contemplationGoalMinutes ?? 20;
+
+  const { data } = useQuery<{
+    goalMinutes: number;
+    totalSeconds: number;
+    memberCount: number;
+    metCount: number;
+    mySeconds: number;
+  }>({
+    queryKey: ["/api/groups", slug, "contemplation-today"],
+    queryFn: () => {
+      const since = new Date(); since.setHours(0, 0, 0, 0);
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+      return apiRequest(
+        "GET",
+        `/api/groups/${slug}/contemplation-today?todaySince=${encodeURIComponent(since.toISOString())}&tz=${encodeURIComponent(tz)}`,
+      );
+    },
+  });
+
+  const effGoalMin = data?.goalMinutes ?? goalMinutes;
+  const goalSeconds = effGoalMin * 60;
+  const mySeconds = data?.mySeconds ?? 0;
+  const myPct = goalSeconds > 0 ? Math.min(100, Math.round((mySeconds / goalSeconds) * 100)) : 0;
+  const myMin = Math.floor(mySeconds / 60);
+  const iMet = mySeconds >= goalSeconds && mySeconds > 0;
+  const totalMin = Math.floor((data?.totalSeconds ?? 0) / 60);
+  const metCount = data?.metCount ?? 0;
+  const memberCount = data?.memberCount ?? 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Shared daily goal — everyone holds the same target; the page
+          shows the viewer's own progress and the community's collective
+          minutes toward it. */}
+      <div
+        className="rounded-2xl p-5"
+        style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}
+      >
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "rgba(143,175,150,0.6)" }}>
+          Today's contemplation
+          <span
+            className="ml-2 inline-flex items-center px-1.5 py-0 rounded-full text-[8px]"
+            style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", letterSpacing: "0.1em" }}
+          >
+            BETA
+          </span>
+        </p>
+        <p className="text-2xl font-bold mt-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+          {iMet ? `You sat your ${effGoalMin} min 🕯️` : `Sit ${effGoalMin} minutes together`}
+        </p>
+        <p className="text-[13px] mt-1" style={{ color: "#8FAF96" }}>
+          {iMet
+            ? "You've met today's shared goal. Rest in it."
+            : myMin > 0
+              ? `You've sat ${myMin} of ${effGoalMin} min today.`
+              : "A few minutes of shared silence. Everyone holds the same goal."}
+        </p>
+
+        <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ background: "rgba(46,107,64,0.18)" }}>
+          <div className="h-full rounded-full transition-all" style={{ width: `${myPct}%`, background: "#5C8A5F" }} />
+        </div>
+
+        <p className="text-[12px] mt-2.5" style={{ color: "rgba(143,175,150,0.85)" }}>
+          {memberCount > 0
+            ? `Together: ${totalMin} min today · ${metCount} of ${memberCount} sat their ${effGoalMin}`
+            : `Together: ${totalMin} min today`}
+        </p>
+
+        <button
+          onClick={() => setLocation("/contemplation")}
+          className="w-full mt-4 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
+          style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          {iMet ? "Sit again →" : "Sit in contemplation →"}
+        </button>
+      </div>
+
+      {/* The day's CAC meditation the community reflects on together. The
+          shared ReflectionEntryCard already links into the full
+          /communities/:slug/reflection discussion thread. */}
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
+          Reflect together
+        </p>
+        <ReflectionEntryCard slug={slug} />
       </div>
     </div>
   );
@@ -2070,6 +2175,12 @@ export default function CommunityDetailPage() {
              to an intercession silently failed to show up on that
              community's home tab. */}
         {activeTab === "home" && (() => {
+          // Contemplation communities render a dedicated Home: a shared
+          // contemplation goal + the CAC meditation the community reflects
+          // on together — not the office/practice feed below.
+          if (group.focus === "contemplation") {
+            return <ContemplationCommunityHome slug={slug} group={group} />;
+          }
           const communityMoments = (momentsData?.moments ?? []).filter(
             (m) => m.group?.slug === slug
               || (m.additionalGroups ?? []).some(g => g.slug === slug),

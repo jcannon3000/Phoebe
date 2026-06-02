@@ -1,5 +1,5 @@
 import { Router, type IRouter, type RequestHandler } from "express";
-import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import { eq, and, desc, inArray, gte, sql } from "drizzle-orm";
 import {
   db,
   groupsTable,
@@ -7,6 +7,7 @@ import {
   groupReflectionSourcesTable,
   groupReflectionsTable,
   groupReflectionCommentsTable,
+  prayerSessionsTable,
   usersTable,
   betaUsersTable,
 } from "@workspace/db";
@@ -169,6 +170,73 @@ router.put("/groups/:slug/reflection-source", requireBeta, async (req, res): Pro
     })
     .returning();
   res.json({ source: row.source, setByUserId: row.setByUserId, updatedAt: row.updatedAt });
+});
+
+// ── GET /api/groups/:slug/contemplation-today ────────────────────────────
+// Shared-goal progress for a contemplation community. Aggregates every
+// joined member's contemplation minutes for the caller's local "today"
+// (passed as ?todaySince=ISO; falls back to UTC midnight — same convention
+// as /api/me/contemplation-stats) so the home tab can render the
+// community's collective progress toward today's shared goal:
+//   • totalSeconds — everyone's contemplation seconds today, summed
+//   • metCount / memberCount — how many joined members hit the goal
+//   • mySeconds — the caller's own seconds, for the "you've sat N of M" CTA
+// Any joined member may read.
+router.get("/groups/:slug/contemplation-today", requireBeta, async (req, res): Promise<void> => {
+  const user = getUser(req)!;
+  const result = await requireMember(String(req.params.slug ?? ""), user.id);
+  if (!result) { res.status(403).json({ error: "Not a member of this community" }); return; }
+
+  const todaySinceParam = typeof req.query.todaySince === "string" ? new Date(req.query.todaySince) : null;
+  const todaySince = todaySinceParam && !Number.isNaN(todaySinceParam.getTime())
+    ? todaySinceParam
+    : new Date(new Date().setUTCHours(0, 0, 0, 0));
+
+  const goalMinutes = result.group.contemplationGoalMinutes ?? 20;
+  const goalSeconds = goalMinutes * 60;
+
+  // Joined members (userId non-null + joinedAt set). Email-only invites
+  // with no linked account can't contemplate, so they don't count toward
+  // the denominator.
+  const members = await db.select({ userId: groupMembersTable.userId })
+    .from(groupMembersTable)
+    .where(and(
+      eq(groupMembersTable.groupId, result.group.id),
+      sql`${groupMembersTable.userId} IS NOT NULL`,
+      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+    ));
+  const memberIds = members.map(m => m.userId).filter((id): id is number => id != null);
+  const memberCount = memberIds.length;
+
+  if (memberCount === 0) {
+    res.json({ goalMinutes, totalSeconds: 0, memberCount: 0, metCount: 0, mySeconds: 0 });
+    return;
+  }
+
+  // Per-member contemplation seconds today in one grouped query — avoids
+  // an N+1 across the membership list.
+  const perMember = await db.select({
+    userId: prayerSessionsTable.userId,
+    seconds: sql<number>`COALESCE(SUM(${prayerSessionsTable.durationSeconds}), 0)::int`,
+  })
+    .from(prayerSessionsTable)
+    .where(and(
+      inArray(prayerSessionsTable.userId, memberIds),
+      eq(prayerSessionsTable.surface, "contemplation"),
+      gte(prayerSessionsTable.endedAt, todaySince),
+    ))
+    .groupBy(prayerSessionsTable.userId);
+
+  let totalSeconds = 0;
+  let metCount = 0;
+  let mySeconds = 0;
+  for (const row of perMember) {
+    totalSeconds += row.seconds;
+    if (row.seconds >= goalSeconds) metCount += 1;
+    if (row.userId === user.id) mySeconds = row.seconds;
+  }
+
+  res.json({ goalMinutes, totalSeconds, memberCount, metCount, mySeconds });
 });
 
 // ── GET /api/groups/:slug/reflections ────────────────────────────────────
