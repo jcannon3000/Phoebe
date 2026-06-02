@@ -2450,6 +2450,33 @@ export async function migrate() {
     // Opt-in (default OFF) to attach a coarse location when you tap Amen.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS share_pray_location BOOLEAN NOT NULL DEFAULT false`);
 
+    // ── CAC daily reflection: read presence + shared journal ────────────────
+    // cac_reads: one row per (user, local day) recording that they opened the
+    // CAC Daily Reflection — powers the "who in my community read today" faces.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS cac_reads (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        ymd TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS cac_reads_user_day ON cac_reads (user_id, ymd)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS cac_reads_ymd ON cac_reads (ymd)`);
+    // cac_reflections: a gratitude-style journal on the reflection — private
+    // by default, optionally shared to the viewer's community wall.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS cac_reflections (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        text TEXT NOT NULL,
+        shared BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS cac_reflections_user ON cac_reflections (user_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS cac_reflections_shared_created ON cac_reflections (shared, created_at)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

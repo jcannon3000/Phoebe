@@ -18,9 +18,17 @@
 // link that opens the index is still useful; a 500 just looks broken.
 
 import { Router, type IRouter, type Request, type Response } from "express";
+import { pool } from "@workspace/db";
 import { logger } from "../lib/logger";
+import { getGardenUserIds } from "../lib/garden";
 
 const router: IRouter = Router();
+
+function getUser(req: Request): { id: number } | null {
+  return (req as unknown as { user?: { id: number } }).user ?? null;
+}
+function wordCount(s: string): number { return s.trim().split(/\s+/).filter(Boolean).length; }
+const CAC_WORD_MAX = 250;
 
 const FEED_URL = "https://cac.org/category/daily-meditations/feed/";
 const FALLBACK_URL = "https://cac.org/daily-meditations/";
@@ -156,6 +164,154 @@ router.get("/cac/today-meta", async (_req: Request, res: Response): Promise<void
   const { url, title } = await resolveToday();
   res.setHeader("Cache-Control", "public, max-age=300");
   res.json({ title, url });
+});
+
+// ── CAC read presence + community journal ──────────────────────────────────
+// Everything below requires auth (the public /cac/today redirect above does
+// not). These power the in-app reflection page the reader lands on when they
+// come back: who in their community read today, and a gratitude-style journal.
+
+// POST /api/cac/read { ymd } — record that the caller opened today's
+// reflection (idempotent per local day). ymd is the caller's local date.
+router.post("/cac/read", async (req: Request, res: Response): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const ymd = String((req.body as { ymd?: unknown })?.ymd ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) { res.status(400).json({ error: "Bad ymd" }); return; }
+  try {
+    await pool.query(
+      `INSERT INTO cac_reads (user_id, ymd) VALUES ($1, $2)
+       ON CONFLICT (user_id, ymd) DO NOTHING`,
+      [user.id, ymd],
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err }, "POST /cac/read failed");
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// GET /api/cac/readers?ymd= — people in my community (garden + me) who read
+// the reflection on that local day. Returns a count + faces, newest first.
+router.get("/cac/readers", async (req: Request, res: Response): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const ymd = String((req.query as { ymd?: unknown }).ymd ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) { res.status(400).json({ error: "Bad ymd" }); return; }
+  try {
+    const garden = await getGardenUserIds(user.id);
+    const ids = Array.from(new Set([user.id, ...garden]));
+    const result = await pool.query(
+      `SELECT u.id, u.name, u.email, u.avatar_url
+       FROM cac_reads cr JOIN users u ON u.id = cr.user_id
+       WHERE cr.ymd = $1 AND cr.user_id = ANY($2::int[])
+       ORDER BY cr.created_at DESC`,
+      [ymd, ids],
+    );
+    const readers = result.rows.map((r: { id: number; name: string | null; email: string | null; avatar_url: string | null }) => ({
+      id: r.id,
+      name: r.name || r.email?.split("@")[0] || "Someone",
+      avatarUrl: r.avatar_url || null,
+      isYou: r.id === user.id,
+    }));
+    res.json({ count: readers.length, readers });
+  } catch (err) {
+    logger.error({ err }, "GET /cac/readers failed");
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// POST /api/cac/reflections { text, shared } — write a journal entry (private
+// by default; shared posts it to the community wall). Mirrors gratitude.
+router.post("/cac/reflections", async (req: Request, res: Response): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const { text, shared } = req.body as { text?: unknown; shared?: unknown };
+  if (!text || typeof text !== "string" || text.trim().length === 0) {
+    res.status(400).json({ error: "Text is required" }); return;
+  }
+  const trimmed = text.trim();
+  if (wordCount(trimmed) > CAC_WORD_MAX) { res.status(400).json({ error: `Maximum ${CAC_WORD_MAX} words` }); return; }
+  try {
+    const result = await pool.query(
+      `INSERT INTO cac_reflections (user_id, text, shared) VALUES ($1, $2, $3)
+       RETURNING id, created_at, shared`,
+      [user.id, trimmed, shared === true],
+    );
+    res.json({ id: result.rows[0].id, createdAt: result.rows[0].created_at, shared: result.rows[0].shared });
+  } catch (err) {
+    logger.error({ err }, "POST /cac/reflections failed");
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// POST /api/cac/reflections/:id/share { shared } — share/unshare your entry.
+router.post("/cac/reflections/:id/share", async (req: Request, res: Response): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const id = parseInt(String(req.params.id), 10);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "Bad id" }); return; }
+  const shared = (req.body as { shared?: unknown })?.shared === true;
+  try {
+    const result = await pool.query(
+      `UPDATE cac_reflections SET shared = $1 WHERE id = $2 AND user_id = $3 RETURNING id, shared`,
+      [shared, id, user.id],
+    );
+    if (result.rows.length === 0) { res.status(404).json({ error: "Not found" }); return; }
+    res.json({ id: result.rows[0].id, shared: result.rows[0].shared });
+  } catch (err) {
+    logger.error({ err }, "POST /cac/reflections/:id/share failed");
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// GET /api/cac/reflections/mine — my own entries (private + shared), newest first.
+router.get("/cac/reflections/mine", async (req: Request, res: Response): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  try {
+    const rows = await pool.query(
+      `SELECT id, text, shared, created_at FROM cac_reflections
+       WHERE user_id = $1 ORDER BY created_at DESC LIMIT 200`,
+      [user.id],
+    );
+    res.json({ entries: rows.rows.map((r: { id: number; text: string; shared: boolean; created_at: Date }) => ({ id: r.id, text: r.text, shared: r.shared, createdAt: r.created_at })) });
+  } catch (err) {
+    logger.error({ err }, "GET /cac/reflections/mine failed");
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// GET /api/cac/reflections/responses — shared entries from my community
+// (garden + me), last 30 days, newest first.
+router.get("/cac/reflections/responses", async (req: Request, res: Response): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  try {
+    const garden = await getGardenUserIds(user.id);
+    const ids = Array.from(new Set([user.id, ...garden]));
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const rows = await pool.query(
+      `SELECT cr.id, cr.text, cr.created_at, cr.user_id, u.name, u.email, u.avatar_url
+       FROM cac_reflections cr JOIN users u ON u.id = cr.user_id
+       WHERE cr.shared = TRUE AND cr.user_id = ANY($1::int[]) AND cr.created_at > $2
+       ORDER BY cr.created_at DESC LIMIT 100`,
+      [ids, since],
+    );
+    res.json({
+      responses: rows.rows.map((r: { id: number; text: string; created_at: Date; user_id: number; name: string | null; email: string | null; avatar_url: string | null }) => ({
+        id: r.id,
+        text: r.text,
+        createdAt: r.created_at,
+        authorName: r.name || r.email?.split("@")[0] || "Someone",
+        avatarUrl: r.avatar_url || null,
+        isYou: r.user_id === user.id,
+      })),
+    });
+  } catch (err) {
+    logger.error({ err }, "GET /cac/reflections/responses failed");
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 export default router;
