@@ -1,3 +1,5 @@
+import { apiRequest } from "@/lib/queryClient";
+
 // Tracks whether the user has tapped a daily-reflection link today,
 // so surfaces that link to it (the dashboard module + the Morning
 // Prayer closing pill) can flip their label between "Read" and
@@ -78,6 +80,22 @@ export const CAC_READ_EVENT = cacTracker.eventName;
 export function getCacReadDay(): string | null { return cacTracker.getLastReadDay(); }
 export function hasReadCacToday(): boolean { return cacTracker.hasReadToday(); }
 export function markCacRead(): void { cacTracker.markRead(); }
+
+// Session flag set when CAC is opened from the home card, so the global
+// return-redirect can take the reader to /reflect/cac when they come back.
+export const CAC_JUST_READ_KEY = "phoebe:cac-just-read";
+
+// Record opening today's CAC reflection: flip the local "read" state, log it
+// server-side for the community read-presence (best-effort), and — when opened
+// from a surface that should redirect on return (the home card) — drop the
+// session flag the return-redirect watches.
+export function recordCacOpened(opts?: { flagReturn?: boolean }): void {
+  markCacRead();
+  try {
+    void apiRequest("POST", "/api/cac/read", { ymd: todayLocalISO() }).catch(() => { /* best effort */ });
+    if (opts?.flagReturn) sessionStorage.setItem(CAC_JUST_READ_KEY, "1");
+  } catch { /* best effort */ }
+}
 
 // ── Forward Day by Day (Forward Movement) ──
 // FDD's prayer.forwardmovement.org/fdd is an SPA that loads today's

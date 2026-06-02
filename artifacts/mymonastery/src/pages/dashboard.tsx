@@ -16,7 +16,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel } from "@/lib/officePrefs";
 import {
-  CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, markCacRead,
+  CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
   FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, markFddRead,
   SSJE_TODAY_URL, SSJE_READ_EVENT, hasReadSsjeToday, markSsjeRead,
 } from "@/lib/cacReadState";
@@ -2571,7 +2571,7 @@ export function CacHomeCard() {
   });
   const cacTitle = cacMeta?.title ?? "";
   const onClick = () => {
-    markCacRead();
+    recordCacOpened({ flagReturn: true });
     openExternal(CAC_TODAY_URL);
   };
   return (

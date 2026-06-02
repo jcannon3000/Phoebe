@@ -11,6 +11,7 @@ import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
 import { DesktopAppPrompt } from "@/components/DesktopAppPrompt";
 import { BottomPromptStack } from "@/components/BottomPromptStack";
 import { PrayLocationInvite } from "@/components/PrayLocationInvite";
+import { CacReturnRedirect } from "@/components/CacReturnRedirect";
 import { AppOpenTracker } from "@/components/AppOpenTracker";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -176,6 +177,7 @@ const NewsPage = lazy(() => import("./pages/news"));
 const PodcastPublisherPage = lazy(() => import("./pages/podcast-publisher"));
 const PodcastShowPage = lazy(() => import("./pages/podcast-show"));
 const FddSitPage = lazy(() => import("./pages/fdd-sit"));
+const ReflectCacPage = lazy(() => import("./pages/reflect-cac"));
 const JournalPage = lazy(() => import("./pages/journal"));
 const GatheringsPage = lazy(() => import("./pages/gatherings"));
 const GatheringNewPage = lazy(() => import("./pages/gathering-new"));
@@ -549,6 +551,7 @@ function Router() {
           captured as a publisher slug. */}
       <Route path="/podcasts" component={PodcastsPage} />
       <Route path="/reflect/fdd" component={FddSitPage} />
+      <Route path="/reflect/cac" component={ReflectCacPage} />
       <Route path="/journal" component={JournalPage} />
       <Route path="/podcasts/show/:slug" component={PodcastShowPage} />
       <Route path="/news" component={NewsPage} />
@@ -813,6 +816,7 @@ function App() {
           <PageFadeOverlay />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <ScrollToTopOnNavigate />
+            <CacReturnRedirect />
             {/* Bottom-anchored prompt cards (live broadcast banner + App
                 Store download), stacked so they never overlap. Inside the
                 router so the live banner's "Watch →" can SPA-navigate to
