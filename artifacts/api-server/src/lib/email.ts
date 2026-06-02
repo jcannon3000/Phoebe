@@ -709,7 +709,7 @@ export async function sendPrayerInviteEmail(opts: {
                 <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
               </div>
               <p style="margin:0 0 6px;font-size:15px;color:#6b6460;line-height:1.6;">
-                Hi ${eFirstName},
+                Hey ${eFirstName},
               </p>
               <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">
                 ${ePrompt}
@@ -717,8 +717,8 @@ export async function sendPrayerInviteEmail(opts: {
               <p style="margin:0 0 28px;font-size:15px;color:#3a3632;line-height:1.7;">
                 ${eAdminFirst} from <strong>${eGroupName}</strong> is asking. Share what's on your heart, and your community will hold it in prayer.
               </p>
-              <a href="${eShareUrl}" style="display:inline-block;background:#4a7c59;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:-0.2px;">
-                Share with your community →
+              <a href="${eShareUrl}" style="color:#4a7c59;font-size:15px;font-weight:600;text-decoration:underline;">
+                Share what's on your heart →
               </a>
               <p style="margin:28px 0 0;font-size:13px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">
                 Nothing is too small to be held together.
@@ -735,7 +735,7 @@ export async function sendPrayerInviteEmail(opts: {
   `.trim();
 
   const text = [
-    `Hi ${firstName},`,
+    `Hey ${firstName},`,
     "",
     `${adminFirst} from ${opts.groupName} is asking — is there something in your life this week your community can be with you in prayer about?`,
     "",
@@ -853,7 +853,7 @@ export async function sendWeeklyDigestEmail(opts: {
                 <span style="font-size:22px;font-weight:700;color:#2d2a26;letter-spacing:-0.5px;">🌱 Phoebe</span>
               </div>
               <p style="margin:0 0 6px;font-size:15px;color:#6b6460;line-height:1.6;">
-                Hi ${eFirstName},
+                Hey ${eFirstName},
               </p>
               <h1 style="margin:0 0 12px;font-size:22px;font-weight:600;color:#2d2a26;line-height:1.3;">
                 ${eHeadline}
@@ -861,7 +861,7 @@ export async function sendWeeklyDigestEmail(opts: {
               <p style="margin:0 0 28px;font-size:15px;color:#3a3632;line-height:1.7;">
                 Here's what your feeds are carrying. Pray them in one sitting or one at a time — your community is praying alongside you.
               </p>${actionsHtml}${listHtml}
-              <a href="${eSlideshow}" style="display:inline-block;background:#4a7c59;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:600;letter-spacing:-0.2px;">
+              <a href="${eSlideshow}" style="color:#4a7c59;font-size:15px;font-weight:600;text-decoration:underline;">
                 Pray them all together →
               </a>
               <p style="margin:28px 0 0;font-size:13px;color:#9a9390;line-height:1.6;border-top:1px solid #f0ece6;padding-top:20px;">
@@ -879,7 +879,7 @@ export async function sendWeeklyDigestEmail(opts: {
   `.trim();
 
   // Plain-text fallback.
-  const lines: string[] = [`Hi ${firstName},`, "", headline + ".", ""];
+  const lines: string[] = [`Hey ${firstName},`, "", headline + ".", ""];
   if (actions.length > 0) {
     lines.push("Take action this week:");
     for (const a of actions) {
