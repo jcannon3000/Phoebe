@@ -67,7 +67,10 @@ export function getCoarsePrayLocation(force = false): Promise<{ lat: number; lng
       const onErr = () => finish(null);
       window.addEventListener("phoebe:location", onLoc as EventListener);
       window.addEventListener("phoebe:location-error", onErr);
-      window.dispatchEvent(new CustomEvent("phoebe:request-location"));
+      // `force` carries the intent through to the native shell: an explicit
+      // opt-in (Settings toggle / soft pre-prompt) always prompts, while the
+      // Amen path lets the shell cap an "Allow Once" re-prompt to once a day.
+      window.dispatchEvent(new CustomEvent("phoebe:request-location", { detail: { force } }));
       setTimeout(() => finish(null), TIMEOUT_MS);
     });
   }
