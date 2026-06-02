@@ -563,18 +563,48 @@ export default function ContemplationPage() {
     queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
   };
   const logMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const mins = Math.min(720, parseInt(logMinutes, 10) || 0);
       const start = new Date(logWhen);
+      const secs = Math.round(mins * 60);
       // Mirror the manually-logged time into Apple Health too (iOS only,
       // best-effort). Spans start → start + minutes.
-      void writeMindfulSession(start, new Date(start.getTime() + mins * 60_000));
-      return apiRequest("POST", "/api/me/contemplation-sessions", {
-        durationSeconds: Math.round(mins * 60),
+      void writeMindfulSession(start, new Date(start.getTime() + secs * 1000));
+      const res = await apiRequest("POST", "/api/me/contemplation-sessions", {
+        durationSeconds: secs,
         occurredAt: start.toISOString(),
       });
+      return { res, start, secs };
     },
-    onSuccess: () => {
+    // Optimistically reflect the sit in the caches the page reads from, so it
+    // shows up the instant the POST returns instead of waiting on the refetch
+    // (a plain invalidate sometimes left the history + goal looking unchanged
+    // until a manual page refresh). refreshContemplation then reconciles.
+    onSuccess: ({ res, start, secs }) => {
+      const id = (res as { id?: number } | undefined)?.id ?? Date.now();
+      const endIso = new Date(start.getTime() + secs * 1000).toISOString();
+      queryClient.setQueryData<Session[]>(
+        ["/api/me/contemplation-sessions"],
+        (old = []) => [{ id, startedAt: start.toISOString(), endedAt: endIso, durationSeconds: secs }, ...old],
+      );
+      // Bump today's totals (drives the goal progress + the "today" tile) when
+      // the logged sit falls on the local day the stats query is scoped to.
+      if (start >= new Date(todaySince)) {
+        queryClient.setQueryData<Stats>(
+          ["/api/me/contemplation-stats", todaySince.slice(0, 10), tz],
+          (s) => s
+            ? {
+                ...s,
+                todaySeconds: s.todaySeconds + secs,
+                weekSeconds: s.weekSeconds + secs,
+                totalSeconds: s.totalSeconds + secs,
+                todayCount: s.todayCount + 1,
+                weekCount: s.weekCount + 1,
+                sessionCount: s.sessionCount + 1,
+              }
+            : s,
+        );
+      }
       refreshContemplation();
       setLogOpen(false);
       setLogMinutes("20");
