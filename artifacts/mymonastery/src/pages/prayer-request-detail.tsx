@@ -475,32 +475,113 @@ export default function PrayerRequestDetailPage() {
               />
             )}
 
-            {/* Word of comfort — shared component the slideshow uses,
-                so the composer behavior (existing word display, ×-clear,
-                error mapping) matches exactly. */}
-            <RequestWordField requestId={data.id} initialWord={data.myWord ?? null} />
+            {data.viewerIsTagged ? (
+              // ── Tagged subject: the prayer is FOR this viewer, so show
+              // who prayed for them + the words of comfort, not a "pray
+              // for this" composer. (Mirrors the owner view's engagement
+              // surface; kept inline so the owner view stays untouched.)
+              <div className="w-full flex flex-col items-center text-center gap-4">
+                {data.amenCountTotal > 0 ? (
+                  <p
+                    className="text-[13px]"
+                    style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}
+                  >
+                    {t("prayer_request_detail.prayed_for_you", { count: data.amenCountTotal })}
+                  </p>
+                ) : (
+                  <p
+                    className="text-[13px] italic"
+                    style={{ color: "rgba(143,175,150,0.7)", fontFamily: "Georgia, 'Times New Roman', serif" }}
+                  >
+                    {t("prayer_request_detail.tagged_awaiting")}
+                  </p>
+                )}
 
-            {/* 7-second Amen. After tap, swap to a quiet "✓ Amen sent"
-                state — same once-per-day server throttle as the
-                slideshow's path; re-tapping is a no-op. */}
-            {amened || data.myAmenedToday ? (
-              <div
-                className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide"
-                style={{
-                  background: "rgba(46,107,64,0.18)",
-                  border: "1px solid rgba(46,107,64,0.45)",
-                  color: "#A8C5A0",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  minWidth: 140,
-                }}
-              >
-                {t("prayer_request_detail.amen_sent")}
+                {/* Avatar rail — everyone who prayed for you, recent first. */}
+                {data.amens.length > 0 && (
+                  <div className="flex items-center justify-center">
+                    {data.amens.slice(0, 8).map((a, i) => (
+                      <div
+                        key={`${a.userId}-${a.prayedAt}`}
+                        className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden border-2"
+                        style={{ borderColor: SLIDE_BG, marginLeft: i === 0 ? 0 : -8, background: "#1A4A2E", color: "#A8C5A0" }}
+                        title={a.userName ?? t("prayer_request_detail.someone")}
+                      >
+                        {a.userAvatarUrl ? (
+                          <img src={a.userAvatarUrl} alt={a.userName ?? t("prayer_request_detail.someone")} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-[11px] font-semibold">{initials(a.userName ?? "")}</span>
+                        )}
+                      </div>
+                    ))}
+                    {data.amens.length > 8 && (
+                      <span className="ml-2 text-[11px]" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                        +{data.amens.length - 8}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Words of comfort left on the request, newest first. */}
+                {data.words.length > 0 && (
+                  <div className="w-full flex flex-col gap-3 mt-1">
+                    <p className="text-[10px] uppercase tracking-[0.18em] font-semibold" style={{ color: "rgba(143,175,150,0.45)" }}>
+                      {t("prayer_request_detail.words_of_comfort", { count: data.words.length })}
+                    </p>
+                    {data.words.map(w => (
+                      <div
+                        key={w.id}
+                        className="w-full rounded-2xl px-5 py-4 flex flex-col items-center text-center gap-2"
+                        style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.15)" }}
+                      >
+                        {w.authorAvatarUrl ? (
+                          <img src={w.authorAvatarUrl} alt={w.authorName} className="w-10 h-10 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
+                            {initials(w.authorName)}
+                          </div>
+                        )}
+                        <p className="text-[10px] uppercase tracking-[0.16em] font-semibold" style={{ color: "rgba(143,175,150,0.45)" }}>
+                          {t("prayer_request_detail.from_name", { name: w.authorName })}
+                        </p>
+                        <p className="italic" style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 16, lineHeight: 1.55 }}>
+                          {w.content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
-              <AmenButton
-                slideKey={data.id}
-                onAdvance={() => { if (!amenMutation.isPending) amenMutation.mutate(); }}
-              />
+              <>
+                {/* Word of comfort — shared component the slideshow uses,
+                    so the composer behavior (existing word display, ×-clear,
+                    error mapping) matches exactly. */}
+                <RequestWordField requestId={data.id} initialWord={data.myWord ?? null} />
+
+                {/* 7-second Amen. After tap, swap to a quiet "✓ Amen sent"
+                    state — same once-per-day server throttle as the
+                    slideshow's path; re-tapping is a no-op. */}
+                {amened || data.myAmenedToday ? (
+                  <div
+                    className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide"
+                    style={{
+                      background: "rgba(46,107,64,0.18)",
+                      border: "1px solid rgba(46,107,64,0.45)",
+                      color: "#A8C5A0",
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      minWidth: 140,
+                    }}
+                  >
+                    {t("prayer_request_detail.amen_sent")}
+                  </div>
+                ) : (
+                  <AmenButton
+                    slideKey={data.id}
+                    onAdvance={() => { if (!amenMutation.isPending) amenMutation.mutate(); }}
+                  />
+                )}
+              </>
             )}
           </div>
         )}

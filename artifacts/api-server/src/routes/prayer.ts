@@ -45,9 +45,11 @@ const router: IRouter = Router();
 //      the owner; the page surfaces who said amen, the running
 //      amen count, and every word people have left so far.
 //
-// Amens + words are only attached for the owner. Other viewers see
-// the request body alone — Phoebe deliberately hides who else is
-// praying for someone else's request from third parties.
+// Amens + words are attached for the owner AND for tagged subjects —
+// the person the prayer is FOR ("praying for my friend Matthew") should
+// be able to see who prayed for them and the words of comfort left. Other
+// viewers (untagged garden / third parties) see the request body alone:
+// Phoebe hides who else is praying for someone else's request from bystanders.
 router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -85,7 +87,7 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     .from(usersTable)
     .where(eq(usersTable.id, r.ownerId));
 
-  const wordRows = viewerIsOwner
+  const wordRows = (viewerIsOwner || viewerIsTagged)
     ? await db
         .select({
           id: prayerWordsTable.id,
@@ -100,12 +102,12 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
         .where(eq(prayerWordsTable.requestId, id))
     : [];
 
-  // Owner-only: surface who has prayed and how many times. We collapse
-  // multiple taps from the same person on the same calendar day into a
-  // single "amen" — same dedupe rule as the prayer-list feed counts —
-  // so the number on this page lines up with what the owner sees on
-  // their feed card. We surface the FULL deduped list (one row per
-  // person-day, ordered most recent first) so the owner can see who
+  // Owner + tagged subject: surface who has prayed and how many times.
+  // We collapse multiple taps from the same person on the same calendar
+  // day into a single "amen" — same dedupe rule as the prayer-list feed
+  // counts — so the number on this page lines up with what the owner sees
+  // on their feed card. We surface the FULL deduped list (one row per
+  // person-day, ordered most recent first) so the viewer can see who
   // showed up and when. The most recent row is what the first-amen
   // push is celebrating.
   let amenCountTotal = 0;
@@ -115,7 +117,7 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     userAvatarUrl: string | null;
     prayedAt: string;
   }> = [];
-  if (viewerIsOwner) {
+  if (viewerIsOwner || viewerIsTagged) {
     const rawAmens = await db
       .select({
         userId: prayerRequestAmensTable.userId,
@@ -128,13 +130,14 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
       .where(eq(prayerRequestAmensTable.requestId, id))
       .orderBy(desc(prayerRequestAmensTable.prayedAt));
 
-    // Bucket by (user, calendar-day) using the OWNER's timezone (which
-    // is `sessionUserId` here since viewerIsOwner). Falls back to UTC
-    // if no tz is set on the owner row — same fallback the feed uses.
+    // Bucket by (user, calendar-day) using the OWNER's timezone so the
+    // count matches the owner's feed card regardless of who's viewing
+    // (the viewer here may be a tagged subject, not the owner). Falls
+    // back to UTC if no tz is set on the owner row — same as the feed.
     const [ownerTzRow] = await db
       .select({ timezone: usersTable.timezone })
       .from(usersTable)
-      .where(eq(usersTable.id, sessionUserId));
+      .where(eq(usersTable.id, r.ownerId));
     const ownerTz = ownerTzRow?.timezone || "UTC";
     const ymdInOwnerTz = (d: Date) =>
       new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
