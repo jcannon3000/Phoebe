@@ -811,7 +811,13 @@ export function Layout({ children }: { children: ReactNode }) {
       >
         <div className="flex items-center gap-6">
           <Link
-            href="/dashboard"
+            // The "Phoebe" wordmark is "home". For a signed-in user that's the
+            // dashboard; for a signed-out visitor (who can still reach Layout-
+            // wrapped public surfaces — /bcp, public prayer feeds, a /p/:token
+            // share link) it's the welcome chooser at "/". Without this the
+            // wordmark sent logged-out users to /dashboard, which only bounced
+            // them back to "/" via Dashboard's own guard — a visible double hop.
+            href={user ? "/dashboard" : "/"}
             onClick={() => window.dispatchEvent(new CustomEvent("phoebe:reset-filter"))}
             className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
           >

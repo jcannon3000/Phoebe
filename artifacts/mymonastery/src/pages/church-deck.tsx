@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, type ReactElement } from "rea
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, MessageCircle, MapPin, Users } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
 const C = {
@@ -1529,6 +1530,12 @@ function renderSlide(slide: Slide) {
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function ChurchDeck() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  // Where "Close" / "Done" lands. A signed-in reader returns to their
+  // dashboard; a signed-out visitor (who reached the deck via the
+  // "Learn about Phoebe" card on the welcome chooser) returns to that
+  // chooser at "/" rather than bouncing through /dashboard's guard.
+  const exitTo = user ? "/dashboard" : "/";
   const [index, setIndex] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
   const slides = SLIDES;
@@ -1620,7 +1627,7 @@ export default function ChurchDeck() {
       {/* Top bar */}
       <div className="flex items-center justify-between gap-4 px-4 md:px-6 pt-4 md:pt-6 pb-2">
         <button
-          onClick={() => setLocation("/dashboard")}
+          onClick={() => setLocation(exitTo)}
           className="flex items-center gap-1.5 text-sm transition-opacity hover:opacity-100 shrink-0"
           style={{ color: C.sage, opacity: 0.75 }}
         >
@@ -1702,7 +1709,7 @@ export default function ChurchDeck() {
         </button>
         {isLast ? (
           <button
-            onClick={() => setLocation("/dashboard")}
+            onClick={() => setLocation(exitTo)}
             className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
             style={{ background: "#2D5E3F", color: C.text }}
           >
