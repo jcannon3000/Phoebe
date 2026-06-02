@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { usePeople } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
+import { amenWithLocation } from "@/lib/prayLocation";
 import { findBcpPrayer, localizeBcpPrayer } from "@/lib/bcp-prayers";
 import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { openExternal } from "@/lib/openExternal";
@@ -3590,7 +3591,7 @@ export default function PrayerModePage() {
           new CustomEvent("phoebe:clear-notifications", { detail: { threadId: `prayer-request-${rid}` } })
         );
       } catch { /* non-fatal */ }
-      apiRequest("POST", `/api/prayer-requests/${rid}/amen`)
+      amenWithLocation(rid)
         .then(() => {
           // Two invalidations:
           //   • /api/prayer-requests — the prayer-list feed; flips

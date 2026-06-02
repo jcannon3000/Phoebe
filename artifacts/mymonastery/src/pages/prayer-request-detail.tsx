@@ -3,6 +3,7 @@ import { useLocation, useRoute, useSearch } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
+import { amenWithLocation } from "@/lib/prayLocation";
 import { playOpeningSwell, triggerAmenFeedback, triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { RequestWordField } from "@/components/RequestWordField";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
@@ -189,7 +190,7 @@ export default function PrayerRequestDetailPage() {
 
   const [amened, setAmened] = useState(false);
   const amenMutation = useMutation({
-    mutationFn: () => apiRequest("POST", `/api/prayer-requests/${id}/amen`),
+    mutationFn: () => amenWithLocation(id),
     onSuccess: () => {
       // Same feedback the slideshow fires on Amen — a medium-impact
       // haptic + the chapel chime. Keeps the deep-link slide feeling

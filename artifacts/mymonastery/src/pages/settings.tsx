@@ -8,6 +8,7 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { MEDITATION_APPS, openMeditationApp } from "@/lib/meditationApps";
+import { setSharePrayLocationCache, getCoarsePrayLocation } from "@/lib/prayLocation";
 import i18n from "@/i18n";
 import { LogOut, Camera, Pencil, Trash2, Download } from "lucide-react";
 import {
@@ -69,6 +70,9 @@ type OfficePrefs = {
   contemplationReminderEnabled?: boolean;
   // Sunday-evening weekly Way of Love review reminder (opt-out).
   weeklyReviewReminder?: boolean;
+  // Opt-in (default off) to attach a coarse (~1 mile) location when you tap
+  // Amen, which powers other people's "places I've been prayed for" map.
+  sharePrayLocation?: boolean;
 };
 
 // Small inline row used by OfficeReminderSettings. Renders a labeled
@@ -522,6 +526,23 @@ function OfficeReminderSettings() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/me/office-prefs"] }),
   });
 
+  // Keep the device-local opt-in cache (read synchronously by the Amen path)
+  // in sync with the server pref whenever Settings loads — covers a user who
+  // enabled sharing on another device.
+  useEffect(() => {
+    if (data) setSharePrayLocationCache(!!data.sharePrayLocation);
+  }, [data?.sharePrayLocation, data]);
+
+  const shareLocationOn = data?.sharePrayLocation ?? false;
+  const toggleShareLocation = () => {
+    const next = !shareLocationOn;
+    setSharePrayLocationCache(next);
+    // Turning on: trigger the OS permission prompt in-context now, so the
+    // first Amen doesn't pop a dialog mid-prayer.
+    if (next) void getCoarsePrayLocation(true);
+    save.mutate({ sharePrayLocation: next });
+  };
+
   const morning = data?.morning ?? "none";
   const evening = data?.evening ?? "none";
   // Default placeholders so the time picker has a sensible starting
@@ -733,6 +754,38 @@ function OfficeReminderSettings() {
             }}
           >
             <div style={{ width: 18, height: 18, borderRadius: 999, background: "#F0EDE6", position: "absolute", top: 2, left: (data?.weeklyReviewReminder ?? true) ? 22 : 2, transition: "left 0.15s" }} />
+          </div>
+        </button>
+      </SettingsCard>
+
+      {/* Prayed-for map — opt in to attach a coarse (~1 mile) location when
+          you tap Amen, so the people you pray for can see where their prayers
+          came from on their map. Strictly opt-in; off by default. */}
+      <SectionHeader label={t("settings.pray_location", { defaultValue: "Prayer map" })} />
+      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+        {t("settings.pray_location_blurb", { defaultValue: "Share your rough location (about a mile) when you pray, so the people you pray for can see a map of where their prayers came from. Off until you turn it on; your exact location is never shared." })}
+      </p>
+      <SettingsCard>
+        <button
+          type="button"
+          onClick={toggleShareLocation}
+          className="w-full flex items-center justify-between gap-3 py-2.5 text-left"
+          style={{ background: "transparent", cursor: "pointer" }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+              {t("settings.pray_location_toggle", { defaultValue: "Share my location when I pray" })}
+            </p>
+          </div>
+          <div
+            aria-hidden
+            style={{
+              width: 42, height: 24, borderRadius: 999, position: "relative", flexShrink: 0, transition: "background 0.15s",
+              background: shareLocationOn ? "#2D5E3F" : "rgba(143,175,150,0.25)",
+              border: `1px solid ${shareLocationOn ? "rgba(168,197,160,0.5)" : "rgba(143,175,150,0.3)"}`,
+            }}
+          >
+            <div style={{ width: 18, height: 18, borderRadius: 999, background: "#F0EDE6", position: "absolute", top: 2, left: shareLocationOn ? 22 : 2, transition: "left 0.15s" }} />
           </div>
         </button>
       </SettingsCard>
