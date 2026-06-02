@@ -769,7 +769,7 @@ export const es: Translations = {
   },
   welcome_public: {
     sign_in: "Iniciar sesión",
-    title: "Prueba orar juntos.",
+    title: "Reúnete con Phoebe.",
     subtitle: "Elige por dónde empezar — sin necesidad de cuenta.",
     office_blurb_morning: "Comienza el día con los salmos, lecturas y oraciones del Libro de Oración Común.",
     office_blurb_evening: "Cierra el día con los salmos, lecturas y oraciones del Libro de Oración Común.",

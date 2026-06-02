@@ -777,7 +777,7 @@ export const en = {
   // Welcome public — the first-open chooser for unsigned visitors (pages/welcome-public.tsx).
   welcome_public: {
     sign_in: "Sign in",
-    title: "Try praying together.",
+    title: "Be together with Phoebe.",
     subtitle: "Pick a place to start — no account needed.",
     office_blurb_morning: "Begin the day with the psalms, lessons, and prayers from the Book of Common Prayer.",
     office_blurb_evening: "Close the day with the psalms, lessons, and prayers from the Book of Common Prayer.",

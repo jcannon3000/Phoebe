@@ -92,6 +92,7 @@ export default function WelcomePublicPage() {
           transition={{ duration: 0.45 }}
           className="pt-6 mb-8 text-center"
         >
+          <div className="text-5xl mb-3" aria-hidden>📮</div>
           <h1
             className="text-[28px] font-bold leading-tight mb-2"
             style={{ color: WARM_TEXT, letterSpacing: "-0.02em" }}
