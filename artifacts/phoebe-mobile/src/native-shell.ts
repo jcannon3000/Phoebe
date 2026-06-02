@@ -25,6 +25,7 @@ import { Keyboard } from "@capacitor/keyboard";
 import { Haptics, ImpactStyle, NotificationType } from "@capacitor/haptics";
 import { PushNotifications, type Token } from "@capacitor/push-notifications";
 import { Share } from "@capacitor/share";
+import { Geolocation } from "@capacitor/geolocation";
 import { Browser } from "@capacitor/browser";
 import { Preferences } from "@capacitor/preferences";
 import { Contacts } from "@capacitor-community/contacts";
@@ -398,6 +399,31 @@ function wireNativeShare() {
       });
     } catch {
       // User cancelled or share unavailable — no action needed.
+    }
+  });
+}
+
+// Opt-in location for the "places I've been prayed for" map. The web app
+// dispatches `phoebe:request-location` when the user has turned sharing on
+// and taps Amen; we resolve the OS permission (prompting once) and answer
+// with `phoebe:location` { lat, lng } or `phoebe:location-error`. The web
+// helper coarsens to ~1 mile and has its own timeout, so we just report the
+// raw fix or an error and never block.
+function wireNativeLocation() {
+  window.addEventListener("phoebe:request-location", async () => {
+    const fail = () => window.dispatchEvent(new CustomEvent("phoebe:location-error"));
+    try {
+      const perm = await Geolocation.checkPermissions();
+      if (perm.location !== "granted" && perm.coarseLocation !== "granted") {
+        const req = await Geolocation.requestPermissions();
+        if (req.location !== "granted" && req.coarseLocation !== "granted") { fail(); return; }
+      }
+      const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 });
+      window.dispatchEvent(new CustomEvent("phoebe:location", {
+        detail: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+      }));
+    } catch {
+      fail();
     }
   });
 }
@@ -1319,6 +1345,7 @@ function exposePublicApi() {
   wireClearNotifications();
   wireNativeShare();
   wireNativeOpenUrl();
+  wireNativeLocation();
   wireHaptics();
   wireContacts();
   wireAppleSignIn();
