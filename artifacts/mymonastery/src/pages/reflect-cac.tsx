@@ -20,7 +20,7 @@ import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { openExternal } from "@/lib/openExternal";
-import { CAC_TODAY_URL, recordCacOpened } from "@/lib/cacReadState";
+import { CAC_TODAY_URL } from "@/lib/cacReadState";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -53,7 +53,7 @@ export default function ReflectCacPage() {
   const [text, setText] = useState("");
   const [share, setShare] = useState(false);
 
-  const metaQ = useQuery<{ title: string; url: string }>({
+  const metaQ = useQuery<{ title: string; url: string; contentHtml: string }>({
     queryKey: ["/api/cac/today-meta"],
     queryFn: () => apiRequest("GET", "/api/cac/today-meta"),
     staleTime: 30 * 60_000,
@@ -86,10 +86,7 @@ export default function ReflectCacPage() {
     },
   });
 
-  const readReflection = () => {
-    recordCacOpened();
-    openExternal(metaQ.data?.url || CAC_TODAY_URL);
-  };
+  const openOnCac = () => openExternal(metaQ.data?.url || CAC_TODAY_URL);
 
   const readers = readersQ.data?.readers ?? [];
   const others = readers.filter((r) => !r.isYou);
@@ -105,14 +102,40 @@ export default function ReflectCacPage() {
           {metaQ.data?.title || t("reflect_cac.title_fallback", { defaultValue: "Today's reflection" })}
         </h1>
 
-        {/* Read button */}
-        <button
-          type="button"
-          onClick={readReflection}
-          style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: CTA, color: WARM, border: "1px solid rgba(168,197,160,0.4)", fontFamily: FONT, fontSize: 15, fontWeight: 700, cursor: "pointer" }}
-        >
-          {t("reflect_cac.read", { defaultValue: "Read the reflection →" })}
-        </button>
+        {/* Reflection — rendered in-app from the feed (prefetched on home
+            load, so this page opens instantly with no external browser).
+            Falls back to the external link if the feed lacked the full text. */}
+        <style>{`
+          .cac-prose p { margin: 0 0 14px; }
+          .cac-prose img { max-width: 100%; height: auto; border-radius: 10px; margin: 6px 0; }
+          .cac-prose a { color: #A8C5A0; }
+          .cac-prose h2, .cac-prose h3 { color: ${WARM}; font-family: ${FONT}; font-size: 18px; margin: 18px 0 8px; }
+          .cac-prose blockquote { margin: 0 0 14px; padding-left: 14px; border-left: 2px solid rgba(143,175,150,0.4); color: ${SAGE}; }
+        `}</style>
+        {metaQ.data?.contentHtml ? (
+          <>
+            <div
+              className="cac-prose"
+              style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 16.5, lineHeight: 1.7 }}
+              dangerouslySetInnerHTML={{ __html: metaQ.data.contentHtml }}
+            />
+            <button
+              type="button"
+              onClick={openOnCac}
+              style={{ display: "block", margin: "6px 0 0", background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13.5, cursor: "pointer", padding: 0 }}
+            >
+              {t("reflect_cac.read_on_cac", { defaultValue: "Read on cac.org →" })}
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={openOnCac}
+            style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: CTA, color: WARM, border: "1px solid rgba(168,197,160,0.4)", fontFamily: FONT, fontSize: 15, fontWeight: 700, cursor: "pointer" }}
+          >
+            {t("reflect_cac.read", { defaultValue: "Read the reflection →" })}
+          </button>
+        )}
 
         {/* Who read today (community) */}
         {others.length > 0 && (

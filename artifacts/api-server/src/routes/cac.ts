@@ -51,7 +51,7 @@ const FEED_USER_AGENT =
 // serve. Cache stays in-process; a redeploy invalidates it.
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-let cached: { url: string; title: string; fetchedAt: number } | null = null;
+let cached: { url: string; title: string; content: string; fetchedAt: number } | null = null;
 
 // Decode the handful of XML/HTML entities WordPress emits in RSS titles
 // (smart quotes, dashes, ampersands) so the title renders cleanly in the
@@ -80,7 +80,19 @@ function decodeEntities(s: string): string {
 // (b) the WordPress RSS shape is stable. The regex anchors on
 // `<item>` (so we skip the channel-level <link>/<title> at the top,
 // which point at cac.org/) and reads the first <link>/<title> inside.
-function parseFirstItem(xml: string): { url: string; title: string } | null {
+// Strip the dangerous constructs out of feed HTML before we render it in-app.
+// CAC is a trusted source, so this is defense-in-depth (a poisoned feed can't
+// inject script / steal taps) rather than a full HTML sanitizer.
+function sanitizeFeedHtml(raw: string): string {
+  let s = raw.replace(/<!\[CDATA\[/g, "").replace(/\]\]>/g, "");
+  s = s.replace(/<(script|style|iframe|object|embed|form)\b[\s\S]*?<\/\1>/gi, "");
+  s = s.replace(/<(script|style|iframe|object|embed|link|meta|form|input)\b[^>]*\/?>/gi, "");
+  s = s.replace(/\son\w+\s*=\s*"[^"]*"/gi, "").replace(/\son\w+\s*=\s*'[^']*'/gi, "").replace(/\son\w+\s*=\s*[^\s>]+/gi, "");
+  s = s.replace(/(href|src)\s*=\s*("|')\s*javascript:[^"']*\2/gi, "$1=$2#$2");
+  return s.trim();
+}
+
+function parseFirstItem(xml: string): { url: string; title: string; content: string } | null {
   const firstItem = xml.match(/<item\b[^>]*>([\s\S]*?)<\/item>/);
   if (!firstItem) return null;
   const block = firstItem[1];
@@ -93,12 +105,17 @@ function parseFirstItem(xml: string): { url: string; title: string } | null {
   if (!/^https?:\/\/(?:www\.)?cac\.org\//i.test(url)) return null;
   const titleMatch = block.match(/<title>([\s\S]*?)<\/title>/);
   const title = titleMatch ? decodeEntities(titleMatch[1]) : "";
-  return { url, title };
+  // The feed ships content:encoded with the full meditation, so we can render
+  // it in-app instead of bouncing to an external browser. Sanitized; "" when
+  // absent (the reader then falls back to the external link).
+  const contentMatch = block.match(/<content:encoded>([\s\S]*?)<\/content:encoded>/);
+  const content = contentMatch ? sanitizeFeedHtml(contentMatch[1]) : "";
+  return { url, title, content };
 }
 
-async function resolveToday(): Promise<{ url: string; title: string }> {
+async function resolveToday(): Promise<{ url: string; title: string; content: string }> {
   if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-    return { url: cached.url, title: cached.title };
+    return { url: cached.url, title: cached.title, content: cached.content };
   }
   // Use AbortController so a slow / hanging RSS fetch doesn't keep
   // the user's tap waiting. 5s is plenty for a healthy WordPress feed
@@ -119,19 +136,19 @@ async function resolveToday(): Promise<{ url: string; title: string }> {
       // Don't poison the cache with the fallback — leave whatever was
       // there (or nothing) so the next request can try again. The
       // fallback is just for THIS response.
-      return { url: FALLBACK_URL, title: "" };
+      return { url: FALLBACK_URL, title: "", content: "" };
     }
     const xml = await res.text();
     const parsed = parseFirstItem(xml);
     if (!parsed) {
       logger.warn({ bytes: xml.length }, "[cac] could not parse first item");
-      return { url: FALLBACK_URL, title: "" };
+      return { url: FALLBACK_URL, title: "", content: "" };
     }
     cached = { ...parsed, fetchedAt: Date.now() };
     return parsed;
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, "[cac] feed fetch failed");
-    return { url: FALLBACK_URL, title: "" };
+    return { url: FALLBACK_URL, title: "", content: "" };
   } finally {
     clearTimeout(timeout);
   }
@@ -161,9 +178,9 @@ router.get("/cac/today", async (_req: Request, res: Response): Promise<void> => 
 // "Read now" CTA instead of an embed. Title comes from the same RSS
 // feed the redirect uses (the HTML pages 403 bot-shaped requests).
 router.get("/cac/today-meta", async (_req: Request, res: Response): Promise<void> => {
-  const { url, title } = await resolveToday();
+  const { url, title, content } = await resolveToday();
   res.setHeader("Cache-Control", "public, max-age=300");
-  res.json({ title, url });
+  res.json({ title, url, contentHtml: content });
 });
 
 // ── CAC read presence + community journal ──────────────────────────────────
