@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Reorder } from "framer-motion";
 import { ChevronLeft, GripVertical, Plus, X, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -10,13 +10,12 @@ import { useAuth, type AuthUser } from "@/hooks/useAuth";
 
 // Customize home screen — two pages:
 //
-//   /customize-home        — shows only your VISIBLE cards; drag to reorder,
-//                            tap × to remove. "+ Add card" goes to the add page.
+//   /customize-home        — shows only your VISIBLE panels; drag to reorder,
+//                            tap × to remove. "+ Add panel" goes to the add page.
 //   /customize-home/add    — shows all hidden / never-added modules; tap + to
 //                            add any of them to your home screen.
 //
-// Changes save immediately to PUT /api/me/home-layout. Featured feed is
-// picked in the main page after the card list.
+// Changes save immediately to PUT /api/me/home-layout.
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -26,7 +25,7 @@ const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 // HOME_MODULE_KEYS in api-server/src/routes/prayer.ts — keys not in
 // the server's allowlist are silently dropped from saved layouts.
 const HOME_MODULES = [
-  "office", "feeds", "contemplation", "gratitude", "examen",
+  "office", "contemplation", "gratitude", "examen",
   "cac", "fdd", "ssje", "ncmp", "podcasts", "requests",
 ] as const;
 type HomeModule = typeof HOME_MODULES[number];
@@ -38,7 +37,6 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
   const { t } = useTranslation();
   return {
     office:       { label: t("customize_home.module_office"),    emoji: "📖", sub: t("customize_home.module_office_sub") },
-    feeds:        { label: t("customize_home.module_feeds"),     emoji: "🌿", sub: t("customize_home.module_feeds_sub") },
     contemplation:{ label: t("menu.contemplation"),              emoji: "🕯️", sub: t("customize_home.module_contemplation_sub") },
     gratitude:    { label: t("gratitude.title"),                 emoji: "🌾", sub: t("customize_home.module_gratitude_sub") },
     examen:       { label: t("menu.examen"),                     emoji: "🤔", sub: t("customize_home.module_examen_sub") },
@@ -71,10 +69,7 @@ function buildOrder(saved: string[] | null | undefined, fallback: HomeModule[]):
 
 function useHomeLayout(user: AuthUser) {
   const queryClient = useQueryClient();
-  const feedLed = !!(user?.feedFirstHome && user?.homeFeedId != null);
-  const fallbackOrder: HomeModule[] = feedLed
-    ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts"]
-    : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts"];
+  const fallbackOrder: HomeModule[] = ["requests", "office", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts"];
 
   const [order, setOrder] = useState<HomeModule[]>(() => buildOrder(user?.homeLayout?.order, fallbackOrder));
   const [hidden, setHidden] = useState<Set<string>>(() => {
@@ -158,25 +153,6 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
   const [, setLocation] = useLocation();
   const MODULE_META = useModuleMeta();
   const { order, hidden, removeCard, reorder } = useHomeLayout(user);
-
-  const { data: subsData } = useQuery<{ subscriptions: Array<{ feed: { id: number; title: string; coverEmoji: string | null } }> }>({
-    queryKey: ["/api/prayer-feeds/subscribed"],
-    queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed") as Promise<{ subscriptions: Array<{ feed: { id: number; title: string; coverEmoji: string | null } }> }>,
-    enabled: !!user,
-  });
-
-  const queryClient = useQueryClient();
-  const setFeed = useMutation({
-    mutationFn: (feedId: number | null) => apiRequest("PUT", "/api/me/feed-first-home", { feedId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/prayer-feeds/subscribed"] });
-    },
-  });
-  const feeds = subsData?.subscriptions.map((s) => s.feed) ?? [];
-  const creationCareId = feeds.find((f) => /creation\s*care/i.test(f.title))?.id ?? null;
-  const selectedFeedId = (user?.feedFirstHome && user?.homeFeedId != null && feeds.some((f) => f.id === user.homeFeedId))
-    ? user.homeFeedId : creationCareId;
 
   // Visible modules (excluding the pinned Prayer requests).
   const visibleMovable = order.filter((k) => k !== PINNED && !hidden.has(k));
@@ -298,42 +274,8 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
           }}
         >
           <Plus size={16} />
-          Add card{hiddenCount > 0 ? ` · ${hiddenCount} available` : ""}
+          Add panel{hiddenCount > 0 ? ` · ${hiddenCount} available` : ""}
         </button>
-
-        {/* Featured-feed picker */}
-        {feeds.length > 0 && (
-          <>
-            <h2
-              className="text-[10px] uppercase tracking-[0.16em] font-semibold mt-8 mb-2"
-              style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}
-            >
-              {t("customize_home.featured_feed")}
-            </h2>
-            <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-              {t("customize_home.featured_feed_blurb")}
-            </p>
-            <div className="rounded-xl px-3" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
-              {[{ id: null as number | null, label: t("customize_home.no_featured"), sub: t("customize_home.no_featured_sub") },
-                ...feeds.map((f) => ({ id: f.id as number | null, label: `${f.title} ${f.coverEmoji ?? "🌿"}`.trim(), sub: t("customize_home.featured_sub") }))]
-                .map((row, idx) => {
-                  const isSel = selectedFeedId === row.id;
-                  return (
-                    <button key={row.id ?? "none"} type="button" onClick={() => setFeed.mutate(row.id)}
-                      className="w-full flex items-center gap-3 py-2.5 text-left"
-                      style={{ borderTop: idx === 0 ? "none" : "1px solid rgba(200,212,192,0.12)", background: "transparent", cursor: "pointer" }}
-                    >
-                      <div style={{ width: 18, height: 18, borderRadius: "50%", border: `2px solid ${isSel ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`, background: isSel ? "#A8C5A0" : "transparent", flexShrink: 0 }} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[14px]" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>{row.label}</p>
-                        <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>{row.sub}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-            </div>
-          </>
-        )}
 
         <Link href="/dashboard" className="block text-center mt-8 text-sm font-semibold transition-opacity hover:opacity-80" style={{ color: "#A8C5A0", fontFamily: SPACE_GROTESK }}>
           {t("customize_home.back_to_home", { defaultValue: "← Back to home" })}
@@ -382,7 +324,7 @@ function CustomizeHomeAddInner({ user }: { user: AuthUser }) {
         </button>
 
         <h1 className="text-2xl font-bold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-          Add a card
+          Add a panel
         </h1>
         <p className="text-sm mt-1 mb-5" style={{ color: SAGE }}>
           Choose what to show on your home screen.
@@ -391,7 +333,7 @@ function CustomizeHomeAddInner({ user }: { user: AuthUser }) {
         {available.length === 0 ? (
           <div className="text-center mt-16">
             <p style={{ fontSize: 32 }}>✅</p>
-            <p className="mt-3 text-sm" style={{ color: SAGE }}>All cards are already on your home screen.</p>
+            <p className="mt-3 text-sm" style={{ color: SAGE }}>All panels are already on your home screen.</p>
             <button
               type="button"
               onClick={() => setLocation("/customize-home")}
@@ -456,7 +398,7 @@ function CustomizeHomeAddInner({ user }: { user: AuthUser }) {
             className="w-full mt-6 rounded-xl py-3 text-sm font-semibold transition-opacity hover:opacity-90"
             style={{ background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.45)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, cursor: "pointer" }}
           >
-            Done — back to my cards
+            Done — back to my panels
           </button>
         )}
       </div>
