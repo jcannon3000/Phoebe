@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, timestamp, index, doublePrecision } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 import { prayerRequestsTable } from "./prayer_requests";
 
@@ -21,6 +21,13 @@ export const prayerRequestAmensTable = pgTable(
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
     prayedAt: timestamp("prayed_at", { withTimezone: true }).notNull().defaultNow(),
+    // Coarse (~1 mile) location the amen came from — set only when the
+    // pray-er opted in to sharing location AND the OS granted permission.
+    // Rounded client-side and again server-side so an exact position never
+    // lands here. NULL for the default opted-out case. Powers the personal
+    // "places I've been prayed for" map.
+    lat: doublePrecision("lat"),
+    lng: doublePrecision("lng"),
   },
   (t) => ({
     requestIdx: index("idx_prayer_request_amens_request_id").on(t.requestId),

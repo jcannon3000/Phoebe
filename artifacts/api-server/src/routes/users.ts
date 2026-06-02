@@ -272,6 +272,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
         contemplationGoalMinutes: usersTable.contemplationGoalMinutes,
         contemplationReminderEnabled: usersTable.contemplationReminderEnabled,
         weeklyReviewReminder: usersTable.weeklyReviewReminder,
+        sharePrayLocation: usersTable.sharePrayLocation,
       })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
@@ -361,6 +362,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
       contemplationGoalMinutes: u?.contemplationGoalMinutes ?? 0,
       contemplationReminderEnabled: u?.contemplationReminderEnabled ?? true,
       weeklyReviewReminder: u?.weeklyReviewReminder ?? true,
+      sharePrayLocation: u?.sharePrayLocation ?? false,
       lastPrayedMorning,
       lastPrayedEvening,
       officeStreak,
@@ -412,6 +414,11 @@ router.put("/me/office-prefs", async (req, res): Promise<void> => {
   }
   if (typeof body.weeklyReviewReminder === "boolean") {
     update.weeklyReviewReminder = body.weeklyReviewReminder;
+  }
+  // Opt-in to attach a coarse (~1 mile) location when tapping Amen, which
+  // powers the personal "places I've been prayed for" map. Default off.
+  if (typeof body.sharePrayLocation === "boolean") {
+    update.sharePrayLocation = body.sharePrayLocation;
   }
   if (Object.keys(update).length === 0) { res.json({ ok: true }); return; }
   try {

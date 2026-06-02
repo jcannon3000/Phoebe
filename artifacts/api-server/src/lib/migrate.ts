@@ -1819,6 +1819,12 @@ export async function migrate() {
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS sunday_reflections_enabled BOOLEAN NOT NULL DEFAULT FALSE`);
     await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS sunday_reflection_notified_at TIMESTAMPTZ`);
 
+    // ── Contemplation community template (beta) ──────────────────────────
+    // focus="contemplation" swaps the community Home to a shared contemplation
+    // goal + the CAC daily meditation; null = a standard office community.
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS focus TEXT`);
+    await run(client, `ALTER TABLE groups ADD COLUMN IF NOT EXISTS contemplation_goal_minutes INTEGER`);
+
     // ── Beta Messages (beta-only) ────────────────────────────────────────
     // Unlimited 1:1 messaging between beta users (Letters-style UI, no
     // cadence limit). One conversation per pair (enforced in the route
@@ -2434,6 +2440,15 @@ export async function migrate() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+
+    // ── "Places I've been prayed for" map ───────────────────────────────────
+    // Coarse (~1 mile) location attached to an amen, set only when the pray-er
+    // opted in to sharing location and the OS granted permission. NULL = the
+    // (default) opted-out case. Powers the personal prayed-for map.
+    await run(client, `ALTER TABLE prayer_request_amens ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION`);
+    await run(client, `ALTER TABLE prayer_request_amens ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
+    // Opt-in (default OFF) to attach a coarse location when you tap Amen.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS share_pray_location BOOLEAN NOT NULL DEFAULT false`);
 
     // Verify shared_moments columns exist
     const colCheck = await client.query(`

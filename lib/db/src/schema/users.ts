@@ -236,6 +236,13 @@ export const usersTable = pgTable("users", {
   // can flip this to "es" via Settings → Language; non-beta accounts
   // stay on "en". Default English so legacy rows don't need a backfill.
   locale: text("locale").notNull().default("en"),
+  // ── "Places I've been prayed for" map ────────────────────────────────────
+  // Opt-in, default OFF: when on AND the OS grants location permission,
+  // tapping Amen attaches a coarse (~1 mile) location to that amen, so the
+  // person being prayed for can see a map of where their prayers came from.
+  // Location is sensitive, so this stays off until the user explicitly
+  // enables it (Settings) and the OS permission prompt is granted.
+  sharePrayLocation: boolean("share_pray_location").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
