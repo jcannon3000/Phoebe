@@ -64,6 +64,32 @@ function clean(text: string | null | undefined): string {
   return text.replace(EMOJI_RE, "").replace(/\s{2,}/g, " ").trim();
 }
 
+// iOS renders the notification title on a SINGLE line and hard-crops the
+// overflow mid-character ("Praying for the families affec\u2026"). Many of
+// Phoebe's titles interpolate unbounded user content \u2014 display names,
+// community / intercession / gathering names, even a full custom "how can
+// we pray for you?" question \u2014 any of which can sail past what fits. We cap
+// the title to a safe width and truncate at a word boundary with an
+// ellipsis so the crop is controlled and readable instead of letting iOS
+// sever a word. The body still carries the detail.
+//
+// 40 chars fits one line on standard iPhones. The narrowest devices
+// (SE / mini) may still trim a little, but the ellipsis already signals
+// "there's more" and nothing meaningful lives only in the title.
+const MAX_TITLE_LEN = 40;
+function truncateTitle(title: string): string {
+  const t = title.trim();
+  if (t.length <= MAX_TITLE_LEN) return t;
+  // Reserve one slot for the ellipsis, then prefer cutting at the last
+  // space so we don't sever a word \u2014 unless that throws away too much
+  // (a single very long token), in which case hard-cut at the budget.
+  const budget = MAX_TITLE_LEN - 1;
+  const slice = t.slice(0, budget);
+  const lastSpace = slice.lastIndexOf(" ");
+  const cut = lastSpace > budget * 0.6 ? slice.slice(0, lastSpace) : slice;
+  return cut.trimEnd() + "\u2026";
+}
+
 const CREDS = {
   keyP8: process.env["APNS_KEY_P8"] ?? null,
   keyId: process.env["APNS_KEY_ID"] ?? null,
@@ -149,10 +175,11 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
     return { attempted: 0, succeeded: 0, invalidated: 0 };
   }
 
-  // Centralized emoji strip — every push goes through this function, so
-  // sanitizing here means callers can pass moment / community names with
-  // emoji and we still ship a clean lock-screen string.
-  payload = { ...payload, title: clean(payload.title), body: clean(payload.body) };
+  // Centralized emoji strip + title cap — every push goes through this
+  // function, so sanitizing here means callers can pass moment / community
+  // names with emoji (stripped) and over-long titles (truncated to fit
+  // iOS's single line) and we still ship a clean lock-screen string.
+  payload = { ...payload, title: truncateTitle(clean(payload.title)), body: clean(payload.body) };
   const [tokens, webSubs] = await Promise.all([
     db.select({
       id: deviceTokensTable.id,
