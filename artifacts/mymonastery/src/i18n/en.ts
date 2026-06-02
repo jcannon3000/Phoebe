@@ -425,7 +425,7 @@ export const en = {
     home_beta: "Home (beta)",
     home_beta_sub: "Your Way of Love, day by day",
     this_week: "This week",
-    this_week_sub: "Worship, Bless, Go & Rest",
+    this_week_sub: "Connect, Serve, Bridge & Rest",
     videos: "Videos",
     videos_sub: "Traveling the Way of Love",
   },
@@ -513,7 +513,7 @@ export const en = {
   },
   home_beta: {
     eyebrow: "Your Way of Love",
-    turn_framing: "The daily return — kept whenever you make space for God.",
+    turn_framing: "Always we begin again — kept whenever you make space for God.",
     turn_made_space: "You've made space {{count}} times",
     turn_begin: "Make space for God today",
     daily: "daily",
@@ -556,11 +556,11 @@ export const en = {
     rest_carveout_sub: "Choose a day each week to set down work and receive rest.",
     rest_chosen: "Your sabbath: {{day}}",
     section: {
-      turn: "Turn",
+      turn: "Begin",
       learn_pray: "Learn & Pray",
-      worship: "Worship",
-      bless: "Bless",
-      go: "Go",
+      worship: "Connect",
+      bless: "Serve",
+      go: "Bridge",
       rest: "Rest",
     },
     action: {

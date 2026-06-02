@@ -75,15 +75,15 @@ export type SectionDef = {
 // Order matters — Turn leads, then the combined daily Learn & Pray, then the
 // weekly practices.
 export const SECTIONS: SectionDef[] = [
-  { key: "turn", practices: ["turn"], theme: "turn", daily: true, emoji: "🔄", title: "Turn", definition: "Pause, listen, and return to the way of Jesus." },
+  { key: "turn", practices: ["turn"], theme: "turn", daily: true, emoji: "🔄", title: "Begin", definition: "Pause, listen, and begin again in the way of Jesus." },
   { key: "learn_pray", practices: ["learn", "pray"], theme: "learn", daily: true, emoji: "📖", title: "Learn & Pray", definition: "Sit with Scripture and dwell with God each day." },
   // Learn and Pray also stand alone (their own detail pages, reached from the
   // Way of Love drawer); the combined learn_pray above still drives the home.
   { key: "learn", practices: ["learn"], theme: "learn", daily: true, emoji: "📖", title: "Learn", definition: "Reflect on Scripture and the life and teachings of Jesus." },
   { key: "pray", practices: ["pray"], theme: "pray", daily: true, emoji: "🙏", title: "Pray", definition: "Dwell intentionally with God in prayer each day." },
-  { key: "worship", practices: ["worship"], theme: "worship", daily: false, emoji: "⛪", title: "Worship & gather", definition: "Gather with others to thank and praise God." },
-  { key: "bless", practices: ["bless"], theme: "bless", daily: false, emoji: "🤲", title: "Bless", definition: "Share faith, and give and serve generously." },
-  { key: "go", practices: ["go"], theme: "go", daily: false, emoji: "🌍", title: "Go", definition: "Cross boundaries, listen deeply, and live like Jesus." },
+  { key: "worship", practices: ["worship"], theme: "worship", daily: false, emoji: "⛪", title: "Connect", definition: "Worship together, and show up for your community's gatherings and events." },
+  { key: "bless", practices: ["bless"], theme: "bless", daily: false, emoji: "🤲", title: "Serve", definition: "Give and serve generously, and share your faith." },
+  { key: "go", practices: ["go"], theme: "go", daily: false, emoji: "🌍", title: "Bridge", definition: "Bridge what divides — cross boundaries, listen, and love like Jesus." },
   { key: "rest", practices: ["rest"], theme: "rest", daily: false, emoji: "🌙", title: "Rest", definition: "Receive the gift of God's grace, peace, and restoration." },
 ];
 
@@ -446,16 +446,16 @@ export default function HomeBetaPage() {
   const goDef = SECTIONS.find((s) => s.key === "go")!;
   const restDef = SECTIONS.find((s) => s.key === "rest")!;
 
-  // ── Turn — the consistency crown (auto-filled; never "set" or ticked) ──
-  // Turn is the daily return, kept by DOING any practice. It reads engagement
-  // from the same data the sections already fetch — no separate tracking, no
-  // toggle, no "set your Turn practice."
+  // ── Begin — the consistency crown (auto-filled; never "set" or ticked) ──
+  // Begin (id "turn") is the daily turning-back-to-God — "always we begin
+  // again" — kept by DOING any practice. It reads engagement from the same
+  // data the sections already fetch — no separate tracking, no toggle.
   // Plain computation (NOT a hook) — this runs after the early return above, so
   // a useMemo here would violate the rules of hooks. engagementDays is cheap.
   const turnEngaged = engagementDays(rows.map((r) => r.localDate), officeQ.data?.days ?? []);
   const turn = computeTurnConsistency(turnEngaged);
-  // Turn — the daily return. Same thin-row format as the Contemplation card,
-  // with a fire streak (current run of days space was made) on the right.
+  // Begin — the daily beginning-again. Same thin-row format as the Contemplation
+  // card, with a fire streak (current run of days space was made) on the right.
   const turnCrown = (
     <button
       type="button"
@@ -465,7 +465,7 @@ export default function HomeBetaPage() {
     >
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
         <p className="font-semibold min-w-0 truncate" style={{ color: WARM, fontFamily: FONT, margin: 0, lineHeight: 1.2, fontSize: 16 }}>
-          {t("home_beta.section.turn", { defaultValue: "Turn" })} {turnDef.emoji}
+          {t("home_beta.section.turn", { defaultValue: "Begin" })} {turnDef.emoji}
         </p>
         <div
           className="rounded-full text-center shrink-0"

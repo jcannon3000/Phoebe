@@ -99,9 +99,9 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
   const primary = FOCUS_TO_CONNECTION[props.focus];
   const suggested = useMemo(() => suggestedPractices([primary]), [primary]);
 
-  // Turn isn't a practice you set — it's the daily return to God, enacted every
-  // time you pray in Phoebe. Read the same engagement signals the home Turn
-  // card uses so the Turn slide can show the LIVE streak instead of options.
+  // Begin (id "turn") isn't a practice you set — it's the daily turning back to
+  // God, enacted every time you pray in Phoebe. Read the same engagement signals
+  // the home Begin card uses so the slide shows the LIVE streak instead of options.
   const turnCompletionsQ = useQuery<{ completions: { localDate: string }[] }>({
     queryKey: ["/api/practice-completion"],
     queryFn: () => apiRequest("GET", "/api/practice-completion"),
@@ -389,7 +389,7 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
                 // card) — no options, nothing to set.
                 <>
                   <p style={{ color: SAGE, fontSize: 14, lineHeight: 1.65, margin: "14px 0 0", fontFamily: SANS }}>
-                    {t("way_of_love.turn_body", { defaultValue: "Turn isn't something you choose or check off. It's the daily return to God — and you make it every time you open Phoebe to pray. There's nothing to set here; just keep showing up, and the rest of the Way of Love grows from it." })}
+                    {t("way_of_love.turn_body", { defaultValue: "Begin isn't something you choose or check off. It's the daily turning back to God — and you begin again every time you open Phoebe to pray. There's nothing to set here; just keep showing up, and the rest of the Way of Love grows from it." })}
                   </p>
                   <div style={{ display: "flex", alignItems: "center", gap: 14, background: CHIP_DEFAULT, border: `1px solid ${CHIP_BORDER}`, borderRadius: 14, padding: "16px 18px", margin: "22px 0 0" }}>
                     <span style={{ fontSize: 30, lineHeight: 1 }} aria-hidden>🔥</span>

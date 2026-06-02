@@ -104,11 +104,13 @@ const txt = (key: string, def: string): I18nText => ({ key, default: def });
 export const PRACTICES: Record<PracticeId, Practice> = {
   turn: {
     id: "turn",
-    title: txt("way_of_love.turn.title", "Turn"),
-    // Turn is the framing/spine, not a practice you "set": the daily return is
+    title: txt("way_of_love.turn.title", "Begin"),
+    // Begin is the framing/spine, not a practice you "set": the daily turning
+    // back to God — "always we begin again", the Benedictine principle — is
     // enacted BY every other practice. Confession / Examen / Psalm 51 below are
-    // OPTIONAL turnings for those who want a specific one.
-    definition: txt("way_of_love.turn.def", "The daily return to God — the turning every other practice enacts."),
+    // OPTIONAL turnings for those who want a specific one. (The practice id
+    // stays "turn" so streaks/history/routes are unbroken; only the name shows.)
+    definition: txt("way_of_love.turn.def", "Always we begin again — the daily turning back to God that every other practice enacts."),
     options: [
       { id: "turn-confession", label: txt("way_of_love.turn.confession", "Pray the Confession daily (BCP p. 79)"), defaultCadence: "daily", home: "app", setting: "confession", completionSignal: "officeToday" },
       { id: "turn-examen", label: txt("way_of_love.turn.examen", "Pray a daily Examen"), defaultCadence: "daily", home: "app", completionSignal: "examenToday" },
@@ -147,8 +149,8 @@ export const PRACTICES: Record<PracticeId, Practice> = {
   },
   worship: {
     id: "worship",
-    title: txt("way_of_love.worship.title", "Worship"),
-    definition: txt("way_of_love.worship.def", "Gather in community weekly to thank, praise, and dwell with God."),
+    title: txt("way_of_love.worship.title", "Connect"),
+    definition: txt("way_of_love.worship.def", "Connect with God and your community — worship together, and show up for the gatherings and events that bind you."),
     options: [
       { id: "worship-weekly", label: txt("way_of_love.worship.weekly", "Attend worship each week"), defaultCadence: "weekly", home: "offline" },
       { id: "worship-arrive-early", label: txt("way_of_love.worship.arrive_early", "Arrive early for silence and thanksgiving"), defaultCadence: "weekly", home: "offline" },
@@ -157,8 +159,8 @@ export const PRACTICES: Record<PracticeId, Practice> = {
   },
   bless: {
     id: "bless",
-    title: txt("way_of_love.bless.title", "Bless"),
-    definition: txt("way_of_love.bless.def", "Share your faith, and unselfishly give and serve."),
+    title: txt("way_of_love.bless.title", "Serve"),
+    definition: txt("way_of_love.bless.def", "Serve others — give unselfishly, and share your faith in word and deed."),
     options: [
       { id: "bless-prayer-list", label: txt("way_of_love.bless.prayer_list", "Pray for the people on your prayer list"), defaultCadence: "weekly", home: "app", completionSignal: "prayerListWeek" },
       { id: "bless-volunteer", label: txt("way_of_love.bless.volunteer", "Keep a regular volunteer shift"), defaultCadence: "weekly", home: "offline" },
@@ -170,8 +172,8 @@ export const PRACTICES: Record<PracticeId, Practice> = {
   },
   go: {
     id: "go",
-    title: txt("way_of_love.go.title", "Go"),
-    definition: txt("way_of_love.go.def", "Cross boundaries, listen deeply, and live like Jesus."),
+    title: txt("way_of_love.go.title", "Bridge"),
+    definition: txt("way_of_love.go.def", "Bridge what divides — cross boundaries, listen deeply, and love like Jesus."),
     options: [
       { id: "go-learn-community", label: txt("way_of_love.go.learn_community", "Learn about a community unlike your own — attend, read, or reach out"), defaultCadence: "occasional", home: "offline" },
       { id: "go-share-faith", label: txt("way_of_love.go.share_faith", "Share your faith with one person a week"), defaultCadence: "weekly", home: "offline" },
@@ -198,7 +200,7 @@ export const PRACTICES: Record<PracticeId, Practice> = {
 // recommitment loop returns to it rather than grading it.
 export const COVENANT: I18nText = txt(
   "way_of_love.covenant",
-  "With God's help, I will follow Jesus in the Way of Love. I will Turn toward him, Learn from his life and teaching, Pray and dwell with God, Worship in community, Bless others through service and witness, Go beyond myself to listen and love, and Rest in God's grace. This is a beginning, not a finish line — a work in progress I will return to.",
+  "With God's help, I will follow Jesus in the Way of Love. I will Begin again with him, Learn from his life and teaching, Pray and dwell with God, Connect in worship and community, Serve others through giving and witness, Bridge to those beyond myself to listen and love, and Rest in God's grace. This is a beginning, not a finish line — a work in progress I will keep beginning again.",
 );
 
 export const RECOMMITMENT_QUESTIONS: I18nText[] = [

@@ -419,7 +419,7 @@ export const es: Translations = {
     home_beta: "Inicio (beta)",
     home_beta_sub: "Tu Camino del Amor, día a día",
     this_week: "Esta semana",
-    this_week_sub: "Adorar, Bendecir, Ir y Descansar",
+    this_week_sub: "Conectar, Servir, Tender puentes y Descansar",
     videos: "Videos",
     videos_sub: "Recorriendo el Camino del Amor",
   },
@@ -507,7 +507,7 @@ export const es: Translations = {
   },
   home_beta: {
     eyebrow: "Tu Camino del Amor",
-    turn_framing: "El regreso diario — guardado cada vez que haces espacio para Dios.",
+    turn_framing: "Siempre comenzamos de nuevo — guardado cada vez que haces espacio para Dios.",
     turn_made_space: "Has hecho espacio {{count}} veces",
     turn_begin: "Haz espacio para Dios hoy",
     daily: "diario",
@@ -550,11 +550,11 @@ export const es: Translations = {
     rest_carveout_sub: "Elige un día cada semana para soltar el trabajo y recibir descanso.",
     rest_chosen: "Tu sábado: {{day}}",
     section: {
-      turn: "Vuélvete",
+      turn: "Comienza",
       learn_pray: "Aprende y Ora",
-      worship: "Adora",
-      bless: "Bendice",
-      go: "Ve",
+      worship: "Conecta",
+      bless: "Sirve",
+      go: "Tiende puentes",
       rest: "Descansa",
     },
     action: {
