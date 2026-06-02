@@ -300,7 +300,6 @@ export default function HomeBetaSectionPage() {
     : null;
   const turnC = turnEngaged ? computeTurnConsistency(turnEngaged) : null;
 
-  const periodDate = def.daily ? today : thisWeekStart;
   // Auto-derived "done" for the daily prayer practices — signal-driven, not
   // removable here. Learn = a scripture reading or CAC meditation; Pray = an
   // office or a contemplation sit; the combined Learn & Pray = any of those.
@@ -308,7 +307,14 @@ export default function HomeBetaSectionPage() {
     (def.key === "learn_pray" && dailyPrayerEngaged) ||
     (def.key === "learn" && (reflectionReadToday || officePrayedToday)) ||
     (def.key === "pray" && (officePrayedToday || contemplationDoneToday || healthMindfulToday));
-  const done = lockedDone || rows.some((r) => r.section === def.key && r.localDate === periodDate);
+  // Daily practices are "done" on the exact day; weekly practices (Worship,
+  // Bless, Go, Rest) are "done" for the whole week if ANY completion lands in
+  // it — matched by weekStart, NOT localDate. /this-week writes weekly marks as
+  // { localDate: today, weekStart: Sunday }, so matching on localDate here
+  // missed any weekly practice marked on the other screen on a non-Sunday.
+  const done = lockedDone || (def.daily
+    ? rows.some((r) => r.section === def.key && r.localDate === today)
+    : rows.some((r) => r.section === def.key && r.weekStart === thisWeekStart));
   const lines = commitmentLines(def, wolQ.data?.selections ?? {});
   const shows = matsQ.data?.shows ?? [];
   const actions = ACTIONS[def.key] ?? [];
@@ -319,8 +325,21 @@ export default function HomeBetaSectionPage() {
 
   const toggle = () => {
     if (lockedDone) return;
-    if (done) unmark.mutate({ section: def.key, localDate: periodDate });
-    else mark.mutate({ section: def.key, localDate: periodDate, weekStart: thisWeekStart });
+    if (done) {
+      if (def.daily) {
+        unmark.mutate({ section: def.key, localDate: today });
+      } else {
+        // A weekly completion can sit on any day of the week, so remove every
+        // row for this section in the current week (matched by weekStart).
+        for (const r of rows.filter((x) => x.section === def.key && x.weekStart === thisWeekStart)) {
+          unmark.mutate({ section: def.key, localDate: r.localDate });
+        }
+      }
+    } else {
+      // Record on today's date (credits Turn for today) with the current
+      // weekStart — the exact shape /this-week writes.
+      mark.mutate({ section: def.key, localDate: today, weekStart: thisWeekStart });
+    }
   };
 
   // ── Live inline previews ───────────────────────────────────────────────
@@ -335,7 +354,7 @@ export default function HomeBetaSectionPage() {
     if (def.daily) {
       return rows.filter((r) => r.section === def.key && r.weekStart === weekStartYmd).length >= DAILY_KEPT_THRESHOLD;
     }
-    return rows.some((r) => r.section === def.key && r.localDate === weekStartYmd);
+    return rows.some((r) => r.section === def.key && r.weekStart === weekStartYmd);
   };
   let weeksKept = turnC ? turnC.weeksKept : 0;
   if (!turnC) {

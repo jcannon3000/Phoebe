@@ -592,17 +592,26 @@ export default function ContemplationPage() {
       if (start >= new Date(todaySince)) {
         queryClient.setQueryData<Stats>(
           ["/api/me/contemplation-stats", todaySince.slice(0, 10), tz],
-          (s) => s
-            ? {
-                ...s,
-                todaySeconds: s.todaySeconds + secs,
-                weekSeconds: s.weekSeconds + secs,
-                totalSeconds: s.totalSeconds + secs,
-                todayCount: s.todayCount + 1,
-                weekCount: s.weekCount + 1,
-                sessionCount: s.sessionCount + 1,
-              }
-            : s,
+          (s) => {
+            if (!s) return s;
+            // First sit of today makes it a new distinct day for the week /
+            // all-time day counts. The average-per-day tiles divide by these,
+            // so leaving them at 0 while seconds jumped flashed a wrong average
+            // until the refetch reconciled.
+            const newDayToday = s.todayCount === 0;
+            return {
+              ...s,
+              todaySeconds: s.todaySeconds + secs,
+              weekSeconds: s.weekSeconds + secs,
+              totalSeconds: s.totalSeconds + secs,
+              todayCount: s.todayCount + 1,
+              weekCount: s.weekCount + 1,
+              sessionCount: s.sessionCount + 1,
+              todayDays: Math.max(s.todayDays, 1),
+              weekDays: newDayToday ? s.weekDays + 1 : s.weekDays,
+              totalDays: newDayToday ? s.totalDays + 1 : s.totalDays,
+            };
+          },
         );
       }
       refreshContemplation();
