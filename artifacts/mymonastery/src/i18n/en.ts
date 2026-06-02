@@ -395,6 +395,26 @@ export const en = {
     prayer_list: "Prayer list",
     people: "People",
     menu: "Menu",
+    way_of_love: "Way of Love",
+  },
+  // Way of Love drawer (Layout > WayOfLoveDrawer) — beta only.
+  wol: {
+    title: "Way of Love",
+    daily: "Daily",
+    weekly: "Weekly",
+    turn: "Begin",
+    learn: "Learn",
+    pray: "Pray",
+    worship: "Connect",
+    bless: "Serve",
+    go: "Bridge",
+    rest: "Rest",
+    rule_of_life: "A Rule of Life",
+    rule_of_life_setup: "Set up your Rule of Life",
+    rule_of_life_sub: "Bishop Michael Curry",
+    devotional: "The devotional",
+    devotional_sub: "8-week journey",
+    open_home: "Open your Way of Love →",
   },
   // Hamburger drawer (Layout > DrawerMenu).
   menu: {
