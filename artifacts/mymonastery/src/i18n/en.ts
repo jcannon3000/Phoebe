@@ -778,6 +778,7 @@ export const en = {
   welcome_public: {
     sign_in: "Sign in",
     title: "Be together with Phoebe.",
+    tagline: "A relational app that cultivates connections between Sundays.",
     subtitle: "Pick a place to start — no account needed.",
     prayed_subtitle: "{{n}} people have prayed with Phoebe this month.",
     office_blurb_morning: "Begin the day with the psalms, lessons, and prayers from the Book of Common Prayer.",
@@ -789,7 +790,7 @@ export const en = {
     learn_blurb: "A quick tour of how Phoebe helps you pray and stay connected.",
     appstore_title: "Download on the App Store",
     appstore_blurb: "Get the Phoebe app for iPhone.",
-    footer: "A relational app that cultivates connections between Sundays.",
+    footer: "Backed by TryTank Research Center, a ministry for innovation at Virginia Theological Seminary.",
   },
   // Group reflection page (pages/community-reflection.tsx).
   group_reflection: {

@@ -770,6 +770,7 @@ export const es: Translations = {
   welcome_public: {
     sign_in: "Iniciar sesión",
     title: "Reúnete con Phoebe.",
+    tagline: "Una app relacional que cultiva la conexión entre domingos.",
     subtitle: "Elige por dónde empezar — sin necesidad de cuenta.",
     prayed_subtitle: "{{n}} personas han orado con Phoebe este mes.",
     office_blurb_morning: "Comienza el día con los salmos, lecturas y oraciones del Libro de Oración Común.",
@@ -781,7 +782,7 @@ export const es: Translations = {
     learn_blurb: "Un recorrido breve de cómo Phoebe te ayuda a orar y mantenerte en conexión.",
     appstore_title: "Descárgala en el App Store",
     appstore_blurb: "Obtén la app de Phoebe para iPhone.",
-    footer: "Una app relacional que cultiva la conexión entre domingos.",
+    footer: "Respaldada por TryTank Research Center, un ministerio de innovación del Virginia Theological Seminary.",
   },
   group_reflection: {
     back_to_community: "Comunidad",

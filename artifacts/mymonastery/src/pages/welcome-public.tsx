@@ -112,6 +112,11 @@ export default function WelcomePublicPage() {
             {t("welcome_public.title")}
           </h1>
           <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
+            {t("welcome_public.tagline", { defaultValue: "A relational app that cultivates connections between Sundays." })}
+          </p>
+          {/* Secondary line: live social proof when we have it, otherwise the
+              "no account needed" reassurance for the try-before-you-sign-up path. */}
+          <p className="text-[13px] leading-relaxed mt-1.5" style={{ color: FAINT }}>
             {prayedCount > 1
               ? t("welcome_public.prayed_subtitle", { defaultValue: "{{n}} people have prayed with Phoebe this month.", n: prayedCount.toLocaleString() })
               : t("welcome_public.subtitle")}
