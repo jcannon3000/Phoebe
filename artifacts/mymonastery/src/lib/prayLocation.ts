@@ -84,11 +84,34 @@ export function getCoarsePrayLocation(force = false): Promise<{ lat: number; lng
   return Promise.resolve(null);
 }
 
+const ASKED_KEY = "phoebe:pray-location-asked";
+
+export function prayLocationAsked(): boolean {
+  try { return localStorage.getItem(ASKED_KEY) === "1"; } catch { return false; }
+}
+
+export function markPrayLocationAsked(): void {
+  try { localStorage.setItem(ASKED_KEY, "1"); } catch { /* best effort */ }
+}
+
 /**
- * POST an Amen on a prayer request, attaching a coarse location when the
- * user opted in. Drop-in replacement for the bare amen apiRequest call.
+ * After an Amen, offer the location-sharing invite ONCE — only if the user
+ * hasn't already opted in and hasn't already been asked. A globally-mounted
+ * <PrayLocationInvite> listens for the event and shows the soft pre-prompt.
+ */
+export function maybeOfferPrayLocation(): void {
+  if (getSharePrayLocationCache() || prayLocationAsked()) return;
+  try { window.dispatchEvent(new CustomEvent("phoebe:offer-pray-location")); } catch { /* noop */ }
+}
+
+/**
+ * POST an Amen on a prayer request, attaching a coarse location when the user
+ * opted in, then offer the one-time location invite (a no-op once they've
+ * opted in or already been asked). Drop-in replacement for the bare amen call.
  */
 export async function amenWithLocation(requestId: number | string): Promise<unknown> {
   const loc = await getCoarsePrayLocation();
-  return apiRequest("POST", `/api/prayer-requests/${requestId}/amen`, loc ?? {});
+  const res = await apiRequest("POST", `/api/prayer-requests/${requestId}/amen`, loc ?? {});
+  maybeOfferPrayLocation();
+  return res;
 }

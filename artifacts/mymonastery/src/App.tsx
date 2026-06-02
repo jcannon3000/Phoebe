@@ -10,6 +10,7 @@ import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
 import { DesktopAppPrompt } from "@/components/DesktopAppPrompt";
 import { BottomPromptStack } from "@/components/BottomPromptStack";
+import { PrayLocationInvite } from "@/components/PrayLocationInvite";
 import { AppOpenTracker } from "@/components/AppOpenTracker";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -801,6 +802,7 @@ function App() {
           <PushPermissionPrompt />
           <WebPushPermissionPrompt />
           <DesktopAppPrompt />
+          <PrayLocationInvite />
           <ForegroundPushToast />
           <NetworkBanner />
           <ServerDownScreen />
