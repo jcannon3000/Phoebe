@@ -491,7 +491,9 @@ export default function HomeBetaPage() {
         }
       `}</style>
       <div style={{ position: "relative", minHeight: "70vh" }}>
-        <AnimatedBackground base={BG} variant="subtle" fadeTop />
+        {/* No fadeTop: inside <Layout> the opaque sticky header frames the top,
+            so a fade here would blank the content's top band (the "off" look). */}
+        <AnimatedBackground base={BG} variant="subtle" />
         <div className="dash-shell" style={{ position: "relative", zIndex: 1, width: "100%", padding: "4px 2px 28px" }}>
           <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", fontWeight: 700, fontFamily: FONT, margin: "4px 0 2px" }}>
             {t("home_beta.eyebrow", { defaultValue: "Your Way of Love" })}

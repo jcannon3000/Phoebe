@@ -259,7 +259,8 @@ export default function WeeklyReviewPage() {
   return (
     <Layout>
       <div style={{ flex: 1, minHeight: 0, background: BG, position: "relative", display: "flex", flexDirection: "column" }}>
-        <AnimatedBackground base={BG} variant="subtle" fadeTop />
+        {/* No fadeTop inside <Layout> — the sticky header frames the top. */}
+        <AnimatedBackground base={BG} variant="subtle" />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "16px 20px 40px", maxWidth: 480, margin: "0 auto", width: "100%" }}>
           <button onClick={back} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "6px 0", display: "flex", alignItems: "center", gap: 6 }}>
             <ChevronLeft size={18} /> <span style={{ fontSize: 14, fontFamily: FONT }}>Back</span>

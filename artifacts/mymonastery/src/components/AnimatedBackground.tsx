@@ -58,7 +58,20 @@ export function AnimatedBackground({ base, variant = "subtle", fadeTop = false }
       aria-hidden
       style={{
         position: "absolute",
-        inset: 0,
+        // Full-bleed: span the whole viewport width regardless of any
+        // horizontal padding / max-width on the host (e.g. Layout's px-4 +
+        // max-w-7xl content column). Plain inset:0 clipped the drifting blobs
+        // to the padded column, so the moving glow stopped short of the screen
+        // edges. left:50% + width:100vw + marginLeft:-50vw centers the 100vw
+        // layer on the viewport (every host is horizontally centered); top /
+        // bottom:0 keeps it covering the host's full height. The 100vw never
+        // adds a horizontal scrollbar — the app root is overflow-x-hidden and
+        // the immersive full-screen hosts clip their own overflow.
+        top: 0,
+        bottom: 0,
+        left: "50%",
+        width: "100vw",
+        marginLeft: "-50vw",
         zIndex: -1,
         overflow: "hidden",
         pointerEvents: "none",

@@ -2,7 +2,7 @@
  * The Way of Love — an 8-week journey of daily devotions (/way-of-love).
  *
  * Walks the EDOW devotional (wayOfLoveDevotions): each day is a tiny office —
- * a centering invitation, a Scripture passage (Georgia-italic on the drifting
+ * a centering invitation, a Scripture passage (italic on the drifting
  * green ground), a reflection question you can carry into your journal (reusing
  * FddJournalSheet — the same sheet the office's Forward Day by Day reflection
  * uses), and a Prayer for Today. Completing a day credits the daily Learn & Pray
@@ -31,7 +31,10 @@ const CARD = "rgba(46,107,64,0.12)";
 const CARD_B = "rgba(46,107,64,0.28)";
 const CTA = "#2D5E3F";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
-const SERIF = "Georgia, 'Times New Roman', serif";
+// The contemplative lines (invitation, Scripture, question, prayer) render as
+// oblique Space Grotesk rather than Georgia — matching WayOfLoveStep so the
+// Way of Love surfaces use a single typeface throughout.
+const SERIF = "'Space Grotesk', system-ui, sans-serif";
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
 function ymd(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }

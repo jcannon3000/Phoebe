@@ -128,6 +128,17 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     staleTime: 30_000,
   });
 
+  // "Prayed-for map" only appears once at least one located prayer has
+  // arrived — an empty map isn't worth a menu row. Offices-only accounts
+  // 403 on /prayer-requests, so they're excluded (same as the queries above).
+  const { data: prayMapData } = useQuery<{ points: Array<unknown> }>({
+    queryKey: ["/api/prayer-requests/prayed-for-locations"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests/prayed-for-locations"),
+    enabled: !!user && !earlyOfficesOnly,
+    staleTime: 5 * 60_000,
+  });
+  const hasPrayMap = (prayMapData?.points?.length ?? 0) > 0;
+
   // Prayer feeds the user created (admins). Drives whether the
   // "Manage Prayer Feeds" entry appears in the side menu — non-
   // creators don't see it. Uses /api/prayer-feeds/mine which
@@ -302,7 +313,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             {!officesOnly && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
                 <MenuRow emoji="🙏" label={t("menu.prayer_list", { defaultValue: "Prayer list" })} onClick={() => navigate("/prayer-list")} />
-                <MenuRow emoji="🗺️" label={t("menu.prayed_for_map", { defaultValue: "Prayed-for map" })} onClick={() => navigate("/prayed-for-map")} />
+                {hasPrayMap && (
+                  <MenuRow emoji="🗺️" label={t("menu.prayed_for_map", { defaultValue: "Prayed-for map" })} onClick={() => navigate("/prayed-for-map")} />
+                )}
               </div>
             )}
 
@@ -707,6 +720,27 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
                   </span>
                   <span className="block text-[11px]" style={{ color: "rgba(143,175,150,0.6)" }}>
                     {t("wol.rule_of_life_sub", { defaultValue: "Bishop Michael Curry" })}
+                  </span>
+                </span>
+                <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.4)", flexShrink: 0 }} />
+              </button>
+              {/* The devotional — the 8-week Way of Love daily journey
+                  (Scripture, a reflection question, a prayer for the day).
+                  Beta-only by construction: this whole drawer opens only from
+                  the beta "Way of Love" header pill. */}
+              <button
+                type="button"
+                onClick={() => go("/way-of-love")}
+                className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-left transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.28)" }}
+              >
+                <span className="text-lg leading-none w-6 text-center" aria-hidden>🌱</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-sm font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    {t("wol.devotional", { defaultValue: "The devotional" })}
+                  </span>
+                  <span className="block text-[11px]" style={{ color: "rgba(143,175,150,0.6)" }}>
+                    {t("wol.devotional_sub", { defaultValue: "8-week journey" })}
                   </span>
                 </span>
                 <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.4)", flexShrink: 0 }} />
