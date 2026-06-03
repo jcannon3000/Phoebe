@@ -275,61 +275,47 @@ export async function migrate() {
     // have a sensible window without anyone having to touch them.
     await run(client, `ALTER TABLE shared_moments ADD COLUMN IF NOT EXISTS commitment_cycle_started_at TIMESTAMPTZ`);
     await run(client, `UPDATE shared_moments SET commitment_cycle_started_at = created_at WHERE commitment_cycle_started_at IS NULL`);
-    // Repair: the backfill above set cycleStartedAt = created_at for all
-    // existing intercessions. Intercessions created more than goalDays ago
-    // became immediately hidden even if they were actively being prayed.
-    // Fix: for intercessions whose window is past but have had a prayer post
-    // in the last 60 days, reset cycleStartedAt to NOW so the window opens
-    // fresh. Intercessions with no recent activity stay hidden as intended.
-    // Guard: only touch rows still at the original backfill value
-    // (cycleStartedAt = created_at). Once we reset to NOW() — or an
-    // admin extends the cycle — the condition is false and subsequent
-    // restarts leave those rows alone. This prevents the UPDATE from
-    // reopening an intercession the admin deliberately let expire.
-    await run(client, `
-      UPDATE shared_moments sm
-      SET commitment_cycle_started_at = NOW()
-      WHERE sm.template_type = 'intercession'
-        AND sm.goal_days > 0
-        AND sm.commitment_goal_reached_at IS NULL
-        AND sm.commitment_cycle_started_at = sm.created_at
-        AND sm.commitment_cycle_started_at + (sm.goal_days || ' days')::interval < NOW()
-        AND EXISTS (
-          SELECT 1 FROM moment_posts mp
-          WHERE mp.moment_id = sm.id
-            -- window_date is TEXT and includes the non-date sentinel 'seed',
-            -- so we can't ::date-cast it (would throw). Guard to real dates,
-            -- then compare as text — zero-padded YYYY-MM-DD sorts chronologically.
-            AND mp.window_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
-            AND mp.window_date >= to_char(CURRENT_DATE - INTERVAL '60 days', 'YYYY-MM-DD')
-        )
-    `);
-    // Repair 2: intercessions that hit their goal (commitmentGoalReachedAt set)
-    // but the community kept praying past the 2-day Extend grace window.
-    // The grace exists so the admin can see the Extend popup — if there is
-    // recent activity it means people were still praying and the intercession
-    // was unintentionally hidden, not intentionally retired. Clear the
-    // goalReachedAt stamp and open a fresh cycle so it reappears.
-    // Guard: only if non-archived AND has prayer posts in the last 14 days.
-    await run(client, `
-      UPDATE shared_moments sm
-      SET commitment_goal_reached_at = NULL,
-          commitment_cycle_started_at = NOW(),
-          state = 'active'
-      WHERE sm.template_type = 'intercession'
-        AND sm.goal_days > 0
-        AND sm.commitment_goal_reached_at IS NOT NULL
-        AND sm.commitment_goal_reached_at + INTERVAL '2 days' < NOW()
-        AND sm.state != 'archived'
-        AND EXISTS (
-          SELECT 1 FROM moment_posts mp
-          WHERE mp.moment_id = sm.id
-            -- See the 60-day query above: window_date is TEXT with a 'seed'
-            -- sentinel, so guard to real dates and compare lexically.
-            AND mp.window_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
-            AND mp.window_date >= to_char(CURRENT_DATE - INTERVAL '14 days', 'YYYY-MM-DD')
-        )
-    `);
+    // Hard expiry: community intercessions hide once their window
+    // (cycleStartedAt + goalDays) passes — full stop. Two boot-time "revival"
+    // UPDATEs used to live here; they reopened any expired intercession that
+    // had recent prayer posts, and they ran on EVERY deploy. They'd been a
+    // silent no-op for weeks because the moment_posts.window_date comparison
+    // (TEXT vs ::date) threw — so once "Fix three Postgres errors" corrected
+    // that cast, they started firing and brought every past community
+    // intercession back to life. Removed. The only sanctioned way to keep an
+    // intercession going is now Extend / Tend-freely (PATCH /moments/:id/goal),
+    // which moves cycleStartedAt forward on purpose.
+    //
+    // One-time (idempotent) cleanup of the rows revival already reopened:
+    // normalise cycleStartedAt back to created_at for any expired intercession
+    // that was never extended, so it returns to hidden. Safe because:
+    //   • goal_days > 0   — tend-freely sets goal_days = 0, so it's skipped
+    //   • goal_tier <= 1  — every Extend bumps the tier to >= 2, so an
+    //                       admin-extended intercession can never match
+    //   • cycle_started_at <> created_at AND created_at + goal_days < NOW()
+    //                     — only rows whose ORIGINAL window already passed but
+    //                       whose cycle got pushed forward (i.e. the revival)
+    // Once it runs, matched rows satisfy cycle_started_at = created_at, so the
+    // WHERE stops matching — it self-limits to a permanent no-op and never
+    // touches new / in-window intercessions (the window check excludes them).
+    // Logs the count so it's auditable in the deploy logs.
+    try {
+      const cleanupWhere = `
+        WHERE sm.template_type = 'intercession'
+          AND sm.goal_days > 0
+          AND COALESCE(sm.commitment_goal_tier, 1) <= 1
+          AND sm.commitment_cycle_started_at IS NOT NULL
+          AND sm.commitment_cycle_started_at <> sm.created_at
+          AND sm.created_at + (sm.goal_days || ' days')::interval < NOW()`;
+      const sel = await client.query(`SELECT COUNT(*)::int AS n FROM shared_moments sm ${cleanupWhere}`);
+      const n: number = sel.rows?.[0]?.n ?? 0;
+      logger.warn({ count: n }, `[migrate] hard-expiry: re-hiding ${n} auto-revived intercession(s)`);
+      const upd = await client.query(`UPDATE shared_moments sm SET commitment_cycle_started_at = sm.created_at ${cleanupWhere}`);
+      logger.warn({ rowCount: upd.rowCount ?? 0 }, "[migrate] hard-expiry cleanup complete");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.warn({ msg }, "[migrate] hard-expiry cleanup failed");
+    }
 
     // Fix constraints that differ from old migration to current schema
     await run(client, `ALTER TABLE shared_moments ALTER COLUMN ritual_id DROP NOT NULL`);
