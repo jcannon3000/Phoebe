@@ -16,7 +16,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel } from "@/lib/officePrefs";
 import {
-  CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
+  CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
   FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, markFddRead,
   SSJE_TODAY_URL, SSJE_READ_EVENT, hasReadSsjeToday, markSsjeRead,
 } from "@/lib/cacReadState";
@@ -2549,7 +2549,6 @@ function ExamenHomeCard() {
 // (or the MP closing pill, which writes the same flag) stay in sync
 // without a full re-render.
 export function CacHomeCard() {
-  const [, setLocation] = useLocation();
   const [hasRead, setHasRead] = useState(() => hasReadCacToday());
   useEffect(() => {
     const refresh = () => setHasRead(hasReadCacToday());
@@ -2572,11 +2571,11 @@ export function CacHomeCard() {
   });
   const cacTitle = cacMeta?.title ?? "";
   const onClick = () => {
-    // Open the in-app reflection page — its content is prefetched on home load
-    // (the today-meta query above carries the full text), so it opens instantly
-    // with no external browser, plus the read-presence + journal.
-    recordCacOpened();
-    setLocation("/reflect/cac");
+    recordCacOpened({ flagReturn: true });
+    // Open today's resolved permalink directly when we already have it — the
+    // today-meta query above prefetches it on home load, so this skips the
+    // /api/cac/today server redirect + RSS fetch and opens noticeably faster.
+    openExternal(cacMeta?.url || CAC_TODAY_URL);
   };
   return (
     <div
