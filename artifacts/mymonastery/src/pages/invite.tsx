@@ -7,6 +7,7 @@ import {
   RefreshCw, UserCheck, Clock,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 
 interface InviteData {
   ritualId: number;
@@ -24,11 +25,17 @@ interface InviteData {
 }
 
 function FrequencyLabel({ f }: { f: string }) {
-  const map: Record<string, string> = { weekly: "Weekly", biweekly: "Every two weeks", monthly: "Monthly" };
+  const { t } = useTranslation();
+  const map: Record<string, string> = {
+    weekly: t("invite.frequency_weekly", { defaultValue: "Weekly" }),
+    biweekly: t("invite.frequency_biweekly", { defaultValue: "Every two weeks" }),
+    monthly: t("invite.frequency_monthly", { defaultValue: "Monthly" }),
+  };
   return <>{map[f] ?? f}</>;
 }
 
 export default function InvitePage() {
+  const { t } = useTranslation();
   const [, params] = useRoute("/invite/:token");
   const token = params?.token ?? "";
   const { user, isLoading: authLoading } = useAuth();
@@ -74,7 +81,7 @@ export default function InvitePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!unavailable && !selectedTime) {
-      setError("Please pick a time or mark yourself as unavailable.");
+      setError(t("invite.error_pick_time", { defaultValue: "Please pick a time or mark yourself as unavailable." }));
       return;
     }
     setError("");
@@ -88,7 +95,7 @@ export default function InvitePage() {
       if (!res.ok) throw new Error("Failed");
       setSubmitted(true);
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t("invite.error_generic", { defaultValue: "Something went wrong. Please try again." }));
     } finally {
       setIsSubmitting(false);
     }
@@ -96,7 +103,7 @@ export default function InvitePage() {
 
   const handleEditSubmit = async () => {
     if (!editUnavailable && !editTime) {
-      setError("Please pick a time or mark yourself as unavailable.");
+      setError(t("invite.error_pick_time", { defaultValue: "Please pick a time or mark yourself as unavailable." }));
       return;
     }
     setError("");
@@ -118,7 +125,7 @@ export default function InvitePage() {
       setJustUpdated(true);
       setTimeout(() => setJustUpdated(false), 4000);
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t("invite.error_generic", { defaultValue: "Something went wrong. Please try again." }));
     } finally {
       setIsSubmitting(false);
     }
@@ -138,7 +145,7 @@ export default function InvitePage() {
           <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
             <Sprout size={24} strokeWidth={1.5} className="animate-pulse" />
           </div>
-          <p className="text-muted-foreground">Loading your invitation...</p>
+          <p className="text-muted-foreground">{t("invite.loading", { defaultValue: "Loading your invitation..." })}</p>
         </div>
       </div>
     );
@@ -152,9 +159,9 @@ export default function InvitePage() {
           <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
             <Sprout size={28} strokeWidth={1.5} />
           </div>
-          <p className="font-serif text-xl font-semibold text-foreground">You've been invited</p>
+          <p className="font-serif text-xl font-semibold text-foreground">{t("invite.invited_heading", { defaultValue: "You've been invited" })}</p>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            {data.organizerName} invited you to
+            {t("invite.invited_you_to", { name: data.organizerName, defaultValue: "{{name}} invited you to" })}
           </p>
           <p className="font-serif text-lg font-semibold text-foreground">{data.ritualName}</p>
           <div className="flex flex-wrap justify-center gap-3 text-xs text-muted-foreground">
@@ -173,13 +180,13 @@ export default function InvitePage() {
               href={`/?redirect=${encodeURIComponent(currentPath)}`}
               className="inline-flex items-center justify-center w-full px-6 py-3.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm transition-opacity hover:opacity-90"
             >
-              Create account to respond
+              {t("invite.create_account_to_respond", { defaultValue: "Create account to respond" })}
             </a>
             <a
               href={`/?redirect=${encodeURIComponent(currentPath)}`}
               className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              Already have an account? Sign in
+              {t("invite.already_have_account_sign_in", { defaultValue: "Already have an account? Sign in" })}
             </a>
           </div>
         </div>
@@ -195,13 +202,13 @@ export default function InvitePage() {
           <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
             <Sprout size={28} strokeWidth={1.5} />
           </div>
-          <p className="font-serif text-xl font-semibold text-foreground">Sign in to continue</p>
-          <p className="text-sm text-muted-foreground">Create an Phoebe account to respond to this invitation.</p>
+          <p className="font-serif text-xl font-semibold text-foreground">{t("invite.sign_in_to_continue", { defaultValue: "Sign in to continue" })}</p>
+          <p className="text-sm text-muted-foreground">{t("invite.create_account_to_respond_body", { defaultValue: "Create an Phoebe account to respond to this invitation." })}</p>
           <a
             href={`/?redirect=${encodeURIComponent(currentPath)}`}
             className="inline-flex items-center justify-center w-full px-6 py-3.5 rounded-xl bg-primary text-primary-foreground font-medium text-sm transition-opacity hover:opacity-90"
           >
-            Continue
+            {t("invite.continue", { defaultValue: "Continue" })}
           </a>
         </div>
       </div>
@@ -215,13 +222,13 @@ export default function InvitePage() {
           <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto">
             <Sprout size={24} strokeWidth={1.5} className="text-muted-foreground" />
           </div>
-          <h2 className="font-serif text-2xl text-foreground">This link isn't active</h2>
-          <p className="text-muted-foreground text-sm">The invite link may have expired or is no longer valid.</p>
+          <h2 className="font-serif text-2xl text-foreground">{t("invite.link_inactive_heading", { defaultValue: "This link isn't active" })}</h2>
+          <p className="text-muted-foreground text-sm">{t("invite.link_inactive_body", { defaultValue: "The invite link may have expired or is no longer valid." })}</p>
           <a
             href="/"
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-full text-sm font-medium hover:bg-primary/90 transition-colors"
           >
-            Sign in to Phoebe
+            {t("invite.sign_in_to_phoebe", { defaultValue: "Sign in to Phoebe" })}
           </a>
         </div>
       </div>
@@ -253,7 +260,7 @@ export default function InvitePage() {
             {/* Ritual header */}
             <div className="text-center pb-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">
-                {data?.organizerName}'s tradition
+                {t("invite.organizers_tradition", { name: data?.organizerName, defaultValue: "{{name}}'s tradition" })}
               </p>
               <h1 className="font-serif text-3xl text-foreground mb-2">{data?.ritualName}</h1>
               {data?.ritualIntention && (
@@ -280,7 +287,7 @@ export default function InvitePage() {
                   className="flex items-center gap-2 px-4 py-3 bg-primary/10 border border-primary/20 rounded-xl text-sm text-primary"
                 >
                   <RefreshCw size={14} />
-                  <span>Availability updated — {data?.organizerName}'s calendar has been notified.</span>
+                  <span>{t("invite.availability_updated_banner", { name: data?.organizerName, defaultValue: "Availability updated — {{name}}'s calendar has been notified." })}</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -290,7 +297,7 @@ export default function InvitePage() {
               <div className="flex items-center justify-between px-5 py-4 border-b border-border/50">
                 <div className="flex items-center gap-2">
                   <UserCheck size={15} className="text-primary" />
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Your availability</span>
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{t("invite.your_availability", { defaultValue: "Your availability" })}</span>
                 </div>
                 {!isEditing && (
                   <button
@@ -298,7 +305,7 @@ export default function InvitePage() {
                     className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
                   >
                     <Pencil size={12} />
-                    Change
+                    {t("invite.change", { defaultValue: "Change" })}
                   </button>
                 )}
               </div>
@@ -319,8 +326,8 @@ export default function InvitePage() {
                           <X size={16} className="text-muted-foreground" />
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">Marked unavailable</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">You'll be included in the next round</p>
+                          <p className="font-medium text-foreground">{t("invite.marked_unavailable", { defaultValue: "Marked unavailable" })}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{t("invite.included_next_round", { defaultValue: "You'll be included in the next round" })}</p>
                         </div>
                       </div>
                     ) : selectedTime ? (
@@ -338,14 +345,14 @@ export default function InvitePage() {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-muted-foreground text-sm">No preference recorded.</p>
+                      <p className="text-muted-foreground text-sm">{t("invite.no_preference_recorded", { defaultValue: "No preference recorded." })}</p>
                     )}
 
                     <div className="mt-4 pt-4 border-t border-border/40 flex items-start gap-2">
                       <Calendar size={13} className="text-primary mt-0.5 flex-shrink-0" />
                       <p className="text-xs text-muted-foreground leading-relaxed">
-                        {data?.organizerName}'s calendar reflects your preference.
-                        They'll confirm the final time for <span className="font-medium text-foreground">{data?.ritualName}</span>.
+                        {t("invite.calendar_reflects_preference", { name: data?.organizerName, defaultValue: "{{name}}'s calendar reflects your preference." })}{" "}
+                        {t("invite.confirm_final_time_for", { defaultValue: "They'll confirm the final time for" })} <span className="font-medium text-foreground">{data?.ritualName}</span>.
                       </p>
                     </div>
                   </motion.div>
@@ -358,16 +365,16 @@ export default function InvitePage() {
                     exit={{ opacity: 0, y: 6 }}
                     className="px-5 py-5 space-y-3"
                   >
-                    <p className="text-sm text-muted-foreground">Choose a different time:</p>
+                    <p className="text-sm text-muted-foreground">{t("invite.choose_different_time", { defaultValue: "Choose a different time:" })}</p>
 
-                    {times.map((t, i) => {
-                      const d = parseISO(t);
-                      const isSelected = editTime === t && !editUnavailable;
+                    {times.map((slot, i) => {
+                      const d = parseISO(slot);
+                      const isSelected = editTime === slot && !editUnavailable;
                       return (
                         <button
-                          key={t}
+                          key={slot}
                           type="button"
-                          onClick={() => { setEditTime(t); setEditUnavailable(false); }}
+                          onClick={() => { setEditTime(slot); setEditUnavailable(false); }}
                           className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all flex items-center justify-between gap-3 ${
                             isSelected
                               ? "border-primary bg-primary/5 shadow-sm"
@@ -379,7 +386,7 @@ export default function InvitePage() {
                               {format(d, "EEEE, MMMM d 'at' h:mm a")}
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                              {i === 0 ? "First pick" : i === 1 ? "Alternative" : "Backup option"}
+                              {i === 0 ? t("invite.option_first_pick", { defaultValue: "First pick" }) : i === 1 ? t("invite.option_alternative", { defaultValue: "Alternative" }) : t("invite.option_backup", { defaultValue: "Backup option" })}
                             </p>
                           </div>
                           {isSelected && <CheckCircle2 size={17} className="text-primary flex-shrink-0" />}
@@ -396,7 +403,7 @@ export default function InvitePage() {
                           : "border-border text-muted-foreground hover:text-foreground"
                       }`}
                     >
-                      {editUnavailable ? "✓ Unavailable — click to undo" : "None of these work for me"}
+                      {editUnavailable ? `✓ ${t("invite.unavailable_click_undo", { defaultValue: "Unavailable — click to undo" })}` : t("invite.none_work_for_me", { defaultValue: "None of these work for me" })}
                     </button>
 
                     {error && <p className="text-sm text-destructive">{error}</p>}
@@ -407,7 +414,7 @@ export default function InvitePage() {
                         onClick={() => { setIsEditing(false); setError(""); }}
                         className="flex-1 py-2.5 border border-border rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
                       >
-                        Cancel
+                        {t("invite.cancel", { defaultValue: "Cancel" })}
                       </button>
                       <button
                         type="button"
@@ -416,9 +423,9 @@ export default function InvitePage() {
                         className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                       >
                         {isSubmitting ? (
-                          <><Loader2 size={14} className="animate-spin" /> Saving...</>
+                          <><Loader2 size={14} className="animate-spin" /> {t("invite.saving", { defaultValue: "Saving..." })}</>
                         ) : (
-                          "Save changes"
+                          t("invite.save_changes", { defaultValue: "Save changes" })
                         )}
                       </button>
                     </div>
@@ -426,7 +433,7 @@ export default function InvitePage() {
                     <div className="flex items-start gap-2 pt-1">
                       <Clock size={12} className="text-muted-foreground mt-0.5 flex-shrink-0" />
                       <p className="text-xs text-muted-foreground">
-                        Saving will update {data?.organizerName}'s calendar event and notify them of your new preference.
+                        {t("invite.saving_updates_calendar_note", { name: data?.organizerName, defaultValue: "Saving will update {{name}}'s calendar event and notify them of your new preference." })}
                       </p>
                     </div>
                   </motion.div>
@@ -436,10 +443,10 @@ export default function InvitePage() {
 
             {/* Ritual detail card */}
             <div className="bg-card border border-card-border rounded-2xl p-5 space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">The tradition</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{t("invite.the_tradition", { defaultValue: "The tradition" })}</p>
               <p className="font-semibold text-foreground">{data?.ritualName}</p>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                {data?.ritualIntention || `A recurring ${data?.frequency ?? ""} tradition organized by ${data?.organizerName ?? "your host"}.`}
+                {data?.ritualIntention || t("invite.fallback_intention", { frequency: data?.frequency ?? "", name: data?.organizerName ?? t("invite.your_host", { defaultValue: "your host" }), defaultValue: "A recurring {{frequency}} tradition organized by {{name}}." })}
               </p>
               <div className="flex flex-wrap gap-3 pt-1">
                 {data?.frequency && (
@@ -456,7 +463,7 @@ export default function InvitePage() {
                 )}
               </div>
               <p className="text-xs text-muted-foreground pt-1">
-                Hosted by <span className="font-medium text-foreground">{data?.organizerName}</span>
+                {t("invite.hosted_by", { defaultValue: "Hosted by" })} <span className="font-medium text-foreground">{data?.organizerName}</span>
               </p>
             </div>
 
@@ -464,16 +471,16 @@ export default function InvitePage() {
             <div className="bg-card border border-card-border rounded-2xl p-5 space-y-3">
               <div className="flex items-center gap-2">
                 <Sprout size={14} className="text-primary" />
-                <p className="text-sm font-semibold text-foreground">Want to host your own traditions?</p>
+                <p className="text-sm font-semibold text-foreground">{t("invite.host_your_own_heading", { defaultValue: "Want to host your own traditions?" })}</p>
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Phoebe coordinates recurring traditions — so the people and traditions you love keep showing up.
+                {t("invite.host_your_own_body", { defaultValue: "Phoebe coordinates recurring traditions — so the people and traditions you love keep showing up." })}
               </p>
               <a
                 href="/"
                 className="w-full flex items-center justify-center gap-3 px-5 py-3 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-secondary transition-colors"
               >
-                Create your own — it's free
+                {t("invite.create_your_own_free", { defaultValue: "Create your own — it's free" })}
               </a>
             </div>
           </motion.div>
@@ -497,14 +504,14 @@ export default function InvitePage() {
         {/* Ritual header */}
         <div className="text-center mb-8">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-3">
-            {data?.organizerName} is inviting you to
+            {t("invite.is_inviting_you_to", { name: data?.organizerName, defaultValue: "{{name}} is inviting you to" })}
           </p>
           <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-3">{data?.ritualName}</h1>
           <p className="text-muted-foreground text-sm leading-relaxed mb-3">
             {data?.ritualIntention || `A recurring ${data?.frequency ?? ""} tradition organized by ${data?.organizerName ?? "your host"}.`}
           </p>
           <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
-            <span className="capitalize"><FrequencyLabel f={data?.frequency ?? ""} /> gathering</span>
+            <span className="capitalize"><FrequencyLabel f={data?.frequency ?? ""} /> {t("invite.gathering_suffix", { defaultValue: "gathering" })}</span>
             {data?.location && (
               <>
                 <span className="opacity-40">·</span>
@@ -519,7 +526,7 @@ export default function InvitePage() {
             <div className="bg-card border border-card-border rounded-2xl p-6 text-center shadow-[var(--shadow-warm-sm)]">
               <div className="flex items-center justify-center gap-2 mb-3">
                 <Calendar size={16} className="text-primary" />
-                <span className="text-sm font-semibold text-primary uppercase tracking-wide">Confirmed Time</span>
+                <span className="text-sm font-semibold text-primary uppercase tracking-wide">{t("invite.confirmed_time", { defaultValue: "Confirmed Time" })}</span>
               </div>
               <p className="text-2xl font-semibold text-foreground mb-1">
                 {format(parseISO(data!.confirmedTime!), "EEEE, MMMM d")}
@@ -538,7 +545,7 @@ export default function InvitePage() {
                     !unavailable && selectedTime ? "border-primary bg-primary/5 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
                   }`}
                 >
-                  ✓ I'll be there
+                  {`✓ ${t("invite.ill_be_there", { defaultValue: "I'll be there" })}`}
                 </button>
                 <button
                   type="button"
@@ -547,7 +554,7 @@ export default function InvitePage() {
                     unavailable ? "border-destructive/40 bg-destructive/5 text-destructive" : "border-border text-muted-foreground hover:border-border"
                   }`}
                 >
-                  Can't make it
+                  {t("invite.cant_make_it", { defaultValue: "Can't make it" })}
                 </button>
               </div>
               {error && <p className="text-sm text-destructive text-center">{error}</p>}
@@ -556,28 +563,28 @@ export default function InvitePage() {
                 disabled={isSubmitting || (!unavailable && !selectedTime)}
                 className="w-full py-4 bg-primary text-primary-foreground rounded-full font-medium text-base hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_4px_14px_rgba(45,74,62,0.2)] flex items-center justify-center gap-2"
               >
-                {isSubmitting ? <><Loader2 size={18} className="animate-spin" /> Sending...</> : "Send my response"}
+                {isSubmitting ? <><Loader2 size={18} className="animate-spin" /> {t("invite.sending", { defaultValue: "Sending..." })}</> : t("invite.send_my_response", { defaultValue: "Send my response" })}
               </button>
             </form>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <p className="text-sm font-medium text-foreground mb-1">{data?.organizerName} is proposing these times.</p>
-              <p className="text-sm text-muted-foreground mb-4">Which works best for you?</p>
+              <p className="text-sm font-medium text-foreground mb-1">{t("invite.proposing_these_times", { name: data?.organizerName, defaultValue: "{{name}} is proposing these times." })}</p>
+              <p className="text-sm text-muted-foreground mb-4">{t("invite.which_works_best", { defaultValue: "Which works best for you?" })}</p>
 
               <AnimatePresence>
-                {times.map((t, i) => {
-                  const d = parseISO(t);
-                  const isSelected = selectedTime === t;
+                {times.map((slot, i) => {
+                  const d = parseISO(slot);
+                  const isSelected = selectedTime === slot;
                   return (
                     <motion.button
-                      key={t}
+                      key={slot}
                       type="button"
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.07, duration: 0.3 }}
-                      onClick={() => { setSelectedTime(t); setUnavailable(false); }}
+                      onClick={() => { setSelectedTime(slot); setUnavailable(false); }}
                       className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center justify-between gap-3 mb-3 ${
                         isSelected ? "border-primary bg-primary/5 shadow-sm" : "border-border bg-card hover:border-primary/40"
                       }`}
@@ -587,7 +594,7 @@ export default function InvitePage() {
                           {format(d, "EEEE, MMMM d 'at' h:mm a")}
                         </p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {i === 0 ? "First pick" : i === 1 ? "Alternative" : "Backup option"}
+                          {i === 0 ? t("invite.option_first_pick", { defaultValue: "First pick" }) : i === 1 ? t("invite.option_alternative", { defaultValue: "Alternative" }) : t("invite.option_backup", { defaultValue: "Backup option" })}
                         </p>
                       </div>
                       {isSelected && <CheckCircle2 size={20} className="text-primary flex-shrink-0" />}
@@ -604,7 +611,7 @@ export default function InvitePage() {
                 unavailable ? "border-destructive/40 bg-destructive/5 text-destructive" : "border-border text-muted-foreground hover:text-foreground"
               }`}
             >
-              {unavailable ? "✓ Marked unavailable — click to undo" : "None of these work for me"}
+              {unavailable ? `✓ ${t("invite.marked_unavailable_click_undo", { defaultValue: "Marked unavailable — click to undo" })}` : t("invite.none_work_for_me", { defaultValue: "None of these work for me" })}
             </button>
 
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
@@ -615,25 +622,25 @@ export default function InvitePage() {
               className="w-full py-4 bg-primary text-primary-foreground rounded-full font-medium text-base hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_4px_14px_rgba(45,74,62,0.2)] flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
-                <><Loader2 size={18} className="animate-spin" /> Sending...</>
+                <><Loader2 size={18} className="animate-spin" /> {t("invite.sending", { defaultValue: "Sending..." })}</>
               ) : (
-                unavailable ? "Send my response" : "This time works for me"
+                unavailable ? t("invite.send_my_response", { defaultValue: "Send my response" }) : t("invite.this_time_works", { defaultValue: "This time works for me" })
               )}
             </button>
 
             <p className="text-xs text-muted-foreground text-center">
-              No account needed · Your response goes directly to {data?.organizerName}
+              {t("invite.no_account_needed", { name: data?.organizerName, defaultValue: "No account needed · Your response goes directly to {{name}}" })}
             </p>
           </form>
         )}
 
         <div className="mt-10 pt-8 border-t border-border text-center space-y-3">
-          <p className="text-xs text-muted-foreground">Want to start your own traditions?</p>
+          <p className="text-xs text-muted-foreground">{t("invite.start_your_own_traditions", { defaultValue: "Want to start your own traditions?" })}</p>
           <a
             href="/"
             className="inline-flex items-center gap-2 px-5 py-2.5 border border-border rounded-full text-sm font-medium text-foreground hover:bg-secondary transition-colors"
           >
-            Create your own on Phoebe
+            {t("invite.create_your_own_on_phoebe", { defaultValue: "Create your own on Phoebe" })}
           </a>
         </div>
       </div>

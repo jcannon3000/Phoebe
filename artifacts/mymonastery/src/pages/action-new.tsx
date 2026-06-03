@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { apiRequest, ApiError } from "@/lib/queryClient";
 import { useBetaStatus } from "@/hooks/useDemo";
 
@@ -42,6 +43,7 @@ function Label({ children }: { children: React.ReactNode }) {
 
 export default function ActionNewPage() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
 
   const { data: groupsData } = useQuery<{ groups: Group[] }>({
     queryKey: ["/api/groups"],
@@ -124,7 +126,11 @@ export default function ActionNewPage() {
     },
     onError: (err) => {
       setFormError(
-        err instanceof ApiError ? err.message : "Couldn't create the action.",
+        err instanceof ApiError
+          ? err.message
+          : t("action_new.error_create_failed", {
+              defaultValue: "Couldn't create the action.",
+            }),
       );
     },
   });
@@ -132,23 +138,44 @@ export default function ActionNewPage() {
   const submit = () => {
     setFormError(null);
     if (effectiveGroupId == null) {
-      setFormError("Choose a community.");
+      setFormError(
+        t("action_new.error_choose_community", {
+          defaultValue: "Choose a community.",
+        }),
+      );
       return;
     }
     if (!title.trim()) {
-      setFormError("Give the action a title.");
+      setFormError(
+        t("action_new.error_missing_title", {
+          defaultValue: "Give the action a title.",
+        }),
+      );
       return;
     }
     if (!description.trim()) {
-      setFormError("Add a description so people know what they're showing up for.");
+      setFormError(
+        t("action_new.error_missing_description", {
+          defaultValue:
+            "Add a description so people know what they're showing up for.",
+        }),
+      );
       return;
     }
     if (!eventAt) {
-      setFormError("Set the date and time.");
+      setFormError(
+        t("action_new.error_missing_datetime", {
+          defaultValue: "Set the date and time.",
+        }),
+      );
       return;
     }
     if (isNaN(new Date(eventAt).getTime())) {
-      setFormError("That date and time looks off.");
+      setFormError(
+        t("action_new.error_invalid_datetime", {
+          defaultValue: "That date and time looks off.",
+        }),
+      );
       return;
     }
     if (isBeta) {
@@ -157,7 +184,11 @@ export default function ActionNewPage() {
         return filled && !(o.name.trim() && o.email.trim());
       });
       if (halfFilled) {
-        setFormError("Each official needs both a name and an email.");
+        setFormError(
+          t("action_new.error_official_incomplete", {
+            defaultValue: "Each official needs both a name and an email.",
+          }),
+        );
         return;
       }
     }
@@ -186,7 +217,7 @@ export default function ActionNewPage() {
             fontFamily: FONT,
           }}
         >
-          ← Back
+          ← {t("action_new.back", { defaultValue: "Back" })}
         </button>
       </header>
 
@@ -196,16 +227,23 @@ export default function ActionNewPage() {
             className="text-2xl font-semibold leading-tight mt-2 mb-1"
             style={{ color: "#F0EDE6" }}
           >
-            Call your community to action
+            {t("action_new.heading", {
+              defaultValue: "Call your community to action",
+            })}
           </h1>
           <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-            Everyone in the community gets a heads-up now, a week before, and
-            the day before.
+            {t("action_new.subheading", {
+              defaultValue:
+                "Everyone in the community gets a heads-up now, a week before, and the day before.",
+            })}
           </p>
 
           {adminGroups.length === 0 ? (
             <p className="text-sm" style={{ color: "rgba(200,212,192,0.7)" }}>
-              You need to be an admin of a community to create an action.
+              {t("action_new.admin_required", {
+                defaultValue:
+                  "You need to be an admin of a community to create an action.",
+              })}
             </p>
           ) : (
             <div className="flex flex-col gap-5">
@@ -213,7 +251,11 @@ export default function ActionNewPage() {
                   more than one community. */}
               {adminGroups.length > 1 && (
                 <div>
-                  <Label>Community</Label>
+                  <Label>
+                    {t("action_new.field_community", {
+                      defaultValue: "Community",
+                    })}
+                  </Label>
                   <select
                     value={effectiveGroupId ?? ""}
                     onChange={(e) => {
@@ -223,7 +265,11 @@ export default function ActionNewPage() {
                     className="w-full rounded-xl px-3 py-3 text-sm"
                     style={INPUT_STYLE}
                   >
-                    <option value="">Choose a community…</option>
+                    <option value="">
+                      {t("action_new.community_placeholder", {
+                        defaultValue: "Choose a community…",
+                      })}
+                    </option>
                     {adminGroups.map((g) => (
                       <option key={g.id} value={g.id}>
                         {g.emoji ? `${g.emoji} ` : ""}
@@ -235,12 +281,16 @@ export default function ActionNewPage() {
               )}
 
               <div>
-                <Label>Title</Label>
+                <Label>
+                  {t("action_new.field_title", { defaultValue: "Title" })}
+                </Label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Show up for the city council vote"
+                  placeholder={t("action_new.title_placeholder", {
+                    defaultValue: "Show up for the city council vote",
+                  })}
                   maxLength={200}
                   className="w-full rounded-xl px-3 py-3 text-sm"
                   style={INPUT_STYLE}
@@ -248,7 +298,9 @@ export default function ActionNewPage() {
               </div>
 
               <div>
-                <Label>Date &amp; time</Label>
+                <Label>
+                  {t("action_new.field_datetime", { defaultValue: "Date & time" })}
+                </Label>
                 <input
                   type="datetime-local"
                   value={eventAt}
@@ -259,12 +311,18 @@ export default function ActionNewPage() {
               </div>
 
               <div>
-                <Label>Location (optional)</Label>
+                <Label>
+                  {t("action_new.field_location", {
+                    defaultValue: "Location (optional)",
+                  })}
+                </Label>
                 <input
                   type="text"
                   value={location}
                   onChange={(e) => setLocationField(e.target.value)}
-                  placeholder="City Hall, 100 Main St"
+                  placeholder={t("action_new.location_placeholder", {
+                    defaultValue: "City Hall, 100 Main St",
+                  })}
                   maxLength={500}
                   className="w-full rounded-xl px-3 py-3 text-sm"
                   style={INPUT_STYLE}
@@ -272,11 +330,18 @@ export default function ActionNewPage() {
               </div>
 
               <div>
-                <Label>Description</Label>
+                <Label>
+                  {t("action_new.field_description", {
+                    defaultValue: "Description",
+                  })}
+                </Label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="What's happening, why it matters, and what to expect."
+                  placeholder={t("action_new.description_placeholder", {
+                    defaultValue:
+                      "What's happening, why it matters, and what to expect.",
+                  })}
                   rows={5}
                   maxLength={8000}
                   className="w-full rounded-xl px-3 py-3 text-sm leading-relaxed"
@@ -285,7 +350,11 @@ export default function ActionNewPage() {
               </div>
 
               <div>
-                <Label>Learn more link (optional)</Label>
+                <Label>
+                  {t("action_new.field_learn_more", {
+                    defaultValue: "Learn more link (optional)",
+                  })}
+                </Label>
                 <input
                   type="url"
                   value={learnMoreUrl}
@@ -301,7 +370,11 @@ export default function ActionNewPage() {
                   intercessions so members can pray toward the action. */}
               {intercessions.length > 0 && (
                 <div>
-                  <Label>Attach a prayer (optional)</Label>
+                  <Label>
+                    {t("action_new.field_attach_prayer", {
+                      defaultValue: "Attach a prayer (optional)",
+                    })}
+                  </Label>
                   <select
                     value={attachedMomentId ?? ""}
                     onChange={(e) =>
@@ -310,7 +383,11 @@ export default function ActionNewPage() {
                     className="w-full rounded-xl px-3 py-3 text-sm"
                     style={INPUT_STYLE}
                   >
-                    <option value="">No attached prayer</option>
+                    <option value="">
+                      {t("action_new.no_attached_prayer", {
+                        defaultValue: "No attached prayer",
+                      })}
+                    </option>
                     {intercessions.map((m) => (
                       <option key={m.id} value={m.id}>
                         {m.name}
@@ -321,7 +398,10 @@ export default function ActionNewPage() {
                     className="text-[12px] mt-1.5"
                     style={{ color: "rgba(143,175,150,0.7)" }}
                   >
-                    Links a community intercession to this action.
+                    {t("action_new.attach_prayer_help", {
+                      defaultValue:
+                        "Links a community intercession to this action.",
+                    })}
                   </p>
                 </div>
               )}
@@ -332,14 +412,19 @@ export default function ActionNewPage() {
                   opens the device mail app pre-filled. */}
               {isBeta && (
                 <div>
-                  <Label>Email your officials (optional)</Label>
+                  <Label>
+                    {t("action_new.field_email_officials", {
+                      defaultValue: "Email your officials (optional)",
+                    })}
+                  </Label>
                   <p
                     className="text-[12px] mb-2.5"
                     style={{ color: "rgba(143,175,150,0.7)" }}
                   >
-                    Add officials members can email about this — name, role,
-                    and their public email address. State &amp; local officials
-                    publish these; members of Congress don't.
+                    {t("action_new.email_officials_help", {
+                      defaultValue:
+                        "Add officials members can email about this — name, role, and their public email address. State & local officials publish these; members of Congress don't.",
+                    })}
                   </p>
                   <div className="flex flex-col gap-2.5">
                     {officials.map((o, i) => (
@@ -355,7 +440,9 @@ export default function ActionNewPage() {
                           type="text"
                           value={o.name}
                           onChange={(e) => updateOfficial(i, "name", e.target.value)}
-                          placeholder="Name (e.g. Jane Doe)"
+                          placeholder={t("action_new.official_name_placeholder", {
+                            defaultValue: "Name (e.g. Jane Doe)",
+                          })}
                           maxLength={160}
                           className="w-full rounded-lg px-3 py-2.5 text-sm"
                           style={INPUT_STYLE}
@@ -364,7 +451,9 @@ export default function ActionNewPage() {
                           type="text"
                           value={o.title}
                           onChange={(e) => updateOfficial(i, "title", e.target.value)}
-                          placeholder="Role (e.g. State Senator, District 5)"
+                          placeholder={t("action_new.official_role_placeholder", {
+                            defaultValue: "Role (e.g. State Senator, District 5)",
+                          })}
                           maxLength={160}
                           className="w-full rounded-lg px-3 py-2.5 text-sm"
                           style={INPUT_STYLE}
@@ -391,7 +480,9 @@ export default function ActionNewPage() {
                             fontFamily: FONT,
                           }}
                         >
-                          Remove
+                          {t("action_new.remove_official", {
+                            defaultValue: "Remove",
+                          })}
                         </button>
                       </div>
                     ))}
@@ -408,16 +499,27 @@ export default function ActionNewPage() {
                       cursor: "pointer",
                     }}
                   >
-                    + Add an official
+                    {t("action_new.add_official", {
+                      defaultValue: "+ Add an official",
+                    })}
                   </button>
                   {officials.length > 0 && (
                     <div className="mt-3">
-                      <Label>Email subject</Label>
+                      <Label>
+                        {t("action_new.field_email_subject", {
+                          defaultValue: "Email subject",
+                        })}
+                      </Label>
                       <input
                         type="text"
                         value={emailSubject}
                         onChange={(e) => setEmailSubject(e.target.value)}
-                        placeholder={title.trim() || "Subject line for the email"}
+                        placeholder={
+                          title.trim() ||
+                          t("action_new.email_subject_placeholder", {
+                            defaultValue: "Subject line for the email",
+                          })
+                        }
                         maxLength={200}
                         className="w-full rounded-xl px-3 py-3 text-sm"
                         style={INPUT_STYLE}
@@ -426,8 +528,10 @@ export default function ActionNewPage() {
                         className="text-[12px] mt-1.5"
                         style={{ color: "rgba(143,175,150,0.7)" }}
                       >
-                        Members write their own note; this is just the subject
-                        line. Defaults to the action title.
+                        {t("action_new.email_subject_help", {
+                          defaultValue:
+                            "Members write their own note; this is just the subject line. Defaults to the action title.",
+                        })}
                       </p>
                     </div>
                   )}
@@ -453,7 +557,9 @@ export default function ActionNewPage() {
                   cursor: createMutation.isPending ? "default" : "pointer",
                 }}
               >
-                {createMutation.isPending ? "Posting…" : "Post action"}
+                {createMutation.isPending
+                  ? t("action_new.submit_pending", { defaultValue: "Posting…" })
+                  : t("action_new.submit", { defaultValue: "Post action" })}
               </button>
             </div>
           )}

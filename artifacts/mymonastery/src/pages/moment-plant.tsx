@@ -5,49 +5,19 @@ import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { ArrowLeft, ArrowRight, CheckCircle2, ChevronLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import clsx from "clsx";
 
 type LoggingType = "reflection" | "checkin";
 type Frequency = "daily" | "weekly" | "monthly";
 
-const INTENTION_PLACEHOLDERS = [
-  "Share your morning coffee together ☕",
-  "Five minutes of contemplative prayer before the day starts 🌿",
-  "Breathe together. Pray together. Show up together.",
-  "A moment of gratitude, wherever you are 🌸",
-  "Walk outside and notice something beautiful 🚶🏽",
-];
-
-const REFLECTION_EXAMPLES = [
-  "How was your experience today?",
-  "What are you grateful for in this moment?",
-  "What did you notice in your five minutes?",
-  "What came up for you?",
-  "Where are you right now?",
-];
-
-const LOGGING_OPTIONS: {
+type LoggingOption = {
   type: LoggingType;
   icon: string;
   label: string;
   description: string;
   bestFor: string;
-}[] = [
-  {
-    type: "reflection",
-    icon: "✍🏽",
-    label: "Reflection",
-    description: "A short written response to a prompt you set.",
-    bestFor: "Prayer, meditation, gratitude, walks",
-  },
-  {
-    type: "checkin",
-    icon: "✅",
-    label: "Just practice",
-    description: "No words needed. Just mark that you were here.",
-    bestFor: "Meditation, prayer, breathing practices",
-  },
-];
+};
 
 const STEP_COUNT = 5;
 
@@ -55,6 +25,40 @@ export default function MomentPlant() {
   const { id: ritualId } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  const INTENTION_PLACEHOLDERS = [
+    t("moment_plant.intention_placeholder_coffee", { defaultValue: "Share your morning coffee together ☕" }),
+    t("moment_plant.intention_placeholder_contemplative", { defaultValue: "Five minutes of contemplative prayer before the day starts 🌿" }),
+    t("moment_plant.intention_placeholder_breathe", { defaultValue: "Breathe together. Pray together. Show up together." }),
+    t("moment_plant.intention_placeholder_gratitude", { defaultValue: "A moment of gratitude, wherever you are 🌸" }),
+    t("moment_plant.intention_placeholder_walk", { defaultValue: "Walk outside and notice something beautiful 🚶🏽" }),
+  ];
+
+  const REFLECTION_EXAMPLES = [
+    t("moment_plant.reflection_example_experience", { defaultValue: "How was your experience today?" }),
+    t("moment_plant.reflection_example_grateful", { defaultValue: "What are you grateful for in this moment?" }),
+    t("moment_plant.reflection_example_notice", { defaultValue: "What did you notice in your five minutes?" }),
+    t("moment_plant.reflection_example_came_up", { defaultValue: "What came up for you?" }),
+    t("moment_plant.reflection_example_right_now", { defaultValue: "Where are you right now?" }),
+  ];
+
+  const LOGGING_OPTIONS: LoggingOption[] = [
+    {
+      type: "reflection",
+      icon: "✍🏽",
+      label: t("moment_plant.logging_reflection_label", { defaultValue: "Reflection" }),
+      description: t("moment_plant.logging_reflection_description", { defaultValue: "A short written response to a prompt you set." }),
+      bestFor: t("moment_plant.logging_reflection_best_for", { defaultValue: "Prayer, meditation, gratitude, walks" }),
+    },
+    {
+      type: "checkin",
+      icon: "✅",
+      label: t("moment_plant.logging_checkin_label", { defaultValue: "Just practice" }),
+      description: t("moment_plant.logging_checkin_description", { defaultValue: "No words needed. Just mark that you were here." }),
+      bestFor: t("moment_plant.logging_checkin_best_for", { defaultValue: "Meditation, prayer, breathing practices" }),
+    },
+  ];
 
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
@@ -133,18 +137,18 @@ export default function MomentPlant() {
             transition={{ type: "spring", stiffness: 200, damping: 20 }}
           >
             <div className="text-6xl mb-6">🌿</div>
-            <h1 className="text-2xl font-semibold text-foreground mb-2">Your moment is planted</h1>
+            <h1 className="text-2xl font-semibold text-foreground mb-2">{t("moment_plant.success_title", { defaultValue: "Your moment is planted" })}</h1>
             <p className="text-muted-foreground mb-2">
               <span className="font-medium text-foreground">{name}</span>
             </p>
             <p className="text-sm text-muted-foreground mb-8">
-              When the window opens, each member taps their personal link and shows up.
+              {t("moment_plant.success_description", { defaultValue: "When the window opens, each member taps their personal link and shows up." })}
             </p>
             <button
               onClick={() => setLocation(`/ritual/${ritualId}`)}
               className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium hover:bg-primary/90 transition-colors"
             >
-              Back to tradition
+              {t("moment_plant.success_back_button", { defaultValue: "Back to tradition" })}
             </button>
           </motion.div>
         </div>
@@ -165,9 +169,9 @@ export default function MomentPlant() {
           </button>
           <div className="flex-1">
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest mb-1">
-              {ritual?.name ?? "Your tradition"}
+              {ritual?.name ?? t("moment_plant.header_tradition_fallback", { defaultValue: "Your tradition" })}
             </p>
-            <h1 className="text-lg font-semibold text-foreground">Plant a Shared Moment</h1>
+            <h1 className="text-lg font-semibold text-foreground">{t("moment_plant.header_title", { defaultValue: "Plant a Shared Moment" })}</h1>
           </div>
         </div>
 
@@ -188,13 +192,13 @@ export default function MomentPlant() {
           {/* Step 0: Name */}
           {step === 0 && (
             <motion.div key="step-name" variants={stepVariants} initial="initial" animate="animate" exit="exit">
-              <h2 className="text-xl font-semibold text-foreground mb-2">What is this moment called?</h2>
-              <p className="text-sm text-muted-foreground mb-6">Give your ritual a name your tradition will recognize.</p>
+              <h2 className="text-xl font-semibold text-foreground mb-2">{t("moment_plant.step_name_title", { defaultValue: "What is this moment called?" })}</h2>
+              <p className="text-sm text-muted-foreground mb-6">{t("moment_plant.step_name_subtitle", { defaultValue: "Give your ritual a name your tradition will recognize." })}</p>
               <input
                 type="text"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="Morning coffee together..."
+                placeholder={t("moment_plant.step_name_placeholder", { defaultValue: "Morning coffee together..." })}
                 maxLength={100}
                 autoFocus
                 className="w-full px-4 py-4 text-lg rounded-2xl border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-background transition-all"
@@ -206,9 +210,9 @@ export default function MomentPlant() {
           {/* Step 1: Intention */}
           {step === 1 && (
             <motion.div key="step-intention" variants={stepVariants} initial="initial" animate="animate" exit="exit">
-              <h2 className="text-xl font-semibold text-foreground mb-2">What is this moment about? 🌿</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-2">{t("moment_plant.step_intention_title", { defaultValue: "What is this moment about? 🌿" })}</h2>
               <p className="text-sm text-muted-foreground mb-6">
-                This will appear for your tradition when the window opens. It sets the intention.
+                {t("moment_plant.step_intention_subtitle", { defaultValue: "This will appear for your tradition when the window opens. It sets the intention." })}
               </p>
               <textarea
                 value={intention}
@@ -218,7 +222,7 @@ export default function MomentPlant() {
                 className="w-full px-4 py-4 text-base rounded-2xl border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-[var(--color-cream)] resize-none transition-all leading-relaxed"
               />
               <div className="flex justify-between items-center mt-2">
-                <p className="text-xs text-muted-foreground italic">Keep it short — this is a prompt, not an essay.</p>
+                <p className="text-xs text-muted-foreground italic">{t("moment_plant.step_intention_hint", { defaultValue: "Keep it short — this is a prompt, not an essay." })}</p>
                 <p className={clsx("text-xs font-medium", intention.length >= 130 ? "text-amber-600" : "text-muted-foreground")}>
                   {intention.length}/140
                 </p>
@@ -229,9 +233,9 @@ export default function MomentPlant() {
           {/* Step 2: Logging type */}
           {step === 2 && (
             <motion.div key="step-logging" variants={stepVariants} initial="initial" animate="animate" exit="exit">
-              <h2 className="text-xl font-semibold text-foreground mb-2">How will your tradition practice? 📷</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-2">{t("moment_plant.step_logging_title", { defaultValue: "How will your tradition practice? 📷" })}</h2>
               <p className="text-sm text-muted-foreground mb-6">
-                Choose how members log their moment. Everyone uses the same format.
+                {t("moment_plant.step_logging_subtitle", { defaultValue: "Choose how members log their moment. Everyone uses the same format." })}
               </p>
               <div className="space-y-3">
                 {LOGGING_OPTIONS.map(opt => (
@@ -250,7 +254,7 @@ export default function MomentPlant() {
                       <div>
                         <p className="font-semibold text-foreground">{opt.label}</p>
                         <p className="text-sm text-muted-foreground mt-0.5">{opt.description}</p>
-                        <p className="text-xs text-muted-foreground/70 mt-1">Best for: {opt.bestFor}</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">{t("moment_plant.step_logging_best_for", { bestFor: opt.bestFor, defaultValue: "Best for: {{bestFor}}" })}</p>
                       </div>
                       <div className={clsx(
                         "ml-auto w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5",
@@ -271,7 +275,7 @@ export default function MomentPlant() {
                   className="mt-6"
                 >
                   <label className="block text-sm font-semibold text-foreground mb-1">
-                    What's your prompt?
+                    {t("moment_plant.step_logging_prompt_label", { defaultValue: "What's your prompt?" })}
                   </label>
                   <input
                     type="text"
@@ -282,7 +286,7 @@ export default function MomentPlant() {
                     className="w-full px-4 py-3 rounded-xl border border-border focus:border-primary focus:ring-1 focus:ring-primary outline-none bg-background transition-all"
                   />
                   <div className="mt-2 space-y-1">
-                    <p className="text-xs text-muted-foreground italic">For inspiration:</p>
+                    <p className="text-xs text-muted-foreground italic">{t("moment_plant.step_logging_inspiration", { defaultValue: "For inspiration:" })}</p>
                     <div className="flex flex-wrap gap-2">
                       {[REFLECTION_EXAMPLES[(reflectionExampleIdx + 1) % REFLECTION_EXAMPLES.length],
                         REFLECTION_EXAMPLES[(reflectionExampleIdx + 2) % REFLECTION_EXAMPLES.length],
@@ -305,14 +309,14 @@ export default function MomentPlant() {
           {/* Step 3: Time */}
           {step === 3 && (
             <motion.div key="step-time" variants={stepVariants} initial="initial" animate="animate" exit="exit">
-              <h2 className="text-xl font-semibold text-foreground mb-2">When does your tradition gather? 🗓️</h2>
+              <h2 className="text-xl font-semibold text-foreground mb-2">{t("moment_plant.step_time_title", { defaultValue: "When does your tradition gather? 🗓️" })}</h2>
               <p className="text-sm text-muted-foreground mb-6">
-                A one-hour window opens at this time. Members practice and log whenever they can.
+                {t("moment_plant.step_time_subtitle", { defaultValue: "A one-hour window opens at this time. Members practice and log whenever they can." })}
               </p>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Time of day</label>
+                  <label className="block text-sm font-medium text-foreground mb-2">{t("moment_plant.step_time_time_label", { defaultValue: "Time of day" })}</label>
                   <input
                     type="time"
                     value={scheduledTime}
@@ -322,7 +326,7 @@ export default function MomentPlant() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">How often</label>
+                  <label className="block text-sm font-medium text-foreground mb-2">{t("moment_plant.step_time_frequency_label", { defaultValue: "How often" })}</label>
                   <div className="grid grid-cols-3 gap-2">
                     {(["daily", "weekly", "monthly"] as Frequency[]).map(f => (
                       <button
@@ -335,7 +339,11 @@ export default function MomentPlant() {
                             : "border-border bg-card text-muted-foreground hover:border-primary/30"
                         )}
                       >
-                        {f}
+                        {f === "daily"
+                          ? t("moment_plant.frequency_daily", { defaultValue: "Daily" })
+                          : f === "weekly"
+                          ? t("moment_plant.frequency_weekly", { defaultValue: "Weekly" })
+                          : t("moment_plant.frequency_monthly", { defaultValue: "Monthly" })}
                       </button>
                     ))}
                   </div>
@@ -349,20 +357,20 @@ export default function MomentPlant() {
             type GoalOpt = { sessions: number; emoji: string; label: string; sub: string };
             const goalOptions: GoalOpt[] =
               frequency === "daily" ? [
-                { sessions: 7,  emoji: "🌱", label: "7 days",      sub: "One week · A first tender step" },
-                { sessions: 14, emoji: "🌿", label: "14 days",     sub: "Two weeks · Finding your rhythm" },
+                { sessions: 7,  emoji: "🌱", label: t("moment_plant.goal_days_label", { count: 7, defaultValue: "{{count}} days" }),  sub: t("moment_plant.goal_one_week_sub", { defaultValue: "One week · A first tender step" }) },
+                { sessions: 14, emoji: "🌿", label: t("moment_plant.goal_days_label", { count: 14, defaultValue: "{{count}} days" }), sub: t("moment_plant.goal_two_weeks_sub", { defaultValue: "Two weeks · Finding your rhythm" }) },
               ] : [
-                { sessions: 4,  emoji: "🌱", label: "4 sessions",  sub: "One month · A first tender step" },
-                { sessions: 8,  emoji: "🌿", label: "8 sessions",  sub: "Two months · Finding your rhythm" },
+                { sessions: 4,  emoji: "🌱", label: t("moment_plant.goal_sessions_label", { count: 4, defaultValue: "{{count}} sessions" }),  sub: t("moment_plant.goal_one_month_sub", { defaultValue: "One month · A first tender step" }) },
+                { sessions: 8,  emoji: "🌿", label: t("moment_plant.goal_sessions_label", { count: 8, defaultValue: "{{count}} sessions" }),  sub: t("moment_plant.goal_two_months_sub", { defaultValue: "Two months · Finding your rhythm" }) },
               ];
 
             return (
               <motion.div key="step-goal" variants={stepVariants} initial="initial" animate="animate" exit="exit">
                 <h2 className="text-xl font-semibold text-foreground mb-1" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
-                  What's your first goal? 🌱
+                  {t("moment_plant.step_goal_title", { defaultValue: "What's your first goal? 🌱" })}
                 </h2>
                 <p className="text-sm text-muted-foreground italic mb-6">
-                  Start small. Eleanor will nudge you higher when you get there.
+                  {t("moment_plant.step_goal_subtitle", { defaultValue: "Start small. Eleanor will nudge you higher when you get there." })}
                 </p>
 
                 <div className="space-y-2.5 mb-4">
@@ -400,17 +408,17 @@ export default function MomentPlant() {
                 </div>
 
                 <p className="text-xs text-center text-muted-foreground/50 italic mb-5">
-                  Longer goals unlock when you get there. 🌿
+                  {t("moment_plant.step_goal_unlock_hint", { defaultValue: "Longer goals unlock when you get there. 🌿" })}
                 </p>
 
                 {commitmentSessionsGoal && (
                   <p className="text-sm text-center text-[#5C7A5F] italic" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
-                    {commitmentSessionsGoal} sessions together. A good place to begin. 🌱
+                    {t("moment_plant.step_goal_begin", { count: commitmentSessionsGoal, defaultValue: "{{count}} sessions together. A good place to begin. 🌱" })}
                   </p>
                 )}
 
                 <div className="bg-card border border-border rounded-2xl p-4 mt-5">
-                  <p className="text-sm font-medium text-foreground mb-1">Your moment summary</p>
+                  <p className="text-sm font-medium text-foreground mb-1">{t("moment_plant.summary_title", { defaultValue: "Your moment summary" })}</p>
                   <div className="space-y-1 text-sm text-muted-foreground">
                     <p>🌿 <span className="text-foreground font-medium">{name}</span></p>
                     <p className="italic pl-4 text-xs leading-relaxed">{intention}</p>
@@ -419,7 +427,15 @@ export default function MomentPlant() {
                       {LOGGING_OPTIONS.find(o => o.type === loggingType)?.label}
                       {reflectionPrompt && ` · "${reflectionPrompt}"`}
                     </p>
-                    <p>🗓️ {frequency.charAt(0).toUpperCase() + frequency.slice(1)} at {scheduledTime}{commitmentSessionsGoal ? ` · ${commitmentSessionsGoal} sessions` : ""}</p>
+                    <p>🗓️ {t("moment_plant.summary_schedule", {
+                      frequency: frequency === "daily"
+                        ? t("moment_plant.frequency_daily", { defaultValue: "Daily" })
+                        : frequency === "weekly"
+                        ? t("moment_plant.frequency_weekly", { defaultValue: "Weekly" })
+                        : t("moment_plant.frequency_monthly", { defaultValue: "Monthly" }),
+                      time: scheduledTime,
+                      defaultValue: "{{frequency}} at {{time}}",
+                    })}{commitmentSessionsGoal ? t("moment_plant.summary_sessions_suffix", { count: commitmentSessionsGoal, defaultValue: " · {{count}} sessions" }) : ""}</p>
                   </div>
                 </div>
               </motion.div>
@@ -436,7 +452,7 @@ export default function MomentPlant() {
                 className="flex items-center gap-2 px-5 py-3 rounded-xl border border-border text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
               >
                 <ArrowLeft size={16} />
-                Back
+                {t("moment_plant.nav_back", { defaultValue: "Back" })}
               </button>
             )}
             {step < STEP_COUNT - 1 ? (
@@ -445,7 +461,7 @@ export default function MomentPlant() {
                 disabled={!canNext()}
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-40"
               >
-                Continue
+                {t("moment_plant.nav_continue", { defaultValue: "Continue" })}
                 <ArrowRight size={16} />
               </button>
             ) : (
@@ -454,7 +470,7 @@ export default function MomentPlant() {
                 disabled={!canNext() || plantMutation.isPending}
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition-colors disabled:opacity-40"
               >
-                {plantMutation.isPending ? "Planting..." : "Plant this moment 🌿"}
+                {plantMutation.isPending ? t("moment_plant.nav_planting", { defaultValue: "Planting..." }) : t("moment_plant.nav_plant_moment", { defaultValue: "Plant this moment 🌿" })}
               </button>
             )}
           </div>
