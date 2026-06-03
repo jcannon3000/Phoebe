@@ -3164,6 +3164,10 @@ export default function PrayerModePage() {
   // Keeping initialisation in an effect (not the useState initialiser)
   // ensures we don't read `slides` while it's still empty.
   const [index, setIndex] = useState<number>(-1);
+  // Whether the user has completed at least one Amen this session. Gates the
+  // "Pray a liturgy" shortcut so it surfaces after the first amen rather than
+  // on the untouched first slide.
+  const [hasAmenedOnce, setHasAmenedOnce] = useState(false);
   const swipeTouchStartXRef = useRef<number | null>(null);
   const swipeTouchStartYRef = useRef<number | null>(null);
 
@@ -3560,6 +3564,8 @@ export default function PrayerModePage() {
     // Feedback (haptic + chime) fires immediately on tap so the response
     // feels coupled to the gesture, not to the fade.
     triggerAmenFeedback();
+    // First amen this session unlocks the "Pray a liturgy" shortcut.
+    setHasAmenedOnce(true);
     // Clear today's bell (morning / midday / evening) from the lock
     // screen the moment the user prays. Each Amen tap is a "yes, I'm
     // praying" signal — the nudge has done its job and shouldn't
@@ -3909,9 +3915,11 @@ export default function PrayerModePage() {
         ×
       </button>
 
-      {/* First slide only: a "Pray a liturgy" shortcut into the full BCP
-          office options (the chooser), opposite the exit button. */}
-      {index === 0 && phase === "prayer" && (
+      {/* "Pray a liturgy" shortcut into the full BCP office options (the
+          chooser), opposite the exit button. Surfaces after the first amen
+          rather than on the untouched first slide, so the opening prayer
+          isn't competing with a navigation pill. */}
+      {hasAmenedOnce && phase === "prayer" && (
         <button
           type="button"
           onClick={() => setLocation("/prayer-chooser")}

@@ -137,27 +137,15 @@ router.post("/prayer-streak/log", async (req: Request, res: Response): Promise<v
 });
 
 // GET /prayer-streak/community-prayed-week — returns garden members who
-// have prayed an OFFICE in the last 7 days. Specifically scoped to
-// prayer_sessions rows with an office / devotion surface so the home
-// card's "N people prayed with you this week" line tracks Daily Office
-// engagement only.
+// prayed in ANY way in the last 7 days, plus the true total count. The
+// "Pray Together" home card surfaces this as "N people prayed with you
+// this week" with a rail of their faces.
 //
-// An earlier version also UNIONed users.prayer_streak_last_date as a
-// second signal so prayer-mode slideshow users would show up. That
-// signal got dropped because it also fires when a user walks a
-// prayer-feed slideshow (e.g. Phoebe Climate). Praying the feed should
-// mark THAT feed's card complete on the dashboard (via the separate
-// /prayer-feeds/subscribed prayedToday flag) — but it shouldn't count
-// toward the office card's avatar stack, which is meant to read as
-// "your community is praying the offices with you," not "your
-// community is doing anything prayer-shaped."
-const OFFICE_SURFACES = [
-  "morning-prayer",
-  "evening-prayer",
-  "morning-devotion",
-  "early-evening-devotion",
-];
-
+// "Prayed at all" = any prayer_sessions row (offices, devotions, the
+// Pray Together slideshow, feed walks, Compline) OR an Amen on a prayer
+// request. (An earlier version scoped this to office surfaces only; the
+// card is now the communal "Pray Together" anchor, so it counts everyone
+// who prayed, not just those who prayed an office.)
 router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Response): Promise<void> => {
   const sessionUser = req.user as { id: number } | undefined;
   if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -165,13 +153,10 @@ router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Res
   try {
     const { getGardenUserIds } = await import("../lib/garden.js");
     const gardenIds = await getGardenUserIds(sessionUser.id);
-    if (gardenIds.length === 0) { res.json({ people: [] }); return; }
+    if (gardenIds.length === 0) { res.json({ people: [], total: 0 }); return; }
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    // Garden members with an office / devotion session in the rolling
-    // 7-day window. Only this signal — feed slideshows and prayer-mode
-    // walks deliberately don't count here (see endpoint header).
     const peopleRows = await db
       .select({
         id: usersTable.id,
@@ -182,24 +167,41 @@ router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Res
       .where(inArray(usersTable.id, gardenIds));
 
     const activeIds = new Set<number>();
-    const officeRows = await db
+    // Any prayer session (offices, devotions, the Pray Together slideshow,
+    // feed walks, Compline) in the window — not just offices.
+    const sessionRows = await db
       .selectDistinct({ userId: prayerSessionsTable.userId })
       .from(prayerSessionsTable)
       .where(and(
         inArray(prayerSessionsTable.userId, gardenIds),
-        inArray(prayerSessionsTable.surface, OFFICE_SURFACES),
         gte(prayerSessionsTable.endedAt, sevenDaysAgo),
       ));
-    for (const r of officeRows) {
+    for (const r of sessionRows) {
+      if (typeof r.userId === "number") activeIds.add(r.userId);
+    }
+    // Praying for an individual request (an Amen) also counts as praying.
+    const amenRows = await db
+      .selectDistinct({ userId: prayerRequestAmensTable.userId })
+      .from(prayerRequestAmensTable)
+      .where(and(
+        inArray(prayerRequestAmensTable.userId, gardenIds),
+        gte(prayerRequestAmensTable.prayedAt, sevenDaysAgo),
+      ));
+    for (const r of amenRows) {
       if (typeof r.userId === "number") activeIds.add(r.userId);
     }
 
-    const active = peopleRows
-      .filter((p) => activeIds.has(p.id))
-      .slice(0, 12)
+    // Everyone who prayed → the true total for the count line. Lead the
+    // (capped) avatar rail with people who have a profile photo.
+    const activePeople = peopleRows.filter((p) => activeIds.has(p.id));
+    const total = activePeople.length;
+    const people = activePeople
+      .slice()
+      .sort((a, b) => (b.avatarUrl ? 1 : 0) - (a.avatarUrl ? 1 : 0))
+      .slice(0, 24)
       .map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl }));
 
-    res.json({ people: active });
+    res.json({ people, total });
   } catch (err) {
     console.error("[prayer-streak:community-prayed-week] failed:", err);
     res.status(500).json({ error: "internal_error" });
