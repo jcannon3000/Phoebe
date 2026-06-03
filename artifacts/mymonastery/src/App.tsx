@@ -12,6 +12,7 @@ import { DesktopAppPrompt } from "@/components/DesktopAppPrompt";
 import { BottomPromptStack } from "@/components/BottomPromptStack";
 import { PrayLocationInvite } from "@/components/PrayLocationInvite";
 import { CacReturnRedirect } from "@/components/CacReturnRedirect";
+import { OfficeAudioPreloader } from "@/components/OfficeAudioPreloader";
 import { AppOpenTracker } from "@/components/AppOpenTracker";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
 import { PullToRefresh } from "@/components/PullToRefresh";
@@ -830,6 +831,7 @@ function App() {
             <ScrollToTopOnNavigate />
             <CacReturnRedirect />
             <NativeJournalOpener />
+            <OfficeAudioPreloader />
             {/* Bottom-anchored prompt cards (live broadcast banner + App
                 Store download), stacked so they never overlap. Inside the
                 router so the live banner's "Watch →" can SPA-navigate to
