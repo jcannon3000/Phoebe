@@ -1247,6 +1247,27 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_feed_entries_feed_date ON prayer_feed_entries (feed_id, entry_date)`);
 
+    // Ministry sources — scraped-event sources, one per prayer feed. Shipped in
+    // the Drizzle schema (lib/db/schema/ministry_sources) without a matching
+    // migration, so the ministries manager + scraper were hitting "relation
+    // ministry_sources does not exist". Created here, mirroring the schema, and
+    // placed after prayer_feeds so the feed_id FK resolves on a fresh DB too.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS ministry_sources (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        events_url TEXT NOT NULL,
+        news_url TEXT,
+        feed_id INTEGER NOT NULL REFERENCES prayer_feeds(id) ON DELETE CASCADE,
+        enabled BOOLEAN NOT NULL DEFAULT TRUE,
+        last_status TEXT,
+        last_synced_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_ministry_sources_feed_id ON ministry_sources(feed_id)`);
+
     // ── Multi-slot prayer feed entries ─────────────────────────────────────
     // Each (feed_id, entry_date) supports up to three entries — slots
     // 1/2/3. Each slot becomes its own slide on the subscriber side, so
