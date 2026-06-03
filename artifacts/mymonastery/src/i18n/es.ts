@@ -1660,6 +1660,51 @@ export const es: Translations = {
     nav_planting: "Plantando...",
     nav_plant_moment: "Planta este momento 🌿",
   },
+  moment_join: {
+    // Auth gate (signed-out)
+    gate_title: "Únete a esta práctica",
+    gate_create_to_join: "Crea una cuenta para unirte.",
+    gate_create_account: "Crear cuenta para unirme",
+    gate_already_have_account: "¿Ya tienes una cuenta? Inicia sesión",
+    // Error / not found
+    not_found: "No se encontró este enlace de práctica.",
+    error_generic: "Algo salió mal. Por favor intenta de nuevo.",
+    // Time-of-day labels
+    tod_morning: "Mañana",
+    tod_midday: "Mediodía",
+    tod_afternoon: "Tarde",
+    tod_night: "Noche",
+    tod_practice_badge: "práctica de la {{tod}}",
+    // Frequency labels
+    freq_daily: "Diaria",
+    freq_weekly: "Semanal",
+    freq_monthly: "Mensual",
+    // Info / join screen
+    members_tending_one: "{{count}} miembro cuidándola",
+    members_tending_other: "{{count}} miembros cuidándola",
+    holding_in_prayer: "Llevando en oración: {{topic}}",
+    label_name: "Tu nombre",
+    placeholder_name: "Nombre o cómo te gustaría que te conozcan",
+    label_email: "Tu correo",
+    placeholder_email: "Para tu enlace personal",
+    email_invite_note: "Las invitaciones de calendario se enviarán a tu correo.",
+    join_button: "Únete a esta práctica 🌿",
+    joining: "Uniéndote...",
+    // Personal time screen
+    time_heading: "{{name}} es una práctica de la {{tod}}.",
+    time_question: "¿Qué momento de la {{tod}} te viene mejor?",
+    label_hour: "Hora",
+    label_minute: "Minuto",
+    label_timezone: "Tu zona horaria",
+    time_calendar_note: "Este es el momento en que Eleanor lo pondrá en tu calendario.",
+    time_own_time_note: "Cada persona en esta práctica elige su propio horario.",
+    set_my_time: "Fijar mi horario 🌿",
+    // Done screen
+    done_title: "Ya estás dentro.",
+    done_yours_to_tend: "{{name}} es tuya para cuidar.",
+    done_calendar_invite: "Una invitación de calendario está en camino.",
+    done_go_dashboard: "Ir a tu panel 🌿",
+  },
   reset_password: {
     invalid_link: "Este enlace de restablecimiento no es válido o ha expirado.",
     back_to_sign_in: "Volver a iniciar sesión",

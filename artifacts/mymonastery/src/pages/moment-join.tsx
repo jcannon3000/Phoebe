@@ -2,15 +2,16 @@ import { useState, useEffect } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { Sprout } from "lucide-react";
 
 const SPIRITUAL_TEMPLATES = new Set(["morning-prayer", "evening-prayer", "intercession", "breath", "contemplative", "walk"]);
-const TIME_OF_DAY_MAP: Record<string, { emoji: string; label: string }> = {
-  morning:   { emoji: "🌅", label: "Morning" },
-  midday:    { emoji: "☀️",  label: "Midday" },
-  afternoon: { emoji: "🌤", label: "Afternoon" },
-  night:     { emoji: "🌙", label: "Night" },
+const TIME_OF_DAY_EMOJI: Record<string, string> = {
+  morning:   "🌅",
+  midday:    "☀️",
+  afternoon: "🌤",
+  night:     "🌙",
 };
 
 interface PracticeInfo {
@@ -28,6 +29,7 @@ interface PracticeInfo {
 }
 
 export default function MomentJoin() {
+  const { t } = useTranslation();
   const { momentToken } = useParams<{ momentToken: string }>();
   const { user, isLoading: authLoading } = useAuth();
 
@@ -114,21 +116,21 @@ export default function MomentJoin() {
           <div className="w-14 h-14 rounded-2xl bg-[#5C7A5F]/20 flex items-center justify-center mx-auto mb-5">
             <Sprout size={28} strokeWidth={1.5} className="text-[#9ecc9f]" />
           </div>
-          <p className="text-xl font-semibold text-[#F5EDD8] mb-2">Join this practice</p>
+          <p className="text-xl font-semibold text-[#F5EDD8] mb-2">{t("moment_join.gate_title")}</p>
           {data && <p className="text-[#c9b99a] text-sm mb-1">{data.name}</p>}
           {data?.intention && <p className="text-[#c9b99a]/70 text-xs italic mb-6">"{data.intention}"</p>}
-          {!data && <p className="text-[#c9b99a] text-sm mb-6">Create an account to join.</p>}
+          {!data && <p className="text-[#c9b99a] text-sm mb-6">{t("moment_join.gate_create_to_join")}</p>}
           <a
             href={`/?redirect=${encodeURIComponent(currentPath)}`}
             className="inline-flex items-center justify-center w-full px-6 py-3.5 rounded-xl bg-[#5C7A5F] text-white font-medium text-sm transition-opacity hover:opacity-90 mb-3"
           >
-            Create account to join
+            {t("moment_join.gate_create_account")}
           </a>
           <a
             href={`/?redirect=${encodeURIComponent(currentPath)}`}
             className="text-sm text-[#c9b99a] hover:text-[#F5EDD8] transition-colors"
           >
-            Already have an account? Sign in
+            {t("moment_join.gate_already_have_account")}
           </a>
         </div>
       </div>
@@ -140,15 +142,16 @@ export default function MomentJoin() {
       <div className="min-h-screen bg-[#2C1A0E] flex items-center justify-center px-4">
         <div className="text-center text-[#F5EDD8]">
           <div className="text-5xl mb-4">🍂</div>
-          <p className="text-lg">This practice link wasn't found.</p>
+          <p className="text-lg">{t("moment_join.not_found")}</p>
         </div>
       </div>
     );
   }
 
-  const todInfo = data.timeOfDay ? TIME_OF_DAY_MAP[data.timeOfDay] : null;
+  const todEmoji = data.timeOfDay ? TIME_OF_DAY_EMOJI[data.timeOfDay] : null;
+  const todLabel = data.timeOfDay ? t(`moment_join.tod_${data.timeOfDay}`) : null;
   const isSpiritual = SPIRITUAL_TEMPLATES.has(data.templateType ?? "");
-  const freqLabel = data.frequency === "daily" ? "Daily" : data.frequency === "weekly" ? "Weekly" : "Monthly";
+  const freqLabel = data.frequency === "daily" ? t("moment_join.freq_daily") : data.frequency === "weekly" ? t("moment_join.freq_weekly") : t("moment_join.freq_monthly");
 
   // ── Done screen ──────────────────────────────────────────────────────────
   if (phase === "done") {
@@ -160,17 +163,17 @@ export default function MomentJoin() {
           className="max-w-sm w-full text-center text-[#F5EDD8]"
         >
           <div className="text-6xl mb-4">🌿</div>
-          <h2 className="text-2xl font-semibold mb-2">You're in.</h2>
+          <h2 className="text-2xl font-semibold mb-2">{t("moment_join.done_title")}</h2>
           <p className="text-[#c9b99a] mb-6 text-sm leading-relaxed">
-            {data.name} is yours to tend.<br />
-            A calendar invite is on its way.
+            {t("moment_join.done_yours_to_tend", { name: data.name })}<br />
+            {t("moment_join.done_calendar_invite")}
           </p>
 
           <a
             href="/dashboard"
             className="inline-block px-8 py-3 bg-[#5C7A5F] text-white rounded-full font-medium hover:bg-[#5a7a60] transition-colors"
           >
-            Go to your dashboard 🌿
+            {t("moment_join.done_go_dashboard")}
           </a>
         </motion.div>
       </div>
@@ -179,7 +182,7 @@ export default function MomentJoin() {
 
   // ── Personal time screen ─────────────────────────────────────────────────
   if (phase === "time") {
-    const todLabel = todInfo?.label.toLowerCase() ?? "morning";
+    const todLabelLower = (todLabel ?? t("moment_join.tod_morning")).toLowerCase();
     return (
       <div className="min-h-screen bg-[#2C1A0E] flex items-center justify-center px-4">
         <motion.div
@@ -187,16 +190,16 @@ export default function MomentJoin() {
           animate={{ opacity: 1, x: 0 }}
           className="max-w-sm w-full text-[#F5EDD8]"
         >
-          <div className="text-5xl mb-4 text-center">{todInfo?.emoji}</div>
-          <h2 className="text-2xl font-semibold text-center mb-2">{data.name} is a {todLabel} practice.</h2>
+          <div className="text-5xl mb-4 text-center">{todEmoji}</div>
+          <h2 className="text-2xl font-semibold text-center mb-2">{t("moment_join.time_heading", { name: data.name, tod: todLabelLower })}</h2>
           <p className="text-[#c9b99a] text-center text-sm mb-8">
-            When in the {todLabel} works best for you?
+            {t("moment_join.time_question", { tod: todLabelLower })}
           </p>
 
           <div className="bg-[#3a2410] rounded-2xl p-6 space-y-5">
             {/* Hour */}
             <div>
-              <label className="block text-xs font-medium text-[#c9b99a] uppercase tracking-widest mb-2">Hour</label>
+              <label className="block text-xs font-medium text-[#c9b99a] uppercase tracking-widest mb-2">{t("moment_join.label_hour")}</label>
               <div className="grid grid-cols-6 gap-1.5">
                 {[1,2,3,4,5,6,7,8,9,10,11,12].map(hv => (
                   <button key={hv} onClick={() => setPersonalHour(hv)}
@@ -208,7 +211,7 @@ export default function MomentJoin() {
             </div>
             {/* Minute */}
             <div>
-              <label className="block text-xs font-medium text-[#c9b99a] uppercase tracking-widest mb-2">Minute</label>
+              <label className="block text-xs font-medium text-[#c9b99a] uppercase tracking-widest mb-2">{t("moment_join.label_minute")}</label>
               <div className="flex gap-2">
                 {[0, 15, 30, 45].map(mv => (
                   <button key={mv} onClick={() => setPersonalMinute(mv)}
@@ -229,7 +232,7 @@ export default function MomentJoin() {
             </div>
             {/* Timezone */}
             <div>
-              <label className="block text-xs font-medium text-[#c9b99a] uppercase tracking-widest mb-2">Your timezone</label>
+              <label className="block text-xs font-medium text-[#c9b99a] uppercase tracking-widest mb-2">{t("moment_join.label_timezone")}</label>
               <select value={personalTimezone} onChange={e => setPersonalTimezone(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl bg-[#2C1A0E] border border-[#5a3d28] text-[#F5EDD8] focus:border-[#5C7A5F] focus:outline-none text-sm">
                 {Intl.supportedValuesOf("timeZone").map(tz => (
@@ -238,8 +241,8 @@ export default function MomentJoin() {
               </select>
             </div>
             <p className="text-xs text-[#c9b99a]/60 italic text-center">
-              This is when Eleanor will put it in your calendar.<br />
-              Everyone in this practice chooses their own time.
+              {t("moment_join.time_calendar_note")}<br />
+              {t("moment_join.time_own_time_note")}
             </p>
           </div>
 
@@ -248,10 +251,10 @@ export default function MomentJoin() {
             disabled={joinMutation.isPending}
             className="w-full mt-6 py-4 rounded-2xl bg-[#5C7A5F] text-white text-base font-semibold hover:bg-[#5a7a60] transition-colors disabled:opacity-40"
           >
-            {joinMutation.isPending ? "Joining..." : "Set my time 🌿"}
+            {joinMutation.isPending ? t("moment_join.joining") : t("moment_join.set_my_time")}
           </button>
           {joinMutation.isError && (
-            <p className="text-xs text-red-400 text-center mt-2">Something went wrong. Please try again.</p>
+            <p className="text-xs text-red-400 text-center mt-2">{t("moment_join.error_generic")}</p>
           )}
         </motion.div>
       </div>
@@ -272,9 +275,9 @@ export default function MomentJoin() {
           <h1 className="text-2xl font-semibold mb-1">{data.name}</h1>
           <p className="text-[#c9b99a] text-sm italic mb-4 leading-relaxed">"{data.intention}"</p>
           <div className="flex justify-center gap-3 flex-wrap text-xs text-[#c9b99a]/80">
-            {todInfo && (
+            {todEmoji && todLabel && (
               <span className="px-3 py-1 bg-[#3a2410] rounded-full">
-                {todInfo.emoji} {todInfo.label} practice
+                {todEmoji} {t("moment_join.tod_practice_badge", { tod: todLabel })}
               </span>
             )}
             <span className="px-3 py-1 bg-[#3a2410] rounded-full">
@@ -282,38 +285,38 @@ export default function MomentJoin() {
             </span>
             {data.memberCount > 0 && (
               <span className="px-3 py-1 bg-[#3a2410] rounded-full">
-                {data.memberCount} {data.memberCount === 1 ? "member" : "members"} tending
+                {t("moment_join.members_tending", { count: data.memberCount })}
               </span>
             )}
           </div>
           {data.intercessionTopic && (
-            <p className="text-[#c9b99a]/70 text-xs mt-3 italic">Holding in prayer: {data.intercessionTopic}</p>
+            <p className="text-[#c9b99a]/70 text-xs mt-3 italic">{t("moment_join.holding_in_prayer", { topic: data.intercessionTopic })}</p>
           )}
         </div>
 
         {/* Join form */}
         <div className="bg-[#3a2410] rounded-2xl p-6 space-y-4">
           <div>
-            <label className="block text-xs font-medium text-[#c9b99a] uppercase tracking-widest mb-2">Your name</label>
+            <label className="block text-xs font-medium text-[#c9b99a] uppercase tracking-widest mb-2">{t("moment_join.label_name")}</label>
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="First name or how you'd like to be known"
+              placeholder={t("moment_join.placeholder_name")}
               className="w-full px-4 py-3 rounded-xl bg-[#2C1A0E] border border-[#5a3d28] text-[#F5EDD8] placeholder-[#7a5a42] focus:border-[#5C7A5F] focus:outline-none text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-[#c9b99a] uppercase tracking-widest mb-2">Your email</label>
+            <label className="block text-xs font-medium text-[#c9b99a] uppercase tracking-widest mb-2">{t("moment_join.label_email")}</label>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="For your personal link"
+              placeholder={t("moment_join.placeholder_email")}
               className="w-full px-4 py-3 rounded-xl bg-[#2C1A0E] border border-[#5a3d28] text-[#F5EDD8] placeholder-[#7a5a42] focus:border-[#5C7A5F] focus:outline-none text-sm"
             />
           </div>
-          <p className="text-xs text-[#c9b99a]/60 italic">Calendar invites will be sent to your email.</p>
+          <p className="text-xs text-[#c9b99a]/60 italic">{t("moment_join.email_invite_note")}</p>
         </div>
 
         <button
@@ -321,10 +324,10 @@ export default function MomentJoin() {
           disabled={!name.trim() || !email.trim() || joinMutation.isPending}
           className="w-full mt-5 py-4 rounded-2xl bg-[#5C7A5F] text-white text-base font-semibold hover:bg-[#5a7a60] transition-colors disabled:opacity-40"
         >
-          {joinMutation.isPending ? "Joining..." : "Join this practice 🌿"}
+          {joinMutation.isPending ? t("moment_join.joining") : t("moment_join.join_button")}
         </button>
         {joinMutation.isError && (
-          <p className="text-xs text-red-400 text-center mt-2">Something went wrong. Please try again.</p>
+          <p className="text-xs text-red-400 text-center mt-2">{t("moment_join.error_generic")}</p>
         )}
       </motion.div>
     </div>

@@ -1711,6 +1711,52 @@ export const en = {
     nav_planting: "Planting...",
     nav_plant_moment: "Plant this moment 🌿",
   },
+  // Moment join page (pages/moment-join.tsx).
+  moment_join: {
+    // Auth gate (signed-out)
+    gate_title: "Join this practice",
+    gate_create_to_join: "Create an account to join.",
+    gate_create_account: "Create account to join",
+    gate_already_have_account: "Already have an account? Sign in",
+    // Error / not found
+    not_found: "This practice link wasn't found.",
+    error_generic: "Something went wrong. Please try again.",
+    // Time-of-day labels
+    tod_morning: "Morning",
+    tod_midday: "Midday",
+    tod_afternoon: "Afternoon",
+    tod_night: "Night",
+    tod_practice_badge: "{{tod}} practice",
+    // Frequency labels
+    freq_daily: "Daily",
+    freq_weekly: "Weekly",
+    freq_monthly: "Monthly",
+    // Info / join screen
+    members_tending_one: "{{count}} member tending",
+    members_tending_other: "{{count}} members tending",
+    holding_in_prayer: "Holding in prayer: {{topic}}",
+    label_name: "Your name",
+    placeholder_name: "First name or how you'd like to be known",
+    label_email: "Your email",
+    placeholder_email: "For your personal link",
+    email_invite_note: "Calendar invites will be sent to your email.",
+    join_button: "Join this practice 🌿",
+    joining: "Joining...",
+    // Personal time screen
+    time_heading: "{{name}} is a {{tod}} practice.",
+    time_question: "When in the {{tod}} works best for you?",
+    label_hour: "Hour",
+    label_minute: "Minute",
+    label_timezone: "Your timezone",
+    time_calendar_note: "This is when Eleanor will put it in your calendar.",
+    time_own_time_note: "Everyone in this practice chooses their own time.",
+    set_my_time: "Set my time 🌿",
+    // Done screen
+    done_title: "You're in.",
+    done_yours_to_tend: "{{name}} is yours to tend.",
+    done_calendar_invite: "A calendar invite is on its way.",
+    done_go_dashboard: "Go to your dashboard 🌿",
+  },
   // Reset password page (pages/reset-password.tsx).
   reset_password: {
     invalid_link: "This reset link is invalid or has expired.",
