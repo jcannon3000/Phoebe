@@ -482,7 +482,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               {rawIsBeta && (
                 <MenuRow emoji="🎬" label={t("menu.videos", { defaultValue: "Videos" })} onClick={() => navigate("/videos")} />
               )}
-              <MenuRow emoji="📚" label={t("menu.resources", { defaultValue: "Resources" })} onClick={() => goCategory("/menu/resources")} />
               {showLetters && (
                 <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
               )}
