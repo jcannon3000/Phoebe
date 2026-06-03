@@ -54,7 +54,7 @@ export default function VideosPage() {
           {t("videos.subtitle", { defaultValue: SERIES_TITLE })}
         </p>
         <p className="text-[12px] mb-6" style={{ color: SAGE_DIM, fontFamily: FONT }}>
-          {t("videos.source", { defaultValue: `A documentary series produced by ${SERIES_SOURCE}.` })}
+          {t("videos.source", { source: SERIES_SOURCE, defaultValue: `A documentary series produced by ${SERIES_SOURCE}.` })}
         </p>
 
         {/* Podcast-episode-style list: a compact row per video (small 16:9

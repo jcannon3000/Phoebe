@@ -1111,7 +1111,7 @@ export function ContemplationTimer({
                     <p className="text-[12px]" style={{ color: met ? "#A8C5A0" : "rgba(143,175,150,0.75)", fontFamily: SPACE_GROTESK }}>
                       {met
                         ? t("contemplation_timer.goal_reached", { defaultValue: "Daily goal reached 🌿" })
-                        : t("contemplation_timer.goal_progress", { defaultValue: `${doneMin} of ${dailyGoalMin} min today — ${remainMin} to go` })}
+                        : t("contemplation_timer.goal_progress", { done: doneMin, goal: dailyGoalMin, remain: remainMin, defaultValue: `${doneMin} of ${dailyGoalMin} min today — ${remainMin} to go` })}
                     </p>
                   </div>
                 );

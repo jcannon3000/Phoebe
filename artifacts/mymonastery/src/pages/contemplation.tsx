@@ -221,7 +221,7 @@ function AppleHealthCard() {
           </p>
           <p className="text-[12px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK, margin: "4px 0 0" }}>
             {sessions > 0
-              ? t("contemplation.health_sub", { defaultValue: `${sessions} session(s) in Apple Health (Phoebe, Calm, Insight Timer…)` })
+              ? t("contemplation.health_sub", { count: sessions, defaultValue: `${sessions} session(s) in Apple Health (Phoebe, Calm, Insight Timer…)` })
               : t("contemplation.health_sub_empty", { defaultValue: "Sits here — and meditation in Calm, Insight Timer, or Apple Mindfulness — appear once connected." })}
           </p>
           <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK, margin: "8px 0 0" }}>
@@ -242,7 +242,7 @@ function AppleHealthCard() {
           >
             {connecting
               ? t("contemplation.health_connecting", { defaultValue: "Connecting…" })
-              : t("contemplation.health_connect", { defaultValue: "Sync from Apple Health" })}
+              : t("contemplation.health_sync", { defaultValue: "Sync from Apple Health" })}
           </button>
         </>
       )}
@@ -320,7 +320,7 @@ function DailyGoalCard({
           <span className="text-[12px] font-semibold" style={{ color: met ? "#A8C5A0" : SAGE, fontFamily: SPACE_GROTESK }}>
             {met
               ? t("contemplation.goal_reached", { defaultValue: "Reached today" })
-              : t("contemplation.goal_progress", { defaultValue: `${doneMin} of ${goalMinutes} min today` })}
+              : t("contemplation.goal_progress", { done: doneMin, goal: goalMinutes, defaultValue: `${doneMin} of ${goalMinutes} min today` })}
           </span>
         )}
       </div>

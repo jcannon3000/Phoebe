@@ -574,6 +574,7 @@ export const en = {
     wol_journey_sub: "8-week devotional journey",
   },
   videos: {
+    source: "A documentary series produced by {{source}}.",
     title: "Videos",
     subtitle: "Traveling the Way of Love",
     play: "Play {{title}}",
@@ -1339,6 +1340,7 @@ export const en = {
   },
   // Contemplation timer overlay (components/ContemplationTimer.tsx).
   contemplation_timer: {
+    goal_progress: "{{done}} of {{goal}} min today — {{remain}} to go",
     goal_reached: "Daily goal reached 🌿",
     how_long: "How long would you like to pray?",
     custom_length: "Custom length →",
@@ -1694,6 +1696,13 @@ export const en = {
   },
   // Contemplation page (pages/contemplation.tsx).
   contemplation: {
+    day_n_sits: "{{count}} sits",
+    goal_progress: "{{done}} of {{goal}} min today",
+    health_connect: "Connect meditation app data",
+    health_counted: "Including {{count}} min synced from Apple Health",
+    health_minutes: "{{count}} mindful min today",
+    health_sub: "{{count}} session(s) in Apple Health (Phoebe, Calm, Insight Timer…)",
+    health_sync: "Sync from Apple Health",
     goal_field_label: "Daily goal in minutes",
     goal_placeholder: "Minutes",
     goal_prompt: "Set a daily minutes goal — we'll nudge you around 7pm on days you haven't reached it.",

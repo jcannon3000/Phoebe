@@ -568,6 +568,7 @@ export const es: Translations = {
     wol_journey_sub: "Viaje devocional de 8 semanas",
   },
   videos: {
+    source: "Una serie documental producida por {{source}}.",
     title: "Videos",
     subtitle: "Recorriendo el Camino del Amor",
     play: "Reproducir {{title}}",
@@ -1283,6 +1284,7 @@ export const es: Translations = {
     update_in_for_round: "Tu actualización está en esta ronda 🌿",
   },
   contemplation_timer: {
+    goal_progress: "{{done}} de {{goal}} min hoy — faltan {{remain}}",
     goal_reached: "Meta diaria alcanzada 🌿",
     how_long: "¿Cuánto tiempo quieres orar?",
     custom_length: "Duración personalizada →",
@@ -1607,6 +1609,13 @@ export const es: Translations = {
     no_one_shared: "Nadie ha compartido todavía. Comparte una entrada desde Mi gratitud para empezar.",
   },
   contemplation: {
+    day_n_sits: "{{count}} sesiones",
+    goal_progress: "{{done}} de {{goal}} min hoy",
+    health_connect: "Conectar datos de apps de meditación",
+    health_counted: "Incluye {{count}} min sincronizados desde Apple Health",
+    health_minutes: "{{count}} min de atención plena hoy",
+    health_sub: "{{count}} sesión(es) en Apple Health (Phoebe, Calm, Insight Timer…)",
+    health_sync: "Sincronizar desde Apple Health",
     goal_field_label: "Meta diaria en minutos",
     goal_placeholder: "Minutos",
     goal_prompt: "Fija una meta diaria de minutos — te avisaremos cerca de las 7 de la tarde los días que no la alcances.",
