@@ -364,7 +364,10 @@ function wireClearNotifications() {
               const pathFromData = data?.["path"];
               if (typeof pathFromData === "string") {
                 const want = `/prayer-requests/${targetRequestId}`;
-                if (pathFromData === want || pathFromData.split("?")[0].endsWith(want)) {
+                // split("?") always yields ≥1 element, but noUncheckedIndexedAccess
+                // types [0] as possibly-undefined — guard it so it compiles.
+                const pathBase = pathFromData.split("?")[0] ?? pathFromData;
+                if (pathFromData === want || pathBase.endsWith(want)) {
                   return true;
                 }
               }
