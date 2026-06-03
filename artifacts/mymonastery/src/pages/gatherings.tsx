@@ -6,6 +6,8 @@ import {
   parseISO, format, isToday, isTomorrow,
   startOfDay, addDays, differenceInCalendarDays,
 } from "date-fns";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useListRituals } from "@workspace/api-client-react";
 import { useCommunityAdminToggle } from "@/hooks/useDemo";
@@ -83,17 +85,18 @@ interface GatheringsServiceSchedule {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function dateGroupLabel(d: Date): string {
-  if (isToday(d)) return "Today";
-  if (isTomorrow(d)) return "Tomorrow";
+function dateGroupLabel(d: Date, t: TFunction, lang: string): string {
+  if (isToday(d)) return t("gathering_list.today");
+  if (isTomorrow(d)) return t("gathering_list.tomorrow");
   const days = differenceInCalendarDays(d, startOfDay(new Date()));
-  if (days < 7) return format(d, "EEEE");
-  if (days < 14) return `Next ${format(d, "EEEE")}`;
-  return format(d, "MMMM d");
+  const weekday = new Intl.DateTimeFormat(lang, { weekday: "long" }).format(d);
+  if (days < 7) return weekday;
+  if (days < 14) return t("gathering_list.next_weekday", { weekday });
+  return new Intl.DateTimeFormat(lang, { month: "long", day: "numeric" }).format(d);
 }
 
-function timeStr(iso: string, allDay: boolean): string {
-  if (allDay) return "All day";
+function timeStr(iso: string, allDay: boolean, t: TFunction): string {
+  if (allDay) return t("gathering_list.all_day");
   try { return format(parseISO(iso), "h:mm a"); } catch { return ""; }
 }
 
@@ -109,20 +112,21 @@ function formatHHMM(hhmm: string): string {
   return `${h}:${String(m).padStart(2, "0")} ${suffix}`;
 }
 
-function rhythmLabel(r: any): string {
+function rhythmLabel(r: any, t: TFunction): string {
   const rhythm = r.rhythm as string | undefined;
   const frequency = r.frequency as string | undefined;
-  if (rhythm === "once" || frequency === "once") return "Just once";
-  if (rhythm === "weekly") return "Weekly";
-  if (rhythm === "fortnightly") return "Every 2 weeks";
-  if (rhythm === "monthly") return "Monthly";
-  return frequency ?? "Recurring";
+  if (rhythm === "once" || frequency === "once") return t("gathering_list.rhythm_once");
+  if (rhythm === "weekly") return t("gathering_list.rhythm_weekly");
+  if (rhythm === "fortnightly") return t("gathering_list.rhythm_fortnightly");
+  if (rhythm === "monthly") return t("gathering_list.rhythm_monthly");
+  return frequency ?? t("gathering_list.rhythm_recurring");
 }
 
 // ─── Add Calendar Sheet ───────────────────────────────────────────────────────
 
 function AddCalendarSheet({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
   const qc = useQueryClient();
+  const { t } = useTranslation();
   const [url, setUrl] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
@@ -136,7 +140,7 @@ function AddCalendarSheet({ onClose, onAdded }: { onClose: () => void; onAdded: 
       onClose();
     },
     onError: async (err: any) => {
-      const msg = err?.message ?? "Could not add that calendar.";
+      const msg = err?.message ?? t("gathering_list.add_error");
       setError(msg);
     },
   });
@@ -161,14 +165,13 @@ function AddCalendarSheet({ onClose, onAdded }: { onClose: () => void; onAdded: 
       >
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-            Add a public calendar
+            {t("gathering_list.add_calendar_title")}
           </h2>
           <button onClick={onClose} style={{ color: "#8FAF96" }}><X size={18} /></button>
         </div>
 
         <p className="text-sm mb-5" style={{ color: "#8FAF96" }}>
-          Paste a Google Calendar link, an iCal (.ics) URL, or a{" "}
-          <span style={{ color: "#A8C5A0" }}>webcal://</span> link. The calendar must be public.
+          {t("gathering_list.add_intro", { webcal: "webcal://" })}
         </p>
 
         {/* How to get the link */}
@@ -176,16 +179,16 @@ function AddCalendarSheet({ onClose, onAdded }: { onClose: () => void; onAdded: 
           className="rounded-xl px-4 py-3 mb-5 text-xs space-y-1"
           style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.15)", color: "#8FAF96" }}
         >
-          <p className="font-semibold" style={{ color: "#A8C5A0" }}>How to find your Google Calendar link:</p>
-          <p>1. Open Google Calendar → Settings → select your calendar</p>
-          <p>2. Scroll to "Integrate calendar"</p>
-          <p>3. Copy the <strong>Public address in iCal format</strong></p>
+          <p className="font-semibold" style={{ color: "#A8C5A0" }}>{t("gathering_list.how_to_title")}</p>
+          <p>{t("gathering_list.how_to_1")}</p>
+          <p>{t("gathering_list.how_to_2")}</p>
+          <p>{t("gathering_list.how_to_3_pre")} <strong>{t("gathering_list.how_to_3_strong")}</strong></p>
         </div>
 
         <div className="space-y-3">
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-              Calendar URL
+              {t("gathering_list.calendar_url")}
             </label>
             <input
               type="url"
@@ -203,13 +206,13 @@ function AddCalendarSheet({ onClose, onAdded }: { onClose: () => void; onAdded: 
           </div>
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-              Name <span style={{ opacity: 0.5 }}>(optional — auto-detected)</span>
+              {t("gathering_list.calendar_name")} <span style={{ opacity: 0.5 }}>{t("gathering_list.calendar_name_hint")}</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="e.g. St. John's Parish"
+              placeholder={t("gathering_list.calendar_name_ph")}
               className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
               style={{
                 background: "rgba(46,107,64,0.08)",
@@ -230,7 +233,7 @@ function AddCalendarSheet({ onClose, onAdded }: { onClose: () => void; onAdded: 
           className="w-full mt-5 py-3.5 rounded-2xl font-semibold text-sm disabled:opacity-40 transition-opacity hover:opacity-90"
           style={{ background: "#2D5E3F", color: "#F0EDE6" }}
         >
-          {mutation.isPending ? "Checking…" : "Add calendar"}
+          {mutation.isPending ? t("gathering_list.checking") : t("gathering_list.add_calendar")}
         </button>
       </motion.div>
     </motion.div>
@@ -243,6 +246,7 @@ export default function GatheringsPage() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
+  const { t, i18n } = useTranslation();
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [showAll, setShowAll] = useState(false);
 
@@ -309,6 +313,9 @@ export default function GatheringsPage() {
   if (!user) { setLocation("/"); return null; }
 
   const isLoading = ritualsLoading || (subs.length > 0 && icalLoading);
+  const lang = i18n.language || "en";
+  const weekdayName = (dow: number) =>
+    new Intl.DateTimeFormat(lang, { weekday: "long" }).format(new Date(Date.UTC(2024, 0, 7 + dow, 12)));
 
   // ── Build unified timeline ─────────────────────────────────────────────────
   const events: TimelineEvent[] = [];
@@ -334,9 +341,9 @@ export default function GatheringsPage() {
       key: `phoebe-${r.id}`,
       kind: "phoebe",
       date: next ?? addDays(new Date(), 99),
-      startStr: next ? timeStr((r as any).nextMeetupDate, false) : rhythmLabel(r),
+      startStr: next ? timeStr((r as any).nextMeetupDate, false, t) : rhythmLabel(r, t),
       title: r.name,
-      subtitle: rhythmLabel(r),
+      subtitle: rhythmLabel(r, t),
       location: (r as any).location,
       href: `/ritual/${r.id}`,
       emoji,
@@ -353,8 +360,8 @@ export default function GatheringsPage() {
       key: `ical-${ev.subscriptionId}-${ev.uid}`,
       kind: "ical",
       date,
-      startStr: timeStr(ev.start, ev.allDay),
-      endStr: ev.end && !ev.allDay ? timeStr(ev.end, false) : undefined,
+      startStr: timeStr(ev.start, ev.allDay, t),
+      endStr: ev.end && !ev.allDay ? timeStr(ev.end, false, t) : undefined,
       title: ev.title,
       subtitle: ev.calendarName,
       location: ev.location,
@@ -375,7 +382,7 @@ export default function GatheringsPage() {
       const diff = (s.dayOfWeek - d.getDay() + 7) % 7;
       return addDays(d, diff);
     })();
-    const scheduleName = s.name || "Worship";
+    const scheduleName = s.name || t("gathering_list.worship");
     for (const t of s.times) {
       // Parse the HH:mm into a Date anchored on `next` so sorting and
       // "Today / Tomorrow" grouping works the same as iCal events.
@@ -408,7 +415,7 @@ export default function GatheringsPage() {
     if (last && format(last.date, "yyyy-MM-dd") === dayStr) {
       last.items.push(ev);
     } else {
-      grouped.push({ label: dateGroupLabel(ev.date), date: ev.date, items: [ev] });
+      grouped.push({ label: dateGroupLabel(ev.date, t, lang), date: ev.date, items: [ev] });
     }
   }
 
@@ -423,15 +430,15 @@ export default function GatheringsPage() {
         {/* ── Header ── */}
         <div className="mb-5">
           <Link href="/dashboard" className="text-xs mb-3 flex items-center gap-1 transition-opacity hover:opacity-70" style={{ color: "#8FAF96" }}>
-            ← Dashboard
+            ← {t("gathering_list.dashboard")}
           </Link>
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                Gatherings
+                {t("gathering_list.title")}
               </h1>
               <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
-                Your community, meeting with intention.
+                {t("gathering_list.subtitle")}
               </p>
             </div>
             <Link href="/gatherings/new">
@@ -439,7 +446,7 @@ export default function GatheringsPage() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
                 style={{ background: "rgba(46,107,64,0.18)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
               >
-                <Plus size={12} /> New
+                <Plus size={12} /> {t("gathering_list.new")}
               </button>
             </Link>
           </div>
@@ -449,7 +456,7 @@ export default function GatheringsPage() {
         {activeSchedulerGatherings.length > 0 && (
           <div className="mb-6">
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(143,175,150,0.6)" }}>
-              In progress
+              {t("gathering_list.in_progress")}
             </p>
             <div className="space-y-2">
               {activeSchedulerGatherings.map(g => (
@@ -465,14 +472,16 @@ export default function GatheringsPage() {
                       <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>{g.title}</p>
                       <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
                         {g.status === "scheduled" && g.confirmedDayOfWeek !== null
-                          ? `${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][g.confirmedDayOfWeek]}s${g.confirmedTime ? ` · ${formatHHMM(g.confirmedTime)}` : ""}`
-                          : "Collecting availability"}
+                          ? (g.confirmedTime
+                              ? t("gathering_list.scheduled_at", { day: weekdayName(g.confirmedDayOfWeek), time: formatHHMM(g.confirmedTime) })
+                              : t("gathering_list.scheduled_day", { day: weekdayName(g.confirmedDayOfWeek) }))
+                          : t("gathering_list.collecting")}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-3">
                       {g.status === "scheduled" && (
                         <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: "rgba(111,175,133,0.15)", color: "#6FAF85" }}>
-                          Confirmed
+                          {t("gathering_list.confirmed")}
                         </span>
                       )}
                       <ChevronRight size={14} style={{ color: "rgba(143,175,150,0.35)" }} />
@@ -505,7 +514,7 @@ export default function GatheringsPage() {
                   onClick={() => removeSub.mutate(sub.id)}
                   className="shrink-0 transition-opacity hover:opacity-70"
                   style={{ color: "rgba(143,175,150,0.4)" }}
-                  aria-label="Remove calendar"
+                  aria-label={t("gathering_list.remove_calendar_aria")}
                 >
                   <X size={14} />
                 </button>
@@ -536,15 +545,15 @@ export default function GatheringsPage() {
             className="flex flex-col items-center text-center py-14"
           >
             <div className="text-5xl mb-5">📅</div>
-            <p className="text-base font-semibold mb-1" style={{ color: "#F0EDE6" }}>Nothing coming up yet.</p>
+            <p className="text-base font-semibold mb-1" style={{ color: "#F0EDE6" }}>{t("gathering_list.empty_title")}</p>
             <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-              Start a gathering to see it here.
+              {t("gathering_list.empty_body")}
             </p>
             {isAdminOfAnyGroup && (
               <div className="flex gap-3 flex-wrap justify-center">
                 <Link href="/tradition/new">
                   <button className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                    Start a gathering
+                    {t("gathering_list.start_gathering")}
                   </button>
                 </Link>
               </div>
@@ -574,7 +583,7 @@ export default function GatheringsPage() {
                       </p>
                       {differenceInCalendarDays(group.date, new Date()) >= 7 && (
                         <p className="text-[10px]" style={{ color: "rgba(143,175,150,0.4)" }}>
-                          {format(group.date, "EEE, MMM d")}
+                          {new Intl.DateTimeFormat(lang, { weekday: "short", month: "short", day: "numeric" }).format(group.date)}
                         </p>
                       )}
                     </div>
@@ -594,7 +603,7 @@ export default function GatheringsPage() {
                 className="w-full py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-opacity hover:opacity-80"
                 style={{ background: "rgba(46,107,64,0.1)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.15)" }}
               >
-                Show all upcoming <ChevronRight size={14} />
+                {t("gathering_list.show_all")} <ChevronRight size={14} />
               </button>
             )}
           </div>
@@ -606,7 +615,7 @@ export default function GatheringsPage() {
         href="/gatherings/new"
         className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
         style={{ background: "#1A4A2E", color: "#F0EDE6" }}
-        aria-label="New gathering"
+        aria-label={t("gathering_list.new_gathering_aria")}
       >
         <Plus size={24} />
       </Link>
@@ -627,6 +636,7 @@ export default function GatheringsPage() {
 // ─── Event Card ───────────────────────────────────────────────────────────────
 
 function EventCard({ event }: { event: TimelineEvent }) {
+  const { t } = useTranslation();
   const isPhoebe = event.kind === "phoebe" || event.kind === "service";
 
   // Phoebe gatherings + community services match the home dashboard
@@ -637,7 +647,7 @@ function EventCard({ event }: { event: TimelineEvent }) {
   // same surface zoomed out.
   if (isPhoebe) {
     const accent = "#6FAF85";
-    const eyebrow = event.subtitle ?? (event.kind === "service" ? "Service" : "Gathering");
+    const eyebrow = event.subtitle ?? (event.kind === "service" ? t("gathering_list.eyebrow_service") : t("gathering_list.eyebrow_gathering"));
     const subline = event.endStr
       ? `${event.startStr} – ${event.endStr}`
       : event.startStr;
@@ -698,7 +708,7 @@ function EventCard({ event }: { event: TimelineEvent }) {
                 className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
                 style={{ background: "rgba(74,158,132,0.1)", color: "rgba(111,175,133,0.65)", border: "1px solid rgba(74,158,132,0.15)" }}
               >
-                {event.subtitle ?? "Calendar"}
+                {event.subtitle ?? t("gathering_list.eyebrow_calendar")}
               </span>
             </div>
             <p className="text-sm font-semibold truncate" style={{ color: "#F0EDE6" }}>{event.title}</p>
