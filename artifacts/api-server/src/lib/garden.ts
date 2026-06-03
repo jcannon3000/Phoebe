@@ -34,7 +34,25 @@ export async function getFellowUserIds(userId: number): Promise<number[]> {
   return rows.map(r => r.id).filter(id => id !== userId);
 }
 
+// Short-TTL per-process cache. The computation below runs ~5 queries and is
+// hit from many endpoints; a single home-screen load triggers it from several
+// of them within a second or two. Caching by userId for a few seconds collapses
+// that to one computation. Membership changes (join / leave / mute) take effect
+// within the TTL — acceptable for prayer visibility, which isn't real-time.
+const GARDEN_TTL_MS = 30_000;
+const gardenCache = new Map<number, { ids: number[]; expires: number }>();
+
 export async function getGardenUserIds(userId: number): Promise<number[]> {
+  const now = Date.now();
+  const hit = gardenCache.get(userId);
+  if (hit && hit.expires > now) return hit.ids;
+  const ids = await computeGardenUserIds(userId);
+  gardenCache.set(userId, { ids, expires: now + GARDEN_TTL_MS });
+  if (gardenCache.size > 5000) gardenCache.clear(); // crude bound; entries are short-lived
+  return ids;
+}
+
+async function computeGardenUserIds(userId: number): Promise<number[]> {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId));
   if (!user) return [];
   const viewerEmail = user.email.toLowerCase();

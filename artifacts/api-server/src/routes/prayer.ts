@@ -606,17 +606,25 @@ router.get("/prayer-requests/mine/past", async (req, res): Promise<void> => {
     .from(usersTable)
     .where(eq(usersTable.id, sessionUserId));
 
-  const enriched = await Promise.all(rows.map(async (r) => {
-    // Distinct people who prayed it — drives the "Prayed by N people"
-    // line, which is a quietly lovely thing to keep on an answered
-    // prayer. One round-trip per row is fine: a user's past list is
-    // small and this endpoint isn't on a hot path.
-    const amens = await db
-      .select({ userId: prayerRequestAmensTable.userId })
-      .from(prayerRequestAmensTable)
-      .where(eq(prayerRequestAmensTable.requestId, r.id));
-    const amenPeopleCount = new Set(amens.map((a) => a.userId)).size;
+  // Distinct people who prayed each request — drives the "Prayed by N people"
+  // line. Batched into ONE query (was one round-trip per row) so the past
+  // list scales regardless of length.
+  const pastIds = rows.map((r) => r.id);
+  const allAmens = pastIds.length > 0
+    ? await db
+        .select({ requestId: prayerRequestAmensTable.requestId, userId: prayerRequestAmensTable.userId })
+        .from(prayerRequestAmensTable)
+        .where(inArray(prayerRequestAmensTable.requestId, pastIds))
+    : [];
+  const amenPeopleByRequest = new Map<number, Set<number>>();
+  for (const a of allAmens) {
+    let set = amenPeopleByRequest.get(a.requestId);
+    if (!set) { set = new Set(); amenPeopleByRequest.set(a.requestId, set); }
+    set.add(a.userId);
+  }
 
+  const enriched = rows.map((r) => {
+    const amenPeopleCount = amenPeopleByRequest.get(r.id)?.size ?? 0;
     const endedRaw = r.closedAt ?? r.expiresAt ?? r.createdAt;
     return {
       // Shape matches the client's PrayerRequest type so the same
@@ -646,7 +654,7 @@ router.get("/prayer-requests/mine/past", async (req, res): Promise<void> => {
       endedAt: endedRaw ? new Date(endedRaw).toISOString() : null,
       closeReason: r.closeReason ?? null,
     };
-  }));
+  });
 
   // Most-recently-ended first so the freshest history reads at the top.
   enriched.sort((a, b) => {

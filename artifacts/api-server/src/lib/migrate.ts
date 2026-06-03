@@ -2477,6 +2477,16 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS cac_reflections_user ON cac_reflections (user_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS cac_reflections_shared_created ON cac_reflections (shared, created_at)`);
 
+    // ── Hot-path performance indexes ────────────────────────────────────────
+    // The "garden" (getGardenUserIds) joins group_members.email ↔ users.email
+    // case-insensitively on every authenticated read; without functional
+    // LOWER(email) indexes that's a seq-scan-driven join. And the prayed-for
+    // map + community-prayed-week scan prayer_request_amens by (user_id,
+    // prayed_at) but the only amens index is on request_id.
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_group_members_lower_email ON group_members (LOWER(email))`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_users_lower_email ON users (LOWER(email))`);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_amens_user_prayed ON prayer_request_amens (user_id, prayed_at)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns
