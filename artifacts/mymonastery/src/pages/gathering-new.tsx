@@ -5,32 +5,32 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
-
-const CADENCE_OPTIONS = [
-  { value: "weekly", label: "Weekly" },
-  { value: "fortnightly", label: "Every 2 weeks" },
-  { value: "monthly", label: "Monthly" },
-  { value: "seasonal", label: "Seasonal" },
-];
-
-const DURATION_OPTIONS = [
-  { value: 30, label: "30 min" },
-  { value: 60, label: "1 hr" },
-  { value: 90, label: "90 min" },
-  { value: 120, label: "2 hr" },
-  { value: 180, label: "3 hr" },
-];
-
-const VISIBILITY_OPTIONS = [
-  { value: "community", label: "Community", description: "Visible to your community members" },
-  { value: "private", label: "Private", description: "Only people you invite" },
-  { value: "public", label: "Public", description: "Anyone can discover it" },
-];
+import { useTranslation } from "react-i18next";
 
 export default function GatheringNewPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
+  const { t } = useTranslation();
+
+  const CADENCE_OPTIONS = [
+    { value: "weekly", label: t("gathering_new.cadence.weekly") },
+    { value: "fortnightly", label: t("gathering_new.cadence.fortnightly") },
+    { value: "monthly", label: t("gathering_new.cadence.monthly") },
+    { value: "seasonal", label: t("gathering_new.cadence.seasonal") },
+  ];
+  const DURATION_OPTIONS = [
+    { value: 30, label: t("gathering_new.duration.d30") },
+    { value: 60, label: t("gathering_new.duration.d60") },
+    { value: 90, label: t("gathering_new.duration.d90") },
+    { value: 120, label: t("gathering_new.duration.d120") },
+    { value: 180, label: t("gathering_new.duration.d180") },
+  ];
+  const VISIBILITY_OPTIONS = [
+    { value: "community", label: t("gathering_new.visibility.community"), description: t("gathering_new.visibility.community_desc") },
+    { value: "private", label: t("gathering_new.visibility.private"), description: t("gathering_new.visibility.private_desc") },
+    { value: "public", label: t("gathering_new.visibility.public"), description: t("gathering_new.visibility.public_desc") },
+  ];
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -67,7 +67,7 @@ export default function GatheringNewPage() {
       setLocation(`/gatherings/${data.id}`);
     },
     onError: (err: any) => {
-      setError(err?.message ?? "Could not create gathering.");
+      setError(err?.message ?? t("gathering_new.error_generic"));
     },
   });
 
@@ -83,13 +83,13 @@ export default function GatheringNewPage() {
             className="text-xs mb-3 flex items-center gap-1 transition-opacity hover:opacity-70"
             style={{ color: "#8FAF96" }}
           >
-            <ChevronLeft size={14} /> Gatherings
+            <ChevronLeft size={14} /> {t("gathering_new.back")}
           </button>
           <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-            New gathering
+            {t("gathering_new.title")}
           </h1>
           <p className="text-sm mt-1" style={{ color: "#8FAF96" }}>
-            Find the best recurring time for your group.
+            {t("gathering_new.subtitle")}
           </p>
         </div>
 
@@ -97,13 +97,13 @@ export default function GatheringNewPage() {
           {/* Title */}
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-              Name *
+              {t("gathering_new.f_name")}
             </label>
             <input
               type="text"
               value={title}
               onChange={e => { setTitle(e.target.value); setError(""); }}
-              placeholder="e.g. Tuesday Morning Prayer"
+              placeholder={t("gathering_new.name_ph")}
               className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
               style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.2)", color: "#F0EDE6" }}
               autoFocus
@@ -113,12 +113,12 @@ export default function GatheringNewPage() {
           {/* Description */}
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-              Description <span style={{ opacity: 0.5 }}>(optional)</span>
+              {t("gathering_new.f_description")} <span style={{ opacity: 0.5 }}>{t("gathering_new.optional")}</span>
             </label>
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
-              placeholder="What will you gather for?"
+              placeholder={t("gathering_new.description_ph")}
               rows={3}
               className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none resize-none"
               style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.2)", color: "#F0EDE6" }}
@@ -128,7 +128,7 @@ export default function GatheringNewPage() {
           {/* Cadence */}
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(143,175,150,0.6)" }}>
-              How often
+              {t("gathering_new.f_cadence")}
             </label>
             <div className="flex flex-wrap gap-2">
               {CADENCE_OPTIONS.map(opt => (
@@ -151,7 +151,7 @@ export default function GatheringNewPage() {
           {/* Duration */}
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(143,175,150,0.6)" }}>
-              Duration
+              {t("gathering_new.f_duration")}
             </label>
             <div className="flex flex-wrap gap-2">
               {DURATION_OPTIONS.map(opt => (
@@ -174,13 +174,13 @@ export default function GatheringNewPage() {
           {/* Expected size */}
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-              Expected size <span style={{ opacity: 0.5 }}>(optional)</span>
+              {t("gathering_new.f_expected")} <span style={{ opacity: 0.5 }}>{t("gathering_new.optional")}</span>
             </label>
             <input
               type="number"
               value={expectedSize}
               onChange={e => setExpectedSize(e.target.value)}
-              placeholder="How many people?"
+              placeholder={t("gathering_new.expected_ph")}
               min={2}
               max={500}
               className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
@@ -191,8 +191,8 @@ export default function GatheringNewPage() {
           {/* Toggles */}
           <div className="space-y-2">
             {([
-              { key: "needsRoom", label: "Needs a room", value: needsRoom, set: setNeedsRoom },
-              { key: "needsClergy", label: "Needs clergy", value: needsClergy, set: setNeedsClergy },
+              { key: "needsRoom", label: t("gathering_new.needs_room"), value: needsRoom, set: setNeedsRoom },
+              { key: "needsClergy", label: t("gathering_new.needs_clergy"), value: needsClergy, set: setNeedsClergy },
             ] as const).map(({ key, label, value, set }) => (
               <div
                 key={key}
@@ -234,7 +234,7 @@ export default function GatheringNewPage() {
           {/* Visibility */}
           <div>
             <label className="text-[11px] font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(143,175,150,0.6)" }}>
-              Visibility
+              {t("gathering_new.f_visibility")}
             </label>
             <div className="space-y-2">
               {VISIBILITY_OPTIONS.map(opt => (
@@ -263,7 +263,7 @@ export default function GatheringNewPage() {
           {groups.length > 0 && (
             <div>
               <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-                Link to community <span style={{ opacity: 0.5 }}>(optional)</span>
+                {t("gathering_new.f_community")} <span style={{ opacity: 0.5 }}>{t("gathering_new.optional")}</span>
               </label>
               <select
                 value={communityId ?? ""}
@@ -275,7 +275,7 @@ export default function GatheringNewPage() {
                   color: communityId ? "#F0EDE6" : "#8FAF96",
                 }}
               >
-                <option value="">None</option>
+                <option value="">{t("gathering_new.community_none")}</option>
                 {groups.map(g => (
                   <option key={g.id} value={g.id}>{g.name ?? g.slug}</option>
                 ))}
@@ -293,7 +293,7 @@ export default function GatheringNewPage() {
             className="w-full py-4 rounded-2xl font-semibold text-base disabled:opacity-40 transition-opacity hover:opacity-90"
             style={{ background: "#2D5E3F", color: "#F0EDE6" }}
           >
-            {createMutation.isPending ? "Creating…" : "Create gathering"}
+            {createMutation.isPending ? t("gathering_new.creating") : t("gathering_new.create")}
           </button>
         </div>
       </div>
