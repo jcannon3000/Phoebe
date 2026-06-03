@@ -16,6 +16,12 @@
 
 export const en = {
   common: {
+    delete: "Delete",
+    home: "Home",
+    refresh: "Refresh",
+    remove: "Remove",
+    saving: "Saving…",
+    set: "Set",
     continue: "Continue",
     back: "Back",
     cancel: "Cancel",
@@ -55,6 +61,7 @@ export const en = {
     unmute: "Unmute",
   },
   dashboard: {
+    prayer_list: "Prayer list",
     daily_prayer_list: "Daily Prayer List",
     pray_again: "Pray again →",
     view_list: "View list →",
@@ -342,6 +349,68 @@ export const en = {
     sending_dots: "…",
     send_arrow: "→",
   },
+  reflect_cac: {
+    community: "From your community",
+    done: "Done",
+    eyebrow: "CAC Daily Reflection 🌵",
+    journal: "Reflect on it",
+    placeholder: "What stayed with you?",
+    read: "Read the reflection →",
+    read_n: "{{count}} in your community read today",
+    read_one: "{{name}} read today",
+    read_today: "Read today",
+    save: "Save",
+    share: "Share with my community",
+    shared_badge: "Shared",
+    title_fallback: "Today's reflection",
+    yours: "Your reflections",
+  },
+  fdd_journal: {
+    back_write: "← Write",
+    button: "✎ Journal",
+    empty: "No reflections yet. Your first one starts today.",
+    error: "Couldn't save. Try again.",
+    loading: "Loading…",
+    past_title: "Past reflections",
+    placeholder: "What stayed with you from today's reflection?",
+    save: "Save & continue →",
+    saving: "Saving…",
+    see_past: "Past reflections →",
+    title: "Reflection journal",
+  },
+  journal: {
+    empty: "Your journal is empty. Write your first reflection.",
+    eyebrow: "Journal",
+    past_link: "Past entries",
+    save: "Save reflection",
+    saved_title: "Saved to your journal.",
+    saving: "Saving…",
+    view_past: "View past entries",
+    write_link: "Write",
+  },
+  prayalong: {
+    complete: "The office is complete.",
+    complete_sub: "Continue into the prayers your community is holding.",
+    not_ready: "The read-along for today's recording isn't ready yet — you can still listen below.",
+    scrub: "Seek",
+    to_intercessions: "Community intercessions →",
+  },
+  fdd_sit: {
+    error: "Couldn't load today's Forward Day by Day. Please try again in a little while.",
+    eyebrow: "Forward Day by Day",
+    listening: "Listen, and let it settle.",
+    preparing: "Preparing today's reflection…",
+  },
+  building_faith: {
+    blurb: "Faith-formation articles from Building Faith — a resource of Forward Movement & Virginia Theological Seminary.",
+    empty: "Couldn't load articles right now. Please try again in a little while.",
+    loading: "Loading articles…",
+    read_on: "Read on Building Faith ↗",
+  },
+  office_fm: {
+    loading: "Loading today's office…",
+    title: "Forward Movement · Daily Prayer",
+  },
   prayed_for_map: {
     eyebrow: "A constellation of care",
     title: "Where you've been prayed for",
@@ -457,6 +526,11 @@ export const en = {
   },
   // Hamburger drawer (Layout > DrawerMenu).
   menu: {
+    bcp: "Book of Common Prayer",
+    daily_practice: "Your Way of Love",
+    daily_practice_sub: "Your seven practices",
+    prayed_for_map: "Prayed-for map",
+    prayer_list: "Prayer list",
     communities: "Communities",
     members_one: "{{count}} member",
     members_other: "{{count}} members",
@@ -726,6 +800,7 @@ export const en = {
   },
   // Podcast library, show pages, and the global audio player.
   podcasts: {
+    add_to_listen_list: "Add to Listen List",
     title: "Podcasts",
     tab_discover: "Discover",
     tab_listen_list: "Listen List",
@@ -800,6 +875,13 @@ export const en = {
   },
   // Beta Messages (pages/messages*.tsx).
   messages: {
+    draft_saved: "Draft saved",
+    message_to: "Message to {{name}}",
+    responding_to: "Responding to",
+    sending: "Sending…",
+    write_a_message: "Write a message",
+    write_first: "Write your first message",
+    write_reply_below: "Write your reply below",
     title: "Messages",
     beta_badge: "Beta",
     new: "New +",
@@ -818,6 +900,12 @@ export const en = {
   },
   // Prayer chooser (pages/prayer-chooser.tsx).
   chooser: {
+    journal_badge: "Write",
+    journal_sub: "A private daily reflection",
+    journal_title: "Journal",
+    reflect_sit_badge: "Set your time",
+    reflect_sit_sub: "Forward Day by Day, then silence",
+    reflect_sit_title: "Reflect & Sit",
     eyebrow_morning: "🌅 This morning",
     eyebrow_evening: "🌙 This evening",
     headline_morning: "Start this morning's prayer",
@@ -854,6 +942,7 @@ export const en = {
   },
   // National Cathedral watch (pages/ncmp-watch.tsx).
   ncmp: {
+    opens_in_browser: "Opens in your browser",
     title: "National Cathedral",
     iframe_title: "National Cathedral Morning Prayer",
     loading: "Loading today's broadcast…",
@@ -861,6 +950,14 @@ export const en = {
   },
   // Daily Prayer picker (pages/offices.tsx).
   offices: {
+    at_night: "At night",
+    cac_fallback_title: "Today's Daily Meditation",
+    compline: "Compline",
+    compline_sub: "The night office · BCP p. 127",
+    open_external: "Open ↗",
+    read_now: "Read now →",
+    todays_reflection: "Today's reflection",
+    watch_ncmp: "Watch · Nat'l Cathedral",
     back_home: "← Home",
     title: "Daily Prayer",
     subtitle: "The 1979 Book of Common Prayer, full and short forms.",
@@ -1242,6 +1339,7 @@ export const en = {
   },
   // Contemplation timer overlay (components/ContemplationTimer.tsx).
   contemplation_timer: {
+    goal_reached: "Daily goal reached 🌿",
     how_long: "How long would you like to pray?",
     custom_length: "Custom length →",
     back_to_presets: "← Back to presets",
@@ -1336,6 +1434,8 @@ export const en = {
   },
   // Customize home page (pages/customize-home.tsx).
   customize_home: {
+    auto_save_hint: "Changes save automatically.",
+    back_to_home: "← Back to home",
     title: "Customize home",
     subtitle: "Reorder, show or hide the panels on your home screen. The top one leads.",
     leads: "Leads",
@@ -1402,6 +1502,8 @@ export const en = {
   },
   // Prayer feed detail (pages/prayer-feed-detail.tsx).
   prayer_feed_detail: {
+    events_later: "Later",
+    events_this_week: "This week",
     not_available: "This feed isn't available.",
     praying_along_one: "{{count}} praying along",
     praying_along_other: "{{count}} praying along",
@@ -1592,6 +1694,20 @@ export const en = {
   },
   // Contemplation page (pages/contemplation.tsx).
   contemplation: {
+    goal_field_label: "Daily goal in minutes",
+    goal_placeholder: "Minutes",
+    goal_prompt: "Set a daily minutes goal — we'll nudge you around 7pm on days you haven't reached it.",
+    goal_reached: "Reached today",
+    goal_title: "Daily goal",
+    goal_turn_off: "Turn off goal",
+    goal_unit: "min / day",
+    health_connect_sub: "Count Calm, Insight Timer & Apple Mindfulness toward your goal",
+    health_connecting: "Connecting…",
+    health_none: "No mindful minutes in Apple Health today.",
+    health_preview_note: "Preview — not yet counted toward your goal.",
+    health_prompt: "Connect Apple Health to count meditation from other apps — and save your Phoebe sits back to Health.",
+    health_sub_empty: "Sits here — and meditation in Calm, Insight Timer, or Apple Mindfulness — appear once connected.",
+    health_title: "Apple Health",
     title: "Contemplation",
     subtitle: "A timer for silent prayer — a bell to begin, a bell to close.",
     minute: "minute",
@@ -1619,6 +1735,7 @@ export const en = {
     learn_caption: "Ways into the practice — talks, guided sits, and reading.",
   },
   ruleOfLife: {
+    way_of_love_btn: "Now — the areas to grow",
     title: "Rule of Life",
     start_label: "Start a conversation about prayer",
     intro: "A few questions about your day, your desires, and your time — then a personal practice to begin with.",
