@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 
 // Modes:
 //   signin   — existing accounts log in
@@ -18,6 +19,7 @@ export default function Onboarding() {
   const [, setLocation] = useLocation();
   const { user, isLoading } = useAuth();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   const [mode, setMode] = useState<Mode>("signin");
   const [name, setName] = useState("");
@@ -55,10 +57,10 @@ export default function Onboarding() {
     e.preventDefault();
     setError("");
     if (!email.trim() || !email.includes("@")) {
-      setError("Enter a valid email address."); return;
+      setError(t("auth_landing.err_email")); return;
     }
     if (!password || password.length < 6) {
-      setError("Password must be at least 6 characters."); return;
+      setError(t("auth_landing.err_password")); return;
     }
     setSubmitting(true);
     try {
@@ -75,10 +77,10 @@ export default function Onboarding() {
         window.scrollTo(0, 0);
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       } else {
-        setError(data.error ?? "Something went wrong. Please try again.");
+        setError(data.error ?? t("auth_landing.err_generic"));
       }
     } catch {
-      setError("Something went wrong. Please try again.");
+      setError(t("auth_landing.err_generic"));
     } finally {
       setSubmitting(false);
     }
@@ -88,14 +90,14 @@ export default function Onboarding() {
     e.preventDefault();
     setError("");
     if (website.trim().length > 0) {
-      setError("Something went wrong. Please try again.");
+      setError(t("auth_landing.err_generic"));
       return;
     }
     if (!name.trim()) {
-      setError("Your name is required."); return;
+      setError(t("auth_landing.err_name")); return;
     }
     if (!email.trim() || !email.includes("@")) {
-      setError("Enter a valid email address."); return;
+      setError(t("auth_landing.err_email")); return;
     }
     setSubmitting(true);
     try {
@@ -114,10 +116,10 @@ export default function Onboarding() {
         else if (data.alreadyOnList) setWaitlistDone("already");
         else setWaitlistDone("added");
       } else {
-        setError(data.error ?? "Couldn't save your spot. Please try again.");
+        setError(data.error ?? t("auth_landing.err_waitlist"));
       }
     } catch {
-      setError("Couldn't save your spot. Please try again.");
+      setError(t("auth_landing.err_waitlist"));
     } finally {
       setSubmitting(false);
     }
@@ -149,10 +151,10 @@ export default function Onboarding() {
           >
             <div className="text-5xl mb-5">🙏🏽</div>
             <h1 className="text-3xl font-bold mb-3" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}>
-              Be together with Phoebe.
+              {t("auth_landing.hero_title")}
             </h1>
             <p className="text-base leading-relaxed" style={{ color: "#8FAF96" }}>
-              A relational app that cultivates connections between Sundays through shared prayer, shared practice, and shared life.
+              {t("auth_landing.hero_body")}
             </p>
           </motion.div>
 
@@ -175,7 +177,7 @@ export default function Onboarding() {
                     boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
                   }}
                 >
-                  {m === "signin" ? "Sign in" : "Join waitlist"}
+                  {m === "signin" ? t("auth_landing.tab_signin") : t("auth_landing.tab_waitlist")}
                 </button>
               ))}
             </div>
@@ -193,7 +195,7 @@ export default function Onboarding() {
                 >
                   <input
                     type="email"
-                    placeholder="Email address"
+                    placeholder={t("auth_landing.ph_email")}
                     value={email}
                     onChange={e => { setEmail(e.target.value); setError(""); }}
                     className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
@@ -204,7 +206,7 @@ export default function Onboarding() {
                   <div className="relative">
                     <input
                       type={showPassword ? "text" : "password"}
-                      placeholder="Password"
+                      placeholder={t("auth_landing.ph_password")}
                       value={password}
                       onChange={e => { setPassword(e.target.value); setError(""); }}
                       className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none animate-input-pulse"
@@ -232,7 +234,7 @@ export default function Onboarding() {
                   >
                     {submitting ? (
                       <div className="w-4 h-4 rounded-full border-2 border-[#F7F0E6] border-t-transparent animate-spin" />
-                    ) : "Sign in"}
+                    ) : t("auth_landing.tab_signin")}
                   </button>
                   {/* Always-visible reset link below the sign-in button —
                       a user who's forgotten their password shouldn't have to
@@ -244,7 +246,7 @@ export default function Onboarding() {
                       className="text-xs"
                       style={{ color: "#8FAF96" }}
                     >
-                      Forgot password?
+                      {t("auth_landing.forgot")}
                     </button>
                   </div>
                 </motion.form>
@@ -269,10 +271,10 @@ export default function Onboarding() {
                       <div className="text-3xl mb-2">🌿</div>
                       <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6" }}>
                         {waitlistDone === "has-account"
-                          ? "You already have a Phoebe account — try signing in instead."
+                          ? t("auth_landing.done_has_account")
                           : waitlistDone === "already"
-                            ? "You're already on the waitlist. We'll be in touch."
-                            : "You're on the waitlist. We'll be in touch when there's room."}
+                            ? t("auth_landing.done_already")
+                            : t("auth_landing.done_added")}
                       </p>
                       {waitlistDone === "has-account" && (
                         <button
@@ -281,7 +283,7 @@ export default function Onboarding() {
                           className="text-xs mt-3"
                           style={{ color: "#8FAF96", textDecoration: "underline" }}
                         >
-                          Go to sign in
+                          {t("auth_landing.go_signin")}
                         </button>
                       )}
                     </div>
@@ -289,7 +291,7 @@ export default function Onboarding() {
                     <form onSubmit={handleWaitlist} className="flex flex-col gap-3">
                       <input
                         type="text"
-                        placeholder="Your name"
+                        placeholder={t("auth_landing.ph_name")}
                         value={name}
                         onChange={e => { setName(e.target.value); setError(""); }}
                         className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
@@ -299,7 +301,7 @@ export default function Onboarding() {
                       />
                       <input
                         type="email"
-                        placeholder="Email address"
+                        placeholder={t("auth_landing.ph_email")}
                         value={email}
                         onChange={e => { setEmail(e.target.value); setError(""); }}
                         className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
@@ -326,10 +328,10 @@ export default function Onboarding() {
                       >
                         {submitting ? (
                           <div className="w-4 h-4 rounded-full border-2 border-[#F7F0E6] border-t-transparent animate-spin" />
-                        ) : "Join waitlist"}
+                        ) : t("auth_landing.tab_waitlist")}
                       </button>
                       <p className="text-xs text-center mt-1" style={{ color: "rgba(143,175,150,0.7)" }}>
-                        Phoebe is by group invite. If your group leader sent you a link, open it to sign up directly.
+                        {t("auth_landing.waitlist_note")}
                       </p>
                     </form>
                   )}
@@ -339,7 +341,7 @@ export default function Onboarding() {
           </motion.div>
 
           <p className="text-center text-xs mt-8 mb-4 tracking-wide" style={{ color: "rgba(143,175,150,0.5)" }}>
-            Inspired by Monastic Wisdom
+            {t("auth_landing.inspired")}
           </p>
           <div className="flex justify-center">
             <button
@@ -352,7 +354,7 @@ export default function Onboarding() {
                 color: "rgba(200,212,192,0.7)",
               }}
             >
-              About
+              {t("auth_landing.about")}
             </button>
           </div>
         </div>
