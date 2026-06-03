@@ -559,6 +559,8 @@ export const en = {
   // Hamburger drawer (Layout > DrawerMenu).
   menu: {
     bcp: "Book of Common Prayer",
+    messages: "Messages",
+    reflections: "Reflections",
     daily_practice: "Your Way of Love",
     daily_practice_sub: "Your seven practices",
     prayed_for_map: "Prayed-for map",
@@ -834,6 +836,8 @@ export const en = {
   // Podcast library, show pages, and the global audio player.
   podcasts: {
     add_to_listen_list: "Add to Listen List",
+    a11y_next: "Next episode",
+    in_listen_list: "In Listen List",
     title: "Podcasts",
     tab_discover: "Discover",
     tab_listen_list: "Listen List",
@@ -908,6 +912,7 @@ export const en = {
   },
   // Beta Messages (pages/messages*.tsx).
   messages: {
+    you: "You",
     draft_saved: "Draft saved",
     message_to: "Message to {{name}}",
     responding_to: "Responding to",
@@ -976,6 +981,7 @@ export const en = {
   // National Cathedral watch (pages/ncmp-watch.tsx).
   ncmp: {
     opens_in_browser: "Opens in your browser",
+    watch: "Watch Morning Prayer",
     title: "National Cathedral",
     iframe_title: "National Cathedral Morning Prayer",
     loading: "Loading today's broadcast…",
@@ -984,6 +990,7 @@ export const en = {
   // Daily Prayer picker (pages/offices.tsx).
   offices: {
     at_night: "At night",
+    listen_forward: "Listen · Forward",
     cac_fallback_title: "Today's Daily Meditation",
     compline: "Compline",
     compline_sub: "The night office · BCP p. 127",
@@ -1537,6 +1544,7 @@ export const en = {
   // Prayer feed detail (pages/prayer-feed-detail.tsx).
   prayer_feed_detail: {
     events_later: "Later",
+    events_today: "Today",
     events_this_week: "This week",
     not_available: "This feed isn't available.",
     praying_along_one: "{{count}} praying along",
@@ -1728,6 +1736,7 @@ export const en = {
   },
   // Contemplation page (pages/contemplation.tsx).
   contemplation: {
+    day_one_sit: "1 sit",
     day_n_sits: "{{count}} sits",
     goal_progress: "{{done}} of {{goal}} min today",
     health_connect: "Connect meditation app data",

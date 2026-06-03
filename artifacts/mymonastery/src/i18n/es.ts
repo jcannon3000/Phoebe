@@ -553,6 +553,8 @@ export const es: Translations = {
   },
   menu: {
     bcp: "Libro de Oración Común",
+    messages: "Mensajes",
+    reflections: "Reflexiones",
     daily_practice: "Tu Camino del Amor",
     daily_practice_sub: "Tus siete prácticas",
     prayed_for_map: "Mapa de oraciones recibidas",
@@ -828,6 +830,8 @@ export const es: Translations = {
   // Biblioteca de podcasts, páginas de programa y el reproductor global.
   podcasts: {
     add_to_listen_list: "Añadir a la lista de escucha",
+    a11y_next: "Siguiente episodio",
+    in_listen_list: "En tu lista de escucha",
     title: "Podcasts",
     tab_discover: "Descubrir",
     tab_listen_list: "Mi lista",
@@ -902,6 +906,7 @@ export const es: Translations = {
   },
   // Beta Messages (pages/messages*.tsx).
   messages: {
+    you: "Tú",
     draft_saved: "Borrador guardado",
     message_to: "Mensaje para {{name}}",
     responding_to: "Respondiendo a",
@@ -970,6 +975,7 @@ export const es: Translations = {
   // National Cathedral watch (pages/ncmp-watch.tsx).
   ncmp: {
     opens_in_browser: "Se abre en tu navegador",
+    watch: "Ver la Oración Matutina",
     title: "Catedral Nacional",
     iframe_title: "Oración matutina de la Catedral Nacional",
     loading: "Cargando la transmisión de hoy…",
@@ -977,6 +983,7 @@ export const es: Translations = {
   },
   offices: {
     at_night: "Por la noche",
+    listen_forward: "Escuchar · Forward",
     cac_fallback_title: "La meditación diaria de hoy",
     compline: "Completas",
     compline_sub: "El oficio de la noche · BCP p. 127",
@@ -1462,6 +1469,7 @@ export const es: Translations = {
   },
   prayer_feed_detail: {
     events_later: "Más adelante",
+    events_today: "Hoy",
     events_this_week: "Esta semana",
     not_available: "Este feed no está disponible.",
     praying_along_one: "{{count}} orando contigo",
@@ -1641,6 +1649,7 @@ export const es: Translations = {
     no_one_shared: "Nadie ha compartido todavía. Comparte una entrada desde Mi gratitud para empezar.",
   },
   contemplation: {
+    day_one_sit: "1 sesión",
     day_n_sits: "{{count}} sesiones",
     goal_progress: "{{done}} de {{goal}} min hoy",
     health_connect: "Conectar datos de apps de meditación",
