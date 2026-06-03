@@ -1,7 +1,6 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import { en } from "./en";
-import { es } from "./es";
 
 // i18n setup for Phoebe.
 //
@@ -46,8 +45,10 @@ void i18n
   .use(initReactI18next)
   .init({
     resources: {
+      // Only English ships in the entry bundle. Spanish (beta-only) is
+      // lazy-loaded on demand (loadEs below) so English-only users never
+      // download ~77KB of es strings. Missing es keys fall back to en.
       en: { translation: en },
-      es: { translation: es },
     },
     lng: readInitialLocale(),
     fallbackLng: "en",
@@ -61,5 +62,23 @@ void i18n
     returnNull: false,
     returnEmptyString: false,
   });
+
+// Spanish bundle is loaded lazily (its own chunk) the first time the locale
+// is — or becomes — "es". Until it arrives the UI renders English (fallback);
+// once added we nudge a re-render. English-only users never fetch it.
+let esLoaded = false;
+async function loadEs(): Promise<void> {
+  if (esLoaded) return;
+  esLoaded = true;
+  try {
+    const { es } = await import("./es");
+    i18n.addResourceBundle("es", "translation", es, true, true);
+    if (i18n.language === "es") void i18n.changeLanguage("es"); // re-render in es
+  } catch {
+    esLoaded = false; // allow a retry on the next switch
+  }
+}
+i18n.on("languageChanged", (lng) => { if (lng === "es") void loadEs(); });
+if (readInitialLocale() === "es") void loadEs();
 
 export default i18n;

@@ -114,7 +114,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: groupsData } = useQuery<{ groups: Array<{ id: number; name: string; slug: string; emoji: string | null; memberCount: number; myRole: string }> }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
-    enabled: !!user && !earlyOfficesOnly,
+    enabled: open && !!user && !earlyOfficesOnly,
   });
 
   // Pending join-request counts per community the caller admins.
@@ -124,7 +124,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: pendingCounts } = useQuery<{ total: number; byGroup: Record<number, number> }>({
     queryKey: ["/api/me/pending-join-request-counts"],
     queryFn: () => apiRequest("GET", "/api/me/pending-join-request-counts"),
-    enabled: !!user && !earlyOfficesOnly,
+    enabled: open && !!user && !earlyOfficesOnly,
     staleTime: 30_000,
   });
 
@@ -134,7 +134,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: prayMapData } = useQuery<{ points: Array<unknown> }>({
     queryKey: ["/api/prayer-requests/prayed-for-locations"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests/prayed-for-locations"),
-    enabled: !!user && !earlyOfficesOnly,
+    enabled: open && !!user && !earlyOfficesOnly,
     staleTime: 5 * 60_000,
   });
   const hasPrayMap = (prayMapData?.points?.length ?? 0) > 0;
@@ -148,7 +148,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { data: myFeedsData } = useQuery<{ feeds: Array<{ slug: string }> }>({
     queryKey: ["/api/prayer-feeds/mine"],
     queryFn: () => apiRequest("GET", "/api/prayer-feeds/mine"),
-    enabled: !!user && !earlyOfficesOnly,
+    enabled: open && !!user && !earlyOfficesOnly,
     staleTime: 60_000,
   });
   const myFeeds = myFeedsData?.feeds ?? [];
