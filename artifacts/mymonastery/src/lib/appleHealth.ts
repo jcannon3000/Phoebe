@@ -22,7 +22,7 @@ import { isNativeShell } from "@/lib/isNativeShell";
 interface MindfulHealthPlugin {
   isAvailable: () => Promise<{ available: boolean }>;
   requestAuthorization: () => Promise<{ requested: boolean }>;
-  mindfulMinutesToday: () => Promise<{ minutes: number; sessions: number }>;
+  mindfulMinutesToday: (opts?: { excludeOwn?: boolean }) => Promise<{ minutes: number; sessions: number }>;
   writeMindfulSession: (opts: { startMs: number; endMs: number }) => Promise<{ written: boolean }>;
 }
 
@@ -66,12 +66,17 @@ export async function requestMindfulAuthorization(): Promise<boolean> {
   }
 }
 
-/** Today's mindful minutes (+ session count) from Apple Health, or null off-native. */
-export async function getMindfulMinutesToday(): Promise<{ minutes: number; sessions: number } | null> {
+/**
+ * Today's mindful minutes (+ session count) from Apple Health, or null off-native.
+ * Pass excludeOwn=true to drop Phoebe's own sits (written back to Health), leaving
+ * only meditation from other apps — so the contemplation goal can fold them in
+ * without double-counting sessions it already tracks in-app.
+ */
+export async function getMindfulMinutesToday(excludeOwn = false): Promise<{ minutes: number; sessions: number } | null> {
   const p = getPlugin();
   if (!p) return null;
   try {
-    return await p.mindfulMinutesToday();
+    return await p.mindfulMinutesToday({ excludeOwn });
   } catch {
     return null;
   }

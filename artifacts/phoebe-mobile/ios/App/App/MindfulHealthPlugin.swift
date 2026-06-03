@@ -72,11 +72,23 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
         let startOfDay = Calendar.current.startOfDay(for: Date())
-        let predicate = HKQuery.predicateForSamples(
+        let datePredicate = HKQuery.predicateForSamples(
             withStart: startOfDay,
             end: Date(),
             options: .strictStartDate
         )
+        // excludeOwn: drop the mindful sessions Phoebe itself wrote back to
+        // Health, so the caller can fold in meditation from OTHER apps (Calm,
+        // Insight Timer, Apple Mindfulness) without double-counting the Phoebe
+        // sits it already tracks in-app. Default false keeps the original
+        // "everything today" behavior the Way of Love Pray signal relies on.
+        var predicate: NSPredicate = datePredicate
+        if call.getBool("excludeOwn") ?? false {
+            let notFromPhoebe = NSCompoundPredicate(
+                notPredicateWithSubpredicate: HKQuery.predicateForObjects(from: [HKSource.default()])
+            )
+            predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [datePredicate, notFromPhoebe])
+        }
         let query = HKSampleQuery(
             sampleType: type,
             predicate: predicate,

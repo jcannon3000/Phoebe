@@ -263,8 +263,28 @@ function DailyGoalCard({
   saving: boolean;
 }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const hasGoal = goalMinutes > 0;
-  const doneMin = Math.floor(todaySeconds / 60);
+
+  // iOS only: meditation logged in OTHER apps (Calm, Insight Timer, Apple
+  // Mindfulness) lands in Apple Health as Mindful Minutes. We read today's
+  // total — excludeOwn drops the sits Phoebe itself wrote back to Health, so
+  // they're never double-counted — and fold it into the goal below. Reads 0
+  // until the user grants access (the connect button triggers that prompt);
+  // keyed by local day so it refetches across midnight.
+  const [healthConnected, setHealthConnected] = useState<boolean>(() => {
+    try { return localStorage.getItem("phoebe:health-connected") === "1"; } catch { return false; }
+  });
+  const healthQ = useQuery<{ minutes: number; sessions: number } | null>({
+    queryKey: ["apple-health-mindful-external", new Date().toLocaleDateString("en-CA")],
+    queryFn: () => getMindfulMinutesToday(true),
+    enabled: appleHealthAvailable(),
+    staleTime: 5 * 60_000,
+  });
+  const healthMin = healthQ.data?.minutes ?? 0;
+
+  // Today's progress = Phoebe's own logged time + meditation synced from Health.
+  const doneMin = Math.floor(todaySeconds / 60) + healthMin;
   const pct = hasGoal ? Math.min(100, Math.round((doneMin / goalMinutes) * 100)) : 0;
   const met = hasGoal && doneMin >= goalMinutes;
 
@@ -275,19 +295,16 @@ function DailyGoalCard({
   const parsed = Math.min(600, Math.max(0, Math.floor(Number(draft))));
   const canSet = !saving && Number.isFinite(parsed) && parsed > 0 && parsed !== goalMinutes;
 
-  // iOS only: offer to connect Apple Health so meditation-app minutes (Calm,
-  // Insight Timer, Apple Mindfulness) can count toward the goal. HealthKit
-  // doesn't expose read-grant state, so once they've been through the connect
-  // prompt we remember it locally and stop showing the nudge.
-  const [healthConnected, setHealthConnected] = useState<boolean>(() => {
-    try { return localStorage.getItem("phoebe:health-connected") === "1"; } catch { return false; }
-  });
+  // HealthKit doesn't expose read-grant state, so once they've gone through the
+  // connect prompt (or we already see synced minutes — e.g. access granted in
+  // iOS Settings) we stop nudging.
   const connectHealth = async () => {
     try { await requestMindfulAuthorization(); } catch { /* user may cancel */ }
     try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* private mode */ }
     setHealthConnected(true);
+    queryClient.invalidateQueries({ queryKey: ["apple-health-mindful-external"] });
   };
-  const showHealthConnect = appleHealthAvailable() && !healthConnected;
+  const showHealthConnect = appleHealthAvailable() && !healthConnected && healthMin === 0;
 
   return (
     <div className="rounded-2xl p-4 mt-4" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
@@ -311,6 +328,15 @@ function DailyGoalCard({
       ) : (
         <p className="text-[12px]" style={{ color: SAGE, margin: "0 0 12px" }}>
           {t("contemplation.goal_prompt", { defaultValue: "Set a daily minutes goal — we'll nudge you around 7pm on days you haven't reached it." })}
+        </p>
+      )}
+
+      {/* Synced from Apple Health — meditation kept in other apps, folded into
+          today's progress above. Only shown when there's something to count. */}
+      {healthMin > 0 && (
+        <p className="text-[12px] flex items-center gap-1.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK, margin: "0 0 12px" }}>
+          <span aria-hidden>🍎</span>
+          {t("contemplation.health_counted", { defaultValue: `Including ${healthMin} min synced from Apple Health`, count: healthMin })}
         </p>
       )}
 
