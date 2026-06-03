@@ -128,7 +128,10 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 
 import NotFound from "@/pages/not-found";
 import Onboarding from "./pages/onboarding";
-import Dashboard from "./pages/dashboard";
+// Lazy — the dashboard (and its transitive deps) is the single biggest module;
+// keeping it out of the entry chunk speeds first paint. Its named exports are
+// only imported by other lazy routes, so this fully removes it from the entry.
+const Dashboard = lazy(() => import("./pages/dashboard"));
 const RitualDetail = lazy(() => import("./pages/ritual-detail"));
 const RitualSchedule = lazy(() => import("./pages/ritual-schedule"));
 const GuestSchedule = lazy(() => import("./pages/guest-schedule"));
@@ -782,14 +785,31 @@ function DayBoundaryRefresh() {
 function ForegroundRefresh() {
   useEffect(() => {
     let lastInvalidate = 0;
+    // Time the WebView last went hidden (app backgrounded, or the in-app
+    // browser/SFSafari covered it). We only refresh after a meaningful gap.
+    let hiddenAt = 0;
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") hiddenAt = Date.now();
+    };
     const onActive = () => {
       const now = Date.now();
+      // Only re-fire the (large) dashboard fan-out after a real time away —
+      // a quick app-switch or returning from the in-app browser shouldn't
+      // invalidate the whole cache. The 30s query staleTime already covers
+      // short gaps; we only invalidate after ~60s backgrounded.
+      const awayMs = hiddenAt ? now - hiddenAt : 0;
+      hiddenAt = 0;
+      if (awayMs < 60_000) return;
       if (now - lastInvalidate < 5000) return;
       lastInvalidate = now;
       queryClient.invalidateQueries();
     };
+    document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("phoebe:appactive", onActive);
-    return () => window.removeEventListener("phoebe:appactive", onActive);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("phoebe:appactive", onActive);
+    };
   }, []);
   return null;
 }
