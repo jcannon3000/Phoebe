@@ -5,6 +5,7 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import passport from "passport";
 import router from "./routes";
+import { bustUserCache } from "./routes/auth";
 import { logger } from "./lib/logger";
 import { initSentry, captureError } from "./lib/sentry";
 import { buildCsrfMiddleware } from "./lib/csrf";
@@ -153,6 +154,18 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Bust the deserializeUser cache for a user after any mutating request, so the
+// very next read reflects the write instead of a cached pre-write row. Reads
+// (GET/HEAD) hit the cache; mutations (the rare case) drop the entry on
+// response finish. See the deserializeUser note in routes/auth.ts.
+app.use((req, _res, next) => {
+  if (req.method !== "GET" && req.method !== "HEAD" && req.user) {
+    const uid = (req.user as { id?: number }).id;
+    if (typeof uid === "number") _res.on("finish", () => bustUserCache(uid));
+  }
+  next();
+});
 
 // Scheduler ownership: by default in production the schedulers run
 // in the dedicated worker process (src/worker.ts → Railway "worker"

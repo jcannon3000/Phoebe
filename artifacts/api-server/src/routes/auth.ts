@@ -87,10 +87,42 @@ passport.serializeUser((user: Express.User, done) => {
   done(null, (user as { id: number }).id);
 });
 
+// ─── deserializeUser cache ───────────────────────────────────────────────────
+// passport.deserializeUser runs a `SELECT * FROM users` on EVERY authenticated
+// request. A single dashboard load fires ~17-19 requests, so that's ~17-19
+// identical user reads per load, per user — pure overhead at scale. Cache the
+// row per user for a few seconds so a burst shares one read.
+//
+// Correctness:
+//  - We hand every request a shallow CLONE, never the shared row. A handful of
+//    write endpoints mutate req.user in place (req.user.x = y); mutating a
+//    shared cached object would leak across concurrent requests.
+//  - Any mutating (non-GET) request busts the user's entry on response finish
+//    (the bust-on-write middleware in app.ts), so a write is always followed
+//    by a fresh read. Residual staleness is bounded by the short TTL and only
+//    touches preference flags — no authorization is decided off req.user.
+const USER_CACHE_TTL_MS = 5_000;
+const USER_CACHE_MAX = 10_000;
+const userRowCache = new Map<number, { row: Express.User; expires: number }>();
+
+export function bustUserCache(id: number): void {
+  userRowCache.delete(id);
+}
+
 passport.deserializeUser(async (id: number, done) => {
   try {
+    const cached = userRowCache.get(id);
+    if (cached && cached.expires > Date.now()) {
+      done(null, { ...(cached.row as object) } as Express.User);
+      return;
+    }
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, id));
-    done(null, user ?? null);
+    if (!user) { done(null, null); return; }
+    // Hard cap so the map can't grow without bound under a large user base;
+    // entries are short-lived (TTL + bust-on-write) so a flush is cheap.
+    if (userRowCache.size > USER_CACHE_MAX) userRowCache.clear();
+    userRowCache.set(id, { row: user as Express.User, expires: Date.now() + USER_CACHE_TTL_MS });
+    done(null, { ...(user as object) } as Express.User);
   } catch (err) {
     done(err);
   }
