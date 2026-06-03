@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -58,10 +59,7 @@ interface Suggestion {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const DAY_NAMES_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const BANDS: Band[] = ["morning", "afternoon", "evening"];
-const BAND_LABELS: Record<Band, string> = { morning: "Morning", afternoon: "Afternoon", evening: "Evening" };
 const BAND_DEFAULT_TIMES: Record<Band, string> = { morning: "09:00", afternoon: "14:00", evening: "18:30" };
 
 const LEVEL_STYLES: Record<NonNullable<Level>, { bg: string; border: string; icon: string }> = {
@@ -86,11 +84,6 @@ function formatHHMM(hhmm: string): string {
   return `${h}:${String(m).padStart(2, "0")} ${suffix}`;
 }
 
-function cadenceLabel(cadence: string): string {
-  if (cadence === "fortnightly") return "Every 2 weeks";
-  return cadence.charAt(0).toUpperCase() + cadence.slice(1);
-}
-
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function GatheringDetailPage() {
@@ -99,6 +92,7 @@ export default function GatheringDetailPage() {
   const [, params] = useRoute("/gatherings/:id");
   const gatheringId = Number(params?.id);
   const qc = useQueryClient();
+  const { t } = useTranslation();
 
   // Grid: key = "${day}-${band}", value = Level
   const [grid, setGrid] = useState<Map<string, Level>>(new Map());
@@ -190,6 +184,32 @@ export default function GatheringDetailPage() {
   const joinedMembers = gathering?.members.filter(m => m.inviteStatus === "joined") ?? [];
   const respondedCount = gathering?.members.filter(m => m.hasResponded).length ?? 0;
 
+  // Localized weekday / band / cadence labels (arrays indexed 0=Sun … 6=Sat).
+  const DAYS = [
+    t("gathering_detail.days.sun"), t("gathering_detail.days.mon"), t("gathering_detail.days.tue"),
+    t("gathering_detail.days.wed"), t("gathering_detail.days.thu"), t("gathering_detail.days.fri"),
+    t("gathering_detail.days.sat"),
+  ];
+  const DAY_NAMES_FULL = [
+    t("gathering_detail.days_full.sun"), t("gathering_detail.days_full.mon"), t("gathering_detail.days_full.tue"),
+    t("gathering_detail.days_full.wed"), t("gathering_detail.days_full.thu"), t("gathering_detail.days_full.fri"),
+    t("gathering_detail.days_full.sat"),
+  ];
+  const BAND_LABELS: Record<Band, string> = {
+    morning: t("gathering_detail.bands.morning"),
+    afternoon: t("gathering_detail.bands.afternoon"),
+    evening: t("gathering_detail.bands.evening"),
+  };
+  const cadenceLabel = (cadence: string): string => {
+    switch (cadence) {
+      case "weekly": return t("gathering_detail.cadence_weekly");
+      case "fortnightly": return t("gathering_detail.cadence_fortnightly");
+      case "monthly": return t("gathering_detail.cadence_monthly");
+      case "daily": return t("gathering_detail.cadence_daily");
+      default: return cadence.charAt(0).toUpperCase() + cadence.slice(1);
+    }
+  };
+
   if (isLoading) {
     return (
       <Layout>
@@ -206,9 +226,9 @@ export default function GatheringDetailPage() {
     return (
       <Layout>
         <div className="max-w-lg mx-auto w-full pt-16 text-center">
-          <p style={{ color: "#8FAF96" }}>Gathering not found.</p>
+          <p style={{ color: "#8FAF96" }}>{t("gathering_detail.not_found")}</p>
           <button onClick={() => setLocation("/gatherings")} className="mt-4 text-sm underline" style={{ color: "#8FAF96" }}>
-            Back to Gatherings
+            {t("gathering_detail.back_to_gatherings")}
           </button>
         </div>
       </Layout>
@@ -226,7 +246,7 @@ export default function GatheringDetailPage() {
             className="text-xs mb-3 flex items-center gap-1 transition-opacity hover:opacity-70"
             style={{ color: "#8FAF96" }}
           >
-            <ChevronLeft size={14} /> Gatherings
+            <ChevronLeft size={14} /> {t("gathering_detail.gatherings")}
           </button>
           <h1 className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
             {gathering.title}
@@ -248,10 +268,10 @@ export default function GatheringDetailPage() {
               <Users size={11} />{gathering.members.length}
             </span>
             {gathering.needsRoom && (
-              <span className="text-xs" style={{ color: "rgba(143,175,150,0.5)" }}>room needed</span>
+              <span className="text-xs" style={{ color: "rgba(143,175,150,0.5)" }}>{t("gathering_detail.room_needed")}</span>
             )}
             {gathering.needsClergy && (
-              <span className="text-xs" style={{ color: "rgba(143,175,150,0.5)" }}>clergy needed</span>
+              <span className="text-xs" style={{ color: "rgba(143,175,150,0.5)" }}>{t("gathering_detail.clergy_needed")}</span>
             )}
           </div>
         </div>
@@ -264,15 +284,19 @@ export default function GatheringDetailPage() {
             className="mb-6 px-5 py-4 rounded-2xl"
             style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(111,175,133,0.3)" }}
           >
-            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "#6FAF85" }}>Confirmed</p>
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "#6FAF85" }}>{t("gathering_detail.confirmed")}</p>
             <p className="text-base font-semibold" style={{ color: "#F0EDE6" }}>
-              {DAY_NAMES_FULL[gathering.confirmedDayOfWeek]}s at {formatHHMM(gathering.confirmedTime ?? "09:00")}
+              {t("gathering_detail.confirmed_when", {
+                day: DAY_NAMES_FULL[gathering.confirmedDayOfWeek],
+                time: formatHHMM(gathering.confirmedTime ?? "09:00"),
+              })}
             </p>
             {gathering.confirmedStartDate && (
               <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>
-                Starting{" "}
-                {new Date(gathering.confirmedStartDate + "T12:00:00").toLocaleDateString(undefined, {
-                  month: "long", day: "numeric", year: "numeric",
+                {t("gathering_detail.starting", {
+                  date: new Date(gathering.confirmedStartDate + "T12:00:00").toLocaleDateString(undefined, {
+                    month: "long", day: "numeric", year: "numeric",
+                  }),
                 })}
               </p>
             )}
@@ -283,7 +307,7 @@ export default function GatheringDetailPage() {
         {isForming && joinedMembers.length > 0 && (
           <div className="mb-5">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs" style={{ color: "#8FAF96" }}>Responses</span>
+              <span className="text-xs" style={{ color: "#8FAF96" }}>{t("gathering_detail.responses")}</span>
               <span className="text-xs" style={{ color: "#8FAF96" }}>{respondedCount} / {joinedMembers.length}</span>
             </div>
             <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(46,107,64,0.12)" }}>
@@ -302,10 +326,10 @@ export default function GatheringDetailPage() {
         {isForming && (
           <div className="mb-7">
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(143,175,150,0.6)" }}>
-              Your availability
+              {t("gathering_detail.your_availability")}
             </p>
             <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.45)" }}>
-              Tap to mark free (✓) or maybe (~). Blank = unavailable.
+              {t("gathering_detail.grid_help")}
             </p>
 
             <div style={{ overflowX: "auto" }}>
@@ -384,11 +408,11 @@ export default function GatheringDetailPage() {
               className="w-full mt-4 py-3.5 rounded-2xl font-semibold text-sm disabled:opacity-40 transition-opacity hover:opacity-90"
               style={{ background: "#2D5E3F", color: "#F0EDE6" }}
             >
-              {saveAvailability.isPending ? "Saving…" : "Save availability"}
+              {saveAvailability.isPending ? t("gathering_detail.saving") : t("gathering_detail.save_availability")}
             </button>
             {saveAvailability.isSuccess && (
               <p className="text-xs text-center mt-2 flex items-center justify-center gap-1" style={{ color: "#6FAF85" }}>
-                <Check size={12} /> Saved
+                <Check size={12} /> {t("gathering_detail.saved")}
               </p>
             )}
           </div>
@@ -398,7 +422,7 @@ export default function GatheringDetailPage() {
         {isLeader && isForming && suggestions.length > 0 && (
           <div className="mb-7">
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(143,175,150,0.6)" }}>
-              Best times
+              {t("gathering_detail.best_times")}
             </p>
             <div className="space-y-2">
               {suggestions.map((s, i) => (
@@ -420,12 +444,12 @@ export default function GatheringDetailPage() {
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
                       {s.respondedCount > 0
-                        ? `${Math.round(s.score * 100)}% match${s.blockedCount > 0 ? ` · ${s.blockedCount} conflict${s.blockedCount > 1 ? "s" : ""}` : " · no conflicts"}`
-                        : "No responses yet"}
+                        ? `${t("gathering_detail.match_pct", { pct: Math.round(s.score * 100) })} ${s.blockedCount > 0 ? t("gathering_detail.conflicts", { count: s.blockedCount }) : t("gathering_detail.no_conflicts")}`
+                        : t("gathering_detail.no_responses")}
                     </p>
                   </div>
                   <span className="text-xs px-2.5 py-1 rounded-lg shrink-0" style={{ background: "rgba(46,107,64,0.15)", color: "#8FAF96" }}>
-                    Select
+                    {t("gathering_detail.select")}
                   </span>
                 </button>
               ))}
@@ -444,12 +468,12 @@ export default function GatheringDetailPage() {
               style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(111,175,133,0.2)" }}
             >
               <p className="text-sm font-semibold mb-4" style={{ color: "#F0EDE6" }}>
-                Confirm: {DAY_NAMES_FULL[confirmDay]} {BAND_LABELS[confirmBand]}
+                {t("gathering_detail.confirm_slot", { day: DAY_NAMES_FULL[confirmDay], band: BAND_LABELS[confirmBand] })}
               </p>
               <div className="space-y-3">
                 <div>
                   <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-                    Time
+                    {t("gathering_detail.time")}
                   </label>
                   <input
                     type="time"
@@ -461,7 +485,7 @@ export default function GatheringDetailPage() {
                 </div>
                 <div>
                   <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-                    First meeting date
+                    {t("gathering_detail.first_meeting_date")}
                   </label>
                   <input
                     type="date"
@@ -478,7 +502,7 @@ export default function GatheringDetailPage() {
                   className="flex-1 py-3 rounded-xl text-sm font-medium"
                   style={{ background: "rgba(46,107,64,0.08)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.15)" }}
                 >
-                  Cancel
+                  {t("gathering_detail.cancel")}
                 </button>
                 <button
                   onClick={() => confirmSlot.mutate()}
@@ -486,7 +510,7 @@ export default function GatheringDetailPage() {
                   className="flex-1 py-3 rounded-xl text-sm font-semibold disabled:opacity-40"
                   style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                 >
-                  {confirmSlot.isPending ? "Confirming…" : "Confirm"}
+                  {confirmSlot.isPending ? t("gathering_detail.confirming") : t("gathering_detail.confirm")}
                 </button>
               </div>
             </motion.div>
@@ -496,7 +520,7 @@ export default function GatheringDetailPage() {
         {/* Members */}
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(143,175,150,0.6)" }}>
-            Members
+            {t("gathering_detail.members")}
           </p>
           <div className="space-y-2">
             {gathering.members.map(m => (
@@ -518,20 +542,20 @@ export default function GatheringDetailPage() {
                   )}
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate" style={{ color: "#F0EDE6" }}>
-                      {m.user?.name ?? "Invited"}
+                      {m.user?.name ?? t("gathering_detail.invited")}
                     </p>
                     {m.role === "leader" && (
-                      <p className="text-[10px] uppercase tracking-wider" style={{ color: "#6FAF85" }}>Leader</p>
+                      <p className="text-[10px] uppercase tracking-wider" style={{ color: "#6FAF85" }}>{t("gathering_detail.leader")}</p>
                     )}
                   </div>
                 </div>
                 <div className="shrink-0 ml-3">
                   {m.hasResponded ? (
                     <span className="text-xs flex items-center gap-1" style={{ color: "#6FAF85" }}>
-                      <Check size={11} /> Responded
+                      <Check size={11} /> {t("gathering_detail.responded")}
                     </span>
                   ) : (
-                    <span className="text-xs" style={{ color: "rgba(143,175,150,0.35)" }}>Pending</span>
+                    <span className="text-xs" style={{ color: "rgba(143,175,150,0.35)" }}>{t("gathering_detail.pending")}</span>
                   )}
                 </div>
               </div>
