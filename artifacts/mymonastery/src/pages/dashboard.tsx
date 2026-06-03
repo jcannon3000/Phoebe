@@ -2995,10 +2995,23 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
   // "Programmed an office" = the user explicitly chose the daily office as their
   // prayer — either the global default or either per-side level. Everyone else
   // gets the communal "Pray Together" default on this card (once a day).
-  const programmedOffice =
-    officePrefs?.defaultPrayerLevel === "office" ||
-    getSideLevel("morning") === "office" ||
-    getSideLevel("evening") === "office";
+  // Which programmed prayer the user committed to (Rule of Life → Pray):
+  //   "office"   → full Morning/Evening Prayer
+  //   "devotion" → the shorter Daily Devotion
+  //   null       → community ("Pray Together"), the default
+  const programmedLevel: "office" | "devotion" | null =
+    (officePrefs?.defaultPrayerLevel === "office" ||
+      getSideLevel("morning") === "office" ||
+      getSideLevel("evening") === "office")
+      ? "office"
+      : (officePrefs?.defaultPrayerLevel === "devotion" ||
+          getSideLevel("morning") === "devotion" ||
+          getSideLevel("evening") === "devotion")
+        ? "devotion"
+        : null;
+  // "Programmed prayer" (office OR devotion) → the begin-prayer CTA + per-half
+  // "prayed today" tracking; community keeps the once-a-day Pray Together flow.
+  const programmedOffice = programmedLevel !== null;
 
   const { data: communityPrayedData } = useQuery<{ people: { id: number; name: string; avatarUrl: string | null }[]; total?: number }>({
     queryKey: ["/api/prayer-streak/community-prayed-week"],
@@ -3164,9 +3177,11 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
   // people. The full data (streak, community-prayed) is intentionally
   // dropped here — it lives on the full card.
   if (compact) {
-    const title = programmedOffice
-      ? (isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙")
-      : "Pray Together 🙏";
+    const title = programmedLevel === "devotion"
+      ? (isMorning ? "Morning Devotion 🌅" : "Evening Devotion 🌙")
+      : programmedLevel === "office"
+        ? (isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙")
+        : "Pray Together 🙏";
     return (
       <Link href={ctaHref} className="block">
         <div
@@ -3280,9 +3295,11 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
                     className="text-2xl font-semibold"
                     style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}
                   >
-                    {programmedOffice
-                      ? (isMorning ? `${t("offices.morning_prayer")} 🌅` : `${t("offices.evening_prayer")} 🌙`)
-                      : `${t("dashboard.pray_together", { defaultValue: "Pray Together" })} 🙏`}
+                    {programmedLevel === "devotion"
+                      ? (isMorning ? `${t("offices.morning_devotion", { defaultValue: "Morning Devotion" })} 🌅` : `${t("offices.evening_devotion", { defaultValue: "Evening Devotion" })} 🌙`)
+                      : programmedLevel === "office"
+                        ? (isMorning ? `${t("offices.morning_prayer")} 🌅` : `${t("offices.evening_prayer")} 🌙`)
+                        : `${t("dashboard.pray_together", { defaultValue: "Pray Together" })} 🙏`}
                   </p>
                   {countCopy && (
                     <p
