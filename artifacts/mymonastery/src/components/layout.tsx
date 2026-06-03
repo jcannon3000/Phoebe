@@ -477,11 +477,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
               <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
               <MenuRow emoji="🎧" label={t("menu.audio", { defaultValue: "Audio" })} onClick={() => goCategory("/menu/audio")} />
-              {/* Videos — sits directly under Audio. Beta-gated like the Way of
-                  Love surface it belongs to (moved here from a top card). */}
-              {rawIsBeta && (
-                <MenuRow emoji="🎬" label={t("menu.videos", { defaultValue: "Videos" })} onClick={() => navigate("/videos")} />
-              )}
               {showLetters && (
                 <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
               )}
