@@ -35,7 +35,7 @@ import {
   type ReflectionSource,
   type DefaultOfficeEntry,
 } from "@/lib/officePrefs";
-import WayOfLoveStep from "@/components/WayOfLoveStep";
+import WayOfLoveRuleFlow from "@/components/WayOfLoveRuleFlow";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -821,13 +821,7 @@ export default function RuleOfLifePage() {
     // so the Phoebe top bar (logo + nav pills) shows on this page.
     return (
       <Layout>
-        <WayOfLoveStep
-          focus={result?.connectionFocus ?? "transcendent"}
-          timeOfDay={answers.timeOfDay ?? "both"}
-          minutes={typeof answers.minutes === "number" ? answers.minutes : 10}
-          carrying={Array.isArray(answers.carrying) ? answers.carrying : undefined}
-          godMoments={Array.isArray(answers.godMoments) ? answers.godMoments : undefined}
-          longing={Array.isArray(answers.longing) ? answers.longing : undefined}
+        <WayOfLoveRuleFlow
           onBack={() => (result ? setPhase("result") : setLocation("/daily-practice"))}
           onDone={() => setLocation("/daily-practice")}
         />
