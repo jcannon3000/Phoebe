@@ -5129,10 +5129,10 @@ export default function Dashboard() {
   // DEFAULT_HIDDEN — the one-time global reset, no DB migration. Re-customizing
   // stamps the current version and sticks.
   const HOME_LAYOUT_VERSION = 2;
-  // The default everyone starts at: prayer requests pinned on top, then Listen
-  // (contemplation) → community prayers (office) → Forward Day by Day.
+  // The default everyone starts at: prayer requests pinned on top, then
+  // community prayers (office) → Listen (contemplation) → Forward Day by Day.
   // Everything else is hidden but addable from Customize.
-  const DEFAULT_ORDER: HomeModule[] = ["requests", "contemplation", "office", "fdd", "feeds", "gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
   const DEFAULT_HIDDEN = ["feeds", "gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
   // Only a current-version saved layout counts; anything older falls back to
   // the default (that's the reset).
