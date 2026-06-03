@@ -19,7 +19,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
 import { computeTurnConsistency, engagementDays, type EngagementOfficeDay } from "@/lib/turnConsistency";
@@ -94,6 +94,7 @@ const SILENCE_GOAL_PRESETS = [0, 5, 10, 15, 20, 30] as const;
 
 export default function WayOfLoveStep(props: WayOfLoveStepProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const T = (x: I18nText) => t(x.key, { defaultValue: x.default });
 
   const primary = FOCUS_TO_CONNECTION[props.focus];
@@ -260,6 +261,21 @@ export default function WayOfLoveStep(props: WayOfLoveStepProps) {
         contemplationGoalMinutes: silenceGoalMin,
         contemplationReminderEnabled: silenceGoalMin > 0,
       }).catch(() => {/* ignore */});
+    }
+    // Rewrite the home to match the rule (the rule is the source of truth):
+    // prayer requests pinned → Listen (contemplation) → Pray (the office card,
+    // which adapts to the level set above — community / devotion / office) →
+    // the chosen daily newsletter. The other two newsletters + secondary
+    // panels are hidden (addable later from Customize). Stamped with the
+    // current home-layout version so it persists past the reset.
+    {
+      const HOME_LAYOUT_VERSION = 2; // keep in sync with dashboard.tsx / customize-home.tsx
+      const otherNewsletters = (["cac", "fdd", "ssje"] as const).filter((n) => n !== reflectionChoice);
+      const order = ["requests", "contemplation", "office", reflectionChoice, "feeds", "gratitude", "examen", "ncmp", "podcasts", ...otherNewsletters];
+      const hidden = ["feeds", "gratitude", "examen", "ncmp", "podcasts", ...otherNewsletters];
+      apiRequest("PUT", "/api/me/home-layout", { order, hidden, v: HOME_LAYOUT_VERSION })
+        .then(() => queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }))
+        .catch(() => {/* ignore */});
     }
     setStep("committed");
   };
