@@ -198,7 +198,7 @@ router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Res
     const people = activePeople
       .slice()
       .sort((a, b) => (b.avatarUrl ? 1 : 0) - (a.avatarUrl ? 1 : 0))
-      .slice(0, 24)
+      .slice(0, 12)
       .map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl }));
 
     res.json({ people, total });
