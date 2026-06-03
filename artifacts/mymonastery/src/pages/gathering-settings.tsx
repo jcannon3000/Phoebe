@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft, X, Trash2 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
@@ -34,6 +35,7 @@ export default function GatheringSettingsPage() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const ritualId = id ? parseInt(id, 10) : NaN;
 
@@ -75,9 +77,9 @@ export default function GatheringSettingsPage() {
       // Invalidate any community gatherings list this might surface in.
       const justAdded = myAdminGroups.find((g) => g.id === groupId);
       if (justAdded) qc.invalidateQueries({ queryKey: [`/api/groups/${justAdded.slug}/gatherings`] });
-      toast({ title: "Community added", description: "It now shows on their dashboard." });
+      toast({ title: t("gathering_settings.toast_added"), description: t("gathering_settings.toast_added_sub") });
     },
-    onError: () => toast({ title: "Couldn't add community", variant: "destructive" }),
+    onError: () => toast({ title: t("gathering_settings.toast_add_failed"), variant: "destructive" }),
   });
   const detach = useMutation({
     mutationFn: (groupId: number) =>
@@ -86,23 +88,23 @@ export default function GatheringSettingsPage() {
       qc.invalidateQueries({ queryKey: [`/api/rituals/${ritualId}/groups`] });
       const justRemoved = (shareQ.data?.additional ?? []).find((r) => r.id === groupId);
       if (justRemoved) qc.invalidateQueries({ queryKey: [`/api/groups/${justRemoved.slug}/gatherings`] });
-      toast({ title: "Community removed" });
+      toast({ title: t("gathering_settings.toast_removed") });
     },
-    onError: () => toast({ title: "Couldn't remove community", variant: "destructive" }),
+    onError: () => toast({ title: t("gathering_settings.toast_remove_failed"), variant: "destructive" }),
   });
 
   const deleteRitual = useMutation({
     mutationFn: () => apiRequest("DELETE", `/api/rituals/${ritualId}`),
     onSuccess: () => {
       qc.invalidateQueries();
-      toast({ title: "Gathering deleted" });
+      toast({ title: t("gathering_settings.toast_deleted") });
       // Land back on the primary community (or home if we somehow lost it).
       const home = shareQ.data?.primary?.slug
         ? `/communities/${shareQ.data.primary.slug}`
         : "/";
       setLocation(home);
     },
-    onError: () => toast({ title: "Couldn't delete gathering", variant: "destructive" }),
+    onError: () => toast({ title: t("gathering_settings.toast_delete_failed"), variant: "destructive" }),
   });
 
   const [pendingAddId, setPendingAddId] = useState<number | "">("");
@@ -112,7 +114,7 @@ export default function GatheringSettingsPage() {
     return (
       <Layout>
         <div className="max-w-2xl mx-auto px-4 pt-6 pb-12">
-          <p className="text-sm" style={{ color: "#C8D4C0" }}>Invalid gathering.</p>
+          <p className="text-sm" style={{ color: "#C8D4C0" }}>{t("gathering_settings.invalid")}</p>
         </div>
       </Layout>
     );
@@ -135,17 +137,19 @@ export default function GatheringSettingsPage() {
           style={{ color: "rgba(143,175,150,0.85)", fontFamily: FONT, cursor: "pointer" }}
         >
           <ChevronLeft size={14} />
-          {primary ? `Back to ${primary.emoji ?? "⛪"} ${primary.name}` : "Back"}
+          {primary
+            ? t("gathering_settings.back_to", { name: `${primary.emoji ?? "⛪"} ${primary.name}` })
+            : t("gathering_settings.back")}
         </button>
 
         <p
           className="text-[10px] font-bold uppercase tracking-[0.14em] mb-1"
           style={{ color: "rgba(200,212,192,0.55)" }}
         >
-          Gathering settings
+          {t("gathering_settings.eyebrow")}
         </p>
         <h1 className="text-2xl font-bold mb-6" style={{ color: "#F0EDE6", fontFamily: FONT, letterSpacing: "-0.01em" }}>
-          {ritualQ.data?.name ?? "Loading…"}
+          {ritualQ.data?.name ?? t("gathering_settings.loading")}
         </h1>
 
         {/* ─── Shared with ────────────────────────────────────────────── */}
@@ -154,10 +158,10 @@ export default function GatheringSettingsPage() {
           style={{ background: "#0F2618", border: "1px solid rgba(111,175,133,0.25)" }}
         >
           <h2 className="text-base font-semibold mb-1" style={{ color: "#F0EDE6", fontFamily: FONT }}>
-            Shared with
+            {t("gathering_settings.shared_with")}
           </h2>
           <p className="text-[12px] mb-3" style={{ color: "rgba(143,175,150,0.75)" }}>
-            Other communities that see this gathering on their dashboard.
+            {t("gathering_settings.shared_with_sub")}
           </p>
 
           {/* Primary community — read-only badge so the user can see
@@ -168,7 +172,7 @@ export default function GatheringSettingsPage() {
                 className="text-[9px] font-bold uppercase tracking-[0.14em] mb-1.5"
                 style={{ color: "rgba(200,212,192,0.45)" }}
               >
-                Primary host
+                {t("gathering_settings.primary_host")}
               </p>
               <span
                 className="inline-flex items-center gap-1.5 text-[12px] font-medium px-2.5 py-1 rounded-full"
@@ -189,11 +193,11 @@ export default function GatheringSettingsPage() {
             className="text-[9px] font-bold uppercase tracking-[0.14em] mb-1.5"
             style={{ color: "rgba(200,212,192,0.45)" }}
           >
-            Also shared with
+            {t("gathering_settings.also_shared")}
           </p>
           {additional.length === 0 ? (
             <p className="text-[12px] italic mb-3" style={{ color: "rgba(143,175,150,0.55)" }}>
-              No additional communities yet.
+              {t("gathering_settings.no_additional")}
             </p>
           ) : (
             <div className="flex flex-wrap gap-1.5 mb-3">
@@ -211,7 +215,7 @@ export default function GatheringSettingsPage() {
                   <span>{row.emoji ?? "⛪"} {row.name}</span>
                   <button
                     type="button"
-                    aria-label={`Remove ${row.name}`}
+                    aria-label={t("gathering_settings.remove_aria", { name: row.name })}
                     onClick={() => detach.mutate(row.id)}
                     disabled={detach.isPending}
                     className="ml-0.5 rounded-full hover:opacity-80 transition-opacity"
@@ -239,7 +243,7 @@ export default function GatheringSettingsPage() {
                   fontFamily: FONT,
                 }}
               >
-                <option value="">+ Add a community…</option>
+                <option value="">{t("gathering_settings.add_community")}</option>
                 {addable.map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.emoji ?? "⛪"} {g.name}
@@ -264,12 +268,12 @@ export default function GatheringSettingsPage() {
                   cursor: pendingAddId ? "pointer" : "not-allowed",
                 }}
               >
-                {attach.isPending ? "Adding…" : "Add"}
+                {attach.isPending ? t("gathering_settings.adding") : t("gathering_settings.add")}
               </button>
             </div>
           ) : (
             <p className="text-[12px] italic" style={{ color: "rgba(143,175,150,0.55)" }}>
-              You don't admin any other communities to share with.
+              {t("gathering_settings.no_admin_communities")}
             </p>
           )}
         </section>
@@ -280,11 +284,10 @@ export default function GatheringSettingsPage() {
           style={{ background: "rgba(61,42,16,0.25)", border: "1px solid rgba(196,122,101,0.35)" }}
         >
           <h2 className="text-base font-semibold mb-1" style={{ color: "#F5C9B8", fontFamily: FONT }}>
-            Delete this gathering
+            {t("gathering_settings.delete_title")}
           </h2>
           <p className="text-[12px] mb-3" style={{ color: "rgba(245,201,184,0.7)" }}>
-            Permanently removes the gathering, every scheduled meetup, and
-            its calendar events for invitees. This can't be undone.
+            {t("gathering_settings.delete_body")}
           </p>
           {!confirmDelete ? (
             <button
@@ -300,7 +303,7 @@ export default function GatheringSettingsPage() {
               }}
             >
               <Trash2 size={14} />
-              Delete gathering
+              {t("gathering_settings.delete_btn")}
             </button>
           ) : (
             <div className="flex items-center gap-2">
@@ -317,7 +320,7 @@ export default function GatheringSettingsPage() {
                   cursor: "pointer",
                 }}
               >
-                {deleteRitual.isPending ? "Deleting…" : "Yes, delete forever"}
+                {deleteRitual.isPending ? t("gathering_settings.deleting") : t("gathering_settings.delete_confirm")}
               </button>
               <button
                 type="button"
@@ -325,7 +328,7 @@ export default function GatheringSettingsPage() {
                 className="text-[13px] font-medium px-3 py-2"
                 style={{ color: "rgba(245,201,184,0.7)", fontFamily: FONT, cursor: "pointer" }}
               >
-                Cancel
+                {t("gathering_settings.cancel")}
               </button>
             </div>
           )}
