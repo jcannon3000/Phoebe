@@ -292,7 +292,9 @@ function DailyGoalCard({
   // the user types any target and taps Set (or Enter).
   const [draft, setDraft] = useState<string>(hasGoal ? String(goalMinutes) : "");
   useEffect(() => { setDraft(hasGoal ? String(goalMinutes) : ""); }, [goalMinutes, hasGoal]);
-  const parsed = Math.min(600, Math.max(0, Math.floor(Number(draft))));
+  // Cap matches the server clamp (users.ts: Math.min(180, …)); without this the
+  // field accepts up to 600 only to have the server silently store 180.
+  const parsed = Math.min(180, Math.max(0, Math.floor(Number(draft))));
   const canSet = !saving && Number.isFinite(parsed) && parsed > 0 && parsed !== goalMinutes;
 
   // HealthKit doesn't expose read-grant state, so once they've gone through the
@@ -346,7 +348,7 @@ function DailyGoalCard({
           type="number"
           inputMode="numeric"
           min={1}
-          max={600}
+          max={180}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && canSet) onSet(parsed); }}
