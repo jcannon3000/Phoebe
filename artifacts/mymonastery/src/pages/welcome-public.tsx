@@ -2,9 +2,7 @@ import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
 
 // ── First-open chooser ───────────────────────────────────────────────────────
@@ -53,16 +51,6 @@ export default function WelcomePublicPage() {
       setLocation("/dashboard");
     }
   }, [user, isLoading, setLocation]);
-
-  // Live social proof — how many people have prayed with Phoebe this month.
-  // Public, cached endpoint; falls back to the static subtitle when absent or
-  // too small. (Hook stays above the early return so hook order is stable.)
-  const { data: prayedStats } = useQuery<{ count: number }>({
-    queryKey: ["/api/stats/prayed-this-month"],
-    queryFn: () => apiRequest("GET", "/api/stats/prayed-this-month"),
-    staleTime: 30 * 60_000,
-  });
-  const prayedCount = prayedStats?.count ?? 0;
 
   // Don't paint the chooser while we're still resolving the auth
   // state — avoids a brief flash before the redirect above fires.
@@ -114,14 +102,6 @@ export default function WelcomePublicPage() {
           <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
             {t("welcome_public.tagline", { defaultValue: "A relational app that cultivates connections between Sundays." })}
           </p>
-          {/* Secondary line: live social proof — how many people prayed with
-              Phoebe this month. Shown only once the count is meaningful (>1) so
-              we never render an awkward "0/1 people have prayed". */}
-          {prayedCount > 1 && (
-            <p className="text-[13px] leading-relaxed mt-1.5" style={{ color: FAINT }}>
-              {t("welcome_public.prayed_subtitle", { defaultValue: "{{n}} people have prayed with Phoebe this month.", n: prayedCount.toLocaleString() })}
-            </p>
-          )}
         </motion.div>
 
         <div className="flex flex-col gap-3">
