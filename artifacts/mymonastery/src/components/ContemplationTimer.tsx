@@ -115,7 +115,9 @@ export function ContemplationTimer({
   const queryClient = useQueryClient();
   const [phase, setPhase] = useState<Phase>("picker");
   const [customMode, setCustomMode] = useState(false);
-  const [customMin, setCustomMin] = useState("10");
+  // Listen defaults to a 5-minute sit (St. Benedict's "Listen" — a few
+  // minutes of silence before God).
+  const [customMin, setCustomMin] = useState("5");
   // FDD-specific silence add-on state (shown in the picker when
   // audioDurationSeconds is set). Default 5 min of silence after the
   // reflection; 0 = reflection only, no extra silence.

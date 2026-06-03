@@ -290,8 +290,10 @@ function DailyGoalCard({
 
   // Free-form minutes field (no presets). Kept in sync with the saved goal;
   // the user types any target and taps Set (or Enter).
-  const [draft, setDraft] = useState<string>(hasGoal ? String(goalMinutes) : "");
-  useEffect(() => { setDraft(hasGoal ? String(goalMinutes) : ""); }, [goalMinutes, hasGoal]);
+  // Pre-fill 5 when no goal is set yet — the default Listen rhythm (a few
+  // minutes of silence a day), ready to Set in one tap.
+  const [draft, setDraft] = useState<string>(hasGoal ? String(goalMinutes) : "5");
+  useEffect(() => { setDraft(hasGoal ? String(goalMinutes) : "5"); }, [goalMinutes, hasGoal]);
   // Cap matches the server clamp (users.ts: Math.min(180, …)); without this the
   // field accepts up to 600 only to have the server silently store 180.
   const parsed = Math.min(180, Math.max(0, Math.floor(Number(draft))));
@@ -577,7 +579,7 @@ export default function ContemplationPage() {
   const [logOpen, setLogOpen] = useState(false);
   // Free string so the field can be cleared to blank and retyped; parsed to a
   // number where one's needed (mutation + submit-enabled check).
-  const [logMinutes, setLogMinutes] = useState("20");
+  const [logMinutes, setLogMinutes] = useState("5");
   const [logWhen, setLogWhen] = useState(() => localDatetimeValue(new Date()));
   const inputStyle = {
     background: "rgba(0,0,0,0.25)",
