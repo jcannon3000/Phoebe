@@ -1922,9 +1922,14 @@ const HOME_MODULE_KEYS = ["office", "feeds", "contemplation", "gratitude", "exam
 router.put("/me/home-layout", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  const body = req.body as { order?: unknown; hidden?: unknown };
+  const body = req.body as { order?: unknown; hidden?: unknown; v?: unknown };
   const order = Array.isArray(body.order) ? body.order.filter((k): k is string => typeof k === "string") : null;
   const hidden = Array.isArray(body.hidden) ? body.hidden.filter((k): k is string => typeof k === "string") : [];
+  // Layout version (client constant). Stored so a global default reset can be
+  // rolled out by bumping the version: the client treats any saved layout whose
+  // `v` is below the current version as "use the new default" (see dashboard /
+  // customize-home), then a re-save stamps the new version. No DB migration.
+  const v = typeof body.v === "number" ? body.v : undefined;
   if (!order) { res.status(400).json({ error: "order must be an array" }); return; }
   const allowed = new Set<string>(HOME_MODULE_KEYS);
   // Keep only known keys, dedupe, then append any missing keys so the
@@ -1940,7 +1945,7 @@ router.put("/me/home-layout", async (req, res): Promise<void> => {
   if (cleanHidden.length >= cleanOrder.length) {
     cleanHidden = cleanHidden.filter((k) => k !== cleanOrder[0]);
   }
-  const layout = { order: cleanOrder, hidden: cleanHidden };
+  const layout = { order: cleanOrder, hidden: cleanHidden, ...(v !== undefined ? { v } : {}) };
   try {
     await db.update(usersTable).set({ homeLayout: layout }).where(eq(usersTable.id, sessionUserId));
     res.json(layout);

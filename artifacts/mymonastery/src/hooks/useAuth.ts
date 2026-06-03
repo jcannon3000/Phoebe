@@ -47,8 +47,11 @@ export interface AuthUser {
   homeFeedId: number | null;
   feedFirstHome: boolean;
   // Home-screen layout (Customize page). null = not customized; the
-  // dashboard derives a default from feedFirstHome.
-  homeLayout: { order: string[]; hidden: string[] } | null;
+  // dashboard derives a default. `v` is the layout-version the layout was
+  // saved under — a stored layout whose `v` is below the current
+  // HOME_LAYOUT_VERSION is ignored (treated as the new default), which is how
+  // a global home reset rolls out without a destructive migration.
+  homeLayout: { order: string[]; hidden: string[]; v?: number } | null;
   // Master notifications switch (Settings → Notifications).
   pushEnabled: boolean;
   // Master switch for non-essential email (Settings → Emails / the

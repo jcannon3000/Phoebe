@@ -201,7 +201,7 @@ router.get("/auth/me", async (req, res) => {
     locale: string | null;
     homeFeedId: number | null;
     feedFirstHome: boolean;
-    homeLayout: { order: string[]; hidden: string[] } | null;
+    homeLayout: { order: string[]; hidden: string[]; v?: number } | null;
     pushEnabled: boolean;
     emailEnabled: boolean;
   };

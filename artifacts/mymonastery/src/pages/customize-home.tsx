@@ -33,6 +33,17 @@ type HomeModule = typeof HOME_MODULES[number];
 // Prayer requests always leads the home — it can't be moved or removed.
 const PINNED: HomeModule = "requests";
 
+// Home-layout version. Bump to force a one-time global reset to the default
+// below: the client ignores any saved layout whose `v` is older than this,
+// then a re-save stamps the current version. No DB migration / data wipe.
+// Keep in sync with HOME_LAYOUT_VERSION in dashboard.tsx.
+const HOME_LAYOUT_VERSION = 2;
+// The default home everyone starts at (and resets to on a version bump):
+// requests (pinned) → Listen (contemplation) → community prayers (office) →
+// Forward Day by Day. Everything else is hidden but addable.
+const DEFAULT_ORDER: HomeModule[] = ["requests", "contemplation", "office", "fdd", "gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
+const DEFAULT_HIDDEN: HomeModule[] = ["gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
+
 function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub: string }> {
   const { t } = useTranslation();
   return {
@@ -69,31 +80,27 @@ function buildOrder(saved: string[] | null | undefined, fallback: HomeModule[]):
 
 function useHomeLayout(user: AuthUser) {
   const queryClient = useQueryClient();
-  const fallbackOrder: HomeModule[] = ["requests", "office", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts"];
+  // Ignore a layout saved under an older version — that's how the one-time
+  // global reset to DEFAULT_ORDER/DEFAULT_HIDDEN rolls out. Once the user
+  // re-customizes, the save stamps the current version and sticks.
+  const saved = user?.homeLayout && user.homeLayout.v === HOME_LAYOUT_VERSION ? user.homeLayout : null;
 
-  const [order, setOrder] = useState<HomeModule[]>(() => buildOrder(user?.homeLayout?.order, fallbackOrder));
+  const [order, setOrder] = useState<HomeModule[]>(() => buildOrder(saved?.order, DEFAULT_ORDER));
   const [hidden, setHidden] = useState<Set<string>>(() => {
-    const savedHidden = user?.homeLayout?.hidden;
-    const savedOrder = user?.homeLayout?.order;
-    const s = new Set<string>(savedHidden ?? ["contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp"]);
-    // Opt-in-only modules: add to hidden for existing users whose saved
-    // order pre-dates the module (they've never explicitly toggled it on).
-    for (const mod of ["cac", "fdd", "ssje", "ncmp", "podcasts"] as HomeModule[]) {
-      if (savedOrder && !savedOrder.includes(mod)) s.add(mod);
-    }
+    const s = new Set<string>(saved?.hidden ?? DEFAULT_HIDDEN);
     s.delete(PINNED);
     return s;
   });
 
   const saveLayout = useMutation({
     mutationFn: (layout: { order: string[]; hidden: string[] }) =>
-      apiRequest("PUT", "/api/me/home-layout", layout),
+      apiRequest("PUT", "/api/me/home-layout", { ...layout, v: HOME_LAYOUT_VERSION }),
     onMutate: async (vars) => {
       await queryClient.cancelQueries({ queryKey: ["/api/auth/me"] });
       const prev = queryClient.getQueryData(["/api/auth/me"]);
       queryClient.setQueryData(["/api/auth/me"], (curr: unknown) => {
         if (!curr || typeof curr !== "object") return curr;
-        return { ...(curr as Record<string, unknown>), homeLayout: { order: vars.order, hidden: vars.hidden } };
+        return { ...(curr as Record<string, unknown>), homeLayout: { order: vars.order, hidden: vars.hidden, v: HOME_LAYOUT_VERSION } };
       });
       return { prev };
     },

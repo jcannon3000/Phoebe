@@ -3295,7 +3295,10 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
                 </div>
                 {withAvatars.length > 0 && (
                   <div className="flex items-center -space-x-2 shrink-0">
-                    {withAvatars.map((p) => (
+                    {/* Show as many faces as fit the card (up from 5); the
+                        count line above carries the true total. Capped at 8 so
+                        a large garden's rail can't overflow / crush the title. */}
+                    {withAvatars.slice(0, 8).map((p) => (
                       <img
                         key={p.id}
                         src={p.avatarUrl as string}
@@ -5104,42 +5107,33 @@ export default function Dashboard() {
   // anchor — it gets the full office card / the feed hero card.
   const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
-  // Prayer requests always leads — never hidden. For users who've
-  // never customized (no homeLayout row) we hide the secondary practices
-  // (Contemplation / Gratitude / Examen / CAC) by default so the home
-  // doesn't feel cluttered out of the gate. Once savedHidden exists,
-  // it IS the source of truth — we used to ALSO add "modules missing
-  // from saved order" back to hidden, which silently un-did a user's
-  // toggle if their saved order pre-dated the new module (e.g. they
-  // customized before Gratitude existed and then later toggled it
-  // visible). The CAC guard below preserves "default hidden" semantics
-  // for that one module only, since it's an opt-in Resources surface
-  // rather than a default-on practice.
+  // Home-layout version (keep in sync with customize-home.tsx). A saved layout
+  // whose `v` is below this is ignored and the user resets to DEFAULT_ORDER /
+  // DEFAULT_HIDDEN — the one-time global reset, no DB migration. Re-customizing
+  // stamps the current version and sticks.
+  const HOME_LAYOUT_VERSION = 2;
+  // The default everyone starts at: prayer requests pinned on top, then Listen
+  // (contemplation) → community prayers (office) → Forward Day by Day.
+  // Everything else is hidden but addable from Customize.
+  const DEFAULT_ORDER: HomeModule[] = ["requests", "contemplation", "office", "fdd", "feeds", "gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_HIDDEN = ["feeds", "gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  // Only a current-version saved layout counts; anything older falls back to
+  // the default (that's the reset).
+  const savedLayout = user?.homeLayout && user.homeLayout.v === HOME_LAYOUT_VERSION ? user.homeLayout : null;
+  // Prayer requests always leads — never hidden. A current-version saved
+  // `hidden` set is the source of truth; otherwise the default applies.
   const homeHidden = (() => {
-    const savedHidden = user?.homeLayout?.hidden;
-    const savedOrder = user?.homeLayout?.order;
-    const s = new Set<string>(savedHidden ?? ["contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp"]);
-    // CAC + FDD + SSJE + NCMP are opt-in for everyone; if a user's
-    // saved order pre-dates the module (it isn't in their
-    // savedOrder), keep it hidden until they explicitly toggle it
-    // via /customize-home.
-    if (savedOrder && !savedOrder.includes("cac")) s.add("cac");
-    if (savedOrder && !savedOrder.includes("fdd")) s.add("fdd");
-    if (savedOrder && !savedOrder.includes("ssje")) s.add("ssje");
-    if (savedOrder && !savedOrder.includes("ncmp")) s.add("ncmp");
+    const s = new Set<string>(savedLayout?.hidden ?? DEFAULT_HIDDEN);
     s.delete("requests");
     return s;
   })();
   const homeOrder: HomeModule[] = (() => {
-    const saved = user?.homeLayout?.order ?? null;
-    const fallback: HomeModule[] = featuredFeed
-      ? ["requests", "feeds", "office", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts"]
-      : ["requests", "office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts"];
+    const saved = savedLayout?.order ?? null;
     // Keep known keys in saved order, then append any missing modules so
     // a newly-added module always has a place.
     const seen = new Set<string>();
     const out: HomeModule[] = [];
-    for (const k of saved ?? fallback) {
+    for (const k of saved ?? DEFAULT_ORDER) {
       if ((HOME_MODULES as readonly string[]).includes(k) && !seen.has(k)) {
         seen.add(k);
         out.push(k as HomeModule);
