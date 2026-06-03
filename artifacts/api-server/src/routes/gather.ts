@@ -146,7 +146,11 @@ router.post("/gather", async (req: Request, res: Response): Promise<void> => {
       subject: `${organizer} invited you: ${title}`,
       heading: `When can you make it?`,
       intro: `${organizer} is planning "${title}" and would love your availability.`,
-      ctaLabel: "Mark your availability", ctaUrl: link,
+      // Carry the invitee's email in their link so the respond page pre-fills
+      // it and their response is matched back to this invite — otherwise a
+      // guest who responds without re-typing their email is counted a
+      // non-responder and re-nudged.
+      ctaLabel: "Mark your availability", ctaUrl: `${link}?e=${encodeURIComponent(email)}`,
     });
   }
 

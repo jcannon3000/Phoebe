@@ -196,8 +196,10 @@ export default function WayOfLoveWeekPage() {
     if (goFeedEngaged && !doneThisWeek("go")) {
       mark.mutate({ section: "go", localDate: today, weekStart: thisWeekStart });
     }
+    // today/thisWeekStart are deps so a page left open across a week rollover
+    // re-credits Go for the new week (the mark is idempotent server-side).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goFeedEngaged, user, compQ.isSuccess]);
+  }, [goFeedEngaged, user, compQ.isSuccess, today, thisWeekStart]);
 
   const toggle = (key: SectionKey) => {
     if (doneThisWeek(key)) {

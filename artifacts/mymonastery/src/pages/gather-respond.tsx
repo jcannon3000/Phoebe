@@ -69,7 +69,9 @@ export default function GatherRespondPage() {
   const [avail, setAvail] = useState<Record<number, Avail>>({});
   const [suggested, setSuggested] = useState("");
   const [guestName, setGuestName] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
+  // Pre-fill from the invite link's ?e= so the response is matched back to the
+  // invite (and the guest isn't re-nudged). They can still edit or clear it.
+  const [guestEmail, setGuestEmail] = useState(() => new URLSearchParams(window.location.search).get("e") ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
