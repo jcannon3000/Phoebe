@@ -120,6 +120,9 @@ const router: IRouter = Router();
 // serve straight from existing tokens. Memory-only (resets on deploy), which is
 // fine — a deploy just means everyone reconciles once on their next load.
 const RECONCILE_TTL_MS = 60_000;
+// Bound the map so a long-lived instance serving many distinct users can't grow
+// it without limit. Entries are just a last-reconciled timestamp per user.
+const RECONCILE_CACHE_MAX = 50_000;
 const lastReconciledByUser = new Map<number, number>();
 
 function generateToken() {
@@ -1601,9 +1604,20 @@ router.get("/moments", async (req, res): Promise<void> => {
     // skipped. Stamp the time up front so concurrent requests from the same
     // user (a dashboard fires several /moments-adjacent calls at once) don't
     // all decide to reconcile.
+    const nowMs = Date.now();
     const shouldReconcile =
-      Date.now() - (lastReconciledByUser.get(sessionUserId) ?? 0) > RECONCILE_TTL_MS;
-    if (shouldReconcile) lastReconciledByUser.set(sessionUserId, Date.now());
+      nowMs - (lastReconciledByUser.get(sessionUserId) ?? 0) > RECONCILE_TTL_MS;
+    if (shouldReconcile) {
+      // Prune stale entries before letting the map grow past its cap. Anything
+      // older than the TTL belongs to a user who'd reconcile on their next visit
+      // anyway, so dropping it is free — and unlike clear() it keeps currently
+      // active users' cooldowns intact (no reconcile stampede after a flush).
+      if (lastReconciledByUser.size > RECONCILE_CACHE_MAX) {
+        const cutoff = nowMs - RECONCILE_TTL_MS;
+        for (const [uid, ts] of lastReconciledByUser) if (ts < cutoff) lastReconciledByUser.delete(uid);
+      }
+      lastReconciledByUser.set(sessionUserId, nowMs);
+    }
 
     // Reconcile every practice attached to any group this user belongs to.
     // This runs BEFORE we read tokens so a user newly added to a group picks
