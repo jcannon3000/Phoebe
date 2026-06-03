@@ -297,7 +297,11 @@ export async function migrate() {
         AND EXISTS (
           SELECT 1 FROM moment_posts mp
           WHERE mp.moment_id = sm.id
-            AND mp.window_date >= (CURRENT_DATE - INTERVAL '60 days')::date
+            -- window_date is TEXT and includes the non-date sentinel 'seed',
+            -- so we can't ::date-cast it (would throw). Guard to real dates,
+            -- then compare as text — zero-padded YYYY-MM-DD sorts chronologically.
+            AND mp.window_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+            AND mp.window_date >= to_char(CURRENT_DATE - INTERVAL '60 days', 'YYYY-MM-DD')
         )
     `);
     // Repair 2: intercessions that hit their goal (commitmentGoalReachedAt set)
@@ -320,7 +324,10 @@ export async function migrate() {
         AND EXISTS (
           SELECT 1 FROM moment_posts mp
           WHERE mp.moment_id = sm.id
-            AND mp.window_date >= (CURRENT_DATE - INTERVAL '14 days')::date
+            -- See the 60-day query above: window_date is TEXT with a 'seed'
+            -- sentinel, so guard to real dates and compare lexically.
+            AND mp.window_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+            AND mp.window_date >= to_char(CURRENT_DATE - INTERVAL '14 days', 'YYYY-MM-DD')
         )
     `);
 
@@ -354,6 +361,23 @@ export async function migrate() {
     await run(client, `ALTER TABLE meetups ADD COLUMN IF NOT EXISTS location TEXT`);
     // Dedup stamp for the day-before gathering reminder push.
     await run(client, `ALTER TABLE meetups ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ`);
+
+    // Calendar subscriptions — iCal (.ics) feeds a user overlays on their
+    // calendar. The Drizzle schema (lib/db/schema/calendar_subscriptions)
+    // shipped without a matching migration, so selects were 500ing with
+    // "relation calendar_subscriptions does not exist". Create it here to
+    // match the schema; columns mirror calendarSubscriptionsTable exactly.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS calendar_subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        url TEXT NOT NULL,
+        name TEXT NOT NULL DEFAULT '',
+        color_hex TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_calendar_subscriptions_user_id ON calendar_subscriptions(user_id)`);
 
     // Fix missing ON DELETE CASCADE on existing FK constraints (safe to re-run)
     await run(client, `ALTER TABLE rituals DROP CONSTRAINT IF EXISTS rituals_owner_id_fkey`);

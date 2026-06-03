@@ -12,9 +12,11 @@ let prayedCache: { at: number; count: number } | null = null;
 const TTL_MS = 30 * 60_000;
 
 // GET /api/stats/prayed-this-month → { count }
-// Distinct people who have prayed (any prayer_days row) since the first of the
-// current month. prayer_days is the canonical "prayed" day-log (same source
-// the community stats use for prayed-today / week / all-time).
+// Distinct people who have prayed since the first of the current month.
+// NB: there is no `prayer_days` table — the community stats build it as an
+// inline CTE over `prayer_sessions` (SELECT DISTINCT user_id, day FROM …).
+// Counting DISTINCT user_id directly over prayer_sessions yields the same
+// distinct-people figure without that CTE.
 router.get("/stats/prayed-this-month", async (_req: Request, res: Response): Promise<void> => {
   if (prayedCache && Date.now() - prayedCache.at < TTL_MS) {
     res.json({ count: prayedCache.count });
@@ -24,7 +26,7 @@ router.get("/stats/prayed-this-month", async (_req: Request, res: Response): Pro
     const now = new Date();
     const monthStart = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
     const { rows } = await pool.query<{ count: number }>(
-      `SELECT COUNT(DISTINCT user_id)::int AS count FROM prayer_days WHERE day >= $1`,
+      `SELECT COUNT(DISTINCT user_id)::int AS count FROM prayer_sessions WHERE ended_at >= $1`,
       [monthStart],
     );
     const count = rows[0]?.count ?? 0;
