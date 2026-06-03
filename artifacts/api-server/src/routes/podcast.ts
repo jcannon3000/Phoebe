@@ -558,7 +558,9 @@ router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<
       audioUrl: ep?.audioUrl ?? null,
       durationSeconds: ep?.durationSeconds ?? null,
       publishedAt: ep?.publishedAt ?? null,
-      imageUrl: ep?.imageUrl ?? feed.feedImage ?? null,
+      // Offices: prefer the show's channel cover over the per-episode image —
+      // these feeds give each episode a generic image, not the show cover.
+      imageUrl: feed.feedImage ?? ep?.imageUrl ?? null,
     });
     return;
   }
@@ -604,7 +606,11 @@ router.get("/podcast/:show/today", async (req: Request, res: Response): Promise<
     audioUrl: ep?.audioUrl ?? null,
     durationSeconds: ep?.durationSeconds ?? null,
     publishedAt: ep?.publishedAt ?? null,
-    imageUrl: ep?.imageUrl ?? feed.feedImage ?? show.artwork ?? null,
+    // Offices show the recognizable channel cover (their per-episode art is
+    // a generic image); other shows keep their per-episode image.
+    imageUrl: isOffice
+      ? (feed.feedImage ?? show.artwork ?? ep?.imageUrl ?? null)
+      : (ep?.imageUrl ?? feed.feedImage ?? show.artwork ?? null),
     scriptureStartSec,
     appealStartSec,
   });
