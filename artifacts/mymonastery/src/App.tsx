@@ -128,10 +128,17 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 
 import NotFound from "@/pages/not-found";
 import Onboarding from "./pages/onboarding";
-// Lazy — the dashboard (and its transitive deps) is the single biggest module;
-// keeping it out of the entry chunk speeds first paint. Its named exports are
-// only imported by other lazy routes, so this fully removes it from the entry.
-const Dashboard = lazy(() => import("./pages/dashboard"));
+// Dashboard is the signed-in landing screen — where the large majority of app
+// opens go. Keep it STATIC (in the entry bundle), NOT lazy. As a separate chunk
+// the primary screen paid an extra round trip on first paint AND a full
+// stale-chunk recovery reload after every deploy: the lazy import() fails
+// against the now-removed old chunk hash, which forces window.location.reload()
+// (see lib/staleChunk.ts). That surfaced as "the home takes a long time to load
+// sometimes." The logged-out landing (welcome-public, below) is static for the
+// same reason — the dashboard deserves the same treatment. Everything else here
+// stays lazy. (dashboard.tsx's named exports were already pulled in by other
+// lazy routes; the default being static just keeps the whole module in entry.)
+import Dashboard from "./pages/dashboard";
 const RitualDetail = lazy(() => import("./pages/ritual-detail"));
 const RitualSchedule = lazy(() => import("./pages/ritual-schedule"));
 const GuestSchedule = lazy(() => import("./pages/guest-schedule"));
