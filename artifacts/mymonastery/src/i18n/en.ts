@@ -831,9 +831,9 @@ export const en = {
   // Way of Love rule — the 3-step Listen → Pray → Learn flow (WayOfLoveRuleFlow).
   wol_rule: {
     walk: "Your Way of Love",
-    listen_eyebrow: "Listen",
-    listen_title: "Listen",
-    listen_body: "St. Benedict's Rule opens with “Listen.” Take a few minutes a day to sit in silence before God — listening for what God might be speaking, and what's on your own heart. Listening to God's love.",
+    listen_eyebrow: "Return",
+    listen_title: "Return",
+    listen_body: "St. Benedict's Rule calls us back to God — a daily return. Take a few minutes a day to sit in silence before God, open to what God might be speaking and to what's on your own heart. A return to God's love.",
     listen_goal_label: "Minutes of silence a day",
     listen_goal_note: "We'll gently remind you around 7pm on days you haven't reached it. Set 0 to keep the practice without a goal.",
     pray_eyebrow: "Pray",
@@ -851,7 +851,7 @@ export const en = {
     learn_body: "Choose a daily reflection to read.",
     finish: "Set my Way of Love",
     done_title: "Your Way of Love is set",
-    done_sub: "Your home now leads with Listen, your prayer, and your reflection. Return any time to change it.",
+    done_sub: "Your home now leads with Return, your prayer, and your reflection. Come back any time to change it.",
     done_cta: "Go to my home",
   },
   // Way of Love practice picker / rule-of-life setup step (WayOfLoveStep).

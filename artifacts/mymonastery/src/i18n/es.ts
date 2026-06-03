@@ -825,9 +825,9 @@ export const es: Translations = {
   // Way of Love rule — the 3-step Listen → Pray → Learn flow (WayOfLoveRuleFlow).
   wol_rule: {
     walk: "Tu Camino del Amor",
-    listen_eyebrow: "Escucha",
-    listen_title: "Escucha",
-    listen_body: "La Regla de San Benito comienza con «Escucha». Dedica unos minutos al día a sentarte en silencio ante Dios — escuchando lo que Dios pueda estar diciendo, y lo que hay en tu propio corazón. Escuchando el amor de Dios.",
+    listen_eyebrow: "Regresa",
+    listen_title: "Regresa",
+    listen_body: "La Regla de San Benito nos llama de vuelta a Dios — un regreso diario. Dedica unos minutos al día a sentarte en silencio ante Dios, abierto a lo que Dios pueda estar diciendo y a lo que hay en tu propio corazón. Un regreso al amor de Dios.",
     listen_goal_label: "Minutos de silencio al día",
     listen_goal_note: "Te recordaremos con suavidad hacia las 7 p. m. los días que no lo alcances. Pon 0 para mantener la práctica sin una meta.",
     pray_eyebrow: "Ora",
@@ -845,7 +845,7 @@ export const es: Translations = {
     learn_body: "Elige una reflexión diaria para leer.",
     finish: "Establecer mi Camino del Amor",
     done_title: "Tu Camino del Amor está listo",
-    done_sub: "Tu inicio ahora comienza con Escucha, tu oración y tu reflexión. Vuelve cuando quieras para cambiarlo.",
+    done_sub: "Tu inicio ahora comienza con Regresa, tu oración y tu reflexión. Vuelve cuando quieras para cambiarlo.",
     done_cta: "Ir a mi inicio",
   },
   // Way of Love practice picker / rule-of-life setup step (WayOfLoveStep).
