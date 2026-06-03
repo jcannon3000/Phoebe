@@ -109,6 +109,19 @@ const LECTIO_GROUP_LIMIT = 3;
 
 const router: IRouter = Router();
 
+// ─── /moments read-path reconcile cooldown ───────────────────────────────────
+// GET /api/moments used to reconcile every group- and feed-linked practice on
+// EVERY read — a heavy write fan-out on one of the hottest dashboard paths.
+// Write paths (join/leave/subscribe, publish, roster edits) already reconcile
+// synchronously, so the read-time reconcile is only a freshness safety net for
+// drift the write paths somehow missed. We keep that safety net but throttle it
+// to at most once per user per minute: the first /moments call after the TTL
+// reconciles and refreshes the response, subsequent calls within the window
+// serve straight from existing tokens. Memory-only (resets on deploy), which is
+// fine — a deploy just means everyone reconciles once on their next load.
+const RECONCILE_TTL_MS = 60_000;
+const lastReconciledByUser = new Map<number, number>();
+
 function generateToken() {
   return crypto.randomBytes(16).toString("hex");
 }
@@ -1580,12 +1593,25 @@ router.get("/moments", async (req, res): Promise<void> => {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.id, sessionUserId));
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
+    // Throttle the read-time reconcile to once per user per minute (see
+    // RECONCILE_TTL_MS note above). Both the pre-reconcile and post-reconcile
+    // passes below are gated on this flag together — the post-pass dedups
+    // against the Sets the pre-pass fills, so they must run (or skip) as a
+    // unit or the post-pass would re-do everything the pre-pass would have
+    // skipped. Stamp the time up front so concurrent requests from the same
+    // user (a dashboard fires several /moments-adjacent calls at once) don't
+    // all decide to reconcile.
+    const shouldReconcile =
+      Date.now() - (lastReconciledByUser.get(sessionUserId) ?? 0) > RECONCILE_TTL_MS;
+    if (shouldReconcile) lastReconciledByUser.set(sessionUserId, Date.now());
+
     // Reconcile every practice attached to any group this user belongs to.
     // This runs BEFORE we read tokens so a user newly added to a group picks
     // up that group's practices on their very next /moments request — no
     // refresh, no delay, no dependency on the eager helpers firing.
     // Track which practices we've already reconciled this request so the
-    // post-reconcile pass below doesn't redo the same writes. The pre-
+    // post-reconcile pass below doesn't redo the same writes (both passes
+    // are gated on shouldReconcile, so when we skip we skip both). The pre-
     // reconcile (by group/feed membership) and post-reconcile (by the
     // moments the viewer holds tokens for) overlap almost entirely —
     // reconciling twice per dashboard load was pure waste. Dedup keeps
@@ -1593,7 +1619,7 @@ router.get("/moments", async (req, res): Promise<void> => {
     // intact) at roughly half the write fan-out.
     const reconciledGroupPracticeIds = new Set<number>();
     const reconciledFeedPracticeIds = new Set<number>();
-    try {
+    if (shouldReconcile) try {
       const myGroupRows = await db.select({ groupId: groupMembersTable.groupId })
         .from(groupMembersTable)
         .where(eq(groupMembersTable.userId, sessionUserId));
@@ -1737,17 +1763,20 @@ router.get("/moments", async (req, res): Promise<void> => {
     // reconcile above. This catches the edge cases the membership-based
     // pre-pass misses (e.g. a token lingering from a group the viewer
     // has since left), without re-running the writes for everything the
-    // pre-pass already handled.
-    await Promise.all(
-      flatMoments
-        .filter(m => m.groupId !== null && m.groupId !== undefined && !reconciledGroupPracticeIds.has(m.id))
-        .map(m => reconcileGroupPracticeMembers(m.id))
-    );
-    await Promise.all(
-      flatMoments
-        .filter(m => m.prayerFeedId !== null && m.prayerFeedId !== undefined && !reconciledFeedPracticeIds.has(m.id))
-        .map(m => reconcileFeedPracticeMembers(m.id))
-    );
+    // pre-pass already handled. Gated on the same shouldReconcile flag as
+    // the pre-pass so a throttled read does zero reconcile writes.
+    if (shouldReconcile) {
+      await Promise.all(
+        flatMoments
+          .filter(m => m.groupId !== null && m.groupId !== undefined && !reconciledGroupPracticeIds.has(m.id))
+          .map(m => reconcileGroupPracticeMembers(m.id))
+      );
+      await Promise.all(
+        flatMoments
+          .filter(m => m.prayerFeedId !== null && m.prayerFeedId !== undefined && !reconciledFeedPracticeIds.has(m.id))
+          .map(m => reconcileFeedPracticeMembers(m.id))
+      );
+    }
 
     // Build a set of emails that have actual user accounts (i.e. have signed up).
     // Used to show "invited" vs "joined" status on member lists.
