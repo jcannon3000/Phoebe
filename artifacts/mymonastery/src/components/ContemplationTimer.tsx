@@ -794,7 +794,7 @@ export function ContemplationTimer({
                                 color: WARM, fontFamily: SPACE_GROTESK,
                               }}
                             />
-                            <span style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>min silence</span>
+                            <span style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{t("contemplation_timer.min_silence", { defaultValue: "min silence" })}</span>
                           </div>
                           <button
                             type="button"

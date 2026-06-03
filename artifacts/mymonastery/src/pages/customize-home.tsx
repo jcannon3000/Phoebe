@@ -333,7 +333,7 @@ function CustomizeHomeAddInner({ user }: { user: AuthUser }) {
         {available.length === 0 ? (
           <div className="text-center mt-16">
             <p style={{ fontSize: 32 }}>✅</p>
-            <p className="mt-3 text-sm" style={{ color: SAGE }}>All panels are already on your home screen.</p>
+            <p className="mt-3 text-sm" style={{ color: SAGE }}>{t("customize_home.all_added", { defaultValue: "All panels are already on your home screen." })}</p>
             <button
               type="button"
               onClick={() => setLocation("/customize-home")}

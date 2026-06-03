@@ -723,6 +723,7 @@ export const en = {
     review_nudge_sub: "Look back, carry over, set next week",
   },
   bless: {
+    carried_over: "carried over",
     add: "Add a blessing",
     add_more: "+ Add a blessing",
     edit: "Edit this blessing",
@@ -1379,6 +1380,7 @@ export const en = {
   },
   // Contemplation timer overlay (components/ContemplationTimer.tsx).
   contemplation_timer: {
+    min_silence: "min silence",
     goal_progress: "{{done}} of {{goal}} min today — {{remain}} to go",
     goal_reached: "Daily goal reached 🌿",
     how_long: "How long would you like to pray?",
@@ -1475,6 +1477,7 @@ export const en = {
   },
   // Customize home page (pages/customize-home.tsx).
   customize_home: {
+    all_added: "All panels are already on your home screen.",
     auto_save_hint: "Changes save automatically.",
     back_to_home: "← Back to home",
     title: "Customize home",
@@ -1736,6 +1739,7 @@ export const en = {
   },
   // Contemplation page (pages/contemplation.tsx).
   contemplation: {
+    remove_entry: "Remove entry",
     day_one_sit: "1 sit",
     day_n_sits: "{{count}} sits",
     goal_progress: "{{done}} of {{goal}} min today",

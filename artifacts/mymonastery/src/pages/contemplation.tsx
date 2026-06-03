@@ -496,7 +496,7 @@ function SessionRow({ s, onDelete, deleting }: { s: Session; onDelete: () => voi
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            aria-label="Remove entry"
+            aria-label={t("contemplation.remove_entry", { defaultValue: "Remove entry" })}
             className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity hover:opacity-100"
             style={{ color: "rgba(143,175,150,0.6)", opacity: 0.7, cursor: "pointer" }}
           >

@@ -717,6 +717,7 @@ export const es: Translations = {
     review_nudge_sub: "Mira atrás, pasa lo pendiente, prepara la próxima",
   },
   bless: {
+    carried_over: "continuada",
     add: "Añade una bendición",
     add_more: "+ Añade una bendición",
     edit: "Edita esta bendición",
@@ -1323,6 +1324,7 @@ export const es: Translations = {
     update_in_for_round: "Tu actualización está en esta ronda 🌿",
   },
   contemplation_timer: {
+    min_silence: "min de silencio",
     goal_progress: "{{done}} de {{goal}} min hoy — faltan {{remain}}",
     goal_reached: "Meta diaria alcanzada 🌿",
     how_long: "¿Cuánto tiempo quieres orar?",
@@ -1405,6 +1407,7 @@ export const es: Translations = {
     send: "Enviar a tu comunidad 🙏🏽",
   },
   customize_home: {
+    all_added: "Todos los paneles ya están en tu pantalla de inicio.",
     auto_save_hint: "Los cambios se guardan automáticamente.",
     back_to_home: "← Volver al inicio",
     title: "Personalizar inicio",
@@ -1649,6 +1652,7 @@ export const es: Translations = {
     no_one_shared: "Nadie ha compartido todavía. Comparte una entrada desde Mi gratitud para empezar.",
   },
   contemplation: {
+    remove_entry: "Eliminar entrada",
     day_one_sit: "1 sesión",
     day_n_sits: "{{count}} sesiones",
     goal_progress: "{{done}} de {{goal}} min hoy",

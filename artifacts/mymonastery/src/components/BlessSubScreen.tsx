@@ -203,7 +203,7 @@ export default function BlessSubScreen({
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: i.recipient || i.reminderTime ? 5 : 0 }}>
             {i.recipient && <span style={{ color: SAGE, fontSize: 12, fontFamily: FONT }}>for {i.recipient}</span>}
             {i.reminderTime && <span style={{ color: SAGE_DIM, fontSize: 11.5, fontFamily: FONT, border: `1px solid ${CARD_B}`, borderRadius: 999, padding: "1px 7px" }}>⏰ {i.reminderTime}</span>}
-            {i.carriedFrom && <span style={{ color: SAGE_DIM, fontSize: 11, fontFamily: FONT }}>carried over</span>}
+            {i.carriedFrom && <span style={{ color: SAGE_DIM, fontSize: 11, fontFamily: FONT }}>{t("bless.carried_over", { defaultValue: "carried over" })}</span>}
           </div>
         </button>
       </div>
