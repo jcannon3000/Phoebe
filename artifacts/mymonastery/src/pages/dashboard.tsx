@@ -2570,15 +2570,15 @@ export function CacHomeCard() {
     staleTime: 30 * 60_000,
   });
   const cacTitle = cacMeta?.title ?? "";
-  // Warm today's page in the in-app browser's background so tapping the card
-  // opens it instantly (native only; no-op on web).
-  useEffect(() => { if (cacMeta?.url) preloadExternal(cacMeta.url); }, [cacMeta?.url]);
   const onClick = () => {
     recordCacOpened({ flagReturn: true });
-    // Open today's resolved permalink directly when we already have it — the
-    // today-meta query above prefetches it on home load, so this skips the
-    // /api/cac/today server redirect + RSS fetch and opens noticeably faster.
-    openExternal(cacMeta?.url || CAC_TODAY_URL);
+    // Open via the server redirect — NOT a prefetched permalink. We briefly
+    // preloaded cacMeta.url and then opened that exact URL; the in-app browser
+    // presented its prefetched view and dismissed instantly, dropping the
+    // reader straight onto the /reflect/cac return page (recordCacOpened's
+    // flagReturn) without ever showing the meditation. Opening CAC_TODAY_URL —
+    // a URL we don't prefetch — opens a fresh page and shows reliably.
+    openExternal(CAC_TODAY_URL);
   };
   return (
     <div
