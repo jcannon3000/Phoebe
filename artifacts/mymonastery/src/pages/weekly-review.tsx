@@ -20,6 +20,7 @@ import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
+import { useTranslation } from "react-i18next";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import BlessSubScreen from "@/components/BlessSubScreen";
 import { SECTIONS, commitmentLines, type SectionKey, type WolSelections, type CompletionRow } from "./home-beta";
@@ -69,6 +70,7 @@ export default function WeeklyReviewPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { isBeta, isLoading: betaLoading } = useBetaStatus();
   const qc = useQueryClient();
+  const { t } = useTranslation();
 
   const wolQ = useQuery<{ selections: WolSelections }>({
     queryKey: ["/api/rule-of-life/wol"],
@@ -146,7 +148,7 @@ export default function WeeklyReviewPage() {
     const lines = commitmentLines(def(key), selections);
     return lines.length > 0 ? (
       <div style={{ marginTop: 18, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 14px" }}>
-        <p style={{ ...eyebrow, fontSize: 10.5, letterSpacing: "0.08em" }}>Your commitment</p>
+        <p style={{ ...eyebrow, fontSize: 10.5, letterSpacing: "0.08em" }}>{t("weekly_review.commitment")}</p>
         <p style={{ color: WARM, fontSize: 14, fontFamily: FONT, lineHeight: 1.45, margin: "6px 0 0" }}>{lines.join(" · ")}</p>
       </div>
     ) : (
@@ -155,7 +157,7 @@ export default function WeeklyReviewPage() {
         onClick={() => setLocation("/rule-of-life")}
         style={{ marginTop: 18, background: "none", border: "none", padding: 0, color: "rgba(168,197,160,0.95)", fontSize: 14, fontFamily: FONT, textDecoration: "underline", cursor: "pointer", textAlign: "left" }}
       >
-        Set your {def(key).title} practice →
+        {t("weekly_review.set_practice", { practice: def(key).title })}
       </button>
     );
   };
@@ -164,14 +166,14 @@ export default function WeeklyReviewPage() {
   if (slide.kind === "intro") {
     body = (
       <>
-        <p style={eyebrow}>A new week</p>
+        <p style={eyebrow}>{t("weekly_review.new_week")}</p>
         <h1 style={{ color: WARM, fontSize: 28, fontWeight: 600, fontFamily: FONT, margin: "12px 0 0" }}>{weekRange}</h1>
         <p style={{ color: SAGE, fontSize: 15.5, fontFamily: FONT, fontStyle: "italic", lineHeight: 1.55, margin: "12px 0 0" }}>
-          The weekly practices reset. Look back on the week that was, and set the one ahead.
+          {t("weekly_review.intro_body")}
         </p>
         <div style={{ marginTop: 24, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "14px 16px" }}>
           <p style={{ color: WARM, fontSize: 15, fontWeight: 600, fontFamily: FONT, margin: 0 }}>
-            {lastKept.length > 0 ? `Last week you kept ${lastKept.length} of ${WEEKLY_KEYS.length}.` : "A fresh start this week."}
+            {lastKept.length > 0 ? t("weekly_review.last_week_kept", { count: lastKept.length, total: WEEKLY_KEYS.length }) : t("weekly_review.fresh_start")}
           </p>
           {lastKept.length > 0 && (
             <p style={{ color: SAGE, fontSize: 13, fontFamily: FONT, margin: "4px 0 0" }}>
@@ -188,7 +190,7 @@ export default function WeeklyReviewPage() {
         <span style={{ fontSize: 40, marginTop: 10 }} aria-hidden>{def(slide.key).emoji}</span>
         <h1 style={{ color: WARM, fontSize: 26, fontWeight: 600, fontFamily: FONT, margin: "8px 0 0" }}>{def(slide.key).title}</h1>
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, fontStyle: "italic", lineHeight: 1.55, margin: "8px 0 0" }}>{def(slide.key).definition}</p>
-        <p style={{ color: WARM, fontSize: 16, fontFamily: FONT, fontStyle: "italic", lineHeight: 1.6, margin: "22px 0 0" }}>{QUESTION[slide.key]}</p>
+        <p style={{ color: WARM, fontSize: 16, fontFamily: FONT, fontStyle: "italic", lineHeight: 1.6, margin: "22px 0 0" }}>{t(`weekly_review.q_${slide.key}`, { defaultValue: QUESTION[slide.key] })}</p>
       </>
     );
   } else if (slide.kind === "lookback") {
@@ -196,13 +198,13 @@ export default function WeeklyReviewPage() {
     const wk = weeksKept(slide.key);
     body = (
       <>
-        <p style={eyebrow}>{def(slide.key).title} · last week</p>
+        <p style={eyebrow}>{t("weekly_review.eyebrow_last_week", { practice: def(slide.key).title })}</p>
         <h1 style={{ color: WARM, fontSize: 24, fontWeight: 600, fontFamily: FONT, margin: "10px 0 0" }}>
-          {kept ? "You kept it." : "Not last week."}
+          {kept ? t("weekly_review.you_kept_it") : t("weekly_review.not_last_week")}
         </h1>
         <p style={{ color: SAGE, fontSize: 14.5, fontFamily: FONT, lineHeight: 1.55, margin: "8px 0 0" }}>
-          {kept ? "Carried through. " : "A new week is a clean page. "}
-          {wk > 0 ? `🌱 Kept ${wk} week${wk === 1 ? "" : "s"} running.` : ""}
+          {kept ? t("weekly_review.carried_through") : t("weekly_review.clean_page")}
+          {wk > 0 ? t("weekly_review.kept_weeks", { count: wk }) : ""}
         </p>
         {commitCard(slide.key)}
       </>
@@ -211,28 +213,28 @@ export default function WeeklyReviewPage() {
     if (slide.key === "bless") {
       body = (
         <>
-          <p style={eyebrow}>Bless · this week</p>
-          <h1 style={{ color: WARM, fontSize: 24, fontWeight: 600, fontFamily: FONT, margin: "10px 0 10px" }}>Set this week's intentions</h1>
+          <p style={eyebrow}>{t("weekly_review.eyebrow_this_week", { practice: def(slide.key).title })}</p>
+          <h1 style={{ color: WARM, fontSize: 24, fontWeight: 600, fontFamily: FONT, margin: "10px 0 10px" }}>{t("weekly_review.set_intentions")}</h1>
           <BlessSubScreen weekStart={thisWeekStart} today={today} />
         </>
       );
     } else {
       body = (
         <>
-          <p style={eyebrow}>{def(slide.key).title} · this week</p>
-          <h1 style={{ color: WARM, fontSize: 24, fontWeight: 600, fontFamily: FONT, margin: "10px 0 0" }}>Carry it into this week</h1>
+          <p style={eyebrow}>{t("weekly_review.eyebrow_this_week", { practice: def(slide.key).title })}</p>
+          <h1 style={{ color: WARM, fontSize: 24, fontWeight: 600, fontFamily: FONT, margin: "10px 0 0" }}>{t("weekly_review.carry_into_week")}</h1>
           {commitmentLines(def(slide.key), selections).length > 0 && (
             <p style={{ color: SAGE, fontSize: 14.5, fontFamily: FONT, lineHeight: 1.5, margin: "8px 0 0" }}>
               {commitmentLines(def(slide.key), selections).join(" · ")}
             </p>
           )}
-          <p style={{ color: SAGE, fontSize: 14.5, fontFamily: FONT, fontStyle: "italic", lineHeight: 1.55, margin: "14px 0 0" }}>{SET_PROMPT[slide.key]}</p>
+          <p style={{ color: SAGE, fontSize: 14.5, fontFamily: FONT, fontStyle: "italic", lineHeight: 1.55, margin: "14px 0 0" }}>{t(`weekly_review.sp_${slide.key}`, { defaultValue: SET_PROMPT[slide.key] })}</p>
           <button
             type="button"
             onClick={() => setLocation("/this-week")}
             style={{ marginTop: 18, alignSelf: "flex-start", background: CARD, border: `1px solid ${CARD_B}`, color: SAGE, borderRadius: 999, padding: "8px 14px", fontSize: 12.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
           >
-            Adjust on This Week →
+            {t("weekly_review.adjust_on_this_week")}
           </button>
         </>
       );
@@ -240,9 +242,9 @@ export default function WeeklyReviewPage() {
   } else {
     body = (
       <>
-        <p style={eyebrow}>Your week, set</p>
+        <p style={eyebrow}>{t("weekly_review.covenant_eyebrow")}</p>
         <p style={{ color: WARM, fontSize: 17, fontFamily: FONT, fontStyle: "italic", lineHeight: 1.7, margin: "16px 0 0" }}>
-          With God's help, I will keep these this week — gathering, blessing, going beyond myself, and resting in grace. A beginning, not a finish line.
+          {t("weekly_review.covenant_body")}
         </p>
         <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 8 }}>
           {WEEKLY_KEYS.map((k) => (
@@ -263,7 +265,7 @@ export default function WeeklyReviewPage() {
         <AnimatedBackground base={BG} variant="subtle" />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "16px 20px 40px", maxWidth: 480, margin: "0 auto", width: "100%" }}>
           <button onClick={back} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "6px 0", display: "flex", alignItems: "center", gap: 6 }}>
-            <ChevronLeft size={18} /> <span style={{ fontSize: 14, fontFamily: FONT }}>Back</span>
+            <ChevronLeft size={18} /> <span style={{ fontSize: 14, fontFamily: FONT }}>{t("weekly_review.back")}</span>
           </button>
           <div style={{ height: 3, background: CARD_B, borderRadius: 2, overflow: "hidden", margin: "6px 0 18px" }}>
             <div style={{ width: `${progressPct}%`, height: "100%", background: SAGE, transition: "width 0.3s ease" }} />
@@ -287,7 +289,7 @@ export default function WeeklyReviewPage() {
             disabled={finishMut.isPending}
             style={{ marginTop: 20, background: CTA, border: `1px solid ${CHIP_B}`, color: WARM, borderRadius: 12, padding: "14px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
           >
-            {isLast ? (finishMut.isPending ? "Setting your week…" : "Begin the week →") : "Continue"}
+            {isLast ? (finishMut.isPending ? t("weekly_review.setting_week") : t("weekly_review.begin_week")) : t("weekly_review.continue")}
           </button>
         </div>
       </div>
