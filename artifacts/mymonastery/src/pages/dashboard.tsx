@@ -13,7 +13,7 @@ import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
-import { openExternal } from "@/lib/openExternal";
+import { openExternal, preloadExternal } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel } from "@/lib/officePrefs";
 import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
@@ -2570,6 +2570,9 @@ export function CacHomeCard() {
     staleTime: 30 * 60_000,
   });
   const cacTitle = cacMeta?.title ?? "";
+  // Warm today's page in the in-app browser's background so tapping the card
+  // opens it instantly (native only; no-op on web).
+  useEffect(() => { if (cacMeta?.url) preloadExternal(cacMeta.url); }, [cacMeta?.url]);
   const onClick = () => {
     recordCacOpened({ flagReturn: true });
     // Open today's resolved permalink directly when we already have it — the
@@ -2781,6 +2784,8 @@ function FddHomeCard() {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, []);
+  // Warm today's page so tapping opens it instantly (native only).
+  useEffect(() => { preloadExternal(FDD_TODAY_URL); }, []);
   const onClick = () => {
     markFddRead();
     openExternal(FDD_TODAY_URL);
@@ -2842,6 +2847,8 @@ function SsjeHomeCard() {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, []);
+  // Warm today's page so tapping opens it instantly (native only).
+  useEffect(() => { preloadExternal(SSJE_TODAY_URL); }, []);
   const onClick = () => {
     markSsjeRead();
     openExternal(SSJE_TODAY_URL);
@@ -2972,7 +2979,6 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
   // depth they land on, but the *which-side* split is time-based.
   const hourNow = new Date().getHours();
   const isMorning = hourNow < 12;
-  const eyebrow = t("dashboard.book_of_common_prayer");
   // Office-streak pill above the CTA. Same data source as before,
   // just the prefs lookup — no longer used to pick a "big" CTA.
   const { data: officePrefs } = useQuery<{
@@ -2994,12 +3000,29 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
     getSideLevel("morning") === "office" ||
     getSideLevel("evening") === "office";
 
-  const { data: communityPrayedData } = useQuery<{ people: { id: number; name: string; avatarUrl: string | null }[] }>({
+  const { data: communityPrayedData } = useQuery<{ people: { id: number; name: string; avatarUrl: string | null }[]; total?: number }>({
     queryKey: ["/api/prayer-streak/community-prayed-week"],
     queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-week"),
     staleTime: 5 * 60_000,
   });
   const communityPrayed = communityPrayedData?.people ?? [];
+
+  // Eyebrow: office users keep "Book of Common Prayer"; the Pray Together
+  // card shows "{N} Requests" (active community prayer requests others have
+  // open). The /api/prayer-requests fetch dedupes with the dashboard's own.
+  const { data: officeReqData } = useQuery<Array<{ isAnswered?: boolean; isOwnRequest?: boolean; closedAt?: string | null; expiresAt?: string | null }>>({
+    queryKey: ["/api/prayer-requests"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests"),
+    staleTime: 60_000,
+  });
+  const requestCount = (officeReqData ?? []).filter(
+    (r) => !r.isAnswered && !r.isOwnRequest && !r.closedAt && (!r.expiresAt || new Date(r.expiresAt) > new Date()),
+  ).length;
+  const eyebrow = programmedOffice
+    ? t("dashboard.book_of_common_prayer")
+    : requestCount > 0
+      ? t("dashboard.requests_count", { count: requestCount })
+      : t("dashboard.community_prayer");
 
   // Authoritative source for "did the user pray today's side?" — server
   // returns the last 7 days of office/devotion completions in the
@@ -3239,7 +3262,9 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
             // 3 today even though more people had prayed in the
             // interim). Use the full list for the count, the
             // filtered list for the rail.
-            const totalCount = communityPrayed.length;
+            // Count = everyone who prayed (any way, not just offices) — the
+            // server's true total, which can exceed the (capped) people list.
+            const totalCount = communityPrayedData?.total ?? communityPrayed.length;
             const withAvatars = communityPrayed.filter((p) => !!p.avatarUrl);
             const countCopy = totalCount === 0
               ? null
@@ -3270,7 +3295,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
                 </div>
                 {withAvatars.length > 0 && (
                   <div className="flex items-center -space-x-2 shrink-0">
-                    {withAvatars.slice(0, 5).map((p) => (
+                    {withAvatars.map((p) => (
                       <img
                         key={p.id}
                         src={p.avatarUrl as string}

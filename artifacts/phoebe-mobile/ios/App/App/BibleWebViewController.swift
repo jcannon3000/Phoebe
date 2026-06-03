@@ -48,6 +48,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
     // delegate, so it lives as long as the browser is on screen.
     let slideDelegate = SlideTransitionDelegate()
 
+    // Invoked (after the browser dismisses) when the user taps the bottom-bar
+    // Journal button. The plugin wires this to fire a `phoebe:open-journal`
+    // event into the app so the web layer can navigate to the journal.
+    var onJournal: (() -> Void)?
+
     // ONE cookie jar for every in-app browser instance, persisted to disk.
     // A fresh WKWebViewConfiguration defaults to its own process pool, which
     // means a consent cookie set in one visit isn't reliably visible to the
@@ -113,7 +118,7 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
       document.addEventListener('DOMContentLoaded', schedule);
       var obs = new MutationObserver(schedule);
       try { obs.observe(document.documentElement, { childList: true, subtree: true }); } catch (e) {}
-      setTimeout(function () { obs.disconnect(); }, 8000);
+      setTimeout(function () { obs.disconnect(); }, 30000);
     })();
     """
 
@@ -123,11 +128,42 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         forMainFrameOnly: true
     )
 
-    init(url: URL) {
+    // When present() hands us a web view that was already loading in the
+    // background (preloaded from the home screen), we adopt it instead of
+    // creating + loading a fresh one — so the page is on screen instantly.
+    private let preloadedWebView: WKWebView?
+
+    init(url: URL, preloadedWebView: WKWebView? = nil) {
         self.url = url
+        self.preloadedWebView = preloadedWebView
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    // Factory used by BOTH the live VC and the preloader, so a preloaded web
+    // view is configured identically (shared cookie jar, consent-banner hiding,
+    // dark chrome) to one created on demand.
+    static func makeConfiguration() -> WKWebViewConfiguration {
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        config.processPool = sharedProcessPool
+        config.websiteDataStore = WKWebsiteDataStore.default()   // persistent
+        let content = WKUserContentController()
+        content.addUserScript(cookieHideScript)
+        config.userContentController = content
+        return config
+    }
+
+    static func makeWebView() -> WKWebView {
+        let wv = WKWebView(frame: .zero, configuration: makeConfiguration())
+        wv.translatesAutoresizingMaskIntoConstraints = false
+        // Off so the left screen edge is free for our swipe-to-dismiss; web
+        // history is reachable via the bottom toolbar's back button instead.
+        wv.allowsBackForwardNavigationGestures = false
+        wv.backgroundColor = PhoebeBrowserColor.bar
+        wv.isOpaque = false
+        return wv
+    }
 
     deinit {
         progressObservation?.invalidate()
@@ -146,13 +182,20 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         // first-paint fallback so the bar is never blank.
         title = url.host ?? "Reading"
 
-        // ── Top bar: close (left) + open-in-Safari (right). ──
-        let closeItem = UIBarButtonItem(
-            image: UIImage(systemName: "xmark"),
-            style: .plain, target: self, action: #selector(close)
-        )
-        closeItem.accessibilityLabel = "Close"
-        navigationItem.leftBarButtonItem = closeItem
+        // ── Top bar: back-to-app (left) + open-in-Safari (right). ──
+        // A labelled "‹ Back" so it clearly reads as returning to Phoebe,
+        // distinct from the web-history back chevron in the bottom toolbar.
+        // Named appBackButton (not backButton) — `backButton` is already the
+        // bottom-bar web-history item; reusing the name shadows it.
+        let appBackButton = UIButton(type: .system)
+        appBackButton.setImage(UIImage(systemName: "chevron.backward"), for: .normal)
+        appBackButton.setTitle(" Back", for: .normal)
+        appBackButton.tintColor = PhoebeBrowserColor.tint
+        appBackButton.setTitleColor(PhoebeBrowserColor.tint, for: .normal)
+        appBackButton.titleLabel?.font = .systemFont(ofSize: 17)
+        appBackButton.addTarget(self, action: #selector(close), for: .touchUpInside)
+        appBackButton.accessibilityLabel = "Back"
+        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: appBackButton)
 
         let safariItem = UIBarButtonItem(
             image: UIImage(systemName: "safari"),
@@ -161,23 +204,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
         safariItem.accessibilityLabel = "Open in Safari"
         navigationItem.rightBarButtonItem = safariItem
 
-        // ── WebView ──
-        let config = WKWebViewConfiguration()
-        config.allowsInlineMediaPlayback = true
-        config.processPool = BibleWebViewController.sharedProcessPool
-        config.websiteDataStore = WKWebsiteDataStore.default()   // persistent
-        // Hide cookie-consent banners on every load (see cookieHideJS).
-        let content = WKUserContentController()
-        content.addUserScript(BibleWebViewController.cookieHideScript)
-        config.userContentController = content
-        webView = WKWebView(frame: .zero, configuration: config)
-        webView.translatesAutoresizingMaskIntoConstraints = false
+        // ── WebView ── adopt a preloaded one when present (already loading in
+        // the background, so it appears instantly), otherwise build a fresh
+        // one. Either way we own it, so we drive the nav delegate + load.
+        webView = preloadedWebView ?? BibleWebViewController.makeWebView()
         webView.navigationDelegate = self
-        // Off so the left screen edge is free for our swipe-to-dismiss; web
-        // history is reachable via the bottom toolbar's back button instead.
-        webView.allowsBackForwardNavigationGestures = false
-        webView.backgroundColor = PhoebeBrowserColor.bar
-        webView.isOpaque = false
         view.addSubview(webView)
 
         progressView.translatesAutoresizingMaskIntoConstraints = false
@@ -219,10 +250,18 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             style: .plain, target: self, action: #selector(share)
         )
         shareButton.accessibilityLabel = "Share"
+        // Journal — a clearly-labelled primary action in the center of the bar,
+        // so the reader can jot a reflection on what they're reading. Closes the
+        // browser and asks the app to open the journal.
+        let journalButton = UIBarButtonItem(
+            title: "Journal", style: .plain, target: self, action: #selector(openJournal)
+        )
+        journalButton.accessibilityLabel = "Journal"
         let flex = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
+        let flex2 = UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil)
         backButton.isEnabled = false
         forwardButton.isEnabled = false
-        toolbarItems = [backButton, fixedSpace(20), forwardButton, flex, reloadButton, fixedSpace(28), shareButton]
+        toolbarItems = [backButton, fixedSpace(16), forwardButton, flex, journalButton, flex2, reloadButton, fixedSpace(24), shareButton]
 
         // Progress bar bound to the load.
         progressObservation = webView.observe(\.estimatedProgress, options: [.new]) { [weak self] _, change in
@@ -237,7 +276,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
             if let t = webView.title, !t.isEmpty { self?.title = t }
         }
 
-        webView.load(URLRequest(url: url))
+        // A preloaded web view is already loading/loaded — only kick off the
+        // request for a freshly-built one.
+        if preloadedWebView == nil {
+            webView.load(URLRequest(url: url))
+        }
         updateNavButtons()
 
         // Swipe right from the left edge to flick the browser back out — the
@@ -287,6 +330,11 @@ final class BibleWebViewController: UIViewController, WKNavigationDelegate {
 
     // ── Actions ───────────────────────────────────────────────────────────
     @objc private func close() { dismiss(animated: true) }
+    @objc private func openJournal() {
+        // Dismiss first so the browser slides away, then ask the app to open
+        // the journal (completion fires after the dismiss animation).
+        dismiss(animated: true) { [weak self] in self?.onJournal?() }
+    }
     @objc private func reload() { webView.reload() }
     @objc private func goBack() { if webView.canGoBack { webView.goBack() } }
     @objc private func goForward() { if webView.canGoForward { webView.goForward() } }
@@ -414,11 +462,41 @@ final class BibleBrowser: NSObject {
     static let shared = BibleBrowser()
     private override init() { super.init() }
 
-    func present(url: URL, from presenter: UIViewController?) {
+    // A few warm, already-loading web views keyed by absolute URL, so tapping a
+    // card whose page we preloaded on the home screen opens instantly. Capped
+    // so we never hold more than a handful of live pages in memory.
+    private var warm: [(url: String, webView: WKWebView)] = []
+    private let warmCap = 3
+
+    // Start a background load for `url` unless we're already warming it. Called
+    // from JS (PhoebeNative.preloadInAppBrowser) when a newsletter card mounts.
+    func preload(url: URL) {
+        let key = url.absoluteString
+        if warm.contains(where: { $0.url == key }) { return }
+        let wv = BibleWebViewController.makeWebView()
+        wv.load(URLRequest(url: url))
+        warm.append((url: key, webView: wv))
+        while warm.count > warmCap { warm.removeFirst() }
+    }
+
+    private func takeWarm(for url: URL) -> WKWebView? {
+        let key = url.absoluteString
+        guard let idx = warm.firstIndex(where: { $0.url == key }) else { return nil }
+        let wv = warm[idx].webView
+        warm.remove(at: idx)
+        return wv
+    }
+
+    func present(url: URL, from presenter: UIViewController?, onJournal: (() -> Void)? = nil) {
         guard let presenter = presenter else { return }
-        let vc = BibleWebViewController(url: url)
+        let vc = BibleWebViewController(url: url, preloadedWebView: takeWarm(for: url))
+        vc.onJournal = onJournal
         let nav = UINavigationController(rootViewController: vc)
         nav.overrideUserInterfaceStyle = .dark
+        // Keep the top + bottom bars pinned — never collapse/minimize on scroll
+        // or tap, so the back + Journal buttons stay reachable the whole read.
+        nav.hidesBarsOnSwipe = false
+        nav.hidesBarsOnTap = false
 
         // Dark Phoebe chrome for the top navigation bar.
         let barAppearance = UINavigationBarAppearance()

@@ -31,7 +31,22 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "BibleBrowser"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "open", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "preload", returnType: CAPPluginReturnPromise),
     ]
+
+    // Warm a URL in a background web view so a later open() shows it instantly.
+    // Best-effort: a bad URL just no-ops. Called when a newsletter card mounts.
+    @objc func preload(_ call: CAPPluginCall) {
+        guard let urlStr = call.getString("url"),
+              let url = URL(string: urlStr) else {
+            call.reject("Missing or invalid url")
+            return
+        }
+        DispatchQueue.main.async {
+            BibleBrowser.shared.preload(url: url)
+            call.resolve()
+        }
+    }
 
     @objc func open(_ call: CAPPluginCall) {
         guard let urlStr = call.getString("url"),
@@ -40,6 +55,11 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
         DispatchQueue.main.async { [weak self] in
+            // The Journal button in the browser's bottom bar fires this event
+            // into the app's web view, which then navigates to the journal.
+            let onJournal: () -> Void = { [weak self] in
+                self?.bridge?.triggerWindowJSEvent(eventName: "phoebe:open-journal")
+            }
             // Bible.com host detection. We only try the Universal Link
             // hop for URLs that YouVersion has actually registered —
             // sending a random outbound link through `.universalLinksOnly`
@@ -56,7 +76,8 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin {
                     // in-app browser, same as the non-Bible path.
                     BibleBrowser.shared.present(
                         url: url,
-                        from: self?.bridge?.viewController
+                        from: self?.bridge?.viewController,
+                        onJournal: onJournal
                     )
                     call.resolve()
                 }
@@ -64,7 +85,8 @@ public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin {
             }
             BibleBrowser.shared.present(
                 url: url,
-                from: self?.bridge?.viewController
+                from: self?.bridge?.viewController,
+                onJournal: onJournal
             )
             call.resolve()
         }

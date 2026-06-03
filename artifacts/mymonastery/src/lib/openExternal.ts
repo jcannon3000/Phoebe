@@ -13,6 +13,7 @@
 type PhoebeNative = {
   isNative?: () => boolean;
   openInAppBrowser?: (url: string) => Promise<void>;
+  preloadInAppBrowser?: (url: string) => Promise<void>;
 };
 
 export function openExternal(url: string): void {
@@ -27,4 +28,13 @@ export function openExternal(url: string): void {
   // Web fallback. noopener for security; noreferrer to keep the
   // outbound URL out of the destination's referrer logs.
   window.open(url, "_blank", "noopener,noreferrer");
+}
+
+// Warm a URL in the native in-app browser's background so a later openExternal
+// of the same URL opens instantly. No-op on web (there's nothing to preload)
+// and best-effort everywhere — safe to call from a card's mount effect.
+export function preloadExternal(url: string): void {
+  if (!url) return;
+  const native = (window as unknown as { PhoebeNative?: PhoebeNative }).PhoebeNative;
+  if (native?.preloadInAppBrowser) void native.preloadInAppBrowser(url);
 }

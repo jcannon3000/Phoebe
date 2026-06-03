@@ -1213,6 +1213,9 @@ declare global {
       // handler keeps it within the gesture, so SFSafariViewController
       // is allowed to present.
       openInAppBrowser?: (url: string) => Promise<void>;
+      // Warm a URL in a background WKWebView so a later openInAppBrowser of the
+      // same URL shows the already-loaded page instantly. Best-effort no-op.
+      preloadInAppBrowser?: (url: string) => Promise<void>;
       // Set the iOS app-icon badge to a specific count. The default
       // Capacitor stack only updates the badge through APNs pushes,
       // which means the icon can only grow — opening the app clears
@@ -1325,6 +1328,18 @@ function exposePublicApi() {
         } catch {
           /* ignore */
         }
+      }
+    },
+    async preloadInAppBrowser(url: string) {
+      // Best-effort warm: start loading `url` in a background WKWebView so a
+      // later openInAppBrowser shows it instantly. No-op if the plugin isn't
+      // registered (web build, older bundle) or anything throws.
+      if (!url) return;
+      try {
+        const cap = (window as { Capacitor?: { Plugins?: Record<string, { preload?: (opts: { url: string }) => Promise<void> }> } }).Capacitor;
+        await cap?.Plugins?.BibleBrowser?.preload?.({ url });
+      } catch {
+        /* preload is best-effort */
       }
     },
     async setBadge(count: number) {

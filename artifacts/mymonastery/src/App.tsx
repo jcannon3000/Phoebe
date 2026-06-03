@@ -793,6 +793,18 @@ function ForegroundRefresh() {
   return null;
 }
 
+// The in-app browser's bottom-bar Journal button dismisses the browser and
+// fires `phoebe:open-journal` from native; take the reader to the journal.
+function NativeJournalOpener() {
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    const onOpen = () => setLocation("/journal");
+    window.addEventListener("phoebe:open-journal", onOpen);
+    return () => window.removeEventListener("phoebe:open-journal", onOpen);
+  }, [setLocation]);
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -817,6 +829,7 @@ function App() {
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <ScrollToTopOnNavigate />
             <CacReturnRedirect />
+            <NativeJournalOpener />
             {/* Bottom-anchored prompt cards (live broadcast banner + App
                 Store download), stacked so they never overlap. Inside the
                 router so the live banner's "Watch →" can SPA-navigate to
