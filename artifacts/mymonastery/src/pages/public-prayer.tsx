@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { OfficeViewer, type LiturgyMode } from "./bcp-daily-office";
 
 // ── Public, no-login prayer ──────────────────────────────────────────────────
@@ -74,9 +75,10 @@ export default function PublicPrayerPage() {
 // ── Choose: Office vs Devotion ───────────────────────────────────────────────
 
 function ChooseScreen({ onChoose }: { onChoose: (c: Choice) => void }) {
+  const { t } = useTranslation();
   const morning = isMorningNow();
-  const officeVariant = morning ? "Morning Prayer" : "Evening Prayer";
-  const devotionVariant = morning ? "In the Morning" : "In the Early Evening";
+  const officeVariant = morning ? t("public_prayer.variant_morning_prayer") : t("public_prayer.variant_evening_prayer");
+  const devotionVariant = morning ? t("public_prayer.variant_in_the_morning") : t("public_prayer.variant_in_the_early_evening");
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: BG, fontFamily: SPACE_GROTESK }}>
@@ -85,7 +87,7 @@ function ChooseScreen({ onChoose }: { onChoose: (c: Choice) => void }) {
           Phoebe
         </span>
         <Link href="/signin" className="text-sm font-medium" style={{ color: SAGE }}>
-          Sign in
+          {t("public_prayer.sign_in")}
         </Link>
       </header>
 
@@ -97,10 +99,10 @@ function ChooseScreen({ onChoose }: { onChoose: (c: Choice) => void }) {
           className="mt-6 mb-8"
         >
           <h1 className="text-3xl font-bold mb-2" style={{ color: WARM_TEXT, letterSpacing: "-0.02em" }}>
-            Pause and pray.
+            {t("public_prayer.choose_title")}
           </h1>
           <p className="text-base leading-relaxed" style={{ color: SAGE }}>
-            A few unhurried minutes from the Book of Common Prayer — no account needed. Choose how you'd like to pray.
+            {t("public_prayer.choose_body")}
           </p>
         </motion.div>
 
@@ -112,20 +114,20 @@ function ChooseScreen({ onChoose }: { onChoose: (c: Choice) => void }) {
         >
           <ChoiceCard
             emoji="🕊️"
-            title="Daily Office"
-            subtitle={`${officeVariant} · the fuller traditional liturgy`}
+            title={t("public_prayer.office_title")}
+            subtitle={t("public_prayer.office_subtitle", { variant: officeVariant })}
             onClick={() => onChoose("office")}
           />
           <ChoiceCard
             emoji="🌿"
-            title="Daily Devotion"
-            subtitle={`${devotionVariant} · a short, gentle prayer`}
+            title={t("public_prayer.devotion_title")}
+            subtitle={t("public_prayer.devotion_subtitle", { variant: devotionVariant })}
             onClick={() => onChoose("devotion")}
           />
         </motion.div>
 
         <p className="text-center text-xs mt-10" style={{ color: FAINT }}>
-          Inspired by Monastic Wisdom
+          {t("public_prayer.inspired_by")}
         </p>
       </main>
     </div>
@@ -181,6 +183,7 @@ function HabitInvite({ onContinue, onPrayAgain }: {
   onContinue: () => void;
   onPrayAgain: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -190,7 +193,7 @@ function HabitInvite({ onContinue, onPrayAgain }: {
       style={{ gap: 26 }}
     >
       <p className="text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: FAINT }}>
-        Amen
+        {t("public_prayer.amen")}
       </p>
 
       {/* A seven-dot week, one filled — the rhythm a daily habit traces. */}
@@ -211,10 +214,10 @@ function HabitInvite({ onContinue, onPrayAgain }: {
 
       <div className="flex flex-col items-center" style={{ gap: 10 }}>
         <h2 className="text-[26px] font-bold leading-snug" style={{ color: WARM_TEXT, letterSpacing: "-0.02em" }}>
-          Would you like to develop a daily habit?
+          {t("public_prayer.habit_title")}
         </h2>
         <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
-          You prayed once today. Phoebe brings the rhythm back — morning and evening — and holds it alongside a community praying the same words.
+          {t("public_prayer.habit_body")}
         </p>
       </div>
 
@@ -223,7 +226,7 @@ function HabitInvite({ onContinue, onPrayAgain }: {
         className="px-10 py-3.5 rounded-full text-sm font-semibold tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
         style={{ background: BUTTON_BG, color: WARM_TEXT }}
       >
-        Build the habit →
+        {t("public_prayer.build_habit")}
       </button>
 
       <button
@@ -238,7 +241,7 @@ function HabitInvite({ onContinue, onPrayAgain }: {
           textUnderlineOffset: 4,
         }}
       >
-        Pray again
+        {t("public_prayer.pray_again")}
       </button>
     </motion.div>
   );
@@ -248,6 +251,7 @@ function SignupStep({ onBack, onDone }: {
   onBack: () => void;
   onDone: () => void;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [firstName, setFirstName] = useState("");
@@ -264,17 +268,17 @@ function SignupStep({ onBack, onDone }: {
     setError("");
     setExistingAccount(false);
     if (website.trim().length > 0) {
-      setError("Something went wrong. Please try again.");
+      setError(t("public_prayer.error_something_wrong"));
       return;
     }
-    if (!firstName.trim()) { setError("Enter your first name."); return; }
-    if (!lastName.trim()) { setError("Enter your last name."); return; }
+    if (!firstName.trim()) { setError(t("public_prayer.error_first_name")); return; }
+    if (!lastName.trim()) { setError(t("public_prayer.error_last_name")); return; }
     if (!email.trim() || !email.includes("@")) {
-      setError("Enter a valid email address.");
+      setError(t("public_prayer.error_invalid_email"));
       return;
     }
     if (password.length < 6) {
-      setError("Choose a password of at least 6 characters.");
+      setError(t("public_prayer.error_password_length"));
       return;
     }
     setSubmitting(true);
@@ -307,10 +311,10 @@ function SignupStep({ onBack, onDone }: {
       } else if (res.status === 400 && typeof data.error === "string" && /already exists/i.test(data.error)) {
         setExistingAccount(true);
       } else {
-        setError(typeof data.error === "string" ? data.error : "Couldn't create your account. Please try again.");
+        setError(typeof data.error === "string" ? data.error : t("public_prayer.error_create_account"));
       }
     } catch {
-      setError("Couldn't create your account. Please try again.");
+      setError(t("public_prayer.error_create_account"));
     } finally {
       setSubmitting(false);
     }
@@ -333,24 +337,24 @@ function SignupStep({ onBack, onDone }: {
       >
         <div className="text-4xl">🌿</div>
         <h2 className="text-[24px] font-bold leading-snug" style={{ color: WARM_TEXT, letterSpacing: "-0.02em" }}>
-          You already have an account.
+          {t("public_prayer.existing_title")}
         </h2>
         <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
-          That email is already with Phoebe — sign in to keep praying.
+          {t("public_prayer.existing_body")}
         </p>
         <button
           onClick={() => setLocation("/signin")}
           className="px-9 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98] mt-1"
           style={{ background: BUTTON_BG, color: WARM_TEXT }}
         >
-          Go to sign in
+          {t("public_prayer.go_to_sign_in")}
         </button>
         <button
           onClick={() => setExistingAccount(false)}
           className="text-[13px] font-medium transition-opacity hover:opacity-80"
           style={{ color: FAINT, background: "transparent", border: "none", cursor: "pointer" }}
         >
-          Use a different email
+          {t("public_prayer.use_different_email")}
         </button>
       </motion.div>
     );
@@ -366,10 +370,10 @@ function SignupStep({ onBack, onDone }: {
       <div className="text-center mb-7">
         <div className="text-4xl mb-3">🌿</div>
         <h2 className="text-[26px] font-bold leading-snug mb-2" style={{ color: WARM_TEXT, letterSpacing: "-0.02em" }}>
-          Keep the rhythm going.
+          {t("public_prayer.keep_rhythm_title")}
         </h2>
         <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
-          Create your account and the daily office will be waiting for you — morning and evening, whenever you return.
+          {t("public_prayer.keep_rhythm_body")}
         </p>
       </div>
 
@@ -377,7 +381,7 @@ function SignupStep({ onBack, onDone }: {
         <div className="flex gap-2.5">
           <input
             type="text"
-            placeholder="First name"
+            placeholder={t("public_prayer.first_name_placeholder")}
             value={firstName}
             onChange={(e) => { setFirstName(e.target.value); setError(""); }}
             className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
@@ -387,7 +391,7 @@ function SignupStep({ onBack, onDone }: {
           />
           <input
             type="text"
-            placeholder="Last name"
+            placeholder={t("public_prayer.last_name_placeholder")}
             value={lastName}
             onChange={(e) => { setLastName(e.target.value); setError(""); }}
             className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
@@ -398,7 +402,7 @@ function SignupStep({ onBack, onDone }: {
         </div>
         <input
           type="email"
-          placeholder="Email address"
+          placeholder={t("public_prayer.email_placeholder")}
           value={email}
           onChange={(e) => { setEmail(e.target.value); setError(""); }}
           className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
@@ -408,7 +412,7 @@ function SignupStep({ onBack, onDone }: {
         />
         <input
           type="password"
-          placeholder="Create a password"
+          placeholder={t("public_prayer.password_placeholder")}
           value={password}
           onChange={(e) => { setPassword(e.target.value); setError(""); }}
           className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
@@ -437,7 +441,7 @@ function SignupStep({ onBack, onDone }: {
           {submitting ? (
             <span className="w-4 h-4 rounded-full border-2 border-[#F0EDE6] border-t-transparent animate-spin" />
           ) : (
-            "Create my account"
+            t("public_prayer.create_account")
           )}
         </button>
       </form>
@@ -447,13 +451,14 @@ function SignupStep({ onBack, onDone }: {
         className="text-[13px] font-medium mt-5 self-center transition-opacity hover:opacity-80"
         style={{ color: FAINT, background: "transparent", border: "none", cursor: "pointer" }}
       >
-        ← Back
+        {t("public_prayer.back")}
       </button>
     </motion.div>
   );
 }
 
 function DoneStep() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   return (
     <motion.div
@@ -465,17 +470,17 @@ function DoneStep() {
     >
       <div className="text-5xl">🌿</div>
       <h2 className="text-[24px] font-bold leading-snug" style={{ color: WARM_TEXT, letterSpacing: "-0.02em" }}>
-        Welcome to Phoebe.
+        {t("public_prayer.welcome_title")}
       </h2>
       <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
-        Your account is ready. Morning and evening, the daily office will be here for you.
+        {t("public_prayer.welcome_body")}
       </p>
       <button
         onClick={() => setLocation("/parish")}
         className="px-9 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98] mt-1"
         style={{ background: BUTTON_BG, color: WARM_TEXT }}
       >
-        Begin
+        {t("public_prayer.begin")}
       </button>
     </motion.div>
   );
