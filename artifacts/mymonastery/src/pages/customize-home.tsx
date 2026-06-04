@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Reorder } from "framer-motion";
 import { ChevronLeft, GripVertical, Plus, X, Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { getSideLevel, setSideLevel, type OfficeLevel } from "@/lib/officePrefs";
 import { useAuth, type AuthUser } from "@/hooks/useAuth";
 
 // Customize home screen — two pages:
@@ -32,6 +33,47 @@ type HomeModule = typeof HOME_MODULES[number];
 
 // Prayer requests always leads the home — it can't be moved or removed.
 const PINNED: HomeModule = "requests";
+
+// The Pray card ("office" module) is the second fixed anchor: it sits right
+// under Prayer requests, isn't draggable or removable, and carries the
+// Community / Devotions / Office pill below. Excluded from the reorderable
+// list and the add page.
+const PRAY_ANCHOR: HomeModule = "office";
+
+// The three things the Pray card can be — same mapping the Rule of Life "Pray"
+// step uses (WayOfLoveRuleFlow.PRAY_LEVEL):
+//   community → "intercessions" → the home shows "Pray Together"
+//   devotion  → "devotion"      → the shorter Daily Devotion
+//   offices   → "office"        → full Morning & Evening Prayer
+type PrayChoice = "community" | "devotion" | "offices";
+const PRAY_LEVEL: Record<PrayChoice, OfficeLevel> = {
+  community: "intercessions",
+  devotion: "devotion",
+  offices: "office",
+};
+// Pill labels — hardcoded English, matching the other hardcoded module labels
+// (cac/fdd/ssje) so the i18n coverage guard stays green.
+const PRAY_OPTIONS: { id: PrayChoice; pill: string }[] = [
+  { id: "community", pill: "Community Prayers" },
+  { id: "devotion", pill: "Devotions" },
+  { id: "offices", pill: "Office" },
+];
+// The anchor card's identity per choice — mirrors what the home actually
+// renders for that level (community = the "Pray Together 🙏" card).
+const PRAY_CARD: Record<PrayChoice, { emoji: string; label: string; sub: string }> = {
+  community: { emoji: "🙏", label: "Pray Together", sub: "Pray with your community" },
+  devotion: { emoji: "📿", label: "Daily Devotion", sub: "A short morning & evening devotion" },
+  offices: { emoji: "📖", label: "Daily Office", sub: "Morning & Evening Prayer" },
+};
+// Which choice is active. Mirrors PrayerOfficeCard's programmedLevel: any
+// "office" signal wins, then "devotion", else community (the default).
+function derivePrayChoice(defaultPrayerLevel: string | null | undefined): PrayChoice {
+  const m = getSideLevel("morning");
+  const e = getSideLevel("evening");
+  if (defaultPrayerLevel === "office" || m === "office" || e === "office") return "offices";
+  if (defaultPrayerLevel === "devotion" || m === "devotion" || e === "devotion") return "devotion";
+  return "community";
+}
 
 // Home-layout version. Bump to force a one-time global reset to the default
 // below: the client ignores any saved layout whose `v` is older than this,
@@ -73,7 +115,8 @@ function buildOrder(saved: string[] | null | undefined, fallback: HomeModule[]):
   }
   // Append any module not yet in saved order (newly added modules).
   for (const k of HOME_MODULES) if (!seen.has(k)) out.push(k);
-  return [PINNED, ...out.filter((k) => k !== PINNED)];
+  // Two fixed anchors lead, in order: Prayer requests, then the Pray card.
+  return [PINNED, PRAY_ANCHOR, ...out.filter((k) => k !== PINNED && k !== PRAY_ANCHOR)];
 }
 
 // ── Shared state hook used by both pages ─────────────────────────────────────
@@ -89,6 +132,7 @@ function useHomeLayout(user: AuthUser) {
   const [hidden, setHidden] = useState<Set<string>>(() => {
     const s = new Set<string>(saved?.hidden ?? DEFAULT_HIDDEN);
     s.delete(PINNED);
+    s.delete(PRAY_ANCHOR); // the Pray anchor is always shown
     return s;
   });
 
@@ -119,7 +163,7 @@ function useHomeLayout(user: AuthUser) {
   };
 
   const removeCard = (k: HomeModule) => {
-    if (k === PINNED) return;
+    if (k === PINNED || k === PRAY_ANCHOR) return;
     const next = new Set(hidden);
     // Keep at least one visible card besides the pinned one.
     const visibleCount = order.filter(m => m !== PINNED && !hidden.has(m)).length;
@@ -134,7 +178,7 @@ function useHomeLayout(user: AuthUser) {
     persist(order, next);
   };
 
-  const reorder = (next: HomeModule[]) => persist([PINNED, ...next], hidden);
+  const reorder = (next: HomeModule[]) => persist([PINNED, PRAY_ANCHOR, ...next], hidden);
 
   return { order, hidden, removeCard, addCard, reorder };
 }
@@ -158,13 +202,46 @@ export function CustomizeHomeAddPage() {
 function CustomizeHomeInner({ user }: { user: AuthUser }) {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const MODULE_META = useModuleMeta();
   const { order, hidden, removeCard, reorder } = useHomeLayout(user);
 
-  // Visible modules (excluding the pinned Prayer requests).
-  const visibleMovable = order.filter((k) => k !== PINNED && !hidden.has(k));
-  const hiddenCount = order.filter((k) => k !== PINNED && hidden.has(k)).length
-    + HOME_MODULES.filter((k) => k !== PINNED && !order.includes(k)).length;
+  // Visible modules (excluding the two fixed anchors: Prayer requests + Pray).
+  const visibleMovable = order.filter((k) => k !== PINNED && k !== PRAY_ANCHOR && !hidden.has(k));
+  const hiddenCount = order.filter((k) => k !== PINNED && k !== PRAY_ANCHOR && hidden.has(k)).length
+    + HOME_MODULES.filter((k) => k !== PINNED && k !== PRAY_ANCHOR && !order.includes(k)).length;
+
+  // Pray-card variant (Community / Devotions / Office). Read from the server
+  // default + per-side local levels (same signals PrayerOfficeCard reads), and
+  // set it lightweight: just switch the Pray card — no full home rewrite like
+  // the Rule of Life "commit".
+  const { data: officePrefs } = useQuery<{ defaultPrayerLevel?: OfficeLevel | null }>({
+    queryKey: ["/api/me/office-prefs"],
+    queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
+    staleTime: 60_000,
+  });
+  const prayChoice = derivePrayChoice(officePrefs?.defaultPrayerLevel ?? null);
+  const savePray = useMutation({
+    mutationFn: (level: OfficeLevel) => apiRequest("PUT", "/api/me/office-prefs", { defaultPrayerLevel: level }),
+    onMutate: async (level) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/me/office-prefs"] });
+      const prev = queryClient.getQueryData(["/api/me/office-prefs"]);
+      queryClient.setQueryData(["/api/me/office-prefs"], (c: unknown) =>
+        c && typeof c === "object" ? { ...(c as Record<string, unknown>), defaultPrayerLevel: level } : { defaultPrayerLevel: level });
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx && typeof ctx === "object" && "prev" in ctx) queryClient.setQueryData(["/api/me/office-prefs"], (ctx as { prev: unknown }).prev);
+    },
+    onSettled: () => { queryClient.invalidateQueries({ queryKey: ["/api/me/office-prefs"] }); },
+  });
+  const pickPray = (choice: PrayChoice) => {
+    const level = PRAY_LEVEL[choice];
+    // Per-side local levels + the server default together drive the home card.
+    setSideLevel("morning", level);
+    setSideLevel("evening", level);
+    savePray.mutate(level);
+  };
 
   return (
     <Layout>
@@ -213,8 +290,60 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
           );
         })()}
 
+        {/* Pray anchor — second fixed card. Not draggable / removable; the
+            pill below switches what the home's main prayer card shows. */}
+        {(() => {
+          const card = PRAY_CARD[prayChoice];
+          return (
+            <div
+              className="rounded-xl px-3 py-3 mb-1"
+              style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
+            >
+              <div className="flex items-center gap-3">
+                <span style={{ fontSize: 20 }}>{card.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+                    {card.label}
+                  </p>
+                  <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>{card.sub}</p>
+                </div>
+              </div>
+              {/* Community Prayers / Devotions / Office pill. */}
+              <div
+                className="flex gap-1 rounded-full p-1 mt-3"
+                style={{ background: "rgba(9,26,16,0.45)", border: "1px solid rgba(46,107,64,0.22)" }}
+              >
+                {PRAY_OPTIONS.map((opt) => {
+                  const active = prayChoice === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => pickPray(opt.id)}
+                      className="flex-1 rounded-full transition-all"
+                      style={{
+                        padding: "6px 8px",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        fontFamily: SPACE_GROTESK,
+                        background: active ? "rgba(46,107,64,0.45)" : "transparent",
+                        color: active ? WARM : "rgba(143,175,150,0.75)",
+                        border: active ? "1px solid rgba(46,107,64,0.55)" : "1px solid transparent",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {opt.pill}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Draggable visible cards. */}
-        <p className="text-[11px] mt-3 mb-2" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}>
+        <p className="text-[11px] mt-4 mb-2" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE_GROTESK }}>
           {t("customize_home.drag_hint")}
         </p>
         <Reorder.Group as="div" axis="y" values={visibleMovable} onReorder={reorder} className="flex flex-col gap-2">
@@ -312,9 +441,10 @@ function CustomizeHomeAddInner({ user }: { user: AuthUser }) {
     setJustAdded((prev) => new Set([...prev, k]));
   };
 
-  // Modules available to add: hidden ones + any not yet in order.
+  // Modules available to add: hidden ones + any not yet in order. The two
+  // fixed anchors (Prayer requests + Pray) are never in this list.
   const available = HOME_MODULES.filter(
-    (k) => k !== PINNED && (hidden.has(k) || !order.includes(k)),
+    (k) => k !== PINNED && k !== PRAY_ANCHOR && (hidden.has(k) || !order.includes(k)),
   );
 
   return (
