@@ -11,7 +11,8 @@ import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
 import { DesktopAppPrompt } from "@/components/DesktopAppPrompt";
 import { BottomPromptStack } from "@/components/BottomPromptStack";
 import { PrayLocationInvite } from "@/components/PrayLocationInvite";
-import { CacReturnRedirect } from "@/components/CacReturnRedirect";
+import { ReflectionReturnRedirect } from "@/components/ReflectionReturnRedirect";
+import { ReflectionPreheater } from "@/components/ReflectionPreheater";
 import { OfficeAudioPreloader } from "@/components/OfficeAudioPreloader";
 import { AppOpenTracker } from "@/components/AppOpenTracker";
 import { ForegroundPushToast } from "@/components/ForegroundPushToast";
@@ -856,7 +857,8 @@ function App() {
           <PageFadeOverlay />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <ScrollToTopOnNavigate />
-            <CacReturnRedirect />
+            <ReflectionReturnRedirect />
+            <ReflectionPreheater />
             <NativeJournalOpener />
             <OfficeAudioPreloader />
             {/* Bottom-anchored prompt cards (live broadcast banner + App

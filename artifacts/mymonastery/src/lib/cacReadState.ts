@@ -81,20 +81,29 @@ export function getCacReadDay(): string | null { return cacTracker.getLastReadDa
 export function hasReadCacToday(): boolean { return cacTracker.hasReadToday(); }
 export function markCacRead(): void { cacTracker.markRead(); }
 
-// Session flag set when CAC is opened from the home card, so the global
-// return-redirect can take the reader to /reflect/cac when they come back.
-export const CAC_JUST_READ_KEY = "phoebe:cac-just-read";
+// ── Return-to-reflection redirect (shared by all three sources) ──
+// When a daily reflection is opened from a surface that should send the reader
+// to an in-app reflection page on their way back (the home cards), we stash the
+// destination path here. ReflectionReturnRedirect (mounted globally) consumes it
+// once when the WebView becomes visible again — i.e. the in-app browser is
+// dismissed — and navigates there. Opt-in per call (flagReturn) so a surface
+// that's ALREADY on a reflection page (e.g. the reader's own "Open" button)
+// doesn't bounce the reader on return.
+export const REFLECTION_RETURN_KEY = "phoebe:reflection-return";
+function flagReflectionReturn(path: string): void {
+  try { sessionStorage.setItem(REFLECTION_RETURN_KEY, path); } catch { /* private mode / quota */ }
+}
 
 // Record opening today's CAC reflection: flip the local "read" state, log it
 // server-side for the community read-presence (best-effort), and — when opened
-// from a surface that should redirect on return (the home card) — drop the
-// session flag the return-redirect watches.
+// from a surface that should redirect on return (the home card) — stash the
+// return path the redirect watches.
 export function recordCacOpened(opts?: { flagReturn?: boolean }): void {
   markCacRead();
   try {
     void apiRequest("POST", "/api/cac/read", { ymd: todayLocalISO() }).catch(() => { /* best effort */ });
-    if (opts?.flagReturn) sessionStorage.setItem(CAC_JUST_READ_KEY, "1");
   } catch { /* best effort */ }
+  if (opts?.flagReturn) flagReflectionReturn("/reflect/cac");
 }
 
 // ── Forward Day by Day (Forward Movement) ──
@@ -106,6 +115,12 @@ export const FDD_READ_EVENT = fddTracker.eventName;
 export function getFddReadDay(): string | null { return fddTracker.getLastReadDay(); }
 export function hasReadFddToday(): boolean { return fddTracker.hasReadToday(); }
 export function markFddRead(): void { fddTracker.markRead(); }
+// Opened from the home card → mark read + (when flagged) stash the return path
+// so coming back from the browser lands on the in-app reflection reader.
+export function recordFddOpened(opts?: { flagReturn?: boolean }): void {
+  markFddRead();
+  if (opts?.flagReturn) flagReflectionReturn("/menu/reflections/fdd");
+}
 
 // ── SSJE Reflections (Society of Saint John the Evangelist) ──
 // SSJE's daily "Word" reflection from the Cambridge MA Episcopal
@@ -117,3 +132,9 @@ export const SSJE_READ_EVENT = ssjeTracker.eventName;
 export function getSsjeReadDay(): string | null { return ssjeTracker.getLastReadDay(); }
 export function hasReadSsjeToday(): boolean { return ssjeTracker.hasReadToday(); }
 export function markSsjeRead(): void { ssjeTracker.markRead(); }
+// Opened from the home card → mark read + (when flagged) stash the return path
+// so coming back from the browser lands on the in-app reflection reader.
+export function recordSsjeOpened(opts?: { flagReturn?: boolean }): void {
+  markSsjeRead();
+  if (opts?.flagReturn) flagReflectionReturn("/menu/reflections/ssje");
+}

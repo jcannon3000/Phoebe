@@ -2,7 +2,7 @@
  * CAC Daily Reflection — the in-app companion page.
  *
  * Where the reader lands after opening the CAC reflection and coming back
- * (see CacReturnRedirect). Three parts:
+ * (see ReflectionReturnRedirect). Three parts:
  *   1. Today's reflection title + a "Read the reflection →" button (opens the
  *      CAC page in the in-app browser; records the read).
  *   2. "Read today" — faces of people in the viewer's community who also read
