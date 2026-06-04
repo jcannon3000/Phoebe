@@ -630,43 +630,48 @@ router.get("/people/:email", async (req, res): Promise<void> => {
     if (nameRow[0]?.name) personName = nameRow[0].name;
   }
 
-  // Enrich each shared ritual with its meetups
-  const enriched = await Promise.all(
-    sharedRituals.map(async (ritual) => {
-      const meetups = await db
-        .select()
-        .from(meetupsTable)
-        .where(eq(meetupsTable.ritualId, ritual.id))
-        .orderBy(desc(meetupsTable.scheduledDate));
+  // Enrich each shared ritual with its meetups — batched (was one meetups
+  // query per shared ritual). One inArray ordered desc, bucketed by ritual:
+  // the global desc order means each bucket stays desc, same as the original
+  // per-ritual query that computeStreak expects.
+  const sharedRitualIds = sharedRituals.map(r => r.id);
+  const allMeetups = sharedRitualIds.length > 0
+    ? await db.select().from(meetupsTable)
+        .where(inArray(meetupsTable.ritualId, sharedRitualIds))
+        .orderBy(desc(meetupsTable.scheduledDate))
+    : [];
+  const meetupsByRitual = new Map<number, typeof allMeetups>();
+  for (const mt of allMeetups) { const a = meetupsByRitual.get(mt.ritualId); if (a) a.push(mt); else meetupsByRitual.set(mt.ritualId, [mt]); }
 
-      const { streak, nextMeetupDate, lastMeetupDate, status } = computeStreak(meetups, ritual.frequency);
+  const enriched = sharedRituals.map((ritual) => {
+    const meetups = meetupsByRitual.get(ritual.id) ?? [];
+    const { streak, nextMeetupDate, lastMeetupDate, status } = computeStreak(meetups, ritual.frequency);
 
-      return {
-        ritual: {
-          id: ritual.id,
-          name: ritual.name,
-          frequency: ritual.frequency,
-          dayPreference: ritual.dayPreference,
-          intention: ritual.intention,
-          participants: (ritual.participants as Participant[]),
-          ownerId: ritual.ownerId,
-          createdAt: ritual.createdAt.toISOString(),
-          streak,
-          nextMeetupDate,
-          lastMeetupDate,
-          status,
-        },
-        meetups: meetups.map(m => ({
-          id: m.id,
-          ritualId: m.ritualId,
-          scheduledDate: new Date(m.scheduledDate as unknown as string).toISOString(),
-          status: m.status,
-          notes: m.notes,
-          createdAt: m.createdAt.toISOString(),
-        })),
-      };
-    })
-  );
+    return {
+      ritual: {
+        id: ritual.id,
+        name: ritual.name,
+        frequency: ritual.frequency,
+        dayPreference: ritual.dayPreference,
+        intention: ritual.intention,
+        participants: (ritual.participants as Participant[]),
+        ownerId: ritual.ownerId,
+        createdAt: ritual.createdAt.toISOString(),
+        streak,
+        nextMeetupDate,
+        lastMeetupDate,
+        status,
+      },
+      meetups: meetups.map(m => ({
+        id: m.id,
+        ritualId: m.ritualId,
+        scheduledDate: new Date(m.scheduledDate as unknown as string).toISOString(),
+        status: m.status,
+        notes: m.notes,
+        createdAt: m.createdAt.toISOString(),
+      })),
+    };
+  });
 
   // Aggregate stats
   const totalGatherings = enriched.reduce(

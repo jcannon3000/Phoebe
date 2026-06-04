@@ -3136,24 +3136,40 @@ router.get("/rituals/:id/moments", async (req, res): Promise<void> => {
 
   const moments = await db.select().from(sharedMomentsTable)
     .where(eq(sharedMomentsTable.ritualId, ritualId));
+  const momentIds = moments.map(m => m.id);
 
-  // For each moment, get the latest window
-  const enriched = await Promise.all(moments.map(async (m) => {
-    const windows = await db.select().from(momentWindowsTable)
-      .where(eq(momentWindowsTable.momentId, m.id));
-    const sortedWindows = windows.sort((a, b) => b.windowDate.localeCompare(a.windowDate));
-    const latestWindow = sortedWindows[0] ?? null;
+  // Batch windows + today's posts for ALL moments (was 2 queries per moment).
+  // "Today" varies per moment's timezone, so we fetch posts for the distinct
+  // today-dates and key the count by `${momentId}|${windowDate}`.
+  const allWindows = momentIds.length > 0
+    ? await db.select().from(momentWindowsTable).where(inArray(momentWindowsTable.momentId, momentIds))
+    : [];
+  const windowsByMoment = new Map<number, typeof allWindows>();
+  for (const w of allWindows) { const a = windowsByMoment.get(w.momentId); if (a) a.push(w); else windowsByMoment.set(w.momentId, [w]); }
 
-    const todayPosts = await db.select().from(momentPostsTable)
-      .where(and(eq(momentPostsTable.momentId, m.id), eq(momentPostsTable.windowDate, todayDateInTz(m.timezone || "UTC"))));
+  const todayDates = [...new Set(moments.map(m => todayDateInTz(m.timezone || "UTC")))];
+  const allTodayPosts = (momentIds.length > 0 && todayDates.length > 0)
+    ? await db.select({ momentId: momentPostsTable.momentId, windowDate: momentPostsTable.windowDate })
+        .from(momentPostsTable)
+        .where(and(inArray(momentPostsTable.momentId, momentIds), inArray(momentPostsTable.windowDate, todayDates)))
+    : [];
+  const postCountByMomentDate = new Map<string, number>();
+  for (const p of allTodayPosts) {
+    const k = `${p.momentId}|${p.windowDate}`;
+    postCountByMomentDate.set(k, (postCountByMomentDate.get(k) ?? 0) + 1);
+  }
 
+  const enriched = moments.map((m) => {
+    const windows = (windowsByMoment.get(m.id) ?? []).slice().sort((a, b) => b.windowDate.localeCompare(a.windowDate));
+    const latestWindow = windows[0] ?? null;
+    const today = todayDateInTz(m.timezone || "UTC");
     return {
       ...m,
       latestWindow,
-      todayPostCount: todayPosts.length,
+      todayPostCount: postCountByMomentDate.get(`${m.id}|${today}`) ?? 0,
       windowOpen: computeWindowOpen(m),
     };
-  }));
+  });
 
   res.json({ moments: enriched });
 });
@@ -3885,13 +3901,15 @@ router.post("/moments/:momentToken/join", async (req, res): Promise<void> => {
         ));
       if (existingEvents.length === 0) {
         const occurrences = nextOccurrences(personalTime, personalTimezone, moment.frequency, moment.dayOfWeek ?? null, 2);
-        for (let i = 0; i < occurrences.length; i++) {
-          await db.insert(momentCalendarEventsTable).values({
-            sharedMomentId: moment.id,
-            momentMemberId: tokenRow.id,
-            scheduledFor: occurrences[i],
-            isFirstEvent: i === 0,
-          });
+        if (occurrences.length > 0) {
+          await db.insert(momentCalendarEventsTable).values(
+            occurrences.map((scheduledFor, i) => ({
+              sharedMomentId: moment.id,
+              momentMemberId: tokenRow.id,
+              scheduledFor,
+              isFirstEvent: i === 0,
+            }))
+          );
         }
       }
 
