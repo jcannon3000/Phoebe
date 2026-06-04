@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef, type ReactElement } from "rea
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, MessageCircle, MapPin, Users } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useAuth } from "@/hooks/useAuth";
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
@@ -45,28 +47,29 @@ type Slide =
   | { kind: "closing"; body: string[]; featured: string[] };
 
 // ─── Slides ─────────────────────────────────────────────────────────────────
-const SLIDES: Slide[] = [
+function buildSlides(t: TFunction): Slide[] {
+  return [
   // 1 — Title
   {
     kind: "title",
     headline: "Phoebe",
-    sub: "A relational app that cultivates connections between Sundays \u2014 through shared prayer, shared practice, and shared life.",
+    sub: t("church_deck.title_sub"),
     mock: "dashboard",
   },
 
   // 2 — The opening
   {
     kind: "statement",
-    headline: "Harvard sociologist Robert Putnam\u2019s research found that the strongest predictor of religious engagement is the strength of relationships within a community.",
+    headline: t("church_deck.opening_headline"),
     body: [
-      "Phoebe is built around that insight.",
+      t("church_deck.opening_body"),
     ],
   },
 
   // 4 — The week (centered, auto-advances after 2s)
   {
     kind: "title",
-    headline: "Here is what a week looks like inside Phoebe.",
+    headline: t("church_deck.week_headline"),
     muted: true,
   },
 
@@ -75,9 +78,9 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "",
-    headline: "A place where prayers are shared and held.",
+    headline: t("church_deck.requests_headline"),
     body: [
-      "Phoebe gives your community a place to share what they're carrying — joys, sorrows, the long quiet things — and to know those prayers are being held by others.",
+      t("church_deck.requests_body"),
     ],
     mock: "prayer-requests",
   },
@@ -87,9 +90,9 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "",
-    headline: "You'll know you're being prayed for.",
+    headline: t("church_deck.notification_headline"),
     body: [
-      "When someone shares a request, the community is gently notified — a quiet nudge, not a flood. People show up, leave a word, tap Amen.",
+      t("church_deck.notification_body"),
     ],
     mock: "prayer-notification",
     stacked: true,
@@ -100,9 +103,9 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "",
-    headline: "Pray for the world — together.",
+    headline: t("church_deck.world_headline"),
     body: [
-      "Beyond the prayers of your own community, Phoebe lifts up the wider ones: for justice, for peace, for the sick, for the suffering, for those in authority — drawn from the great intercessions of the Book of Common Prayer.",
+      t("church_deck.world_body"),
     ],
     mock: "community-intercession",
   },
@@ -112,9 +115,9 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "",
-    headline: "BCP Integration",
+    headline: t("church_deck.bcp_headline"),
     body: [
-      "Users can access the full list of intercessions and thanksgivings from the Book of Common Prayer, inviting others in their community to pray them with them.",
+      t("church_deck.bcp_body"),
     ],
     mock: "bcp",
   },
@@ -124,9 +127,9 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "",
-    headline: "The Daily Office",
+    headline: t("church_deck.office_headline"),
     body: [
-      "Morning and Evening Prayer from the Book of Common Prayer — the psalms, the lessons, the canticles, and the collects, assembled for today and ready to pray. A daily reminder keeps the hour.",
+      t("church_deck.office_body"),
     ],
     mock: "daily-office",
   },
@@ -136,9 +139,9 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "",
-    headline: "A daily habit, held together.",
+    headline: t("church_deck.rhythm_headline"),
     body: [
-      "For seventeen centuries, Christians have steadied their days by stopping to pray — morning and evening, in monasteries, in parishes, in kitchens. The Office has carried the faithful through plagues, exiles, and the long, ordinary middle.",
+      t("church_deck.rhythm_body"),
     ],
     mock: "prayer-rhythm",
   },
@@ -147,9 +150,9 @@ const SLIDES: Slide[] = [
   {
     kind: "feature-combo",
     label: "",
-    headline: "Upcoming Events",
+    headline: t("church_deck.gatherings_headline"),
     body: [
-      "When members feel a sense of belonging, they\u2019re far more likely to come to a gathering. Phoebe cultivates belonging then gives members opportunities to get more involved by displaying ways to connect further.",
+      t("church_deck.gatherings_body"),
     ],
     mock: "gatherings",
   },
@@ -157,37 +160,39 @@ const SLIDES: Slide[] = [
   // — Murthy quote
   {
     kind: "quote",
-    text: "As Former Surgeon General Vivek Murthy has said, loneliness is not just an emotional state\u2014it is a public health crisis.\n\nIn that light, creating spaces for people to connect isn\u2019t just engagement.\nIt\u2019s ministry.",
+    text: t("church_deck.murthy_quote"),
   },
 
   // 19 — Closing
   {
     kind: "closing",
     body: [],
-    featured: ["Help your parish flourish with Phoebe."],
+    featured: [t("church_deck.closing_featured")],
   },
-];
+  ];
+}
 
 // ─── Slide renderers ─────────────────────────────────────────────────────────
 
 /* ── Dashboard Mock (compact) ── */
 function DashboardMock() {
+  const { t } = useTranslation();
   return (
     <MockPhone>
       {/* Header */}
       <div className="flex items-center justify-between mb-1.5">
         <h2 className="text-base font-bold" style={{ color: C.text, fontFamily: C.font }}>Phoebe</h2>
         <div className="flex gap-1.5">
-          <span className="text-[9px] px-2.5 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>🕯️ Prayer List</span>
-          <span className="text-[9px] px-2.5 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>Menu</span>
+          <span className="text-[9px] px-2.5 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>🕯️ {t("church_deck.mock_dashboard_prayer_list")}</span>
+          <span className="text-[9px] px-2.5 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>{t("church_deck.mock_dashboard_menu")}</span>
         </div>
       </div>
-      <p className="text-[8px] uppercase tracking-[0.15em] mb-1" style={{ color: "rgba(143,175,150,0.4)" }}>A place set apart for connection</p>
-      <p className="text-[13px] font-semibold mb-3" style={{ color: C.text, fontFamily: C.font }}>Sunday, 12 April</p>
+      <p className="text-[8px] uppercase tracking-[0.15em] mb-1" style={{ color: "rgba(143,175,150,0.4)" }}>{t("church_deck.mock_dashboard_eyebrow")}</p>
+      <p className="text-[13px] font-semibold mb-3" style={{ color: C.text, fontFamily: C.font }}>{t("church_deck.mock_dashboard_date")}</p>
 
       {/* This week */}
       <div className="flex items-center gap-2 mb-2">
-        <p className="text-[11px] font-bold" style={{ color: C.text }}>This week</p>
+        <p className="text-[11px] font-bold" style={{ color: C.text }}>{t("church_deck.mock_dashboard_this_week")}</p>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
       </div>
       <div className="space-y-2">
@@ -196,12 +201,12 @@ function DashboardMock() {
           <div className="w-1 shrink-0" style={{ background: "#5C8A5F" }} />
           <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>🌅 Morning Prayer</p>
-              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>The Daily Office · BCP</p>
+              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>🌅 {t("church_deck.mock_dashboard_morning_prayer")}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>{t("church_deck.mock_dashboard_office_bcp")}</p>
             </div>
             <div className="text-right shrink-0 flex flex-col items-end gap-1">
-              <p className="text-[8px] uppercase tracking-wider font-semibold" style={{ color: "#C8D4C0" }}>This morning</p>
-              <span className="text-[9px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "#2D5E3F", color: C.text }}>Pray</span>
+              <p className="text-[8px] uppercase tracking-wider font-semibold" style={{ color: "#C8D4C0" }}>{t("church_deck.mock_dashboard_this_morning")}</p>
+              <span className="text-[9px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "#2D5E3F", color: C.text }}>{t("church_deck.mock_dashboard_pray")}</span>
             </div>
           </div>
         </div>
@@ -210,12 +215,12 @@ function DashboardMock() {
           <div className="w-1 shrink-0" style={{ background: "#5C8A5F" }} />
           <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>🙏🏽 Prayers for healing</p>
-              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>with Margaret, Anna</p>
+              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>🙏🏽 {t("church_deck.mock_dashboard_prayers_healing")}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>{t("church_deck.mock_dashboard_with_margaret_anna")}</p>
             </div>
             <div className="text-right shrink-0 flex flex-col items-end gap-1">
               <p className="text-[8px] uppercase tracking-wider font-semibold" style={{ color: "#C8D4C0" }}>🔥 2</p>
-              <span className="text-[9px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(46,107,64,0.18)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.35)" }}>View</span>
+              <span className="text-[9px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(46,107,64,0.18)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.35)" }}>{t("church_deck.mock_dashboard_view")}</span>
             </div>
           </div>
         </div>
@@ -223,16 +228,16 @@ function DashboardMock() {
 
       {/* Prayer requests — just one card */}
       <div className="flex items-center gap-2 mt-3 mb-2">
-        <p className="text-[11px] font-bold" style={{ color: C.text }}>Prayer requests</p>
+        <p className="text-[11px] font-bold" style={{ color: C.text }}>{t("church_deck.mock_dashboard_prayer_requests")}</p>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
       </div>
       <div
         className="rounded-xl px-3 py-2.5"
         style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}
       >
-        <p className="text-[10px] font-semibold mb-0.5" style={{ color: C.sage }}>Margaret W.</p>
-        <p className="text-[11px] leading-snug" style={{ color: C.text }}>For my mother, who begins treatment this week.</p>
-        <p className="text-[9px] mt-1" style={{ color: "rgba(143,175,150,0.35)" }}>🙏 4 praying</p>
+        <p className="text-[10px] font-semibold mb-0.5" style={{ color: C.sage }}>{t("church_deck.mock_dashboard_margaret_w")}</p>
+        <p className="text-[11px] leading-snug" style={{ color: C.text }}>{t("church_deck.mock_dashboard_margaret_request")}</p>
+        <p className="text-[9px] mt-1" style={{ color: "rgba(143,175,150,0.35)" }}>🙏 {t("church_deck.mock_dashboard_praying_count", { count: 4 })}</p>
       </div>
     </MockPhone>
   );
@@ -377,16 +382,17 @@ function MockPhone({ children }: { children: React.ReactNode }) {
 
 /* ── Prayer Requests (the input + list view) ── */
 function PrayerRequestsMock() {
+  const { t } = useTranslation();
   const requests = [
     {
-      from: "Margaret W.",
-      body: "For my mother, who begins treatment this week.",
+      from: t("church_deck.mock_requests_from_margaret"),
+      body: t("church_deck.mock_requests_body_margaret"),
       words: 4,
     },
-    { from: "David R.", body: "Discernment about the new role.", words: 6 },
+    { from: t("church_deck.mock_requests_from_david"), body: t("church_deck.mock_requests_body_david"), words: 6 },
     {
-      from: "Anonymous",
-      body: "For peace in a difficult season.",
+      from: t("church_deck.mock_requests_from_anonymous"),
+      body: t("church_deck.mock_requests_body_peace"),
       words: 2,
     },
   ];
@@ -397,7 +403,7 @@ function PrayerRequestsMock() {
           className="text-[14px] font-semibold"
           style={{ color: C.text, fontFamily: C.font }}
         >
-          Prayer Requests 🙏🏽
+          {t("church_deck.mock_requests_title")} 🙏🏽
         </h2>
         <div
           className="flex-1 h-px"
@@ -414,7 +420,7 @@ function PrayerRequestsMock() {
             fontFamily: C.font,
           }}
         >
-          Share a prayer request... 🌿
+          {t("church_deck.mock_requests_placeholder")} 🌿
         </div>
         <div
           className="px-3 py-2.5 rounded-xl text-[12px]"
@@ -443,7 +449,7 @@ function PrayerRequestsMock() {
                   className="text-[9px] font-medium uppercase tracking-widest mb-0.5"
                   style={{ color: "rgba(200,212,192,0.45)" }}
                 >
-                  From {r.from}
+                  {t("church_deck.mock_requests_from_label", { name: r.from })}
                 </p>
                 <p
                   className="text-[12px] leading-relaxed"
@@ -466,6 +472,7 @@ function PrayerRequestsMock() {
 
 /* ── Prayer Notification — iOS-style notification (standalone, no lock screen) ── */
 function PrayerNotificationMock() {
+  const { t } = useTranslation();
   // iOS uses SF Pro / system fonts — keep the same here so the card
   // feels like an OS-level notification, not Phoebe's UI font.
   const iosFont =
@@ -501,14 +508,14 @@ function PrayerNotificationMock() {
           fontFamily: iosFont,
         }}
       >
-        now
+        {t("church_deck.mock_notification_now")}
       </p>
       <div className="flex-1 min-w-0 text-left pr-8 md:pr-10">
         <p
           className="text-[15px] md:text-[17px] font-semibold leading-snug mb-1"
           style={{ color: "#F5F5F5", fontFamily: iosFont, letterSpacing: "-0.01em" }}
         >
-          You've been held in prayer today
+          {t("church_deck.mock_notification_title")}
         </p>
         <p
           className="text-[14px] md:text-[16px] leading-snug"
@@ -518,7 +525,7 @@ function PrayerNotificationMock() {
             letterSpacing: "-0.005em",
           }}
         >
-          Theresa and others prayed for your requests today.
+          {t("church_deck.mock_notification_body")}
         </p>
       </div>
     </div>
@@ -527,6 +534,7 @@ function PrayerNotificationMock() {
 
 /* ── Community Intercession — prayer-mode card with multi-parish chips ── */
 function CommunityIntercessionMock() {
+  const { t } = useTranslation();
   const parishes = [
     { emoji: "🕊️", name: "Heavenly Rest" },
     { emoji: "🌿", name: "NYC Leaders" },
@@ -552,7 +560,7 @@ function CommunityIntercessionMock() {
         className="text-[9px] uppercase tracking-[0.22em] font-semibold text-center mb-1.5"
         style={{ color: "rgba(143,175,150,0.6)", fontFamily: C.font }}
       >
-        Community Intercession
+        {t("church_deck.mock_intercession_eyebrow")}
       </p>
 
       {/* Title */}
@@ -560,7 +568,7 @@ function CommunityIntercessionMock() {
         className="text-[18px] italic text-center mb-3"
         style={{ color: C.text, fontFamily: serif }}
       >
-        For Social Justice
+        {t("church_deck.mock_intercession_title")}
       </h2>
 
       {/* Parish chips */}
@@ -600,7 +608,7 @@ function CommunityIntercessionMock() {
         className="text-[9px] text-center mb-3 italic"
         style={{ color: "rgba(200,212,192,0.55)", fontFamily: serif }}
       >
-        7 people have prayed this this week.
+        {t("church_deck.mock_intercession_prayed_count", { count: 7 })}
       </p>
 
       {/* Prayer text card */}
@@ -615,17 +623,13 @@ function CommunityIntercessionMock() {
           className="text-[10px] leading-[1.55] italic mb-2"
           style={{ color: C.text, fontFamily: serif }}
         >
-          Grant, O God, that your holy and life-giving Spirit may so move every
-          human heart, and especially the hearts of the people of this land,
-          that barriers which divide us may crumble, suspicions disappear, and
-          hatreds cease; that our divisions being healed, we may live in
-          justice and peace; through Jesus Christ our Lord. Amen.
+          {t("church_deck.mock_intercession_prayer_text")}
         </p>
         <p
           className="text-[8px] uppercase tracking-[0.18em] font-semibold"
           style={{ color: "rgba(143,175,150,0.45)", fontFamily: C.font }}
         >
-          From the Book of Common Prayer
+          {t("church_deck.mock_intercession_source")}
         </p>
       </div>
 
@@ -635,19 +639,19 @@ function CommunityIntercessionMock() {
           className="px-5 py-1.5 rounded-full text-[11px] font-semibold"
           style={{ background: "#2D5E3F", color: C.text, fontFamily: C.font }}
         >
-          Amen →
+          {t("church_deck.mock_intercession_amen")} →
         </div>
         <p
           className="text-[9px]"
           style={{ color: "rgba(200,212,192,0.45)", fontFamily: C.font, textDecoration: "underline" }}
         >
-          Not today
+          {t("church_deck.mock_intercession_not_today")}
         </p>
         <p
           className="text-[9px] mt-0.5"
           style={{ color: "rgba(143,175,150,0.4)", fontFamily: C.font }}
         >
-          1 of 11
+          {t("church_deck.mock_intercession_progress", { current: 1, total: 11 })}
         </p>
       </div>
     </MockPhone>
@@ -656,28 +660,29 @@ function CommunityIntercessionMock() {
 
 /* ── BCP Intercessions — category list view (matches actual bcp-intercessions page) ── */
 function BCPPrayerModeMock() {
+  const { t } = useTranslation();
   const categories = [
-    { emoji: "⛪", name: "For the Church", count: 8, expanded: false },
-    { emoji: "✝️", name: "For the Mission of the Church", count: 5, expanded: true, items: ["For the Spread of the Gospel", "For the Mission of the Church", "For Missionaries", "For our Enemies", "For Those Who Suffer for the Faith"] },
-    { emoji: "🏛️", name: "For the Nation", count: 7, expanded: false },
+    { emoji: "⛪", name: t("church_deck.mock_bcp_cat_church"), count: 8, expanded: false },
+    { emoji: "✝️", name: t("church_deck.mock_bcp_cat_mission"), count: 5, expanded: true, items: [t("church_deck.mock_bcp_item_gospel"), t("church_deck.mock_bcp_item_mission"), t("church_deck.mock_bcp_item_missionaries"), t("church_deck.mock_bcp_item_enemies"), t("church_deck.mock_bcp_item_suffer")] },
+    { emoji: "🏛️", name: t("church_deck.mock_bcp_cat_nation"), count: 7, expanded: false },
   ];
   return (
     <MockPhone>
       <p className="text-[10px] mb-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
-        ← Book of Common Prayer
+        ← {t("church_deck.mock_bcp_back")}
       </p>
       <h2 className="text-[14px] font-bold mb-0.5" style={{ color: C.text, fontFamily: C.font }}>
-        Intercessions 🙏🏽
+        {t("church_deck.mock_bcp_title")} 🙏🏽
       </h2>
       <p className="text-[9px] mb-2.5" style={{ color: C.sage }}>
-        Prayers from the Book of Common Prayer
+        {t("church_deck.mock_bcp_subtitle")}
       </p>
       {/* Search */}
       <div
         className="rounded-lg px-2.5 py-1.5 mb-2.5 text-[10px]"
         style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.15)", color: "rgba(143,175,150,0.4)" }}
       >
-        Search prayers...
+        {t("church_deck.mock_bcp_search")}
       </div>
       <div className="space-y-1">
         {categories.map((cat, i) => (
@@ -692,7 +697,7 @@ function BCPPrayerModeMock() {
               <span className="text-[12px]">{cat.emoji}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-semibold truncate" style={{ color: C.text, fontFamily: C.font }}>{cat.name}</p>
-                {cat.count > 0 && <p className="text-[8px]" style={{ color: "rgba(143,175,150,0.45)" }}>{cat.count} prayers</p>}
+                {cat.count > 0 && <p className="text-[8px]" style={{ color: "rgba(143,175,150,0.45)" }}>{t("church_deck.mock_bcp_prayer_count", { count: cat.count })}</p>}
               </div>
               <span className="text-[10px]" style={{ color: "rgba(143,175,150,0.4)" }}>{cat.expanded ? "⌄" : "›"}</span>
             </div>
@@ -719,30 +724,31 @@ function BCPPrayerModeMock() {
 
 /* ── Prayer List — the prayer list page view ── */
 function PrayerListMock() {
+  const { t } = useTranslation();
   const items = [
     {
-      name: "Margaret\u2019s mother",
-      body: "Beginning treatment this week",
-      held: "4 people praying",
-      days: "5d left",
+      name: t("church_deck.mock_list_name_margaret"),
+      body: t("church_deck.mock_list_body_margaret"),
+      held: t("church_deck.mock_list_praying_count", { count: 4 }),
+      days: t("church_deck.mock_list_days_left", { n: 5 }),
     },
     {
-      name: "David\u2019s discernment",
-      body: "About the new role",
-      held: "6 people praying",
-      days: "2d left",
+      name: t("church_deck.mock_list_name_david"),
+      body: t("church_deck.mock_list_body_david"),
+      held: t("church_deck.mock_list_praying_count", { count: 6 }),
+      days: t("church_deck.mock_list_days_left", { n: 2 }),
     },
     {
-      name: "Peace in a difficult season",
-      body: "Anonymous request",
-      held: "3 people praying",
-      days: "4d left",
+      name: t("church_deck.mock_list_name_peace"),
+      body: t("church_deck.mock_list_body_anonymous"),
+      held: t("church_deck.mock_list_praying_count", { count: 3 }),
+      days: t("church_deck.mock_list_days_left", { n: 4 }),
     },
     {
-      name: "Sarah\u2019s recovery",
-      body: "After surgery last week",
-      held: "5 people praying",
-      days: "1d left",
+      name: t("church_deck.mock_list_name_sarah"),
+      body: t("church_deck.mock_list_body_sarah"),
+      held: t("church_deck.mock_list_praying_count", { count: 5 }),
+      days: t("church_deck.mock_list_days_left", { n: 1 }),
     },
   ];
   return (
@@ -751,10 +757,10 @@ function PrayerListMock() {
         className="text-base font-bold mb-0.5"
         style={{ color: C.text, fontFamily: C.font }}
       >
-        🕯️ Prayer List
+        🕯️ {t("church_deck.mock_list_title")}
       </h2>
       <p className="text-[10px] mb-3" style={{ color: C.sage }}>
-        What the community is holding together
+        {t("church_deck.mock_list_subtitle")}
       </p>
       <div
         className="h-px mb-3"
@@ -813,26 +819,27 @@ function PrayerListMock() {
 
 /* ── The Daily Office — Evening Prayer psalm slide (matches actual app office) ── */
 function DailyOfficeMock() {
+  const { t } = useTranslation();
   const verses = [
     {
       n: 121,
-      line1: "I have done what is just and right;",
-      line2: "do not deliver me to my oppressors.",
+      line1: t("church_deck.mock_office_v121_l1"),
+      line2: t("church_deck.mock_office_v121_l2"),
     },
     {
       n: 122,
-      line1: "Be surety for your servant's good;",
-      line2: "let not the proud oppress me.",
+      line1: t("church_deck.mock_office_v122_l1"),
+      line2: t("church_deck.mock_office_v122_l2"),
     },
     {
       n: 123,
-      line1: "My eyes have failed from watching for your salvation",
-      line2: "and for your righteous promise.",
+      line1: t("church_deck.mock_office_v123_l1"),
+      line2: t("church_deck.mock_office_v123_l2"),
     },
     {
       n: 124,
-      line1: "Deal with your servant according to your loving-kindness",
-      line2: "and teach me your statutes.",
+      line1: t("church_deck.mock_office_v124_l1"),
+      line2: t("church_deck.mock_office_v124_l2"),
     },
   ];
   const serif = "Georgia, 'Times New Roman', serif";
@@ -844,7 +851,7 @@ function DailyOfficeMock() {
           className="text-[11px]"
           style={{ color: "rgba(143,175,150,0.55)" }}
         >
-          ← Back
+          ← {t("church_deck.mock_office_back")}
         </p>
         <div
           className="px-3 py-1 rounded-full text-[10px] font-semibold"
@@ -855,7 +862,7 @@ function DailyOfficeMock() {
             fontFamily: C.font,
           }}
         >
-          Evening Prayer
+          {t("church_deck.mock_office_evening_prayer")}
         </div>
         <div className="w-[40px]" />
       </div>
@@ -865,7 +872,7 @@ function DailyOfficeMock() {
         className="text-[9px] uppercase tracking-[0.22em] font-semibold mb-3 text-center"
         style={{ color: "rgba(143,175,150,0.6)", fontFamily: C.font }}
       >
-        Psalm 119:121&ndash;144
+        {t("church_deck.mock_office_psalm_ref")}
       </p>
 
       {/* Verses */}
@@ -904,7 +911,7 @@ function DailyOfficeMock() {
         className="text-[9px] uppercase tracking-[0.22em] font-semibold mb-3 text-center"
         style={{ color: "rgba(143,175,150,0.5)", fontFamily: C.font }}
       >
-        BCP p. 763
+        {t("church_deck.mock_office_bcp_page")}
       </p>
 
       {/* Floating nav pill: Back / 8 · PSALM / Next */}
@@ -919,19 +926,19 @@ function DailyOfficeMock() {
           className="text-[10px] font-semibold"
           style={{ color: "rgba(200,212,192,0.6)", fontFamily: C.font }}
         >
-          Back
+          {t("church_deck.mock_office_nav_back")}
         </p>
         <p
           className="text-[9px] uppercase tracking-[0.22em]"
           style={{ color: "rgba(143,175,150,0.7)", fontFamily: C.font }}
         >
-          8 · Psalm
+          {t("church_deck.mock_office_nav_psalm")}
         </p>
         <div
           className="px-2.5 py-1 rounded-full text-[10px] font-semibold"
           style={{ background: "#2D5E3F", color: C.text, fontFamily: C.font }}
         >
-          Next
+          {t("church_deck.mock_office_nav_next")}
         </div>
       </div>
     </MockPhone>
@@ -940,10 +947,11 @@ function DailyOfficeMock() {
 
 /* ── Prayer Rhythm — daily habit / Past 7 days (matches actual app) ── */
 function PrayerRhythmMock() {
+  const { t } = useTranslation();
   // 7 days of prayer this week — morning row all green, evening row mostly purple with one miss
   const morning = [true, true, true, true, true, true, true];
   const evening = [true, true, true, true, true, false, true];
-  const dayLetters = ["T", "F", "S", "S", "M", "T", "W"];
+  const dayLetters = (t("church_deck.mock_rhythm_day_letters") as string).split(",");
   return (
     <MockPhone>
       {/* Top close (×) */}
@@ -961,13 +969,13 @@ function PrayerRhythmMock() {
         className="text-[9px] uppercase tracking-[0.22em] font-semibold text-center mb-1"
         style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
       >
-        Today
+        {t("church_deck.mock_rhythm_today")}
       </p>
       <h2
         className="text-[15px] font-semibold text-center mb-3"
         style={{ color: C.text, fontFamily: C.font }}
       >
-        Your prayer rhythm
+        {t("church_deck.mock_rhythm_title")}
       </h2>
 
       {/* Morning card */}
@@ -980,13 +988,13 @@ function PrayerRhythmMock() {
           className="text-[12px] font-semibold flex-1"
           style={{ color: C.text, fontFamily: C.font }}
         >
-          Morning
+          {t("church_deck.mock_rhythm_morning")}
         </p>
         <div
           className="px-2 py-0.5 rounded-full text-[9px] font-semibold"
           style={{ background: "rgba(46,107,64,0.5)", color: C.text, fontFamily: C.font }}
         >
-          Completed ✓
+          {t("church_deck.mock_rhythm_completed")} ✓
         </div>
       </div>
 
@@ -1000,13 +1008,13 @@ function PrayerRhythmMock() {
           className="text-[12px] font-semibold flex-1"
           style={{ color: C.text, fontFamily: C.font }}
         >
-          Evening
+          {t("church_deck.mock_rhythm_evening")}
         </p>
         <div
           className="px-2 py-0.5 rounded-full text-[9px] font-semibold"
           style={{ background: "rgba(46,107,64,0.5)", color: C.text, fontFamily: C.font }}
         >
-          Completed ✓
+          {t("church_deck.mock_rhythm_completed")} ✓
         </div>
       </div>
 
@@ -1015,7 +1023,7 @@ function PrayerRhythmMock() {
         className="text-[9px] uppercase tracking-[0.22em] font-semibold text-center mb-2"
         style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
       >
-        Past 7 Days
+        {t("church_deck.mock_rhythm_past_7_days")}
       </p>
       <div className="grid grid-cols-8 gap-1 mb-2 px-1">
         <div />
@@ -1059,7 +1067,7 @@ function PrayerRhythmMock() {
         className="text-[10px] text-center mb-3"
         style={{ color: "rgba(200,212,192,0.55)", fontFamily: C.font }}
       >
-        7 days of prayer this week
+        {t("church_deck.mock_rhythm_week_summary", { count: 7 })}
       </p>
 
       {/* Bottom pills */}
@@ -1072,7 +1080,7 @@ function PrayerRhythmMock() {
             fontFamily: C.font,
           }}
         >
-          Reminders →
+          {t("church_deck.mock_rhythm_reminders")} →
         </div>
         <div
           className="px-3 py-1 rounded-full text-[10px]"
@@ -1082,7 +1090,7 @@ function PrayerRhythmMock() {
             fontFamily: C.font,
           }}
         >
-          🕯️ Ignatian Examen →
+          🕯️ {t("church_deck.mock_rhythm_examen")} →
         </div>
       </div>
     </MockPhone>
@@ -1091,6 +1099,7 @@ function PrayerRhythmMock() {
 
 /* ── Fasting — matches actual moment-detail.tsx water conservation UI ── */
 function MeatFastMock() {
+  const { t } = useTranslation();
   return (
     <MockPhone>
       {/* Hero water impact card */}
@@ -1099,42 +1108,42 @@ function MeatFastMock() {
         style={{ background: "#0A1F12", border: "1px solid rgba(46,107,64,0.35)" }}
       >
         <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: "rgba(200,212,192,0.45)" }}>
-          Conserving Water Together
+          {t("church_deck.mock_fast_conserving")}
         </p>
         <div className="flex items-end gap-1.5 mb-0.5">
           <span className="text-2xl font-bold tabular-nums" style={{ color: C.text, letterSpacing: "-0.03em" }}>18,400</span>
-          <span className="text-[11px] mb-0.5" style={{ color: C.sage }}>gallons saved</span>
+          <span className="text-[11px] mb-0.5" style={{ color: C.sage }}>{t("church_deck.mock_fast_gallons_saved")}</span>
         </div>
         <p className="text-[9px] mb-3" style={{ color: "rgba(143,175,150,0.5)" }}>
-          46 fast days × 400 gal per person
+          {t("church_deck.mock_fast_formula")}
         </p>
         {/* Equivalences */}
         <div className="grid grid-cols-2 gap-1.5">
           <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.18)" }}>
             <p className="text-[13px] font-bold" style={{ color: "#A8C5A0" }}>36,800</p>
-            <p className="text-[8px] mt-0.5 leading-snug" style={{ color: "rgba(143,175,150,0.55)" }}>days of drinking water for one person</p>
+            <p className="text-[8px] mt-0.5 leading-snug" style={{ color: "rgba(143,175,150,0.55)" }}>{t("church_deck.mock_fast_drinking_water")}</p>
           </div>
           <div className="rounded-lg px-2.5 py-2" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.18)" }}>
             <p className="text-[13px] font-bold" style={{ color: "#A8C5A0" }}>526</p>
-            <p className="text-[8px] mt-0.5 leading-snug" style={{ color: "rgba(143,175,150,0.55)" }}>bathtubs of water spared</p>
+            <p className="text-[8px] mt-0.5 leading-snug" style={{ color: "rgba(143,175,150,0.55)" }}>{t("church_deck.mock_fast_bathtubs")}</p>
           </div>
         </div>
       </div>
 
       {/* Water stats grid — You / Group columns */}
       <p className="text-[10px] uppercase tracking-widest font-semibold mb-1.5" style={{ color: "rgba(200,212,192,0.4)" }}>
-        Conserving Water Together
+        {t("church_deck.mock_fast_conserving")}
       </p>
       <div className="grid grid-cols-3 gap-1.5 mb-1">
         <div />
-        <p className="text-[9px] text-center font-semibold uppercase tracking-wider" style={{ color: "rgba(200,212,192,0.45)" }}>You</p>
-        <p className="text-[9px] text-center font-semibold uppercase tracking-wider" style={{ color: "rgba(200,212,192,0.45)" }}>Group</p>
+        <p className="text-[9px] text-center font-semibold uppercase tracking-wider" style={{ color: "rgba(200,212,192,0.45)" }}>{t("church_deck.mock_fast_you")}</p>
+        <p className="text-[9px] text-center font-semibold uppercase tracking-wider" style={{ color: "rgba(200,212,192,0.45)" }}>{t("church_deck.mock_fast_group")}</p>
       </div>
       <div className="space-y-1.5">
         {[
-          { label: "This Week", you: "800", group: "2,400" },
-          { label: "This Month", you: "3,200", group: "9,600" },
-          { label: "All Time", you: "6,400", group: "18,400" },
+          { label: t("church_deck.mock_fast_this_week"), you: "800", group: "2,400" },
+          { label: t("church_deck.mock_fast_this_month"), you: "3,200", group: "9,600" },
+          { label: t("church_deck.mock_fast_all_time"), you: "6,400", group: "18,400" },
         ].map((r, i) => (
           <div key={i} className="grid grid-cols-3 gap-1.5 items-center">
             <p className="text-[9px] font-medium" style={{ color: "rgba(200,212,192,0.55)" }}>{r.label}</p>
@@ -1153,16 +1162,17 @@ function MeatFastMock() {
 
 /* ── Parish Calendar ── */
 function CalendarMock() {
+  const { t } = useTranslation();
   return (
     <MockPhone>
       <h2
         className="text-base font-bold mb-0.5"
         style={{ color: C.text, fontFamily: C.font }}
       >
-        Parish Calendar
+        {t("church_deck.mock_calendar_title")}
       </h2>
       <p className="text-[10px] mb-3" style={{ color: C.sage }}>
-        What&apos;s happening this week
+        {t("church_deck.mock_calendar_subtitle")}
       </p>
       <div
         className="h-px mb-3"
@@ -1171,28 +1181,32 @@ function CalendarMock() {
       <div className="space-y-2">
         {[
           {
-            title: "🍞 Wednesday Supper",
-            when: "Wed \u00b7 6:30 PM",
-            place: "Parish Hall",
-            people: "12 going",
+            emoji: "🍞",
+            title: t("church_deck.mock_calendar_supper"),
+            when: t("church_deck.mock_calendar_supper_when"),
+            place: t("church_deck.mock_calendar_parish_hall"),
+            people: t("church_deck.mock_calendar_going", { count: 12 }),
           },
           {
-            title: "📖 Lenten Study",
-            when: "Thu \u00b7 7 PM",
-            place: "Library",
-            people: "8 going",
+            emoji: "📖",
+            title: t("church_deck.mock_calendar_study"),
+            when: t("church_deck.mock_calendar_study_when"),
+            place: t("church_deck.mock_calendar_library"),
+            people: t("church_deck.mock_calendar_going", { count: 8 }),
           },
           {
-            title: "🙏🏽 Morning Prayer",
-            when: "Sat \u00b7 8 AM",
-            place: "Chapel",
-            people: "4 regulars",
+            emoji: "🙏🏽",
+            title: t("church_deck.mock_calendar_morning_prayer"),
+            when: t("church_deck.mock_calendar_morning_when"),
+            place: t("church_deck.mock_calendar_chapel"),
+            people: t("church_deck.mock_calendar_regulars", { count: 4 }),
           },
           {
-            title: "🎵 Evensong",
-            when: "Sun \u00b7 5 PM",
-            place: "Nave",
-            people: "Open to all",
+            emoji: "🎵",
+            title: t("church_deck.mock_calendar_evensong"),
+            when: t("church_deck.mock_calendar_evensong_when"),
+            place: t("church_deck.mock_calendar_nave"),
+            people: t("church_deck.mock_calendar_open_to_all"),
           },
         ].map((g, i) => (
           <div
@@ -1212,7 +1226,7 @@ function CalendarMock() {
                 className="text-[12px] font-semibold"
                 style={{ color: C.text, fontFamily: C.font }}
               >
-                {g.title}
+                {g.emoji} {g.title}
               </p>
               <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>
                 {g.when}
@@ -1233,33 +1247,34 @@ function CalendarMock() {
 
 /* ── Gatherings — timeline view (matches actual gatherings.tsx) ── */
 function GatheringsMock() {
+  const { t } = useTranslation();
   const groups = [
     {
-      label: "Today",
+      label: t("church_deck.mock_gatherings_today"),
       highlight: true,
       events: [
-        { time: "6:30 PM", title: "Wednesday Supper", location: "Parish Hall", people: "Margaret, David +4", kind: "ical" as const },
+        { time: t("church_deck.mock_gatherings_supper_time"), title: t("church_deck.mock_gatherings_supper"), location: t("church_deck.mock_gatherings_parish_hall"), people: t("church_deck.mock_gatherings_people_supper"), kind: "ical" as const },
       ],
     },
     {
-      label: "Thursday",
+      label: t("church_deck.mock_gatherings_thursday"),
       highlight: false,
       events: [
-        { time: "7:00 PM", title: "Lenten Study", location: "Library", people: "Anna, James +3", kind: "phoebe" as const },
+        { time: t("church_deck.mock_gatherings_study_time"), title: t("church_deck.mock_gatherings_study"), location: t("church_deck.mock_gatherings_library"), people: t("church_deck.mock_gatherings_people_study"), kind: "phoebe" as const },
       ],
     },
     {
-      label: "Saturday",
+      label: t("church_deck.mock_gatherings_saturday"),
       highlight: false,
       events: [
-        { time: "8:00 AM", title: "Morning Prayer", location: "Chapel", people: "4 regulars", kind: "phoebe" as const },
+        { time: t("church_deck.mock_gatherings_morning_time"), title: t("church_deck.mock_gatherings_morning_prayer"), location: t("church_deck.mock_gatherings_chapel"), people: t("church_deck.mock_gatherings_regulars", { count: 4 }), kind: "phoebe" as const },
       ],
     },
   ];
   return (
     <MockPhone>
       <h2 className="text-[14px] font-bold mb-0.5" style={{ color: C.text, fontFamily: C.font }}>
-        Gatherings
+        {t("church_deck.mock_gatherings_title")}
       </h2>
       <div className="h-px mb-3" style={{ background: "rgba(200,212,192,0.1)" }} />
       <div className="space-y-3">
@@ -1531,6 +1546,7 @@ function renderSlide(slide: Slide) {
 export default function ChurchDeck() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { t } = useTranslation();
   // Where "Close" / "Done" lands. A signed-in reader returns to their
   // dashboard; a signed-out visitor (who reached the deck via the
   // "Learn about Phoebe" card on the welcome chooser) returns to that
@@ -1538,7 +1554,7 @@ export default function ChurchDeck() {
   const exitTo = user ? "/dashboard" : "/";
   const [index, setIndex] = useState(0);
   const [autoPlay, setAutoPlay] = useState(true);
-  const slides = SLIDES;
+  const slides = buildSlides(t);
 
   const next = useCallback(
     () => setIndex((i) => Math.min(i + 1, slides.length - 1)),
@@ -1632,7 +1648,7 @@ export default function ChurchDeck() {
           style={{ color: C.sage, opacity: 0.75 }}
         >
           <X size={16} />
-          <span className="hidden md:inline">Close</span>
+          <span className="hidden md:inline">{t("church_deck.close")}</span>
         </button>
 
         {/* Mobile: slim progress bar */}
@@ -1663,7 +1679,7 @@ export default function ChurchDeck() {
                 background:
                   i <= index ? C.sage : "rgba(200,212,192,0.2)",
               }}
-              aria-label={`Go to slide ${i + 1}`}
+              aria-label={t("church_deck.go_to_slide", { n: i + 1 })}
             />
           ))}
         </div>
@@ -1705,7 +1721,7 @@ export default function ChurchDeck() {
           style={{ color: C.sage }}
         >
           <ChevronLeft size={18} />
-          Back
+          {t("church_deck.back")}
         </button>
         {isLast ? (
           <button
@@ -1713,7 +1729,7 @@ export default function ChurchDeck() {
             className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
             style={{ background: "#2D5E3F", color: C.text }}
           >
-            Done
+            {t("church_deck.done")}
           </button>
         ) : (
           <button
@@ -1721,7 +1737,7 @@ export default function ChurchDeck() {
             className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity"
             style={{ background: "#2D5E3F", color: C.text }}
           >
-            Next
+            {t("church_deck.next")}
             <ChevronRight size={18} />
           </button>
         )}
