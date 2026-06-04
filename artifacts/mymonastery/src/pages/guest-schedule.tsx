@@ -3,6 +3,7 @@ import { useRoute, useLocation } from "wouter";
 import { format, parseISO } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, Loader2, Sprout } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ScheduleData {
   ritualId: number;
@@ -13,14 +14,15 @@ interface ScheduleData {
   confirmedTime: string | null;
 }
 
-function formatFrequencyPhrase(f: string) {
-  if (f === "biweekly") return "biweekly";
-  if (f === "weekly") return "weekly";
-  if (f === "monthly") return "monthly";
-  return f;
-}
-
 export default function GuestSchedule() {
+  const { t } = useTranslation();
+  const formatFrequencyPhrase = (f: string) => {
+    if (f === "biweekly") return t("guest_schedule.frequency_biweekly");
+    if (f === "weekly") return t("guest_schedule.frequency_weekly");
+    if (f === "monthly") return t("guest_schedule.frequency_monthly");
+    return f;
+  };
+
   const [, params] = useRoute("/schedule/:token");
   const token = params?.token ?? "";
 
@@ -65,7 +67,7 @@ export default function GuestSchedule() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!guestName.trim()) {
-      setNameError("Please enter your name");
+      setNameError(t("guest_schedule.error_enter_name"));
       return;
     }
     setNameError("");
@@ -85,7 +87,7 @@ export default function GuestSchedule() {
       if (!res.ok) throw new Error("Failed");
       setSubmitted(true);
     } catch {
-      setNameError("Something went wrong. Please try again.");
+      setNameError(t("guest_schedule.error_generic"));
     } finally {
       setIsSubmitting(false);
     }
@@ -98,7 +100,7 @@ export default function GuestSchedule() {
           <div className="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto">
             <Sprout size={24} strokeWidth={1.5} className="animate-pulse" />
           </div>
-          <p className="text-muted-foreground">Loading your invitation...</p>
+          <p className="text-muted-foreground">{t("guest_schedule.loading")}</p>
         </div>
       </div>
     );
@@ -111,8 +113,8 @@ export default function GuestSchedule() {
           <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto">
             <Sprout size={24} strokeWidth={1.5} className="text-muted-foreground" />
           </div>
-          <h2 className="font-serif text-2xl text-foreground">This link isn't active</h2>
-          <p className="text-muted-foreground text-sm">The scheduling link may have expired or is no longer valid.</p>
+          <h2 className="font-serif text-2xl text-foreground">{t("guest_schedule.not_active_title")}</h2>
+          <p className="text-muted-foreground text-sm">{t("guest_schedule.not_active_description")}</p>
         </div>
       </div>
     );
@@ -132,19 +134,19 @@ export default function GuestSchedule() {
           </div>
           <div>
             <h2 className="font-serif text-3xl text-foreground mb-2">
-              {unavailable ? "Got it." : "You're in."}
+              {unavailable ? t("guest_schedule.done_title") : t("guest_schedule.confirmed_title")}
             </h2>
             <p className="text-muted-foreground leading-relaxed">
               {unavailable
                 ? suggestedTime.trim()
-                  ? "Your suggestion has been passed along. Hopefully a new time works."
-                  : "Your response has been noted. Hopefully next time works."
-                : "This is how traditions begin."}
+                  ? t("guest_schedule.done_suggestion_passed")
+                  : t("guest_schedule.done_response_noted")
+                : t("guest_schedule.confirmed_traditions_begin")}
             </p>
           </div>
           {!unavailable && (
             <p className="text-sm text-muted-foreground/70">
-              {scheduleData?.organizerName} will confirm the final time shortly.
+              {t("guest_schedule.organizer_will_confirm", { name: scheduleData?.organizerName })}
             </p>
           )}
         </motion.div>
@@ -162,10 +164,10 @@ export default function GuestSchedule() {
           <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary mx-auto mb-6">
             <Sprout size={22} strokeWidth={1.5} />
           </div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-3">You're invited</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-3">{t("guest_schedule.invited_eyebrow")}</p>
           <h1 className="font-serif text-3xl md:text-4xl text-foreground mb-3">{scheduleData?.ritualName}</h1>
           <p className="text-muted-foreground text-sm">
-            {scheduleData?.organizerName} is scheduling a {formatFrequencyPhrase(scheduleData?.frequency ?? "")} tradition and wants to know when you're available.
+            {t("guest_schedule.scheduling_intro", { name: scheduleData?.organizerName, frequency: formatFrequencyPhrase(scheduleData?.frequency ?? "") })}
           </p>
         </div>
 
@@ -173,12 +175,12 @@ export default function GuestSchedule() {
           {/* Name + email fields */}
           <div className="bg-card rounded-2xl p-5 border border-card-border space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-2 text-foreground">Your name</label>
+              <label className="block text-sm font-medium mb-2 text-foreground">{t("guest_schedule.name_label")}</label>
               <input
                 type="text"
                 value={guestName}
                 onChange={(e) => { setGuestName(e.target.value); setNameError(""); }}
-                placeholder="How should we call you?"
+                placeholder={t("guest_schedule.name_placeholder")}
                 autoFocus
                 className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
               />
@@ -187,13 +189,13 @@ export default function GuestSchedule() {
             {!emailFromUrl && (
               <div>
                 <label className="block text-sm font-medium mb-2 text-foreground">
-                  Email <span className="text-muted-foreground font-normal">(optional)</span>
+                  {t("guest_schedule.email_label")} <span className="text-muted-foreground font-normal">{t("guest_schedule.optional_suffix")}</span>
                 </label>
                 <input
                   type="email"
                   value={guestEmail}
                   onChange={(e) => setGuestEmail(e.target.value)}
-                  placeholder="For any updates from the organizer"
+                  placeholder={t("guest_schedule.email_placeholder")}
                   className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
                 />
               </div>
@@ -206,20 +208,20 @@ export default function GuestSchedule() {
           {/* Time options */}
           {!unavailable && (
             <div className="space-y-3">
-              <p className="text-sm font-medium text-foreground">Which time works best for you?</p>
+              <p className="text-sm font-medium text-foreground">{t("guest_schedule.which_time")}</p>
               <AnimatePresence>
-                {times.map((t, i) => {
-                  const d = parseISO(t);
+                {times.map((time, i) => {
+                  const d = parseISO(time);
                   const label = format(d, "EEEE, MMMM d 'at' h:mm a");
-                  const isSelected = selectedTime === t;
+                  const isSelected = selectedTime === time;
                   return (
                     <motion.button
-                      key={t}
+                      key={time}
                       type="button"
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.06, duration: 0.3 }}
-                      onClick={() => setSelectedTime(t)}
+                      onClick={() => setSelectedTime(time)}
                       className={`w-full text-left p-4 rounded-xl border-2 transition-all flex items-center justify-between gap-3 ${
                         isSelected
                           ? "border-primary bg-primary/5 shadow-sm"
@@ -229,7 +231,7 @@ export default function GuestSchedule() {
                       <div>
                         <p className={`font-medium ${isSelected ? "text-primary" : "text-foreground"}`}>{label}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {i === 0 ? "Organizer's first pick" : i === 1 ? "Alternative" : "Backup"}
+                          {i === 0 ? t("guest_schedule.pick_first") : i === 1 ? t("guest_schedule.pick_alternative") : t("guest_schedule.pick_backup")}
                         </p>
                       </div>
                       {isSelected && (
@@ -252,7 +254,7 @@ export default function GuestSchedule() {
                 : "border-border text-muted-foreground hover:border-border hover:text-foreground"
             }`}
           >
-            {unavailable ? "✓ Marked as unavailable — click to undo" : "I can't make any of these"}
+            {unavailable ? t("guest_schedule.unavailable_marked") : t("guest_schedule.cant_make_it")}
           </button>
 
           {/* Suggest another time */}
@@ -264,18 +266,18 @@ export default function GuestSchedule() {
               className="bg-card rounded-2xl p-5 border border-card-border space-y-2"
             >
               <label className="block text-sm font-medium text-foreground">
-                Suggest a time that works for you{" "}
-                <span className="text-muted-foreground font-normal">(optional)</span>
+                {t("guest_schedule.suggest_time_label")}{" "}
+                <span className="text-muted-foreground font-normal">{t("guest_schedule.optional_suffix")}</span>
               </label>
               <input
                 type="text"
                 value={suggestedTime}
                 onChange={e => setSuggestedTime(e.target.value)}
-                placeholder="e.g. Saturdays after 4pm, weekday mornings…"
+                placeholder={t("guest_schedule.suggest_time_placeholder")}
                 className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all text-sm"
               />
               <p className="text-xs text-muted-foreground">
-                {scheduleData?.organizerName} will see your suggestion.
+                {t("guest_schedule.organizer_will_see", { name: scheduleData?.organizerName })}
               </p>
             </motion.div>
           )}
@@ -287,9 +289,9 @@ export default function GuestSchedule() {
             className="w-full py-4 bg-primary text-primary-foreground rounded-full font-medium text-base hover:bg-primary/90 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_4px_14px_rgba(45,74,62,0.2)] flex items-center justify-center gap-2"
           >
             {isSubmitting ? (
-              <><Loader2 size={18} className="animate-spin" /> Sending...</>
+              <><Loader2 size={18} className="animate-spin" /> {t("guest_schedule.sending")}</>
             ) : (
-              unavailable ? "Send my response" : "I'm in for this time"
+              unavailable ? t("guest_schedule.send_response") : t("guest_schedule.im_in")
             )}
           </button>
         </form>
