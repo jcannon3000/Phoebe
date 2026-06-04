@@ -13,12 +13,13 @@ import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
-import { openExternal, preloadExternal } from "@/lib/openExternal";
-import { getNcmpState, getSideLevel } from "@/lib/officePrefs";
+import { openExternal } from "@/lib/openExternal";
+import { preheatReflection } from "@/lib/reflectionPreheat";
+import { getNcmpState, getSideLevel, setSideLevel } from "@/lib/officePrefs";
 import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
-  FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, markFddRead,
-  SSJE_TODAY_URL, SSJE_READ_EVENT, hasReadSsjeToday, markSsjeRead,
+  FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, recordFddOpened,
+  SSJE_TODAY_URL, SSJE_READ_EVENT, hasReadSsjeToday, recordSsjeOpened,
 } from "@/lib/cacReadState";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
@@ -2409,14 +2410,17 @@ export function ContemplationHomeCard() {
 
   const todaySince = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString(); })();
   const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
-  const { data: stats } = useQuery<{ todaySeconds?: number }>({
+  const { data: stats } = useQuery<{ todaySeconds?: number; healthMinutesToday?: number }>({
     queryKey: ["/api/me/contemplation-stats", todaySince.slice(0, 10), tz],
-    queryFn: () => apiRequest("GET", `/api/me/contemplation-stats?todaySince=${encodeURIComponent(todaySince)}&tz=${encodeURIComponent(tz)}`) as Promise<{ todaySeconds?: number }>,
+    queryFn: () => apiRequest("GET", `/api/me/contemplation-stats?todaySince=${encodeURIComponent(todaySince)}&tz=${encodeURIComponent(tz)}`) as Promise<{ todaySeconds?: number; healthMinutesToday?: number }>,
     enabled: goalMin > 0,
     staleTime: 60_000,
   });
 
-  const doneMin = Math.floor((stats?.todaySeconds ?? 0) / 60);
+  // Match the Contemplation card: prayer-only seconds + external Apple Health
+  // minutes (Calm / Insight Timer / Apple Mindfulness) the client synced. No
+  // live HealthKit read here, so we use the server's stored value.
+  const doneMin = Math.floor((stats?.todaySeconds ?? 0) / 60) + (stats?.healthMinutesToday ?? 0);
   const met = goalMin > 0 && doneMin >= goalMin;
   const progressLabel = goalMin <= 0 ? null : met ? "Goal reached 🌿" : `${doneMin} of ${goalMin} min today`;
 
@@ -2572,6 +2576,7 @@ export function CacHomeCard() {
   const cacTitle = cacMeta?.title ?? "";
   const onClick = () => {
     recordCacOpened({ flagReturn: true });
+    preheatReflection("cac"); // warm /reflect/cac while they read
     // Open via the server redirect — NOT a prefetched permalink. We briefly
     // preloaded cacMeta.url and then opened that exact URL; the in-app browser
     // presented its prefetched view and dismissed instantly, dropping the
@@ -2784,10 +2789,12 @@ function FddHomeCard() {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, []);
-  // Warm today's page so tapping opens it instantly (native only).
-  useEffect(() => { preloadExternal(FDD_TODAY_URL); }, []);
   const onClick = () => {
-    markFddRead();
+    // Flag the return so coming back from the browser lands on the in-app
+    // reflection reader (see ReflectionReturnRedirect). Open fresh — no
+    // preloadExternal — or the native browser dismisses instantly (see CAC).
+    recordFddOpened({ flagReturn: true });
+    preheatReflection("fdd"); // warm /menu/reflections/fdd while they read
     openExternal(FDD_TODAY_URL);
   };
   return (
@@ -2847,10 +2854,12 @@ function SsjeHomeCard() {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, []);
-  // Warm today's page so tapping opens it instantly (native only).
-  useEffect(() => { preloadExternal(SSJE_TODAY_URL); }, []);
   const onClick = () => {
-    markSsjeRead();
+    // Flag the return so coming back from the browser lands on the in-app
+    // reflection reader (see ReflectionReturnRedirect). Open fresh — no
+    // preloadExternal — or the native browser dismisses instantly (see CAC).
+    recordSsjeOpened({ flagReturn: true });
+    preheatReflection("ssje"); // warm /menu/reflections/ssje while they read
     openExternal(SSJE_TODAY_URL);
   };
   return (
@@ -3012,6 +3021,46 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
   // "Programmed prayer" (office OR devotion) → the begin-prayer CTA + per-half
   // "prayed today" tracking; community keeps the once-a-day Pray Together flow.
   const programmedOffice = programmedLevel !== null;
+
+  // ── One-time reset to the "Pray Together" card (this update) ────────────
+  // The new home default is the communal "Pray Together" card. This is a
+  // one-time, per-device migration: anyone currently programmed onto the
+  // Offices (Morning/Evening Prayer) or the Daily Devotion is moved to
+  // community prayers — the "intercessions" level that programmedLevel /
+  // derivePrayChoice read as community. People already on community
+  // ("ask"/intercessions) are left untouched. A localStorage stamp makes it
+  // fire once, so a user can re-pick Offices/Devotion in Customize home
+  // afterward without being pulled back. Mirrors pickPray("community").
+  const queryClient = useQueryClient();
+  const prayTogetherResetRanRef = useRef(false);
+  useEffect(() => {
+    if (prayTogetherResetRanRef.current) return;
+    // Wait for office-prefs so we read the true server level, not the
+    // transient null before the query resolves.
+    if (officePrefs === undefined) return;
+    const KEY = "phoebe:reset:pray-together:v1";
+    try {
+      if (localStorage.getItem(KEY) === "1") { prayTogetherResetRanRef.current = true; return; }
+    } catch {
+      return; // no localStorage (private mode) — skip rather than loop
+    }
+    prayTogetherResetRanRef.current = true;
+    const markDone = () => { try { localStorage.setItem(KEY, "1"); } catch { /* retry next load */ } };
+    if (programmedLevel === "office" || programmedLevel === "devotion") {
+      // Flip both the local per-side levels and the server default to
+      // community (intercessions) — same as customize-home's pickPray.
+      setSideLevel("morning", "intercessions");
+      setSideLevel("evening", "intercessions");
+      apiRequest("PUT", "/api/me/office-prefs", { defaultPrayerLevel: "intercessions" })
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/me/office-prefs"] });
+          markDone();
+        })
+        .catch(() => { prayTogetherResetRanRef.current = false; /* leave unstamped — retry next load */ });
+    } else {
+      markDone(); // already on community — nothing to migrate
+    }
+  }, [officePrefs, programmedLevel, queryClient]);
 
   const { data: communityPrayedData } = useQuery<{ people: { id: number; name: string; avatarUrl: string | null }[]; total?: number }>({
     queryKey: ["/api/prayer-streak/community-prayed-week"],
@@ -3181,7 +3230,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
       ? (isMorning ? "Morning Devotion 🌅" : "Evening Devotion 🌙")
       : programmedLevel === "office"
         ? (isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙")
-        : "Pray Together 🙏";
+        : "Pray Together 🙏🏽";
     return (
       <Link href={ctaHref} className="block">
         <div
@@ -3299,7 +3348,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
                       ? (isMorning ? `${t("offices.morning_devotion", { defaultValue: "Morning Devotion" })} 🌅` : `${t("offices.evening_devotion", { defaultValue: "Evening Devotion" })} 🌙`)
                       : programmedLevel === "office"
                         ? (isMorning ? `${t("offices.morning_prayer")} 🌅` : `${t("offices.evening_prayer")} 🌙`)
-                        : `${t("dashboard.pray_together", { defaultValue: "Pray Together" })} 🙏`}
+                        : `${t("dashboard.pray_together", { defaultValue: "Pray Together" })} 🙏🏽`}
                   </p>
                   {countCopy && (
                     <p
@@ -3313,9 +3362,10 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
                 {withAvatars.length > 0 && (
                   <div className="flex items-center -space-x-2 shrink-0">
                     {/* Show as many faces as fit the card (up from 5); the
-                        count line above carries the true total. Capped at 8 so
-                        a large garden's rail can't overflow / crush the title. */}
-                    {withAvatars.slice(0, 8).map((p) => (
+                        count line above carries the true total. Capped so the
+                        rail can't overflow / crush the title — 6 on the Devotion
+                        variant (its longer title + 🌙 leave less room), 8 otherwise. */}
+                    {withAvatars.slice(0, programmedLevel === "devotion" ? 6 : 8).map((p) => (
                       <img
                         key={p.id}
                         src={p.avatarUrl as string}
