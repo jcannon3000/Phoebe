@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation, useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
@@ -20,12 +21,8 @@ type FeedState = "draft" | "live" | "paused";
 
 // `paused` is surfaced to creators as "Off" — the everyday "stop showing
 // this feed" switch (see the schema state-machine doc). Draft/Live keep
-// their literal names.
-const STATE_LABELS: Record<FeedState, string> = {
-  draft: "Draft",
-  live: "Live",
-  paused: "Off",
-};
+// their literal names. The labels themselves are built per-component as
+// t()-driven locals (see `stateLabels` below).
 
 interface Feed {
   id: number;
@@ -79,6 +76,7 @@ type GroupIntercessionOption = {
 };
 
 export default function PrayerFeedManagePage() {
+  const { t } = useTranslation();
   const { user, isLoading: authLoading } = useAuth();
   // rawIsBeta + isLoading guard avoids the refresh-bounce-to-dashboard
   // race (unresolved beta-status query → isBeta false → redirect
@@ -121,12 +119,19 @@ export default function PrayerFeedManagePage() {
     },
   });
 
+  // Feed-state labels (paused → "Off"), built from translations.
+  const stateLabels: Record<FeedState, string> = {
+    draft: t("prayer_feed_manage.state_draft"),
+    live: t("prayer_feed_manage.state_live"),
+    paused: t("prayer_feed_manage.state_off"),
+  };
+
   // ── Render ──────────────────────────────────────────────────────────────
   if (authLoading || !user || feedQ.isLoading) {
     return (
       <Layout>
         <div className="max-w-lg mx-auto w-full py-12 text-sm" style={{ color: "#8FAF96" }}>
-          Loading…
+          {t("prayer_feed_manage.loading")}
         </div>
       </Layout>
     );
@@ -135,7 +140,7 @@ export default function PrayerFeedManagePage() {
     return (
       <Layout>
         <div className="max-w-lg mx-auto w-full py-12 text-sm" style={{ color: "#8FAF96" }}>
-          This feed isn't available.
+          {t("prayer_feed_manage.not_available")}
         </div>
       </Layout>
     );
@@ -149,7 +154,7 @@ export default function PrayerFeedManagePage() {
           className="text-xs mb-4 flex items-center gap-1 transition-opacity hover:opacity-70"
           style={{ color: "#8FAF96" }}
         >
-          ← Back
+          ← {t("prayer_feed_manage.back")}
         </button>
 
         {/* Feed header — admins can tap the pencil to edit name +
@@ -170,7 +175,7 @@ export default function PrayerFeedManagePage() {
             className="text-[10px] font-semibold uppercase tracking-widest mb-1.5"
             style={{ color: "rgba(143,175,150,0.6)" }}
           >
-            Status
+            {t("prayer_feed_manage.status")}
           </p>
           <div className="flex gap-2">
             {(["draft", "live", "paused"] as FeedState[]).map(s => (
@@ -185,16 +190,16 @@ export default function PrayerFeedManagePage() {
                   color: feed.state === s ? "#F0EDE6" : "#8FAF96",
                 }}
               >
-                {STATE_LABELS[s]}
+                {stateLabels[s]}
               </button>
             ))}
           </div>
           <p className="text-[11px] mt-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
             {feed.state === "live"
-              ? "Published — anyone subscribed sees its prayers and it can be found and shared."
+              ? t("prayer_feed_manage.status_live_desc")
               : feed.state === "paused"
-                ? "Off — hidden from discovery, its communities, and current subscribers' feeds. Subscriptions are kept; turn it back to Live to restore it."
-                : "Draft — only you can see this feed while you set it up."}
+                ? t("prayer_feed_manage.status_off_desc")
+                : t("prayer_feed_manage.status_draft_desc")}
           </p>
         </div>
 
@@ -207,7 +212,7 @@ export default function PrayerFeedManagePage() {
             className="text-[10px] font-semibold uppercase tracking-widest mb-1.5"
             style={{ color: "rgba(143,175,150,0.6)" }}
           >
-            Visibility
+            {t("prayer_feed_manage.visibility")}
           </p>
           <div className="flex gap-2">
             {(["private", "public"] as const).map(v => (
@@ -228,8 +233,8 @@ export default function PrayerFeedManagePage() {
           </div>
           <p className="text-[11px] mt-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
             {feed.visibility === "public"
-              ? "Anyone can find this feed and subscribe to it."
-              : "Only beta members and bound communities can see this feed."}
+              ? t("prayer_feed_manage.visibility_public_desc")
+              : t("prayer_feed_manage.visibility_private_desc")}
           </p>
         </div>
 
@@ -259,10 +264,10 @@ export default function PrayerFeedManagePage() {
             prevents accidents. */}
         <div className="mt-10 pt-6" style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}>
           <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,180,180,0.55)" }}>
-            Danger zone
+            {t("prayer_feed_manage.danger_zone")}
           </p>
           <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
-            Deletes the feed and every intercession, every subscriber, and every "I prayed" tap. Cannot be undone.
+            {t("prayer_feed_manage.danger_desc")}
           </p>
           {!deleteConfirmArmed ? (
             <button
@@ -274,7 +279,7 @@ export default function PrayerFeedManagePage() {
                 color: "#E8B0B0",
               }}
             >
-              Delete feed
+              {t("prayer_feed_manage.delete_feed")}
             </button>
           ) : (
             <div className="flex items-center gap-2">
@@ -284,7 +289,7 @@ export default function PrayerFeedManagePage() {
                 className="text-xs font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-85 disabled:opacity-50"
                 style={{ background: "#A84848", border: "1px solid #A84848", color: "#FFFFFF" }}
               >
-                {deleteFeed.isPending ? "Deleting…" : "Confirm delete"}
+                {deleteFeed.isPending ? t("prayer_feed_manage.deleting") : t("prayer_feed_manage.confirm_delete")}
               </button>
               <button
                 onClick={() => setDeleteConfirmArmed(false)}
@@ -292,7 +297,7 @@ export default function PrayerFeedManagePage() {
                 className="text-xs font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-85 disabled:opacity-50"
                 style={{ background: "transparent", border: "1px solid rgba(143,175,150,0.3)", color: "#8FAF96" }}
               >
-                Cancel
+                {t("prayer_feed_manage.cancel")}
               </button>
             </div>
           )}
@@ -320,9 +325,17 @@ function FeedHeaderSection({
   onSave: (patch: { title?: string; tagline?: string | null }) => void;
   isSaving: boolean;
 }) {
+  const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(feed.title);
   const [tagline, setTagline] = useState(feed.tagline ?? "");
+
+  // Feed-state labels (paused → "Off"), built from translations.
+  const stateLabels: Record<FeedState, string> = {
+    draft: t("prayer_feed_manage.state_draft"),
+    live: t("prayer_feed_manage.state_live"),
+    paused: t("prayer_feed_manage.state_off"),
+  };
 
   function startEdit() {
     setTitle(feed.title);
@@ -373,16 +386,16 @@ function FeedHeaderSection({
                 color: "#A8C5A0",
                 fontFamily: "'Space Grotesk', sans-serif",
               }}
-              aria-label="Edit feed name and description"
+              aria-label={t("prayer_feed_manage.edit_header_aria")}
             >
-              Edit
+              {t("prayer_feed_manage.edit")}
             </button>
           </div>
           {feed.tagline && (
             <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{feed.tagline}</p>
           )}
           <p className="text-[11px] mt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
-            {feed.subscriberCount} subscriber{feed.subscriberCount === 1 ? "" : "s"} · {STATE_LABELS[feed.state]}
+            {t("prayer_feed_manage.subscriber_count", { count: feed.subscriberCount })} · {stateLabels[feed.state]}
           </p>
         </div>
       </div>
@@ -403,7 +416,7 @@ function FeedHeaderSection({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           maxLength={80}
-          placeholder="Feed name"
+          placeholder={t("prayer_feed_manage.feed_name_placeholder")}
           className="px-3 py-2 text-base font-bold rounded-lg"
           style={{
             background: "rgba(200,212,192,0.06)",
@@ -418,7 +431,7 @@ function FeedHeaderSection({
           value={tagline}
           onChange={(e) => setTagline(e.target.value)}
           maxLength={200}
-          placeholder="Optional description — one line about this feed."
+          placeholder={t("prayer_feed_manage.feed_description_placeholder")}
           rows={2}
           className="px-3 py-2 text-sm rounded-lg resize-none"
           style={{
@@ -443,7 +456,7 @@ function FeedHeaderSection({
               cursor: title.trim() ? "pointer" : "not-allowed",
             }}
           >
-            {isSaving ? "Saving…" : "Save"}
+            {isSaving ? t("prayer_feed_manage.saving") : t("prayer_feed_manage.save")}
           </button>
           <button
             type="button"
@@ -458,7 +471,7 @@ function FeedHeaderSection({
               cursor: "pointer",
             }}
           >
-            Cancel
+            {t("prayer_feed_manage.cancel")}
           </button>
           <span className="text-[10px] ml-auto" style={{ color: "rgba(143,175,150,0.5)" }}>
             {tagline.length}/200
@@ -485,6 +498,7 @@ function ShareLinkSection({
   title: string;
   tagline: string | null;
 }) {
+  const { t } = useTranslation();
   const url = `https://withphoebe.app/feed/${slug}`;
   const [copied, setCopied] = useState(false);
   const canShare =
@@ -496,7 +510,7 @@ function ShareLinkSection({
       try {
         await (navigator as Navigator & { share: (data: ShareData) => Promise<void> }).share({
           title,
-          text: tagline ?? "A prayer feed on Phoebe",
+          text: tagline ?? t("prayer_feed_manage.share_text"),
           url,
         });
         return;
@@ -520,7 +534,7 @@ function ShareLinkSection({
         className="text-[10px] font-semibold uppercase tracking-widest mb-1.5"
         style={{ color: "rgba(143,175,150,0.6)" }}
       >
-        Share link
+        {t("prayer_feed_manage.share_link")}
       </p>
       <div
         className="flex items-center gap-2 rounded-xl px-3 py-2"
@@ -551,11 +565,11 @@ function ShareLinkSection({
             whiteSpace: "nowrap",
           }}
         >
-          {copied ? "Copied" : canShare ? "Share" : "Copy"}
+          {copied ? t("prayer_feed_manage.copied") : canShare ? t("prayer_feed_manage.share") : t("prayer_feed_manage.copy")}
         </button>
       </div>
       <p className="text-[11px] mt-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-        Anyone can pray this feed at the link above — no account needed. They'll be invited to sign up at the end.
+        {t("prayer_feed_manage.share_hint")}
       </p>
     </div>
   );
@@ -577,6 +591,7 @@ interface ComposerFormProps {
 }
 
 function ComposerForm({ draft, setDraft, editingId, savePending, error, onSave, onCancel }: ComposerFormProps) {
+  const { t } = useTranslation();
   const inputStyle = {
     background: "rgba(200,212,192,0.06)",
     border: "1px solid rgba(46,107,64,0.35)",
@@ -602,27 +617,27 @@ function ComposerForm({ draft, setDraft, editingId, savePending, error, onSave, 
               cursor: "pointer",
             }}
           >
-            {src === "custom" ? "🙏 Prayer" : "🌍 Action"}
+            {src === "custom" ? `🙏 ${t("prayer_feed_manage.type_prayer")}` : `🌍 ${t("prayer_feed_manage.type_action")}`}
           </button>
         ))}
       </div>
       <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)" }}>
         {draft.source === "action"
-          ? "A prayer paired with a concrete invitation — subscribers see a “Take action →” button."
-          : "A written intercession. Add a link below to include a “Learn more →” button."}
+          ? t("prayer_feed_manage.type_action_desc")
+          : t("prayer_feed_manage.type_prayer_desc")}
       </p>
 
       {/* Title / intention */}
       <div>
         <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-          Title / intention
+          {t("prayer_feed_manage.title_intention_label")}
         </label>
         <input
           type="text"
           value={draft.title}
           onChange={(e) => setDraft({ ...draft, title: e.target.value })}
           maxLength={200}
-          placeholder="e.g. For the people of Gaza"
+          placeholder={t("prayer_feed_manage.title_intention_placeholder")}
           // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
           className="w-full px-3 py-2 rounded-lg text-sm"
@@ -633,14 +648,14 @@ function ComposerForm({ draft, setDraft, editingId, savePending, error, onSave, 
       {/* Prayer text */}
       <div>
         <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-          Prayer text
+          {t("prayer_feed_manage.prayer_text_label")}
         </label>
         <textarea
           value={draft.fullText}
           onChange={(e) => setDraft({ ...draft, fullText: e.target.value })}
           maxLength={2000}
           rows={4}
-          placeholder="Write the intercession…"
+          placeholder={t("prayer_feed_manage.prayer_text_placeholder")}
           className="w-full px-3 py-2 rounded-lg text-sm resize-none"
           style={inputStyle}
         />
@@ -649,7 +664,7 @@ function ComposerForm({ draft, setDraft, editingId, savePending, error, onSave, 
       {/* Link — required for Action, optional for Prayer */}
       <div>
         <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-          {draft.source === "action" ? "Action link (required)" : "Learn-more link (optional)"}
+          {draft.source === "action" ? t("prayer_feed_manage.action_link_label") : t("prayer_feed_manage.learn_more_link_label")}
         </label>
         <input
           type="url"
@@ -672,7 +687,7 @@ function ComposerForm({ draft, setDraft, editingId, savePending, error, onSave, 
           className="flex-1 text-sm font-semibold rounded-full py-2 disabled:opacity-50"
           style={{ background: "#2E6B40", color: "#F0EDE6", cursor: savePending ? "not-allowed" : "pointer" }}
         >
-          {savePending ? "Saving…" : editingId != null ? "Save changes" : "Add intercession"}
+          {savePending ? t("prayer_feed_manage.saving") : editingId != null ? t("prayer_feed_manage.save_changes") : t("prayer_feed_manage.add_intercession")}
         </button>
         <button
           type="button"
@@ -681,7 +696,7 @@ function ComposerForm({ draft, setDraft, editingId, savePending, error, onSave, 
           className="text-sm font-medium rounded-full px-4 py-2 disabled:opacity-50"
           style={{ background: "transparent", border: "1px solid rgba(46,107,64,0.4)", color: "#8FAF96", cursor: "pointer" }}
         >
-          Cancel
+          {t("prayer_feed_manage.cancel")}
         </button>
       </div>
     </>
@@ -693,6 +708,7 @@ function ComposerForm({ draft, setDraft, editingId, savePending, error, onSave, 
 // The feed's whole content surface: a flat, ongoing list of community
 // intercessions, each authored with a Prayer / Action type toggle.
 function FeedIntercessionsSection({ slug }: { slug: string }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
   const [composing, setComposing] = useState(false);
@@ -739,7 +755,7 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
       closeComposer();
     },
     onError: (e) => {
-      setError(e instanceof Error ? e.message : "Couldn't add the intercession.");
+      setError(e instanceof Error ? e.message : t("prayer_feed_manage.err_add_intercession"));
     },
   });
 
@@ -759,7 +775,7 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
       closeComposer();
     },
     onError: (e) => {
-      setError(e instanceof Error ? e.message : "Couldn't save the changes.");
+      setError(e instanceof Error ? e.message : t("prayer_feed_manage.err_save_changes"));
     },
   });
 
@@ -799,7 +815,7 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
   function save() {
     if (!draft.title.trim() || !draft.fullText.trim()) return;
     if (draft.source === "action" && !draft.learnMoreUrl.trim()) {
-      setError("An action needs a link.");
+      setError(t("prayer_feed_manage.err_action_needs_link"));
       return;
     }
     const payload = {
@@ -822,10 +838,10 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
   return (
     <div className="mb-8">
       <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.55)" }}>
-        Intercessions
+        {t("prayer_feed_manage.intercessions")}
       </p>
       <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
-        Prayers your subscribers pray together. Each one gets its own card and detail page.
+        {t("prayer_feed_manage.intercessions_desc")}
       </p>
 
       <div className="space-y-2 mb-3">
@@ -881,12 +897,12 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
                     border: "1px solid rgba(46,107,64,0.5)",
                   }}
                 >
-                  🌍 Action
+                  🌍 {t("prayer_feed_manage.type_action")}
                 </span>
               )}
               <button
                 type="button"
-                aria-label="Edit intercession"
+                aria-label={t("prayer_feed_manage.edit_intercession_aria")}
                 onClick={() => startEdit(it)}
                 className="shrink-0 rounded-full p-1.5 transition-opacity hover:opacity-90"
                 style={{
@@ -904,7 +920,7 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
         })}
         {items.length === 0 && !listQ.isLoading && (
           <p className="text-xs italic px-1" style={{ color: "rgba(143,175,150,0.5)" }}>
-            No intercessions yet.
+            {t("prayer_feed_manage.no_intercessions")}
           </p>
         )}
       </div>
@@ -934,13 +950,13 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
           style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.2)" }}
         >
           <p className="text-xs mb-2" style={{ color: "rgba(143,175,150,0.7)" }}>
-            Add an intercession created in one of your communities. It stays in that community and also appears here.
+            {t("prayer_feed_manage.picker_intro")}
           </p>
           {candidatesQ.isLoading ? (
-            <p className="text-xs" style={{ color: "rgba(143,175,150,0.6)" }}>Loading…</p>
+            <p className="text-xs" style={{ color: "rgba(143,175,150,0.6)" }}>{t("prayer_feed_manage.loading")}</p>
           ) : (candidatesQ.data?.intercessions ?? []).length === 0 ? (
             <p className="text-xs" style={{ color: "rgba(143,175,150,0.7)" }}>
-              No community intercessions available to add.
+              {t("prayer_feed_manage.no_community_intercessions")}
             </p>
           ) : (
             <div className="flex flex-col gap-2">
@@ -957,7 +973,7 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
                     {it.intention || it.name}
                   </p>
                   <p className="text-[10px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)" }}>
-                    {it.groupEmoji ?? "⛪"} {it.groupName ?? "Community"}
+                    {it.groupEmoji ?? "⛪"} {it.groupName ?? t("prayer_feed_manage.community_fallback")}
                   </p>
                 </button>
               ))}
@@ -969,7 +985,7 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
             className="text-[11px] mt-3 transition-opacity hover:opacity-70"
             style={{ color: "rgba(143,175,150,0.6)", background: "transparent", border: "none", cursor: "pointer" }}
           >
-            Cancel
+            {t("prayer_feed_manage.cancel")}
           </button>
         </div>
       ) : (
@@ -980,7 +996,7 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
             className="text-xs font-semibold px-3 py-2 rounded-full transition-opacity hover:opacity-90"
             style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0" }}
           >
-            + Add intercession
+            + {t("prayer_feed_manage.add_intercession")}
           </button>
           <button
             type="button"
@@ -988,7 +1004,7 @@ function FeedIntercessionsSection({ slug }: { slug: string }) {
             className="text-xs font-semibold px-3 py-2 rounded-full transition-opacity hover:opacity-90"
             style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0" }}
           >
-            + Add from a community
+            + {t("prayer_feed_manage.add_from_community")}
           </button>
         </div>
       )}
@@ -1041,6 +1057,7 @@ function toLocalInput(iso: string): string {
 // Events section — mirrors FeedIntercessionsSection. Manager publishes
 // time-bound events (vigils, days of prayer, webinars) subscribers see.
 function FeedEventsSection({ slug }: { slug: string }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [composing, setComposing] = useState(false);
   const [hasLink, setHasLink] = useState(false);
@@ -1094,7 +1111,7 @@ function FeedEventsSection({ slug }: { slug: string }) {
     mutationFn: (payload: Record<string, unknown>) =>
       apiRequest("POST", `/api/prayer-feeds/${slug}/events`, payload),
     onSuccess: () => { invalidateEvents(); resetComposer(); },
-    onError: (e) => setError(e instanceof Error ? e.message : "Couldn't add the event."),
+    onError: (e) => setError(e instanceof Error ? e.message : t("prayer_feed_manage.err_add_event")),
   });
 
   // Edit an existing event's fields (used to clean up scraped drafts —
@@ -1104,7 +1121,7 @@ function FeedEventsSection({ slug }: { slug: string }) {
     mutationFn: (vars: { id: number; payload: Record<string, unknown> }) =>
       apiRequest("PATCH", `/api/prayer-feeds/${slug}/events/${vars.id}`, vars.payload),
     onSuccess: () => { invalidateEvents(); resetComposer(); },
-    onError: (e) => setError(e instanceof Error ? e.message : "Couldn't save the event."),
+    onError: (e) => setError(e instanceof Error ? e.message : t("prayer_feed_manage.err_save_event")),
   });
 
   // Promote a draft to live (visible to subscribers + the calendar).
@@ -1134,7 +1151,7 @@ function FeedEventsSection({ slug }: { slug: string }) {
 
   function save() {
     if (!draft.title.trim() || !draft.startsAt) {
-      setError("A title and a start time are required.");
+      setError(t("prayer_feed_manage.err_title_start_required"));
       return;
     }
     // datetime-local has no timezone — new Date() reads it as local,
@@ -1142,11 +1159,11 @@ function FeedEventsSection({ slug }: { slug: string }) {
     const startsIso = new Date(draft.startsAt).toISOString();
     const endsIso = draft.endsAt ? new Date(draft.endsAt).toISOString() : null;
     if (endsIso && new Date(endsIso) <= new Date(startsIso)) {
-      setError("End time must be after the start time.");
+      setError(t("prayer_feed_manage.err_end_after_start"));
       return;
     }
     if (hasLink && !draft.joinUrl.trim()) {
-      setError("Add a link, or turn off the video / link toggle.");
+      setError(t("prayer_feed_manage.err_link_or_toggle_off"));
       return;
     }
     const payload = {
@@ -1166,10 +1183,10 @@ function FeedEventsSection({ slug }: { slug: string }) {
   return (
     <div className="mb-8">
       <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.55)" }}>
-        Events
+        {t("prayer_feed_manage.events")}
       </p>
       <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
-        Vigils, days of prayer, webinars. Subscribers see upcoming events and get a heads-up push.
+        {t("prayer_feed_manage.events_desc")}
       </p>
 
       <div className="space-y-2 mb-3">
@@ -1192,10 +1209,10 @@ function FeedEventsSection({ slug }: { slug: string }) {
                     {ev.title}
                   </p>
                   {isDraft && (
-                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0" style={{ background: "rgba(193,154,58,0.18)", color: "#E8B872" }}>Draft</span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0" style={{ background: "rgba(193,154,58,0.18)", color: "#E8B872" }}>{t("prayer_feed_manage.event_draft_pill")}</span>
                   )}
                   {cancelled && (
-                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0" style={{ background: "rgba(143,175,150,0.15)", color: "rgba(200,212,192,0.7)" }}>Cancelled</span>
+                    <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0" style={{ background: "rgba(143,175,150,0.15)", color: "rgba(200,212,192,0.7)" }}>{t("prayer_feed_manage.event_cancelled_pill")}</span>
                   )}
                 </div>
                 <p className="text-[11px] mt-0.5 truncate" style={{ color: "rgba(143,175,150,0.7)" }}>
@@ -1211,7 +1228,7 @@ function FeedEventsSection({ slug }: { slug: string }) {
                     className="text-[11px] font-semibold px-2.5 py-1 rounded-full shrink-0 disabled:opacity-50"
                     style={{ background: "#2E6B40", color: "#F0EDE6" }}
                   >
-                    Publish
+                    {t("prayer_feed_manage.publish")}
                   </button>
                 )}
                 {!cancelled && (
@@ -1221,32 +1238,32 @@ function FeedEventsSection({ slug }: { slug: string }) {
                     className={pill}
                     style={{ background: "rgba(46,107,64,0.2)", border: "1px solid rgba(46,107,64,0.45)", color: "#C8D4C0" }}
                   >
-                    Edit
+                    {t("prayer_feed_manage.edit")}
                   </button>
                 )}
                 {cancelled || isDraft ? (
                   <button
                     type="button"
                     onClick={() => {
-                      if (typeof window !== "undefined" && !window.confirm(`Delete "${ev.title}"?`)) return;
+                      if (typeof window !== "undefined" && !window.confirm(t("prayer_feed_manage.confirm_delete_event", { title: ev.title }))) return;
                       deleteMutation.mutate(ev.id);
                     }}
                     className={pill}
                     style={{ background: "transparent", border: "1px solid rgba(193,154,58,0.4)", color: "#E8B872" }}
                   >
-                    Delete
+                    {t("prayer_feed_manage.delete")}
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={() => {
-                      if (typeof window !== "undefined" && !window.confirm(`Cancel "${ev.title}"?`)) return;
+                      if (typeof window !== "undefined" && !window.confirm(t("prayer_feed_manage.confirm_cancel_event", { title: ev.title }))) return;
                       cancelMutation.mutate(ev.id);
                     }}
                     className={pill}
                     style={{ background: "rgba(46,107,64,0.2)", border: "1px solid rgba(46,107,64,0.45)", color: "#C8D4C0" }}
                   >
-                    Cancel
+                    {t("prayer_feed_manage.cancel")}
                   </button>
                 )}
               </div>
@@ -1255,7 +1272,7 @@ function FeedEventsSection({ slug }: { slug: string }) {
         })}
         {events.length === 0 && !listQ.isLoading && (
           <p className="text-xs italic px-1" style={{ color: "rgba(143,175,150,0.5)" }}>
-            No events yet.
+            {t("prayer_feed_manage.no_events")}
           </p>
         )}
       </div>
@@ -1267,28 +1284,28 @@ function FeedEventsSection({ slug }: { slug: string }) {
         >
           <div>
             <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-              Title
+              {t("prayer_feed_manage.event_title_label")}
             </label>
             <input
               type="text"
               value={draft.title}
               onChange={(e) => setDraft({ ...draft, title: e.target.value })}
               maxLength={120}
-              placeholder="e.g. Climate Prayer Vigil"
+              placeholder={t("prayer_feed_manage.event_title_placeholder")}
               className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
               style={inputStyle}
             />
           </div>
           <div>
             <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-              Description (optional)
+              {t("prayer_feed_manage.event_description_label")}
             </label>
             <textarea
               value={draft.description}
               onChange={(e) => setDraft({ ...draft, description: e.target.value })}
               maxLength={2000}
               rows={3}
-              placeholder="What is it, and who's it for?"
+              placeholder={t("prayer_feed_manage.event_description_placeholder")}
               className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm resize-none"
               style={inputStyle}
             />
@@ -1296,7 +1313,7 @@ function FeedEventsSection({ slug }: { slug: string }) {
           <div className="flex gap-2">
             <div className="flex-1">
               <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-                Starts
+                {t("prayer_feed_manage.event_starts_label")}
               </label>
               <input
                 type="datetime-local"
@@ -1308,7 +1325,7 @@ function FeedEventsSection({ slug }: { slug: string }) {
             </div>
             <div className="flex-1">
               <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-                Ends (optional)
+                {t("prayer_feed_manage.event_ends_label")}
               </label>
               <input
                 type="datetime-local"
@@ -1321,14 +1338,14 @@ function FeedEventsSection({ slug }: { slug: string }) {
           </div>
           <div>
             <label className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(200,212,192,0.5)" }}>
-              Location (optional)
+              {t("prayer_feed_manage.event_location_label")}
             </label>
             <input
               type="text"
               value={draft.location}
               onChange={(e) => setDraft({ ...draft, location: e.target.value })}
               maxLength={200}
-              placeholder="e.g. St. Mary's, or 'Online'"
+              placeholder={t("prayer_feed_manage.event_location_placeholder")}
               className="w-full px-3 py-2 rounded-lg border outline-none bg-transparent text-sm"
               style={inputStyle}
             />
@@ -1343,9 +1360,9 @@ function FeedEventsSection({ slug }: { slug: string }) {
               border: `1px solid ${hasLink ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.25)"}`,
             }}
           >
-            <p className="text-xs font-semibold" style={{ color: "#F0EDE6" }}>📹 Video / link event</p>
+            <p className="text-xs font-semibold" style={{ color: "#F0EDE6" }}>📹 {t("prayer_feed_manage.video_link_event")}</p>
             <p className="text-[10px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)" }}>
-              Adds a "Join →" button to the event.
+              {t("prayer_feed_manage.video_link_hint")}
             </p>
           </button>
           {hasLink && (
@@ -1371,8 +1388,8 @@ function FeedEventsSection({ slug }: { slug: string }) {
               style={{ background: "#2E6B40", color: "#F0EDE6" }}
             >
               {editingId != null
-                ? (updateMutation.isPending ? "Saving…" : "Save changes")
-                : (createMutation.isPending ? "Publishing…" : "Publish event")}
+                ? (updateMutation.isPending ? t("prayer_feed_manage.saving") : t("prayer_feed_manage.save_changes"))
+                : (createMutation.isPending ? t("prayer_feed_manage.publishing") : t("prayer_feed_manage.publish_event"))}
             </button>
             <button
               type="button"
@@ -1380,7 +1397,7 @@ function FeedEventsSection({ slug }: { slug: string }) {
               className="text-sm font-medium rounded-full px-4 py-2"
               style={{ background: "transparent", border: "1px solid rgba(46,107,64,0.4)", color: "#8FAF96" }}
             >
-              Cancel
+              {t("prayer_feed_manage.cancel")}
             </button>
           </div>
         </div>
@@ -1391,7 +1408,7 @@ function FeedEventsSection({ slug }: { slug: string }) {
           className="text-sm font-semibold rounded-full px-4 py-2 transition-opacity hover:opacity-90"
           style={{ background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.45)", color: "#C8D4C0" }}
         >
-          + Add an event
+          + {t("prayer_feed_manage.add_event")}
         </button>
       )}
     </div>
@@ -1407,6 +1424,7 @@ type BoundGroup = {
 type MyGroup = { id: number; slug: string; name: string; emoji: string | null; myRole: string };
 
 function FeedGroupsSection({ slug }: { slug: string }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [picking, setPicking] = useState(false);
 
@@ -1446,15 +1464,15 @@ function FeedGroupsSection({ slug }: { slug: string }) {
   return (
     <div className="mt-10 pt-6" style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}>
       <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.55)" }}>
-        Communities
+        {t("prayer_feed_manage.communities")}
       </p>
       <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.7)" }}>
-        Bound communities have every member auto-subscribed. Removing a community here doesn't unsubscribe anyone — it just stops new joiners from being auto-added.
+        {t("prayer_feed_manage.communities_desc")}
       </p>
 
       {bound.length === 0 && (
         <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.55)" }}>
-          No communities bound yet.
+          {t("prayer_feed_manage.no_communities_bound")}
         </p>
       )}
 
@@ -1466,12 +1484,12 @@ function FeedGroupsSection({ slug }: { slug: string }) {
             style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
           >
             <span className="text-sm" style={{ color: "#F0EDE6" }}>
-              {g.groupEmoji ?? "⛪"} {g.groupName ?? "(unknown)"}
+              {g.groupEmoji ?? "⛪"} {g.groupName ?? t("prayer_feed_manage.group_unknown")}
             </span>
             <button
               type="button"
               onClick={() => {
-                if (confirm(`Remove ${g.groupName ?? "this community"} from the feed?`)) {
+                if (confirm(t("prayer_feed_manage.confirm_remove_community", { name: g.groupName ?? t("prayer_feed_manage.this_community") }))) {
                   removeMutation.mutate(g.groupId);
                 }
               }}
@@ -1479,7 +1497,7 @@ function FeedGroupsSection({ slug }: { slug: string }) {
               className="text-[11px] font-semibold transition-opacity hover:opacity-70"
               style={{ color: "rgba(232,176,176,0.9)", background: "transparent", border: "none", cursor: "pointer" }}
             >
-              Remove
+              {t("prayer_feed_manage.remove")}
             </button>
           </div>
         ))}
@@ -1493,7 +1511,7 @@ function FeedGroupsSection({ slug }: { slug: string }) {
           className="text-xs font-semibold px-3 py-2 rounded-full transition-opacity hover:opacity-90 disabled:opacity-40"
           style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#A8C5A0" }}
         >
-          + Add a community
+          + {t("prayer_feed_manage.add_community")}
         </button>
       ) : (
         <div
@@ -1502,7 +1520,7 @@ function FeedGroupsSection({ slug }: { slug: string }) {
         >
           {availableGroups.length === 0 ? (
             <p className="text-xs" style={{ color: "rgba(143,175,150,0.7)" }}>
-              No more communities to add. (Only communities where you're an admin can be bound.)
+              {t("prayer_feed_manage.no_more_communities")}
             </p>
           ) : (
             <div className="flex flex-col gap-2">
@@ -1526,7 +1544,7 @@ function FeedGroupsSection({ slug }: { slug: string }) {
             className="text-[11px] mt-3 transition-opacity hover:opacity-70"
             style={{ color: "rgba(143,175,150,0.6)", background: "transparent", border: "none", cursor: "pointer" }}
           >
-            Cancel
+            {t("prayer_feed_manage.cancel")}
           </button>
         </div>
       )}
