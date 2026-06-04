@@ -2,10 +2,13 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { Sprout } from "lucide-react";
 import clsx from "clsx";
+
+type TFunc = ReturnType<typeof useTranslation>["t"];
 // MorningPrayer slideshow imports removed — BCP practices use page reference approach
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -17,27 +20,31 @@ const RRULE_DAY_MAP: Record<string, number> = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 
 
 type MomentMember = { name: string; userToken: string; prayed: boolean; avatarUrl?: string | null };
 
-const TIME_OF_DAY_LABELS_POST: Record<string, string> = {
-  "early-morning": "early morning", morning: "morning", midday: "midday",
-  afternoon: "afternoon", "late-afternoon": "late afternoon", evening: "evening", night: "night",
+// Maps a time-of-day enum value to its i18n key suffix (under moment_post.tod.*).
+const TIME_OF_DAY_KEYS: Record<string, string> = {
+  "early-morning": "early_morning", morning: "morning", midday: "midday",
+  afternoon: "afternoon", "late-afternoon": "late_afternoon", evening: "evening", night: "night",
 };
 const DAY_DOW_LC: Record<string, number> = {
   sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
 };
-const DAY_NAMES_FULL: Record<string, string> = {
-  sunday: "Sunday", monday: "Monday", tuesday: "Tuesday",
-  wednesday: "Wednesday", thursday: "Thursday", friday: "Friday", saturday: "Saturday",
+// Maps a lowercase day name to its i18n key suffix (under moment_post.day.*).
+const DAY_NAME_KEYS: Record<string, string> = {
+  sunday: "sunday", monday: "monday", tuesday: "tuesday",
+  wednesday: "wednesday", thursday: "thursday", friday: "friday", saturday: "saturday",
 };
 
 function computeNextWindowLabel(
+  t: TFunc,
   frequency: string,
   dayOfWeek: string | null,
   practiceDays: string | null,
   timeOfDay: string | null,
 ): string {
-  const tod = timeOfDay ? TIME_OF_DAY_LABELS_POST[timeOfDay] ?? timeOfDay : null;
+  const todKey = timeOfDay ? TIME_OF_DAY_KEYS[timeOfDay] : null;
+  const tod = todKey ? t(`moment_post.tod.${todKey}`) : (timeOfDay || null);
   const todStr = tod ? ` ${tod}` : "";
-  if (frequency === "daily") return `Come back tomorrow${todStr}`;
+  if (frequency === "daily") return t("moment_post.come_back_tomorrow", { tod: todStr });
   let rawDays: string[] = [];
   try { rawDays = practiceDays ? JSON.parse(practiceDays) as string[] : []; } catch { /* ignore */ }
   if (!rawDays.length && dayOfWeek) rawDays = [dayOfWeek];
@@ -46,12 +53,13 @@ function computeNextWindowLabel(
     const checkDow = (today + i) % 7;
     const isMatch = rawDays.some(d => DAY_DOW_LC[d.toLowerCase()] === checkDow);
     if (isMatch) {
-      if (i === 1) return `Come back tomorrow${todStr}`;
+      if (i === 1) return t("moment_post.come_back_tomorrow", { tod: todStr });
       const name = Object.keys(DAY_DOW_LC).find(k => DAY_DOW_LC[k] === checkDow);
-      return `Come back ${name ? DAY_NAMES_FULL[name] : "next week"}${todStr}`;
+      const dayLabel = name ? t(`moment_post.day.${DAY_NAME_KEYS[name]}`) : t("moment_post.come_back_next_week_day");
+      return t("moment_post.come_back_day", { day: dayLabel, tod: todStr });
     }
   }
-  return `Come back next time${todStr}`;
+  return t("moment_post.come_back_next_time", { tod: todStr });
 }
 
 type MomentData = {
@@ -109,6 +117,7 @@ function BcpPracticeView({
   actualTodayCount: number; actualMemberCount: number;
   postMutation: any; onBack: () => void;
 }) {
+  const { t } = useTranslation();
   const bcpPage = isMorning ? "75" : "115";
   const bcpUrl = isMorning
     ? "https://www.bcponline.org/DailyOffice/mp2.html"
@@ -119,42 +128,42 @@ function BcpPracticeView({
       <div className="max-w-md mx-auto px-5 pt-8">
         {/* Back */}
         <button onClick={onBack} className="text-sm mb-6 inline-flex items-center gap-1 transition-colors" style={{ color: `${accentColor}99` }}>
-          ← Back
+          ← {t("moment_post.back")}
         </button>
 
         {/* Header */}
         <div className="text-center mb-8">
           <div className="text-4xl mb-3">{isMorning ? "🌅" : "🌙"}</div>
           <h1 className="text-2xl font-bold text-[#E8E4D8]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{officeName}</h1>
-          <p className="text-[#E8E4D8]/40 text-sm mt-1" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>Rite II</p>
+          <p className="text-[#E8E4D8]/40 text-sm mt-1" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{t("moment_post.rite_two")}</p>
           {intention && <p className="text-[#E8E4D8]/50 text-sm mt-2 font-serif italic">{intention}</p>}
         </div>
 
         {/* Presence */}
         <div className="flex items-center justify-center gap-3 mb-8">
           <PresenceDots count={actualTodayCount} total={actualMemberCount} />
-          <span className="text-sm text-[#E8E4D8]/60">{actualTodayCount} of {actualMemberCount} prayed today</span>
+          <span className="text-sm text-[#E8E4D8]/60">{t("moment_post.bcp_prayed_today_count", { count: actualTodayCount, total: actualMemberCount })}</span>
         </div>
 
         {/* BCP page reference */}
         <div className="rounded-2xl border border-[#E8E4D8]/15 p-6 mb-5 text-center"
           style={{ background: "rgba(232,228,216,0.06)" }}>
           <p className="text-[#E8E4D8]/40 text-xs uppercase tracking-widest mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            Open your Book of Common Prayer
+            {t("moment_post.open_bcp")}
           </p>
           <p className="text-[#E8E4D8] font-bold text-3xl mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            Page {bcpPage}
+            {t("moment_post.page_number", { page: bcpPage })}
           </p>
           <p className="text-[#E8E4D8]/50 text-sm mb-5" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-            {officeName} · Rite II
+            {t("moment_post.office_rite_two", { office: officeName })}
           </p>
           <div className="border-t border-[#E8E4D8]/10 pt-4">
-            <p className="text-[#E8E4D8]/40 text-xs mb-3">Or pray online:</p>
+            <p className="text-[#E8E4D8]/40 text-xs mb-3">{t("moment_post.or_pray_online")}</p>
             <button
               onClick={() => window.open(bcpUrl, "_blank", "noopener,noreferrer")}
               className="inline-block px-5 py-2.5 rounded-full text-sm font-semibold transition-all cursor-pointer"
               style={{ background: accentColor, color: bgColor }}>
-              Open {officeName} →
+              {t("moment_post.open_office", { office: officeName })} →
             </button>
           </div>
         </div>
@@ -163,14 +172,14 @@ function BcpPracticeView({
         {(alreadyPosted || posted) && (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
             className="text-center py-6">
-            <p className="text-lg font-bold text-[#E8E4D8] mb-1">🌿 You prayed today.</p>
+            <p className="text-lg font-bold text-[#E8E4D8] mb-1">🌿 {t("moment_post.you_prayed_today")}</p>
             <p className="text-[#E8E4D8]/50 text-sm">
-              {actualTodayCount} of {actualMemberCount} prayed {officeName} today.
+              {t("moment_post.bcp_prayed_office_today_count", { count: actualTodayCount, total: actualMemberCount, office: officeName })}
             </p>
             <p className="font-serif italic text-[#E8E4D8]/30 text-xs leading-relaxed mt-4">
               {isMorning
-                ? "\u201CLet my prayer be set forth in thy sight as incense.\u201D \u2014 Psalm 141"
-                : "\u201CO gracious Light, pure brightness of the everliving Father.\u201D \u2014 Phos Hilaron"}
+                ? t("moment_post.bcp_quote_morning")
+                : t("moment_post.bcp_quote_evening")}
             </p>
           </motion.div>
         )}
@@ -187,12 +196,12 @@ function BcpPracticeView({
               style={{ background: accentColor, color: bgColor }}
             >
               {postMutation.isPending
-                ? "Marking\u2026"
-                : `I prayed ${officeName} \uD83C\uDF3F`
+                ? t("moment_post.marking")
+                : <>{t("moment_post.i_prayed_office", { office: officeName })} {"\uD83C\uDF3F"}</>
               }
             </button>
             <p className="text-center text-xs text-[#E8E4D8]/30 mt-3 font-serif italic">
-              Tap after you finish praying
+              {t("moment_post.tap_after_praying")}
             </p>
           </div>
         </div>
@@ -344,6 +353,7 @@ function IntercessionPrayerPage({
   isPraying: boolean; postFailed: boolean; nextWindowLabel: string;
   onComplete: (reflection: string) => void; onBack: () => void;
 }) {
+  const { t } = useTranslation();
   const [reflection, setReflection] = useState(myReflection ?? "");
   const [showReflection, setShowReflection] = useState(false);
 
@@ -441,8 +451,8 @@ function IntercessionPrayerPage({
     >
       <div className="max-w-xs w-full text-center">
         <div className="text-7xl mb-5">🙏🏽</div>
-        <h1 className="text-3xl font-bold text-[#2C1A0E] mb-2" style={{ fontFamily: "Space Grotesk, sans-serif" }}>Amen.</h1>
-        <p className="text-sm text-[#6b5c4a] mb-6">{todayPostCount} of {memberCount} have prayed together today.</p>
+        <h1 className="text-3xl font-bold text-[#2C1A0E] mb-2" style={{ fontFamily: "Space Grotesk, sans-serif" }}>{t("moment_post.amen_period")}</h1>
+        <p className="text-sm text-[#6b5c4a] mb-6">{t("moment_post.prayed_together_today_count", { count: todayPostCount, total: memberCount })}</p>
         <div className="mb-8">
           <NamedPresenceWithBloom members={members} myToken={myToken} justBloomed={justBloomed} />
         </div>
@@ -450,16 +460,16 @@ function IntercessionPrayerPage({
           <div className="mb-6">
             {!showReflection ? (
               <button onClick={() => setShowReflection(true)} className="text-sm text-[#5C7A5F] underline-offset-2 hover:underline">
-                Add a reflection?
+                {t("moment_post.add_a_reflection")}
               </button>
             ) : (
               <div className="text-left">
                 <p className="font-serif italic text-[#5C7A5F] text-sm mb-2">"{reflectionPrompt}"</p>
                 <textarea value={reflection} onChange={e => setReflection(e.target.value.slice(0, 280))} rows={3}
                   className="w-full px-4 py-3 rounded-2xl border border-[#c9b99a]/40 focus:border-[#5C7A5F] focus:outline-none bg-white resize-none text-sm"
-                  placeholder="What is on your heart today?" autoFocus />
+                  placeholder={t("moment_post.on_your_heart_placeholder")} autoFocus />
                 <button onClick={() => onComplete(reflection)} className="mt-2 w-full py-3 rounded-xl bg-[#5C7A5F] text-white text-sm font-semibold">
-                  Save reflection
+                  {t("moment_post.save_reflection")}
                 </button>
               </div>
             )}
@@ -472,7 +482,7 @@ function IntercessionPrayerPage({
           </div>
         )}
         <button onClick={onBack} className="w-full py-4 rounded-2xl bg-[#2C1A0E] text-[#F5EDD8] text-base font-semibold hover:opacity-90 transition-opacity" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
-          Continue →
+          {t("moment_post.continue")} →
         </button>
       </div>
     </motion.div>
@@ -502,7 +512,7 @@ function IntercessionPrayerPage({
             className="text-[10px] uppercase font-semibold mb-3"
             style={{ color: "rgba(143,175,150,0.45)", letterSpacing: "0.18em" }}
           >
-            Community Intercession
+            {t("moment_post.community_intercession")}
           </motion.p>
           <motion.h1
             variants={headerItem}
@@ -550,7 +560,7 @@ function IntercessionPrayerPage({
                   className="text-[9px] uppercase mt-3"
                   style={{ color: "rgba(143,175,150,0.3)", letterSpacing: "0.14em" }}
                 >
-                  From the Book of Common Prayer
+                  {t("moment_post.from_bcp")}
                 </p>
               )}
             </motion.div>
@@ -579,7 +589,7 @@ function IntercessionPrayerPage({
           /* Already prayed today — full prayer always readable, Amen button in fixed bar below */
           <div className="text-center py-6">
             <button onClick={onBack} className="text-sm transition-colors" style={{ color: "rgba(200,230,210,0.5)" }}>
-              ← Back to practice
+              ← {t("moment_post.back_to_practice")}
             </button>
           </div>
         ) : canPray ? (
@@ -589,7 +599,7 @@ function IntercessionPrayerPage({
               animate={{ opacity: 1, scale: 1 }}
               className="text-center py-4"
             >
-              <p className="text-4xl font-bold" style={{ color: "#F0EDE6" }}>🙏🏽 Amen</p>
+              <p className="text-4xl font-bold" style={{ color: "#F0EDE6" }}>🙏🏽 {t("moment_post.amen")}</p>
             </motion.div>
           ) : (
             <>
@@ -598,12 +608,12 @@ function IntercessionPrayerPage({
                 <textarea
                   value={reflection}
                   onChange={e => setReflection(e.target.value.slice(0, 280))}
-                  placeholder="What is on your heart today?"
+                  placeholder={t("moment_post.on_your_heart_placeholder")}
                   rows={3}
                   className="w-full px-4 py-4 rounded-2xl outline-none resize-none text-base leading-relaxed"
                   style={{ backgroundColor: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)", color: "#F0EDE6" }}
                 />
-                <p className="text-xs mt-1.5 italic text-center" style={{ color: "rgba(200,230,210,0.3)" }}>optional</p>
+                <p className="text-xs mt-1.5 italic text-center" style={{ color: "rgba(200,230,210,0.3)" }}>{t("moment_post.optional")}</p>
               </div>
             </>
           )
@@ -611,7 +621,7 @@ function IntercessionPrayerPage({
           /* Window closed — prayer always readable, back link */
           <div className="text-center py-6">
             <button onClick={onBack} className="text-sm transition-colors" style={{ color: "rgba(200,230,210,0.5)" }}>
-              ← Back to practice
+              ← {t("moment_post.back_to_practice")}
             </button>
           </div>
         )}
@@ -623,7 +633,7 @@ function IntercessionPrayerPage({
           <div className="max-w-md mx-auto py-4">
             {postFailed && (
               <p className="text-center text-sm text-red-400 mb-2">
-                Couldn't save — check your connection and try again.
+                {t("moment_post.couldnt_save_connection")}
               </p>
             )}
             {alreadyPosted ? (
@@ -633,10 +643,10 @@ function IntercessionPrayerPage({
                   className="w-full py-5 rounded-2xl text-lg font-bold text-center hover:opacity-90 transition-opacity"
                   style={{ fontFamily: "Space Grotesk, sans-serif", color: "#1C3527", background: "#F0EDE6" }}
                 >
-                  Back
+                  {t("moment_post.back")}
                 </button>
                 <p className="text-center text-xs mt-3 font-serif italic" style={{ color: "rgba(200,230,210,0.35)" }}>
-                  You prayed this today.
+                  {t("moment_post.you_prayed_this_today")}
                 </p>
               </>
             ) : canPray ? (
@@ -649,10 +659,10 @@ function IntercessionPrayerPage({
                   className="w-full py-5 rounded-2xl text-lg font-bold hover:opacity-90 disabled:opacity-40"
                   style={{ fontFamily: "Space Grotesk, sans-serif", color: "#1C3527" }}
                 >
-                  {isPraying ? "Marking…" : postFailed ? "Try again 🙏🏽" : "Amen 🙏🏽"}
+                  {isPraying ? t("moment_post.marking") : postFailed ? <>{t("moment_post.try_again")} {"🙏🏽"}</> : <>{t("moment_post.amen")} {"🙏🏽"}</>}
                 </motion.button>
                 <p className="text-center text-xs mt-3 font-serif italic" style={{ color: "rgba(200,230,210,0.35)" }}>
-                  Tapping Amen marks that you have prayed this together.
+                  {t("moment_post.tapping_amen_marks")}
                 </p>
               </>
             ) : null}
@@ -671,6 +681,7 @@ function IntercessionPrayerPage({
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function MomentPostPage() {
+  const { t } = useTranslation();
   const { momentToken, userToken } = useParams<{ momentToken: string; userToken: string }>();
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
@@ -782,8 +793,8 @@ export default function MomentPostPage() {
   }
 
   if (!user) {
-    const practiceName = data?.moment?.name ?? "a practice";
-    const inviter = data?.inviterName ?? "Someone";
+    const practiceName = data?.moment?.name ?? t("moment_post.a_practice");
+    const inviter = data?.inviterName ?? t("moment_post.someone");
     const memberCount = data?.memberCount ?? 0;
     const currentPath = `/moment/${momentToken}/${userToken}`;
     return (
@@ -792,25 +803,25 @@ export default function MomentPostPage() {
           <div className="w-14 h-14 rounded-2xl bg-[#5C7A5F]/10 flex items-center justify-center text-[#5C7A5F] mx-auto mb-5">
             <Sprout size={28} strokeWidth={1.5} />
           </div>
-          <p className="font-serif text-xl font-semibold text-[#2C1A0E] mb-2">You've been invited</p>
+          <p className="font-serif text-xl font-semibold text-[#2C1A0E] mb-2">{t("moment_post.youve_been_invited")}</p>
           <p className="text-sm text-[#6b5c4a] leading-relaxed mb-1">
-            {inviter} invited you to
+            {t("moment_post.invited_you_to", { inviter })}
           </p>
           <p className="font-serif text-lg font-semibold text-[#2C1A0E] mb-3">{practiceName}</p>
           {memberCount > 1 && (
-            <p className="text-xs text-[#6b5c4a]/70 mb-6">{memberCount} people practicing together</p>
+            <p className="text-xs text-[#6b5c4a]/70 mb-6">{t("moment_post.people_practicing_together", { count: memberCount })}</p>
           )}
           <a
             href={`/?redirect=${encodeURIComponent(currentPath)}`}
             className="inline-flex items-center justify-center w-full px-6 py-3.5 rounded-xl bg-[#5C7A5F] text-white font-medium text-sm transition-opacity hover:opacity-90 mb-3"
           >
-            Create account to continue
+            {t("moment_post.create_account_to_continue")}
           </a>
           <a
             href={`/?redirect=${encodeURIComponent(currentPath)}`}
             className="text-sm text-[#6b5c4a] hover:text-[#2C1A0E] transition-colors"
           >
-            Already have an account? Sign in
+            {t("moment_post.already_have_account")}
           </a>
         </div>
       </div>
@@ -822,13 +833,13 @@ export default function MomentPostPage() {
       <div className="min-h-screen bg-[#F5EDD8] flex items-center justify-center px-6">
         <div className="text-center max-w-xs">
           <p className="text-5xl mb-5">🌿</p>
-          <p className="font-semibold text-[#2C1A0E] text-lg mb-3">This link doesn't look right.</p>
+          <p className="font-semibold text-[#2C1A0E] text-lg mb-3">{t("moment_post.link_not_right")}</p>
           <p className="text-sm text-[#6b5c4a] leading-relaxed">
-            Your personal link is in your calendar invite —<br />
-            look for the Eleanor event and tap the link inside.
+            {t("moment_post.personal_link_line1")}<br />
+            {t("moment_post.personal_link_line2")}
           </p>
           <p className="text-sm text-[#6b5c4a] mt-3">
-            Or ask the practice organizer to resend your invite.
+            {t("moment_post.ask_organizer_resend")}
           </p>
         </div>
       </div>
@@ -839,37 +850,51 @@ export default function MomentPostPage() {
   if (showWelcome) {
     const m = data.moment;
     // Build a human-readable schedule label
-    const TOD: Record<string, string> = {
-      "early-morning": "early morning", morning: "morning", midday: "midday",
-      afternoon: "afternoon", "late-afternoon": "late afternoon", evening: "evening", night: "night",
+    const TOD_KEY: Record<string, string> = {
+      "early-morning": "early_morning", morning: "morning", midday: "midday",
+      afternoon: "afternoon", "late-afternoon": "late_afternoon", evening: "evening", night: "night",
     };
-    const DAY_FULL: Record<string, string> = {
-      SU: "Sunday", MO: "Monday", TU: "Tuesday", WE: "Wednesday",
-      TH: "Thursday", FR: "Friday", SA: "Saturday",
-      sunday: "Sunday", monday: "Monday", tuesday: "Tuesday", wednesday: "Wednesday",
-      thursday: "Thursday", friday: "Friday", saturday: "Saturday",
+    const DAY_FULL_KEY: Record<string, string> = {
+      SU: "sunday", MO: "monday", TU: "tuesday", WE: "wednesday",
+      TH: "thursday", FR: "friday", SA: "saturday",
+      sunday: "sunday", monday: "monday", tuesday: "tuesday", wednesday: "wednesday",
+      thursday: "thursday", friday: "friday", saturday: "saturday",
     };
-    const tod = m.timeOfDay ? (TOD[m.timeOfDay] ?? m.timeOfDay) : "";
+    const todKey = m.timeOfDay ? TOD_KEY[m.timeOfDay] : undefined;
+    const tod = todKey ? t(`moment_post.tod.${todKey}`) : (m.timeOfDay || "");
     let schedLine = "";
     if (m.frequency === "daily") {
-      schedLine = `Every day${tod ? ` · ${tod}` : ""}`;
+      schedLine = tod ? t("moment_post.sched_every_day_tod", { tod }) : t("moment_post.sched_every_day");
     } else {
       let days: string[] = [];
       try { if (m.practiceDays) days = JSON.parse(m.practiceDays) as string[]; } catch { /**/ }
       if (!days.length && m.dayOfWeek) days = [m.dayOfWeek];
-      const dayStr = days.map(d => DAY_FULL[d] ?? d).join(", ");
-      schedLine = dayStr ? `${dayStr}${tod ? ` · ${tod}` : ""}` : `Weekly${tod ? ` · ${tod}` : ""}`;
+      const dayStr = days.map(d => DAY_FULL_KEY[d] ? t(`moment_post.day.${DAY_FULL_KEY[d]}`) : d).join(", ");
+      if (dayStr) {
+        schedLine = tod ? t("moment_post.sched_days_tod", { days: dayStr, tod }) : dayStr;
+      } else {
+        schedLine = tod ? t("moment_post.sched_weekly_tod", { tod }) : t("moment_post.sched_weekly");
+      }
     }
 
-    // Template-specific badge
-    const BADGE: Record<string, string> = {
-      "morning-prayer": "🌅 Morning Prayer",
-      "evening-prayer": "🌙 Evening Prayer",
-      "intercession": "🙏🏽 Intercession Prayer",
-      "contemplative": "🕯️ Contemplative Sitting",
-      "fasting": "🌿 Fasting Practice",
+    // Template-specific badge (emoji kept outside the translated label)
+    const BADGE_KEY: Record<string, string> = {
+      "morning-prayer": "morning_prayer",
+      "evening-prayer": "evening_prayer",
+      "intercession": "intercession",
+      "contemplative": "contemplative",
+      "fasting": "fasting",
     };
-    const badgeLabel = BADGE[m.templateType ?? ""] ?? "🌿 Practice";
+    const BADGE_EMOJI: Record<string, string> = {
+      "morning-prayer": "🌅",
+      "evening-prayer": "🌙",
+      "intercession": "🙏🏽",
+      "contemplative": "🕯️",
+      "fasting": "🌿",
+    };
+    const badgeKey = BADGE_KEY[m.templateType ?? ""];
+    const badgeEmoji = BADGE_EMOJI[m.templateType ?? ""] ?? "🌿";
+    const badgeLabel = `${badgeEmoji} ${badgeKey ? t(`moment_post.badge.${badgeKey}`) : t("moment_post.badge.practice")}`;
     const isFastingWelcome = m.templateType === "fasting";
 
     return (
@@ -908,7 +933,7 @@ export default function MomentPostPage() {
 
             {/* Invited by */}
             <p className="text-center text-muted-foreground text-sm mb-5">
-              {data.inviterName} invited you
+              {t("moment_post.inviter_invited_you", { inviter: data.inviterName })}
             </p>
 
             {/* Intention */}
@@ -925,7 +950,7 @@ export default function MomentPostPage() {
               <div className="bg-[#F0F8F0] border border-primary/20 rounded-xl px-4 py-3 mb-5 flex items-center gap-3">
                 <span className="text-xl">🌿</span>
                 <div>
-                  <p className="text-xs font-semibold text-primary/70 uppercase tracking-wider mb-0.5">Fasting from</p>
+                  <p className="text-xs font-semibold text-primary/70 uppercase tracking-wider mb-0.5">{t("moment_post.fasting_from")}</p>
                   <p className="text-sm text-foreground/80">{m.fastingFrom}</p>
                 </div>
               </div>
@@ -935,14 +960,14 @@ export default function MomentPostPage() {
             {m.templateType === "contemplative" && m.contemplativeDurationMinutes && (
               <div className="bg-[#F5F0FF] border border-[#8B7CF6]/20 rounded-xl px-4 py-3 mb-5 flex items-center gap-3">
                 <span className="text-xl">🕯️</span>
-                <p className="text-sm text-[#5B4B9A]">{m.contemplativeDurationMinutes} minutes of contemplative prayer</p>
+                <p className="text-sm text-[#5B4B9A]">{t("moment_post.minutes_contemplative_prayer", { count: m.contemplativeDurationMinutes })}</p>
               </div>
             )}
 
             {/* Schedule + member count */}
             {!isFastingWelcome && (
               <p className="text-center text-sm text-muted-foreground mb-6">
-                {schedLine}{data.memberCount > 1 ? ` · ${data.memberCount} people` : ""}
+                {schedLine}{data.memberCount > 1 ? t("moment_post.sched_people_suffix", { count: data.memberCount }) : ""}
               </p>
             )}
 
@@ -973,10 +998,10 @@ export default function MomentPostPage() {
               className="w-full py-4 rounded-2xl bg-foreground text-background text-base font-medium shadow-[var(--shadow-warm-md)] hover:opacity-90 transition-opacity"
               style={{ fontFamily: "Space Grotesk, sans-serif" }}
             >
-              Open practice 🌿
+              {t("moment_post.open_practice")} 🌿
             </motion.button>
 
-            <p className="mt-3 text-center text-xs text-muted-foreground">No account needed.</p>
+            <p className="mt-3 text-center text-xs text-muted-foreground">{t("moment_post.no_account_needed")}</p>
           </motion.div>
         </main>
       </div>
@@ -1026,10 +1051,10 @@ export default function MomentPostPage() {
       <div className="min-h-screen flex items-center justify-center px-6" style={{ background: bgColor }}>
         <div className="text-center max-w-xs text-[#E8E4D8]">
           <div className="text-5xl mb-5">{isMorning ? "🌅" : "🌙"}</div>
-          <h1 className="text-2xl font-bold mb-2">{isMorning ? "Morning Prayer" : "Evening Prayer"}</h1>
-          <p className="text-[#E8E4D8]/60 text-sm mb-6">This practice rests today.</p>
+          <h1 className="text-2xl font-bold mb-2">{isMorning ? t("moment_post.morning_prayer") : t("moment_post.evening_prayer")}</h1>
+          <p className="text-[#E8E4D8]/60 text-sm mb-6">{t("moment_post.practice_rests_today")}</p>
           <p className="font-serif italic text-[#E8E4D8]/70 text-sm leading-relaxed">
-            {isMorning ? "Come back on your next practice morning." : "Come back on your next practice evening."}
+            {isMorning ? t("moment_post.come_back_next_morning") : t("moment_post.come_back_next_evening")}
           </p>
         </div>
       </div>
@@ -1050,7 +1075,7 @@ export default function MomentPostPage() {
           .map(m => m.name)
           .slice(0, 3)
           .join(", ");
-    const intercessionAttribution = attributionLabel ? `with ${attributionLabel}` : "";
+    const intercessionAttribution = attributionLabel ? t("moment_post.with_names", { names: attributionLabel }) : "";
     const detailUrl = `/moments/${moment.id}`;
     return (
       <div style={{ position: "relative" }}>
@@ -1066,7 +1091,7 @@ export default function MomentPostPage() {
         intention={moment.intention}
         attribution={intercessionAttribution}
         intercessionSource={moment.intercessionSource}
-        reflectionPrompt={moment.reflectionPrompt ?? "What is on your heart today?"}
+        reflectionPrompt={moment.reflectionPrompt ?? t("moment_post.on_your_heart_placeholder")}
         memberCount={actualMemberCount}
         todayPostCount={actualTodayCount}
         members={liveMembers}
@@ -1076,7 +1101,7 @@ export default function MomentPostPage() {
         myReflection={myPost?.reflectionText ?? null}
         isPraying={postMutation.isPending}
         postFailed={postMutation.isError}
-        nextWindowLabel={computeNextWindowLabel(moment.frequency, moment.dayOfWeek, moment.practiceDays, moment.timeOfDay)}
+        nextWindowLabel={computeNextWindowLabel(t, moment.frequency, moment.dayOfWeek, moment.practiceDays, moment.timeOfDay)}
         onComplete={handleIntercessionComplete}
         onBack={() => (posted && !fromPrayerList) ? fadeNavigate(detailUrl) : setLocation(detailUrl)}
       />
@@ -1105,17 +1130,17 @@ export default function MomentPostPage() {
   if (moment.templateType === "fasting") {
     const fastingConfirmed = posted || alreadyPosted;
     const isMeatFast = moment.fastingType === "meat";
-    const fastName = moment.name || (isMeatFast ? "Fast from meat" : "Fast");
+    const fastName = moment.name || (isMeatFast ? t("moment_post.fast_from_meat") : t("moment_post.fast"));
     const intentionLine = moment.fastingIntention || moment.intention || "";
     const todayStr = new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" });
     const currentHour = new Date().getHours();
     const isEvening = currentHour >= 17;
 
     const FAST_REFLECTIONS = [
-      "What we choose to abstain from reveals what we value.",
-      "A fast observed together is a fast that holds.",
-      "Restraint practiced together becomes a form of prayer.",
-      "To fast is to make room.",
+      t("moment_post.fast_reflection_1"),
+      t("moment_post.fast_reflection_2"),
+      t("moment_post.fast_reflection_3"),
+      t("moment_post.fast_reflection_4"),
     ];
     const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
     const todayReflection = FAST_REFLECTIONS[dayOfYear % FAST_REFLECTIONS.length];
@@ -1123,7 +1148,7 @@ export default function MomentPostPage() {
     // Member initials (members is from destructured data, not moment)
     const memberInitials = members.map((m) => ({
       initial: (m.name || "?").charAt(0).toUpperCase(),
-      name: m.name || "Someone",
+      name: m.name || t("moment_post.someone"),
       avatarUrl: m.avatarUrl,
     }));
 
@@ -1132,7 +1157,7 @@ export default function MomentPostPage() {
         <div className="flex-1 flex flex-col px-6 pt-8 pb-28 max-w-md mx-auto w-full">
           {/* Back */}
           <Link href={`/moments/${moment.id}`} className="inline-flex items-center gap-1 mb-8 text-xs transition-opacity hover:opacity-70" style={{ color: "#8FAF96" }}>
-            ← Back
+            ← {t("moment_post.back")}
           </Link>
 
           {/* Header */}
@@ -1181,7 +1206,9 @@ export default function MomentPostPage() {
                 ))}
               </div>
               <p className="text-xs" style={{ color: "rgba(143,175,150,0.6)" }}>
-                {actualTodayCount} of {actualMemberCount} {fastingConfirmed ? "fasting today" : "have begun their fast today"}
+                {fastingConfirmed
+                  ? t("moment_post.fasting_today_count", { count: actualTodayCount, total: actualMemberCount })
+                  : t("moment_post.begun_fast_today_count", { count: actualTodayCount, total: actualMemberCount })}
               </p>
             </div>
           )}
@@ -1189,20 +1216,20 @@ export default function MomentPostPage() {
           {fastingConfirmed ? (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex-1 flex flex-col">
               <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-                You are fasting today 🌿
+                {t("moment_post.you_are_fasting_today")} 🌿
               </p>
 
               {/* Evening gratitude prompt */}
               {isEvening && (
                 <div className="mb-6">
                   <p className="text-sm font-semibold mb-2" style={{ color: "#C8D4C0" }}>
-                    What nourished you today instead?
+                    {t("moment_post.what_nourished_you")}
                   </p>
                   <textarea
                     value={reflection}
                     onChange={e => setReflection(e.target.value)}
                     rows={2}
-                    placeholder="A simple meal. Good bread. Something I wouldn't have noticed otherwise."
+                    placeholder={t("moment_post.fast_gratitude_placeholder")}
                     className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
                     style={{
                       background: "rgba(200,212,192,0.06)",
@@ -1216,7 +1243,7 @@ export default function MomentPostPage() {
                       className="mt-2 px-4 py-2 rounded-xl text-xs font-semibold"
                       style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                     >
-                      Share
+                      {t("moment_post.share")}
                     </button>
                   )}
                 </div>
@@ -1226,13 +1253,13 @@ export default function MomentPostPage() {
               {isMeatFast && (
                 <div className="rounded-2xl p-5" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                   <p className="text-[10px] uppercase tracking-widest font-semibold mb-3" style={{ color: "rgba(200,212,192,0.5)" }}>
-                    Water saved today
+                    {t("moment_post.water_saved_today")}
                   </p>
                   <p className="text-3xl font-bold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                    {(actualTodayCount * 400).toLocaleString()} gallons
+                    {t("moment_post.gallons", { gallons: (actualTodayCount * 400).toLocaleString() })}
                   </p>
                   <p className="text-xs" style={{ color: "#8FAF96" }}>
-                    {actualTodayCount} {actualTodayCount === 1 ? "person" : "people"} fasting · 400 gallons each
+                    {t("moment_post.gallons_each_count", { count: actualTodayCount })}
                   </p>
                 </div>
               )}
@@ -1262,7 +1289,7 @@ export default function MomentPostPage() {
           <div className="fixed bottom-0 left-0 right-0 px-6 pb-[env(safe-area-inset-bottom)] z-50" style={{ background: "#091A10", borderTop: "1px solid rgba(46,107,64,0.15)" }}>
             <div className="max-w-md mx-auto py-4">
               {postMutation.isError && (
-                <p className="text-center text-sm mb-2" style={{ color: "#C17F24" }}>Couldn't save — tap to try again.</p>
+                <p className="text-center text-sm mb-2" style={{ color: "#C17F24" }}>{t("moment_post.couldnt_save_tap")}</p>
               )}
               <button
                 onClick={() => postMutation.mutate({ isCheckin: true, reflectionText: reflection.trim() || undefined })}
@@ -1270,7 +1297,7 @@ export default function MomentPostPage() {
                 className="w-full py-4 rounded-xl font-semibold text-base tracking-wide transition-all disabled:opacity-60"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                {postMutation.isPending ? "Logging…" : postMutation.isError ? "Try again" : "I am fasting today"}
+                {postMutation.isPending ? t("moment_post.logging") : postMutation.isError ? t("moment_post.try_again") : t("moment_post.i_am_fasting_today")}
               </button>
             </div>
           </div>
@@ -1282,7 +1309,7 @@ export default function MomentPostPage() {
   // ── BCP (Morning Prayer / Evening Prayer) posting page ─────────────────────
   if (isBcp) {
     const isMorning = moment.templateType === "morning-prayer";
-    const officeName = isMorning ? "Morning Prayer" : "Evening Prayer";
+    const officeName = isMorning ? t("moment_post.morning_prayer") : t("moment_post.evening_prayer");
     const bgColor = isMorning ? "#2C1810" : "#1A1C2E";
     const accentColor = isMorning ? "#C8975A" : "#7B9EBE";
 
@@ -1315,7 +1342,7 @@ export default function MomentPostPage() {
           href={`/moments/${moment.id}`}
           className="text-sm text-[#6b5c4a] hover:text-[#2C1A0E] inline-flex items-center gap-1 mb-6 transition-colors"
         >
-          ← Back
+          ← {t("moment_post.back")}
         </Link>
 
         {/* Header */}
@@ -1333,16 +1360,16 @@ export default function MomentPostPage() {
           <div className="flex items-center justify-between mb-5">
             {isSpiritual ? (
               <span className="text-sm font-medium text-[#5C7A5F] bg-[#5C7A5F]/10 border border-[#5C7A5F]/30 px-3 py-1.5 rounded-full">
-                Practice day 🌿
+                {t("moment_post.practice_day")} 🌿
               </span>
             ) : (
               <span className="text-sm font-medium text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">
-                {minutesRemaining} min remaining
+                {t("moment_post.min_remaining", { count: minutesRemaining })}
               </span>
             )}
             <div className="flex items-center gap-2">
               <PresenceDots count={actualTodayCount} total={actualMemberCount} />
-              <span className="text-xs text-[#6b5c4a]">{actualTodayCount} of {actualMemberCount}</span>
+              <span className="text-xs text-[#6b5c4a]">{t("moment_post.count_of_total", { count: actualTodayCount, total: actualMemberCount })}</span>
             </div>
           </div>
         )}
@@ -1355,7 +1382,7 @@ export default function MomentPostPage() {
         {/* Already posted — success */}
         {alreadyPosted && !posted && myPost && (
           <div className="bg-white rounded-2xl border border-[#c9b99a]/30 p-5 mb-6 shadow-sm">
-            <p className="text-sm font-semibold text-[#2C1A0E] mb-3">🌸 You practiced today.</p>
+            <p className="text-sm font-semibold text-[#2C1A0E] mb-3">🌸 {t("moment_post.you_practiced_today")}</p>
             {myPost.reflectionText && (
               <div className="bg-[#F5EDD8] rounded-xl p-3">
                 {moment.reflectionPrompt && <p className="text-xs text-[#6b5c4a] italic mb-1">{moment.reflectionPrompt}</p>}
@@ -1363,10 +1390,10 @@ export default function MomentPostPage() {
               </div>
             )}
             {myPost.isCheckin && !myPost.reflectionText && (
-              <p className="text-sm text-[#6b5c4a]">Presence marked. You were here.</p>
+              <p className="text-sm text-[#6b5c4a]">{t("moment_post.presence_marked")}</p>
             )}
             <p className="text-xs text-[#6b5c4a] mt-3">
-              {actualTodayCount} of {actualMemberCount} tended this together.
+              {t("moment_post.tended_together_count", { count: actualTodayCount, total: actualMemberCount })}
             </p>
           </div>
         )}
@@ -1376,15 +1403,15 @@ export default function MomentPostPage() {
           {posted && (
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center py-8">
               <motion.div animate={{ scale: [1, 1.15, 1] }} transition={{ duration: 0.6 }} className="text-6xl mb-4">🌿</motion.div>
-              <p className="text-xl font-semibold text-[#2C1A0E] mb-2">You practiced.</p>
+              <p className="text-xl font-semibold text-[#2C1A0E] mb-2">{t("moment_post.you_practiced")}</p>
               {(actualTodayCount ?? 0) >= 2 ? (
                 <p className="text-sm text-[#5C7A5F] font-medium">
-                  🌸 {actualTodayCount} of {actualMemberCount} tended this together.
+                  🌸 {t("moment_post.tended_together_count", { count: actualTodayCount, total: actualMemberCount })}
                 </p>
               ) : (
                 <p className="text-sm text-[#6b5c4a]">
-                  {actualTodayCount} of {actualMemberCount} have practiced.
-                  <br /><span className="text-xs italic opacity-70 mt-1 block">The practice blooms when two of you practice together.</span>
+                  {t("moment_post.have_practiced_count", { count: actualTodayCount, total: actualMemberCount })}
+                  <br /><span className="text-xs italic opacity-70 mt-1 block">{t("moment_post.blooms_when_two")}</span>
                 </p>
               )}
             </motion.div>
@@ -1404,7 +1431,7 @@ export default function MomentPostPage() {
                   </p>
                 )}
                 <textarea value={reflection} onChange={e => setReflection(e.target.value.slice(0, 280))}
-                  placeholder="Take a moment. Then share..."
+                  placeholder={t("moment_post.take_a_moment_placeholder")}
                   rows={4}
                   className="w-full px-4 py-4 rounded-2xl border border-[#c9b99a]/40 focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] outline-none bg-white resize-none text-base leading-relaxed"
                 />
@@ -1415,7 +1442,7 @@ export default function MomentPostPage() {
             {/* Just show up */}
             {moment.loggingType === "checkin" && (
               <div className="text-center py-6">
-                <p className="text-sm text-[#6b5c4a] italic mb-2">{actualTodayCount} of {actualMemberCount} here with you</p>
+                <p className="text-sm text-[#6b5c4a] italic mb-2">{t("moment_post.here_with_you_count", { count: actualTodayCount, total: actualMemberCount })}</p>
               </div>
             )}
           </div>
@@ -1427,12 +1454,12 @@ export default function MomentPostPage() {
         <div className="fixed bottom-0 left-0 right-0 bg-[#F5EDD8] border-t border-[#c9b99a]/30 px-4 pb-[env(safe-area-inset-bottom)] z-50">
           <div className="max-w-md mx-auto py-4">
             {postMutation.isError && (
-              <p className="text-center text-sm text-red-600 mb-2">Couldn't save — tap to try again.</p>
+              <p className="text-center text-sm text-red-600 mb-2">{t("moment_post.couldnt_save_tap")}</p>
             )}
             <button onClick={() => handleSubmit()}
               disabled={!canSubmit() || postMutation.isPending}
               className="w-full py-5 rounded-2xl bg-[#2C1A0E] text-[#F5EDD8] text-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-40">
-              {postMutation.isPending ? "Practicing..." : postMutation.isError ? "Try again 🌿" : "I practiced 🌿"}
+              {postMutation.isPending ? t("moment_post.practicing") : postMutation.isError ? <>{t("moment_post.try_again")} {"🌿"}</> : <>{t("moment_post.i_practiced")} {"🌿"}</>}
             </button>
           </div>
         </div>
@@ -1443,17 +1470,19 @@ export default function MomentPostPage() {
 
 // ─── Outside window content (inline for standard pages) ───────────────────────
 function OutsideWindowContent({ moment, minutesRemaining: _ }: { moment: MomentData["moment"]; minutesRemaining: number }) {
+  const { t } = useTranslation();
   return (
     <div className="text-center py-12">
       <p className="text-4xl mb-4">🌿</p>
-      <p className="font-semibold text-[#2C1A0E] text-lg mb-2">This practice is resting.</p>
-      <p className="text-sm text-[#6b5c4a]">{moment.name} opens again at the next practice time.</p>
+      <p className="font-semibold text-[#2C1A0E] text-lg mb-2">{t("moment_post.practice_resting")}</p>
+      <p className="text-sm text-[#6b5c4a]">{t("moment_post.opens_again_next_time", { name: moment.name })}</p>
     </div>
   );
 }
 
 // ─── Outside window screen (full screen for timer) ────────────────────────────
 function OutsideWindowScreen({ moment, minutesRemaining }: { moment: MomentData["moment"]; minutesRemaining: number }) {
+  const { t } = useTranslation();
   const hrs = Math.floor(minutesRemaining / 60);
   const mins = minutesRemaining % 60;
   const timeAway = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
@@ -1462,10 +1491,10 @@ function OutsideWindowScreen({ moment, minutesRemaining }: { moment: MomentData[
     <div className="min-h-screen bg-[#F5EDD8] flex items-center justify-center px-6">
       <div className="text-center max-w-xs">
         <p className="text-5xl mb-5">🌿</p>
-        <p className="font-semibold text-[#2C1A0E] text-xl mb-2">This practice is resting.</p>
-        <p className="text-sm text-[#6b5c4a] mb-2">{moment.name} opens at the next practice time.</p>
+        <p className="font-semibold text-[#2C1A0E] text-xl mb-2">{t("moment_post.practice_resting")}</p>
+        <p className="text-sm text-[#6b5c4a] mb-2">{t("moment_post.opens_next_time", { name: moment.name })}</p>
         {minutesRemaining > 0 && (
-          <p className="text-xs text-[#6b5c4a]/70">{timeAway} away</p>
+          <p className="text-xs text-[#6b5c4a]/70">{t("moment_post.time_away", { time: timeAway })}</p>
         )}
       </div>
     </div>
