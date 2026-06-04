@@ -3803,6 +3803,115 @@ export const en = {
     mock_gatherings_morning_time: "8:00 AM",
     mock_gatherings_chapel: "Chapel",
   },
+  // Features-tour deck (pages/features-deck.tsx).
+  features_deck: {
+    // Slide 1 — title
+    title_headline: "Three practices.",
+    title_sub: "The Daily Office. Intercession. Prayer requests.",
+    // Slide 2 — setup
+    setup_headline: "Three of the Church's oldest practices, held in common.",
+    setup_body_1: "None of them are new. They are the inheritance of a tradition that has always known how people form relationships with God and with each other.",
+    setup_body_2: "Phoebe is built to make them easy to return to, together.",
+    // Slide 3 — cards overview
+    overview_headline: "Each one plays a different role.",
+    overview_card_office_label: "The Daily Office",
+    overview_card_office_line_1: "The Church's daily prayer.",
+    overview_card_office_line_2: "Morning and Evening Prayer from the Book of Common Prayer — psalms, scripture, canticles, collects.",
+    overview_card_office_line_3: "Assembled for today. Nothing to look up.",
+    overview_card_intercession_label: "Intercession",
+    overview_card_intercession_line_1: "Bearing each other's burdens.",
+    overview_card_intercession_line_2: "A guided slideshow the community moves through.",
+    overview_card_intercession_line_3: "You see who else is praying with you at the same hour.",
+    overview_card_requests_label: "Prayer Requests",
+    overview_card_requests_line_1: "A shared garden.",
+    overview_card_requests_line_2: "People share what they're carrying — others respond, a word at a time.",
+    overview_card_requests_line_3: "The doorway into the life of the community.",
+    // Slide 4 — prayer requests intro
+    requests_intro_headline: "Prayer requests are the entry point.",
+    requests_intro_body_1: "Low friction. No scheduling required. No vulnerability asked for yet.",
+    requests_intro_body_2: "Just a place to say what you are carrying — and to be met by the quiet presence of the people around you.",
+    // Slide 5 — prayer requests preview
+    requests_preview_caption: "A garden of what the community is carrying.",
+    requests_preview_sub: "People share, and others respond a word at a time — 'peace', 'strength', 'with you'. Familiarity begins here, in the smallest gestures.",
+    // Slide 6 — progressive
+    requests_progressive_headline: "A word of prayer is more than a notification.",
+    requests_progressive_line_1: "A person names what they are carrying.",
+    requests_progressive_line_2: "Others see it. Others stop.",
+    requests_progressive_line_3: "A single word is offered in return.",
+    requests_progressive_line_4: "The request is marked: your community is holding this.",
+    requests_progressive_line_5: "And no one carries it alone.",
+    // Slide 7 — intercession intro
+    intercession_intro_headline: "Intercession is not a feed. It is a practice.",
+    intercession_intro_body_1: "Phoebe turns the community's intercessions into a guided slideshow — one intention at a time, held in silence, with a prayer from the Book of Common Prayer underneath.",
+    intercession_intro_body_2: "You move through it together, at the same hour, knowing who else is praying with you.",
+    // Slide 8 — intercession preview
+    intercession_preview_caption: "A slideshow you move through, together.",
+    intercession_preview_sub: "Each slide is one intention — a person, a situation, a parish in need. Below it, a prayer from the tradition. At the bottom, a count of who else is praying alongside you.",
+    // Slide 9 — intercession stacked
+    intercession_stacked_headline: "This is how Christians have always interceded.",
+    intercession_stacked_item_1: "On a rhythm.",
+    intercession_stacked_item_2: "At a shared hour.",
+    intercession_stacked_item_3: "With the same words.",
+    intercession_stacked_item_4: "Holding the same people in mind.",
+    intercession_stacked_tail: "Phoebe just makes it possible to keep doing it when the parish is scattered across a city — or a country.",
+    // Slide 10 — Daily Office intro
+    office_intro_headline: "The Daily Office is the Church's oldest rhythm of prayer.",
+    office_intro_body_1: "Morning and evening, the Church has always stopped to pray — the psalms, a reading, the canticles, the collects. Monastics kept it through the centuries; the Book of Common Prayer gave it to every Christian.",
+    office_intro_body_2: "Even prayed alone, it is never prayed alone — the same words, the same hours, the whole Church together.",
+    // Slide 11 — Daily Office preview
+    office_preview_caption: "Morning and Evening Prayer, ready to pray.",
+    office_preview_sub: "The full office for today — opening sentences, the Psalter, the lessons, the canticles, the prayers — assembled in the order the Church has prayed them for centuries. Nothing to look up.",
+    // Slide 12 — Daily Office stacked
+    office_stacked_headline: "Morning and evening. Full or short.",
+    office_stacked_item_1: "Morning Prayer — to begin the day in praise.",
+    office_stacked_item_2: "Evening Prayer — to give the day back.",
+    office_stacked_item_3: "Or a shorter devotion when the hour is brief.",
+    office_stacked_tail: "Pray it perfectly, or return to it after a long absence — the office holds either way. A daily reminder keeps the hour.",
+    // Slide 13 — closing
+    closing_above_1: "Prayer requests. Intercession. The Daily Office.",
+    closing_above_2: "Three rhythms the Church has always known —",
+    closing_above_3: "held in common, across the scattered life of a modern parish.",
+    closing_featured: "Not new. Recovered.",
+    // Preview slide shared eyebrow
+    preview_eyebrow: "A glimpse inside Phoebe",
+    // Prayer-requests mock
+    mock_requests_header: "Prayer Requests",
+    mock_requests_input_placeholder: "Share a prayer request...",
+    mock_requests_from_label: "From {{name}}",
+    mock_requests_from_1: "Margaret W.",
+    mock_requests_body_1: "For my mother, who begins treatment this week.",
+    mock_requests_from_2: "David R.",
+    mock_requests_body_2: "Discernment about the new role. Grateful for your prayers.",
+    mock_requests_from_3: "Anonymous",
+    mock_requests_body_3: "For peace in a difficult season.",
+    // Intercession mock
+    mock_intercession_eyebrow: "Your Intercession",
+    mock_intercession_intention: "Margaret's mother, as she begins treatment this week.",
+    mock_intercession_with: "with David, Anna, James",
+    mock_intercession_holding: "Your community is holding this.",
+    mock_intercession_prayer: "O Father of mercies and God of all comfort, look graciously upon this thy servant, that her weakness may be banished and her strength restored.",
+    mock_intercession_source: "From the Book of Common Prayer",
+    mock_intercession_amen: "Amen",
+    mock_intercession_progress: "{{current}} of {{total}}",
+    // Daily Office mock
+    mock_office_eyebrow: "Morning Prayer",
+    mock_office_title: "The Daily Office",
+    mock_office_reference: "Book of Common Prayer · p. {{page}}",
+    mock_office_section_opening: "Opening Sentence",
+    mock_office_section_invitatory: "The Invitatory",
+    mock_office_section_psalter: "The Psalter",
+    mock_office_section_lessons: "The Lessons",
+    mock_office_section_canticles: "The Canticles",
+    mock_office_section_prayers: "The Prayers",
+    mock_office_psalm_label: "Psalm {{number}} · Appointed for today",
+    mock_office_psalm_text: "O God, you are my God; eagerly I seek you; my soul thirsts for you, my flesh faints for you, as in a barren and dry land where there is no water.",
+    // Navigation / controls
+    nav_close: "Close",
+    nav_go_to_slide: "Go to slide {{n}}",
+    nav_back: "Back",
+    nav_done: "Done",
+    nav_next: "Next",
+  },
   // Reset password page (pages/reset-password.tsx).
   reset_password: {
     invalid_link: "This reset link is invalid or has expired.",

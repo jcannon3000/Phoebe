@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, MessageCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 
 // ─── Palette (mirrors church-deck.tsx) ───────────────────────────────────────
 const C = {
@@ -43,51 +45,52 @@ type Slide =
     }
   | { kind: "closing"; above: string[]; featured: string };
 
-const SLIDES: Slide[] = [
+function buildSlides(t: TFunction): Slide[] {
+  return [
   // 1 — Title
   {
     kind: "title",
-    headline: "Three practices.",
-    sub: "The Daily Office. Intercession. Prayer requests.",
+    headline: t("features_deck.title_headline"),
+    sub: t("features_deck.title_sub"),
   },
 
   // 2 — Setup
   {
     kind: "statement",
-    headline: "Three of the Church's oldest practices, held in common.",
+    headline: t("features_deck.setup_headline"),
     body: [
-      "None of them are new. They are the inheritance of a tradition that has always known how people form relationships with God and with each other.",
-      "Phoebe is built to make them easy to return to, together.",
+      t("features_deck.setup_body_1"),
+      t("features_deck.setup_body_2"),
     ],
   },
 
   // 3 — Cards overview
   {
     kind: "cards",
-    headline: "Each one plays a different role.",
+    headline: t("features_deck.overview_headline"),
     cards: [
       {
-        label: "The Daily Office",
+        label: t("features_deck.overview_card_office_label"),
         lines: [
-          "The Church's daily prayer.",
-          "Morning and Evening Prayer from the Book of Common Prayer — psalms, scripture, canticles, collects.",
-          "Assembled for today. Nothing to look up.",
+          t("features_deck.overview_card_office_line_1"),
+          t("features_deck.overview_card_office_line_2"),
+          t("features_deck.overview_card_office_line_3"),
         ],
       },
       {
-        label: "Intercession",
+        label: t("features_deck.overview_card_intercession_label"),
         lines: [
-          "Bearing each other's burdens.",
-          "A guided slideshow the community moves through.",
-          "You see who else is praying with you at the same hour.",
+          t("features_deck.overview_card_intercession_line_1"),
+          t("features_deck.overview_card_intercession_line_2"),
+          t("features_deck.overview_card_intercession_line_3"),
         ],
       },
       {
-        label: "Prayer Requests",
+        label: t("features_deck.overview_card_requests_label"),
         lines: [
-          "A shared garden.",
-          "People share what they're carrying — others respond, a word at a time.",
-          "The doorway into the life of the community.",
+          t("features_deck.overview_card_requests_line_1"),
+          t("features_deck.overview_card_requests_line_2"),
+          t("features_deck.overview_card_requests_line_3"),
         ],
       },
     ],
@@ -97,10 +100,10 @@ const SLIDES: Slide[] = [
   // 4 — Intro to prayer requests
   {
     kind: "statement",
-    headline: "Prayer requests are the entry point.",
+    headline: t("features_deck.requests_intro_headline"),
     body: [
-      "Low friction. No scheduling required. No vulnerability asked for yet.",
-      "Just a place to say what you are carrying — and to be met by the quiet presence of the people around you.",
+      t("features_deck.requests_intro_body_1"),
+      t("features_deck.requests_intro_body_2"),
     ],
   },
 
@@ -108,20 +111,20 @@ const SLIDES: Slide[] = [
   {
     kind: "preview",
     variant: "prayer-requests",
-    caption: "A garden of what the community is carrying.",
-    sub: "People share, and others respond a word at a time — 'peace', 'strength', 'with you'. Familiarity begins here, in the smallest gestures.",
+    caption: t("features_deck.requests_preview_caption"),
+    sub: t("features_deck.requests_preview_sub"),
   },
 
   // 6 — Progressive: what happens when you respond
   {
     kind: "progressive",
-    headline: "A word of prayer is more than a notification.",
+    headline: t("features_deck.requests_progressive_headline"),
     lines: [
-      { text: "A person names what they are carrying.", color: C.dim2 },
-      { text: "Others see it. Others stop.", color: C.dim3 },
-      { text: "A single word is offered in return.", color: C.dim4 },
-      { text: "The request is marked: your community is holding this.", color: C.dim5 },
-      { text: "And no one carries it alone.", color: C.accent },
+      { text: t("features_deck.requests_progressive_line_1"), color: C.dim2 },
+      { text: t("features_deck.requests_progressive_line_2"), color: C.dim3 },
+      { text: t("features_deck.requests_progressive_line_3"), color: C.dim4 },
+      { text: t("features_deck.requests_progressive_line_4"), color: C.dim5 },
+      { text: t("features_deck.requests_progressive_line_5"), color: C.accent },
     ],
   },
 
@@ -129,10 +132,10 @@ const SLIDES: Slide[] = [
   // 7 — Intro to intercession
   {
     kind: "statement",
-    headline: "Intercession is not a feed. It is a practice.",
+    headline: t("features_deck.intercession_intro_headline"),
     body: [
-      "Phoebe turns the community's intercessions into a guided slideshow — one intention at a time, held in silence, with a prayer from the Book of Common Prayer underneath.",
-      "You move through it together, at the same hour, knowing who else is praying with you.",
+      t("features_deck.intercession_intro_body_1"),
+      t("features_deck.intercession_intro_body_2"),
     ],
   },
 
@@ -140,22 +143,22 @@ const SLIDES: Slide[] = [
   {
     kind: "preview",
     variant: "intercession",
-    caption: "A slideshow you move through, together.",
-    sub: "Each slide is one intention — a person, a situation, a parish in need. Below it, a prayer from the tradition. At the bottom, a count of who else is praying alongside you.",
+    caption: t("features_deck.intercession_preview_caption"),
+    sub: t("features_deck.intercession_preview_sub"),
   },
 
   // 9 — Stacked: what this recovers
   {
     kind: "stacked",
-    headline: "This is how Christians have always interceded.",
+    headline: t("features_deck.intercession_stacked_headline"),
     items: [
-      "On a rhythm.",
-      "At a shared hour.",
-      "With the same words.",
-      "Holding the same people in mind.",
+      t("features_deck.intercession_stacked_item_1"),
+      t("features_deck.intercession_stacked_item_2"),
+      t("features_deck.intercession_stacked_item_3"),
+      t("features_deck.intercession_stacked_item_4"),
     ],
     tail: [
-      "Phoebe just makes it possible to keep doing it when the parish is scattered across a city — or a country.",
+      t("features_deck.intercession_stacked_tail"),
     ],
   },
 
@@ -163,10 +166,10 @@ const SLIDES: Slide[] = [
   // 10 — Intro to the Daily Office
   {
     kind: "statement",
-    headline: "The Daily Office is the Church's oldest rhythm of prayer.",
+    headline: t("features_deck.office_intro_headline"),
     body: [
-      "Morning and evening, the Church has always stopped to pray — the psalms, a reading, the canticles, the collects. Monastics kept it through the centuries; the Book of Common Prayer gave it to every Christian.",
-      "Even prayed alone, it is never prayed alone — the same words, the same hours, the whole Church together.",
+      t("features_deck.office_intro_body_1"),
+      t("features_deck.office_intro_body_2"),
     ],
   },
 
@@ -174,21 +177,21 @@ const SLIDES: Slide[] = [
   {
     kind: "preview",
     variant: "daily-office",
-    caption: "Morning and Evening Prayer, ready to pray.",
-    sub: "The full office for today — opening sentences, the Psalter, the lessons, the canticles, the prayers — assembled in the order the Church has prayed them for centuries. Nothing to look up.",
+    caption: t("features_deck.office_preview_caption"),
+    sub: t("features_deck.office_preview_sub"),
   },
 
   // 12 — Stacked: the shape of the office
   {
     kind: "stacked",
-    headline: "Morning and evening. Full or short.",
+    headline: t("features_deck.office_stacked_headline"),
     items: [
-      "Morning Prayer — to begin the day in praise.",
-      "Evening Prayer — to give the day back.",
-      "Or a shorter devotion when the hour is brief.",
+      t("features_deck.office_stacked_item_1"),
+      t("features_deck.office_stacked_item_2"),
+      t("features_deck.office_stacked_item_3"),
     ],
     tail: [
-      "Pray it perfectly, or return to it after a long absence — the office holds either way. A daily reminder keeps the hour.",
+      t("features_deck.office_stacked_tail"),
     ],
   },
 
@@ -196,13 +199,14 @@ const SLIDES: Slide[] = [
   {
     kind: "closing",
     above: [
-      "Prayer requests. Intercession. The Daily Office.",
-      "Three rhythms the Church has always known —",
-      "held in common, across the scattered life of a modern parish.",
+      t("features_deck.closing_above_1"),
+      t("features_deck.closing_above_2"),
+      t("features_deck.closing_above_3"),
     ],
-    featured: "Not new. Recovered.",
+    featured: t("features_deck.closing_featured"),
   },
-];
+  ];
+}
 
 // ─── Slide renderers ─────────────────────────────────────────────────────────
 
@@ -271,13 +275,13 @@ function StackedSlide({ slide }: { slide: Extract<Slide, { kind: "stacked" }> })
       </div>
       {slide.tail && (
         <div className="space-y-4 pt-5 md:pt-6" style={{ borderTop: `1px solid ${C.border}` }}>
-          {slide.tail.map((t, i) => (
+          {slide.tail.map((tailLine, i) => (
             <p
               key={i}
               className="text-sm md:text-lg leading-relaxed font-light italic"
               style={{ color: "rgba(143,175,150,0.75)", fontFamily: C.font }}
             >
-              {t}
+              {tailLine}
             </p>
           ))}
         </div>
@@ -402,17 +406,18 @@ function MockPhone({ children }: { children: React.ReactNode }) {
 
 // ─── Prayer Requests mock ────────────────────────────────────────────────────
 function PrayerRequestsMock() {
+  const { t } = useTranslation();
   const requests = [
-    { from: "Margaret W.", body: "For my mother, who begins treatment this week.", words: 4 },
-    { from: "David R.",    body: "Discernment about the new role. Grateful for your prayers.", words: 6 },
-    { from: "Anonymous",  body: "For peace in a difficult season.", words: 2 },
+    { from: t("features_deck.mock_requests_from_1"), body: t("features_deck.mock_requests_body_1"), words: 4 },
+    { from: t("features_deck.mock_requests_from_2"), body: t("features_deck.mock_requests_body_2"), words: 6 },
+    { from: t("features_deck.mock_requests_from_3"), body: t("features_deck.mock_requests_body_3"), words: 2 },
   ];
   return (
     <MockPhone>
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <h2 className="text-sm font-semibold shrink-0" style={{ color: "#F0EDE6", fontFamily: C.font }}>
-          Prayer Requests 🙏🏽
+          {t("features_deck.mock_requests_header")} 🙏🏽
         </h2>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
       </div>
@@ -423,7 +428,7 @@ function PrayerRequestsMock() {
           className="flex-1 text-[11px] px-3 py-2 rounded-xl"
           style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)", color: "rgba(143,175,150,0.5)", fontFamily: C.font }}
         >
-          Share a prayer request... 🌿
+          {t("features_deck.mock_requests_input_placeholder")} 🌿
         </div>
         <div className="px-3 py-2 rounded-xl text-xs font-medium flex items-center" style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
           🙏🏽
@@ -443,7 +448,7 @@ function PrayerRequestsMock() {
             <div className="flex-1 p-3 pl-2.5 flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="text-[9px] font-medium uppercase tracking-widest mb-1" style={{ color: "rgba(200,212,192,0.45)", fontFamily: C.font }}>
-                  From {r.from}
+                  {t("features_deck.mock_requests_from_label", { name: r.from })}
                 </p>
                 <p className="text-[11px] leading-relaxed" style={{ color: "#F0EDE6", fontFamily: C.font }}>
                   {r.body}
@@ -464,6 +469,7 @@ function PrayerRequestsMock() {
 
 // ─── Intercession mock (matches prayer-mode.tsx slide look) ──────────────────
 function IntercessionMock() {
+  const { t } = useTranslation();
   return (
     <div
       className="rounded-[28px] md:rounded-[32px] mx-auto w-full max-w-[290px] md:max-w-[320px] relative"
@@ -495,7 +501,7 @@ function IntercessionMock() {
             fontFamily: C.font,
           }}
         >
-          Your Intercession
+          {t("features_deck.mock_intercession_eyebrow")}
         </p>
 
         <p
@@ -505,14 +511,14 @@ function IntercessionMock() {
             fontFamily: "Georgia, 'Times New Roman', serif",
           }}
         >
-          Margaret's mother, as she begins treatment this week.
+          {t("features_deck.mock_intercession_intention")}
         </p>
 
         <p
           className="text-[11px] mb-2"
           style={{ color: "#8FAF96", fontFamily: C.font }}
         >
-          with David, Anna, James
+          {t("features_deck.mock_intercession_with")}
         </p>
 
         <p
@@ -522,7 +528,7 @@ function IntercessionMock() {
             fontFamily: C.font,
           }}
         >
-          Your community is holding this.
+          {t("features_deck.mock_intercession_holding")}
         </p>
 
         <div
@@ -539,9 +545,7 @@ function IntercessionMock() {
               fontFamily: "Georgia, 'Times New Roman', serif",
             }}
           >
-            O Father of mercies and God of all comfort, look graciously upon
-            this thy servant, that her weakness may be banished and her
-            strength restored.
+            {t("features_deck.mock_intercession_prayer")}
           </p>
           <p
             className="text-[7px] uppercase mt-2"
@@ -551,7 +555,7 @@ function IntercessionMock() {
               fontFamily: C.font,
             }}
           >
-            From the Book of Common Prayer
+            {t("features_deck.mock_intercession_source")}
           </p>
         </div>
 
@@ -564,7 +568,7 @@ function IntercessionMock() {
             fontFamily: C.font,
           }}
         >
-          Amen →
+          {t("features_deck.mock_intercession_amen")} →
         </div>
       </div>
 
@@ -577,7 +581,7 @@ function IntercessionMock() {
             fontFamily: C.font,
           }}
         >
-          3 of 6
+          {t("features_deck.mock_intercession_progress", { current: 3, total: 6 })}
         </p>
       </div>
     </div>
@@ -586,13 +590,14 @@ function IntercessionMock() {
 
 // ─── Daily Office mock ───────────────────────────────────────────────────────
 function DailyOfficeMock() {
+  const { t } = useTranslation();
   const sections = [
-    { label: "Opening Sentence", done: true, active: false },
-    { label: "The Invitatory", done: true, active: false },
-    { label: "The Psalter", done: false, active: true },
-    { label: "The Lessons", done: false, active: false },
-    { label: "The Canticles", done: false, active: false },
-    { label: "The Prayers", done: false, active: false },
+    { label: t("features_deck.mock_office_section_opening"), done: true, active: false },
+    { label: t("features_deck.mock_office_section_invitatory"), done: true, active: false },
+    { label: t("features_deck.mock_office_section_psalter"), done: false, active: true },
+    { label: t("features_deck.mock_office_section_lessons"), done: false, active: false },
+    { label: t("features_deck.mock_office_section_canticles"), done: false, active: false },
+    { label: t("features_deck.mock_office_section_prayers"), done: false, active: false },
   ];
   return (
     <MockPhone>
@@ -604,19 +609,19 @@ function DailyOfficeMock() {
           fontFamily: C.font,
         }}
       >
-        Morning Prayer 🌅
+        {t("features_deck.mock_office_eyebrow")} 🌅
       </p>
       <h2
         className="text-base font-bold mb-0.5"
         style={{ color: "#F0EDE6", fontFamily: C.font }}
       >
-        The Daily Office
+        {t("features_deck.mock_office_title")}
       </h2>
       <p
         className="text-[9px] mb-3"
         style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
       >
-        Book of Common Prayer · p. 75
+        {t("features_deck.mock_office_reference", { page: 75 })}
       </p>
 
       {/* Order of service */}
@@ -682,7 +687,7 @@ function DailyOfficeMock() {
             fontFamily: C.font,
           }}
         >
-          Psalm 63 · Appointed for today
+          {t("features_deck.mock_office_psalm_label", { number: 63 })}
         </p>
         <p
           className="text-[11px] leading-[1.6] italic"
@@ -691,9 +696,7 @@ function DailyOfficeMock() {
             fontFamily: "Georgia, 'Times New Roman', serif",
           }}
         >
-          O God, you are my God; eagerly I seek you; my soul thirsts for
-          you, my flesh faints for you, as in a barren and dry land where
-          there is no water.
+          {t("features_deck.mock_office_psalm_text")}
         </p>
       </div>
     </MockPhone>
@@ -707,6 +710,7 @@ function MockForVariant({ variant }: { variant: "prayer-requests" | "intercessio
 }
 
 function PreviewSlide({ slide }: { slide: Extract<Slide, { kind: "preview" }> }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-16 max-w-5xl mx-auto w-full">
       {/* Copy — always visible */}
@@ -715,7 +719,7 @@ function PreviewSlide({ slide }: { slide: Extract<Slide, { kind: "preview" }> })
           className="text-[10px] font-semibold uppercase tracking-widest mb-2 md:mb-3"
           style={{ color: C.sage, fontFamily: C.font }}
         >
-          A glimpse inside Phoebe
+          {t("features_deck.preview_eyebrow")}
         </p>
         <h2
           className="text-2xl md:text-4xl font-semibold mb-3 md:mb-5 leading-tight"
@@ -781,6 +785,7 @@ function renderSlide(slide: Slide) {
 
 // ─── Page ────────────────────────────────────────────────────────────────────
 export default function FeaturesDeck() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [index, setIndex] = useState(0);
   const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.innerWidth < 768);
@@ -792,13 +797,14 @@ export default function FeaturesDeck() {
   }, []);
 
   // On mobile, expand each "preview" slide into [copy-only, mock-only]
+  const baseSlides = buildSlides(t);
   const slides: Slide[] = isMobile
-    ? SLIDES.flatMap((s): Slide[] =>
+    ? baseSlides.flatMap((s): Slide[] =>
         s.kind === "preview"
           ? [s, { kind: "preview-mock" as const, variant: s.variant }]
           : [s]
       )
-    : SLIDES;
+    : baseSlides;
 
   const next = useCallback(
     () => setIndex((i) => Math.min(i + 1, slides.length - 1)),
@@ -836,7 +842,7 @@ export default function FeaturesDeck() {
           style={{ color: C.sage, opacity: 0.75 }}
         >
           <X size={16} />
-          <span className="hidden md:inline">Close</span>
+          <span className="hidden md:inline">{t("features_deck.nav_close")}</span>
         </button>
 
         {/* Mobile: slim progress bar */}
@@ -864,7 +870,7 @@ export default function FeaturesDeck() {
                 height: 6,
                 background: i <= clampedIndex ? C.sage : "rgba(200,212,192,0.2)",
               }}
-              aria-label={`Go to slide ${i + 1}`}
+              aria-label={t("features_deck.nav_go_to_slide", { n: i + 1 })}
             />
           ))}
         </div>
@@ -902,7 +908,7 @@ export default function FeaturesDeck() {
           style={{ color: C.sage }}
         >
           <ChevronLeft size={18} />
-          Back
+          {t("features_deck.nav_back")}
         </button>
         {clampedIndex === slides.length - 1 ? (
           <button
@@ -910,7 +916,7 @@ export default function FeaturesDeck() {
             className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
             style={{ background: "#2D5E3F", color: C.text }}
           >
-            Done 🌿
+            {t("features_deck.nav_done")} 🌿
             <ChevronRight size={18} />
           </button>
         ) : (
@@ -919,7 +925,7 @@ export default function FeaturesDeck() {
             className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity"
             style={{ background: "#2D5E3F", color: C.text }}
           >
-            Next
+            {t("features_deck.nav_next")}
             <ChevronRight size={18} />
           </button>
         )}
