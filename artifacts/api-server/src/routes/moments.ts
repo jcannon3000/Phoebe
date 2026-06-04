@@ -2001,8 +2001,17 @@ router.get("/moments", async (req, res): Promise<void> => {
     const _windowsAll = _allMomentIds.length
       ? await db.select().from(momentWindowsTable).where(inArray(momentWindowsTable.momentId, _allMomentIds))
       : [];
+    // Only the columns the enrich loop needs — NOT reflectionText / photoUrl,
+    // which can be large and are never used here (we only compute counts +
+    // streaks from windowDate/userToken/createdAt). Avoids loading every post's
+    // full body on this hot (dashboard) path as posts accrue over months.
     const _postsAll = _allMomentIds.length
-      ? await db.select().from(momentPostsTable).where(inArray(momentPostsTable.momentId, _allMomentIds))
+      ? await db.select({
+          momentId: momentPostsTable.momentId,
+          windowDate: momentPostsTable.windowDate,
+          userToken: momentPostsTable.userToken,
+          createdAt: momentPostsTable.createdAt,
+        }).from(momentPostsTable).where(inArray(momentPostsTable.momentId, _allMomentIds))
       : [];
     const _membersByMoment = new Map<number, typeof _membersAll>();
     const _windowsByMoment = new Map<number, typeof _windowsAll>();
@@ -2010,6 +2019,27 @@ router.get("/moments", async (req, res): Promise<void> => {
     for (const r of _membersAll) { const a = _membersByMoment.get(r.momentId); if (a) a.push(r); else _membersByMoment.set(r.momentId, [r]); }
     for (const r of _windowsAll) { const a = _windowsByMoment.get(r.momentId); if (a) a.push(r); else _windowsByMoment.set(r.momentId, [r]); }
     for (const r of _postsAll) { const a = _postsByMoment.get(r.momentId); if (a) a.push(r); else _postsByMoment.set(r.momentId, [r]); }
+
+    // Batch lectio reflections for the current Sunday across ALL lectio moments
+    // (was one query per lectio moment inside the enrich loop). Isolated
+    // try/catch so a lectio_reflections schema drift can't blank the dashboard —
+    // it just empties the map and the cards lose their reflection count.
+    const _lectioMomentIds = lectioReadingMeta
+      ? flatMoments.filter(m => m.templateType === "lectio-divina").map(m => m.id)
+      : [];
+    const _lectioByMoment = new Map<number, Array<typeof lectioReflectionsTable.$inferSelect>>();
+    if (lectioReadingMeta && _lectioMomentIds.length > 0) {
+      try {
+        const _lectioAll = await db.select().from(lectioReflectionsTable)
+          .where(and(
+            inArray(lectioReflectionsTable.momentId, _lectioMomentIds),
+            eq(lectioReflectionsTable.sundayDate, lectioReadingMeta.sundayDate),
+          ));
+        for (const r of _lectioAll) { const a = _lectioByMoment.get(r.momentId); if (a) a.push(r); else _lectioByMoment.set(r.momentId, [r]); }
+      } catch (err) {
+        console.warn("[moments] lectio reflections batch failed:", err);
+      }
+    }
 
     // Enrich each moment INDEPENDENTLY. If any single moment's enrichment
     // throws (bad timezone, computeWindowOpen edge case, a null-dereference
@@ -2184,11 +2214,7 @@ router.get("/moments", async (req, res): Promise<void> => {
           // can't wipe out the gospel text on the card. The count is a nice-
           // to-have; the verses are the point of the card.
           try {
-            const weekReflections = await db.select().from(lectioReflectionsTable)
-              .where(and(
-                eq(lectioReflectionsTable.momentId, m.id),
-                eq(lectioReflectionsTable.sundayDate, lectioReadingMeta.sundayDate),
-              ));
+            const weekReflections = _lectioByMoment.get(m.id) ?? [];
             lectioResponseCount = new Set(weekReflections.map(r => r.userToken)).size;
 
             // Determine the current stage for this practice's timezone:
