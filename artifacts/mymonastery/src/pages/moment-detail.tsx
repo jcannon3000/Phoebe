@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useLocation, useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -126,10 +127,19 @@ function formatTime(scheduledTime: string): string {
   return new Date(0, 0, 0, h, m).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
-const DAY_NAMES: Record<string, string> = {
-  MO: "Monday", TU: "Tuesday", WE: "Wednesday", TH: "Thursday",
-  FR: "Friday", SA: "Saturday", SU: "Sunday",
-};
+type TFn = (key: string, opts?: Record<string, unknown>) => string;
+
+function dayNames(t: TFn): Record<string, string> {
+  return {
+    MO: t("moment_detail.day_monday"),
+    TU: t("moment_detail.day_tuesday"),
+    WE: t("moment_detail.day_wednesday"),
+    TH: t("moment_detail.day_thursday"),
+    FR: t("moment_detail.day_friday"),
+    SA: t("moment_detail.day_saturday"),
+    SU: t("moment_detail.day_sunday"),
+  };
+}
 
 const DAY_DOW: Record<string, number> = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
 
@@ -160,17 +170,17 @@ function getNextGoalInLadder(ladder: number[], currentGoal: number): number | nu
   return idx < ladder.length - 1 ? ladder[idx + 1] : null;
 }
 
-function goalLabel(sessions: number, frequency: string): string {
-  if (frequency === "daily") return `${sessions} days`;
-  return `${sessions} sessions`;
+function goalLabel(t: TFn, sessions: number, frequency: string): string {
+  if (frequency === "daily") return t("moment_detail.goal_days", { count: sessions });
+  return t("moment_detail.goal_sessions", { count: sessions });
 }
 
-function nextGoalCard(nextGoal: number | null, frequency: string): { emoji: string; label: string; sub: string } | null {
-  if (!nextGoal) return { emoji: "✨", label: "No end date", sub: "This is just what you do now" };
-  if (nextGoal <= 14) return { emoji: "🌿", label: goalLabel(nextGoal, frequency), sub: "Keep the rhythm going" };
-  if (nextGoal <= 30) return { emoji: "🌸", label: goalLabel(nextGoal, frequency), sub: "A real season together" };
-  if (nextGoal <= 90) return { emoji: "🌳", label: goalLabel(nextGoal, frequency), sub: "Deep roots" };
-  return { emoji: "✨", label: goalLabel(nextGoal, frequency), sub: "This is just what you do now" };
+function nextGoalCard(t: TFn, nextGoal: number | null, frequency: string): { emoji: string; label: string; sub: string } | null {
+  if (!nextGoal) return { emoji: "✨", label: t("moment_detail.next_goal_no_end_label"), sub: t("moment_detail.next_goal_no_end_sub") };
+  if (nextGoal <= 14) return { emoji: "🌿", label: goalLabel(t, nextGoal, frequency), sub: t("moment_detail.next_goal_keep_rhythm_sub") };
+  if (nextGoal <= 30) return { emoji: "🌸", label: goalLabel(t, nextGoal, frequency), sub: t("moment_detail.next_goal_real_season_sub") };
+  if (nextGoal <= 90) return { emoji: "🌳", label: goalLabel(t, nextGoal, frequency), sub: t("moment_detail.next_goal_deep_roots_sub") };
+  return { emoji: "✨", label: goalLabel(t, nextGoal, frequency), sub: t("moment_detail.next_goal_no_end_sub") };
 }
 
 function parsePracticeDays(raw: string | string[] | null | undefined): string[] | null {
@@ -179,27 +189,35 @@ function parsePracticeDays(raw: string | string[] | null | undefined): string[] 
   try { const parsed = JSON.parse(raw); return Array.isArray(parsed) ? parsed : null; } catch { return null; }
 }
 
-const TIME_OF_DAY_FALLBACK: Record<string, string> = {
-  "early-morning": "early morning", "morning": "morning", "midday": "midday",
-  "afternoon": "afternoon", "late-afternoon": "late afternoon", "evening": "evening", "night": "night",
-};
+function timeOfDayFallback(t: TFn): Record<string, string> {
+  return {
+    "early-morning": t("moment_detail.time_of_day_early_morning"),
+    "morning": t("moment_detail.time_of_day_morning"),
+    "midday": t("moment_detail.time_of_day_midday"),
+    "afternoon": t("moment_detail.time_of_day_afternoon"),
+    "late-afternoon": t("moment_detail.time_of_day_late_afternoon"),
+    "evening": t("moment_detail.time_of_day_evening"),
+    "night": t("moment_detail.time_of_day_night"),
+  };
+}
 
-function scheduleLabel(frequency: string, scheduledTime: string, dayOfWeek?: string | null, practiceDays?: string[] | null, timeOfDay?: string | null): string {
+function scheduleLabel(t: TFn, frequency: string, scheduledTime: string, dayOfWeek?: string | null, practiceDays?: string[] | null, timeOfDay?: string | null): string {
+  const DAY_NAMES = dayNames(t);
   // Old practices stored "00:00" — fall back to time-of-day label if available
   const timeStr = scheduledTime === "00:00" && timeOfDay
-    ? TIME_OF_DAY_FALLBACK[timeOfDay] ?? formatTime(scheduledTime)
+    ? timeOfDayFallback(t)[timeOfDay] ?? formatTime(scheduledTime)
     : formatTime(scheduledTime);
-  const prefix = scheduledTime === "00:00" && timeOfDay ? "" : "at ";
-  if (frequency === "daily") return `Every day ${prefix}${timeStr}`;
+  const prefix = scheduledTime === "00:00" && timeOfDay ? "" : t("moment_detail.schedule_at_prefix");
+  if (frequency === "daily") return t("moment_detail.schedule_every_day", { time: `${prefix}${timeStr}` });
   if (frequency === "weekly") {
     if (practiceDays && practiceDays.length > 1) {
       const names = practiceDays.map(d => DAY_NAMES[d]?.slice(0, 3) ?? d).join(", ");
-      return `${names} ${prefix}${timeStr}`;
+      return t("moment_detail.schedule_days_at", { days: names, time: `${prefix}${timeStr}` });
     }
-    if (dayOfWeek) return `Every ${DAY_NAMES[dayOfWeek] ?? dayOfWeek} ${prefix}${timeStr}`;
-    return `Weekly ${prefix}${timeStr}`;
+    if (dayOfWeek) return t("moment_detail.schedule_every_day_of_week", { day: DAY_NAMES[dayOfWeek] ?? dayOfWeek, time: `${prefix}${timeStr}` });
+    return t("moment_detail.schedule_weekly", { time: `${prefix}${timeStr}` });
   }
-  return `Monthly ${prefix}${timeStr}`;
+  return t("moment_detail.schedule_monthly", { time: `${prefix}${timeStr}` });
 }
 
 function goalProgress(createdAt: string, goalDays: number): number {
@@ -230,38 +248,47 @@ function isTodayPracticeDay(frequency: string, dayOfWeek?: string | null, practi
 }
 
 // Next practice description — shows actual bell time
-function nextPracticeLabel(frequency: string, scheduledTime: string, dayOfWeek?: string | null, practiceDays?: string[] | null, timeOfDay?: string | null): string {
+function nextPracticeLabel(t: TFn, frequency: string, scheduledTime: string, dayOfWeek?: string | null, practiceDays?: string[] | null, timeOfDay?: string | null): string {
+  const DAY_NAMES = dayNames(t);
   const timeStr = scheduledTime === "00:00" && timeOfDay
-    ? TIME_OF_DAY_FALLBACK[timeOfDay] ?? formatTime(scheduledTime)
+    ? timeOfDayFallback(t)[timeOfDay] ?? formatTime(scheduledTime)
     : formatTime(scheduledTime);
-  const prefix = scheduledTime === "00:00" && timeOfDay ? "" : "at ";
+  const prefix = scheduledTime === "00:00" && timeOfDay ? "" : t("moment_detail.schedule_at_prefix");
   const today = new Date().getDay(); // 0=Sun
   const pastTime = isPastScheduledTime(scheduledTime);
 
   if (frequency === "daily") {
-    return pastTime ? `Tomorrow ${prefix}${timeStr}` : `Today ${prefix}${timeStr}`;
+    return pastTime
+      ? t("moment_detail.next_practice_tomorrow", { time: `${prefix}${timeStr}` })
+      : t("moment_detail.next_practice_today", { time: `${prefix}${timeStr}` });
   }
 
   if (frequency === "weekly") {
     const days = practiceDays && practiceDays.length > 0 ? practiceDays : (dayOfWeek ? [dayOfWeek] : []);
-    if (days.length === 0) return `Next practice ${prefix}${timeStr}`;
+    if (days.length === 0) return t("moment_detail.next_practice_generic", { time: `${prefix}${timeStr}` });
 
     for (let i = 0; i <= 7; i++) {
       const checkDow = (today + i) % 7;
       const isDayMatch = days.some(d => DAY_DOW[d] === checkDow);
       if (isDayMatch) {
-        if (i === 0 && !pastTime) return `Today ${prefix}${timeStr}`;
-        if (i === 1 || (i === 0 && pastTime)) return `Tomorrow ${prefix}${timeStr}`;
+        if (i === 0 && !pastTime) return t("moment_detail.next_practice_today", { time: `${prefix}${timeStr}` });
+        if (i === 1 || (i === 0 && pastTime)) return t("moment_detail.next_practice_tomorrow", { time: `${prefix}${timeStr}` });
         const name = Object.keys(DAY_DOW).find(k => DAY_DOW[k] === checkDow);
-        return `${name ? DAY_NAMES[name] : "Next"} ${prefix}${timeStr}`;
+        return t("moment_detail.next_practice_on_day", { day: name ? DAY_NAMES[name] : t("moment_detail.next_practice_day_fallback"), time: `${prefix}${timeStr}` });
       }
     }
   }
-  return `Next practice ${prefix}${timeStr}`;
+  return t("moment_detail.next_practice_generic", { time: `${prefix}${timeStr}` });
 }
 
 const STATUS_ICON: Record<string, string> = { bloom: "🌸", solo: "👤", wither: "🥀" };
-const STATUS_LABEL: Record<string, string> = { bloom: "Bloomed", solo: "Solo", wither: "Withered" };
+function statusLabel(t: TFn): Record<string, string> {
+  return {
+    bloom: t("moment_detail.status_bloomed"),
+    solo: t("moment_detail.status_solo"),
+    wither: t("moment_detail.status_withered"),
+  };
+}
 const STATUS_COLOR: Record<string, string> = { bloom: "text-[#5C7A5F]", solo: "text-amber-600", wither: "text-rose-400/80" };
 
 // ─── Prayed-this-week ticker ─────────────────────────────────────────────
@@ -276,6 +303,7 @@ function PrayedThisWeekRow({
 }: {
   logs: Array<{ email: string; name?: string | null; avatarUrl?: string | null }>;
 }) {
+  const { t } = useTranslation();
   const outerRef = useRef<HTMLDivElement | null>(null);
   const innerRef = useRef<HTMLDivElement | null>(null);
   const [overflows, setOverflows] = useState(false);
@@ -304,7 +332,7 @@ function PrayedThisWeekRow({
       style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}
     >
       <p className="text-[10px] font-semibold uppercase text-muted-foreground/70 mb-2" style={{ letterSpacing: "0.12em" }}>
-        Prayed this week
+        {t("moment_detail.prayed_this_week")}
       </p>
       <div
         ref={outerRef}
@@ -368,6 +396,7 @@ export default function MomentDetail() {
   const { isBeta } = useBetaStatus();
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [seedText, setSeedText] = useState("");
   const [showSeedForm, setShowSeedForm] = useState(false);
   const [showManage, setShowManage] = useState(false);
@@ -419,15 +448,15 @@ export default function MomentDetail() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/moments"] });
       toast({
-        title: "Practice archived 🌸",
-        description: "It's tucked away. The history is preserved in your garden.",
+        title: t("moment_detail.toast_archived_title"),
+        description: t("moment_detail.toast_archived_desc"),
       });
       setLocation("/dashboard");
     },
     onError: (err: Error) => {
       toast({
-        title: "Couldn't archive",
-        description: err.message || "Something went wrong. Try again.",
+        title: t("moment_detail.toast_archive_failed_title"),
+        description: err.message || t("moment_detail.error_generic"),
         variant: "destructive",
       });
     },
@@ -441,7 +470,7 @@ export default function MomentDetail() {
       setLocation("/dashboard");
     },
     onError: (err: Error) => {
-      setDeleteError(err.message || "Failed to delete. Try again.");
+      setDeleteError(err.message || t("moment_detail.error_delete_failed"));
     },
   });
 
@@ -540,7 +569,7 @@ export default function MomentDetail() {
     // failed attach silently did nothing which is how the user ended
     // up with "I added a group and it didn't go through".
     onError: (err: any) => {
-      let msg = err?.message || "Couldn't share with that community. Please try again.";
+      let msg = err?.message || t("moment_detail.error_attach_group");
       try {
         const parsed = JSON.parse(msg);
         if (parsed && typeof parsed.error === "string") msg = parsed.error;
@@ -558,7 +587,7 @@ export default function MomentDetail() {
       qc.invalidateQueries({ queryKey: ["/api/moments"] });
     },
     onError: (err: any) => {
-      let msg = err?.message || "Couldn't remove that community. Please try again.";
+      let msg = err?.message || t("moment_detail.error_detach_group");
       try {
         const parsed = JSON.parse(msg);
         if (parsed && typeof parsed.error === "string") msg = parsed.error;
@@ -576,20 +605,20 @@ export default function MomentDetail() {
       // Clear, visible confirmation so the user knows the renew went through.
       if (variables.commitmentTendFreely) {
         toast({
-          title: "Now ongoing ✨",
-          description: "No end date — this is just what you do now.",
+          title: t("moment_detail.toast_now_ongoing_title"),
+          description: t("moment_detail.toast_now_ongoing_desc"),
         });
       } else if (typeof variables.commitmentSessionsGoal === "number") {
         toast({
-          title: "Renewed 🌱",
-          description: `New goal set: ${variables.commitmentSessionsGoal} ${variables.commitmentSessionsGoal === 1 ? "session" : "sessions"}. Progress resets.`,
+          title: t("moment_detail.toast_renewed_title"),
+          description: t("moment_detail.toast_renewed_desc", { count: variables.commitmentSessionsGoal }),
         });
       }
     },
     onError: (err: Error) => {
       toast({
-        title: "Couldn't save",
-        description: err.message || "The renew didn't go through. Try again.",
+        title: t("moment_detail.toast_save_failed_title"),
+        description: err.message || t("moment_detail.error_renew_failed"),
         variant: "destructive",
       });
     },
@@ -699,10 +728,10 @@ export default function MomentDetail() {
 
   // Label for action button — context-sensitive
   const actionLabel = isIntercession
-    ? "Pray 🙏🏽"
+    ? `${t("moment_detail.action_pray")} 🙏🏽`
     : isMorningPrayer
-      ? "Open Office 📖"
-      : "Log 🌿";
+      ? `${t("moment_detail.action_open_office")} 📖`
+      : `${t("moment_detail.action_log")} 🌿`;
 
   // For custom intercessions, use the intention as the display title.
   // For BCP intercessions, show the topic/name as before.
@@ -729,7 +758,7 @@ export default function MomentDetail() {
           href="/dashboard"
           className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 mb-5 transition-colors"
         >
-          ← Your practices
+          ← {t("moment_detail.back_your_practices")}
         </Link>
 
         {/* Calendar event removed banner — creator only */}
@@ -737,15 +766,15 @@ export default function MomentDetail() {
           <div className="mb-5 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-center gap-3">
             <span className="text-lg shrink-0">📅</span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-amber-800">Your calendar event was removed</p>
-              <p className="text-xs text-amber-700/70 mt-0.5">Eleanor can restore it to your Google Calendar.</p>
+              <p className="text-sm font-medium text-amber-800">{t("moment_detail.calendar_removed_title")}</p>
+              <p className="text-xs text-amber-700/70 mt-0.5">{t("moment_detail.calendar_removed_desc")}</p>
             </div>
             <button
               onClick={() => restoreCalendarMutation.mutate()}
               disabled={restoreCalendarMutation.isPending}
               className="shrink-0 text-xs font-medium text-amber-800 border border-amber-300 rounded-full px-3 py-1.5 hover:bg-amber-100 transition-colors disabled:opacity-50"
             >
-              {restoreCalendarMutation.isPending ? "Restoring…" : "Restore"}
+              {restoreCalendarMutation.isPending ? t("moment_detail.restoring") : t("moment_detail.restore")}
             </button>
           </div>
         )}
@@ -759,7 +788,7 @@ export default function MomentDetail() {
                 onClick={() => setShowInvite(true)}
                 className="shrink-0 mt-0.5 text-xs font-medium text-[#5C7A5F] border border-[#5C7A5F]/40 rounded-full px-3 py-1.5 hover:bg-[#5C7A5F]/8 transition-colors whitespace-nowrap"
               >
-                + Invite 🌿
+                + {t("moment_detail.invite_button")} 🌿
               </button>
             )}
           </div>
@@ -801,7 +830,7 @@ export default function MomentDetail() {
           {/* Intercession: "Praying for" subtitle for BCP only; custom uses intention as h1 */}
           {showIntercessionSubtitle ? (
             <p className="text-sm text-[#5C7A5F] mb-1.5">
-              Praying for: {intentionDisplay}
+              {t("moment_detail.praying_for", { intention: intentionDisplay })}
             </p>
           ) : !isIntercession && moment.intention ? (
             <p className="text-sm text-muted-foreground italic mb-1.5">"{moment.intention}"</p>
@@ -814,7 +843,7 @@ export default function MomentDetail() {
               the schedule because it's informative to them. */}
           {!isIntercession && (
             <p className="text-xs text-muted-foreground">
-              {scheduleLabel(moment.frequency, moment.scheduledTime, moment.dayOfWeek, parsedPracticeDays, moment.timeOfDay)}
+              {scheduleLabel(t, moment.frequency, moment.scheduledTime, moment.dayOfWeek, parsedPracticeDays, moment.timeOfDay)}
             </p>
           )}
 
@@ -829,7 +858,9 @@ export default function MomentDetail() {
           {members.length > 0 && !momentGroup && !isIntercession && (() => {
             const togetherCount = windows.filter(w => w.postCount >= 2).length;
             const isPrayer = ["intercession", "morning-prayer", "evening-prayer"].includes(moment.templateType ?? "");
-            const togetherVerb = isPrayer ? "prayed" : "practiced";
+            const togetherLabel = isPrayer
+              ? t("moment_detail.together_prayed", { count: togetherCount })
+              : t("moment_detail.together_practiced", { count: togetherCount });
             const MAX = 4;
             const shown = members.length <= MAX ? members : members.slice(0, MAX - 1);
             const extra = members.length > MAX ? members.length - (MAX - 1) : 0;
@@ -848,10 +879,10 @@ export default function MomentDetail() {
                       {(i < shown.length - 1 || extra > 0) && <span className="text-muted-foreground/40"> ·</span>}
                     </span>
                   ))}
-                  {extra > 0 && <span className="text-sm text-muted-foreground/50">+{extra} more</span>}
+                  {extra > 0 && <span className="text-sm text-muted-foreground/50">{t("moment_detail.plus_n_more", { count: extra })}</span>}
                 </div>
                 <p className="text-xs text-muted-foreground/50">
-                  🫱🏻‍🫲🏾 {togetherCount} {togetherCount === 1 ? "time" : "times"} {togetherVerb} together
+                  🫱🏻‍🫲🏾 {togetherLabel}
                 </p>
               </div>
             );
@@ -864,9 +895,9 @@ export default function MomentDetail() {
             <span className="text-2xl">🕯️</span>
             <div>
               <p className="text-sm font-semibold text-[#5B4B9A]">
-                {moment.contemplativeDurationMinutes} minutes of contemplative prayer together
+                {t("moment_detail.contemplative_minutes_together", { count: moment.contemplativeDurationMinutes })}
               </p>
-              <p className="text-xs text-[#5B4B9A]/70 mt-0.5">Everyone prays for the same length, wherever they are</p>
+              <p className="text-xs text-[#5B4B9A]/70 mt-0.5">{t("moment_detail.contemplative_same_length")}</p>
             </div>
           </div>
         )}
@@ -875,13 +906,13 @@ export default function MomentDetail() {
         {isFasting && (() => {
           const isMeatFast = moment.fastingType === "meat";
           const dayLabel = moment.fastingDay
-            ? `Every ${moment.fastingDay.charAt(0).toUpperCase() + moment.fastingDay.slice(1)}`
+            ? t("moment_detail.fasting_every_day", { day: moment.fastingDay.charAt(0).toUpperCase() + moment.fastingDay.slice(1) })
             : moment.fastingFrequency === "specific" && moment.fastingDate
               ? new Date(moment.fastingDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
               : "";
           const createdDate = moment.createdAt ? new Date(moment.createdAt) : null;
           const sinceLabel = createdDate
-            ? `Together since ${createdDate.toLocaleDateString("en-US", { month: "long", year: "numeric" })}`
+            ? t("moment_detail.fasting_together_since", { date: createdDate.toLocaleDateString("en-US", { month: "long", year: "numeric" }) })
             : null;
 
           // Water impact numbers (meat fast = ~400 gal/person/day)
@@ -924,16 +955,16 @@ export default function MomentDetail() {
                 <div className="rounded-2xl px-5 py-4 space-y-4" style={{ background: "#0A1F12", border: "1px solid rgba(46,107,64,0.35)" }}>
                   <div>
                     <p className="text-[10px] uppercase tracking-widest font-semibold mb-3" style={{ color: "rgba(200,212,192,0.45)" }}>
-                      Conserving Water Together
+                      {t("moment_detail.conserving_water_together")}
                     </p>
 
                     {totalSessions === 0 ? (
                       <div>
                         <p className="text-sm" style={{ color: "#8FAF96" }}>
-                          Every meat-free fast day saves an estimated <span style={{ color: "#A8C5A0", fontWeight: 600 }}>400 gallons</span> of water per person — the water embedded in producing a typical day's meat.
+                          {t("moment_detail.water_estimate_prefix")} <span style={{ color: "#A8C5A0", fontWeight: 600 }}>{t("moment_detail.water_estimate_amount")}</span> {t("moment_detail.water_estimate_suffix")}
                         </p>
                         <p className="text-xs mt-2" style={{ color: "rgba(143,175,150,0.5)" }}>
-                          Log your first fast day to see your group's running impact.
+                          {t("moment_detail.water_log_first")}
                         </p>
                       </div>
                     ) : (
@@ -943,28 +974,28 @@ export default function MomentDetail() {
                           <span className="text-4xl font-bold tabular-nums" style={{ color: "#F0EDE6", letterSpacing: "-0.03em" }}>
                             {gallonLabel(totalGallons)}
                           </span>
-                          <span className="text-base mb-1" style={{ color: "#8FAF96" }}>gallons saved</span>
+                          <span className="text-base mb-1" style={{ color: "#8FAF96" }}>{t("moment_detail.gallons_saved")}</span>
                         </div>
                         <p className="text-xs mb-4" style={{ color: "rgba(143,175,150,0.5)" }}>
-                          {totalSessions} fast {totalSessions === 1 ? "day" : "days"} × 400 gal per person
+                          {t("moment_detail.fast_days_calc", { count: totalSessions })}
                         </p>
 
                         {/* Equivalences */}
                         <div className="grid grid-cols-2 gap-2">
                           <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.18)" }}>
                             <p className="text-base font-bold" style={{ color: "#A8C5A0" }}>{peopleOneDayDrinking.toLocaleString()}</p>
-                            <p className="text-[10px] mt-0.5 leading-snug" style={{ color: "rgba(143,175,150,0.55)" }}>days of drinking water for one person</p>
+                            <p className="text-[10px] mt-0.5 leading-snug" style={{ color: "rgba(143,175,150,0.55)" }}>{t("moment_detail.equiv_drinking_water")}</p>
                           </div>
                           <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.18)" }}>
                             <p className="text-base font-bold" style={{ color: "#A8C5A0" }}>{bathtubs > 0 ? bathtubs.toLocaleString() : "<1"}</p>
-                            <p className="text-[10px] mt-0.5 leading-snug" style={{ color: "rgba(143,175,150,0.55)" }}>bathtubs of water spared</p>
+                            <p className="text-[10px] mt-0.5 leading-snug" style={{ color: "rgba(143,175,150,0.55)" }}>{t("moment_detail.equiv_bathtubs")}</p>
                           </div>
                         </div>
 
                         {/* My contribution */}
                         {myGallons > 0 && (
                           <p className="text-xs mt-3 pt-3 border-t" style={{ color: "rgba(143,175,150,0.5)", borderColor: "rgba(46,107,64,0.15)" }}>
-                            Your streak of {myStreak} → <span style={{ color: "#8FAF96" }}>{myGallons.toLocaleString()} gallons</span> saved by you
+                            {t("moment_detail.your_streak_prefix", { count: myStreak })} <span style={{ color: "#8FAF96" }}>{t("moment_detail.your_streak_gallons", { gallons: myGallons.toLocaleString() })}</span> {t("moment_detail.your_streak_suffix")}
                           </p>
                         )}
                       </>
@@ -987,21 +1018,21 @@ export default function MomentDetail() {
           );
           const prayedTodayCount = (todayLogs ?? []).filter(l => !!l.loggedAt).length;
           const headline = isMorningPrayer
-            ? "📖 Morning Prayer · Today's office"
+            ? `📖 ${t("moment_detail.banner_morning_prayer_office")}`
             : isIntercession
               ? (viewerPrayedToday
-                  ? (prayedTodayCount === 1 ? "1 has prayed" : `${prayedTodayCount} have prayed`)
-                  : "🙏🏽 Open today · Pray together")
-              : "🌿 Open today";
+                  ? t("moment_detail.banner_n_have_prayed", { count: prayedTodayCount })
+                  : `🙏🏽 ${t("moment_detail.banner_open_today_pray")}`)
+              : `🌿 ${t("moment_detail.banner_open_today")}`;
           const subline = isMorningPrayer
-            ? `${todayPostCount} of ${memberCount} have prayed`
+            ? t("moment_detail.banner_n_of_m_prayed", { count: todayPostCount, total: memberCount })
             : isIntercession
               ? (viewerPrayedToday
                   // Viewer has prayed — headline already carries the count,
                   // so the subline can be gentler / encouraging.
-                  ? "You've prayed today 🌿"
-                  : (prayedTodayCount === 1 ? "1 has prayed" : `${prayedTodayCount} have prayed`))
-              : `${todayPostCount} of ${memberCount} logged`;
+                  ? `${t("moment_detail.banner_youve_prayed_today")} 🌿`
+                  : t("moment_detail.banner_n_have_prayed", { count: prayedTodayCount }))
+              : t("moment_detail.banner_n_of_m_logged", { count: todayPostCount, total: memberCount });
           // Stack of faces of those who've actually prayed today. Replaces
           // the "Pray 🙏🏽" CTA on intercessions — entry to prayer happens
           // from the dashboard slideshow, so this card's job is to surface
@@ -1085,10 +1116,10 @@ export default function MomentDetail() {
           >
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
-                Next {isIntercession ? "prayer" : "practice"}
+                {isIntercession ? t("moment_detail.next_prayer_label") : t("moment_detail.next_practice_label")}
               </p>
               <p className="text-base font-semibold text-foreground capitalize">
-                {nextPracticeLabel(moment.frequency, moment.scheduledTime, moment.dayOfWeek, parsedPracticeDays, moment.timeOfDay)}
+                {nextPracticeLabel(t, moment.frequency, moment.scheduledTime, moment.dayOfWeek, parsedPracticeDays, moment.timeOfDay)}
               </p>
             </div>
             {isIntercession ? (
@@ -1135,7 +1166,7 @@ export default function MomentDetail() {
           <div className="mb-5 flex justify-center">
             <ExternalLinkPill
               url={moment.learnMoreUrl}
-              label={moment.intercessionSource === "action" ? "Take action →" : "Learn more →"}
+              label={moment.intercessionSource === "action" ? t("moment_detail.take_action") : t("moment_detail.learn_more")}
               size="medium"
             />
           </div>
@@ -1161,29 +1192,29 @@ export default function MomentDetail() {
               return n.toLocaleString();
             }
 
-            const rows: { label: string; myKey: "week" | "month" | "allTime"; grpKey: "week" | "month" | "allTime" }[] = [
-              { label: "This Week",  myKey: "week",    grpKey: "week"    },
-              { label: "This Month", myKey: "month",   grpKey: "month"   },
-              { label: "All Time",   myKey: "allTime", grpKey: "allTime" },
+            const rows: { id: string; label: string; myKey: "week" | "month" | "allTime"; grpKey: "week" | "month" | "allTime" }[] = [
+              { id: "week",    label: t("moment_detail.water_row_this_week"),  myKey: "week",    grpKey: "week"    },
+              { id: "month",   label: t("moment_detail.water_row_this_month"), myKey: "month",   grpKey: "month"   },
+              { id: "allTime", label: t("moment_detail.water_row_all_time"),   myKey: "allTime", grpKey: "allTime" },
             ];
 
             return (
               <div className="mb-6">
                 <p className="text-[10px] uppercase tracking-widest font-semibold mb-2" style={{ color: "rgba(200,212,192,0.4)" }}>
-                  Conserving Water Together
+                  {t("moment_detail.conserving_water_together")}
                 </p>
                 {/* Column headers */}
                 <div className="grid grid-cols-3 gap-2 mb-1">
                   <div />
-                  <p className="text-[10px] text-center font-semibold uppercase tracking-wider" style={{ color: "rgba(200,212,192,0.45)" }}>You</p>
-                  <p className="text-[10px] text-center font-semibold uppercase tracking-wider" style={{ color: "rgba(200,212,192,0.45)" }}>Group</p>
+                  <p className="text-[10px] text-center font-semibold uppercase tracking-wider" style={{ color: "rgba(200,212,192,0.45)" }}>{t("moment_detail.col_you")}</p>
+                  <p className="text-[10px] text-center font-semibold uppercase tracking-wider" style={{ color: "rgba(200,212,192,0.45)" }}>{t("moment_detail.col_group")}</p>
                 </div>
                 <div className="space-y-2">
-                  {rows.map(({ label, myKey, grpKey }) => {
+                  {rows.map(({ id, label, myKey, grpKey }) => {
                     const myGal   = (ws?.my[myKey]    ?? 0) * GALLONS_PER_FAST;
                     const grpGal  = (ws?.group[grpKey] ?? 0) * GALLONS_PER_FAST;
                     return (
-                      <div key={label} className="grid grid-cols-3 gap-2 items-center">
+                      <div key={id} className="grid grid-cols-3 gap-2 items-center">
                         <p className="text-[11px] font-medium" style={{ color: "rgba(200,212,192,0.55)" }}>{label}</p>
                         <div className="rounded-xl px-2 py-2 text-center" style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.18)" }}>
                           <p className="text-sm font-bold tabular-nums" style={{ color: "#A8C5A0" }}>{gLabel(myGal)}</p>
@@ -1214,7 +1245,7 @@ export default function MomentDetail() {
                 {prayedWeekLogs.length > 0 ? (
                   <PrayedThisWeekRow logs={prayedWeekLogs} />
                 ) : (
-                  <p className="text-xs text-muted-foreground italic">No one has prayed this week yet.</p>
+                  <p className="text-xs text-muted-foreground italic">{t("moment_detail.no_one_prayed_week")}</p>
                 )}
               </div>
             );
@@ -1224,15 +1255,15 @@ export default function MomentDetail() {
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="rounded-2xl p-4 text-center" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                 <p className="text-2xl font-bold text-foreground">{displayMyStreak}</p>
-                <p className="text-xs text-muted-foreground mt-1">🙏🏽 Your streak</p>
+                <p className="text-xs text-muted-foreground mt-1">🙏🏽 {t("moment_detail.your_streak")}</p>
               </div>
               <div className="rounded-2xl p-4 text-center" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                 <p className="text-2xl font-bold text-foreground">{groupStreak}</p>
-                <p className="text-xs text-muted-foreground mt-1">🔥 Group streak</p>
+                <p className="text-xs text-muted-foreground mt-1">🔥 {t("moment_detail.group_streak")}</p>
               </div>
               <div className="rounded-2xl p-4 text-center" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                 <p className="text-2xl font-bold text-foreground">{groupBest}</p>
-                <p className="text-xs text-muted-foreground mt-1">⭐ Group best</p>
+                <p className="text-xs text-muted-foreground mt-1">⭐ {t("moment_detail.group_best")}</p>
               </div>
             </div>
           );
@@ -1257,15 +1288,18 @@ export default function MomentDetail() {
           const freq = moment.frequency;
           const daysPerWeek = moment.frequencyDaysPerWeek ?? null;
           const ladder = getGoalLadder(freq, daysPerWeek);
-          const unitLabel = freq === "daily" ? "day" : "session";
-          const unitLabelPlural = freq === "daily" ? "days" : "sessions";
+          const isDaily = freq === "daily";
+          const unitLabel = isDaily ? t("moment_detail.unit_day") : t("moment_detail.unit_session");
+          const unitLabelPlural = isDaily ? t("moment_detail.unit_days") : t("moment_detail.unit_sessions");
 
           // Tend freely — minimal display
           if (tendFreely) {
             return (
               <div className="mb-6 text-center py-3">
                 <p className="text-sm text-muted-foreground italic" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
-                  🌿 Tending freely · {sessionsLogged} {unitLabelPlural} together so far
+                  🌿 {isDaily
+                    ? t("moment_detail.tending_freely_days", { count: sessionsLogged })
+                    : t("moment_detail.tending_freely_sessions", { count: sessionsLogged })}
                 </p>
               </div>
             );
@@ -1282,10 +1316,10 @@ export default function MomentDetail() {
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
-                    {dur}-day commitment
+                    {t("moment_detail.day_commitment", { count: dur })}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {progressPct >= 100 ? "🌾 Complete" : progressPct < 50 ? "Taking root" : "Growing"}
+                    {progressPct >= 100 ? t("moment_detail.commitment_complete") : progressPct < 50 ? t("moment_detail.commitment_taking_root") : t("moment_detail.commitment_growing")}
                   </span>
                 </div>
                 <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
@@ -1293,7 +1327,7 @@ export default function MomentDetail() {
                     initial={{ width: 0 }} animate={{ width: `${daysDone > 0 ? Math.max(progressPct, 3) : 0}%` }}
                     transition={{ duration: 0.6, ease: "easeOut" }} />
                 </div>
-                <p className="text-xs text-muted-foreground mt-1.5">{daysDone} day{daysDone === 1 ? "" : "s"} together so far</p>
+                <p className="text-xs text-muted-foreground mt-1.5">{t("moment_detail.days_together_so_far", { count: daysDone })}</p>
               </div>
             );
           }
@@ -1307,7 +1341,7 @@ export default function MomentDetail() {
           // Goal hit — celebration state + next goal nudge (creator) / progress (non-creator)
           if (goalHit) {
             const nextGoal = getNextGoalInLadder(ladder, sessionsGoal);
-            const card = nextGoalCard(nextGoal, freq);
+            const card = nextGoalCard(t, nextGoal, freq);
             const isOngoing = !nextGoal;
             const effectiveGroupStreak = data?.groupStreak ?? 0;
 
@@ -1317,15 +1351,17 @@ export default function MomentDetail() {
                 <div className="text-center py-4 mb-4">
                   <p className="text-3xl mb-2">🌸</p>
                   <p className="text-lg font-semibold text-foreground" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
-                    Your group kept the rhythm — {sessionsLogged} {unitLabelPlural} together.
+                    {isDaily
+                      ? t("moment_detail.kept_rhythm_days", { count: sessionsLogged })
+                      : t("moment_detail.kept_rhythm_sessions", { count: sessionsLogged })}
                   </p>
                   {effectiveGroupStreak > 0 && (
                     <p className="text-sm text-[#A8C5A0] font-medium mt-1" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
-                      🔥 {effectiveGroupStreak}-{unitLabel} group streak
+                      🔥 {t("moment_detail.group_streak_count", { count: effectiveGroupStreak, unit: unitLabel })}
                     </p>
                   )}
                   <p className="text-sm text-muted-foreground italic mt-1" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
-                    That's not nothing. That's a real thing you built.
+                    {t("moment_detail.thats_not_nothing")}
                   </p>
                 </div>
 
@@ -1333,7 +1369,7 @@ export default function MomentDetail() {
                 {canManage && card && (
                   <div className="rounded-2xl p-5 mb-3" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                     <p className="text-sm font-medium text-muted-foreground mb-3" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
-                      Ready to go further? 🌿
+                      {t("moment_detail.ready_to_go_further")} 🌿
                     </p>
                     <div className="flex items-center gap-3 mb-4">
                       <span className="text-2xl">{card.emoji}</span>
@@ -1353,16 +1389,16 @@ export default function MomentDetail() {
                       className="w-full py-3 rounded-xl bg-[#5C7A5F] text-white font-semibold text-sm transition-all hover:bg-[#5a7a60] disabled:opacity-50"
                       style={{ fontFamily: "Space Grotesk, sans-serif" }}
                     >
-                      {updateGoalMutation.isPending ? "Setting..."
-                        : isOngoing ? "Keep going ✨"
-                        : `Set this as your next goal 🌿`}
+                      {updateGoalMutation.isPending ? t("moment_detail.setting")
+                        : isOngoing ? `${t("moment_detail.keep_going")} ✨`
+                        : `${t("moment_detail.set_next_goal")} 🌿`}
                     </button>
                     <button
                       onClick={() => { setRenewCustom(String(sessionsGoal)); setRenewModalOpen(true); }}
                       className="w-full mt-2 py-2 text-xs text-[#5C7A5F] hover:text-[#3f5a44] transition-colors font-medium"
                       style={{ fontFamily: "Space Grotesk, sans-serif" }}
                     >
-                      Renew with a different length 🌱
+                      {t("moment_detail.renew_different_length")} 🌱
                     </button>
                     {!isOngoing && (
                       <button
@@ -1370,7 +1406,7 @@ export default function MomentDetail() {
                         className="w-full mt-2 py-2 text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
                         style={{ fontFamily: "Space Grotesk, sans-serif" }}
                       >
-                        Tend freely for now ✨
+                        {t("moment_detail.tend_freely_for_now")} ✨
                       </button>
                     )}
 
@@ -1381,7 +1417,7 @@ export default function MomentDetail() {
                         className="w-full mt-2 py-2 text-xs text-muted-foreground/60 hover:text-amber-700 transition-colors"
                         style={{ fontFamily: "Space Grotesk, sans-serif" }}
                       >
-                        Archive — we're done here 🌸
+                        {t("moment_detail.archive_were_done")} 🌸
                       </button>
                     ) : (
                       <motion.div
@@ -1390,10 +1426,10 @@ export default function MomentDetail() {
                         className="mt-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3"
                       >
                         <p className="text-xs font-semibold text-amber-800 mb-1">
-                          Archive "{moment.name}"?
+                          {t("moment_detail.archive_confirm_title", { name: moment.name })}
                         </p>
                         <p className="text-[11px] text-amber-700/80 mb-3 leading-snug">
-                          This closes the practice for the whole group. History and reflections are preserved. You can always start a new one.
+                          {t("moment_detail.archive_confirm_desc")}
                         </p>
                         <div className="flex gap-2">
                           <button
@@ -1401,13 +1437,13 @@ export default function MomentDetail() {
                             disabled={archiveMutation.isPending}
                             className="text-xs font-semibold text-white bg-amber-600 rounded-full px-4 py-2 hover:bg-amber-700 transition-colors disabled:opacity-50"
                           >
-                            {archiveMutation.isPending ? "Archiving…" : "Yes, archive it"}
+                            {archiveMutation.isPending ? t("moment_detail.archiving") : t("moment_detail.yes_archive")}
                           </button>
                           <button
                             onClick={() => setShowArchiveConfirm(false)}
                             className="text-xs text-amber-700 px-2 py-2 hover:text-amber-900 transition-colors"
                           >
-                            Cancel
+                            {t("moment_detail.cancel")}
                           </button>
                         </div>
                       </motion.div>
@@ -1419,7 +1455,7 @@ export default function MomentDetail() {
                 {!canManage && (
                   <div className="rounded-2xl p-5 mb-3 text-center" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                     <p className="text-sm text-muted-foreground" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
-                      🌿 Goal complete · waiting for the group leader to set the next step
+                      🌿 {t("moment_detail.goal_complete_waiting")}
                     </p>
                   </div>
                 )}
@@ -1435,10 +1471,10 @@ export default function MomentDetail() {
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
-                  {goalLabel(sessionsGoal, freq)} goal
+                  {t("moment_detail.goal_with_label", { label: goalLabel(t, sessionsGoal, freq) })}
                 </span>
                 <span className={`text-xs ${myGoalHit ? "text-[#5C7A5F] font-semibold" : almostThere ? "text-[#C17F24] font-medium" : "text-muted-foreground"}`}>
-                  {myGoalHit ? "Goal reached 🌸" : almostThere ? "Almost there 🌸" : `${remaining} to go 🌿`}
+                  {myGoalHit ? `${t("moment_detail.goal_reached")} 🌸` : almostThere ? `${t("moment_detail.almost_there")} 🌸` : `${t("moment_detail.n_to_go", { count: remaining })} 🌿`}
                 </span>
               </div>
               <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
@@ -1453,7 +1489,9 @@ export default function MomentDetail() {
               {myGoalHit ? (
                 <div className="mt-2.5 flex items-center justify-between gap-3">
                   <p className="text-xs text-muted-foreground">
-                    You showed up {myStreak ?? sessionsGoal} {unitLabelPlural}. 🌸
+                    {isDaily
+                      ? t("moment_detail.you_showed_up_days", { count: myStreak ?? sessionsGoal })
+                      : t("moment_detail.you_showed_up_sessions", { count: myStreak ?? sessionsGoal })} 🌸
                   </p>
                   {canManage && (
                     <button
@@ -1461,13 +1499,13 @@ export default function MomentDetail() {
                       className="px-3 py-1 rounded-full text-[11px] font-semibold bg-[#5C7A5F] text-white hover:bg-[#5a7a60] transition-colors"
                       style={{ fontFamily: "Space Grotesk, sans-serif" }}
                     >
-                      Renew 🌱
+                      {t("moment_detail.renew")} 🌱
                     </button>
                   )}
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground mt-1.5">
-                  {sessionsLogged} of {sessionsGoal} {unitLabelPlural} · {remaining} to go 🌿
+                  {t("moment_detail.progress_of_unit", { logged: sessionsLogged, goal: sessionsGoal, unit: unitLabelPlural, remaining })} 🌿
                 </p>
               )}
             </div>
@@ -1480,7 +1518,7 @@ export default function MomentDetail() {
             timeline becomes duplicative and crowds the page. */}
         {!isIntercession && <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Log Timeline</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">{t("moment_detail.log_timeline")}</span>
             <div className="flex-1 h-px" style={{ background: "rgba(46,107,64,0.35)" }} />
           </div>
 
@@ -1492,7 +1530,7 @@ export default function MomentDetail() {
             if (prayedToday.length === 0) return null;
             return (
               <div className="mb-5">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">Today</p>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">{t("moment_detail.timeline_today")}</p>
                 <div className="rounded-2xl divide-y divide-[rgba(46,107,64,0.15)] overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                   {prayedToday.map((log, i) => {
                     const firstName = (log.name || log.email || "?").split(" ")[0];
@@ -1519,12 +1557,12 @@ export default function MomentDetail() {
                         <div className="shrink-0 text-right">
                           <p className="text-xs text-[#5C7A5F] font-medium">
                             {isFasting
-                              ? "Fasting · all day"
+                              ? t("moment_detail.status_fasting_all_day")
                               : ["intercession", "morning-prayer", "evening-prayer"].includes(moment.templateType ?? "")
-                              ? `Prayed · ${loggedTime}`
+                              ? t("moment_detail.status_prayed_at", { time: loggedTime })
                               : isContemplative
-                              ? `In silence · ${loggedTime}`
-                              : `Practiced · ${loggedTime}`}
+                              ? t("moment_detail.status_in_silence_at", { time: loggedTime })
+                              : t("moment_detail.status_practiced_at", { time: loggedTime })}
                           </p>
                         </div>
                       </div>
@@ -1546,18 +1584,19 @@ export default function MomentDetail() {
             const todayHasPosts = todayWindow && todayWindow.posts.length > 0;
             if (recentWindows.length === 0 && !todayHasPosts) return (
               <p className="text-xs text-muted-foreground/50 italic text-center py-4">
-                No practice sessions yet — be the first to log 🌿
+                {t("moment_detail.no_sessions_be_first")} 🌿
               </p>
             );
             if (recentWindows.length === 0) return null;
+            const STATUS_LABEL = statusLabel(t);
             return (
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">Recent</p>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">{t("moment_detail.timeline_recent")}</p>
                 <div className="space-y-3">
                   {recentWindows.map(win => {
                     const date = parseISO(win.windowDate);
                     const today = new Date().toISOString().slice(0, 10);
-                    const dateLabel = win.windowDate === today ? "Today" : format(date, "EEE, MMM d");
+                    const dateLabel = win.windowDate === today ? t("moment_detail.timeline_today") : format(date, "EEE, MMM d");
                     return (
                       <div key={win.id} className="rounded-2xl overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                         <div className="flex items-center justify-between px-4 pt-3 pb-2" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
@@ -1568,7 +1607,7 @@ export default function MomentDetail() {
                         </div>
                         <div className="divide-y divide-border/20">
                           {win.posts.map((post, i) => {
-                            const firstName = (post.guestName ?? "Someone").split(" ")[0];
+                            const firstName = (post.guestName ?? t("moment_detail.someone")).split(" ")[0];
                             const loggedTime = post.loggedAt
                               ? new Date(post.loggedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }).toLowerCase()
                               : null;
@@ -1582,13 +1621,13 @@ export default function MomentDetail() {
                                     </p>
                                   ) : post.isCheckin ? (
                                     <p className="text-xs text-muted-foreground">
-                                      {isFasting
-                                        ? "✓ fasted"
+                                      ✓ {isFasting
+                                        ? t("moment_detail.checkin_fasted")
                                         : ["intercession", "morning-prayer", "evening-prayer"].includes(moment.templateType ?? "")
-                                        ? "✓ prayed"
+                                        ? t("moment_detail.checkin_prayed")
                                         : isContemplative
-                                        ? "✓ sat"
-                                        : "✓ practiced"}
+                                        ? t("moment_detail.checkin_sat")
+                                        : t("moment_detail.checkin_practiced")}
                                     </p>
                                   ) : null}
                                 </div>
@@ -1615,7 +1654,7 @@ export default function MomentDetail() {
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors py-2 px-1 -mx-1 rounded-lg"
           >
             <span>⚙️</span>
-            <span className="font-medium">Settings</span>
+            <span className="font-medium">{t("moment_detail.settings")}</span>
             <span className="text-xs opacity-50">{showManage ? "▲" : "▼"}</span>
           </button>
 
@@ -1630,8 +1669,8 @@ export default function MomentDetail() {
               {canManage && !editingPractice && (
                 <div className="flex items-start justify-between rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                   <div>
-                    <p className="text-sm font-medium text-foreground">Edit practice</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Change name, intention, or goal.</p>
+                    <p className="text-sm font-medium text-foreground">{t("moment_detail.edit_practice")}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{t("moment_detail.edit_practice_desc")}</p>
                   </div>
                   <button
                     onClick={() => {
@@ -1646,7 +1685,7 @@ export default function MomentDetail() {
                     }}
                     className="shrink-0 ml-4 text-xs font-medium text-[#5C7A5F] border border-[#5C7A5F]/40 rounded-full px-4 py-2 hover:bg-[#5C7A5F]/8 transition-colors min-h-[36px]"
                   >
-                    Edit
+                    {t("moment_detail.edit")}
                   </button>
                 </div>
               )}
@@ -1659,7 +1698,7 @@ export default function MomentDetail() {
                 >
 
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground block mb-1">{isIntercession ? "Title" : "Name"}</label>
+                    <label className="text-xs font-medium text-muted-foreground block mb-1">{isIntercession ? t("moment_detail.label_title") : t("moment_detail.label_name")}</label>
                     <input
                       type="text"
                       value={isCustomIntercession ? editIntention : editName}
@@ -1671,7 +1710,7 @@ export default function MomentDetail() {
                   </div>
                   {isCustomIntercession && moment.intercessionFullText ? (
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground block mb-1">Prayer</label>
+                      <label className="text-xs font-medium text-muted-foreground block mb-1">{t("moment_detail.label_prayer")}</label>
                       <div
                         className="rounded-xl px-3 py-2 text-sm italic leading-relaxed"
                         style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.15)", color: "#8FAF96" }}
@@ -1681,7 +1720,7 @@ export default function MomentDetail() {
                     </div>
                   ) : !isIntercession ? (
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground block mb-1">Intention</label>
+                      <label className="text-xs font-medium text-muted-foreground block mb-1">{t("moment_detail.label_intention")}</label>
                       <textarea
                         value={editIntention}
                         onChange={e => setEditIntention(e.target.value)}
@@ -1694,7 +1733,7 @@ export default function MomentDetail() {
                   ) : null}
                   {isIntercession && (
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground block mb-1">Emoji</label>
+                      <label className="text-xs font-medium text-muted-foreground block mb-1">{t("moment_detail.label_emoji")}</label>
                       <div className="flex flex-wrap gap-2">
                         {["🙏🏽", "✝️", "🕊️", "💚", "🌿", "🕯️", "📖", "❤️", "🙌🏽", "☦️", "⛪", "🌹"].map(e => (
                           <button
@@ -1711,14 +1750,14 @@ export default function MomentDetail() {
                           </button>
                         ))}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">Shown on dashboard cards. Tap again to clear.</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t("moment_detail.emoji_hint")}</p>
                     </div>
                   )}
                   {isIntercession && (
                     <>
                       <div>
                         <label className="text-xs font-medium text-muted-foreground block mb-1">
-                          {moment.intercessionSource === "action" ? "Action link" : "Learn more link"}
+                          {moment.intercessionSource === "action" ? t("moment_detail.label_action_link") : t("moment_detail.label_learn_more_link")}
                         </label>
                         <input
                           type="url"
@@ -1735,14 +1774,14 @@ export default function MomentDetail() {
                       {editLearnMoreUrl.trim().length > 0 && (
                         <div>
                           <label className="text-xs font-medium text-muted-foreground block mb-1">
-                            Article title <span style={{ color: "rgba(143,175,150,0.5)" }}>(shown above the link)</span>
+                            {t("moment_detail.label_article_title")} <span style={{ color: "rgba(143,175,150,0.5)" }}>{t("moment_detail.label_article_title_hint")}</span>
                           </label>
                           <input
                             type="text"
                             value={editArticleTitle}
                             onChange={e => setEditArticleTitle(e.target.value)}
                             maxLength={200}
-                            placeholder="Auto-filled from the link — edit to override"
+                            placeholder={t("moment_detail.article_title_placeholder")}
                             className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5C7A5F]/20"
                             style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
                           />
@@ -1751,7 +1790,7 @@ export default function MomentDetail() {
                     </>
                   )}
                   <div>
-                    <label className="text-xs font-medium text-muted-foreground block mb-1">Goal (days)</label>
+                    <label className="text-xs font-medium text-muted-foreground block mb-1">{t("moment_detail.label_goal_days")}</label>
                     <input
                       type="number"
                       value={editGoalDays}
@@ -1764,7 +1803,7 @@ export default function MomentDetail() {
                   </div>
                   {!isFasting && !isIntercession && (
                     <div>
-                      <label className="text-xs font-medium text-muted-foreground block mb-1">Scheduled time</label>
+                      <label className="text-xs font-medium text-muted-foreground block mb-1">{t("moment_detail.label_scheduled_time")}</label>
                       <input
                         type="time"
                         value={editScheduledTime}
@@ -1772,7 +1811,7 @@ export default function MomentDetail() {
                         className="rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#5C7A5F]/20"
                         style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)", color: "#F0EDE6" }}
                       />
-                      <p className="text-xs text-muted-foreground mt-1">Everyone can log any time that day. 🌿</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t("moment_detail.log_any_time_hint")} 🌿</p>
                     </div>
                   )}
 
@@ -1795,7 +1834,7 @@ export default function MomentDetail() {
                     const detaching = detachGroupMutation.isPending ? detachGroupMutation.variables : null;
                     return (
                       <div>
-                        <label className="text-xs font-medium text-muted-foreground block mb-2">Share with</label>
+                        <label className="text-xs font-medium text-muted-foreground block mb-2">{t("moment_detail.share_with")}</label>
                         <div className="flex flex-wrap gap-2 mb-2">
                           {primary && (
                             <span
@@ -1805,7 +1844,7 @@ export default function MomentDetail() {
                                 border: "1px solid rgba(46,107,64,0.35)",
                                 color: "#C8D4C0",
                               }}
-                              title="Primary community — can't be detached here; archive the practice instead."
+                              title={t("moment_detail.primary_community_title")}
                             >
                               {primary.emoji ?? "🏘️"} {primary.name}
                             </span>
@@ -1827,7 +1866,7 @@ export default function MomentDetail() {
                                 disabled={detachGroupMutation.isPending}
                                 className="-mr-1 hover:opacity-100 transition-opacity"
                                 style={{ opacity: detaching === g.id ? 0.4 : 0.6 }}
-                                title="Remove from this community"
+                                title={t("moment_detail.remove_from_community")}
                               >
                                 ×
                               </button>
@@ -1835,7 +1874,7 @@ export default function MomentDetail() {
                           ))}
                           {!primary && additional.length === 0 && (
                             <span className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>
-                              Not shared with any community yet.
+                              {t("moment_detail.not_shared_yet")}
                             </span>
                           )}
                         </div>
@@ -1855,17 +1894,17 @@ export default function MomentDetail() {
                                   color: "#A8C5A0",
                                 }}
                               >
-                                {attaching === g.id ? "Adding…" : `+ ${g.emoji ?? "🏘️"} ${g.name}`}
+                                {attaching === g.id ? t("moment_detail.adding") : t("moment_detail.add_group_chip", { emoji: g.emoji ?? "🏘️", name: g.name })}
                               </button>
                             ))}
                           </div>
                         ) : (
                           <p className="text-xs" style={{ color: "rgba(143,175,150,0.45)" }}>
-                            {myGroupsData ? "No other communities you admin to add." : "Loading communities…"}
+                            {myGroupsData ? t("moment_detail.no_other_communities") : t("moment_detail.loading_communities")}
                           </p>
                         )}
                         <p className="text-xs mt-2" style={{ color: "rgba(143,175,150,0.45)" }}>
-                          Adding a community brings its members in as participants.
+                          {t("moment_detail.adding_community_note")}
                         </p>
                       </div>
                     );
@@ -1898,13 +1937,13 @@ export default function MomentDetail() {
                       disabled={editMutation.isPending || !editName.trim()}
                       className="text-sm font-semibold text-white bg-[#5C7A5F] rounded-full px-5 py-2.5 hover:bg-[#5a7d60] transition-colors disabled:opacity-50"
                     >
-                      {editMutation.isPending ? "Saving…" : "Save changes"}
+                      {editMutation.isPending ? t("moment_detail.saving") : t("moment_detail.save_changes")}
                     </button>
                     <button
                       onClick={() => setEditingPractice(false)}
                       className="text-sm text-muted-foreground px-3 py-2.5 hover:text-foreground transition-colors"
                     >
-                      Cancel
+                      {t("moment_detail.cancel")}
                     </button>
                   </div>
                 </motion.div>
@@ -1921,7 +1960,7 @@ export default function MomentDetail() {
                   the feed's subscriber list. */}
               {isCreator && !momentGroup && !moment.prayerFeedId && members.length > 1 && (
                 <div className="rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
-                  <p className="text-sm font-medium text-foreground mb-3">Members</p>
+                  <p className="text-sm font-medium text-foreground mb-3">{t("moment_detail.members")}</p>
                   <div className="space-y-2">
                     {members.map(m => {
                       const isMe = m.email.toLowerCase() === user?.email?.toLowerCase();
@@ -1938,10 +1977,10 @@ export default function MomentDetail() {
                             )}
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <p className="text-sm text-foreground truncate">{m.name ?? m.email}{isMe ? " (you)" : ""}</p>
+                                <p className="text-sm text-foreground truncate">{m.name ?? m.email}{isMe ? t("moment_detail.you_suffix") : ""}</p>
                                 {!isMe && m.joined === false && (
                                   <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground/70">
-                                    Invited
+                                    {t("moment_detail.invited")}
                                   </span>
                                 )}
                               </div>
@@ -1956,20 +1995,20 @@ export default function MomentDetail() {
                                   disabled={removeMemberMutation.isPending}
                                   className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors"
                                 >
-                                  {removeMemberMutation.isPending ? "Removing…" : "Confirm"}
+                                  {removeMemberMutation.isPending ? t("moment_detail.removing") : t("moment_detail.confirm")}
                                 </button>
                                 <button
                                   onClick={() => setRemovingEmail(null)}
                                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                                 >
-                                  Cancel
+                                  {t("moment_detail.cancel")}
                                 </button>
                               </div>
                             ) : (
                               <button
                                 onClick={() => setRemovingEmail(m.email)}
                                 className="shrink-0 ml-2 text-xs text-muted-foreground/50 hover:text-rose-500 transition-colors px-2 py-1"
-                                title={`Remove ${m.name ?? m.email}`}
+                                title={t("moment_detail.remove_member", { name: m.name ?? m.email })}
                               >
                                 ✕
                               </button>
@@ -1994,14 +2033,14 @@ export default function MomentDetail() {
                   {!showLeaveConfirm ? (
                     <div className="flex items-start justify-between rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                       <div>
-                        <p className="text-sm font-medium text-foreground">Leave this practice</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Removes it from your garden. History is preserved.</p>
+                        <p className="text-sm font-medium text-foreground">{t("moment_detail.leave_practice")}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t("moment_detail.leave_practice_desc")}</p>
                       </div>
                       <button
                         onClick={() => setShowLeaveConfirm(true)}
                         className="shrink-0 ml-4 text-xs font-medium text-amber-700 border border-amber-300/60 rounded-full px-4 py-2 hover:bg-amber-50 transition-colors min-h-[36px]"
                       >
-                        Leave
+                        {t("moment_detail.leave")}
                       </button>
                     </div>
                   ) : (
@@ -2010,9 +2049,9 @@ export default function MomentDetail() {
                       animate={{ opacity: 1, scale: 1 }}
                       className="bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4"
                     >
-                      <p className="text-sm font-semibold text-amber-800 mb-1">Leave "{moment.name}"?</p>
+                      <p className="text-sm font-semibold text-amber-800 mb-1">{t("moment_detail.leave_confirm_title", { name: moment.name })}</p>
                       <p className="text-xs text-amber-700/80 mb-4">
-                        You'll no longer receive reminders or appear in this practice. You can always be re-invited.
+                        {t("moment_detail.leave_confirm_desc")}
                       </p>
                       <div className="flex gap-3">
                         <button
@@ -2020,13 +2059,13 @@ export default function MomentDetail() {
                           disabled={archiveMutation.isPending}
                           className="text-sm font-semibold text-white bg-amber-600 rounded-full px-5 py-2.5 hover:bg-amber-700 transition-colors disabled:opacity-50"
                         >
-                          {archiveMutation.isPending ? "Leaving…" : "Yes, leave it"}
+                          {archiveMutation.isPending ? t("moment_detail.leaving") : t("moment_detail.yes_leave")}
                         </button>
                         <button
                           onClick={() => setShowLeaveConfirm(false)}
                           className="text-sm text-amber-700 px-3 py-2.5 hover:text-amber-900 transition-colors"
                         >
-                          Cancel
+                          {t("moment_detail.cancel")}
                         </button>
                       </div>
                     </motion.div>
@@ -2040,14 +2079,14 @@ export default function MomentDetail() {
                   {!showDeleteConfirm ? (
                     <div className="flex items-start justify-between rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}>
                       <div>
-                        <p className="text-sm font-medium text-foreground">Delete this practice</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Permanently removes it for everyone. Cannot be undone.</p>
+                        <p className="text-sm font-medium text-foreground">{t("moment_detail.delete_practice")}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{t("moment_detail.delete_practice_desc")}</p>
                       </div>
                       <button
                         onClick={() => setShowDeleteConfirm(true)}
                         className="shrink-0 ml-4 text-xs font-medium text-rose-600 border border-rose-300/60 rounded-full px-4 py-2 hover:bg-rose-50 transition-colors min-h-[36px]"
                       >
-                        Delete
+                        {t("moment_detail.delete")}
                       </button>
                     </div>
                   ) : (
@@ -2056,9 +2095,9 @@ export default function MomentDetail() {
                       animate={{ opacity: 1, scale: 1 }}
                       className="bg-rose-50 border border-rose-200 rounded-2xl px-5 py-4"
                     >
-                      <p className="text-sm font-semibold text-rose-800 mb-1">Delete "{moment.name}"?</p>
+                      <p className="text-sm font-semibold text-rose-800 mb-1">{t("moment_detail.delete_confirm_title", { name: moment.name })}</p>
                       <p className="text-xs text-rose-700/80 mb-4">
-                        This cannot be undone. All history, streaks, and reflections will be permanently removed for everyone.
+                        {t("moment_detail.delete_confirm_desc")}
                       </p>
                       {deleteError && (
                         <p className="text-xs text-rose-700 bg-rose-100 rounded-lg px-3 py-2 mb-3">{deleteError}</p>
@@ -2069,13 +2108,13 @@ export default function MomentDetail() {
                           disabled={deleteMutation.isPending}
                           className="text-sm font-semibold text-white bg-rose-600 rounded-full px-5 py-2.5 hover:bg-rose-700 transition-colors disabled:opacity-50"
                         >
-                          {deleteMutation.isPending ? "Deleting…" : "Yes, delete it"}
+                          {deleteMutation.isPending ? t("moment_detail.deleting") : t("moment_detail.yes_delete")}
                         </button>
                         <button
                           onClick={() => { setShowDeleteConfirm(false); setDeleteError(""); }}
                           className="text-sm text-rose-700 px-3 py-2.5 hover:text-rose-900 transition-colors"
                         >
-                          Cancel
+                          {t("moment_detail.cancel")}
                         </button>
                       </div>
                     </motion.div>
@@ -2111,7 +2150,7 @@ export default function MomentDetail() {
               <div className="px-5 pt-4 pb-8">
                 <div className="w-10 h-1 bg-border/60 rounded-full mx-auto mb-4" />
                 <div className="flex items-center justify-between mb-1">
-                  <h2 className="text-lg font-semibold text-foreground">Renew {moment.name}</h2>
+                  <h2 className="text-lg font-semibold text-foreground">{t("moment_detail.renew_title", { name: moment.name })}</h2>
                   <button
                     onClick={() => setRenewModalOpen(false)}
                     className="text-muted-foreground hover:text-foreground text-xl leading-none p-1"
@@ -2120,11 +2159,11 @@ export default function MomentDetail() {
                   </button>
                 </div>
                 <p className="text-xs text-muted-foreground mb-5">
-                  Pick a new length — progress resets and the rhythm continues.
+                  {t("moment_detail.renew_pick_length")}
                 </p>
 
                 <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">
-                  Presets
+                  {t("moment_detail.presets")}
                 </p>
                 <div className="flex flex-wrap gap-2 mb-5">
                   {[3, 7, 14, 30, 90].map((n) => {
@@ -2140,7 +2179,7 @@ export default function MomentDetail() {
                         }`}
                         style={{ fontFamily: "Space Grotesk, sans-serif" }}
                       >
-                        {n} {moment.frequency === "daily" ? "days" : "sessions"}
+                        {n} {moment.frequency === "daily" ? t("moment_detail.unit_days") : t("moment_detail.unit_sessions")}
                       </button>
                     );
                   })}
@@ -2153,14 +2192,14 @@ export default function MomentDetail() {
                     }`}
                     style={{ fontFamily: "Space Grotesk, sans-serif" }}
                   >
-                    Ongoing ✨
+                    {t("moment_detail.ongoing")} ✨
                   </button>
                 </div>
 
                 {renewCustom !== "ongoing" && (
                   <>
                     <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70 mb-2">
-                      Custom length
+                      {t("moment_detail.custom_length")}
                     </p>
                     <div className="flex items-center gap-2 mb-6">
                       <input
@@ -2170,10 +2209,10 @@ export default function MomentDetail() {
                         value={renewCustom}
                         onChange={(e) => setRenewCustom(e.target.value)}
                         className="flex-1 px-4 py-3 rounded-xl bg-secondary text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-[#5C7A5F]"
-                        placeholder="How many?"
+                        placeholder={t("moment_detail.how_many_placeholder")}
                       />
                       <span className="text-sm text-muted-foreground">
-                        {moment.frequency === "daily" ? "days" : "sessions"}
+                        {moment.frequency === "daily" ? t("moment_detail.unit_days") : t("moment_detail.unit_sessions")}
                       </span>
                     </div>
                   </>
@@ -2181,7 +2220,7 @@ export default function MomentDetail() {
 
                 {renewCustom === "ongoing" && (
                   <p className="text-xs text-muted-foreground italic mb-6" style={{ fontFamily: "Space Grotesk, sans-serif" }}>
-                    No end date — this is just what you do now. The calendar event keeps going. ✨
+                    {t("moment_detail.ongoing_note")} ✨
                   </p>
                 )}
 
@@ -2209,10 +2248,10 @@ export default function MomentDetail() {
                   style={{ fontFamily: "Space Grotesk, sans-serif" }}
                 >
                   {updateGoalMutation.isPending
-                    ? "Renewing…"
+                    ? t("moment_detail.renewing")
                     : renewCustom === "ongoing"
-                      ? "Make it ongoing ✨"
-                      : "Renew 🌱"}
+                      ? `${t("moment_detail.make_it_ongoing")} ✨`
+                      : `${t("moment_detail.renew")} 🌱`}
                 </button>
               </div>
             </motion.div>
@@ -2242,7 +2281,7 @@ export default function MomentDetail() {
                 {/* Handle */}
                 <div className="w-10 h-1 bg-border/60 rounded-full mx-auto mb-4" />
                 <div className="flex items-center justify-between mb-1">
-                  <h2 className="text-lg font-semibold text-foreground">Invite to practice</h2>
+                  <h2 className="text-lg font-semibold text-foreground">{t("moment_detail.invite_to_practice")}</h2>
                   <button
                     onClick={() => setShowInvite(false)}
                     className="text-muted-foreground hover:text-foreground text-xl leading-none p-1"
@@ -2251,7 +2290,7 @@ export default function MomentDetail() {
                   </button>
                 </div>
                 <p className="text-xs text-muted-foreground mb-5">
-                  Add people to <span className="font-medium text-foreground">{moment.name}</span>
+                  {t("moment_detail.add_people_to")} <span className="font-medium text-foreground">{moment.name}</span>
                 </p>
 
                 <InviteStep
@@ -2272,12 +2311,12 @@ export default function MomentDetail() {
                     }`}
                   >
                     {inviteMutation.isPending
-                      ? "Inviting…"
+                      ? t("moment_detail.inviting")
                       : invitePeople.length === 0
-                        ? "Choose someone to invite"
+                        ? t("moment_detail.choose_someone")
                         : invitePeople.length === 1
-                          ? `Invite ${invitePeople[0].name} 🌿`
-                          : `Invite ${invitePeople.length} people 🌿`}
+                          ? `${t("moment_detail.invite_one_person", { name: invitePeople[0].name })} 🌿`
+                          : `${t("moment_detail.invite_n_people", { count: invitePeople.length })} 🌿`}
                   </button>
                 </div>
               </div>
