@@ -257,6 +257,170 @@ export async function migrate() {
       );
     `);
 
+    // ── Community + actions + auth-token tables ────────────────────────────
+    // These are defined in the Drizzle schema (lib/db/src/schema/*) but had
+    // no runtime CREATE here, so they existed in prod only by historical
+    // accident (groups / beta_users / group_members / group_announcements)
+    // or via manual paste-to-Railway .sql files that never run on boot (the
+    // action_* tables). A fresh database (disaster recovery, a new
+    // environment, local-from-scratch) couldn't bootstrap them. All DDL is
+    // idempotent (IF NOT EXISTS) — a no-op on the existing prod DB. Created
+    // here, after users + shared_moments (above) and before the first
+    // `REFERENCES groups` ALTER (below), so every FK resolves on a fresh DB.
+    // Columns mirror the schema exactly.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS groups (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        description TEXT,
+        slug TEXT NOT NULL UNIQUE,
+        emoji TEXT,
+        calendar_url TEXT,
+        invite_token TEXT UNIQUE,
+        is_prayer_circle BOOLEAN NOT NULL DEFAULT false,
+        intention TEXT,
+        circle_description TEXT,
+        is_public BOOLEAN NOT NULL DEFAULT true,
+        created_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        last_prayer_invite_at TIMESTAMPTZ,
+        prayer_invite_prompt TEXT,
+        sunday_reflections_enabled BOOLEAN NOT NULL DEFAULT false,
+        sunday_reflection_notified_at TIMESTAMPTZ,
+        focus TEXT,
+        contemplation_goal_minutes INTEGER
+      )
+    `);
+
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS beta_users (
+        id SERIAL PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        name TEXT,
+        added_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        is_admin BOOLEAN NOT NULL DEFAULT false,
+        seen_welcome BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_members (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        email TEXT NOT NULL,
+        name TEXT,
+        role TEXT NOT NULL DEFAULT 'member',
+        invite_token TEXT NOT NULL UNIQUE,
+        joined_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    // prayer_feed_id carries no FK here — the Drizzle schema declares the
+    // column without .references() (to avoid a schema-graph cycle through
+    // prayer_feeds). The prayer_feeds FK is added later, after that table
+    // exists (see the group_announcements prayer_feed_id ALTER further down).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS group_announcements (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER REFERENCES groups(id) ON DELETE CASCADE,
+        prayer_feed_id INTEGER,
+        author_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT,
+        content TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'announcement',
+        event_at TIMESTAMPTZ,
+        location TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    // Persistent auth tokens — durable re-login credential used by
+    // routes/auth.ts when the session cookie is missing. Schema-defined
+    // (lib/db/src/schema/persistent_auth_tokens) with no prior runtime
+    // CREATE, so a fresh DB couldn't serve /api/auth/exchange-token.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS persistent_auth_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT NOT NULL UNIQUE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        last_used_at TIMESTAMPTZ,
+        revoked_at TIMESTAMPTZ
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS persistent_auth_tokens_user_id_idx ON persistent_auth_tokens (user_id)`);
+
+    // ── Community actions ──────────────────────────────────────────────────
+    // Verbatim from lib/db/actions_tables.sql + lib/db/action_officials.sql
+    // (the manual paste-to-Railway files that never ran on boot). FK targets
+    // groups + users + shared_moments all exist above. Quoted identifiers and
+    // named constraints are kept as-authored so the constraint names match
+    // Drizzle's generated names.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS "actions" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "group_id" integer NOT NULL
+          CONSTRAINT "actions_group_id_groups_id_fk" REFERENCES "groups"("id") ON DELETE cascade,
+        "creator_user_id" integer NOT NULL
+          CONSTRAINT "actions_creator_user_id_users_id_fk" REFERENCES "users"("id") ON DELETE cascade,
+        "title" text NOT NULL,
+        "description" text NOT NULL,
+        "learn_more_url" text,
+        "location" text,
+        "event_at" timestamp with time zone NOT NULL,
+        "attached_moment_id" integer
+          CONSTRAINT "actions_attached_moment_id_shared_moments_id_fk" REFERENCES "shared_moments"("id") ON DELETE set null,
+        "state" text DEFAULT 'active' NOT NULL,
+        "week_reminder_sent_at" timestamp with time zone,
+        "day_reminder_sent_at" timestamp with time zone,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+        "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+      )
+    `);
+    await run(client, `ALTER TABLE "actions" ADD COLUMN IF NOT EXISTS "email_subject" text`);
+
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS "action_rsvps" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "action_id" integer NOT NULL
+          CONSTRAINT "action_rsvps_action_id_actions_id_fk" REFERENCES "actions"("id") ON DELETE cascade,
+        "user_id" integer NOT NULL
+          CONSTRAINT "action_rsvps_user_id_users_id_fk" REFERENCES "users"("id") ON DELETE cascade,
+        "status" text NOT NULL,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+        "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS "uniq_action_rsvp_action_user" ON "action_rsvps" ("action_id", "user_id")`);
+
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS "action_officials" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "action_id" integer NOT NULL
+          CONSTRAINT "action_officials_action_id_actions_id_fk" REFERENCES "actions"("id") ON DELETE cascade,
+        "name" text NOT NULL,
+        "title" text,
+        "email" text NOT NULL,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL
+      )
+    `);
+
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS "action_email_sends" (
+        "id" serial PRIMARY KEY NOT NULL,
+        "action_id" integer NOT NULL
+          CONSTRAINT "action_email_sends_action_id_actions_id_fk" REFERENCES "actions"("id") ON DELETE cascade,
+        "user_id" integer NOT NULL
+          CONSTRAINT "action_email_sends_user_id_users_id_fk" REFERENCES "users"("id") ON DELETE cascade,
+        "official_id" integer
+          CONSTRAINT "action_email_sends_official_id_action_officials_id_fk" REFERENCES "action_officials"("id") ON DELETE set null,
+        "created_at" timestamp with time zone DEFAULT now() NOT NULL
+      )
+    `);
+
     // Presence preference
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS show_presence BOOLEAN NOT NULL DEFAULT true`);
 
@@ -1254,6 +1418,22 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_ministry_sources_feed_id ON ministry_sources(feed_id)`);
 
+    // Parish admins — additional admins for a Phoebe Parish feed (the
+    // creator is implicitly an admin; see canManageParish in routes/parish.ts).
+    // Schema-defined (lib/db/src/schema/parish_admins) with no prior runtime
+    // CREATE. Placed after prayer_feeds so the parish_feed_id FK resolves on a
+    // fresh DB. Columns mirror the schema exactly.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS parish_admins (
+        id SERIAL PRIMARY KEY,
+        parish_feed_id INTEGER NOT NULL REFERENCES prayer_feeds(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        added_by_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_parish_admins_pair ON parish_admins (parish_feed_id, user_id)`);
+
     // ── Multi-slot prayer feed entries ─────────────────────────────────────
     // Each (feed_id, entry_date) supports up to three entries — slots
     // 1/2/3. Each slot becomes its own slide on the subscriber side, so
@@ -1392,6 +1572,26 @@ export async function migrate() {
     // so existing rows behave as before; the contemplation summary
     // toggle is the only surface that flips this today.
     await run(client, `ALTER TABLE prayer_sessions ADD COLUMN IF NOT EXISTS is_private BOOLEAN NOT NULL DEFAULT FALSE`);
+
+    // ── contemplation_health_minutes ──────────────────────────────────────────
+    // External mindful minutes (Calm, Insight Timer, Apple Mindfulness — NOT
+    // Phoebe's own sits, which the client excludes) that the iOS client reads
+    // from Apple Health and best-effort uploads per local day. The server-side
+    // ~7pm goal nudge (lib/bellSender) and the /me/contemplation-stats endpoint
+    // fold these into "done today" so they count silence kept in other apps the
+    // same way the Contemplation card already does — otherwise the nudge fires
+    // even when the goal was met elsewhere. `day` is the user's local YYYY-MM-DD.
+    // Additive + idempotent; the unique (user_id, day) index is the upsert target.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS contemplation_health_minutes (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day TEXT NOT NULL,
+        minutes INTEGER NOT NULL DEFAULT 0,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS contemplation_health_minutes_user_day_uk ON contemplation_health_minutes (user_id, day)`);
 
     // ── Sign in with Apple — add apple_id column + partial-unique index ─────
     // `sub` from a verified Apple identity token. Partial-unique so existing
