@@ -19,6 +19,7 @@
  */
 
 import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth, useLogout } from "@/hooks/useAuth";
@@ -57,18 +58,8 @@ interface ParishToday {
   };
 }
 
-const MORNING_OPTIONS: Array<{ value: OfficePref; label: string; sub: string }> = [
-  { value: "none", label: "No reminder", sub: "" },
-  { value: "office", label: "Morning Prayer", sub: "Full Daily Office" },
-  { value: "devotion", label: "Morning Devotion", sub: "Short BCP form" },
-];
-const EVENING_OPTIONS: Array<{ value: OfficePref; label: string; sub: string }> = [
-  { value: "none", label: "No reminder", sub: "" },
-  { value: "office", label: "Evening Prayer", sub: "Full Daily Office" },
-  { value: "devotion", label: "Evening Devotion", sub: "Short BCP form" },
-];
-
 export default function ParishSettings() {
+  const { t } = useTranslation();
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -123,6 +114,17 @@ export default function ParishSettings() {
   const prefs = prefsQuery.data;
   const parish = todayQuery.data?.parish;
 
+  const MORNING_OPTIONS: Array<{ value: OfficePref; label: string; sub: string }> = [
+    { value: "none", label: t("parish_settings.no_reminder"), sub: "" },
+    { value: "office", label: t("parish_settings.morning_prayer"), sub: t("parish_settings.full_daily_office") },
+    { value: "devotion", label: t("parish_settings.morning_devotion"), sub: t("parish_settings.short_bcp_form") },
+  ];
+  const EVENING_OPTIONS: Array<{ value: OfficePref; label: string; sub: string }> = [
+    { value: "none", label: t("parish_settings.no_reminder"), sub: "" },
+    { value: "office", label: t("parish_settings.evening_prayer"), sub: t("parish_settings.full_daily_office") },
+    { value: "devotion", label: t("parish_settings.evening_devotion"), sub: t("parish_settings.short_bcp_form") },
+  ];
+
   return (
     <div style={{ background: BG, minHeight: "100vh", color: WARM_TEXT }}>
       <div
@@ -135,7 +137,7 @@ export default function ParishSettings() {
         <div className="flex items-center justify-between mb-8">
           <Link href="/parish">
             <span style={{ color: SAGE, fontSize: 13, fontFamily: SPACE_GROTESK, cursor: "pointer" }}>
-              ← Back
+              ← {t("parish_settings.back")}
             </span>
           </Link>
           <h1
@@ -147,13 +149,13 @@ export default function ParishSettings() {
               margin: 0,
             }}
           >
-            Settings
+            {t("parish_settings.settings")}
           </h1>
           <span style={{ width: 40 }} />
         </div>
 
         {/* Parish */}
-        <SectionLabel>Parish</SectionLabel>
+        <SectionLabel>{t("parish_settings.parish")}</SectionLabel>
         <div
           style={{
             background: "#0F2818",
@@ -181,7 +183,7 @@ export default function ParishSettings() {
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, margin: 0, color: WARM_TEXT }}>
-                {parish?.title ?? "Loading…"}
+                {parish?.title ?? t("parish_settings.loading")}
               </p>
               {parish?.tagline && (
                 <p style={{ color: SAGE, fontSize: 12, margin: "2px 0 0" }}>{parish.tagline}</p>
@@ -192,7 +194,7 @@ export default function ParishSettings() {
             <button
               type="button"
               onClick={() => {
-                if (confirm("Leave this parish? You can pick a new one afterwards.")) {
+                if (confirm(t("parish_settings.leave_confirm"))) {
                   leaveMutation.mutate();
                 }
               }}
@@ -210,7 +212,7 @@ export default function ParishSettings() {
                 textUnderlineOffset: 4,
               }}
             >
-              {leaveMutation.isPending ? "Leaving…" : "Change parish →"}
+              {leaveMutation.isPending ? t("parish_settings.leaving") : `${t("parish_settings.change_parish")} →`}
             </button>
             {prefs?.canManage && (
               <Link href="/parish/admin">
@@ -225,7 +227,7 @@ export default function ParishSettings() {
                     textUnderlineOffset: 4,
                   }}
                 >
-                  Admin & metrics →
+                  {t("parish_settings.admin_metrics")} →
                 </span>
               </Link>
             )}
@@ -233,7 +235,7 @@ export default function ParishSettings() {
         </div>
 
         {/* Office reminders */}
-        <SectionLabel>Office reminders</SectionLabel>
+        <SectionLabel>{t("parish_settings.office_reminders")}</SectionLabel>
         <p
           style={{
             color: SAGE,
@@ -244,18 +246,18 @@ export default function ParishSettings() {
             lineHeight: 1.5,
           }}
         >
-          Pick the prayer Phoebe will nudge you toward each morning and evening — or none, if you'd rather not be pinged.
+          {t("parish_settings.office_reminders_intro")}
         </p>
 
         <RadioBlock
-          title="In the morning"
+          title={t("parish_settings.in_the_morning")}
           options={MORNING_OPTIONS}
           value={prefs?.morning ?? "none"}
           onChange={(v) => saveMutation.mutate({ morning: v })}
           disabled={prefsQuery.isLoading}
         />
         <RadioBlock
-          title="In the evening"
+          title={t("parish_settings.in_the_evening")}
           options={EVENING_OPTIONS}
           value={prefs?.evening ?? "none"}
           onChange={(v) => saveMutation.mutate({ evening: v })}
@@ -263,7 +265,7 @@ export default function ParishSettings() {
         />
 
         {/* Account */}
-        <SectionLabel>Account</SectionLabel>
+        <SectionLabel>{t("parish_settings.account")}</SectionLabel>
         <button
           type="button"
           onClick={() => logout()}
@@ -280,11 +282,11 @@ export default function ParishSettings() {
             textAlign: "left",
           }}
         >
-          Sign out
+          {t("parish_settings.sign_out")}
         </button>
 
         <p style={{ color: FAINT_GREEN, fontSize: 11, textAlign: "center", marginTop: 32 }}>
-          Phoebe Parish · {user.email}
+          {t("parish_settings.footer_brand")} · {user.email}
         </p>
       </div>
     </div>
