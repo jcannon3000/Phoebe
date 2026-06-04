@@ -1116,7 +1116,17 @@ router.post(
 });
 
 // ─── POST /api/auth/reset-password ───────────────────────────────────────────
-router.post("/auth/reset-password", async (req, res): Promise<void> => {
+router.post(
+  "/auth/reset-password",
+  // Per-IP cap. The token is 256-bit random (guessing is infeasible), so this
+  // exists only to bound password-hashing CPU from a flood of reset attempts.
+  rateLimit({
+    name: "auth_reset_password_ip",
+    max: 20,
+    windowMs: 60 * 60 * 1000,
+    message: "Too many password reset attempts from your network. Please try again later.",
+  }),
+  async (req, res): Promise<void> => {
   const { token, password } = req.body as { token?: string; password?: string };
 
   if (!token) { res.status(400).json({ error: "Reset token is required." }); return; }
