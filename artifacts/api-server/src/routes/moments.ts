@@ -1474,9 +1474,14 @@ router.get("/moments/past-intercessions", async (req, res): Promise<void> => {
       const mAny = m as Record<string, unknown>;
       const reachedAt = mAny.commitmentGoalReachedAt as Date | null;
       if (reachedAt && (now.getTime() - new Date(reachedAt).getTime()) > graceMs) return true;
+      // Non-extended (tier <= 1) intercessions anchor on created_at, not the
+      // boot-migration-corruptible cycle_started_at (mirrors the active filter
+      // in GET /moments). Extended ones (tier >= 2) keep their reset cycle.
+      const tier = (mAny.commitmentGoalTier as number | null) ?? 1;
       const cycleStartedAt = mAny.commitmentCycleStartedAt as Date | null;
-      if (!reachedAt && m.goalDays > 0 && cycleStartedAt) {
-        const cycleEndMs = new Date(cycleStartedAt).getTime() + m.goalDays * 24 * 60 * 60 * 1000;
+      const windowAnchor = tier <= 1 ? m.createdAt : cycleStartedAt;
+      if (!reachedAt && m.goalDays > 0 && windowAnchor) {
+        const cycleEndMs = new Date(windowAnchor).getTime() + m.goalDays * 24 * 60 * 60 * 1000;
         if (now.getTime() > cycleEndMs) return true;
       }
       return false;
@@ -1714,18 +1719,25 @@ router.get("/moments", async (req, res): Promise<void> => {
     const momentFeedIds = [...new Set(
       rawMoments.map(m => m.prayerFeedId).filter((f): f is number => f != null),
     )];
-    const offFeedIds = new Set<number>();
+    // A feed-linked moment is shown only if its feed is LIVE. The feed is
+    // "off" when it's paused/archived (state != live) OR the feed row no
+    // longer exists (deleted). The old code only caught EXISTING non-live
+    // feeds, so an intercession whose feed was DELETED slipped through — its
+    // id has no row, so it was never marked off (this is how a deleted feed's
+    // intercession kept appearing). Track the LIVE ids and treat anything not
+    // in that set (incl. deleted feeds) as off.
+    const liveFeedIds = new Set<number>();
     if (momentFeedIds.length > 0) {
       const feedStateRows = await db
         .select({ id: prayerFeedsTable.id, state: prayerFeedsTable.state })
         .from(prayerFeedsTable)
         .where(inArray(prayerFeedsTable.id, momentFeedIds));
-      for (const f of feedStateRows) if (f.state !== "live") offFeedIds.add(f.id);
+      for (const f of feedStateRows) if (f.state === "live") liveFeedIds.add(f.id);
     }
     const flatMoments = rawMoments
       .filter(m => {
         if (m.ritualId !== null || m.state === "archived") return false;
-        if (m.prayerFeedId != null && offFeedIds.has(m.prayerFeedId)) return false;
+        if (m.prayerFeedId != null && !liveFeedIds.has(m.prayerFeedId)) return false;
         // Intercessions: hide once the current cycle window expires.
         // The window is [cycleStartedAt, cycleStartedAt + goalDays).
         // Past the end → hide regardless of bloom count, streak, or
@@ -1740,10 +1752,20 @@ router.get("/moments", async (req, res): Promise<void> => {
         if (m.templateType === "intercession") {
           const mAny = m as Record<string, unknown>;
           const reachedAt = mAny.commitmentGoalReachedAt as Date | null;
-          const cycleStartedAt = mAny.commitmentCycleStartedAt as Date | null;
           if (reachedAt && (now.getTime() - new Date(reachedAt).getTime()) > graceMs) return false;
-          if (!reachedAt && m.goalDays > 0 && cycleStartedAt) {
-            const cycleEndMs = new Date(cycleStartedAt).getTime() + m.goalDays * 24 * 60 * 60 * 1000;
+          // Window expiry. For NON-extended intercessions (goal_tier <= 1)
+          // anchor on created_at, NOT cycle_started_at: a botched boot-time
+          // migration once reset cycle_started_at = NOW() on a batch of
+          // long-past intercessions, reviving them. created_at can't be
+          // corrupted that way, and for a never-extended intercession it IS
+          // the original cycle start. Admin "Extend" bumps the tier to >= 2,
+          // so genuinely-extended ones keep using their (legitimately reset)
+          // cycle_started_at.
+          const tier = (mAny.commitmentGoalTier as number | null) ?? 1;
+          const cycleStartedAt = mAny.commitmentCycleStartedAt as Date | null;
+          const windowAnchor = tier <= 1 ? m.createdAt : cycleStartedAt;
+          if (!reachedAt && m.goalDays > 0 && windowAnchor) {
+            const cycleEndMs = new Date(windowAnchor).getTime() + m.goalDays * 24 * 60 * 60 * 1000;
             if (now.getTime() > cycleEndMs) return false;
           }
         }
