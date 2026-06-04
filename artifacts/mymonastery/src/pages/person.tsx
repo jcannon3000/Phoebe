@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Settings } from "lucide-react";
 import { PrayForThemButton } from "@/components/pray-for-them";
+import { useTranslation } from "react-i18next";
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
@@ -220,6 +221,8 @@ export default function PersonProfile() {
     if (!authLoading && !user) setLocation("/");
   }, [user, authLoading, setLocation]);
 
+  const { t } = useTranslation();
+
   if (authLoading || !user) return null;
 
   if (isLoading) {
@@ -240,8 +243,8 @@ export default function PersonProfile() {
       <Layout>
         <div className="max-w-2xl mx-auto w-full pt-16 text-center">
           <div className="text-4xl mb-4">🌱</div>
-          <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>This person isn't in any of your practices or gatherings yet.</p>
-          <Link href="/people" className="text-sm font-medium" style={{ color: "#5C7A5F" }}>← Back</Link>
+          <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>{t("person.not_found")}</p>
+          <Link href="/people" className="text-sm font-medium" style={{ color: "#5C7A5F" }}>← {t("person.back")}</Link>
         </div>
       </Layout>
     );
@@ -268,7 +271,7 @@ export default function PersonProfile() {
 
         {/* Back */}
         <Link href="/people" className="inline-flex items-center gap-1 text-xs mb-5 transition-opacity hover:opacity-70" style={{ color: "#8FAF96" }}>
-          ← People
+          ← {t("person.people")}
         </Link>
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -303,7 +306,7 @@ export default function PersonProfile() {
                   className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                   style={{ background: "rgba(92,138,95,0.15)", color: "#5C8A5F", border: "1px solid rgba(92,138,95,0.3)" }}
                 >
-                  📮 Correspondent
+                  📮 {t("person.correspondent")}
                 </span>
               )}
               {(person as any).isMuted && (
@@ -311,7 +314,7 @@ export default function PersonProfile() {
                   className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                   style={{ background: "rgba(194,92,92,0.15)", color: "#C25C5C", border: "1px solid rgba(194,92,92,0.3)" }}
                 >
-                  🔇 Muted
+                  🔇 {t("person.muted")}
                 </span>
               )}
             </div>
@@ -334,7 +337,7 @@ export default function PersonProfile() {
               </div>
             ) : (
               <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>
-                {totalTogether === 0 ? "Nothing shared yet" : `${totalTogether} thing${totalTogether !== 1 ? "s" : ""} together`}
+                {totalTogether === 0 ? t("person.nothing_shared") : t("person.things_together", { count: totalTogether })}
               </p>
             )}
           </div>
@@ -369,12 +372,12 @@ export default function PersonProfile() {
                           className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-[0.14em] font-semibold"
                           style={{ color: "rgba(143,175,150,0.55)" }}
                         >
-                          Fellow
+                          {t("person.fellow")}
                         </div>
                         <button
                           onClick={() => {
                             if (unfellowMutation.isPending) return;
-                            if (typeof window !== "undefined" && !window.confirm(`Stop being Fellows with ${firstName}? You'll no longer see their future prayer requests.`)) return;
+                            if (typeof window !== "undefined" && !window.confirm(t("person.unfellow_confirm", { name: firstName }))) return;
                             setShowSettingsPopup(false);
                             unfellowMutation.mutate();
                           }}
@@ -382,7 +385,7 @@ export default function PersonProfile() {
                           className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5 disabled:opacity-40"
                           style={{ color: "#C25C5C", borderBottom: "1px solid rgba(46,107,64,0.18)" }}
                         >
-                          {unfellowMutation.isPending ? "Removing…" : `Unfellow ${firstName}`}
+                          {unfellowMutation.isPending ? t("person.removing") : t("person.unfellow_name", { name: firstName })}
                         </button>
                       </>
                     )}
@@ -395,7 +398,7 @@ export default function PersonProfile() {
                         className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5 disabled:opacity-40"
                         style={{ color: "#A8C5A0" }}
                       >
-                        {unmuteMutation.isPending ? "Unmuting…" : "Unmute"}
+                        {unmuteMutation.isPending ? t("person.unmuting") : t("person.unmute")}
                       </button>
                     ) : (
                       <button
@@ -403,7 +406,7 @@ export default function PersonProfile() {
                         className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5"
                         style={{ color: "#C25C5C" }}
                       >
-                        🔇 Mute {firstName}
+                        🔇 {t("person.mute_name", { name: firstName })}
                       </button>
                     )}
 
@@ -425,7 +428,7 @@ export default function PersonProfile() {
                         className="w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-white/5"
                         style={{ color: "#C25C5C", borderTop: "1px solid rgba(46,107,64,0.18)" }}
                       >
-                        🚩 Report {firstName}
+                        🚩 {t("person.report_name", { name: firstName })}
                       </button>
                     )}
                   </div>
@@ -454,22 +457,22 @@ export default function PersonProfile() {
             style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.25)" }}
           >
             <p className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: "#8FAF96" }}>
-              Held in prayer 🙏🏽
+              {t("person.held_in_prayer")} 🙏🏽
             </p>
             <p className="text-sm leading-relaxed mb-1" style={{ color: "#F0EDE6" }}>{prayer.body}</p>
             <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.6)" }}>
-              {prayerDaysLeft !== null && `${prayerDaysLeft} day${prayerDaysLeft !== 1 ? "s" : ""} remaining · `}
+              {prayerDaysLeft !== null && `${t("person.days_remaining", { count: prayerDaysLeft })} · `}
               {formatDistanceToNow(parseISO(prayer.createdAt), { addSuffix: true })}
             </p>
             {alreadyLeftWord ? (
-              <p className="text-xs italic" style={{ color: "#8FAF96" }}>🌿 You left a word</p>
+              <p className="text-xs italic" style={{ color: "#8FAF96" }}>🌿 {t("person.you_left_a_word")}</p>
             ) : (
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={prayerWord}
                   onChange={e => setPrayerWord(e.target.value.slice(0, 120))}
-                  placeholder="Leave a word alongside this…"
+                  placeholder={t("person.leave_word_placeholder")}
                   className="flex-1 text-sm px-3 py-2 rounded-lg border focus:outline-none transition-colors placeholder:text-muted-foreground/40"
                   style={{ background: "rgba(0,0,0,0.2)", borderColor: "rgba(46,107,64,0.25)", color: "#F0EDE6" }}
                 />
@@ -498,14 +501,14 @@ export default function PersonProfile() {
           >
             <div className="text-4xl mb-4">🌱</div>
             <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-              Nothing shared yet. Start something together.
+              {t("person.nothing_shared_start")}
             </p>
             <Link
               href="/moment/new"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-medium"
               style={{ background: "#2D5E3F", color: "#F0EDE6" }}
             >
-              + Invite {firstName} to a practice
+              + {t("person.invite_to_practice", { name: firstName })}
             </Link>
           </motion.div>
         ) : (
@@ -517,19 +520,19 @@ export default function PersonProfile() {
             {/* Letters */}
             {sharedLetters.length > 0 && (
               <>
-                <SectionHeader label="Letters" />
+                <SectionHeader label={t("person.section_letters")} />
                 <div className="space-y-3">
                   {sharedLetters.map(c => {
                     const isOneToOne = c.groupType === "one_to_one";
                     const needsLetter = c.myTurn && !c.currentPeriod.hasWrittenThisPeriod;
                     const hasUnread = c.unreadCount > 0;
                     const statusText = c.currentPeriod.hasWrittenThisPeriod
-                      ? "Sent · awaiting reply 🌿"
+                      ? t("person.status_sent_awaiting")
                       : c.myTurn
-                      ? "Your turn to write 🖋️"
+                      ? t("person.status_your_turn")
                       : hasUnread
-                      ? "New letter 📮"
-                      : `Letter ${c.currentPeriod.periodNumber}`;
+                      ? t("person.status_new_letter")
+                      : t("person.status_letter_n", { number: c.currentPeriod.periodNumber });
                     const href = needsLetter
                       ? `/letters/${c.id}/write`
                       : `/letters/${c.id}`;
@@ -543,11 +546,11 @@ export default function PersonProfile() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <p className="font-semibold text-sm" style={{ color: "#F0EDE6" }}>
-                            📮 {isOneToOne ? `Letters with ${firstName}` : c.name}
+                            📮 {isOneToOne ? t("person.letters_with", { name: firstName }) : c.name}
                           </p>
                           {c.letterCount > 0 && (
                             <span className="text-[10px] shrink-0 mt-0.5" style={{ color: "rgba(200,212,192,0.4)" }}>
-                              {c.letterCount} letter{c.letterCount !== 1 ? "s" : ""}
+                              {t("person.letter_count", { count: c.letterCount })}
                             </span>
                           )}
                         </div>
@@ -564,16 +567,16 @@ export default function PersonProfile() {
             {/* Practices */}
             {person.sharedPractices && person.sharedPractices.length > 0 && (
               <>
-                <SectionHeader label="Practices" />
+                <SectionHeader label={t("person.section_practices")} />
                 {(() => {
                   const cards = (
                     <div className="space-y-3">
                       {person.sharedPractices.map(practice => {
                         const streakText = practice.currentStreak > 0
-                          ? `${practice.currentStreak} day streak`
+                          ? t("person.day_streak", { count: practice.currentStreak })
                           : practice.totalBlooms > 0
-                          ? `${practice.totalBlooms} time${practice.totalBlooms !== 1 ? "s" : ""} together`
-                          : "Just beginning";
+                          ? t("person.times_together", { count: practice.totalBlooms })
+                          : t("person.just_beginning");
                         // For custom intercessions, show intention instead of generic name
                         const displayName = (() => {
                           const p = practice as any;
@@ -596,7 +599,7 @@ export default function PersonProfile() {
                               </p>
                               {practice.currentStreak > 0 && (
                                 <span className="text-[10px] font-semibold shrink-0 mt-0.5 uppercase" style={{ color: "#C8D4C0", letterSpacing: "0.06em" }}>
-                                  {practice.currentStreak} day streak
+                                  {t("person.day_streak", { count: practice.currentStreak })}
                                 </span>
                               )}
                             </div>
@@ -628,15 +631,15 @@ export default function PersonProfile() {
             {/* Past practices */}
             {((person as any).pastPractices?.length ?? 0) > 0 && (
               <>
-                <SectionHeader label="Past practices" />
+                <SectionHeader label={t("person.section_past_practices")} />
                 {(() => {
                   const pastList = (person as any).pastPractices as typeof person.sharedPractices;
                   const cards = (
                     <div className="space-y-2">
                       {pastList.map(practice => {
                         const timesText = practice.totalBlooms > 0
-                          ? `${practice.totalBlooms} time${practice.totalBlooms !== 1 ? "s" : ""} together`
-                          : "Practiced together";
+                          ? t("person.times_together", { count: practice.totalBlooms })
+                          : t("person.practiced_together");
                         const displayName = (() => {
                           const p = practice as any;
                           if (practice.templateType === "intercession" && p.intention) {
@@ -688,12 +691,12 @@ export default function PersonProfile() {
             {/* Gatherings */}
             {person.sharedRituals && person.sharedRituals.length > 0 && (
               <>
-                <SectionHeader label="Gatherings" />
+                <SectionHeader label={t("person.section_gatherings")} />
                 <div className="space-y-3">
                   {person.sharedRituals.map(({ ritual }) => {
                     const nextText = ritual.nextMeetupDate
-                      ? `Next: ${format(parseISO(ritual.nextMeetupDate), "EEE, MMM d")}`
-                      : "No date set yet";
+                      ? t("person.next_date", { date: format(parseISO(ritual.nextMeetupDate), "EEE, MMM d") })
+                      : t("person.no_date_yet");
                     return (
                       <BarCard
                         key={ritual.id}
@@ -732,7 +735,7 @@ export default function PersonProfile() {
                   className="text-sm font-medium transition-opacity hover:opacity-70"
                   style={{ color: "#8FAF96" }}
                 >
-                  + Write {firstName} a letter 📮
+                  + {t("person.write_a_letter", { name: firstName })} 📮
                 </Link>
               </div>
             )}
@@ -757,10 +760,10 @@ export default function PersonProfile() {
           >
             <div className="text-3xl mb-4 text-center">🔇</div>
             <h2 className="text-lg font-semibold text-center mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              Mute {firstName}?
+              {t("person.mute_modal_title", { name: firstName })}
             </h2>
             <p className="text-sm text-center leading-relaxed mb-6" style={{ color: "#8FAF96" }}>
-              Their prayer requests and Lectio reflections will be hidden from your view. You can unmute them any time in Settings.
+              {t("person.mute_modal_body")}
             </p>
             <div className="flex gap-3">
               <button
@@ -768,7 +771,7 @@ export default function PersonProfile() {
                 className="flex-1 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
                 style={{ background: "rgba(46,107,64,0.08)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.18)" }}
               >
-                Cancel
+                {t("person.cancel")}
               </button>
               <button
                 onClick={() => muteMutation.mutate()}
@@ -776,7 +779,7 @@ export default function PersonProfile() {
                 className="flex-1 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
                 style={{ background: "rgba(194,92,92,0.2)", color: "#C25C5C", border: "1px solid rgba(194,92,92,0.3)" }}
               >
-                {muteMutation.isPending ? "Muting…" : "Mute"}
+                {muteMutation.isPending ? t("person.muting") : t("person.mute")}
               </button>
             </div>
           </motion.div>
