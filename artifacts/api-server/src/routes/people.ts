@@ -24,11 +24,14 @@ async function getUserRituals(userId: number) {
 // GET /api/people?ownerId=N
 // Returns all unique people from the user's rituals (owned + participant)
 router.get("/people", async (req, res): Promise<void> => {
-  const ownerId = parseInt(String(req.query.ownerId ?? ""), 10);
-  if (isNaN(ownerId)) {
-    res.status(400).json({ error: "ownerId is required" });
-    return;
-  }
+  // The garden is the SESSION user's own — derive ownerId from the session and
+  // ignore any ?ownerId param. (Previously this trusted the query param with no
+  // auth check, so any caller could dump any user's entire social graph — every
+  // person, group, and correspondent — just by incrementing an id.) The client
+  // only ever passes its own id, so this is behavior-compatible.
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const ownerId = sessionUserId;
 
   const { user: owner, rituals } = await getUserRituals(ownerId);
   const ownerEmail = owner?.email ?? "";
@@ -474,10 +477,15 @@ router.get("/people", async (req, res): Promise<void> => {
 // Returns a full relationship profile for a specific person
 router.get("/people/:email", async (req, res): Promise<void> => {
   const email = decodeURIComponent(req.params.email ?? "");
-  const ownerId = parseInt(String(req.query.ownerId ?? ""), 10);
+  // Owner = the session user (never trust ?ownerId — same IDOR as GET /people).
+  // This is the viewer's relationship profile with `email`, so it must be scoped
+  // to the caller, not an arbitrary id from the query string.
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const ownerId = sessionUserId;
 
-  if (!email || isNaN(ownerId)) {
-    res.status(400).json({ error: "email and ownerId are required" });
+  if (!email) {
+    res.status(400).json({ error: "email is required" });
     return;
   }
 

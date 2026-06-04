@@ -571,6 +571,40 @@ router.get("/rituals/:id", async (req, res): Promise<void> => {
   );
 });
 
+// Caller's access to a gathering. isMember = owner OR a participant (by email)
+// OR a joined member of the host community; isGroupAdmin = a joined admin /
+// hidden_admin of the host community. Used to gate the gathering's read/write
+// routes, which previously only checked that the ritual existed — so any
+// signed-in user could overwrite a gathering, read/inject its chat, or log
+// meetups for it by guessing the id.
+async function getRitualAccess(ritualId: number, sessionUserId: number): Promise<
+  { ritual: typeof ritualsTable.$inferSelect; isOwner: boolean; isGroupAdmin: boolean; isMember: boolean } | null
+> {
+  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, ritualId));
+  if (!ritual) return null;
+  const isOwner = ritual.ownerId === sessionUserId;
+  let isMember = isOwner;
+  let isGroupAdmin = false;
+
+  const [u] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, sessionUserId));
+  const emailLower = (u?.email ?? "").toLowerCase();
+  if (emailLower) {
+    const participants = (ritual.participants as Array<{ email?: string | null }> | null) ?? [];
+    if (participants.some(p => (p.email ?? "").toLowerCase() === emailLower)) isMember = true;
+  }
+  if (ritual.groupId) {
+    const [m] = await db.select({ role: groupMembersTable.role })
+      .from(groupMembersTable)
+      .where(and(
+        eq(groupMembersTable.groupId, ritual.groupId),
+        eq(groupMembersTable.userId, sessionUserId),
+        sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+      ));
+    if (m) { isMember = true; if (m.role === "admin" || m.role === "hidden_admin") isGroupAdmin = true; }
+  }
+  return { ritual, isOwner, isGroupAdmin, isMember };
+}
+
 router.put("/rituals/:id", async (req, res): Promise<void> => {
   const params = UpdateRitualParams.safeParse(req.params);
   if (!params.success) {
@@ -581,6 +615,17 @@ router.put("/rituals/:id", async (req, res): Promise<void> => {
   const parsed = UpdateRitualBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  // AuthZ: only the owner or a community admin may edit a gathering. (Was
+  // unauthenticated + IDOR — any caller could overwrite name/participants/etc.)
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const access = await getRitualAccess(params.data.id, sessionUserId);
+  if (!access) { res.status(404).json({ error: "Ritual not found" }); return; }
+  if (!access.isOwner && !access.isGroupAdmin) {
+    res.status(403).json({ error: "Only the owner or a community admin can edit this gathering" });
     return;
   }
 
@@ -870,11 +915,13 @@ router.post("/rituals/:id/meetups", async (req, res): Promise<void> => {
     return;
   }
 
-  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, params.data.id));
-  if (!ritual) {
-    res.status(404).json({ error: "Ritual not found" });
-    return;
-  }
+  // AuthZ: only a member of the gathering may log meetups (was existence-only,
+  // so any signed-in user could inject meetups + spam calendar invites).
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const access = await getRitualAccess(params.data.id, sessionUserId);
+  if (!access) { res.status(404).json({ error: "Ritual not found" }); return; }
+  if (!access.isMember) { res.status(403).json({ error: "Only members of this gathering can log meetups" }); return; }
 
   const [meetup] = await db
     .insert(meetupsTable)
@@ -903,6 +950,14 @@ router.get("/rituals/:id/messages", async (req, res): Promise<void> => {
     return;
   }
 
+  // AuthZ: only a member may read a gathering's chat history (was unauthed —
+  // any caller could read any gathering's messages by id).
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const access = await getRitualAccess(params.data.id, sessionUserId);
+  if (!access) { res.status(404).json({ error: "Ritual not found" }); return; }
+  if (!access.isMember) { res.status(403).json({ error: "Forbidden" }); return; }
+
   const messages = await db
     .select()
     .from(ritualMessagesTable)
@@ -925,11 +980,14 @@ router.post("/rituals/:id/chat", async (req, res): Promise<void> => {
     return;
   }
 
-  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, params.data.id));
-  if (!ritual) {
-    res.status(404).json({ error: "Ritual not found" });
-    return;
-  }
+  // AuthZ: only a member of the gathering may post to its chat (was existence-
+  // only — any signed-in user could inject messages into any gathering).
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const access = await getRitualAccess(params.data.id, sessionUserId);
+  if (!access) { res.status(404).json({ error: "Ritual not found" }); return; }
+  if (!access.isMember) { res.status(403).json({ error: "Only members of this gathering can post" }); return; }
+  const ritual = access.ritual;
 
   await db.insert(ritualMessagesTable).values({
     ritualId: params.data.id,
