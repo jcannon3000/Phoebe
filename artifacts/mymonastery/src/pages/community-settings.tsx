@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,6 +43,7 @@ export default function CommunitySettingsPage() {
   const [location, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { isBeta } = useBetaStatus();
+  const { t } = useTranslation();
 
   // Tabs within settings: "settings" (form) and "metrics" (beta only).
   // The /metrics route deep-links to the same page with the tab pre-
@@ -77,10 +79,10 @@ export default function CommunitySettingsPage() {
   const [newIntentionDescription, setNewIntentionDescription] = useState("");
 
   const INTENTION_EXAMPLES = [
-    "For the sick in our parish.",
-    "For an end to gun violence.",
-    "For our neighbors who are new to this country.",
-    "For those who have left the church.",
+    t("community_settings.intention_example_sick"),
+    t("community_settings.intention_example_violence"),
+    t("community_settings.intention_example_neighbors"),
+    t("community_settings.intention_example_left_church"),
   ];
 
   useEffect(() => {
@@ -207,7 +209,7 @@ export default function CommunitySettingsPage() {
       setLocation("/communities");
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : "Couldn't delete the community.";
+      const msg = err instanceof Error ? err.message : t("community_settings.delete_failed");
       setDeleteError(msg);
     },
   });
@@ -227,9 +229,9 @@ export default function CommunitySettingsPage() {
         </button>
 
         <h1 className="text-2xl font-bold mb-1" style={{ color: "#F0EDE6", fontFamily: FONT }}>
-          Community Settings
+          {t("community_settings.title")}
         </h1>
-        <p className="text-sm mb-5" style={{ color: "#8FAF96" }}>Edit details for {group.name}.</p>
+        <p className="text-sm mb-5" style={{ color: "#8FAF96" }}>{t("community_settings.subtitle", { name: group.name })}</p>
 
         {/* ── Tab pills — Settings / Metrics (beta) ─────────────────────────
             Metrics tab is hidden for non-beta users since the backend
@@ -237,10 +239,10 @@ export default function CommunitySettingsPage() {
         <div
           className="flex items-center gap-2 mb-6"
           role="tablist"
-          aria-label="Community settings tabs"
+          aria-label={t("community_settings.tabs_aria")}
         >
           <TabPill
-            label="Settings"
+            label={t("community_settings.tab_settings")}
             active={activeTab === "settings"}
             onClick={() => {
               setActiveTab("settings");
@@ -249,9 +251,9 @@ export default function CommunitySettingsPage() {
           />
           {isBeta && (
             <TabPill
-              label="Metrics"
+              label={t("community_settings.tab_metrics")}
               active={activeTab === "metrics"}
-              badge="beta"
+              badge={t("community_settings.tab_metrics_badge")}
               onClick={() => {
                 setActiveTab("metrics");
                 if (!location.endsWith("/metrics")) setLocation(`/communities/${slug}/metrics`);
@@ -275,7 +277,7 @@ export default function CommunitySettingsPage() {
         >
           <span className="flex items-center gap-2.5">
             <Users size={15} style={{ color: "#A8C5A0" }} />
-            <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Edit Members</span>
+            <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{t("community_settings.edit_members")}</span>
           </span>
           <span className="text-sm" style={{ color: "rgba(200,212,192,0.4)" }}>→</span>
         </button>
@@ -290,7 +292,7 @@ export default function CommunitySettingsPage() {
         >
           <span className="flex items-center gap-2.5">
             <UserPlus size={15} style={{ color: "#A8C5A0" }} />
-            <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Join requests</span>
+            <span className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{t("community_settings.join_requests")}</span>
           </span>
           <span className="flex items-center gap-2">
             {pendingForThis > 0 && (
@@ -316,7 +318,7 @@ export default function CommunitySettingsPage() {
         {/* Emoji */}
         <div className="mb-4">
           <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-            Icon
+            {t("community_settings.icon_label")}
           </label>
           <div className="flex items-center gap-3 mb-2">
             <div className="text-4xl w-14 h-14 flex items-center justify-center rounded-2xl flex-shrink-0"
@@ -341,7 +343,7 @@ export default function CommunitySettingsPage() {
         {/* Name */}
         <div className="mb-4">
           <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-            Name
+            {t("community_settings.name_label")}
           </label>
           <input
             type="text"
@@ -355,7 +357,7 @@ export default function CommunitySettingsPage() {
         {/* Description */}
         <div className="mb-6">
           <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-            Description <span style={{ opacity: 0.5 }}>(optional)</span>
+            {t("community_settings.description_label")} <span style={{ opacity: 0.5 }}>{t("community_settings.optional")}</span>
           </label>
           <textarea
             value={description}
@@ -371,7 +373,7 @@ export default function CommunitySettingsPage() {
         {/* Calendar URL */}
         <div className="mb-2">
           <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-            Parish Calendar URL <span style={{ opacity: 0.5 }}>(optional)</span>
+            {t("community_settings.calendar_url_label")} <span style={{ opacity: 0.5 }}>{t("community_settings.optional")}</span>
           </label>
           <input
             type="url"
@@ -383,15 +385,15 @@ export default function CommunitySettingsPage() {
           />
         </div>
         <div className="rounded-xl px-4 py-3 mb-6 text-xs space-y-1" style={{ background: "rgba(46,107,64,0.06)", border: "1px solid rgba(46,107,64,0.12)", color: "#8FAF96" }}>
-          <p className="font-semibold" style={{ color: "#A8C5A0" }}>How to find your Google Calendar link:</p>
-          <p>1. Open Google Calendar → Settings → select your calendar</p>
-          <p>2. Scroll to "Integrate calendar"</p>
-          <p>3. Copy the <strong>Public address in iCal format</strong></p>
+          <p className="font-semibold" style={{ color: "#A8C5A0" }}>{t("community_settings.calendar_help_heading")}</p>
+          <p>{t("community_settings.calendar_help_step1")}</p>
+          <p>{t("community_settings.calendar_help_step2")}</p>
+          <p>{t("community_settings.calendar_help_step3_prefix")} <strong>{t("community_settings.calendar_help_step3_strong")}</strong></p>
           {calendarUrl && (
             <a href={calendarUrl} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1 pt-1 font-semibold"
               style={{ color: "#6FAF85" }}>
-              <ExternalLink size={11} /> Test this link
+              <ExternalLink size={11} /> {t("community_settings.test_link")}
             </a>
           )}
         </div>
@@ -437,10 +439,10 @@ export default function CommunitySettingsPage() {
             />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
-                Prayer circle
+                {t("community_settings.prayer_circle")}
               </p>
               <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
-                A prayer circle is a group bound by a shared intention. Members see what the circle is praying for, and it surfaces in each member's daily bell.
+                {t("community_settings.prayer_circle_desc")}
               </p>
             </div>
           </label>
@@ -454,7 +456,7 @@ export default function CommunitySettingsPage() {
                 style dialog. */}
             <div className="mb-4">
               <label className="text-[11px] font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(143,175,150,0.6)" }}>
-                Intentions
+                {t("community_settings.intentions_label")}
               </label>
 
               {intentions.length === 0 && (
@@ -467,7 +469,7 @@ export default function CommunitySettingsPage() {
                   }}
                 >
                   <p className="text-xs italic" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
-                    No intentions yet. Add the first prayer this circle holds.
+                    {t("community_settings.intentions_empty")}
                   </p>
                 </div>
               )}
@@ -502,13 +504,13 @@ export default function CommunitySettingsPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        if (confirm("Archive this intention? It will disappear from the circle.")) {
+                        if (confirm(t("community_settings.archive_intention_confirm"))) {
                           archiveIntentionMutation.mutate(intn.id);
                         }
                       }}
                       className="text-[10px] flex-shrink-0 rounded-md px-1.5 py-1 transition-opacity hover:opacity-100"
                       style={{ color: "rgba(200,212,192,0.5)", opacity: 0.7 }}
-                      title="Archive intention"
+                      title={t("community_settings.archive_intention_title")}
                     >
                       <X size={13} />
                     </button>
@@ -527,12 +529,12 @@ export default function CommunitySettingsPage() {
                 }}
               >
                 <Plus size={14} />
-                <span>Add intention</span>
+                <span>{t("community_settings.add_intention")}</span>
               </button>
             </div>
 
             <p className="text-[11px] italic mb-6" style={{ color: "rgba(143,175,150,0.65)" }}>
-              Prayer circles are a beta feature. We are learning what makes them flourish — we would love your feedback.
+              {t("community_settings.prayer_circle_beta_note")}
             </p>
           </>
         )}
@@ -560,10 +562,10 @@ export default function CommunitySettingsPage() {
             />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
-                Contemplation community
+                {t("community_settings.contemplation")}
               </p>
               <p className="text-xs leading-relaxed mt-1" style={{ color: "#8FAF96" }}>
-                Members hold a shared daily contemplation goal and gather around the day's Center for Action and Contemplation meditation to reflect together — in place of the daily offices.
+                {t("community_settings.contemplation_desc")}
               </p>
             </div>
           </label>
@@ -571,7 +573,7 @@ export default function CommunitySettingsPage() {
           {isContemplation && (
             <div className="mt-3.5 pl-7">
               <label className="text-[11px] font-semibold uppercase tracking-widest block mb-2" style={{ color: "rgba(143,175,150,0.6)" }}>
-                Shared daily goal
+                {t("community_settings.shared_daily_goal")}
               </label>
               <div className="flex flex-wrap gap-2">
                 {GOAL_PRESETS.map(min => (
@@ -587,12 +589,12 @@ export default function CommunitySettingsPage() {
                       fontFamily: FONT,
                     }}
                   >
-                    {min} min
+                    {t("community_settings.minutes", { count: min })}
                   </button>
                 ))}
               </div>
               <p className="text-[11px] italic mt-2.5" style={{ color: "rgba(143,175,150,0.65)" }}>
-                Contemplation communities are a beta feature. We are learning what makes them flourish — we would love your feedback.
+                {t("community_settings.contemplation_beta_note")}
               </p>
             </div>
           )}
@@ -620,7 +622,7 @@ export default function CommunitySettingsPage() {
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-base font-semibold" style={{ color: "#F0EDE6", fontFamily: FONT }}>
-                  An intention for this circle
+                  {t("community_settings.add_intention_title")}
                 </h3>
                 <button
                   type="button"
@@ -634,13 +636,13 @@ export default function CommunitySettingsPage() {
 
               <div className="mb-3">
                 <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-                  Prayer
+                  {t("community_settings.prayer_label")}
                 </label>
                 <input
                   type="text"
                   value={newIntentionTitle}
                   onChange={e => setNewIntentionTitle(e.target.value)}
-                  placeholder="What are we praying for?"
+                  placeholder={t("community_settings.prayer_placeholder")}
                   maxLength={500}
                   autoFocus
                   className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none"
@@ -674,12 +676,12 @@ export default function CommunitySettingsPage() {
 
               <div className="mb-5">
                 <label className="text-[11px] font-semibold uppercase tracking-widest block mb-1.5" style={{ color: "rgba(143,175,150,0.6)" }}>
-                  Context <span style={{ opacity: 0.5 }}>(optional)</span>
+                  {t("community_settings.context_label")} <span style={{ opacity: 0.5 }}>{t("community_settings.optional")}</span>
                 </label>
                 <textarea
                   value={newIntentionDescription}
                   onChange={e => setNewIntentionDescription(e.target.value)}
-                  placeholder="A scripture, a story, a situation the circle is holding…"
+                  placeholder={t("community_settings.context_placeholder")}
                   maxLength={2000}
                   rows={3}
                   className="w-full px-4 py-3 rounded-xl text-sm focus:outline-none resize-none"
@@ -698,7 +700,7 @@ export default function CommunitySettingsPage() {
                   className="flex-1 py-3 rounded-xl text-sm font-medium transition-opacity hover:opacity-80"
                   style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)", color: "#8FAF96" }}
                 >
-                  Cancel
+                  {t("community_settings.cancel")}
                 </button>
                 <button
                   type="button"
@@ -707,7 +709,7 @@ export default function CommunitySettingsPage() {
                   className="flex-1 py-3 rounded-xl text-sm font-semibold disabled:opacity-40 transition-all"
                   style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                 >
-                  {addIntentionMutation.isPending ? "Adding…" : "Add"}
+                  {addIntentionMutation.isPending ? t("community_settings.adding") : t("community_settings.add")}
                 </button>
               </div>
             </div>
@@ -731,7 +733,7 @@ export default function CommunitySettingsPage() {
           className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-40 transition-all"
           style={{ background: saved ? "rgba(46,107,64,0.5)" : "#2D5E3F", color: "#F0EDE6" }}
         >
-          {saveMutation.isPending ? "Saving…" : saved ? "✓ Saved" : "Save Changes"}
+          {saveMutation.isPending ? t("community_settings.saving") : saved ? <>✓ {t("community_settings.saved")}</> : t("community_settings.save_changes")}
         </button>
 
         {/* ── Danger zone ───────────────────────────────────────────────────
@@ -755,7 +757,7 @@ export default function CommunitySettingsPage() {
               }}
             >
               <Trash2 size={14} />
-              Delete community
+              {t("community_settings.delete_community")}
             </button>
           ) : (
             <div
@@ -769,22 +771,19 @@ export default function CommunitySettingsPage() {
                 className="text-[13px] font-semibold mb-2"
                 style={{ color: "#E8A28D", fontFamily: FONT }}
               >
-                Delete {group?.name}?
+                {t("community_settings.delete_confirm_heading", { name: group?.name })}
               </p>
               <p
                 className="text-[12px] leading-relaxed mb-4"
                 style={{ color: "rgba(232,162,141,0.85)", fontFamily: FONT }}
               >
-                This permanently removes the community, every membership, every
-                announcement, every intention, and the daily focus history.
-                Practices and intercessions tied to this community stay alive
-                but become un-scoped. <strong>This cannot be undone.</strong>
+                {t("community_settings.delete_confirm_body")} <strong>{t("community_settings.delete_confirm_irreversible")}</strong>
               </p>
               <label
                 className="text-[10px] font-semibold uppercase tracking-widest block mb-1.5"
                 style={{ color: "rgba(232,162,141,0.6)", fontFamily: FONT }}
               >
-                Type the community name to confirm
+                {t("community_settings.delete_confirm_prompt")}
               </label>
               <input
                 type="text"
@@ -828,7 +827,7 @@ export default function CommunitySettingsPage() {
                     fontFamily: FONT,
                   }}
                 >
-                  Cancel
+                  {t("community_settings.cancel")}
                 </button>
                 <button
                   type="button"
@@ -844,7 +843,7 @@ export default function CommunitySettingsPage() {
                     fontFamily: FONT,
                   }}
                 >
-                  {deleteMutation.isPending ? "Deleting…" : "Delete forever"}
+                  {deleteMutation.isPending ? t("community_settings.deleting") : t("community_settings.delete_forever")}
                 </button>
               </div>
             </div>
@@ -865,6 +864,7 @@ export default function CommunitySettingsPage() {
 // reminder picker pattern on the user settings page.
 function ReflectionSourcePicker({ slug }: { slug: string }) {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const { data } = useQuery<{
     source: "cac" | "fdd" | null;
     isAdmin: boolean;
@@ -893,18 +893,18 @@ function ReflectionSourcePicker({ slug }: { slug: string }) {
   const options: Array<{ value: "cac" | "fdd" | null; label: string; sub: string }> = [
     {
       value: null,
-      label: "Off",
-      sub: "No daily reflection card on this community",
+      label: t("community_settings.reflection_off_label"),
+      sub: t("community_settings.reflection_off_sub"),
     },
     {
       value: "cac",
-      label: "CAC Daily Reflection",
-      sub: "Center for Action & Contemplation · daily",
+      label: t("community_settings.reflection_cac_label"),
+      sub: t("community_settings.reflection_cac_sub"),
     },
     {
       value: "fdd",
-      label: "Forward Day by Day",
-      sub: "Forward Movement · Episcopal daily devotional",
+      label: t("community_settings.reflection_fdd_label"),
+      sub: t("community_settings.reflection_fdd_sub"),
     },
   ];
   return (
@@ -913,18 +913,16 @@ function ReflectionSourcePicker({ slug }: { slug: string }) {
         className="text-[11px] font-semibold uppercase tracking-widest block mb-2"
         style={{ color: "rgba(143,175,150,0.6)" }}
       >
-        Daily reflection
+        {t("community_settings.daily_reflection")}
         <span
           className="ml-2 inline-flex items-center px-1.5 py-0 rounded-full text-[8px]"
           style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", letterSpacing: "0.1em" }}
         >
-          BETA
+          {t("community_settings.beta_badge")}
         </span>
       </label>
       <p className="text-xs leading-relaxed mb-3" style={{ color: "rgba(168,197,160,0.7)" }}>
-        Pick a daily reading the community taps to open each morning. After
-        they read it, they're prompted to write a reflection shared with the
-        whole community — others can comment on each one.
+        {t("community_settings.daily_reflection_desc")}
       </p>
       <div
         className="rounded-xl px-4 py-2 mb-6"
@@ -977,6 +975,7 @@ function ReflectionSourcePicker({ slug }: { slug: string }) {
 // group_reflections as history if the admin turns the feature back on.
 function SundayReflectionsToggle({ slug }: { slug: string }) {
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   // Reuses the sunday-reflection feed endpoint — its response carries
   // `enabled` so we don't need a separate settings GET. (Reads against
   // the same key as the reflection page so flipping here invalidates
@@ -1000,31 +999,29 @@ function SundayReflectionsToggle({ slug }: { slug: string }) {
         className="text-[11px] font-semibold uppercase tracking-widest block mb-2"
         style={{ color: "rgba(143,175,150,0.6)" }}
       >
-        Sunday service reflection
+        {t("community_settings.sunday_reflection")}
         <span
           className="ml-2 inline-flex items-center px-1.5 py-0 rounded-full text-[8px]"
           style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", letterSpacing: "0.1em" }}
         >
-          BETA
+          {t("community_settings.beta_badge")}
         </span>
       </label>
       <p className="text-xs leading-relaxed mb-3" style={{ color: "rgba(168,197,160,0.7)" }}>
-        Send the community a Sunday-evening push to reflect on this week's
-        service. The composer stays open the whole week so anyone who didn't
-        write Sunday can still share a sentence later.
+        {t("community_settings.sunday_reflection_desc")}
       </p>
       <div
         className="rounded-xl px-4 py-3 mb-6 flex items-center justify-between gap-3"
         style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
       >
         <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-          {enabled ? "On — push fires Sunday evening" : "Off"}
+          {enabled ? t("community_settings.sunday_reflection_on") : t("community_settings.sunday_reflection_off")}
         </p>
         <button
           type="button"
           onClick={() => save.mutate(!enabled)}
           disabled={save.isPending}
-          aria-label={enabled ? "Turn off Sunday reflections" : "Turn on Sunday reflections"}
+          aria-label={enabled ? t("community_settings.sunday_reflection_aria_off") : t("community_settings.sunday_reflection_aria_on")}
           className="rounded-full transition-colors"
           style={{
             width: 44, height: 26,
