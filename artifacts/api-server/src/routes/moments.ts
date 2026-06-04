@@ -15,7 +15,7 @@ import { createCalendarEvent as _createCalendarEvent, deleteCalendarEvent, creat
 import { getReadingForSunday, nextSundayDate } from "../lib/rclLectionary";
 import { reconcileGroupPracticeMembers, reconcileFeedPracticeMembers } from "./groups";
 import { getGardenUserIds } from "../lib/garden";
-import { sendNewGroupMomentPush, sendIntercessionGoalReachedPush } from "../lib/pushSender";
+import { sendNewGroupMomentPushToMany, sendIntercessionGoalReachedPush } from "../lib/pushSender";
 import { perUserRateLimit } from "../lib/rate-limit";
 import crypto from "crypto";
 import { broadcastLog } from "../lib/ws";
@@ -1406,14 +1406,14 @@ router.post("/moments", perUserRateLimit("moments_create", {
         const [creatorRow] = await db.select({ name: usersTable.name })
           .from(usersTable).where(eq(usersTable.id, sessionUserId));
         const creatorName = creatorRow?.name ?? "Someone";
-        for (const uid of groupPushContext.memberUserIds) {
-          sendNewGroupMomentPush(uid, {
-            groupSlug: groupPushContext.slug,
-            momentName: moment.name,
-            templateType: moment.templateType ?? "",
-            creatorName,
-          }).catch((err) => console.warn("[moments] group push failed:", err));
-        }
+        // Concurrency-limited fan-out (was an unbounded loop firing a
+        // getUnprayedCount garden query + push per member all at once).
+        await sendNewGroupMomentPushToMany(groupPushContext.memberUserIds, {
+          groupSlug: groupPushContext.slug,
+          momentName: moment.name,
+          templateType: moment.templateType ?? "",
+          creatorName,
+        });
       } catch (err) {
         console.warn("[moments] group push dispatch setup failed:", err);
       }

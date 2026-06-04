@@ -612,15 +612,39 @@ export function sendEveningNudgePush(userId: number, communityPrayerCount: numbe
   });
 }
 
-// Fan-out wrapper. We iterate in parallel so a slow / unresponsive APNs
-// call for one recipient doesn't hold up the rest of the request.
-// Errors are swallowed per-user inside sendPushToUser → sendOneApns.
+// Run an async fn over items with a bounded number in flight. Used to cap
+// push fan-out (see sendPushToUsers): each task touches the DB + APNs, so an
+// unbounded Promise.all over thousands of recipients would exhaust the
+// connection pool. Pulls from a shared cursor so faster tasks keep the
+// workers busy.
+async function mapLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let cursor = 0;
+  const workerCount = Math.max(1, Math.min(limit, items.length));
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (cursor < items.length) {
+      const item = items[cursor++]!;
+      await fn(item);
+    }
+  });
+  await Promise.all(workers);
+}
+
+// At most this many recipients are in flight at once. Kept below the DB pool
+// max so a large fan-out can't starve concurrent user requests of connections.
+const PUSH_FANOUT_CONCURRENCY = Number(process.env.PUSH_FANOUT_CONCURRENCY ?? "8");
+
+// Fan-out wrapper. Concurrency-limited (mapLimit) so a feed/parish with
+// thousands of subscribers can't fire thousands of concurrent DB queries +
+// APNs calls at once and exhaust the pool. A slow APNs call for one recipient
+// still doesn't block others (up to the concurrency cap). Errors are swallowed
+// per-user inside sendPushToUser → sendOneApns.
 export async function sendPushToUsers(userIds: number[], payload: PushPayload): Promise<void> {
   if (userIds.length === 0) return;
   // Dedup — protects against overlapping member queries (e.g. someone is
   // both admin + member).
   const unique = Array.from(new Set(userIds.filter(id => Number.isFinite(id))));
-  await Promise.all(unique.map(id => sendPushToUser(id, payload).catch(() => ({ attempted: 0, succeeded: 0, invalidated: 0 }))));
+  await mapLimit(unique, PUSH_FANOUT_CONCURRENCY, (id) =>
+    sendPushToUser(id, payload).then(() => undefined).catch(() => undefined));
 }
 
 // Names the sender so the recipient knows who started the prayer. Tap
@@ -1167,6 +1191,22 @@ export async function sendNewGroupMomentPush(
     threadId: `group-moment-${opts.groupSlug}`,
     sound: PHOEBE_SOUND_MID,
   });
+}
+
+// Concurrency-limited fan-out of the new-group-practice push. Each recipient's
+// intercession badge is computed individually (getUnprayedCount is per-user), so
+// publishing one intercession in a large community used to fire hundreds of
+// garden COUNT queries + push pipelines AT ONCE (the caller looped with no
+// bound) → pool/CPU spike. Cap concurrency like sendPushToUsers.
+export async function sendNewGroupMomentPushToMany(
+  userIds: number[],
+  opts: { groupSlug: string; momentName: string; templateType: string; creatorName: string },
+): Promise<void> {
+  const unique = Array.from(new Set(userIds.filter(id => Number.isFinite(id))));
+  await mapLimit(unique, PUSH_FANOUT_CONCURRENCY, (uid) =>
+    sendNewGroupMomentPush(uid, opts).then(() => undefined).catch((err) => {
+      logger.warn({ err, uid }, "[push] group moment push failed");
+    }));
 }
 
 // First-ever amen on a brand-new prayer request — the moment the
