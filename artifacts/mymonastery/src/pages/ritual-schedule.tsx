@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -15,12 +16,6 @@ function localInputToISO(value: string): string {
   return new Date(value).toISOString();
 }
 
-const SLOT_LABELS = [
-  { label: "Your top pick", sublabel: "The time that works best for you", required: true },
-  { label: "First backup", sublabel: "An alternative if guests can't make your top pick", required: false },
-  { label: "Second backup", sublabel: "Another option for maximum flexibility", required: false },
-];
-
 type ScheduleMode = "flexible" | "fixed";
 
 export default function RitualSchedule() {
@@ -28,8 +23,15 @@ export default function RitualSchedule() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const ritualId = parseInt(params?.id || "0", 10);
+
+  const SLOT_LABELS = [
+    { label: t("ritual_schedule.slot_top_pick_label"), sublabel: t("ritual_schedule.slot_top_pick_sublabel"), required: true },
+    { label: t("ritual_schedule.slot_first_backup_label"), sublabel: t("ritual_schedule.slot_first_backup_sublabel"), required: false },
+    { label: t("ritual_schedule.slot_second_backup_label"), sublabel: t("ritual_schedule.slot_second_backup_sublabel"), required: false },
+  ];
 
   const [ritualName, setRitualName] = useState("");
   const [locationEdit, setLocationEdit] = useState("");
@@ -62,14 +64,14 @@ export default function RitualSchedule() {
           // Load existing proposed times from the ritual data
           const proposed: string[] = ritual.proposedTimes ?? [];
           if (proposed.length > 0) {
-            const filled = proposed.map((t: string) => isoToLocalInput(t));
+            const filled = proposed.map((iso: string) => isoToLocalInput(iso));
             setTimes([filled[0] || "", filled[1] || "", filled[2] || ""]);
             if (filled[0]) setFixedTime(filled[0]);
             setShownSlots(Math.max(1, proposed.length));
           }
         }
       } catch {
-        toast({ variant: "destructive", title: "Could not load schedule" });
+        toast({ variant: "destructive", title: t("ritual_schedule.toast_load_error") });
       } finally {
         setIsLoading(false);
       }
@@ -89,7 +91,7 @@ export default function RitualSchedule() {
 
   const handleFixedConfirm = async () => {
     if (!fixedTime) {
-      toast({ variant: "destructive", title: "Pick a time to continue" });
+      toast({ variant: "destructive", title: t("ritual_schedule.toast_pick_time") });
       return;
     }
     setIsSaving(true);
@@ -101,12 +103,12 @@ export default function RitualSchedule() {
         location: locationEdit.trim() || undefined,
       });
       toast({
-        title: "Tradition confirmed 🌱",
-        description: "Your tradition is planted.",
+        title: t("ritual_schedule.toast_confirmed_title"),
+        description: t("ritual_schedule.toast_confirmed_description"),
       });
       setLocation(`/ritual/${ritualId}`);
     } catch {
-      toast({ variant: "destructive", title: "Could not save the tradition time" });
+      toast({ variant: "destructive", title: t("ritual_schedule.toast_confirm_error") });
     } finally {
       setIsSaving(false);
     }
@@ -119,7 +121,7 @@ export default function RitualSchedule() {
       .map(localInputToISO);
 
     if (validTimes.length === 0) {
-      toast({ variant: "destructive", title: "Pick at least one time to continue" });
+      toast({ variant: "destructive", title: t("ritual_schedule.toast_pick_at_least_one") });
       return;
     }
 
@@ -130,12 +132,12 @@ export default function RitualSchedule() {
         location: locationEdit.trim() || undefined,
       });
       toast({
-        title: "Options saved 🌿",
-        description: "Phoebe will share these times with your tradition.",
+        title: t("ritual_schedule.toast_options_saved_title"),
+        description: t("ritual_schedule.toast_options_saved_description"),
       });
       setLocation(`/ritual/${ritualId}`);
     } catch {
-      toast({ variant: "destructive", title: "Could not save tradition times" });
+      toast({ variant: "destructive", title: t("ritual_schedule.toast_save_times_error") });
     } finally {
       setIsSaving(false);
     }
@@ -146,7 +148,7 @@ export default function RitualSchedule() {
       <Layout>
         <div className="max-w-2xl mx-auto w-full pt-8 text-center space-y-6">
           <div className="text-5xl animate-pulse">🌱</div>
-          <p className="text-muted-foreground text-lg">Tending your schedule...</p>
+          <p className="text-muted-foreground text-lg">{t("ritual_schedule.loading")}</p>
         </div>
       </Layout>
     );
@@ -159,14 +161,14 @@ export default function RitualSchedule() {
           onClick={() => setLocation(`/ritual/${ritualId}`)}
           className="text-muted-foreground hover:text-foreground inline-flex items-center gap-2 mb-8 transition-colors"
         >
-          ← Back to {ritualName || "tradition"}
+          {t("ritual_schedule.back_to", { name: ritualName || t("ritual_schedule.back_to_fallback") })}
         </button>
 
         <div className="mb-8">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">Set tradition times</p>
-          <h1 className="text-3xl font-semibold text-foreground mb-3">When can you gather?</h1>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">{t("ritual_schedule.eyebrow")}</p>
+          <h1 className="text-3xl font-semibold text-foreground mb-3">{t("ritual_schedule.heading")}</h1>
           <p className="text-muted-foreground leading-relaxed">
-            A fixed time is perfect when everyone can make it. Flexible lets your tradition vote — more options means more people can bloom. 🌸
+            {t("ritual_schedule.intro")}
           </p>
         </div>
 
@@ -180,7 +182,7 @@ export default function RitualSchedule() {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            📅 Fixed time
+            📅 {t("ritual_schedule.mode_fixed")}
           </button>
           <button
             onClick={() => setMode("flexible")}
@@ -190,7 +192,7 @@ export default function RitualSchedule() {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            🗓️ Flexible options
+            🗓️ {t("ritual_schedule.mode_flexible")}
           </button>
         </div>
 
@@ -205,8 +207,8 @@ export default function RitualSchedule() {
               className="space-y-4 mb-8"
             >
               <div className="bg-card border border-card-border rounded-2xl p-5">
-                <p className="font-medium text-foreground mb-0.5">When will you gather?</p>
-                <p className="text-sm text-muted-foreground mb-3">One time, confirmed. Phoebe will notify everyone.</p>
+                <p className="font-medium text-foreground mb-0.5">{t("ritual_schedule.fixed_when_gather")}</p>
+                <p className="text-sm text-muted-foreground mb-3">{t("ritual_schedule.fixed_when_gather_note")}</p>
                 <input
                   type="datetime-local"
                   value={fixedTime}
@@ -246,7 +248,7 @@ export default function RitualSchedule() {
                           setShownSlots(i);
                         }}
                         className="text-muted-foreground hover:text-destructive transition-colors mt-0.5 flex-shrink-0 text-lg leading-none"
-                        aria-label="Remove this option"
+                        aria-label={t("ritual_schedule.remove_option")}
                       >
                         ✕
                       </button>
@@ -272,7 +274,9 @@ export default function RitualSchedule() {
                   onClick={() => setShownSlots((s) => Math.min(s + 1, 3))}
                   className="w-full py-3 border-2 border-dashed border-border rounded-2xl text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all flex items-center justify-center gap-2 text-sm font-medium"
                 >
-                  + Add {shownSlots === 1 ? "a backup" : "another backup"} time
+                  {shownSlots === 1
+                    ? t("ritual_schedule.add_backup")
+                    : t("ritual_schedule.add_another_backup")}
                 </motion.button>
               )}
             </motion.div>
@@ -282,14 +286,14 @@ export default function RitualSchedule() {
         {/* Location */}
         <div className="bg-card border border-card-border rounded-2xl p-5 mb-8">
           <label className="block font-medium text-foreground mb-0.5">
-            📍 Where will you gather?
+            📍 {t("ritual_schedule.location_label")}
           </label>
-          <p className="text-sm text-muted-foreground mb-3">Optional — shows up in the tradition details.</p>
+          <p className="text-sm text-muted-foreground mb-3">{t("ritual_schedule.location_note")}</p>
           <input
             type="text"
             value={locationEdit}
             onChange={(e) => setLocationEdit(e.target.value)}
-            placeholder="e.g. Central Park, The usual café, Someone's place"
+            placeholder={t("ritual_schedule.location_placeholder")}
             className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all text-sm"
           />
         </div>
@@ -302,9 +306,9 @@ export default function RitualSchedule() {
             className="w-full py-4 bg-primary text-primary-foreground rounded-full font-semibold text-lg hover:bg-primary/90 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_4px_14px_rgba(46,107,64,0.3)] flex items-center justify-center gap-2"
           >
             {isSaving ? (
-              <><span className="inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Confirming...</>
+              <><span className="inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> {t("ritual_schedule.confirming")}</>
             ) : (
-              <>Confirm this tradition 🌱</>
+              <>{t("ritual_schedule.confirm_button")} 🌱</>
             )}
           </button>
         ) : (
@@ -314,17 +318,17 @@ export default function RitualSchedule() {
             className="w-full py-4 bg-primary text-primary-foreground rounded-full font-semibold text-lg hover:bg-primary/90 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_4px_14px_rgba(46,107,64,0.3)] flex items-center justify-center gap-2"
           >
             {isSaving ? (
-              <><span className="inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> Saving...</>
+              <><span className="inline-block w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" /> {t("ritual_schedule.saving")}</>
             ) : (
-              <>Save tradition times 🌿</>
+              <>{t("ritual_schedule.save_button")} 🌿</>
             )}
           </button>
         )}
 
         <p className="text-center text-xs text-muted-foreground mt-4">
           {mode === "fixed"
-            ? "Phoebe will reach out to everyone in your tradition."
-            : "Phoebe will reach out to your tradition with these options."}
+            ? t("ritual_schedule.footer_fixed")
+            : t("ritual_schedule.footer_flexible")}
         </p>
       </div>
     </Layout>
