@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,35 +20,45 @@ type Frequency = "daily" | "weekly";
 type TimeOfDay = "early-morning" | "morning" | "midday" | "afternoon" | "late-afternoon" | "evening" | "night";
 type BcpFreqType = "once" | "twice" | "three" | "five" | "daily";
 
+type TFn = ReturnType<typeof useTranslation>["t"];
+
 // ─── BCP Frequency options ────────────────────────────────────────────────────
-const BCP_FREQ_OPTIONS: {
+type BcpFreqOption = {
   id: BcpFreqType; emoji: string; label: string; sub: string;
   dots: number; daysPerWeek: number; badge: string | null;
   bg: string; message: string;
-}[] = [
-  { id: "once",  emoji: "🌱", label: "Once a week",       sub: "A gentle beginning",    dots: 1, daysPerWeek: 1, badge: null,             bg: "#0F2818",              message: "One office together each week. A beginning." },
-  { id: "twice", emoji: "🌿", label: "Twice a week",       sub: "Taking root",           dots: 2, daysPerWeek: 2, badge: null,             bg: "rgba(46,107,64,0.18)", message: "Two offices. Enough to find a rhythm." },
-  { id: "three", emoji: "🌸", label: "Three times a week", sub: "A real rhythm",         dots: 3, daysPerWeek: 3, badge: "Most chosen 🌿", bg: "rgba(46,107,64,0.25)", message: "Three times. This is where something real takes root." },
-  { id: "five",  emoji: "🌳", label: "Five times a week",  sub: "A weekday practice",    dots: 5, daysPerWeek: 5, badge: null,             bg: "rgba(46,107,64,0.32)", message: "The weekday office. A serious commitment." },
-  { id: "daily", emoji: "✨", label: "Daily",              sub: "The full Daily Office",  dots: 7, daysPerWeek: 7, badge: null,             bg: "rgba(46,107,64,0.40)", message: "Every day. The full practice of the Daily Office." },
-];
+};
+function buildBcpFreqOptions(t: TFn): BcpFreqOption[] {
+  return [
+  { id: "once",  emoji: "🌱", label: t("moment_new.bcp_freq.once.label"),  sub: t("moment_new.bcp_freq.once.sub"),  dots: 1, daysPerWeek: 1, badge: null,                              bg: "#0F2818",              message: t("moment_new.bcp_freq.once.message") },
+  { id: "twice", emoji: "🌿", label: t("moment_new.bcp_freq.twice.label"), sub: t("moment_new.bcp_freq.twice.sub"), dots: 2, daysPerWeek: 2, badge: null,                              bg: "rgba(46,107,64,0.18)", message: t("moment_new.bcp_freq.twice.message") },
+  { id: "three", emoji: "🌸", label: t("moment_new.bcp_freq.three.label"), sub: t("moment_new.bcp_freq.three.sub"), dots: 3, daysPerWeek: 3, badge: t("moment_new.bcp_freq.three.badge"), bg: "rgba(46,107,64,0.25)", message: t("moment_new.bcp_freq.three.message") },
+  { id: "five",  emoji: "🌳", label: t("moment_new.bcp_freq.five.label"),  sub: t("moment_new.bcp_freq.five.sub"),  dots: 5, daysPerWeek: 5, badge: null,                              bg: "rgba(46,107,64,0.32)", message: t("moment_new.bcp_freq.five.message") },
+  { id: "daily", emoji: "✨", label: t("moment_new.bcp_freq.daily.label"), sub: t("moment_new.bcp_freq.daily.sub"), dots: 7, daysPerWeek: 7, badge: null,                              bg: "rgba(46,107,64,0.40)", message: t("moment_new.bcp_freq.daily.message") },
+  ];
+}
 
-const WEEK_DAYS = [
-  { id: "MO", label: "Mon" }, { id: "TU", label: "Tue" }, { id: "WE", label: "Wed" },
-  { id: "TH", label: "Thu" }, { id: "FR", label: "Fri" }, { id: "SA", label: "Sat" }, { id: "SU", label: "Sun" },
-];
+function buildWeekDays(t: TFn) {
+  return [
+  { id: "MO", label: t("moment_new.weekday.mon") }, { id: "TU", label: t("moment_new.weekday.tue") }, { id: "WE", label: t("moment_new.weekday.wed") },
+  { id: "TH", label: t("moment_new.weekday.thu") }, { id: "FR", label: t("moment_new.weekday.fri") }, { id: "SA", label: t("moment_new.weekday.sat") }, { id: "SU", label: t("moment_new.weekday.sun") },
+  ];
+}
 
 const SPIRITUAL_TEMPLATES = new Set(["morning-prayer", "evening-prayer", "intercession", "contemplative", "fasting", "lectio-divina", "custom"]);
 
-const TIME_OF_DAY_OPTIONS: { id: TimeOfDay; emoji: string; label: string; sub: string; range: string }[] = [
-  { id: "early-morning",  emoji: "🌄", label: "Early morning",  sub: "Before the day begins",             range: "5am – 8am" },
-  { id: "morning",        emoji: "🌅", label: "Morning",        sub: "As the day begins",                 range: "8am – 11am" },
-  { id: "midday",         emoji: "☀️",  label: "Midday",         sub: "A pause at the center of the day",  range: "11am – 2pm" },
-  { id: "afternoon",      emoji: "🌤", label: "Afternoon",      sub: "Before the day winds down",         range: "2pm – 6pm" },
-  { id: "late-afternoon", emoji: "🌇", label: "Late afternoon", sub: "The day winds down",                range: "4pm – 7pm" },
-  { id: "evening",        emoji: "🌆", label: "Evening",        sub: "As the day releases",               range: "7pm – 10pm" },
-  { id: "night",          emoji: "🌙", label: "Night",          sub: "The quiet before rest",             range: "9pm – 11pm" },
-];
+type TimeOfDayOption = { id: TimeOfDay; emoji: string; label: string; sub: string; range: string };
+function buildTimeOfDayOptions(t: TFn): TimeOfDayOption[] {
+  return [
+  { id: "early-morning",  emoji: "🌄", label: t("moment_new.time_of_day.early_morning.label"),  sub: t("moment_new.time_of_day.early_morning.sub"),  range: "5am – 8am" },
+  { id: "morning",        emoji: "🌅", label: t("moment_new.time_of_day.morning.label"),        sub: t("moment_new.time_of_day.morning.sub"),        range: "8am – 11am" },
+  { id: "midday",         emoji: "☀️",  label: t("moment_new.time_of_day.midday.label"),         sub: t("moment_new.time_of_day.midday.sub"),         range: "11am – 2pm" },
+  { id: "afternoon",      emoji: "🌤", label: t("moment_new.time_of_day.afternoon.label"),      sub: t("moment_new.time_of_day.afternoon.sub"),      range: "2pm – 6pm" },
+  { id: "late-afternoon", emoji: "🌇", label: t("moment_new.time_of_day.late_afternoon.label"), sub: t("moment_new.time_of_day.late_afternoon.sub"), range: "4pm – 7pm" },
+  { id: "evening",        emoji: "🌆", label: t("moment_new.time_of_day.evening.label"),        sub: t("moment_new.time_of_day.evening.sub"),        range: "7pm – 10pm" },
+  { id: "night",          emoji: "🌙", label: t("moment_new.time_of_day.night.label"),          sub: t("moment_new.time_of_day.night.sub"),          range: "9pm – 11pm" },
+  ];
+}
 
 // Constraints per time-of-day (for the personal time picker)
 const TOD_CONSTRAINTS: Record<string, { hours: number[]; amPm: "AM" | "PM" | "mixed"; defaultH: number; defaultAmPm: "AM" | "PM" }> = {
@@ -72,21 +83,30 @@ const INTERCESSION_EXAMPLES = [
 interface ContactSuggestion { name: string; email: string; }
 
 // ─── Templates ───────────────────────────────────────────────────────────────
-const TEMPLATES = [
+type Template = {
+  id: string; emoji: string; name: string; desc: string;
+  prefill?: {
+    name: string; intention: string; loggingType: LoggingType;
+    reflectionPrompt: string; scheduledHour: number;
+    scheduledAmPm: "AM" | "PM"; frequency: Frequency;
+  };
+};
+function buildTemplates(t: TFn): Template[] {
+  return [
   {
-    id: "morning-prayer", emoji: "🌅", name: "Morning Prayer",
-    desc: "Pray the Daily Office together each morning — everyone from their own home, the same words.",
+    id: "morning-prayer", emoji: "🌅", name: t("moment_new.templates.morning_prayer.name"),
+    desc: t("moment_new.templates.morning_prayer.desc"),
   },
   {
-    id: "evening-prayer", emoji: "🌙", name: "Evening Prayer",
-    desc: "Close the day together in the Daily Office — the same words, from wherever you are.",
+    id: "evening-prayer", emoji: "🌙", name: t("moment_new.templates.evening_prayer.name"),
+    desc: t("moment_new.templates.evening_prayer.desc"),
   },
   {
-    id: "lectio-divina", emoji: "📜", name: "Lectio Divina",
-    desc: "Read this Sunday's gospel together in three unhurried stages — Mon, Wed, Fri. Catch up any day.",
+    id: "lectio-divina", emoji: "📜", name: t("moment_new.templates.lectio_divina.name"),
+    desc: t("moment_new.templates.lectio_divina.desc"),
     prefill: {
-      name: "Lectio Divina",
-      intention: "Read together. Listen together. Pray together.",
+      name: t("moment_new.templates.lectio_divina.prefill_name"),
+      intention: t("moment_new.templates.lectio_divina.prefill_intention"),
       loggingType: "reflection" as LoggingType,
       reflectionPrompt: "",
       scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
@@ -94,30 +114,31 @@ const TEMPLATES = [
     },
   },
   {
-    id: "intercession", emoji: "🙏🏽", name: "Intercession",
-    desc: "Hold someone or something in prayer together",
+    id: "intercession", emoji: "🙏🏽", name: t("moment_new.templates.intercession.name"),
+    desc: t("moment_new.templates.intercession.desc"),
     prefill: {
-      name: "Intercession 🙏🏽",
+      name: t("moment_new.templates.intercession.prefill_name"),
       intention: "",
       loggingType: "reflection" as LoggingType,
-      reflectionPrompt: "What is on your heart today?",
+      reflectionPrompt: t("moment_new.prompt_default.on_your_heart"),
       scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
       frequency: "daily" as Frequency,
     },
   },
   {
-    id: "fasting", emoji: "✦", name: "Fasting",
-    desc: "Keep a shared fast as a discipline — the same day, each week",
+    id: "fasting", emoji: "✦", name: t("moment_new.templates.fasting.name"),
+    desc: t("moment_new.templates.fasting.desc"),
     prefill: {
-      name: "Fasting 🌿",
-      intention: "We fast together — not alone. A shared discipline, a shared surrender.",
+      name: t("moment_new.templates.fasting.prefill_name"),
+      intention: t("moment_new.templates.fasting.prefill_intention"),
       loggingType: "checkin" as LoggingType,
       reflectionPrompt: "",
       scheduledHour: 8, scheduledAmPm: "AM" as "AM" | "PM",
       frequency: "weekly" as Frequency,
     },
   },
-];
+  ];
+}
 
 // ─── Milestone goal options ───────────────────────────────────────────────────
 const TO_RRULE: Record<string, string> = {
@@ -181,12 +202,14 @@ const GOAL_OPTIONS_WEEKLY = [
 ];
 
 // ─── Logging type options ─────────────────────────────────────────────────────
-const LOGGING_OPTIONS: { type: LoggingType; icon: string; label: string; description: string }[] = [
-  { type: "photo",      icon: "📸", label: "Photo",      description: "Capture a moment to share with the group" },
-  { type: "reflection", icon: "✍🏽", label: "Reflection",  description: "A written response to a prompt" },
-  { type: "both",       icon: "📸✍🏽", label: "Photo + Reflection", description: "Share a photo and a written reflection" },
-  { type: "checkin",    icon: "✅", label: "Just practice", description: "No words needed. Mark that you were present." },
-];
+function buildLoggingOptions(t: TFn): { type: LoggingType; icon: string; label: string; description: string }[] {
+  return [
+  { type: "photo",      icon: "📸", label: t("moment_new.logging.photo.label"),      description: t("moment_new.logging.photo.description") },
+  { type: "reflection", icon: "✍🏽", label: t("moment_new.logging.reflection.label"),  description: t("moment_new.logging.reflection.description") },
+  { type: "both",       icon: "📸✍🏽", label: t("moment_new.logging.both.label"), description: t("moment_new.logging.both.description") },
+  { type: "checkin",    icon: "✅", label: t("moment_new.logging.checkin.label"), description: t("moment_new.logging.checkin.description") },
+  ];
+}
 
 // ─── Contact search hook ──────────────────────────────────────────────────────
 function useContactSearch(query: string) {
@@ -218,6 +241,7 @@ function PersonRow({ person, index, showRemove, onUpdate, onRemove, onSelect }: 
   onRemove: (i: number) => void;
   onSelect: (i: number, c: ContactSuggestion) => void;
 }) {
+  const { t } = useTranslation();
   const [activeField, setActiveField] = useState<"name" | "email" | null>(null);
   const [justSelected, setJustSelected] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -247,7 +271,7 @@ function PersonRow({ person, index, showRemove, onUpdate, onRemove, onSelect }: 
           <input type="text" value={person.name}
             onChange={e => { setJustSelected(false); onUpdate(index, "name", e.target.value); }}
             onFocus={() => setActiveField("name")}
-            placeholder="Name" autoComplete="off"
+            placeholder={t("moment_new.field.name")} autoComplete="off"
             className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
           />
         </div>
@@ -255,7 +279,7 @@ function PersonRow({ person, index, showRemove, onUpdate, onRemove, onSelect }: 
           <input type="email" value={person.email}
             onChange={e => { setJustSelected(false); onUpdate(index, "email", e.target.value); }}
             onFocus={() => setActiveField("email")}
-            placeholder="Email" autoComplete="off"
+            placeholder={t("moment_new.field.email")} autoComplete="off"
             className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all"
           />
         </div>
@@ -265,7 +289,7 @@ function PersonRow({ person, index, showRemove, onUpdate, onRemove, onSelect }: 
       </div>
       {(suggestions.length > 0 || isLoading) && (
         <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
-          {isLoading && <div className="px-4 py-3 text-sm text-muted-foreground">Searching...</div>}
+          {isLoading && <div className="px-4 py-3 text-sm text-muted-foreground">{t("moment_new.searching")}</div>}
           {suggestions.map((s, i) => (
             <button key={i} onMouseDown={e => { e.preventDefault(); handleSelect(s); }}
               className="w-full text-left px-4 py-3 hover:bg-secondary/50 transition-colors border-b border-border/50 last:border-0">
@@ -321,8 +345,16 @@ function BcpPrayerList({ onSelect }: { onSelect: (prayer: BcpPrayer) => void }) 
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function MomentNew() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
+
+  // Localized option lists (built from t() so call sites stay unchanged).
+  const TEMPLATES = buildTemplates(t);
+  const BCP_FREQ_OPTIONS = buildBcpFreqOptions(t);
+  const WEEK_DAYS = buildWeekDays(t);
+  const TIME_OF_DAY_OPTIONS = buildTimeOfDayOptions(t);
+  const LOGGING_OPTIONS = buildLoggingOptions(t);
 
   // Read optional ritualId from query string (e.g. /moment/new?ritualId=5)
   const ritualIdFromUrl = (() => {
@@ -337,15 +369,15 @@ export default function MomentNew() {
   // Rotating examples for BCP intercession intention step
   const [exampleIdx, setExampleIdx] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setExampleIdx(i => (i + 1) % INTERCESSION_EXAMPLES.length), 3500);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setExampleIdx(i => (i + 1) % INTERCESSION_EXAMPLES.length), 3500);
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
     if (showIntro) {
       localStorage.setItem("eleanor_practice_intro_seen", "1");
-      const t = setTimeout(() => setShowIntro(false), 1600);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => setShowIntro(false), 1600);
+      return () => clearTimeout(timer);
     }
     return undefined;
   }, [showIntro]);
@@ -449,27 +481,27 @@ export default function MomentNew() {
   const [fastingFromIdx, setFastingFromIdx] = useState(0);
   const [fastingIntentionIdx, setFastingIntentionIdx] = useState(0);
   const FASTING_FROM_EXAMPLES = [
-    "Food — eating only one meal today",
-    "Social media and screens",
-    "Alcohol",
-    "Meat",
-    "News and consumption",
-    "Spending and buying",
+    t("moment_new.fasting_from_examples.0"),
+    t("moment_new.fasting_from_examples.1"),
+    t("moment_new.fasting_from_examples.2"),
+    t("moment_new.fasting_from_examples.3"),
+    t("moment_new.fasting_from_examples.4"),
+    t("moment_new.fasting_from_examples.5"),
   ];
   const FASTING_INTENTION_EXAMPLES = [
-    "In solidarity with those who go without",
-    "For clarity and discernment",
-    "As a discipline of Lent",
-    "In prayer for those we carry",
-    "To create space for God",
+    t("moment_new.fasting_intention_examples.0"),
+    t("moment_new.fasting_intention_examples.1"),
+    t("moment_new.fasting_intention_examples.2"),
+    t("moment_new.fasting_intention_examples.3"),
+    t("moment_new.fasting_intention_examples.4"),
   ];
   useEffect(() => {
-    const t = setInterval(() => setFastingFromIdx(i => (i + 1) % 6), 3500);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setFastingFromIdx(i => (i + 1) % 6), 3500);
+    return () => clearInterval(timer);
   }, []);
   useEffect(() => {
-    const t = setInterval(() => setFastingIntentionIdx(i => (i + 1) % 5), 3700);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setFastingIntentionIdx(i => (i + 1) % 5), 3700);
+    return () => clearInterval(timer);
   }, []);
 
   // Organizer personal time (after creation for spiritual templates)
@@ -516,26 +548,26 @@ export default function MomentNew() {
   }, [personalHour, timeOfDay]);
 
   // ─── Template selection handler ─────────────────────────────────────────────
-  function selectTemplate(t: typeof TEMPLATES[0]) {
-    setTemplateId(t.id);
+  function selectTemplate(template: Template) {
+    setTemplateId(template.id);
     // Daily Office: choose Morning or Evening first
-    if (t.id === "daily-office") {
+    if (template.id === "daily-office") {
       setStep("daily-office-choice");
       return;
     }
     // Morning Prayer and Evening Prayer use a completely separate BCP flow
-    if (t.id === "morning-prayer" || t.id === "evening-prayer") {
+    if (template.id === "morning-prayer" || template.id === "evening-prayer") {
       setStep("bcp-commitment");
       return;
     }
     // Contemplative Prayer: duration selection first
-    if (t.id === "contemplative") {
-      if (t.prefill) {
-        setName(t.prefill.name);
-        setIntention(t.prefill.intention);
-        setLoggingType(t.prefill.loggingType);
-        setReflectionPrompt(t.prefill.reflectionPrompt);
-        setFrequency(t.prefill.frequency);
+    if (template.id === "contemplative") {
+      if (template.prefill) {
+        setName(template.prefill.name);
+        setIntention(template.prefill.intention);
+        setLoggingType(template.prefill.loggingType);
+        setReflectionPrompt(template.prefill.reflectionPrompt);
+        setFrequency(template.prefill.frequency);
       }
       setStep("contemplative-duration");
       return;
@@ -543,19 +575,19 @@ export default function MomentNew() {
     // Lectio Divina: minimal flow — we just need invitees. Schedule is fixed
     // (weekly Mon/Wed/Fri) and the gospel text is pulled from the lectionary
     // automatically each week.
-    if (t.id === "lectio-divina") {
-      if (t.prefill) {
-        setName(t.prefill.name);
-        setIntention(t.prefill.intention);
-        setLoggingType(t.prefill.loggingType);
-        setReflectionPrompt(t.prefill.reflectionPrompt);
-        setFrequency(t.prefill.frequency);
+    if (template.id === "lectio-divina") {
+      if (template.prefill) {
+        setName(template.prefill.name);
+        setIntention(template.prefill.intention);
+        setLoggingType(template.prefill.loggingType);
+        setReflectionPrompt(template.prefill.reflectionPrompt);
+        setFrequency(template.prefill.frequency);
       }
       setStep("invite");
       return;
     }
     // Fasting: choose fast type first (meat vs custom)
-    if (t.id === "fasting") {
+    if (template.id === "fasting") {
       setFastingTypeChoice(null);
       setFastingFrom("");
       setFastingIntention("");
@@ -568,15 +600,15 @@ export default function MomentNew() {
       setStep("fasting-type");
       return;
     }
-    if (t.prefill) {
-      setName(t.prefill.name);
-      setIntention(t.prefill.intention);
-      setLoggingType(t.prefill.loggingType);
-      setReflectionPrompt(t.prefill.reflectionPrompt);
+    if (template.prefill) {
+      setName(template.prefill.name);
+      setIntention(template.prefill.intention);
+      setLoggingType(template.prefill.loggingType);
+      setReflectionPrompt(template.prefill.reflectionPrompt);
       // No pre-filled time or day — user fills these in
-      setFrequency(t.prefill.frequency);
+      setFrequency(template.prefill.frequency);
     }
-    if (t.id === "intercession") {
+    if (template.id === "intercession") {
       setStep("intercession");
     } else {
       setStep("name");
@@ -594,7 +626,7 @@ export default function MomentNew() {
     const params = new URLSearchParams(window.location.search);
     const tid = params.get("template");
     if (!tid) return;
-    const match = TEMPLATES.find((t) => t.id === tid);
+    const match = TEMPLATES.find((tpl) => tpl.id === tid);
     if (!match) return;
     templateAutoSelected.current = true;
     selectTemplate(match);
@@ -827,10 +859,10 @@ export default function MomentNew() {
     const scheduledTimeStr = `${String(h).padStart(2, "0")}:${String(bcpPersonalMinute).padStart(2, "0")}`;
 
     bcpPlantMutation.mutate({
-      name: isMorning ? "Morning Prayer 🌅" : "Evening Prayer 🌙",
+      name: isMorning ? `${t("moment_new.payload.morning_prayer_name")} 🌅` : `${t("moment_new.payload.evening_prayer_name")} 🌙`,
       intention: isMorning
-        ? "We open the day together. From the same book, in our own homes — but not alone."
-        : "We close the day together. From the same book, in our own homes — but not alone.",
+        ? t("moment_new.payload.morning_prayer_intention")
+        : t("moment_new.payload.evening_prayer_intention"),
       loggingType: "checkin",
       templateType: templateId,
       frequency: isDaily ? "daily" : "weekly",
@@ -865,21 +897,21 @@ export default function MomentNew() {
     // below doesn't branch.
     const isCustomIntercession = templateId === "intercession" && (intercessionSource === "custom" || intercessionSource === "action");
     const finalName = isFasting && fastingTypeChoice === "meat"
-      ? "Fast from meat"
+      ? t("moment_new.payload.fast_from_meat")
       : isFasting && fastingTypeChoice === "custom"
-      ? customFastName.trim() || `Fasting from ${fastingFrom.trim()}`
+      ? customFastName.trim() || t("moment_new.payload.fasting_from", { what: fastingFrom.trim() })
       : isFasting
-      ? `Fasting from ${fastingFrom.trim()}`
+      ? t("moment_new.payload.fasting_from", { what: fastingFrom.trim() })
       : isCustomIntercession
       ? (intention.trim() || name.trim())
       : name.trim();
     const finalIntention = isFasting && fastingTypeChoice === "meat"
-      ? "To practice restraint, care for creation, and shared discipline."
+      ? t("moment_new.fasting_meat_intention")
       : isFasting && fastingTypeChoice === "custom"
       ? customFastDescription.trim() || fastingIntention.trim()
       : isFasting
       ? fastingIntention.trim()
-      : intention.trim() || intercessionTopic.trim() || name.trim() || "Praying together";
+      : intention.trim() || intercessionTopic.trim() || name.trim() || t("moment_new.payload.praying_together");
     const finalFastingFrom = isFasting && fastingTypeChoice === "meat"
       ? "meat"
       : isFasting ? (customFastName.trim() || fastingFrom.trim()) : "";
@@ -957,17 +989,17 @@ export default function MomentNew() {
 
   // ─── Done / Confirmation ──────────────────────────────────────────────────────
   if (done) {
-    const templateInfo = TEMPLATES.find(t => t.id === templateId);
+    const templateInfo = TEMPLATES.find(tpl => tpl.id === templateId);
     const [h, m] = scheduledTime.split(":").map(Number);
     const timeLabel = new Date(0, 0, 0, h, m).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
     const isFastingDone = templateId === "fasting";
     const isIntercessionDone = templateId === "intercession";
     const commitmentLabel = practiceDurationDays !== null && (isFastingDone || isIntercessionDone)
       ? practiceDurationDays === 0
-        ? { emoji: "✨", label: "Ongoing" }
+        ? { emoji: "✨", label: t("moment_new.done.ongoing") }
         : practiceDurationDays % 7 === 0
-          ? { emoji: "🌿", label: `${practiceDurationDays / 7} week${practiceDurationDays / 7 !== 1 ? "s" : ""}` }
-          : { emoji: "🌿", label: `${practiceDurationDays} days` }
+          ? { emoji: "🌿", label: t("moment_new.done.weeks", { count: practiceDurationDays / 7 }) }
+          : { emoji: "🌿", label: t("moment_new.done.days", { count: practiceDurationDays }) }
       : null;
     const todEmoji = TIME_OF_DAY_OPTIONS.find(o => o.id === timeOfDay)?.emoji ?? "🌿";
     const todLabel = TIME_OF_DAY_OPTIONS.find(o => o.id === timeOfDay)?.label?.toLowerCase() ?? "morning";
@@ -981,21 +1013,21 @@ export default function MomentNew() {
           className="max-w-sm w-full text-center text-[#F5EDD8]"
         >
           <div className="text-6xl mb-6">🌱</div>
-          <h2 className="text-3xl font-semibold mb-3" style={{ color: "#F0EDE6" }}>{name} is planted.</h2>
-          <p className="mb-2" style={{ color: "#8FAF96" }}>{frequency === "daily" ? "Every day" : frequency === "weekly" ? "Weekly" : "Monthly"} at {timeLabel}</p>
+          <h2 className="text-3xl font-semibold mb-3" style={{ color: "#F0EDE6" }}>{t("moment_new.done.planted", { name })}</h2>
+          <p className="mb-2" style={{ color: "#8FAF96" }}>{frequency === "daily" ? t("moment_new.done.freq_daily") : frequency === "weekly" ? t("moment_new.done.freq_weekly") : t("moment_new.done.freq_monthly")} {t("moment_new.done.at_time", { time: timeLabel })}</p>
           {commitmentLabel && (
             <p className="mb-6" style={{ color: "#8FAF96" }}>{commitmentLabel.emoji} {commitmentLabel.label}</p>
           )}
           <p className="mb-8 text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
-            Invites are on their way.<br />
-            Phoebe will ring the bell when it's time.<br />
-            You just have to practice.
+            {t("moment_new.done.invites_line1")}<br />
+            {t("moment_new.done.invites_line2")}<br />
+            {t("moment_new.done.invites_line3")}
           </p>
           <button
             onClick={() => createdMomentId ? setLocation(`/moments/${createdMomentId}`) : setLocation("/dashboard")}
             className="px-8 py-3 bg-[#5C7A5F] text-white rounded-full font-medium hover:bg-[#5a7a60] transition-colors"
           >
-            Done 🌿
+            {t("moment_new.done.done_button")} 🌿
           </button>
         </motion.div>
       </div>
@@ -1006,35 +1038,35 @@ export default function MomentNew() {
   if (bcpDone) {
     const isMorning = templateId === "morning-prayer";
     const freqOpt = BCP_FREQ_OPTIONS.find(f => f.id === bcpFreqType);
-    const freqLabel = freqOpt?.label ?? "Daily";
+    const freqLabel = freqOpt?.label ?? t("moment_new.bcp_freq.daily.label");
     return (
       <div className="min-h-screen bg-[#091A10] flex items-center justify-center px-6">
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
           className="max-w-sm w-full text-center text-[#E8E4D8]">
           <div className="text-6xl mb-6">{isMorning ? "🌅" : "🌙"}</div>
           <h2 className="text-3xl font-bold mb-2">
-            {isMorning ? "Morning Prayer is planted." : "Evening Prayer is planted."}
+            {isMorning ? t("moment_new.bcp_done.planted_morning") : t("moment_new.bcp_done.planted_evening")}
           </h2>
-          <p className="text-[#E8E4D8]/70 mb-6">{freqLabel} · Everyone prays at their own time</p>
-          <p className="text-sm text-[#E8E4D8]/60 mb-8">Calendar invites are on their way.</p>
+          <p className="text-[#E8E4D8]/70 mb-6">{t("moment_new.bcp_done.own_time", { freq: freqLabel })}</p>
+          <p className="text-sm text-[#E8E4D8]/60 mb-8">{t("moment_new.bcp_done.calendar_invites")}</p>
           <div className="bg-[#E8E4D8]/10 border border-[#E8E4D8]/20 rounded-2xl p-5 mb-8 text-left">
             <p className="text-sm font-medium text-[#E8E4D8] mb-1">
-              Open your BCP to page {isMorning ? "75" : "115"}.
+              {t("moment_new.bcp_done.open_bcp", { page: isMorning ? "75" : "115" })}
             </p>
             <a href={isMorning ? "https://bcponline.org/DailyOffice/mp2.html" : "https://bcponline.org/DailyOffice/ep2.html"}
               target="_blank" rel="noopener noreferrer"
               className="text-sm text-[#5C7A5F] underline underline-offset-2">
-              Or pray online: {isMorning ? "bcponline.org/DailyOffice/mp2.html" : "bcponline.org/DailyOffice/ep2.html"}
+              {t("moment_new.bcp_done.pray_online")} {isMorning ? "bcponline.org/DailyOffice/mp2.html" : "bcponline.org/DailyOffice/ep2.html"}
             </a>
           </div>
           <p className="text-[#E8E4D8]/50 font-serif italic text-sm leading-relaxed mb-8">
             {isMorning
-              ? '"Let my prayer be set forth in thy sight as incense, and the lifting up of my hands as the evening sacrifice." — Psalm 141:2'
-              : '"O gracious Light, pure brightness of the everliving Father in heaven." — Phos Hilaron'}
+              ? t("moment_new.bcp_done.quote_morning")
+              : t("moment_new.bcp_done.quote_evening")}
           </p>
           <button onClick={() => setLocation("/dashboard")}
             className="px-10 py-4 bg-[#5C7A5F] text-white rounded-full text-base font-semibold hover:bg-[#5a7a60] transition-colors">
-            Done 🌿
+            {t("moment_new.done.done_button")} 🌿
           </button>
         </motion.div>
       </div>
@@ -1050,42 +1082,26 @@ export default function MomentNew() {
           className="max-w-sm w-full text-center text-[#E8E4D8]">
           <div className="text-6xl mb-6">{isMorning ? "🌅" : "🌙"}</div>
           <h1 className="text-3xl font-bold leading-tight mb-2">
-            Plant {isMorning ? "Morning Prayer" : "Evening Prayer"}
+            {isMorning ? t("moment_new.bcp_commitment.plant_morning") : t("moment_new.bcp_commitment.plant_evening")}
           </h1>
-          <p className="text-[#5C7A5F] text-lg font-semibold mb-8">with your people</p>
-          <p className="font-serif italic text-[#E8E4D8]/80 text-base leading-loose mb-8">
-            {isMorning ? (
-              <>
-                "You can't always be together.<br />
-                But you can always pray together.<br />
-                Every morning, from wherever you are,<br />
-                your people open the same book<br />
-                and pray the same words.<br />
-                Not alone."
-              </>
-            ) : (
-              <>
-                "You can't always be together.<br />
-                But you can always pray together.<br />
-                Every evening, from wherever you are,<br />
-                your people close the day<br />
-                with the same words.<br />
-                Not alone."
-              </>
-            )}
+          <p className="text-[#5C7A5F] text-lg font-semibold mb-8">{t("moment_new.bcp_commitment.with_your_people")}</p>
+          <p className="font-serif italic text-[#E8E4D8]/80 text-base leading-loose mb-8 whitespace-pre-line">
+            {isMorning
+              ? t("moment_new.bcp_commitment.verse_morning")
+              : t("moment_new.bcp_commitment.verse_evening")}
           </p>
           <p className="text-[#E8E4D8]/50 text-sm mb-8">
             {isMorning
-              ? "Morning Prayer Rite II · Book of Common Prayer · Page 75 · A Daily Office"
-              : "Evening Prayer Rite II · Book of Common Prayer · Page 115 · A Daily Office"}
+              ? t("moment_new.bcp_commitment.rite_morning")
+              : t("moment_new.bcp_commitment.rite_evening")}
           </p>
           <button onClick={goNext}
             className="w-full py-4 rounded-2xl bg-[#5C7A5F] text-white text-base font-semibold hover:bg-[#5a7a60] transition-colors">
-            Plant this with my people 🌿
+            {t("moment_new.bcp_commitment.plant_cta")} 🌿
           </button>
           <button onClick={() => { setTemplateId(null); setStep("template"); }}
             className="mt-4 text-sm text-[#E8E4D8]/40 hover:text-[#E8E4D8]/70 transition-colors">
-            ← Go back
+            ← {t("moment_new.go_back")}
           </button>
         </motion.div>
       </div>
@@ -1106,10 +1122,8 @@ export default function MomentNew() {
           >
             <div className="bg-[#0F2818] border border-[#5C7A5F]/20 rounded-[2rem] p-10 text-center shadow-[var(--shadow-warm-lg)]">
               <div className="text-5xl mb-5">🌿</div>
-              <p className="text-[#F0EDE6] font-serif text-[1.1rem] leading-relaxed italic">
-                "Practices are for the distance between gatherings.
-                <br /><br />
-                You're not in the same room — but you're doing the same thing, at the same time, together."
+              <p className="text-[#F0EDE6] font-serif text-[1.1rem] leading-relaxed italic whitespace-pre-line">
+                {t("moment_new.intro_splash")}
               </p>
             </div>
           </motion.div>
@@ -1126,7 +1140,7 @@ export default function MomentNew() {
         {step !== "template" && (
           <div className="mb-6 flex items-center gap-4">
             <button onClick={goBack} className="text-sm transition-opacity hover:opacity-70" style={{ color: "#8FAF96" }}>
-              ← {(step === "name" || step === "contemplative-duration" || step === "fasting-what" || step === "daily-office-choice") ? "Templates" : "Back"}
+              ← {(step === "name" || step === "contemplative-duration" || step === "fasting-what" || step === "daily-office-choice") ? t("moment_new.nav_templates") : t("moment_new.nav_back")}
             </button>
             <div className="flex-1 flex gap-1.5">
               {Array.from({ length: Math.max(totalSteps, 1) }, (_, i) => (
@@ -1150,21 +1164,21 @@ export default function MomentNew() {
               {step === "template" && (
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                    What will you tend together? 🌿
+                    {t("moment_new.template_step.title")}
                   </h2>
                   <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
-                    Spiritual practices for when you can't be in the same place.
+                    {t("moment_new.template_step.subtitle")}
                   </p>
                   <div className="space-y-3">
-                    {TEMPLATES.map(t => (
-                      <button key={t.id} onClick={() => selectTemplate(t)}
+                    {TEMPLATES.map(tpl => (
+                      <button key={tpl.id} onClick={() => selectTemplate(tpl)}
                         className="w-full text-left rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
                         style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}>
                         <div className="flex items-center gap-4 px-5 py-4">
-                          <span className="text-3xl leading-none shrink-0">{t.emoji}</span>
+                          <span className="text-3xl leading-none shrink-0">{tpl.emoji}</span>
                           <div className="flex-1 min-w-0">
-                            <p className="font-bold text-[15px] leading-snug" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t.name}</p>
-                            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t.desc}</p>
+                            <p className="font-bold text-[15px] leading-snug" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{tpl.name}</p>
+                            <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{tpl.desc}</p>
                           </div>
                         </div>
                       </button>
@@ -1177,15 +1191,15 @@ export default function MomentNew() {
               {step === "daily-office-choice" && (
                 <div className="flex-1">
                   <h2 className="text-2xl font-semibold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                    Which Office will you pray? 📖
+                    {t("moment_new.daily_office.title")}
                   </h2>
                   <p className="text-sm italic mb-8" style={{ color: "#8FAF96" }}>
-                    Each morning or evening, wherever you are — knowing the other is doing the same.
+                    {t("moment_new.daily_office.subtitle")}
                   </p>
                   <div className="space-y-3">
                     {[
-                      { id: "morning-prayer", emoji: "🌅", name: "Morning Prayer", desc: "Begin the day together in the Daily Office" },
-                      { id: "evening-prayer", emoji: "🌙", name: "Evening Prayer", desc: "Close the day together in the Daily Office" },
+                      { id: "morning-prayer", emoji: "🌅", name: t("moment_new.daily_office.morning_name"), desc: t("moment_new.daily_office.morning_desc") },
+                      { id: "evening-prayer", emoji: "🌙", name: t("moment_new.daily_office.evening_name"), desc: t("moment_new.daily_office.evening_desc") },
                     ].map(office => (
                       <button
                         key={office.id}
@@ -1215,8 +1229,8 @@ export default function MomentNew() {
                   {intercessionMode === null && (
                     <>
                       <div className="mb-6">
-                        <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>What will you hold in prayer together? 🙏🏽</h2>
-                        <p className="text-sm text-muted-foreground italic">Choose a prayer from the Book of Common Prayer, or name your own intention.</p>
+                        <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.intercession.title")}</h2>
+                        <p className="text-sm text-muted-foreground italic">{t("moment_new.intercession.subtitle")}</p>
                       </div>
                       <div className="grid gap-4">
                         <button onClick={() => setIntercessionMode("bcp")}
@@ -1227,8 +1241,8 @@ export default function MomentNew() {
                           <div className="flex items-start gap-4">
                             <span className="text-3xl">📖</span>
                             <div>
-                              <p className="font-semibold text-foreground">From the Book of Common Prayer</p>
-                              <p className="text-sm text-muted-foreground mt-0.5">Choose from the traditional intercessions</p>
+                              <p className="font-semibold text-foreground">{t("moment_new.intercession.from_bcp_title")}</p>
+                              <p className="text-sm text-muted-foreground mt-0.5">{t("moment_new.intercession.from_bcp_desc")}</p>
                             </div>
                           </div>
                         </button>
@@ -1240,8 +1254,8 @@ export default function MomentNew() {
                           <div className="flex items-start gap-4">
                             <span className="text-3xl">✍🏽</span>
                             <div>
-                              <p className="font-semibold text-foreground">Name your own intention</p>
-                              <p className="text-sm text-muted-foreground mt-0.5">You'll write the intention on the next screen</p>
+                              <p className="font-semibold text-foreground">{t("moment_new.intercession.own_title")}</p>
+                              <p className="text-sm text-muted-foreground mt-0.5">{t("moment_new.intercession.own_desc")}</p>
                             </div>
                           </div>
                         </button>
@@ -1253,8 +1267,8 @@ export default function MomentNew() {
                           <div className="flex items-start gap-4">
                             <span className="text-3xl">🌍</span>
                             <div>
-                              <p className="font-semibold text-foreground">Take action</p>
-                              <p className="text-sm text-muted-foreground mt-0.5">A prayer with a link to learn more or act</p>
+                              <p className="font-semibold text-foreground">{t("moment_new.intercession.action_title")}</p>
+                              <p className="text-sm text-muted-foreground mt-0.5">{t("moment_new.intercession.action_desc")}</p>
                             </div>
                           </div>
                         </button>
@@ -1265,8 +1279,8 @@ export default function MomentNew() {
                   {intercessionMode === "bcp" && (
                     <>
                       <div className="mb-4 flex items-center gap-2">
-                        <button onClick={() => setIntercessionMode(null)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">← Back</button>
-                        <h2 className="text-lg font-semibold">Book of Common Prayer</h2>
+                        <button onClick={() => setIntercessionMode(null)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">← {t("moment_new.nav_back")}</button>
+                        <h2 className="text-lg font-semibold">{t("moment_new.intercession.bcp_heading")}</h2>
                       </div>
                       <BcpPrayerList onSelect={selectBcpPrayer} />
                     </>
@@ -1275,29 +1289,29 @@ export default function MomentNew() {
                   {intercessionMode === "custom" && (
                     <>
                       <div className="mb-5 flex items-center gap-2">
-                        <button onClick={() => setIntercessionMode(null)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">← Back</button>
-                        <h2 className="text-lg font-semibold">Name your intention</h2>
+                        <button onClick={() => setIntercessionMode(null)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">← {t("moment_new.nav_back")}</button>
+                        <h2 className="text-lg font-semibold">{t("moment_new.intercession.name_heading")}</h2>
                       </div>
-                      <label className="block text-sm text-muted-foreground mb-2">What are you praying for together?</label>
+                      <label className="block text-sm text-muted-foreground mb-2">{t("moment_new.intercession.praying_for_label")}</label>
                       <textarea
                         value={intercessionTopic}
                         onChange={e => setIntercessionTopic(e.target.value.slice(0, 200))}
                         rows={4}
-                        placeholder="The climate crisis and those most affected..."
+                        placeholder={t("moment_new.intercession.topic_ph")}
                         className="w-full px-4 py-3 rounded-xl border border-border focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] focus:outline-none resize-none"
                       />
                       <p className="text-xs text-muted-foreground/60 text-right mt-1">{intercessionTopic.length}/200</p>
                       <div className="text-xs text-muted-foreground/60 italic mt-2 space-y-0.5">
-                        <p>"The vulnerable, the forgotten, those who suffer 🌿"</p>
-                        <p>"The earth and every living thing 🌱"</p>
-                        <p>"Someone we love who is struggling"</p>
+                        <p>{t("moment_new.intercession.example_1")} 🌿</p>
+                        <p>{t("moment_new.intercession.example_2")} 🌱</p>
+                        <p>{t("moment_new.intercession.example_3")}</p>
                       </div>
                       <button
                         onClick={confirmCustomIntercession}
                         disabled={!intercessionTopic.trim()}
                         className="mt-4 w-full py-3 bg-[#5C7A5F] text-white rounded-xl font-medium hover:bg-[#5a7a60] transition-colors disabled:opacity-40"
                       >
-                        Set this intention →
+                        {t("moment_new.intercession.set_intention_cta")} →
                       </button>
                     </>
                   )}
@@ -1312,8 +1326,8 @@ export default function MomentNew() {
                 return (
                   <div className="flex-1 space-y-4">
                     <div>
-                      <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>How often will you pray together? 🌿</h2>
-                      <p className="text-sm text-muted-foreground italic">This is your commitment to each other. Choose what you can sustain.</p>
+                      <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.bcp_frequency.title")}</h2>
+                      <p className="text-sm text-muted-foreground italic">{t("moment_new.bcp_frequency.subtitle")}</p>
                     </div>
                     <div className="space-y-3">
                       {BCP_FREQ_OPTIONS.map(opt => {
@@ -1349,7 +1363,7 @@ export default function MomentNew() {
                                   ))}
                                 </div>
                                 <p className={`text-xs mt-1 ${sel ? "text-[#E8E4D8]/60" : "text-[#8FAF96]/50"}`}>
-                                  {opt.dots} office{opt.dots > 1 ? "s" : ""} together each week
+                                  {t("moment_new.bcp_frequency.offices_per_week", { count: opt.dots })}
                                 </p>
                               </div>
                             </div>
@@ -1377,10 +1391,10 @@ export default function MomentNew() {
                   <div className="flex-1 space-y-6">
                     <div>
                       <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
-                        Which days? 🌿
+                        {t("moment_new.bcp_days.title")} 🌿
                       </h2>
                       <p className="text-sm italic" style={{ color: "#8FAF96" }}>
-                        Choose {requiredDays} day{requiredDays > 1 ? "s" : ""} — you'll both pray on these days.
+                        {t("moment_new.bcp_days.choose_days", { count: requiredDays })}
                       </p>
                     </div>
                     <div className="flex gap-3 flex-wrap">
@@ -1415,8 +1429,8 @@ export default function MomentNew() {
                         style={{ color: "#5C7A5F" }}
                       >
                         {chosen === requiredDays
-                          ? `${bcpPracticeDays.map(d => WEEK_DAYS.find(w => w.id === d)?.label).join(", ")} — well chosen. 🌿`
-                          : `${requiredDays - chosen} more day${requiredDays - chosen > 1 ? "s" : ""} to go`}
+                          ? t("moment_new.bcp_days.well_chosen", { days: bcpPracticeDays.map(d => WEEK_DAYS.find(w => w.id === d)?.label).join(", ") })
+                          : t("moment_new.bcp_days.more_to_go", { count: requiredDays - chosen })}
                       </motion.p>
                     )}
                   </div>
@@ -1427,19 +1441,19 @@ export default function MomentNew() {
               {step === "bcp-time" && (() => {
                 const isMorning = templateId === "morning-prayer";
                 const BCP_TIME_SLOTS: { id: "early-morning" | "morning" | "late-afternoon" | "evening"; emoji: string; label: string; sub: string; defaultH: number; defaultAmPm: "AM" | "PM" }[] = [
-                  { id: "early-morning", emoji: "🌄", label: "Early morning", sub: "5am – 8am", defaultH: 6, defaultAmPm: "AM" },
-                  { id: "morning",       emoji: "🌅", label: "Morning",       sub: "8am – 11am", defaultH: 8, defaultAmPm: "AM" },
-                  { id: "late-afternoon",emoji: "🌇", label: "Late afternoon", sub: "4pm – 7pm", defaultH: 5, defaultAmPm: "PM" },
-                  { id: "evening",       emoji: "🌆", label: "Evening",       sub: "7pm – 10pm", defaultH: 8, defaultAmPm: "PM" },
+                  { id: "early-morning", emoji: "🌄", label: t("moment_new.time_of_day.early_morning.label"), sub: "5am – 8am", defaultH: 6, defaultAmPm: "AM" },
+                  { id: "morning",       emoji: "🌅", label: t("moment_new.time_of_day.morning.label"),       sub: "8am – 11am", defaultH: 8, defaultAmPm: "AM" },
+                  { id: "late-afternoon",emoji: "🌇", label: t("moment_new.time_of_day.late_afternoon.label"), sub: "4pm – 7pm", defaultH: 5, defaultAmPm: "PM" },
+                  { id: "evening",       emoji: "🌆", label: t("moment_new.time_of_day.evening.label"),       sub: "7pm – 10pm", defaultH: 8, defaultAmPm: "PM" },
                 ];
                 return (
                   <div className="flex-1 space-y-5">
                     <div>
                       <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
-                        When will you pray? 🌿
+                        {t("moment_new.bcp_time.title")} 🌿
                       </h2>
                       <p className="text-sm italic" style={{ color: "#8FAF96" }}>
-                        Everyone chooses their own time. This sets your personal default.
+                        {t("moment_new.bcp_time.subtitle")}
                       </p>
                     </div>
                     <div className="space-y-2.5">
@@ -1475,7 +1489,7 @@ export default function MomentNew() {
                     </div>
                     {bcpTimeSlot && (
                       <div className="rounded-2xl px-4 py-3 space-y-2" style={{ background: "rgba(200,212,192,0.06)", border: "1px solid rgba(46,107,64,0.25)" }}>
-                        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>Your exact time (optional)</p>
+                        <p className="text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>{t("moment_new.bcp_time.exact_time")}</p>
                         <div className="flex items-center gap-3">
                           <div className="flex gap-1">
                             {TOD_CONSTRAINTS[bcpTimeSlot]?.hours.map(h => (
@@ -1527,16 +1541,16 @@ export default function MomentNew() {
                 return (
                   <div className="flex-1 space-y-5">
                     <div>
-                      <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Who will pray with you? 🌿</h2>
+                      <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.bcp_invite.title")} 🌿</h2>
                       <p className="text-sm text-muted-foreground italic">
-                        Invite someone to commit to this practice with you.<br />
-                        They will choose their own time in the {isMorning ? "morning" : "evening"}.
+                        {t("moment_new.bcp_invite.subtitle_line1")}<br />
+                        {isMorning ? t("moment_new.bcp_invite.subtitle_line2_morning") : t("moment_new.bcp_invite.subtitle_line2_evening")}
                       </p>
                     </div>
                     {/* Autofill from existing connections */}
                     {bcpConnections.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">From your practices and traditions 🌿</p>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">{t("moment_new.bcp_invite.from_connections")} 🌿</p>
                         {bcpConnections.map((c, i) => (
                           <div key={i} className="flex items-center justify-between bg-secondary/30 border border-border/60 rounded-xl px-4 py-3">
                             <div>
@@ -1547,7 +1561,7 @@ export default function MomentNew() {
                               className={`text-sm font-medium rounded-full px-4 py-1.5 transition-all ${
                                 c.invited ? "bg-[#5C7A5F] text-white" : "border border-[#5C7A5F] text-[#5C7A5F] hover:bg-[#5C7A5F]/10"
                               }`}>
-                              {c.invited ? "Invited ✓" : "+ Invite"}
+                              {c.invited ? `${t("moment_new.bcp_invite.invited")} ✓` : t("moment_new.bcp_invite.invite_cta")}
                             </button>
                           </div>
                         ))}
@@ -1555,13 +1569,13 @@ export default function MomentNew() {
                     )}
                     {/* Manual invite */}
                     <div className="space-y-3">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Invite by email</p>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">{t("moment_new.bcp_invite.invite_by_email")}</p>
                       {bcpParticipants.map((p, i) => (
                         <div key={i} className="flex gap-2">
                           <input type="text" value={p.name} onChange={e => setBcpParticipants(prev => { const n = [...prev]; n[i] = { ...n[i], name: e.target.value }; return n; })}
-                            placeholder="Name" className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:border-[#5C7A5F] focus:outline-none" />
+                            placeholder={t("moment_new.field.name")} className="flex-1 px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:border-[#5C7A5F] focus:outline-none" />
                           <input type="email" value={p.email} onChange={e => setBcpParticipants(prev => { const n = [...prev]; n[i] = { ...n[i], email: e.target.value }; return n; })}
-                            placeholder="Email" className="flex-[1.5] px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:border-[#5C7A5F] focus:outline-none" />
+                            placeholder={t("moment_new.field.email")} className="flex-[1.5] px-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:border-[#5C7A5F] focus:outline-none" />
                           {bcpParticipants.length > 1 && (
                             <button onClick={() => setBcpParticipants(prev => prev.filter((_, j) => j !== i))}
                               className="text-muted-foreground hover:text-destructive px-2">×</button>
@@ -1571,26 +1585,26 @@ export default function MomentNew() {
                       {bcpParticipants.length < 10 && (
                         <button onClick={() => setBcpParticipants(prev => [...prev, { name: "", email: "" }])}
                           className="text-sm text-[#5C7A5F] hover:text-[#4a6b50] transition-colors">
-                          + Add another person
+                          {t("moment_new.add_another_person")}
                         </button>
                       )}
                     </div>
                     {/* BCP info card */}
                     <div className="rounded-2xl p-4 space-y-1" style={{ background: "rgba(200,212,192,0.08)", border: "1px solid rgba(46,107,64,0.35)" }}>
-                      <p className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>📖 About {isMorning ? "Morning Prayer" : "Evening Prayer"}</p>
+                      <p className="text-sm font-semibold" style={{ color: "#C8D4C0" }}>📖 {isMorning ? t("moment_new.bcp_invite.about_morning") : t("moment_new.bcp_invite.about_evening")}</p>
                       <p className="text-sm" style={{ color: "#8FAF96" }}>
-                        {isMorning ? "Morning Prayer Rite II takes 15–20 minutes." : "Evening Prayer Rite II takes 15–20 minutes."}<br />
-                        It begins on page {isMorning ? "75" : "115"} of the Book of Common Prayer.
+                        {isMorning ? t("moment_new.bcp_invite.duration_morning") : t("moment_new.bcp_invite.duration_evening")}<br />
+                        {t("moment_new.bcp_invite.begins_on_page", { page: isMorning ? "75" : "115" })}
                       </p>
                       <a href={isMorning ? "https://bcponline.org/DailyOffice/mp2.html" : "https://bcponline.org/DailyOffice/ep2.html"}
                         target="_blank" rel="noopener noreferrer"
                         className="text-sm underline underline-offset-2 block" style={{ color: "#8FAF96" }}>
-                        No BCP? Pray online: {isMorning ? "bcponline.org/DailyOffice/mp2.html" : "bcponline.org/DailyOffice/ep2.html"}
+                        {t("moment_new.bcp_invite.no_bcp")} {isMorning ? "bcponline.org/DailyOffice/mp2.html" : "bcponline.org/DailyOffice/ep2.html"}
                       </a>
-                      <p className="text-xs italic mt-1" style={{ color: "rgba(143,175,150,0.7)" }}>Everyone chooses their own time. You are together in spirit.</p>
+                      <p className="text-xs italic mt-1" style={{ color: "rgba(143,175,150,0.7)" }}>{t("moment_new.bcp_invite.together_in_spirit")}</p>
                     </div>
                     {bcpPlantMutation.isError && (
-                      <p className="text-xs text-destructive text-center">Something went wrong. Please try again.</p>
+                      <p className="text-xs text-destructive text-center">{t("moment_new.error_generic")}</p>
                     )}
                   </div>
                 );
@@ -1600,13 +1614,13 @@ export default function MomentNew() {
               {step === "name" && (
                 <div className="space-y-6 flex-1">
                   <div>
-                    <h2 className="text-3xl font-semibold mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>What is this practice called?</h2>
-                    <p className="text-muted-foreground text-sm">Pre-filled from your template — edit freely.</p>
+                    <h2 className="text-3xl font-semibold mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.name.title")}</h2>
+                    <p className="text-muted-foreground text-sm">{t("moment_new.name.subtitle")}</p>
                   </div>
                   <input autoFocus type="text" value={name}
                     onChange={e => setName(e.target.value)}
                     onKeyDown={e => e.key === "Enter" && canNext() && goNext()}
-                    placeholder="Morning Prayer, Evening Coffee, Sunday Sit..."
+                    placeholder={t("moment_new.name.placeholder")}
                     className="w-full text-xl md:text-2xl px-0 py-4 bg-transparent border-b-2 border-border focus:border-[#5C7A5F] focus:outline-none transition-colors placeholder:text-muted-foreground/40"
                   />
                 </div>
@@ -1617,17 +1631,17 @@ export default function MomentNew() {
                 <div className="space-y-5 flex-1">
                   <div>
                     <h2 className="text-2xl font-bold mb-1.5" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
-                      Is there a specific intention? 🙏🏽
+                      {t("moment_new.intention_bcp.title")} 🙏🏽
                     </h2>
                     <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
-                      Optional. If you name one, it appears for everyone when they open the prayer.
+                      {t("moment_new.intention_bcp.subtitle")}
                     </p>
                   </div>
                   <div className="relative">
                     <textarea autoFocus value={intention}
                       onChange={e => setIntention(e.target.value.slice(0, 200))}
                       rows={4}
-                      placeholder="e.g. Our enemies and those with whom we are in conflict…"
+                      placeholder={t("moment_new.intention_bcp.placeholder")}
                       className="w-full px-4 py-4 rounded-2xl resize-none text-base focus:outline-none transition-colors"
                       style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
                     />
@@ -1638,11 +1652,11 @@ export default function MomentNew() {
                   <div style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", borderRadius: "16px", overflow: "hidden" }}>
                     <details>
                       <summary className="px-4 py-3 cursor-pointer list-none flex items-center gap-2" style={{ color: "#C8D4C0", fontSize: "13px", fontWeight: 600 }}>
-                        📖 The full prayer
+                        📖 {t("moment_new.intention_bcp.full_prayer")}
                       </summary>
                       <div className="px-4 pb-4 pt-1" style={{ background: "#0F2818" }}>
                         <p className="text-sm italic leading-[1.85] font-serif" style={{ color: "#8FAF96" }}>{selectedBcpPrayer.text}</p>
-                        <p className="text-xs mt-3" style={{ color: "rgba(143,175,150,0.5)" }}>From the Book of Common Prayer</p>
+                        <p className="text-xs mt-3" style={{ color: "rgba(143,175,150,0.5)" }}>{t("moment_new.from_bcp")}</p>
                       </div>
                     </details>
                   </div>
@@ -1651,20 +1665,20 @@ export default function MomentNew() {
                 <div className="space-y-8 flex-1">
                   <div>
                     <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
-                      {intercessionSource === "action" ? "Create an action 🌍" : "Create your intercession 🙏🏽"}
+                      {intercessionSource === "action" ? <>{t("moment_new.intention_custom.title_action")} 🌍</> : <>{t("moment_new.intention_custom.title_intercession")} 🙏🏽</>}
                     </h2>
                     <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
                       {intercessionSource === "action"
-                        ? "A prayer your community will pray together — with a link to learn more or take action."
-                        : "Everyone in this practice will see the title and pray this prayer together."}
+                        ? t("moment_new.intention_custom.subtitle_action")
+                        : t("moment_new.intention_custom.subtitle_intercession")}
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>Title</label>
+                    <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>{t("moment_new.intention_custom.title_label")}</label>
                     <input autoFocus type="text" value={intention}
                       onChange={e => setIntention(e.target.value.slice(0, 120))}
-                      placeholder="e.g. For my mother's health, For our parish, For the sick and suffering..."
+                      placeholder={t("moment_new.intention_custom.title_ph")}
                       className="w-full px-4 py-3 rounded-2xl text-base focus:outline-none transition-colors"
                       style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
                     />
@@ -1674,11 +1688,11 @@ export default function MomentNew() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>Prayer</label>
+                    <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>{t("moment_new.intention_custom.prayer_label")}</label>
                     <textarea value={intercessionFullText}
                       onChange={e => setIntercessionFullText(e.target.value)}
                       rows={6}
-                      placeholder="Write the prayer your group will pray together..."
+                      placeholder={t("moment_new.intention_custom.prayer_ph")}
                       className="w-full px-4 py-3 rounded-2xl resize-none text-base leading-relaxed focus:outline-none transition-colors font-serif italic"
                       style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
                     />
@@ -1686,7 +1700,7 @@ export default function MomentNew() {
 
                   {intercessionSource === "action" && (
                     <div className="space-y-2">
-                      <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>Action link</label>
+                      <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>{t("moment_new.intention_custom.action_link_label")}</label>
                       <input type="url" value={actionLearnMoreUrl}
                         onChange={e => setActionLearnMoreUrl(e.target.value.slice(0, 500))}
                         placeholder="https://..."
@@ -1694,7 +1708,7 @@ export default function MomentNew() {
                         style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
                       />
                       <p className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>
-                        Shown as a "Take action →" link on the prayer slide.
+                        {t("moment_new.intention_custom.action_link_hint")}
                       </p>
                     </div>
                   )}
@@ -1702,13 +1716,13 @@ export default function MomentNew() {
               ) : step === "intention" && (
                 <div className="space-y-6 flex-1">
                   <div>
-                    <h2 className="text-3xl font-semibold mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>What is the intention?</h2>
-                    <p className="text-muted-foreground text-sm">The first thing everyone reads when they open their link.</p>
+                    <h2 className="text-3xl font-semibold mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.intention.title")}</h2>
+                    <p className="text-muted-foreground text-sm">{t("moment_new.intention.subtitle")}</p>
                   </div>
                   <textarea autoFocus value={intention}
                     onChange={e => setIntention(e.target.value)}
                     maxLength={280} rows={3}
-                    placeholder="The heart of this practice in a sentence..."
+                    placeholder={t("moment_new.intention.placeholder")}
                     className="w-full px-0 py-3 bg-transparent border-b-2 border-border focus:border-[#5C7A5F] focus:outline-none transition-colors resize-none text-lg placeholder:text-muted-foreground/40 font-serif italic"
                   />
                   <p className="text-right text-xs text-muted-foreground/50">{intention.length}/280</p>
@@ -1719,9 +1733,9 @@ export default function MomentNew() {
               {step === "logging" && templateId === "intercession" && intercessionSource === "custom" ? (
                 <div className="space-y-6 flex-1">
                   <div>
-                    <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>What will you ask your group? 🌿</h2>
+                    <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.logging_intercession.title")} 🌿</h2>
                     <p className="text-sm text-muted-foreground leading-relaxed">
-                      This question appears on everyone's prayer page each time they pray.
+                      {t("moment_new.logging_intercession.subtitle")}
                     </p>
                   </div>
                   <input autoFocus type="text" value={reflectionPrompt}
@@ -1730,10 +1744,10 @@ export default function MomentNew() {
                   />
                   <div className="flex flex-wrap gap-2">
                     {[
-                      "What is on your heart today?",
-                      "What are you bringing to prayer?",
-                      "What is God stirring in you?",
-                      "What do you want to offer today?",
+                      t("moment_new.prompt_default.on_your_heart"),
+                      t("moment_new.prompt_chip.bringing_to_prayer"),
+                      t("moment_new.prompt_chip.god_stirring"),
+                      t("moment_new.prompt_chip.want_to_offer"),
                     ].map(chip => (
                       <button key={chip} onClick={() => setReflectionPrompt(chip)}
                         className={`text-xs px-3 py-1.5 rounded-full border transition-all ${
@@ -1749,8 +1763,8 @@ export default function MomentNew() {
               ) : step === "logging" && (
                 <div className="space-y-5 flex-1">
                   <div>
-                    <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>How will your practice be held? 🌿</h2>
-                    <p className="text-sm text-muted-foreground">Choose how members participate.</p>
+                    <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.logging.title")} 🌿</h2>
+                    <p className="text-sm text-muted-foreground">{t("moment_new.logging.subtitle")}</p>
                   </div>
                   <div className="grid gap-3">
                     {LOGGING_OPTIONS.map(opt => (
@@ -1771,10 +1785,10 @@ export default function MomentNew() {
                   {/* Reflection prompt */}
                   {(loggingType === "reflection" || loggingType === "both") && (
                     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-                      <label className="block text-sm font-medium text-foreground mb-2">Your reflection prompt</label>
+                      <label className="block text-sm font-medium text-foreground mb-2">{t("moment_new.logging.reflection_prompt_label")}</label>
                       <input autoFocus type="text" value={reflectionPrompt}
                         onChange={e => setReflectionPrompt(e.target.value)}
-                        placeholder="What are you carrying into this day?"
+                        placeholder={t("moment_new.logging.reflection_prompt_ph")}
                         className="w-full px-4 py-3 rounded-xl bg-background border border-border focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] focus:outline-none"
                       />
                     </motion.div>
@@ -1787,14 +1801,14 @@ export default function MomentNew() {
                 <div className="space-y-6 flex-1">
                   <div>
                     <h2 className="text-2xl font-bold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
-                      How often would you like to pray? 🌿
+                      {t("moment_new.schedule.title")} 🌿
                     </h2>
-                    <p className="text-sm" style={{ color: "#8FAF96" }}>Choose your rhythm. It shows up on everyone's calendar as an all-day event.</p>
+                    <p className="text-sm" style={{ color: "#8FAF96" }}>{t("moment_new.schedule.subtitle")}</p>
                   </div>
 
                   {/* Frequency */}
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>How often</label>
+                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>{t("moment_new.schedule.how_often")}</label>
                     <div className="flex gap-3">
                       {(["daily", "weekly"] as Frequency[]).map(f => (
                         <button key={f} onClick={() => { setFrequency(f); setScheduledDays([]); }}
@@ -1802,7 +1816,7 @@ export default function MomentNew() {
                           style={frequency === f
                             ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)" }
                             : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}>
-                          {f === "daily" ? "Every day" : "Once a week"}
+                          {f === "daily" ? t("moment_new.schedule.every_day") : t("moment_new.schedule.once_a_week")}
                         </button>
                       ))}
                     </div>
@@ -1812,10 +1826,10 @@ export default function MomentNew() {
                   {frequency === "weekly" && (
                     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
                       <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>
-                        {templateId === "intercession" ? "Which day?" : "Which days"}
+                        {templateId === "intercession" ? t("moment_new.schedule.which_day") : t("moment_new.schedule.which_days")}
                       </label>
                       <div className="flex flex-wrap gap-2">
-                        {[["Mo","MO"],["Tu","TU"],["We","WE"],["Th","TH"],["Fr","FR"],["Sa","SA"],["Su","SU"]].map(([label, val]) => (
+                        {[[t("moment_new.weekday_short.mo"),"MO"],[t("moment_new.weekday_short.tu"),"TU"],[t("moment_new.weekday_short.we"),"WE"],[t("moment_new.weekday_short.th"),"TH"],[t("moment_new.weekday_short.fr"),"FR"],[t("moment_new.weekday_short.sa"),"SA"],[t("moment_new.weekday_short.su"),"SU"]].map(([label, val]) => (
                           <button key={val}
                             onClick={() => templateId === "intercession"
                               ? setScheduledDays([val])
@@ -1835,7 +1849,7 @@ export default function MomentNew() {
                   {/* Time of day */}
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>
-                      Time of day
+                      {t("moment_new.schedule.time_of_day")}
                     </label>
                     <div className="flex flex-wrap gap-2">
                       {TIME_OF_DAY_OPTIONS.map(opt => (
@@ -1856,7 +1870,7 @@ export default function MomentNew() {
                         </button>
                       ))}
                     </div>
-                    <p className="text-xs mt-2" style={{ color: "rgba(143,175,150,0.45)" }}>The whole day counts — this sets the calendar time. 🌿</p>
+                    <p className="text-xs mt-2" style={{ color: "rgba(143,175,150,0.45)" }}>{t("moment_new.schedule.whole_day")} 🌿</p>
                   </div>
                 </div>
               )}
@@ -1869,22 +1883,22 @@ export default function MomentNew() {
 
                 type DurationOpt = { days: number; emoji: string; label: string; sub: string };
                 const durationOptions: DurationOpt[] = useWeeks ? [
-                  { days: 7,  emoji: "🌱", label: "1 week",    sub: "A tender beginning" },
-                  { days: 14, emoji: "🌿", label: "2 weeks",   sub: "Finding a rhythm" },
-                  { days: 28, emoji: "🌳", label: "4 weeks",   sub: "A month together" },
-                  { days: 0,  emoji: "✨", label: "Ongoing",   sub: "Until you feel released" },
+                  { days: 7,  emoji: "🌱", label: t("moment_new.duration.w1.label"),  sub: t("moment_new.duration.w1.sub") },
+                  { days: 14, emoji: "🌿", label: t("moment_new.duration.w2.label"),  sub: t("moment_new.duration.w2.sub") },
+                  { days: 28, emoji: "🌳", label: t("moment_new.duration.w4.label"),  sub: t("moment_new.duration.w4.sub") },
+                  { days: 0,  emoji: "✨", label: t("moment_new.duration.ongoing.label"), sub: t("moment_new.duration.ongoing.sub") },
                 ] : [
-                  { days: 3,  emoji: "🕊️", label: "3 days",  sub: "A first act of prayer" },
-                  { days: 7,  emoji: "🌱", label: "7 days",   sub: "One week of holding them" },
-                  { days: 14, emoji: "🌿", label: "14 days",  sub: "Two weeks of faithful intercession" },
+                  { days: 3,  emoji: "🕊️", label: t("moment_new.duration.d3.label"),  sub: t("moment_new.duration.d3.sub") },
+                  { days: 7,  emoji: "🌱", label: t("moment_new.duration.d7.label"),  sub: t("moment_new.duration.d7.sub") },
+                  { days: 14, emoji: "🌿", label: t("moment_new.duration.d14.label"), sub: t("moment_new.duration.d14.sub") },
                 ];
 
                 const title = isFastingFlow
-                  ? "How long will you fast together? 🌾"
-                  : "How long will you hold this intention? 🙏🏽";
+                  ? `${t("moment_new.duration.title_fasting")} 🌾`
+                  : `${t("moment_new.duration.title_intercession")} 🙏🏽`;
                 const subtitle = isFastingFlow
-                  ? "A shared fast. Begin where you can."
-                  : "Begin where you are. You can always continue.";
+                  ? t("moment_new.duration.subtitle_fasting")
+                  : t("moment_new.duration.subtitle_intercession");
 
                 return (
                   <div className="flex-1 flex flex-col gap-4">
@@ -1945,9 +1959,9 @@ export default function MomentNew() {
               {step === "invite" && templateId === "lectio-divina" && (
                 <div className="space-y-5 flex-1">
                   <div>
-                    <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Who will read together? 📜</h2>
+                    <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.invite_lectio.title")} 📜</h2>
                     <p className="text-sm text-muted-foreground">
-                      Search people from your communities and practices, or invite someone new.
+                      {t("moment_new.invite_lectio.subtitle")}
                     </p>
                   </div>
                   <InviteStep type="practice" onPeopleChange={setInvitedPeople} />
@@ -1956,9 +1970,9 @@ export default function MomentNew() {
               {step === "invite" && templateId !== "lectio-divina" && (
                 <div className="space-y-5 flex-1">
                   <div>
-                    <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Choose a community 🌿</h2>
+                    <h2 className="text-xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.invite_community.title")} 🌿</h2>
                     <p className="text-sm text-muted-foreground">
-                      {selectedGroupId ? "All community members will be added automatically." : "Select which community this practice belongs to."}
+                      {selectedGroupId ? t("moment_new.invite_community.subtitle_selected") : t("moment_new.invite_community.subtitle_unselected")}
                     </p>
                   </div>
 
@@ -1969,17 +1983,17 @@ export default function MomentNew() {
                       style={{ background: "rgba(200,212,192,0.06)", border: "1px solid rgba(46,107,64,0.3)" }}
                     >
                       <p className="text-sm font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                        You need a community first 🌿
+                        {t("moment_new.invite_community.need_community_title")} 🌿
                       </p>
                       <p className="text-sm leading-relaxed" style={{ color: "#8FAF96" }}>
-                        This practice belongs to a community — everyone in the group joins automatically. Create yours and come back.
+                        {t("moment_new.invite_community.need_community_body")}
                       </p>
                       <a
                         href="/tradition/new"
                         className="inline-block mt-1 text-sm font-semibold rounded-xl px-4 py-2.5 transition-colors"
                         style={{ background: "#2D5E3F", color: "#F0EDE6", textDecoration: "none" }}
                       >
-                        Create a community →
+                        {t("moment_new.invite_community.create_community_cta")} →
                       </a>
                     </div>
                   )}
@@ -1988,7 +2002,7 @@ export default function MomentNew() {
                   {adminGroups.length > 0 && (
                     <div className="space-y-2">
                       <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>
-                        Community
+                        {t("moment_new.invite_community.community_label")}
                       </label>
                       <div className="flex flex-wrap gap-2">
                         {adminGroups.map(g => (
@@ -2017,10 +2031,10 @@ export default function MomentNew() {
                     && adminGroups.filter(g => g.id !== selectedGroupId).length > 0 && (
                     <div className="space-y-2">
                       <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>
-                        Also share with
+                        {t("moment_new.invite_community.also_share_label")}
                       </label>
                       <p className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>
-                        Other communities you admin can also see this intercession.
+                        {t("moment_new.invite_community.also_share_hint")}
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {adminGroups.filter(g => g.id !== selectedGroupId).map(g => {
@@ -2049,14 +2063,14 @@ export default function MomentNew() {
               {/* ── Contemplative Prayer — duration selection ────── */}
               {step === "contemplative-duration" && (
                 <div className="flex-1">
-                  <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>How long will you pray together? 🕯️</h2>
-                  <p className="text-sm text-muted-foreground italic mb-6">Everyone prays for the same length of time, wherever they are.</p>
+                  <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.contemplative.title")} 🕯️</h2>
+                  <p className="text-sm text-muted-foreground italic mb-6">{t("moment_new.contemplative.subtitle")}</p>
                   <div className="grid gap-3">
                     {([
-                      { emoji: "🌱", label: "5 minutes", sub: "A brief prayer", mins: 5 },
-                      { emoji: "🌿", label: "10 minutes", sub: "A gentle practice", mins: 10 },
-                      { emoji: "🌸", label: "20 minutes", sub: "A deeper prayer", mins: 20 },
-                      { emoji: "🌳", label: "30 minutes", sub: "A sustained prayer", mins: 30 },
+                      { emoji: "🌱", label: t("moment_new.contemplative.m5.label"), sub: t("moment_new.contemplative.m5.sub"), mins: 5 },
+                      { emoji: "🌿", label: t("moment_new.contemplative.m10.label"), sub: t("moment_new.contemplative.m10.sub"), mins: 10 },
+                      { emoji: "🌸", label: t("moment_new.contemplative.m20.label"), sub: t("moment_new.contemplative.m20.sub"), mins: 20 },
+                      { emoji: "🌳", label: t("moment_new.contemplative.m30.label"), sub: t("moment_new.contemplative.m30.sub"), mins: 30 },
                     ] as const).map(opt => (
                       <button key={opt.mins}
                         onClick={() => { setContemplativeDuration(opt.mins); goNext(); }}
@@ -2071,16 +2085,16 @@ export default function MomentNew() {
                     ))}
                     {contemplativeDuration === -1 ? (
                       <div className="p-4 rounded-2xl border-2 border-[#5C7A5F]/60 bg-[#5C7A5F]/5">
-                        <p className="font-semibold text-sm text-[#4a6b50] mb-3">✨ Choose your own</p>
+                        <p className="font-semibold text-sm text-[#4a6b50] mb-3">✨ {t("moment_new.contemplative.choose_own")}</p>
                         <div className="flex items-center gap-3">
                           <input type="number" min={1} max={60} value={customDurationInput}
                             onChange={e => setCustomDurationInput(e.target.value)}
                             className="w-20 px-3 py-2 rounded-xl border border-border text-center text-lg font-semibold bg-background" />
-                          <span className="text-muted-foreground text-sm">minutes</span>
+                          <span className="text-muted-foreground text-sm">{t("moment_new.contemplative.minutes")}</span>
                           <button
                             onClick={() => { const n = Math.max(1, Math.min(60, parseInt(customDurationInput) || 20)); setContemplativeDuration(n); goNext(); }}
                             className="ml-auto py-2 px-4 rounded-xl bg-[#5C7A5F] text-white text-sm font-semibold">
-                            Continue →
+                            {t("moment_new.continue")} →
                           </button>
                         </div>
                       </div>
@@ -2089,8 +2103,8 @@ export default function MomentNew() {
                         className="w-full text-left p-4 rounded-2xl border border-border/60 hover:border-[#5C7A5F]/60 hover:bg-[#5C7A5F]/5 transition-all flex items-center gap-4 group">
                         <span className="text-3xl">✨</span>
                         <div>
-                          <p className="font-semibold text-sm group-hover:text-[#4a6b50]">Choose your own</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">Set your own length</p>
+                          <p className="font-semibold text-sm group-hover:text-[#4a6b50]">{t("moment_new.contemplative.choose_own")}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{t("moment_new.contemplative.choose_own_sub")}</p>
                         </div>
                         <span className="ml-auto text-muted-foreground/40 text-sm">→</span>
                       </button>
@@ -2105,10 +2119,10 @@ export default function MomentNew() {
               {step === "fasting-type" && (
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                    What kind of fast? ✦
+                    {t("moment_new.fasting_type.title")} ✦
                   </h2>
                   <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
-                    Choose a practice for your group.
+                    {t("moment_new.fasting_type.subtitle")}
                   </p>
 
                   {!fastingTypeChoice && (
@@ -2119,7 +2133,7 @@ export default function MomentNew() {
                           setFastingTypeChoice("meat");
                           setFastingFrom("meat");
                           setFastingFrequency("weekly");
-                          setFastingIntention("To practice restraint, care for creation, and shared discipline.");
+                          setFastingIntention(t("moment_new.fasting_meat_intention"));
                           setStep("fasting-when");
                         }}
                         className="w-full text-left rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
@@ -2129,11 +2143,11 @@ export default function MomentNew() {
                           <div className="flex items-center gap-3 mb-2">
                             <span className="text-2xl">🌿</span>
                             <p className="font-bold text-[15px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                              Fast from meat
+                              {t("moment_new.fasting_type.meat_title")}
                             </p>
                           </div>
                           <p className="text-[13px] leading-relaxed" style={{ color: "#8FAF96" }}>
-                            Phoebe calculates your group's collective water conservation — each person who fasts from meat for one day saves an estimated 400 gallons.
+                            {t("moment_new.fasting_type.meat_desc")}
                           </p>
                         </div>
                       </button>
@@ -2148,11 +2162,11 @@ export default function MomentNew() {
                           <div className="flex items-center gap-3 mb-2">
                             <span className="text-2xl">✦</span>
                             <p className="font-bold text-[15px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                              Create your own fast
+                              {t("moment_new.fasting_type.custom_title")}
                             </p>
                           </div>
                           <p className="text-[13px] leading-relaxed" style={{ color: "#8FAF96" }}>
-                            Name your fast and define what it means for your group.
+                            {t("moment_new.fasting_type.custom_desc")}
                           </p>
                         </div>
                       </button>
@@ -2167,18 +2181,18 @@ export default function MomentNew() {
                         className="text-xs mb-4 flex items-center gap-1 transition-opacity hover:opacity-70"
                         style={{ color: "#8FAF96" }}
                       >
-                        ← Back to options
+                        ← {t("moment_new.fasting_type.back_to_options")}
                       </button>
                       <div className="space-y-4">
                         <div>
                           <label className="block text-sm font-semibold mb-2" style={{ color: "#C8D4C0" }}>
-                            Fast name
+                            {t("moment_new.fasting_type.fast_name_label")}
                           </label>
                           <input
                             type="text"
                             value={customFastName}
                             onChange={e => setCustomFastName(e.target.value.slice(0, 80))}
-                            placeholder="e.g. Lenten Fast, Screen Fast, Sugar Fast"
+                            placeholder={t("moment_new.fasting_type.fast_name_ph")}
                             autoFocus
                             className="w-full px-4 py-3 rounded-xl text-sm outline-none"
                             style={{
@@ -2190,13 +2204,13 @@ export default function MomentNew() {
                         </div>
                         <div>
                           <label className="block text-sm font-semibold mb-2" style={{ color: "#C8D4C0" }}>
-                            Brief description <span style={{ color: "rgba(143,175,150,0.5)", fontWeight: 400 }}>(optional)</span>
+                            {t("moment_new.fasting_type.description_label")} <span style={{ color: "rgba(143,175,150,0.5)", fontWeight: 400 }}>{t("moment_new.optional")}</span>
                           </label>
                           <input
                             type="text"
                             value={customFastDescription}
                             onChange={e => setCustomFastDescription(e.target.value.slice(0, 140))}
-                            placeholder="What does this fast mean for your group?"
+                            placeholder={t("moment_new.fasting_type.description_ph")}
                             className="w-full px-4 py-3 rounded-xl text-sm outline-none"
                             style={{
                               background: "rgba(200,212,192,0.06)",
@@ -2218,7 +2232,7 @@ export default function MomentNew() {
                           className="w-full py-3 rounded-xl text-sm font-semibold transition-opacity disabled:opacity-30"
                           style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                         >
-                          Continue →
+                          {t("moment_new.continue")} →
                         </button>
                       </div>
                     </div>
@@ -2228,14 +2242,14 @@ export default function MomentNew() {
 
               {step === "fasting-what" && (
                 <div className="flex-1 flex flex-col">
-                  <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>What are you fasting from? 🌿</h2>
-                  <p className="text-sm text-muted-foreground italic mb-6">Name the fast your group will keep together.</p>
+                  <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.fasting_what.title")} 🌿</h2>
+                  <p className="text-sm text-muted-foreground italic mb-6">{t("moment_new.fasting_what.subtitle")}</p>
                   <textarea value={fastingFrom}
                     onChange={e => setFastingFrom(e.target.value.slice(0, 140))}
                     rows={3} autoFocus
                     className="w-full px-4 py-4 rounded-2xl border border-border focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] outline-none bg-background resize-none text-base leading-relaxed mb-2"
                   />
-                  <p className="text-xs text-muted-foreground/60 italic mb-2">e.g. "{FASTING_FROM_EXAMPLES[fastingFromIdx]}"</p>
+                  <p className="text-xs text-muted-foreground/60 italic mb-2">{t("moment_new.eg_example", { example: FASTING_FROM_EXAMPLES[fastingFromIdx] })}</p>
                   <span className="text-xs text-muted-foreground/40">{fastingFrom.length}/140</span>
                 </div>
               )}
@@ -2243,14 +2257,14 @@ export default function MomentNew() {
               {/* ── Fasting — why are you fasting ────────────────── */}
               {step === "fasting-why" && (
                 <div className="flex-1 flex flex-col">
-                  <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>Why are you fasting together? 🙏🏽</h2>
-                  <p className="text-sm text-muted-foreground italic mb-6">The intention your group will hold. This is what gives the fast its meaning.</p>
+                  <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.fasting_why.title")} 🙏🏽</h2>
+                  <p className="text-sm text-muted-foreground italic mb-6">{t("moment_new.fasting_why.subtitle")}</p>
                   <textarea value={fastingIntention}
                     onChange={e => setFastingIntention(e.target.value.slice(0, 200))}
                     rows={4} autoFocus
                     className="w-full px-4 py-4 rounded-2xl border border-border focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] outline-none bg-background resize-none text-base leading-relaxed mb-2"
                   />
-                  <p className="text-xs text-muted-foreground/60 italic mb-2">e.g. "{FASTING_INTENTION_EXAMPLES[fastingIntentionIdx]}"</p>
+                  <p className="text-xs text-muted-foreground/60 italic mb-2">{t("moment_new.eg_example", { example: FASTING_INTENTION_EXAMPLES[fastingIntentionIdx] })}</p>
                   <span className="text-xs text-muted-foreground/40">{fastingIntention.length}/200</span>
                 </div>
               )}
@@ -2258,16 +2272,26 @@ export default function MomentNew() {
               {/* ── Fasting — when: which day of the week ─────── */}
               {step === "fasting-when" && (() => {
                 const FAST_DAYS = [
-                  { id: "monday", label: "Mon" }, { id: "tuesday", label: "Tue" }, { id: "wednesday", label: "Wed" },
-                  { id: "thursday", label: "Thu" }, { id: "friday", label: "Fri" }, { id: "saturday", label: "Sat" }, { id: "sunday", label: "Sun" },
+                  { id: "monday", label: t("moment_new.weekday.mon") }, { id: "tuesday", label: t("moment_new.weekday.tue") }, { id: "wednesday", label: t("moment_new.weekday.wed") },
+                  { id: "thursday", label: t("moment_new.weekday.thu") }, { id: "friday", label: t("moment_new.weekday.fri") }, { id: "saturday", label: t("moment_new.weekday.sat") }, { id: "sunday", label: t("moment_new.weekday.sun") },
                 ];
+                const fastDayNames: Record<string, string> = {
+                  monday: t("moment_new.weekday_full.monday"),
+                  tuesday: t("moment_new.weekday_full.tuesday"),
+                  wednesday: t("moment_new.weekday_full.wednesday"),
+                  thursday: t("moment_new.weekday_full.thursday"),
+                  friday: t("moment_new.weekday_full.friday"),
+                  saturday: t("moment_new.weekday_full.saturday"),
+                  sunday: t("moment_new.weekday_full.sunday"),
+                };
+                const fastDayName = fastingDay ? (fastDayNames[fastingDay] ?? fastingDay) : "";
                 return (
                   <div className="flex-1 flex flex-col">
                     <h2 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                      Which day will you fast? 📅
+                      {t("moment_new.fasting_when.title")} 📅
                     </h2>
                     <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-                      The same day each week — a shared rhythm.
+                      {t("moment_new.fasting_when.subtitle")}
                     </p>
                     <div className="grid grid-cols-7 gap-1.5">
                       {FAST_DAYS.map(d => (
@@ -2284,12 +2308,12 @@ export default function MomentNew() {
                     </div>
                     {fastingDay === "friday" && (
                       <p className="text-xs italic mt-4 text-center leading-relaxed" style={{ color: "rgba(143,175,150,0.55)" }}>
-                        Abstaining from meat on Fridays is one of the oldest practices in the Christian tradition.
+                        {t("moment_new.fasting_when.friday_note")}
                       </p>
                     )}
                     {fastingDay && (
                       <p className="text-xs mt-3 text-center" style={{ color: "#8FAF96" }}>
-                        Fasting together every {fastingDay.charAt(0).toUpperCase() + fastingDay.slice(1)} 🌿
+                        {t("moment_new.fasting_when.every_day", { day: fastDayName })} 🌿
                       </p>
                     )}
                   </div>
@@ -2315,11 +2339,11 @@ export default function MomentNew() {
               {/* Disabled inline message for invite step */}
               {step === "invite" && showInviteDisabledMsg && invitedPeople.length === 0 && (
                 <div className="mb-3 px-4 py-3 rounded-2xl bg-[#5C7A5F]/8 border border-[#5C7A5F]/20 text-center">
-                  <p className="text-sm text-[#4a6b50] font-medium mb-1">🌿 This practice needs at least one other person.</p>
+                  <p className="text-sm text-[#4a6b50] font-medium mb-1">🌿 {t("moment_new.invite_disabled.title")}</p>
                   <p className="text-xs text-[#4a6b50]/70 leading-relaxed">
-                    Eleanor is built for doing things together across distance —<br />
-                    praying the same words, sharing the same silence,<br />
-                    keeping the same fast. Add someone to share it with.
+                    {t("moment_new.invite_disabled.line1")}<br />
+                    {t("moment_new.invite_disabled.line2")}<br />
+                    {t("moment_new.invite_disabled.line3")}
                   </p>
                 </div>
               )}
@@ -2332,24 +2356,24 @@ export default function MomentNew() {
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
                 {(plantMutation.isPending || bcpPlantMutation.isPending)
-                  ? "Planting..."
+                  ? t("moment_new.cta.planting")
                   : step === "bcp-invite"
-                    ? "Plant this practice 🌿"
+                    ? <>{t("moment_new.cta.plant_practice")} 🌿</>
                     : step === "invite"
                       ? templateId === "lectio-divina"
                         ? invitedPeople.length === 0
-                          ? "Add at least one person"
+                          ? t("moment_new.cta.add_at_least_one")
                           : invitedPeople.length === 1
-                            ? `Plant with ${invitedPeople[0].name || invitedPeople[0].email.split("@")[0]} 📜`
-                            : `Plant with ${invitedPeople.length} people 📜`
+                            ? <>{t("moment_new.cta.plant_with_person", { name: invitedPeople[0].name || invitedPeople[0].email.split("@")[0] })} 📜</>
+                            : <>{t("moment_new.cta.plant_with_people", { count: invitedPeople.length })} 📜</>
                         : selectedGroupId
-                          ? `Plant for ${adminGroups.find(g => g.id === selectedGroupId)?.name ?? "community"} 🌿`
-                          : "Select a community"
-                      : "Continue →"}
+                          ? <>{t("moment_new.cta.plant_for_community", { community: adminGroups.find(g => g.id === selectedGroupId)?.name ?? t("moment_new.cta.community_fallback") })} 🌿</>
+                          : t("moment_new.cta.select_community")
+                      : <>{t("moment_new.continue")} →</>}
               </button>
               {plantMutation.isError && (() => {
                 const raw = plantMutation.error instanceof Error ? plantMutation.error.message : "";
-                let friendly = "Something went wrong. Please try again.";
+                let friendly = t("moment_new.error_generic");
                 if (raw) {
                   try {
                     const parsed = JSON.parse(raw);
