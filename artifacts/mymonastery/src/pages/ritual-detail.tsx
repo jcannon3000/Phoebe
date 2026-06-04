@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { useRoute, useLocation, Link } from "wouter";
 import { format, parseISO, formatDistanceToNow, isPast, addDays, differenceInDays, isFuture } from "date-fns";
 import { CheckCircle2, XCircle, Settings, Sprout, Flower2, Plus, UserPlus, X, Copy, Link2, Calendar } from "lucide-react";
@@ -27,10 +28,10 @@ const LOGGING_ICONS: Record<string, string> = {
   checkin: "✅",
 };
 
-const STATE_META: Record<string, { label: string; style: string }> = {
-  active: { label: "Active", style: "bg-[#1A3D2B] text-[#8FAF96] border-[#2D5E3F]" },
-  needs_water: { label: "Needs tending", style: "bg-[#3D2A10] text-[#C47A65] border-[#5A3D18]" },
-  dormant: { label: "Dormant", style: "bg-secondary text-muted-foreground border-border" },
+const STATE_META_STYLE: Record<string, string> = {
+  active: "bg-[#1A3D2B] text-[#8FAF96] border-[#2D5E3F]",
+  needs_water: "bg-[#3D2A10] text-[#C47A65] border-[#5A3D18]",
+  dormant: "bg-secondary text-muted-foreground border-border",
 };
 
 type SharedMoment = {
@@ -87,6 +88,7 @@ function getStatusMeta(status: string) {
 }
 
 export default function RitualDetail() {
+  const { t } = useTranslation();
   const [, params] = useRoute("/ritual/:id");
   const [, setLocation] = useLocation();
   const ritualId = parseInt(params?.id || "0", 10);
@@ -97,6 +99,12 @@ export default function RitualDetail() {
 
   const deleteMutation = useDeleteRitual();
   const updateMutation = useUpdateRitual();
+
+  const STATE_META: Record<string, { label: string; style: string }> = {
+    active: { label: t("ritual_detail.state_active"), style: STATE_META_STYLE.active },
+    needs_water: { label: t("ritual_detail.state_needs_tending"), style: STATE_META_STYLE.needs_water },
+    dormant: { label: t("ritual_detail.state_dormant"), style: STATE_META_STYLE.dormant },
+  };
 
   const [removingEmail, setRemovingEmail] = useState<string | null>(null);
   const [removingPending, setRemovingPending] = useState(false);
@@ -166,7 +174,7 @@ export default function RitualDetail() {
         setTimeline(data);
       }
     } catch {
-      toast({ variant: "destructive", title: "Could not load timeline" });
+      toast({ variant: "destructive", title: t("ritual_detail.toast_timeline_error") });
     } finally {
       setTimelineLoading(false);
     }
@@ -199,14 +207,14 @@ export default function RitualDetail() {
       });
       if (!res.ok) throw new Error("Failed to log");
       const msg = status === "completed"
-        ? "Gathering logged. Your tradition grows stronger. 🌱"
-        : "Noted — it happens. Phoebe will keep watch.";
+        ? t("ritual_detail.toast_logged_completed")
+        : t("ritual_detail.toast_logged_skipped");
       toast({ title: msg });
       await fetchTimeline();
       queryClient.invalidateQueries({ queryKey: [`/api/rituals/${ritualId}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/rituals`] });
     } catch {
-      toast({ variant: "destructive", title: "Could not log gathering" });
+      toast({ variant: "destructive", title: t("ritual_detail.toast_log_error") });
     } finally {
       setLoggingId(null);
     }
@@ -276,11 +284,11 @@ export default function RitualDetail() {
         setInvitedEmails(prev => new Set([...prev, ...newEmails]));
         setInviteQueue([]);
         setShowInviteSheet(false);
-        toast({ title: `${data.added.length} invitation${data.added.length !== 1 ? "s" : ""} sent 🌱` });
+        toast({ title: t("ritual_detail.toast_invites_sent", { count: data.added.length }) });
         queryClient.invalidateQueries({ queryKey: [`/api/rituals/${ritualId}`] });
       }
     } catch {
-      toast({ variant: "destructive", title: "Could not send invitations" });
+      toast({ variant: "destructive", title: t("ritual_detail.toast_invites_error") });
     } finally {
       setInviting(false);
     }
@@ -303,10 +311,10 @@ export default function RitualDetail() {
         allowMemberInvites: editAllowMemberInvites,
       });
       setIsEditing(false);
-      toast({ title: "Changes saved" });
+      toast({ title: t("ritual_detail.toast_changes_saved") });
       queryClient.invalidateQueries({ queryKey: [`/api/rituals/${ritualId}`] });
     } catch {
-      toast({ variant: "destructive", title: "Could not save changes" });
+      toast({ variant: "destructive", title: t("ritual_detail.toast_save_error") });
     }
   };
 
@@ -314,10 +322,10 @@ export default function RitualDetail() {
   const restoreCalendarMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/rituals/${ritualId}/restore-calendar`, {}),
     onSuccess: () => {
-      toast({ title: "Calendar event restored 🗓️" });
+      toast({ title: t("ritual_detail.toast_calendar_restored") });
       fetchTimeline();
     },
-    onError: () => toast({ variant: "destructive", title: "Could not restore calendar event" }),
+    onError: () => toast({ variant: "destructive", title: t("ritual_detail.toast_calendar_restore_error") }),
   });
 
   // ── Time suggestions (creator view) ────────────────────────────────────────
@@ -338,7 +346,7 @@ export default function RitualDetail() {
       setSuggestDateTime("");
       setSuggestNote("");
     },
-    onError: () => toast({ variant: "destructive", title: "Could not send suggestion" }),
+    onError: () => toast({ variant: "destructive", title: t("ritual_detail.toast_suggestion_error") }),
   });
 
   const dismissSuggestionMutation = useMutation({
@@ -359,7 +367,7 @@ export default function RitualDetail() {
     );
   }
 
-  if (!ritual) return <Layout><div className="pt-20 text-center text-muted-foreground">Tradition not found.</div></Layout>;
+  if (!ritual) return <Layout><div className="pt-20 text-center text-muted-foreground">{t("ritual_detail.not_found")}</div></Layout>;
 
   const statusMeta = getStatusMeta(ritual.status);
   const upcomingDate = timeline?.upcoming ? new Date(timeline.upcoming.scheduledDate) : null;
@@ -403,15 +411,18 @@ export default function RitualDetail() {
               {/* Rhythm + since */}
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <span className="text-xs font-medium px-3 py-1 rounded-full" style={{ border: "1px solid rgba(46,107,64,0.3)", color: "#8FAF96" }}>
-                  {ritual.frequency === "once"
-                    ? "One-time"
-                    : ritual.frequency === "biweekly"
-                    ? "Biweekly"
-                    : ritual.frequency.charAt(0).toUpperCase() + ritual.frequency.slice(1)}
+                  {(() => {
+                    const freq = ritual.frequency as string;
+                    if (freq === "once") return t("ritual_detail.freq_once");
+                    if (freq === "biweekly") return t("ritual_detail.freq_biweekly");
+                    if (freq === "weekly") return t("ritual_detail.freq_weekly");
+                    if (freq === "monthly") return t("ritual_detail.freq_monthly");
+                    return freq.charAt(0).toUpperCase() + freq.slice(1);
+                  })()}
                 </span>
                 {(ritual as any).createdAt && (
                   <span className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>
-                    Together since {format(parseISO((ritual as any).createdAt), "MMMM yyyy")}
+                    {t("ritual_detail.together_since", { date: format(parseISO((ritual as any).createdAt), "MMMM yyyy") })}
                   </span>
                 )}
               </div>
@@ -428,18 +439,17 @@ export default function RitualDetail() {
               {(() => {
                 const isOnce = ritual.frequency === "once";
                 const freqWord =
-                  ritual.frequency === "biweekly" ? "biweekly" :
-                  ritual.frequency === "weekly" ? "weekly" :
-                  ritual.frequency === "monthly" ? "monthly" :
+                  ritual.frequency === "biweekly" ? t("ritual_detail.freq_word_biweekly") :
+                  ritual.frequency === "weekly" ? t("ritual_detail.freq_word_weekly") :
+                  ritual.frequency === "monthly" ? t("ritual_detail.freq_word_monthly") :
                   ritual.frequency;
                 const timesMet = (timeline?.past ?? []).filter(m => m.status === "completed").length;
                 const metLabel =
-                  timesMet === 0 ? "not met yet" :
-                  timesMet === 1 ? "met 1 time" :
-                  `met ${timesMet} times`;
+                  timesMet === 0 ? t("ritual_detail.met_none") :
+                  t("ritual_detail.met_count", { count: timesMet });
                 return (
                   <p className="mt-1.5 text-xs" style={{ color: "rgba(143,175,150,0.65)" }}>
-                    {isOnce ? "A one-time gathering" : `A ${freqWord} tradition`} · {metLabel}
+                    {isOnce ? t("ritual_detail.subtitle_one_time") : t("ritual_detail.subtitle_tradition", { freq: freqWord })} · {metLabel}
                   </p>
                 );
               })()}
@@ -447,7 +457,7 @@ export default function RitualDetail() {
                 <p className="mt-2 text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>📍 {timeline.location}</p>
               )}
               {meetingUrl && (
-                <p className="mt-2 text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>📹 Video call</p>
+                <p className="mt-2 text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>📹 {t("ritual_detail.video_call")}</p>
               )}
             </div>
 
@@ -474,7 +484,7 @@ export default function RitualDetail() {
                 })}
                 {ritual.participants.length > 3 && (
                   <span className="text-xs font-medium px-2 py-1.5 rounded-full" style={{ color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}>
-                    +{ritual.participants.length - 3} more
+                    {t("ritual_detail.more_count", { count: ritual.participants.length - 3 })}
                   </span>
                 )}
               </div>
@@ -484,7 +494,7 @@ export default function RitualDetail() {
                 style={{ border: "1px solid rgba(46,107,64,0.35)", color: "#8FAF96", fontSize: "13px" }}
               >
                 <UserPlus size={12} />
-                Add people
+                {t("ritual_detail.add_people")}
               </button>
             </div>
           </div>
@@ -493,9 +503,9 @@ export default function RitualDetail() {
         {/* Tabs */}
         <div className="flex gap-1 p-1 rounded-full mb-5" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
           {[
-            { id: "timeline", label: "🤝🏽 Gatherings" },
-            { id: "moments", label: "🙏🏽 Practices" },
-            { id: "settings", label: "About" },
+            { id: "timeline", label: "🤝🏽 " + t("ritual_detail.tab_gatherings") },
+            { id: "moments", label: "🙏🏽 " + t("ritual_detail.tab_practices") },
+            { id: "settings", label: t("ritual_detail.tab_about") },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -532,13 +542,13 @@ export default function RitualDetail() {
               {!timelineLoading && !timeline?.upcoming && (timeline?.past.length ?? 0) === 0 && (
                 <div className="rounded-2xl px-5 py-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.2)" }}>
                   <p className="text-sm" style={{ color: "#8FAF96" }}>
-                    No gatherings logged yet. Start with one and build from there.
+                    {t("ritual_detail.empty_no_gatherings")}
                   </p>
                   {!nextDueDate && (
                     <p className="text-sm mt-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
                       {ritual.frequency === "once"
-                        ? "Pick a date and place to make this gathering real."
-                        : `Commit to a ${ritual.frequency} rhythm by scheduling your first gathering.`}
+                        ? t("ritual_detail.empty_once_hint")
+                        : t("ritual_detail.empty_recurring_hint", { freq: ritual.frequency })}
                     </p>
                   )}
                 </div>
@@ -559,8 +569,8 @@ export default function RitualDetail() {
                   >
                     <span className="text-xl">🌱</span>
                     <div className="flex-1">
-                      <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{m.name} was added from your calendar</p>
-                      <p className="text-xs" style={{ color: "#8FAF96" }}>They've been added to {ritual.name}.</p>
+                      <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{t("ritual_detail.calsync_added", { name: m.name })}</p>
+                      <p className="text-xs" style={{ color: "#8FAF96" }}>{t("ritual_detail.calsync_added_detail", { name: ritual.name })}</p>
                     </div>
                     <X size={14} className="text-[#4a6b50]/50 flex-shrink-0" />
                   </motion.div>
@@ -572,8 +582,8 @@ export default function RitualDetail() {
                 <div className="rounded-2xl px-4 py-3 flex items-center gap-3" style={{ background: "rgba(196,122,101,0.1)", border: "1px solid rgba(196,122,101,0.3)" }}>
                   <span className="text-lg shrink-0">📅</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium" style={{ color: "#C47A65" }}>Your calendar event was removed</p>
-                    <p className="text-xs mt-0.5" style={{ color: "rgba(196,122,101,0.7)" }}>Phoebe can restore it to your Google Calendar.</p>
+                    <p className="text-sm font-medium" style={{ color: "#C47A65" }}>{t("ritual_detail.calendar_removed_title")}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "rgba(196,122,101,0.7)" }}>{t("ritual_detail.calendar_removed_detail")}</p>
                   </div>
                   <button
                     onClick={() => restoreCalendarMutation.mutate()}
@@ -581,7 +591,7 @@ export default function RitualDetail() {
                     className="shrink-0 text-xs font-medium rounded-full px-3 py-1.5 transition-colors disabled:opacity-50"
                     style={{ color: "#C47A65", border: "1px solid rgba(196,122,101,0.4)" }}
                   >
-                    {restoreCalendarMutation.isPending ? "Restoring…" : "Restore"}
+                    {restoreCalendarMutation.isPending ? t("ritual_detail.restoring") : t("ritual_detail.restore")}
                   </button>
                 </div>
               )}
@@ -619,7 +629,7 @@ export default function RitualDetail() {
                       className="mt-3 w-full rounded-xl px-4 py-3 text-center font-semibold text-sm cursor-pointer transition-opacity hover:opacity-90"
                       style={{ background: "#2D5E3F", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.6)" }}
                     >
-                      📹 Join video call →
+                      📹 {t("ritual_detail.join_video_call")}
                     </button>
                   )}
 
@@ -637,26 +647,26 @@ export default function RitualDetail() {
                           className="text-sm hover:underline"
                           style={{ color: "#8FAF96" }}
                         >
-                          Confirmed in Google Calendar
+                          {t("ritual_detail.confirmed_in_google")}
                         </a>
                       ) : (
                         <p className="text-sm" style={{ color: "#8FAF96" }}>
-                          Time confirmed
+                          {t("ritual_detail.time_confirmed")}
                         </p>
                       )}
                       {calendarSynced && (
                         <p className="text-xs mt-1" style={{ color: "rgba(143,175,150,0.55)" }}>
-                          Synced
+                          {t("ritual_detail.synced")}
                         </p>
                       )}
                     </div>
                   ) : (
                     <div className="mb-4">
                       <p className="text-sm" style={{ color: "#8FAF96" }}>
-                        Waiting for everyone to respond
+                        {t("ritual_detail.waiting_for_responses")}
                       </p>
                       <p className="text-xs mt-1" style={{ color: "rgba(143,175,150,0.55)" }}>
-                        Members can respond via their invite link.
+                        {t("ritual_detail.members_respond_hint")}
                       </p>
                     </div>
                   )}
@@ -665,7 +675,7 @@ export default function RitualDetail() {
                   {upcomingIsPast ? (
                     <div className="space-y-3">
                       <p className="text-sm" style={{ color: "#8FAF96" }}>
-                        Did you gather?
+                        {t("ritual_detail.did_you_gather")}
                       </p>
                       <div className="flex gap-3">
                         <button
@@ -673,14 +683,14 @@ export default function RitualDetail() {
                           disabled={loggingId !== null}
                           className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-all disabled:opacity-50"
                         >
-                          Life got in the way
+                          {t("ritual_detail.life_got_in_way")}
                         </button>
                         <button
                           onClick={() => handleLog(timeline.upcoming!.id, "completed")}
                           disabled={loggingId !== null}
                           className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 shadow-sm transition-all disabled:opacity-50"
                         >
-                          {loggingId ? "Logging…" : "We gathered ✓"}
+                          {loggingId ? t("ritual_detail.logging") : t("ritual_detail.we_gathered")}
                         </button>
                       </div>
                       {isOwner && (
@@ -690,7 +700,7 @@ export default function RitualDetail() {
                             className="text-sm hover:underline"
                             style={{ color: "#8FAF96" }}
                           >
-                            Reschedule
+                            {t("ritual_detail.reschedule")}
                           </Link>
                         </div>
                       )}
@@ -698,7 +708,7 @@ export default function RitualDetail() {
                   ) : timeline.confirmedTime ? (
                     /* Fixed future event — RSVP */
                     <div>
-                      <p className="text-sm mb-2.5" style={{ color: "#8FAF96" }}>Will you be there?</p>
+                      <p className="text-sm mb-2.5" style={{ color: "#8FAF96" }}>{t("ritual_detail.will_you_be_there")}</p>
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleRsvp("going")}
@@ -708,7 +718,7 @@ export default function RitualDetail() {
                               : "border-border text-muted-foreground hover:border-[#6B8F71]/60 hover:text-[#6B8F71]"
                           }`}
                         >
-                          I'll be there ✓
+                          {t("ritual_detail.rsvp_going")}
                         </button>
                         <button
                           onClick={() => handleRsvp("not-going")}
@@ -719,12 +729,12 @@ export default function RitualDetail() {
                           }`}
                           style={rsvp === "not-going" ? { background: "rgba(196,122,101,0.12)" } : {}}
                         >
-                          I can't make it
+                          {t("ritual_detail.rsvp_not_going")}
                         </button>
                       </div>
                       {rsvp && (
                         <p className="text-xs text-center mt-2" style={{ color: "rgba(143,175,150,0.6)" }}>
-                          {rsvp === "going" ? "See you there" : "Noted. We'll keep meeting."}
+                          {rsvp === "going" ? t("ritual_detail.rsvp_going_note") : t("ritual_detail.rsvp_not_going_note")}
                         </p>
                       )}
                       {isOwner && (
@@ -734,7 +744,7 @@ export default function RitualDetail() {
                             className="text-sm hover:underline"
                             style={{ color: "#8FAF96" }}
                           >
-                            Reschedule
+                            {t("ritual_detail.reschedule")}
                           </Link>
                         </div>
                       )}
@@ -748,14 +758,14 @@ export default function RitualDetail() {
                           className="text-sm hover:underline"
                           style={{ color: "#8FAF96" }}
                         >
-                          Change options
+                          {t("ritual_detail.change_options")}
                         </Link>
                         <Link
                           href={`/ritual/${ritualId}/schedule`}
                           className="text-sm hover:underline"
                           style={{ color: "#8FAF96" }}
                         >
-                          Reschedule
+                          {t("ritual_detail.reschedule")}
                         </Link>
                       </div>
                     )
@@ -767,29 +777,29 @@ export default function RitualDetail() {
                   <div className="rounded-2xl p-6 text-center" style={{ background: "#0F2818", border: isRhythmOverdue ? "1px dashed rgba(196,122,101,0.4)" : "1px dashed rgba(46,107,64,0.3)" }}>
                     <div className="text-3xl mb-3">{isRhythmOverdue ? "🕯️" : "🤝🏽"}</div>
                     <p className="font-semibold mb-1" style={{ fontSize: "17px", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                      {isRhythmOverdue ? "It's time to find a time" : "No gathering scheduled yet"}
+                      {isRhythmOverdue ? t("ritual_detail.time_to_find_time") : t("ritual_detail.no_gathering_yet")}
                     </p>
                     <p className="mx-auto mb-5" style={{ fontSize: "14px", color: "#8FAF96", maxWidth: "280px" }}>
                       {isRhythmOverdue
-                        ? `You're past your ${ritual.frequency} rhythm. Propose a few options and let everyone weigh in.`
-                        : "Propose a few times and let your people respond. Phoebe will send calendar invites once you confirm."}
+                        ? t("ritual_detail.overdue_owner_hint", { freq: ritual.frequency })
+                        : t("ritual_detail.propose_times_hint")}
                     </p>
                     <Link
                       href={`/ritual/${ritualId}/schedule`}
                       className="inline-flex items-center gap-2 rounded-full font-medium transition-colors hover:opacity-90"
                       style={{ background: "#2D5E3F", color: "#F0EDE6", padding: "12px 24px", fontSize: "15px" }}
                     >
-                      Find a time →
+                      {t("ritual_detail.find_a_time")}
                     </Link>
                   </div>
                 ) : (
                   <div className="rounded-2xl p-6 text-center" style={{ background: "#0F2818", border: "1px dashed rgba(46,107,64,0.3)" }}>
                     <div className="text-3xl mb-3">🤝🏽</div>
                     <p className="font-semibold mb-1" style={{ fontSize: "17px", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                      No gathering scheduled yet
+                      {t("ritual_detail.no_gathering_yet")}
                     </p>
                     <p className="mx-auto" style={{ fontSize: "14px", color: "#8FAF96", maxWidth: "280px" }}>
-                      The organizer will schedule the next gathering soon.
+                      {t("ritual_detail.organizer_will_schedule")}
                     </p>
                   </div>
                 )
@@ -799,13 +809,13 @@ export default function RitualDetail() {
               {!isOwner && ritual && (
                 <div className="rounded-2xl p-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.2)" }}>
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Propose a time</p>
+                    <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>{t("ritual_detail.propose_a_time")}</p>
                     {suggestSent && (
-                      <span className="text-xs" style={{ color: "#6B8F71" }}>Sent ✓</span>
+                      <span className="text-xs" style={{ color: "#6B8F71" }}>{t("ritual_detail.sent")}</span>
                     )}
                   </div>
                   <p className="text-xs mb-3" style={{ color: "#8FAF96" }}>
-                    Let {ritual.name.split(" ")[0] || "the organizer"} know when you're free — they'll see your suggestion.
+                    {t("ritual_detail.propose_time_hint", { name: ritual.name.split(" ")[0] || t("ritual_detail.the_organizer") })}
                   </p>
                   {showSuggestTime ? (
                     <div className="space-y-2">
@@ -819,7 +829,7 @@ export default function RitualDetail() {
                         type="text"
                         value={suggestNote}
                         onChange={e => setSuggestNote(e.target.value)}
-                        placeholder="Add a note (optional)"
+                        placeholder={t("ritual_detail.note_placeholder")}
                         className="w-full border border-border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-background"
                       />
                       <div className="flex gap-2">
@@ -827,7 +837,7 @@ export default function RitualDetail() {
                           onClick={() => { setShowSuggestTime(false); setSuggestDateTime(""); setSuggestNote(""); }}
                           className="flex-1 py-2 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          Cancel
+                          {t("ritual_detail.cancel")}
                         </button>
                         <button
                           onClick={() => {
@@ -840,7 +850,7 @@ export default function RitualDetail() {
                           disabled={!suggestDateTime || suggestTimeMutation.isPending}
                           className="flex-1 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                         >
-                          {suggestTimeMutation.isPending ? "Sending…" : "Send suggestion"}
+                          {suggestTimeMutation.isPending ? t("ritual_detail.sending") : t("ritual_detail.send_suggestion")}
                         </button>
                       </div>
                     </div>
@@ -849,7 +859,7 @@ export default function RitualDetail() {
                       onClick={() => { setShowSuggestTime(true); setSuggestSent(false); }}
                       className="w-full py-2 rounded-xl border border-dashed border-primary/40 text-sm text-primary hover:bg-primary/5 transition-colors"
                     >
-                      + Suggest a time
+                      {t("ritual_detail.suggest_a_time")}
                     </button>
                   )}
                 </div>
@@ -859,7 +869,7 @@ export default function RitualDetail() {
               {isOwner && suggestionsData && suggestionsData.suggestions.length > 0 && (
                 <div className="rounded-2xl p-4" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.2)" }}>
                   <p className="text-sm font-semibold mb-3" style={{ color: "#F0EDE6" }}>
-                    When your people are free
+                    {t("ritual_detail.when_people_free")}
                   </p>
                   <div className="space-y-3">
                     {suggestionsData.suggestions.map(s => (
@@ -883,13 +893,13 @@ export default function RitualDetail() {
                             href={`/ritual/${ritualId}/schedule`}
                             className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
                           >
-                            Use this
+                            {t("ritual_detail.use_this")}
                           </Link>
                           <button
                             onClick={() => dismissSuggestionMutation.mutate(s.id)}
                             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                           >
-                            Dismiss
+                            {t("ritual_detail.dismiss")}
                           </button>
                         </div>
                       </div>
@@ -902,13 +912,13 @@ export default function RitualDetail() {
               <div>
                 <div className="flex items-center gap-3 mb-4">
                   <h2 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                    history
+                    {t("ritual_detail.history")}
                   </h2>
                   <div className="flex-1 h-px" style={{ background: "rgba(200, 212, 192, 0.15)" }} />
                 </div>
                 {(!timeline || timeline.past.length === 0) ? (
                   <p className="text-center py-8" style={{ fontSize: "14px", color: "#8FAF96" }}>
-                    Your history will grow here.
+                    {t("ritual_detail.history_will_grow")}
                   </p>
                 ) : (
                   <div className="relative space-y-4">
@@ -938,7 +948,7 @@ export default function RitualDetail() {
                                 </p>
                                 {daysBetween !== null && (
                                   <p className="text-xs mt-1" style={{ color: "rgba(143,175,150,0.45)" }}>
-                                    {daysBetween} days since previous
+                                    {t("ritual_detail.days_since_previous", { count: daysBetween })}
                                   </p>
                                 )}
                               </div>
@@ -949,7 +959,7 @@ export default function RitualDetail() {
                                   : { background: "rgba(92,122,95,0.05)", color: "rgba(143,175,150,0.5)", border: "1px solid rgba(46,107,64,0.15)" }
                                 }
                               >
-                                {meetup.status === "completed" ? "Gathered ✓" : "Missed"}
+                                {meetup.status === "completed" ? t("ritual_detail.gathered") : t("ritual_detail.missed")}
                               </span>
                             </div>
                             {meetup.notes && (
@@ -981,9 +991,9 @@ export default function RitualDetail() {
                 style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
               >
                 <div>
-                  <p className="font-semibold text-foreground">Start a shared practice</p>
+                  <p className="font-semibold text-foreground">{t("ritual_detail.start_shared_practice")}</p>
                   <p className="text-sm text-muted-foreground mt-0.5">
-                    A recurring practice everyone in this tradition commits to together.
+                    {t("ritual_detail.shared_practice_desc")}
                   </p>
                 </div>
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 ml-4 group-hover:bg-primary/20 transition-colors">
@@ -993,7 +1003,7 @@ export default function RitualDetail() {
 
               {/* Streak rule note */}
               <p className="text-xs text-muted-foreground italic text-center px-4">
-                The streak blooms when at least two of you practice together.
+                {t("ritual_detail.streak_rule_note")}
               </p>
 
               {/* Moments list */}
@@ -1006,8 +1016,8 @@ export default function RitualDetail() {
               {!momentsLoading && momentsData && momentsData.moments.length === 0 && (
                 <div className="text-center py-12">
                   <div className="text-4xl mb-3">🌿</div>
-                  <p className="font-medium text-foreground mb-1">No shared practices yet</p>
-                  <p className="text-sm text-muted-foreground">Start a shared practice to begin.</p>
+                  <p className="font-medium text-foreground mb-1">{t("ritual_detail.no_practices_yet")}</p>
+                  <p className="text-sm text-muted-foreground">{t("ritual_detail.no_practices_hint")}</p>
                 </div>
               )}
 
@@ -1029,7 +1039,7 @@ export default function RitualDetail() {
                           </span>
                           {m.windowOpen && (
                             <span className="text-xs px-2 py-0.5 rounded-full font-medium animate-pulse" style={{ background: "rgba(196,122,101,0.1)", border: "1px solid rgba(196,122,101,0.3)", color: "#C47A65" }}>
-                              Window open now
+                              {t("ritual_detail.window_open_now")}
                             </span>
                           )}
                         </div>
@@ -1037,13 +1047,13 @@ export default function RitualDetail() {
                       </div>
                       <div className="text-center flex-shrink-0">
                         <p className="text-2xl font-bold text-primary leading-none">{m.currentStreak}</p>
-                        <p className="text-xs text-muted-foreground">streak</p>
+                        <p className="text-xs text-muted-foreground">{t("ritual_detail.streak")}</p>
                       </div>
                     </div>
 
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span className="capitalize">{m.frequency} · {timeLabel}</span>
-                      <span>{m.totalBlooms} bloom{m.totalBlooms !== 1 ? "s" : ""} · {m.goalDays}-day goal</span>
+                      <span>{t("ritual_detail.blooms_count", { count: m.totalBlooms })} · {t("ritual_detail.goal_days", { count: m.goalDays })}</span>
                     </div>
 
                     {m.windowOpen && (
@@ -1051,10 +1061,10 @@ export default function RitualDetail() {
                         <div className="flex items-center justify-between">
                           <p className="text-xs text-muted-foreground">
                             {m.todayPostCount >= 2
-                              ? `🌸 ${m.todayPostCount} showed up — this window counts`
+                              ? "🌸 " + t("ritual_detail.window_counts", { count: m.todayPostCount })
                               : m.todayPostCount === 1
-                              ? "🌿 1 person showed up — waiting for more"
-                              : "No one has shown up yet today"}
+                              ? "🌿 " + t("ritual_detail.window_one_showed_up")
+                              : t("ritual_detail.window_none_yet")}
                           </p>
                         </div>
                       </div>
@@ -1076,7 +1086,7 @@ export default function RitualDetail() {
               style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
             >
               <div>
-                <label className="block text-sm font-medium mb-2 text-foreground">Gathering Name</label>
+                <label className="block text-sm font-medium mb-2 text-foreground">{t("ritual_detail.gathering_name_label")}</label>
                 {isEditing ? (
                   <input
                     type="text"
@@ -1090,7 +1100,7 @@ export default function RitualDetail() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-foreground">Intention</label>
+                <label className="block text-sm font-medium mb-2 text-foreground">{t("ritual_detail.intention_label")}</label>
                 {isEditing ? (
                   <textarea
                     value={editIntention}
@@ -1099,7 +1109,7 @@ export default function RitualDetail() {
                   />
                 ) : (
                   <div className="px-4 py-3 rounded-xl bg-background border border-transparent min-h-[100px] whitespace-pre-wrap text-muted-foreground italic text-sm">
-                    {ritual.intention || "No intention set yet."}
+                    {ritual.intention || t("ritual_detail.no_intention_yet")}
                   </div>
                 )}
               </div>
@@ -1109,8 +1119,8 @@ export default function RitualDetail() {
                 <div className="pt-4 border-t border-border/40">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-foreground">Members can invite</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Allow any member to invite new people</p>
+                      <p className="text-sm font-medium text-foreground">{t("ritual_detail.members_can_invite")}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{t("ritual_detail.members_can_invite_desc")}</p>
                     </div>
                     <button
                       onClick={() => {
@@ -1125,7 +1135,7 @@ export default function RitualDetail() {
                           .then(() => queryClient.invalidateQueries({ queryKey: [`/api/rituals/${ritualId}`] }))
                           .catch(() => {
                             setEditAllowMemberInvites(!next); // revert on failure
-                            toast({ variant: "destructive", title: "Could not save setting" });
+                            toast({ variant: "destructive", title: t("ritual_detail.toast_setting_error") });
                           });
                       }}
                       className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0"
@@ -1146,13 +1156,13 @@ export default function RitualDetail() {
               <div className="pt-4 border-t border-border flex justify-between items-center">
                 {isEditing ? (
                   <>
-                    <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors">Cancel</button>
+                    <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-muted-foreground hover:text-foreground transition-colors">{t("ritual_detail.cancel")}</button>
                     <button
                       onClick={handleSaveSettings}
                       disabled={updateMutation.isPending}
                       className="px-6 py-2 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-60"
                     >
-                      Save Changes
+                      {t("ritual_detail.save_changes")}
                     </button>
                   </>
                 ) : (
@@ -1160,7 +1170,7 @@ export default function RitualDetail() {
                     onClick={() => setIsEditing(true)}
                     className="px-6 py-2 bg-secondary text-secondary-foreground rounded-xl font-medium hover:bg-secondary/80 transition-colors"
                   >
-                    Edit Details
+                    {t("ritual_detail.edit_details")}
                   </button>
                 )}
               </div>
@@ -1169,13 +1179,13 @@ export default function RitualDetail() {
               {(user?.id === ritual.ownerId || editAllowMemberInvites) && (
                 <div className="pt-6 border-t border-border/40">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium text-foreground">Members</h3>
+                    <h3 className="text-sm font-medium text-foreground">{t("ritual_detail.members")}</h3>
                     <button
                       onClick={() => setShowInviteSheet(true)}
                       className="text-xs font-medium px-3 py-1.5 rounded-full transition-colors"
                       style={{ background: "rgba(74,103,65,0.18)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.35)" }}
                     >
-                      + Add people
+                      {t("ritual_detail.add_people_plus")}
                     </button>
                   </div>
                   <div className="space-y-2">
@@ -1189,7 +1199,7 @@ export default function RitualDetail() {
                               {p.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-sm text-foreground truncate">{p.name}{isMe ? " (you)" : ""}</p>
+                              <p className="text-sm text-foreground truncate">{p.name}{isMe ? t("ritual_detail.you_suffix") : ""}</p>
                               <p className="text-xs text-muted-foreground/60 truncate">{p.email}</p>
                             </div>
                           </div>
@@ -1210,20 +1220,20 @@ export default function RitualDetail() {
                                   disabled={removingPending}
                                   className="text-xs font-medium text-rose-600 hover:text-rose-700 transition-colors"
                                 >
-                                  {removingPending ? "Removing…" : "Confirm"}
+                                  {removingPending ? t("ritual_detail.removing") : t("ritual_detail.confirm")}
                                 </button>
                                 <button
                                   onClick={() => setRemovingEmail(null)}
                                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                                 >
-                                  Cancel
+                                  {t("ritual_detail.cancel")}
                                 </button>
                               </div>
                             ) : (
                               <button
                                 onClick={() => setRemovingEmail(p.email)}
                                 className="shrink-0 ml-2 text-xs text-muted-foreground/50 hover:text-rose-500 transition-colors px-2 py-1"
-                                title={`Remove ${p.name}`}
+                                title={t("ritual_detail.remove_member", { name: p.name })}
                               >
                                 ✕
                               </button>
@@ -1238,13 +1248,13 @@ export default function RitualDetail() {
 
               {user?.id === ritual.ownerId && (
                 <div className="pt-8 border-t border-border/20">
-                  <h3 className="font-medium mb-2" style={{ color: "#8FAF96" }}>Archive this gathering</h3>
+                  <h3 className="font-medium mb-2" style={{ color: "#8FAF96" }}>{t("ritual_detail.archive_heading")}</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    This will archive the gathering and remove it from your dashboard.
+                    {t("ritual_detail.archive_desc")}
                   </p>
                   <button
                     onClick={() => {
-                      if (window.confirm("Are you sure you want to archive this gathering?")) {
+                      if (window.confirm(t("ritual_detail.archive_confirm"))) {
                         deleteMutation.mutate({ id: ritualId }, {
                           onSuccess: () => {
                             queryClient.invalidateQueries({ queryKey: [`/api/rituals`] });
@@ -1256,7 +1266,7 @@ export default function RitualDetail() {
                     className="px-4 py-2 rounded-xl font-medium transition-colors"
                     style={{ background: "rgba(46,107,64,0.12)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.25)" }}
                   >
-                    Archive gathering
+                    {t("ritual_detail.archive_button")}
                   </button>
                 </div>
               )}
@@ -1287,7 +1297,7 @@ export default function RitualDetail() {
 
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold">Invite to {ritual.name} 🌱</h2>
+                  <h2 className="text-lg font-semibold">{t("ritual_detail.invite_to", { name: ritual.name })} 🌱</h2>
                   <button onClick={() => setShowInviteSheet(false)} className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
                     <X size={16} />
                   </button>
@@ -1296,7 +1306,7 @@ export default function RitualDetail() {
                 {/* Section 1: Existing connections */}
                 {inviteConnections.length > 0 && (
                   <div className="mb-6">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Already in Phoebe with you</p>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("ritual_detail.already_in_phoebe")}</p>
                     <div className="space-y-2">
                       {inviteConnections.map(c => {
                         const already = ritual.participants.some(p => p.email.toLowerCase() === c.email.toLowerCase());
@@ -1311,15 +1321,15 @@ export default function RitualDetail() {
                               <p className="text-xs text-muted-foreground truncate">{c.email}</p>
                             </div>
                             {already ? (
-                              <span className="text-xs text-muted-foreground whitespace-nowrap">Already here ✓</span>
+                              <span className="text-xs text-muted-foreground whitespace-nowrap">{t("ritual_detail.already_here")}</span>
                             ) : justInvited ? (
-                              <span className="text-xs text-[#4a6b50] font-medium whitespace-nowrap">Invited ✓</span>
+                              <span className="text-xs text-[#4a6b50] font-medium whitespace-nowrap">{t("ritual_detail.invited")}</span>
                             ) : (
                               <button
                                 onClick={() => handleQuickInvite(c.name, c.email)}
                                 className="text-xs font-medium text-[#4a6b50] border border-[#6B8F71]/50 rounded-full px-3 py-1 hover:bg-[#6B8F71]/10 transition-colors whitespace-nowrap"
                               >
-                                Invite →
+                                {t("ritual_detail.invite_arrow")}
                               </button>
                             )}
                           </div>
@@ -1331,21 +1341,21 @@ export default function RitualDetail() {
 
                 {/* Section 2: Email invite */}
                 <div className="mb-6">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Invite someone new</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("ritual_detail.invite_someone_new")}</p>
                   <div className="flex gap-2">
                     <input
                       type="email"
                       value={inviteEmailInput}
                       onChange={e => setInviteEmailInput(e.target.value)}
                       onKeyDown={e => e.key === "Enter" && handleAddEmailToQueue()}
-                      placeholder="name@example.com"
+                      placeholder={t("ritual_detail.email_placeholder")}
                       className="flex-1 px-4 py-2.5 rounded-2xl border border-border focus:border-[#6B8F71] outline-none bg-secondary/30 text-sm"
                     />
                     <button
                       onClick={handleAddEmailToQueue}
                       className="px-4 py-2.5 rounded-2xl bg-[#6B8F71] text-white text-sm font-medium hover:bg-[#5a7a60] transition-colors"
                     >
-                      Add
+                      {t("ritual_detail.add")}
                     </button>
                   </div>
                   {inviteQueue.length > 0 && (
@@ -1364,7 +1374,7 @@ export default function RitualDetail() {
 
                 {/* Section 3: Share link */}
                 <div className="mb-8">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Or share a link</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("ritual_detail.or_share_link")}</p>
                   <div className="flex items-center gap-2 p-3 bg-secondary/50 rounded-2xl">
                     <Link2 size={14} className="text-muted-foreground flex-shrink-0" />
                     <span className="text-sm text-muted-foreground truncate flex-1">{joinLink}</span>
@@ -1373,7 +1383,7 @@ export default function RitualDetail() {
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-background border border-border text-xs font-medium hover:bg-secondary transition-colors flex-shrink-0"
                     >
                       <Copy size={12} />
-                      {copiedLink ? "Copied!" : "Copy"}
+                      {copiedLink ? t("ritual_detail.copied") : t("ritual_detail.copy")}
                     </button>
                   </div>
                 </div>
@@ -1384,7 +1394,7 @@ export default function RitualDetail() {
                   disabled={inviting || inviteQueue.length === 0}
                   className="w-full py-4 bg-[#6B8F71] text-white rounded-2xl font-semibold text-base hover:bg-[#5a7a60] transition-all disabled:opacity-50"
                 >
-                  {inviting ? "Sending…" : `Send invites 🌱${inviteQueue.length > 0 ? ` (${inviteQueue.length})` : ""}`}
+                  {inviting ? t("ritual_detail.sending") : t("ritual_detail.send_invites") + " 🌱" + (inviteQueue.length > 0 ? ` (${inviteQueue.length})` : "")}
                 </button>
               </div>
             </motion.div>
