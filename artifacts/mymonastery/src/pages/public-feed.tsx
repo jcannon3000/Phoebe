@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link, useLocation, useParams } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -62,6 +63,7 @@ type Phase = "hero" | "praying" | "signup" | "done";
 
 export default function PublicFeedPage() {
   const { slug } = useParams<{ slug: string }>();
+  const { t } = useTranslation();
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
   const [phase, setPhase] = useState<Phase>("hero");
@@ -107,9 +109,9 @@ export default function PublicFeedPage() {
         className="min-h-screen flex flex-col items-center justify-center px-6 text-center"
         style={{ background: BG, fontFamily: SPACE_GROTESK, color: SAGE }}
       >
-        <p className="text-base mb-4">This feed isn't available.</p>
+        <p className="text-base mb-4">{t("public_feed.feed_unavailable")}</p>
         <Link href="/" className="text-sm font-medium" style={{ color: WARM_TEXT, textDecoration: "underline" }}>
-          Go to Phoebe →
+          {t("public_feed.go_to_phoebe")}
         </Link>
       </div>
     );
@@ -161,11 +163,10 @@ function HeroScreen({
   intercessionCount: number;
   onStart: () => void;
 }) {
+  const { t } = useTranslation();
   const countLine = intercessionCount === 0
-    ? "Nothing in the feed yet — sign up to be there when the first prayer lands."
-    : intercessionCount === 1
-      ? "1 intercession to pray with us."
-      : `${intercessionCount} intercessions to pray with us.`;
+    ? t("public_feed.count_empty")
+    : t("public_feed.count_line", { count: intercessionCount });
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: BG, fontFamily: SPACE_GROTESK }}>
@@ -174,7 +175,7 @@ function HeroScreen({
           Phoebe
         </span>
         <Link href="/signin" className="text-sm font-medium" style={{ color: SAGE }}>
-          Sign in
+          {t("public_feed.sign_in")}
         </Link>
       </header>
 
@@ -190,7 +191,7 @@ function HeroScreen({
             className="text-[10px] font-semibold uppercase tracking-[0.22em] mb-2"
             style={{ color: FAINT }}
           >
-            A prayer feed on Phoebe
+            {t("public_feed.eyebrow")}
           </p>
           <h1
             className="text-3xl font-bold mb-3"
@@ -216,11 +217,11 @@ function HeroScreen({
           className="self-center px-10 py-3.5 rounded-full text-sm font-semibold tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
           style={{ background: BUTTON_BG, color: WARM_TEXT }}
         >
-          {intercessionCount > 0 ? "Pray with us →" : "Get notified →"}
+          {intercessionCount > 0 ? t("public_feed.cta_pray") : t("public_feed.cta_notify")}
         </motion.button>
 
         <p className="text-center text-xs mt-10" style={{ color: FAINT }}>
-          No account needed to pray. Sign up at the end to keep following.
+          {t("public_feed.no_account_note")}
         </p>
       </main>
     </div>
@@ -240,11 +241,12 @@ function PrayingScreen({
   onFinish: () => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [idx, setIdx] = useState(0);
   const total = intercessions.length;
   const safeIdx = Math.min(idx, total - 1);
   const item = intercessions[safeIdx]!;
-  const title = (item.intercessionTopic ?? item.name ?? "").trim() || "Intercession";
+  const title = (item.intercessionTopic ?? item.name ?? "").trim() || t("public_feed.intercession_fallback");
   const body = (item.intercessionFullText ?? "").trim();
   const isAction = item.intercessionSource === "action";
   const hasLink = !!item.learnMoreUrl;
@@ -289,7 +291,7 @@ function PrayingScreen({
       <AnimatedBackground base={BG} variant="subtle" fadeTop />
       <button
         onClick={onClose}
-        aria-label="Close"
+        aria-label={t("public_feed.close")}
         className="absolute top-5 right-5 w-9 h-9 rounded-full flex items-center justify-center text-xl transition-opacity hover:opacity-80"
         style={{
           color: "rgba(200,212,192,0.45)",
@@ -328,7 +330,7 @@ function PrayingScreen({
                 className="text-[10px] uppercase tracking-[0.18em] font-semibold"
                 style={{ color: "rgba(143,175,150,0.45)" }}
               >
-                Community Intercession
+                {t("public_feed.community_intercession")}
               </p>
               <span
                 className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold tracking-wide"
@@ -369,9 +371,7 @@ function PrayingScreen({
                   marginTop: "-6px",
                 }}
               >
-                {item.weekPrayCount === 1
-                  ? "1 person has prayed this this week."
-                  : `${item.weekPrayCount} people have prayed this this week.`}
+                {t("public_feed.week_pray_count", { count: item.weekPrayCount })}
               </p>
             )}
 
@@ -413,7 +413,7 @@ function PrayingScreen({
                     className="text-sm leading-relaxed"
                     style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}
                   >
-                    You can take action by emailing the applicable representatives.
+                    {t("public_feed.take_action_desc")}
                   </p>
                   <button
                     onClick={() => openExternal(item.learnMoreUrl!)}
@@ -425,7 +425,7 @@ function PrayingScreen({
                       cursor: "pointer",
                     }}
                   >
-                    Take action →
+                    {t("public_feed.take_action")}
                   </button>
                 </div>
               ) : item.learnMoreTitle ? (
@@ -440,7 +440,7 @@ function PrayingScreen({
                     className="text-[10px] uppercase tracking-[0.18em] font-semibold"
                     style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
                   >
-                    Read Article
+                    {t("public_feed.read_article")}
                   </p>
                   <p
                     className="text-sm leading-relaxed"
@@ -458,7 +458,7 @@ function PrayingScreen({
                       cursor: "pointer",
                     }}
                   >
-                    Learn more →
+                    {t("public_feed.learn_more")}
                   </button>
                 </div>
               ) : (
@@ -472,7 +472,7 @@ function PrayingScreen({
                     cursor: "pointer",
                   }}
                 >
-                  Learn more →
+                  {t("public_feed.learn_more")}
                 </button>
               )
             )}
@@ -493,7 +493,7 @@ function PrayingScreen({
             {safeIdx > 0 && (
               <button
                 onClick={back}
-                aria-label="Previous"
+                aria-label={t("public_feed.previous")}
                 className="text-[16px] transition-opacity hover:opacity-80"
                 style={{
                   color: "rgba(143,175,150,0.55)",
@@ -516,7 +516,7 @@ function PrayingScreen({
                   signup; the label just keeps the prayer vocabulary
                   consistent rather than switching to "Done" for the
                   closing beat. */}
-              Amen →
+              {t("public_feed.amen")}
             </button>
           </div>
           <button
@@ -530,10 +530,10 @@ function PrayingScreen({
               textDecoration: "underline",
             }}
           >
-            Not today
+            {t("public_feed.not_today")}
           </button>
           <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.4)" }}>
-            {safeIdx + 1} of {total}
+            {t("public_feed.progress", { current: safeIdx + 1, total })}
           </p>
         </div>
       </main>
@@ -555,6 +555,7 @@ function SignupStep({
   onBack: () => void;
   onDone: () => void;
 }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [firstName, setFirstName] = useState("");
@@ -570,11 +571,11 @@ function SignupStep({
     e.preventDefault();
     setError("");
     setExistingAccount(false);
-    if (website.trim().length > 0) { setError("Something went wrong. Please try again."); return; }
-    if (!firstName.trim()) { setError("Enter your first name."); return; }
-    if (!lastName.trim()) { setError("Enter your last name."); return; }
-    if (!email.trim() || !email.includes("@")) { setError("Enter a valid email address."); return; }
-    if (password.length < 6) { setError("Choose a password of at least 6 characters."); return; }
+    if (website.trim().length > 0) { setError(t("public_feed.error_generic")); return; }
+    if (!firstName.trim()) { setError(t("public_feed.error_first_name")); return; }
+    if (!lastName.trim()) { setError(t("public_feed.error_last_name")); return; }
+    if (!email.trim() || !email.includes("@")) { setError(t("public_feed.error_email")); return; }
+    if (password.length < 6) { setError(t("public_feed.error_password")); return; }
     setSubmitting(true);
     try {
       const res = await fetch("/api/auth/register", {
@@ -601,10 +602,10 @@ function SignupStep({
       } else if (res.status === 400 && typeof data.error === "string" && /already exists/i.test(data.error)) {
         setExistingAccount(true);
       } else {
-        setError(typeof data.error === "string" ? data.error : "Couldn't create your account. Please try again.");
+        setError(typeof data.error === "string" ? data.error : t("public_feed.error_create_account"));
       }
     } catch {
-      setError("Couldn't create your account. Please try again.");
+      setError(t("public_feed.error_create_account"));
     } finally {
       setSubmitting(false);
     }
@@ -631,24 +632,24 @@ function SignupStep({
         >
           <div className="text-4xl">🌿</div>
           <h2 className="text-[24px] font-bold leading-snug" style={{ color: WARM_TEXT, letterSpacing: "-0.02em" }}>
-            You already have an account.
+            {t("public_feed.existing_title")}
           </h2>
           <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
-            Sign in and subscribe to {feedTitle} from your dashboard to keep following it.
+            {t("public_feed.existing_body", { title: feedTitle })}
           </p>
           <button
             onClick={() => setLocation("/signin")}
             className="px-9 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98] mt-1"
             style={{ background: BUTTON_BG, color: WARM_TEXT }}
           >
-            Go to sign in
+            {t("public_feed.go_to_sign_in")}
           </button>
           <button
             onClick={() => setExistingAccount(false)}
             className="text-[13px] font-medium transition-opacity hover:opacity-80"
             style={{ color: FAINT, background: "transparent", border: "none", cursor: "pointer" }}
           >
-            Use a different email
+            {t("public_feed.use_different_email")}
           </button>
         </motion.div>
       </div>
@@ -669,36 +670,36 @@ function SignupStep({
         <div className="text-center mb-7">
           <div className="text-4xl mb-3">🌿</div>
           <h2 className="text-[26px] font-bold leading-snug mb-2" style={{ color: WARM_TEXT, letterSpacing: "-0.02em" }}>
-            Keep praying for {feedTitle}.
+            {t("public_feed.signup_title", { title: feedTitle })}
           </h2>
           <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
-            Create a Phoebe account to continue to pray with others for creation and environmental justice.
+            {t("public_feed.signup_subtitle")}
           </p>
         </div>
 
         <form onSubmit={submit} className="flex flex-col gap-3">
           <div className="flex gap-2.5">
             <input
-              type="text" placeholder="First name" value={firstName}
+              type="text" placeholder={t("public_feed.first_name")} value={firstName}
               onChange={(e) => { setFirstName(e.target.value); setError(""); }}
               className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
               style={inputStyle} autoComplete="given-name" disabled={submitting}
             />
             <input
-              type="text" placeholder="Last name" value={lastName}
+              type="text" placeholder={t("public_feed.last_name")} value={lastName}
               onChange={(e) => { setLastName(e.target.value); setError(""); }}
               className="w-1/2 px-4 py-3.5 rounded-xl text-sm focus:outline-none"
               style={inputStyle} autoComplete="family-name" disabled={submitting}
             />
           </div>
           <input
-            type="email" placeholder="Email address" value={email}
+            type="email" placeholder={t("public_feed.email")} value={email}
             onChange={(e) => { setEmail(e.target.value); setError(""); }}
             className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
             style={inputStyle} autoComplete="email" disabled={submitting}
           />
           <input
-            type="password" placeholder="Create a password" value={password}
+            type="password" placeholder={t("public_feed.password")} value={password}
             onChange={(e) => { setPassword(e.target.value); setError(""); }}
             className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none"
             style={inputStyle} autoComplete="new-password" disabled={submitting}
@@ -719,7 +720,7 @@ function SignupStep({
             {submitting ? (
               <span className="w-4 h-4 rounded-full border-2 border-[#F0EDE6] border-t-transparent animate-spin" />
             ) : (
-              "Create my account"
+              t("public_feed.create_account")
             )}
           </button>
         </form>
@@ -729,7 +730,7 @@ function SignupStep({
           className="text-[13px] font-medium mt-5 self-center transition-opacity hover:opacity-80"
           style={{ color: FAINT, background: "transparent", border: "none", cursor: "pointer" }}
         >
-          ← Back
+          {t("public_feed.back")}
         </button>
 
         {/* iOS download banner — page-scoped (not the global
@@ -765,13 +766,13 @@ function SignupStep({
               className="text-[14px] font-semibold leading-tight"
               style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK }}
             >
-              Phoebe for iPhone
+              {t("public_feed.ios_title")}
             </p>
             <p
               className="text-[12px] mt-0.5"
               style={{ color: SAGE, fontFamily: SPACE_GROTESK }}
             >
-              Daily Office, in your pocket.
+              {t("public_feed.ios_subtitle")}
             </p>
           </div>
           <span
@@ -783,7 +784,7 @@ function SignupStep({
               fontFamily: SPACE_GROTESK,
             }}
           >
-            Get
+            {t("public_feed.get")}
           </span>
         </a>
         )}
@@ -795,6 +796,7 @@ function SignupStep({
 // ── Done — welcome + into the offices-only home ──────────────────────────────
 
 function DoneStep({ feedTitle }: { feedTitle: string }) {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   return (
     <div
@@ -810,17 +812,17 @@ function DoneStep({ feedTitle }: { feedTitle: string }) {
       >
         <div className="text-5xl">🌿</div>
         <h2 className="text-[24px] font-bold leading-snug" style={{ color: WARM_TEXT, letterSpacing: "-0.02em" }}>
-          You're following {feedTitle}.
+          {t("public_feed.done_title", { title: feedTitle })}
         </h2>
         <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
-          Each new intercession will land in your daily office — morning and evening — and you'll get a weekly digest when fresh ones arrive.
+          {t("public_feed.done_body")}
         </p>
         <button
           onClick={() => setLocation("/parish")}
           className="px-9 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 active:scale-[0.98] mt-1"
           style={{ background: BUTTON_BG, color: WARM_TEXT }}
         >
-          Begin
+          {t("public_feed.begin")}
         </button>
       </motion.div>
     </div>
