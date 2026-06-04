@@ -454,6 +454,12 @@ router.patch("/auth/me/profile", async (req, res): Promise<void> => {
     if (avatarUrl && avatarUrl.startsWith("data:") && avatarUrl.length > 7_000_000) {
       res.status(400).json({ error: "Avatar too large" }); return;
     }
+    // Data-URI avatars must be a raster image. Rejects data:text/html and
+    // data:image/svg+xml so a crafted data URI can't smuggle markup/script
+    // into any render context that isn't a plain <img> (defense-in-depth).
+    if (avatarUrl && avatarUrl.startsWith("data:") && !/^data:image\/(png|jpe?g|webp|gif);base64,/i.test(avatarUrl)) {
+      res.status(400).json({ error: "Avatar must be a PNG, JPEG, WebP, or GIF image" }); return;
+    }
     updates.avatarUrl = avatarUrl;
   }
 

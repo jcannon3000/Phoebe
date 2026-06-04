@@ -15,13 +15,17 @@
 //
 // Hardened against the obvious abuse vectors for a server-side
 // fetch-by-user-URL:
-//   • https/http scheme only.
+//   • https/http scheme only, and the host must resolve to a PUBLIC
+//     address (SSRF guard) — blocks localhost / private / link-local /
+//     cloud-metadata (169.254.169.254) and DNS-rebinding.
 //   • 6s timeout via AbortController.
 //   • Cap the body read at ~512KB so a huge response can't balloon
 //     memory — we only need the <head> anyway.
 //   • Only parse when the response declares text/html.
 //   • A desktop User-Agent so sites that branch on UA return markup
 //     rather than a bot wall.
+
+import { assertPublicHttpUrl } from "./ssrfGuard";
 
 const FETCH_TIMEOUT_MS = 6000;
 const MAX_BYTES = 512 * 1024;
@@ -73,6 +77,10 @@ export async function fetchArticleTitle(rawUrl: string): Promise<string | null> 
     return null;
   }
   if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+  // SSRF: block hosts resolving to private / loopback / link-local /
+  // cloud-metadata addresses (learnMoreUrl is admin-supplied). Same guard
+  // the other user-URL fetchers use; stays null-on-failure (never throws).
+  try { await assertPublicHttpUrl(url.toString()); } catch { return null; }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
