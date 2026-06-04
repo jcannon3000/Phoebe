@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Layout } from "@/components/layout";
@@ -84,6 +85,7 @@ type FeedRepairResult = {
 };
 
 export default function AdminAppMetricsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { rawIsAdmin } = useBetaStatus();
 
@@ -139,7 +141,7 @@ export default function AdminAppMetricsPage() {
       <Layout>
         <div className="max-w-2xl mx-auto pt-10">
           <p style={{ color: SAGE, fontFamily: SPACE_GROTESK, textAlign: "center" }}>
-            This surface is restricted to administrators.
+            {t("admin_user_metrics.restricted")}
           </p>
         </div>
       </Layout>
@@ -154,72 +156,72 @@ export default function AdminAppMetricsPage() {
         <div className="mb-4">
           <Link href="/admin/tools">
             <span style={{ color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 13, cursor: "pointer" }}>
-              ← Admin tools
+              ← {t("admin_user_metrics.back_to_admin_tools")}
             </span>
           </Link>
         </div>
 
         <div className="mb-6">
           <p className="text-[11px] tracking-widest uppercase mb-1" style={{ color: FAINT }}>
-            Admin · App Metrics
+            {t("admin_user_metrics.eyebrow")}
           </p>
           <h1 style={{ color: WARM, fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em", fontFamily: SPACE_GROTESK }}>
-            App Metrics 📊
+            {t("admin_user_metrics.title")} 📊
           </h1>
           <p className="text-sm mt-1" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-            Today, this week, all time — across every user on Phoebe.
+            {t("admin_user_metrics.subtitle")}
           </p>
         </div>
 
         {isLoading && (
           <p className="text-sm" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-            Loading metrics…
+            {t("admin_user_metrics.loading")}
           </p>
         )}
         {error && !isLoading && (
           <p className="text-sm" style={{ color: "#E8B872", fontFamily: SPACE_GROTESK }}>
-            Couldn&rsquo;t load metrics. Try refreshing.
+            {t("admin_user_metrics.load_error")}
           </p>
         )}
 
         {data && (
           <>
-            <Section eyebrow="People praying">
+            <Section eyebrow={t("admin_user_metrics.section_people_praying")}>
               <TileRow today={data.prayedToday} week={data.prayedThisWeek} allTime={data.prayedAllTime} />
             </Section>
 
             <Section
-              eyebrow="Times prayed"
-              caption="One session per Amen tap or full-office reading (≥3 slides). Multiple sessions within 15 minutes for the same person collapse to one."
+              eyebrow={t("admin_user_metrics.section_times_prayed")}
+              caption={t("admin_user_metrics.caption_times_prayed")}
             >
               <TileRow today={data.timesPrayedToday} week={data.timesPrayedThisWeek} allTime={data.timesPrayedTotal} />
             </Section>
 
             <Section
-              eyebrow="Offices"
-              caption="Daily Office / Devotion completions. Up to two per person per day (morning + evening). Reaching ≥3 slides counts."
+              eyebrow={t("admin_user_metrics.section_offices")}
+              caption={t("admin_user_metrics.caption_offices")}
             >
               <TileRow today={data.officesToday} week={data.officesThisWeek} allTime={data.officesTotal} />
             </Section>
 
-            <Section eyebrow="Prayer requests">
+            <Section eyebrow={t("admin_user_metrics.section_prayer_requests")}>
               <TileRow today={data.prayerRequestsToday} week={data.prayerRequestsThisWeek} allTime={data.prayerRequestsTotal} />
             </Section>
 
-            <Section eyebrow="Users">
-              <TileRow today={data.newUsersToday} week={data.newUsersThisWeek} allTime={data.totalUsers} allTimeLabel="Total" />
+            <Section eyebrow={t("admin_user_metrics.section_users")}>
+              <TileRow today={data.newUsersToday} week={data.newUsersThisWeek} allTime={data.totalUsers} allTimeLabel={t("admin_user_metrics.total")} />
             </Section>
 
             <Section
-              eyebrow="People who opened the app"
-              caption="Distinct signed-in users who opened or foregrounded the app in each window."
+              eyebrow={t("admin_user_metrics.section_opened_app")}
+              caption={t("admin_user_metrics.caption_opened_app")}
             >
               <TileRow today={data.openedToday} week={data.openedThisWeek} allTime={data.openedAllTime} />
             </Section>
 
             <Section
-              eyebrow="Times opened"
-              caption="App opens, deduped to once every 15 minutes per person."
+              eyebrow={t("admin_user_metrics.section_times_opened")}
+              caption={t("admin_user_metrics.caption_times_opened")}
             >
               <TileRow today={data.opensToday} week={data.opensThisWeek} allTime={data.opensTotal} />
             </Section>
@@ -237,7 +239,7 @@ export default function AdminAppMetricsPage() {
                 className="text-[10px] uppercase tracking-[0.18em] font-semibold"
                 style={{ color: FAINT, fontFamily: SPACE_GROTESK }}
               >
-                Feed audit · {audit.feedCount} {audit.feedCount === 1 ? "feed" : "feeds"}
+                {t("admin_user_metrics.feed_audit_header", { count: audit.feedCount })}
               </p>
               <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.10)" }} />
             </div>
@@ -248,16 +250,16 @@ export default function AdminAppMetricsPage() {
                 style={{ background: "rgba(193,154,58,0.12)", border: "1px solid rgba(193,154,58,0.35)" }}
               >
                 <p className="text-[13px] font-semibold" style={{ color: "#E8B872", fontFamily: SPACE_GROTESK }}>
-                  ⚠️ Duplicate feeds detected
+                  ⚠️ {t("admin_user_metrics.duplicate_feeds_detected")}
                 </p>
                 {audit.duplicateSlugs.length > 0 && (
                   <p className="text-[12px] mt-1" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                    Same slug: {audit.duplicateSlugs.join(", ")}
+                    {t("admin_user_metrics.same_slug", { slugs: audit.duplicateSlugs.join(", ") })}
                   </p>
                 )}
                 {audit.duplicateTitles.length > 0 && (
                   <p className="text-[12px] mt-1" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                    Same title: {audit.duplicateTitles.join(", ")}
+                    {t("admin_user_metrics.same_title", { titles: audit.duplicateTitles.join(", ") })}
                   </p>
                 )}
               </div>
@@ -282,20 +284,20 @@ export default function AdminAppMetricsPage() {
                     </span>
                   </div>
                   <p className="text-[12px] mt-1.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                    {f.realSubscriptions} subscribers
+                    {t("admin_user_metrics.subscribers", { count: f.realSubscriptions })}
                     {f.subscriberCountColumn !== f.realSubscriptions && (
-                      <span style={{ color: "#E8B872" }}> (cached column says {f.subscriberCountColumn})</span>
+                      <span style={{ color: "#E8B872" }}> {t("admin_user_metrics.cached_column_says", { count: f.subscriberCountColumn })}</span>
                     )}
-                    {" · "}{f.intercessionCount} intercessions
-                    {" · "}{f.tokenHolders} token-holders
+                    {" · "}{t("admin_user_metrics.intercessions", { count: f.intercessionCount })}
+                    {" · "}{t("admin_user_metrics.token_holders", { count: f.tokenHolders })}
                   </p>
                   <p className="text-[12px] mt-1" style={{ color: FAINT, fontFamily: SPACE_GROTESK }}>
-                    Bound groups: {f.boundGroups.length > 0 ? f.boundGroups.map(g => g.slug).join(", ") : "(none)"}
+                    {t("admin_user_metrics.bound_groups", { groups: f.boundGroups.length > 0 ? f.boundGroups.map(g => g.slug).join(", ") : t("admin_user_metrics.none") })}
                   </p>
                   {f.leakCount > 0 ? (
                     <div className="mt-2">
                       <p className="text-[12px] font-semibold" style={{ color: "#E8B872", fontFamily: SPACE_GROTESK }}>
-                        ⚠️ {f.leakCount} praying without subscription or bound-group membership
+                        ⚠️ {t("admin_user_metrics.praying_without_access", { count: f.leakCount })}
                       </p>
                       <p className="text-[11px] mt-1 break-words" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
                         {f.leakEmails.join(", ")}{f.leakCount > f.leakEmails.length ? " …" : ""}
@@ -303,7 +305,7 @@ export default function AdminAppMetricsPage() {
                     </div>
                   ) : (
                     <p className="text-[12px] mt-2" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>
-                      ✓ every token-holder is a subscriber or bound-group member
+                      ✓ {t("admin_user_metrics.all_token_holders_ok")}
                     </p>
                   )}
                   {/* Delete — cascades the feed's intercessions,
@@ -314,10 +316,12 @@ export default function AdminAppMetricsPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        const msg =
-                          `Delete "${f.title}" (${f.slug})?\n\n` +
-                          `${f.realSubscriptions} subscriber(s) and ${f.intercessionCount} intercession(s) ` +
-                          `will be permanently removed. This cannot be undone.`;
+                        const msg = t("admin_user_metrics.delete_confirm", {
+                          title: f.title,
+                          slug: f.slug,
+                          subscribers: f.realSubscriptions,
+                          intercessions: f.intercessionCount,
+                        });
                         if (typeof window !== "undefined" && !window.confirm(msg)) return;
                         setDeletingSlug(f.slug);
                         deleteFeed.mutate(f.slug);
@@ -331,7 +335,7 @@ export default function AdminAppMetricsPage() {
                         fontFamily: SPACE_GROTESK,
                       }}
                     >
-                      {deletingSlug === f.slug ? "Deleting…" : "Delete feed"}
+                      {deletingSlug === f.slug ? t("admin_user_metrics.deleting") : t("admin_user_metrics.delete_feed")}
                     </button>
                   </div>
                 </div>
@@ -355,12 +359,12 @@ export default function AdminAppMetricsPage() {
                   fontFamily: SPACE_GROTESK,
                 }}
               >
-                {repair.isPending ? "Working…" : "Preview repair (dry run)"}
+                {repair.isPending ? t("admin_user_metrics.working") : t("admin_user_metrics.preview_repair")}
               </button>
               <button
                 type="button"
                 onClick={() => {
-                  if (typeof window !== "undefined" && !window.confirm("Prune orphan feed tokens and resync subscriber counts? This revokes feed access for anyone who isn't a subscriber or bound-group member.")) return;
+                  if (typeof window !== "undefined" && !window.confirm(t("admin_user_metrics.apply_repair_confirm"))) return;
                   repair.mutate(true);
                 }}
                 disabled={repair.isPending}
@@ -372,7 +376,7 @@ export default function AdminAppMetricsPage() {
                   fontFamily: SPACE_GROTESK,
                 }}
               >
-                Apply repair
+                {t("admin_user_metrics.apply_repair")}
               </button>
             </div>
 
@@ -382,13 +386,13 @@ export default function AdminAppMetricsPage() {
                 style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
               >
                 <p className="text-[12px] font-semibold mb-1" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                  {repairReport.applied ? "Repair applied" : "Dry run — nothing changed yet"}
+                  {repairReport.applied ? t("admin_user_metrics.repair_applied") : t("admin_user_metrics.dry_run_no_changes")}
                 </p>
                 {repairReport.report.map((r) => (
                   <p key={r.feedId} className="text-[12px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                    {r.title}: {r.orphanTokensPruned} orphan token{r.orphanTokensPruned === 1 ? "" : "s"}
+                    {r.title}: {t("admin_user_metrics.orphan_tokens_pruned", { count: r.orphanTokensPruned })}
                     {r.subscriberCountBefore !== r.subscriberCountAfter && (
-                      <> · subscriber_count {r.subscriberCountBefore} → {r.subscriberCountAfter}</>
+                      <> · {t("admin_user_metrics.subscriber_count_change", { before: r.subscriberCountBefore, after: r.subscriberCountAfter })}</>
                     )}
                   </p>
                 ))}
@@ -438,18 +442,19 @@ function TileRow({
   today,
   week,
   allTime,
-  allTimeLabel = "All time",
+  allTimeLabel,
 }: {
   today: number;
   week: number;
   allTime: number;
   allTimeLabel?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="grid grid-cols-3 gap-3">
-      <Tile label="Today" value={today} />
-      <Tile label="This week" value={week} />
-      <Tile label={allTimeLabel} value={allTime} />
+      <Tile label={t("admin_user_metrics.tile_today")} value={today} />
+      <Tile label={t("admin_user_metrics.tile_this_week")} value={week} />
+      <Tile label={allTimeLabel ?? t("admin_user_metrics.tile_all_time")} value={allTime} />
     </div>
   );
 }
