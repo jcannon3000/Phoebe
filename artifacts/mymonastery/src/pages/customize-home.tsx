@@ -62,7 +62,7 @@ const PRAY_OPTIONS: { id: PrayChoice; pill: string }[] = [
 // renders for that level (community = the "Pray Together 🙏" card).
 const PRAY_CARD: Record<PrayChoice, { emoji: string; label: string; sub: string }> = {
   community: { emoji: "🙏", label: "Pray Together", sub: "Pray with your community" },
-  devotion: { emoji: "📿", label: "Daily Devotion", sub: "A short morning & evening devotion" },
+  devotion: { emoji: "🛐", label: "Daily Devotion", sub: "A short morning & evening devotion" },
   offices: { emoji: "📖", label: "Daily Office", sub: "Morning & Evening Prayer" },
 };
 // Which choice is active. Mirrors PrayerOfficeCard's programmedLevel: any
