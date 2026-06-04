@@ -10,4 +10,9 @@ cmds = ["pnpm install --no-frozen-lockfile"]
 cmds = ["rm -rf artifacts/mymonastery/dist artifacts/letters-app/dist", "pnpm --filter @workspace/mymonastery run build", "BASE_PATH=/mail pnpm --filter @workspace/letters-app run build", "pnpm --filter @workspace/api-server run build"]
 
 [start]
-cmd = "pnpm --filter @workspace/db run push --force; node ./artifacts/api-server/dist/index.mjs"
+# Schema is created/updated idempotently by migrate() on boot (api-server
+# index.ts) — that is the ONLY schema mechanism, and it's CI-guarded so every
+# Drizzle table has a CREATE (scripts/check-migrate-schema.mjs). Do NOT run
+# `drizzle-kit push --force` here: with devDeps installed it actually executes,
+# applying the schema destructively (can DROP columns) against prod every deploy.
+cmd = "node ./artifacts/api-server/dist/index.mjs"
