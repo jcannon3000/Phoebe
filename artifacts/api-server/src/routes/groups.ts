@@ -1473,30 +1473,45 @@ router.post("/groups/:slug/members", async (req, res): Promise<void> => {
     return;
   }
 
-  const added = [];
+  // Batched (was an N+1: a SELECT-exists + SELECT-user + INSERT per person,
+  // up to 150 round-trips for a 50-person import). Resolve existing members
+  // and accounts in two inArray queries, then one multi-row insert.
+  const emailsLower = [...new Set(parsed.data.people.map(p => p.email.toLowerCase()))];
+
+  const existingRows = await db.select({ email: groupMembersTable.email })
+    .from(groupMembersTable)
+    .where(and(eq(groupMembersTable.groupId, result.group.id), inArray(groupMembersTable.email, emailsLower)));
+  const existingSet = new Set(existingRows.map(r => r.email.toLowerCase()));
+
+  const accountRows = await db.select({ id: usersTable.id, email: usersTable.email })
+    .from(usersTable)
+    .where(inArray(usersTable.email, emailsLower));
+  const userIdByEmail = new Map<string, number>();
+  for (const u of accountRows) userIdByEmail.set(u.email.toLowerCase(), u.id);
+
+  // Build the rows to insert, skipping people already in the group and
+  // de-duping within this request (the old sequential loop deduped via its
+  // per-row existence check; the first occurrence of an email wins).
+  const seen = new Set<string>();
+  const toInsert: (typeof groupMembersTable.$inferInsert)[] = [];
   for (const person of parsed.data.people) {
     const emailLower = person.email.toLowerCase();
-    // Check if already a member
-    const [existing] = await db.select().from(groupMembersTable)
-      .where(and(eq(groupMembersTable.groupId, result.group.id), eq(groupMembersTable.email, emailLower)));
-    if (existing) continue;
-
-    // Look up userId if they have an account
-    const [existingUser] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.email, emailLower));
-
-    const token = generateToken();
-    const [member] = await db.insert(groupMembersTable).values({
+    if (existingSet.has(emailLower) || seen.has(emailLower)) continue;
+    seen.add(emailLower);
+    toInsert.push({
       groupId: result.group.id,
-      userId: existingUser?.id ?? null,
+      userId: userIdByEmail.get(emailLower) ?? null,
       email: emailLower,
       name: person.name ?? null,
       role: person.role ?? "member",
-      inviteToken: token,
+      inviteToken: generateToken(),
       joinedAt: new Date(),
-    }).returning();
-
-    added.push(member);
+    });
   }
+
+  const added = toInsert.length > 0
+    ? await db.insert(groupMembersTable).values(toInsert).returning()
+    : [];
 
   // Practices attached to this group reflect the group roster — reconcile once
   // at the end so every attached practice sees the newly-added members.
