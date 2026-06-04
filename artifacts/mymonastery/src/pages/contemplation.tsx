@@ -63,6 +63,10 @@ type Stats = {
   todaySeconds: number; todayCount: number; todayDays: number;
   weekSeconds: number; weekCount: number; weekDays: number;
   totalSeconds: number; sessionCount: number; totalDays: number;
+  // External Apple Health mindful minutes the server has stored for today
+  // (uploaded by the iOS client). Prayer-only todaySeconds stays separate so
+  // the Stats tiles don't double-count; "done" consumers add this on top.
+  healthMinutesToday: number;
 };
 
 // Someone in your garden whose contemplative prayer overlapped yours.
@@ -255,10 +259,14 @@ function AppleHealthCard() {
 // still unmet (no nudge once the goal is reached). The target is a free field —
 // the user types any number of minutes; there are no presets.
 function DailyGoalCard({
-  goalMinutes, todaySeconds, onSet, saving,
+  goalMinutes, todaySeconds, healthMinutesToday, onSet, saving,
 }: {
   goalMinutes: number;
   todaySeconds: number;
+  // Server's stored external Health minutes for today — the fallback used when
+  // there's no live HealthKit read (web, or before the query resolves), so the
+  // card reflects minutes synced from the user's phone.
+  healthMinutesToday: number;
   onSet: (m: number) => void;
   saving: boolean;
 }) {
@@ -281,9 +289,18 @@ function DailyGoalCard({
     enabled: appleHealthAvailable(),
     staleTime: 5 * 60_000,
   });
-  const healthMin = healthQ.data?.minutes ?? 0;
+  // The live HealthKit read (iOS only; 0/absent on web) — gates the connect
+  // prompt. The upload to the server happens app-wide from the Layout shell
+  // (useSyncHealthMinutes), so the goal card no longer uploads itself.
+  const liveHealthMin = healthQ.data?.minutes ?? 0;
+  // What we display/count: prefer the live read; fall back to the server's
+  // stored value so web + cross-device reflect minutes synced from the phone.
+  // (`0 ?? x` keeps 0 — a granted device reporting no minutes isn't overridden.)
+  const healthMin = healthQ.data?.minutes ?? healthMinutesToday;
 
   // Today's progress = Phoebe's own logged time + meditation synced from Health.
+  // todaySeconds is prayer-only (server keeps Health minutes in a separate
+  // field), so adding healthMin here doesn't double-count.
   const doneMin = Math.floor(todaySeconds / 60) + healthMin;
   const pct = hasGoal ? Math.min(100, Math.round((doneMin / goalMinutes) * 100)) : 0;
   const met = hasGoal && doneMin >= goalMinutes;
@@ -308,7 +325,7 @@ function DailyGoalCard({
     setHealthConnected(true);
     queryClient.invalidateQueries({ queryKey: ["apple-health-mindful-external"] });
   };
-  const showHealthConnect = appleHealthAvailable() && !healthConnected && healthMin === 0;
+  const showHealthConnect = appleHealthAvailable() && !healthConnected && liveHealthMin === 0;
 
   return (
     <div className="rounded-2xl p-4 mt-4" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
@@ -737,12 +754,16 @@ export default function ContemplationPage() {
         <DailyGoalCard
           goalMinutes={goalMinutes}
           todaySeconds={stats?.todaySeconds ?? 0}
+          healthMinutesToday={stats?.healthMinutesToday ?? 0}
           onSet={(m) => goalMutation.mutate(m)}
           saving={goalMutation.isPending}
         />
 
-        {/* (Apple Health connect now lives on the goal card above; the
-            standalone AppleHealthCard is no longer rendered.) */}
+        {/* Apple Health connect/sync — a persistent card (iOS only) so the
+            connect path never disappears. The goal card's inline prompt is
+            sticky (hides for good once tapped via a localStorage flag), which
+            left users with no way back; this card always re-requests auth. */}
+        <AppleHealthCard />
 
         {/* Section selector — History · Stats · Learn. The Begin card
             leads; these reveal the supporting surfaces below it. */}
