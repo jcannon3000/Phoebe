@@ -6,7 +6,6 @@
 //     aloud) — also surfaced on the prayer chooser + offices page.
 //   • Center for Action and Contemplation — their full slate of shows.
 //   • Washington National Cathedral — the "Crossroads" podcast.
-//   • Virginia Theological Seminary — "Love Your Neighbor."
 //
 // Each SHOW is one RSS feed. PUBLISHERS group shows for the browse UI.
 // Endpoints:
@@ -68,7 +67,6 @@ const SHOW_THEMES: Record<string, string[]> = {
   "cac-cosmic-we": ["justice", "contemplation", "pray"],
   // Way of Love is literally Bishop Curry's whole subject — tag every stage.
   "way-of-love-curry": ["justice", "prayer", "turn", "learn", "pray", "worship", "bless", "go", "rest"],
-  "vts-love-your-neighbor": ["justice", "bless", "go"],
   "cac-learning-how-to-see": ["justice", "contemplation", "learn"],
   "cac-turning-to-the-mystics": ["contemplation", "mystics", "pray", "rest"],
   "cac-everything-belongs": ["contemplation", "rest"],
@@ -103,7 +101,6 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
       "experiencing-jesus",
       "nc-crossroads",
       "roundtables-on-race",
-      "vts-love-your-neighbor",
       "living-church",
     ],
   },
@@ -285,15 +282,6 @@ export const SHOWS: Record<string, Show> = {
     publisher: "around-the-church",
     feedUrl: "https://feeds.megaphone.fm/the-way-of-love",
     artwork: "/podcast-art/curry.jpg",
-  },
-  // ── Virginia Theological Seminary ───────────────────────────────────
-  "vts-love-your-neighbor": {
-    slug: "vts-love-your-neighbor",
-    title: "Love Your Neighbor",
-    artist: "Virginia Theological Seminary - Rev. Ross Kane",
-    publisher: "around-the-church",
-    feedUrl: "https://rosskane.com/feed/podcast/",
-    artwork: "/podcast-art/vts.jpg",
   },
   // ── The Living Church ───────────────────────────────────────────────
   "living-church": {
