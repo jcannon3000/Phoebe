@@ -3,6 +3,7 @@ import { useLocation, useSearch } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight, X, MessageCircle, MapPin, Users, Camera } from "lucide-react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
@@ -39,19 +40,20 @@ function MockPhone({ children }: { children: React.ReactNode }) {
 // ─── Mock screens ─────────────────────────────────────────────────────────────
 
 function DashboardMock() {
+  const { t } = useTranslation();
   return (
     <MockPhone>
       <div className="flex items-center justify-between mb-1.5">
         <h2 className="text-base font-bold" style={{ color: C.text, fontFamily: C.font }}>Phoebe</h2>
         <div className="flex gap-1.5">
-          <span className="text-[9px] px-2.5 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>🕯️ Prayer List</span>
-          <span className="text-[9px] px-2.5 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>Menu</span>
+          <span className="text-[9px] px-2.5 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>🕯️ {t("user_onboarding.dashboard_mock.prayer_list")}</span>
+          <span className="text-[9px] px-2.5 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>{t("user_onboarding.dashboard_mock.menu")}</span>
         </div>
       </div>
-      <p className="text-[8px] uppercase tracking-[0.15em] mb-1" style={{ color: "rgba(143,175,150,0.4)" }}>A place set apart for connection</p>
-      <p className="text-[13px] font-semibold mb-3" style={{ color: C.text, fontFamily: C.font }}>Sunday, 12 April</p>
+      <p className="text-[8px] uppercase tracking-[0.15em] mb-1" style={{ color: "rgba(143,175,150,0.4)" }}>{t("user_onboarding.dashboard_mock.eyebrow")}</p>
+      <p className="text-[13px] font-semibold mb-3" style={{ color: C.text, fontFamily: C.font }}>{t("user_onboarding.dashboard_mock.date")}</p>
       <div className="flex items-center gap-2 mb-2">
-        <p className="text-[11px] font-bold" style={{ color: C.text }}>This week</p>
+        <p className="text-[11px] font-bold" style={{ color: C.text }}>{t("user_onboarding.dashboard_mock.this_week")}</p>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
       </div>
       <div className="space-y-2">
@@ -59,31 +61,31 @@ function DashboardMock() {
           <div className="w-1 shrink-0" style={{ background: "#5C8A5F" }} />
           <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>📜 Lectio Divina</p>
-              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>with Sarah, David +3</p>
+              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>📜 {t("user_onboarding.dashboard_mock.lectio_divina")}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>{t("user_onboarding.dashboard_mock.lectio_with")}</p>
             </div>
-            <span className="text-[9px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "#2D5E3F", color: C.text }}>Responses</span>
+            <span className="text-[9px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "#2D5E3F", color: C.text }}>{t("user_onboarding.dashboard_mock.responses")}</span>
           </div>
         </div>
         <div className="flex rounded-xl overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}>
           <div className="w-1 shrink-0" style={{ background: "#5C8A5F" }} />
           <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>🙏🏽 Prayers for healing</p>
-              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>with Margaret, Anna</p>
+              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>🙏🏽 {t("user_onboarding.dashboard_mock.prayers_for_healing")}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>{t("user_onboarding.dashboard_mock.healing_with")}</p>
             </div>
-            <span className="text-[9px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(46,107,64,0.18)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.35)" }}>View</span>
+            <span className="text-[9px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(46,107,64,0.18)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.35)" }}>{t("user_onboarding.dashboard_mock.view")}</span>
           </div>
         </div>
       </div>
       <div className="flex items-center gap-2 mt-3 mb-2">
-        <p className="text-[11px] font-bold" style={{ color: C.text }}>Prayer requests</p>
+        <p className="text-[11px] font-bold" style={{ color: C.text }}>{t("user_onboarding.dashboard_mock.prayer_requests")}</p>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
       </div>
       <div className="rounded-xl px-3 py-2.5" style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}>
-        <p className="text-[10px] font-semibold mb-0.5" style={{ color: C.sage }}>Margaret W.</p>
-        <p className="text-[11px] leading-snug" style={{ color: C.text }}>For my mother, who begins treatment this week.</p>
-        <p className="text-[9px] mt-1" style={{ color: "rgba(143,175,150,0.35)" }}>🙏 4 praying</p>
+        <p className="text-[10px] font-semibold mb-0.5" style={{ color: C.sage }}>{t("user_onboarding.dashboard_mock.request_author")}</p>
+        <p className="text-[11px] leading-snug" style={{ color: C.text }}>{t("user_onboarding.dashboard_mock.request_body")}</p>
+        <p className="text-[9px] mt-1" style={{ color: "rgba(143,175,150,0.35)" }}>🙏 {t("user_onboarding.dashboard_mock.praying_count")}</p>
       </div>
     </MockPhone>
   );
@@ -96,6 +98,7 @@ function DashboardMock() {
 // Onboarding users see exactly what they'll be tapping through every
 // day, instead of a notification card that only hints at the slideshow.
 function DailyPushMock() {
+  const { t } = useTranslation();
   return (
     <div
       className="rounded-[28px] md:rounded-[32px] mx-auto w-full max-w-[320px] md:max-w-[380px] overflow-hidden relative"
@@ -137,16 +140,16 @@ function DailyPushMock() {
           className="text-[10px] font-semibold uppercase mb-2"
           style={{ color: "rgba(143,175,150,0.45)", letterSpacing: "0.18em", fontFamily: C.font }}
         >
-          Prayer Request
+          {t("user_onboarding.daily_push_mock.eyebrow")}
         </p>
         <p className="text-[11px] mb-4" style={{ color: "#C8D4C0", fontFamily: C.font }}>
-          Margaret W.
+          {t("user_onboarding.daily_push_mock.author")}
         </p>
         <p
           className="text-[15px] font-medium italic leading-relaxed max-w-[260px]"
           style={{ color: "#E8E4D8", fontFamily: "Georgia, serif" }}
         >
-          For my mother, who begins treatment this week.
+          {t("user_onboarding.daily_push_mock.body")}
         </p>
       </div>
 
@@ -164,7 +167,7 @@ function DailyPushMock() {
             textAlign: "center",
           }}
         >
-          Amen →
+          {t("user_onboarding.daily_push_mock.amen")}
         </div>
       </div>
 
@@ -173,27 +176,28 @@ function DailyPushMock() {
         className="text-center text-[10px] pb-5"
         style={{ color: "rgba(143,175,150,0.32)", letterSpacing: "0.06em", fontFamily: C.font }}
       >
-        1 of 3
+        {t("user_onboarding.daily_push_mock.progress")}
       </p>
     </div>
   );
 }
 
 function PrayerRequestsMock() {
+  const { t } = useTranslation();
   const requests = [
-    { from: "Margaret W.", body: "For my mother, who begins treatment this week.", words: 4 },
-    { from: "David R.", body: "Discernment about the new role.", words: 6 },
-    { from: "Anonymous", body: "For peace in a difficult season.", words: 2 },
+    { from: t("user_onboarding.prayer_requests_mock.r1_from"), body: t("user_onboarding.prayer_requests_mock.r1_body"), words: 4 },
+    { from: t("user_onboarding.prayer_requests_mock.r2_from"), body: t("user_onboarding.prayer_requests_mock.r2_body"), words: 6 },
+    { from: t("user_onboarding.prayer_requests_mock.r3_from"), body: t("user_onboarding.prayer_requests_mock.r3_body"), words: 2 },
   ];
   return (
     <MockPhone>
       <div className="flex items-center gap-2 mb-3">
-        <h2 className="text-[14px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>Prayer Requests 🙏🏽</h2>
+        <h2 className="text-[14px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>{t("user_onboarding.prayer_requests_mock.title")} 🙏🏽</h2>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
       </div>
       <div className="flex gap-2 mb-3">
         <div className="flex-1 text-[12px] px-3 py-2.5 rounded-xl" style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.3)", color: "rgba(143,175,150,0.5)", fontFamily: C.font }}>
-          Share a prayer request... 🌿
+          {t("user_onboarding.prayer_requests_mock.share_placeholder")} 🌿
         </div>
         <div className="px-3 py-2.5 rounded-xl text-[12px]" style={{ background: "#2D5E3F", color: C.text }}>🙏🏽</div>
       </div>
@@ -203,7 +207,7 @@ function PrayerRequestsMock() {
             <div className="w-0.5 self-stretch shrink-0" style={{ background: "#8FAF96" }} />
             <div className="flex-1 p-3 pl-2.5 flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <p className="text-[9px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>From {r.from}</p>
+                <p className="text-[9px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>{t("user_onboarding.prayer_requests_mock.from", { from: r.from })}</p>
                 <p className="text-[12px] leading-relaxed" style={{ color: C.text, fontFamily: C.font }}>{r.body}</p>
               </div>
               <div className="flex items-center gap-1 shrink-0 mt-1" style={{ color: "rgba(143,175,150,0.45)" }}>
@@ -219,18 +223,19 @@ function PrayerRequestsMock() {
 }
 
 function BCPPrayerModeMock() {
+  const { t } = useTranslation();
   const categories = [
-    { emoji: "⛪", name: "For the Church", count: 8, expanded: false },
-    { emoji: "✝️", name: "For the Mission of the Church", count: 5, expanded: true, items: ["For the Spread of the Gospel", "For the Mission of the Church", "For Missionaries", "For our Enemies", "For Those Who Suffer for the Faith"] },
-    { emoji: "🏛️", name: "For the Nation", count: 7, expanded: false },
+    { emoji: "⛪", name: t("user_onboarding.bcp_mock.cat_church"), count: 8, expanded: false },
+    { emoji: "✝️", name: t("user_onboarding.bcp_mock.cat_mission"), count: 5, expanded: true, items: [t("user_onboarding.bcp_mock.item_gospel"), t("user_onboarding.bcp_mock.item_mission"), t("user_onboarding.bcp_mock.item_missionaries"), t("user_onboarding.bcp_mock.item_enemies"), t("user_onboarding.bcp_mock.item_suffer")] },
+    { emoji: "🏛️", name: t("user_onboarding.bcp_mock.cat_nation"), count: 7, expanded: false },
   ];
   return (
     <MockPhone>
-      <p className="text-[10px] mb-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>← Book of Common Prayer</p>
-      <h2 className="text-[14px] font-bold mb-0.5" style={{ color: C.text, fontFamily: C.font }}>Intercessions 🙏🏽</h2>
-      <p className="text-[9px] mb-2.5" style={{ color: C.sage }}>Prayers from the Book of Common Prayer</p>
+      <p className="text-[10px] mb-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>← {t("user_onboarding.bcp_mock.bcp_back")}</p>
+      <h2 className="text-[14px] font-bold mb-0.5" style={{ color: C.text, fontFamily: C.font }}>{t("user_onboarding.bcp_mock.title")} 🙏🏽</h2>
+      <p className="text-[9px] mb-2.5" style={{ color: C.sage }}>{t("user_onboarding.bcp_mock.subtitle")}</p>
       <div className="rounded-lg px-2.5 py-1.5 mb-2.5 text-[10px]" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.15)", color: "rgba(143,175,150,0.4)" }}>
-        Search prayers...
+        {t("user_onboarding.bcp_mock.search_placeholder")}
       </div>
       <div className="space-y-1">
         {categories.map((cat, i) => (
@@ -239,7 +244,7 @@ function BCPPrayerModeMock() {
               <span className="text-[12px]">{cat.emoji}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-semibold truncate" style={{ color: C.text, fontFamily: C.font }}>{cat.name}</p>
-                {cat.count > 0 && <p className="text-[8px]" style={{ color: "rgba(143,175,150,0.45)" }}>{cat.count} prayers</p>}
+                {cat.count > 0 && <p className="text-[8px]" style={{ color: "rgba(143,175,150,0.45)" }}>{t("user_onboarding.bcp_mock.prayers_count", { count: cat.count })}</p>}
               </div>
               <span className="text-[10px]" style={{ color: "rgba(143,175,150,0.4)" }}>{cat.expanded ? "⌄" : "›"}</span>
             </div>
@@ -261,22 +266,23 @@ function BCPPrayerModeMock() {
 }
 
 function LectioMock() {
+  const { t } = useTranslation();
   const reflections = [
-    { name: "Margaret", isYou: false, time: "Mon · 8am", text: "I keep returning to the moment they recognised him — and then he was gone." },
-    { name: "You", isYou: true, time: "Today · 7am", text: "\"Hearts burning\" — the way ordinary moments can hold something we don't see until later." },
-    { name: "David", isYou: false, time: "Wed · 6pm", text: "The road itself. They were walking away from Jerusalem. Yet he met them there." },
+    { name: t("user_onboarding.lectio_mock.r1_name"), isYou: false, time: t("user_onboarding.lectio_mock.r1_time"), text: t("user_onboarding.lectio_mock.r1_text") },
+    { name: t("user_onboarding.lectio_mock.you"), isYou: true, time: t("user_onboarding.lectio_mock.r2_time"), text: t("user_onboarding.lectio_mock.r2_text") },
+    { name: t("user_onboarding.lectio_mock.r3_name"), isYou: false, time: t("user_onboarding.lectio_mock.r3_time"), text: t("user_onboarding.lectio_mock.r3_text") },
   ];
   return (
     <MockPhone>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.55)" }}>← Back</p>
-        <div className="px-3 py-1 rounded-full text-[10px] font-semibold" style={{ background: "rgba(19,44,29,0.85)", border: "1px solid rgba(200,212,192,0.15)", color: C.text }}>Menu</div>
+        <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.55)" }}>← {t("user_onboarding.lectio_mock.back")}</p>
+        <div className="px-3 py-1 rounded-full text-[10px] font-semibold" style={{ background: "rgba(19,44,29,0.85)", border: "1px solid rgba(200,212,192,0.15)", color: C.text }}>{t("user_onboarding.lectio_mock.menu")}</div>
         <div className="text-right">
-          <p className="text-[9px] uppercase tracking-[0.18em]" style={{ color: "rgba(143,175,150,0.55)" }}>Stage 2</p>
-          <p className="text-[10px]" style={{ color: C.sage }}>Luke 24:13–35</p>
+          <p className="text-[9px] uppercase tracking-[0.18em]" style={{ color: "rgba(143,175,150,0.55)" }}>{t("user_onboarding.lectio_mock.stage")}</p>
+          <p className="text-[10px]" style={{ color: C.sage }}>{t("user_onboarding.lectio_mock.scripture")}</p>
         </div>
       </div>
-      <p className="text-[9px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: "rgba(143,175,150,0.45)" }}>What others heard</p>
+      <p className="text-[9px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: "rgba(143,175,150,0.45)" }}>{t("user_onboarding.lectio_mock.what_others_heard")}</p>
       <div className="space-y-2 mb-4">
         {reflections.map((r, i) => (
           <div key={i} className="rounded-xl px-3 py-2.5" style={{ background: r.isYou ? "rgba(111,175,133,0.08)" : "#0F2818", border: `1px solid ${r.isYou ? "rgba(111,175,133,0.35)" : "rgba(200,212,192,0.15)"}` }}>
@@ -289,23 +295,24 @@ function LectioMock() {
         ))}
       </div>
       <div className="flex items-center justify-between rounded-full px-3 py-2" style={{ background: "rgba(19,44,29,0.92)", border: "1px solid rgba(200,212,192,0.15)" }}>
-        <p className="text-[10px] font-semibold" style={{ color: C.text }}>Back</p>
-        <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.55)" }}>Stage 2 · Meditatio</p>
-        <div className="px-2.5 py-1 rounded-full text-[10px] font-semibold" style={{ background: "#2D5E3F", color: C.text }}>Next stage</div>
+        <p className="text-[10px] font-semibold" style={{ color: C.text }}>{t("user_onboarding.lectio_mock.back_nav")}</p>
+        <p className="text-[9px] uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.55)" }}>{t("user_onboarding.lectio_mock.stage_meditatio")}</p>
+        <div className="px-2.5 py-1 rounded-full text-[10px] font-semibold" style={{ background: "#2D5E3F", color: C.text }}>{t("user_onboarding.lectio_mock.next_stage")}</div>
       </div>
     </MockPhone>
   );
 }
 
 function GatheringsMock() {
+  const { t } = useTranslation();
   const groups = [
-    { label: "Today", highlight: true, events: [{ time: "6:30 PM", title: "Wednesday Supper", location: "Parish Hall", people: "Margaret, David +4", kind: "ical" as const }] },
-    { label: "Thursday", highlight: false, events: [{ time: "7:00 PM", title: "Lenten Study", location: "Library", people: "Anna, James +3", kind: "phoebe" as const }] },
-    { label: "Saturday", highlight: false, events: [{ time: "8:00 AM", title: "Morning Prayer", location: "Chapel", people: "4 regulars", kind: "phoebe" as const }] },
+    { label: t("user_onboarding.gatherings_mock.today"), highlight: true, events: [{ time: t("user_onboarding.gatherings_mock.e1_time"), title: t("user_onboarding.gatherings_mock.e1_title"), location: t("user_onboarding.gatherings_mock.e1_location"), people: t("user_onboarding.gatherings_mock.e1_people"), kind: "ical" as const }] },
+    { label: t("user_onboarding.gatherings_mock.thursday"), highlight: false, events: [{ time: t("user_onboarding.gatherings_mock.e2_time"), title: t("user_onboarding.gatherings_mock.e2_title"), location: t("user_onboarding.gatherings_mock.e2_location"), people: t("user_onboarding.gatherings_mock.e2_people"), kind: "phoebe" as const }] },
+    { label: t("user_onboarding.gatherings_mock.saturday"), highlight: false, events: [{ time: t("user_onboarding.gatherings_mock.e3_time"), title: t("user_onboarding.gatherings_mock.e3_title"), location: t("user_onboarding.gatherings_mock.e3_location"), people: t("user_onboarding.gatherings_mock.e3_people"), kind: "phoebe" as const }] },
   ];
   return (
     <MockPhone>
-      <h2 className="text-[14px] font-bold mb-0.5" style={{ color: C.text, fontFamily: C.font }}>Gatherings</h2>
+      <h2 className="text-[14px] font-bold mb-0.5" style={{ color: C.text, fontFamily: C.font }}>{t("user_onboarding.gatherings_mock.title")}</h2>
       <div className="h-px mb-3" style={{ background: "rgba(200,212,192,0.1)" }} />
       <div className="space-y-3">
         {groups.map((g, gi) => (
@@ -353,22 +360,23 @@ function GatheringsMock() {
 
 /* ── The Daily Office — Evening Prayer psalm slide ── */
 function DailyOfficeMock() {
+  const { t } = useTranslation();
   const verses = [
-    { n: 121, line1: "I have done what is just and right;", line2: "do not deliver me to my oppressors." },
-    { n: 122, line1: "Be surety for your servant's good;", line2: "let not the proud oppress me." },
-    { n: 123, line1: "My eyes have failed from watching for your salvation", line2: "and for your righteous promise." },
-    { n: 124, line1: "Deal with your servant according to your loving-kindness", line2: "and teach me your statutes." },
+    { n: 121, line1: t("user_onboarding.daily_office_mock.v121_line1"), line2: t("user_onboarding.daily_office_mock.v121_line2") },
+    { n: 122, line1: t("user_onboarding.daily_office_mock.v122_line1"), line2: t("user_onboarding.daily_office_mock.v122_line2") },
+    { n: 123, line1: t("user_onboarding.daily_office_mock.v123_line1"), line2: t("user_onboarding.daily_office_mock.v123_line2") },
+    { n: 124, line1: t("user_onboarding.daily_office_mock.v124_line1"), line2: t("user_onboarding.daily_office_mock.v124_line2") },
   ];
   const serif = "Georgia, 'Times New Roman', serif";
   return (
     <MockPhone>
       <div className="flex items-center justify-between mb-4">
-        <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.55)" }}>← Back</p>
+        <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.55)" }}>← {t("user_onboarding.daily_office_mock.back")}</p>
         <div
           className="px-3 py-1 rounded-full text-[10px] font-semibold"
           style={{ background: "rgba(19,44,29,0.85)", border: "1px solid rgba(200,212,192,0.18)", color: C.text, fontFamily: C.font }}
         >
-          Evening Prayer
+          {t("user_onboarding.daily_office_mock.evening_prayer")}
         </div>
         <div className="w-[40px]" />
       </div>
@@ -376,7 +384,7 @@ function DailyOfficeMock() {
         className="text-[9px] uppercase tracking-[0.22em] font-semibold mb-3 text-center"
         style={{ color: "rgba(143,175,150,0.6)", fontFamily: C.font }}
       >
-        Psalm 119:121&ndash;144
+        {t("user_onboarding.daily_office_mock.psalm_ref")}
       </p>
       <div className="mb-4">
         {verses.map((v) => (
@@ -404,19 +412,19 @@ function DailyOfficeMock() {
         className="text-[9px] uppercase tracking-[0.22em] font-semibold mb-3 text-center"
         style={{ color: "rgba(143,175,150,0.5)", fontFamily: C.font }}
       >
-        BCP p. 763
+        {t("user_onboarding.daily_office_mock.bcp_page")}
       </p>
       <div
         className="flex items-center justify-between rounded-full px-3 py-2"
         style={{ background: "rgba(19,44,29,0.92)", border: "1px solid rgba(200,212,192,0.15)" }}
       >
-        <p className="text-[10px] font-semibold" style={{ color: "rgba(200,212,192,0.6)", fontFamily: C.font }}>Back</p>
-        <p className="text-[9px] uppercase tracking-[0.22em]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: C.font }}>8 · Psalm</p>
+        <p className="text-[10px] font-semibold" style={{ color: "rgba(200,212,192,0.6)", fontFamily: C.font }}>{t("user_onboarding.daily_office_mock.back_nav")}</p>
+        <p className="text-[9px] uppercase tracking-[0.22em]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: C.font }}>{t("user_onboarding.daily_office_mock.psalm_nav")}</p>
         <div
           className="px-2.5 py-1 rounded-full text-[10px] font-semibold"
           style={{ background: "#2D5E3F", color: C.text, fontFamily: C.font }}
         >
-          Next
+          {t("user_onboarding.daily_office_mock.next")}
         </div>
       </div>
     </MockPhone>
@@ -425,9 +433,18 @@ function DailyOfficeMock() {
 
 /* ── Prayer Rhythm — daily-habit "past 7 days" mock ── */
 function PrayerRhythmMock() {
+  const { t } = useTranslation();
   const morning = [true, true, true, true, true, true, true];
   const evening = [true, true, true, true, true, false, true];
-  const dayLetters = ["T", "F", "S", "S", "M", "T", "W"];
+  const dayLetters = [
+    t("user_onboarding.prayer_rhythm_mock.day_t"),
+    t("user_onboarding.prayer_rhythm_mock.day_f"),
+    t("user_onboarding.prayer_rhythm_mock.day_s"),
+    t("user_onboarding.prayer_rhythm_mock.day_s2"),
+    t("user_onboarding.prayer_rhythm_mock.day_m"),
+    t("user_onboarding.prayer_rhythm_mock.day_t2"),
+    t("user_onboarding.prayer_rhythm_mock.day_w"),
+  ];
   return (
     <MockPhone>
       <div className="flex items-center justify-end mb-2">
@@ -442,22 +459,22 @@ function PrayerRhythmMock() {
         className="text-[9px] uppercase tracking-[0.22em] font-semibold text-center mb-1"
         style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
       >
-        Today
+        {t("user_onboarding.prayer_rhythm_mock.today")}
       </p>
       <h2 className="text-[15px] font-semibold text-center mb-3" style={{ color: C.text, fontFamily: C.font }}>
-        Your prayer rhythm
+        {t("user_onboarding.prayer_rhythm_mock.heading")}
       </h2>
       <div
         className="rounded-xl px-3 py-2 mb-2 flex items-center gap-2"
         style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)" }}
       >
         <span className="text-[14px]">🌅</span>
-        <p className="text-[12px] font-semibold flex-1" style={{ color: C.text, fontFamily: C.font }}>Morning</p>
+        <p className="text-[12px] font-semibold flex-1" style={{ color: C.text, fontFamily: C.font }}>{t("user_onboarding.prayer_rhythm_mock.morning")}</p>
         <div
           className="px-2 py-0.5 rounded-full text-[9px] font-semibold"
           style={{ background: "rgba(46,107,64,0.5)", color: C.text, fontFamily: C.font }}
         >
-          Completed ✓
+          {t("user_onboarding.prayer_rhythm_mock.completed")} ✓
         </div>
       </div>
       <div
@@ -465,19 +482,19 @@ function PrayerRhythmMock() {
         style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)" }}
       >
         <span className="text-[14px]">🌙</span>
-        <p className="text-[12px] font-semibold flex-1" style={{ color: C.text, fontFamily: C.font }}>Evening</p>
+        <p className="text-[12px] font-semibold flex-1" style={{ color: C.text, fontFamily: C.font }}>{t("user_onboarding.prayer_rhythm_mock.evening")}</p>
         <div
           className="px-2 py-0.5 rounded-full text-[9px] font-semibold"
           style={{ background: "rgba(46,107,64,0.5)", color: C.text, fontFamily: C.font }}
         >
-          Completed ✓
+          {t("user_onboarding.prayer_rhythm_mock.completed")} ✓
         </div>
       </div>
       <p
         className="text-[9px] uppercase tracking-[0.22em] font-semibold text-center mb-2"
         style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
       >
-        Past 7 Days
+        {t("user_onboarding.prayer_rhythm_mock.past_7_days")}
       </p>
       <div className="grid grid-cols-8 gap-1 mb-2 px-1">
         <div />
@@ -512,7 +529,7 @@ function PrayerRhythmMock() {
         ))}
       </div>
       <p className="text-[10px] text-center mb-3" style={{ color: "rgba(200,212,192,0.55)", fontFamily: C.font }}>
-        7 days of prayer this week
+        {t("user_onboarding.prayer_rhythm_mock.days_of_prayer")}
       </p>
     </MockPhone>
   );
@@ -594,29 +611,32 @@ type Slide =
 // direction. Now every user walks the same fixed deck: profile
 // picture → Daily Office intro (mirrors church-deck) → daily-habit
 // intro (mirrors church-deck) → safe-space → first prayer request.
+// InfoSlide title/body/footnote hold i18n KEYS, not literal copy — they
+// are resolved through t() in InfoSlideView at render time so the deck
+// translates with the active language.
 const BASE_SLIDES: Slide[] = [
   { kind: "profile-picture" },
   // Daily Office — same copy + mock as the about/church-deck slide.
   {
     kind: "info",
-    title: "The Daily Office",
-    body: "Morning and Evening Prayer from the Book of Common Prayer — the psalms, the lessons, the canticles, and the collects, assembled for today and ready to pray. A daily reminder keeps the hour.",
+    title: "user_onboarding.slides.daily_office_title",
+    body: "user_onboarding.slides.daily_office_body",
     mock: "daily-office",
   },
   // Daily habit — same copy + mock as the about/church-deck slide.
   {
     kind: "info",
-    title: "A daily habit, held together.",
-    body: "For seventeen centuries, Christians have steadied their days by stopping to pray — morning and evening, in monasteries, in parishes, in kitchens. The Office has carried the faithful through plagues, exiles, and the long, ordinary middle.\n\nPhoebe helps your community keep that rhythm — together. A bell in the morning, a bell in the evening, a quiet record of who showed up.",
+    title: "user_onboarding.slides.daily_habit_title",
+    body: "user_onboarding.slides.daily_habit_body",
     mock: "prayer-rhythm",
   },
   {
     kind: "info",
-    title: "Phoebe is a safe space.",
-    body: "This is a place built on trust. If anyone ever makes you feel uncomfortable — in a prayer request, a letter, or anywhere in the app — you can mute them at any time. Muting is quiet and private. They won't be notified, and their content will no longer appear for you.\n\nYou are always in control of your experience here.",
+    title: "user_onboarding.slides.safe_space_title",
+    body: "user_onboarding.slides.safe_space_body",
     mock: null,
     calm: true,
-    footnote: "To mute someone, visit their profile in the People tab and tap Mute.",
+    footnote: "user_onboarding.slides.safe_space_footnote",
   },
   { kind: "prayer-request" },
 ];
@@ -635,6 +655,7 @@ const MOCK_COMPONENTS: Record<MockKey, () => React.ReactElement> = {
 // ─── Slide renderers ──────────────────────────────────────────────────────────
 
 function WelcomeSlide() {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center text-center max-w-2xl mx-auto px-2">
       <motion.h1
@@ -644,7 +665,7 @@ function WelcomeSlide() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
-        Welcome to Phoebe.
+        {t("user_onboarding.welcome.title")}
       </motion.h1>
       <motion.p
         className="text-lg md:text-xl font-light leading-relaxed"
@@ -653,13 +674,14 @@ function WelcomeSlide() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       >
-        A place set apart for connection between Sundays — through shared prayer, shared practice, and shared life.
+        {t("user_onboarding.welcome.subtitle")}
       </motion.p>
     </div>
   );
 }
 
 function InfoSlideView({ slide }: { slide: InfoSlide }) {
+  const { t } = useTranslation();
   const Mock = slide.mock ? MOCK_COMPONENTS[slide.mock] : null;
 
   if (!Mock) {
@@ -670,20 +692,20 @@ function InfoSlideView({ slide }: { slide: InfoSlide }) {
           className="text-2xl md:text-4xl font-semibold mb-5 leading-tight"
           style={{ color: C.text, fontFamily: C.font }}
         >
-          {slide.title}
+          {t(slide.title)}
         </h2>
         <p
           className={`leading-relaxed font-light ${slide.calm ? "text-base md:text-lg" : "text-base md:text-xl"}`}
           style={{ color: C.sage, fontFamily: C.font, whiteSpace: "pre-line", lineHeight: slide.calm ? "1.85" : undefined }}
         >
-          {slide.body}
+          {t(slide.body)}
         </p>
         {slide.footnote && (
           <p
             className="mt-8 text-sm"
             style={{ color: "rgba(143,175,150,0.5)", fontFamily: C.font }}
           >
-            {slide.footnote}
+            {t(slide.footnote)}
           </p>
         )}
       </div>
@@ -698,13 +720,13 @@ function InfoSlideView({ slide }: { slide: InfoSlide }) {
           className="text-2xl md:text-3xl font-semibold mb-4 leading-tight"
           style={{ color: C.text, fontFamily: C.font }}
         >
-          {slide.title}
+          {t(slide.title)}
         </h2>
         <p
           className="text-sm md:text-base leading-relaxed font-light"
           style={{ color: C.sage, fontFamily: C.font }}
         >
-          {slide.body}
+          {t(slide.body)}
         </p>
       </div>
       <motion.div
@@ -726,6 +748,7 @@ function InfoSlideView({ slide }: { slide: InfoSlide }) {
 // advances — handled by the global nav bar (this slide is non-interactive).
 
 function LetsPraySlide() {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center text-center max-w-xl mx-auto px-2">
       <motion.div
@@ -743,7 +766,7 @@ function LetsPraySlide() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.45 }}
       >
-        Let's pray.
+        {t("user_onboarding.lets_pray.title")}
       </motion.h2>
       <motion.p
         className="text-base md:text-lg font-light leading-relaxed"
@@ -752,7 +775,7 @@ function LetsPraySlide() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.45 }}
       >
-        Here are the prayers your community is carrying right now. Take a moment with each one before you tap Amen.
+        {t("user_onboarding.lets_pray.subtitle")}
       </motion.p>
     </div>
   );
@@ -771,13 +794,14 @@ function OnboardingAmenButton({ slideKey, onAdvance }: {
   slideKey: string | number;
   onAdvance: () => void;
 }) {
+  const { t } = useTranslation();
   const HOLD_MS = 4000;
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     setReady(false);
-    const t = window.setTimeout(() => setReady(true), HOLD_MS);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(() => setReady(true), HOLD_MS);
+    return () => window.clearTimeout(timer);
   }, [slideKey]);
 
   return (
@@ -789,7 +813,7 @@ function OnboardingAmenButton({ slideKey, onAdvance }: {
       }}
       disabled={!ready}
       aria-disabled={!ready}
-      aria-label={ready ? "Amen" : "Hold a moment"}
+      aria-label={ready ? t("user_onboarding.amen_button.aria_ready") : t("user_onboarding.amen_button.aria_hold")}
       className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide active:scale-[0.98] relative overflow-hidden"
       style={{
         background: ready ? "#2D5E3F" : "rgba(46,107,64,0.18)",
@@ -822,7 +846,7 @@ function OnboardingAmenButton({ slideKey, onAdvance }: {
           display: "inline-block",
         }}
       >
-        Amen →
+        {t("user_onboarding.amen_button.amen")}
       </span>
     </button>
   );
@@ -852,7 +876,10 @@ function OnboardingPrayerSlide({
   onAdvance: () => void;
 }) {
   const queryClient = useQueryClient();
-  const eyebrow = payload.kind === "intercession" ? "Community Intercession" : "Prayer Request";
+  const { t } = useTranslation();
+  const eyebrow = payload.kind === "intercession"
+    ? t("user_onboarding.prayer_slide.eyebrow_intercession")
+    : t("user_onboarding.prayer_slide.eyebrow_request");
   const authorInitials =
     payload.kind === "request" && payload.authorName
       ? payload.authorName.split(" ").slice(0, 2).map(w => w[0]?.toUpperCase() ?? "").join("")
@@ -919,7 +946,7 @@ function OnboardingPrayerSlide({
           {payload.authorAvatarUrl ? (
             <img
               src={payload.authorAvatarUrl}
-              alt={payload.authorName ?? "Prayer author"}
+              alt={payload.authorName ?? t("user_onboarding.prayer_slide.author_alt")}
               className="w-16 h-16 rounded-full object-cover prayer-avatar-pulse"
             />
           ) : (
@@ -1022,10 +1049,8 @@ function OnboardingPrayerSlide({
           )}
           <p className="text-[12px] italic" style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}>
             {payload.weekPrayCount > 0
-              ? payload.weekPrayCount === 1
-                ? "1 person has prayed this this week."
-                : `${payload.weekPrayCount} people have prayed this this week.`
-              : "Your community is holding this."}
+              ? t("user_onboarding.prayer_slide.prayed_count", { count: payload.weekPrayCount })
+              : t("user_onboarding.prayer_slide.community_holding")}
           </p>
         </>
       )}
@@ -1061,7 +1086,7 @@ function OnboardingPrayerSlide({
             className="text-[9px] uppercase tracking-[0.14em] mt-3"
             style={{ color: "rgba(143,175,150,0.3)" }}
           >
-            From the Book of Common Prayer
+            {t("user_onboarding.prayer_slide.bcp_caption")}
           </p>
         </div>
       )}
@@ -1098,7 +1123,7 @@ function OnboardingPrayerSlide({
               className="text-[9px] uppercase tracking-[0.14em] mt-3"
               style={{ color: "rgba(143,175,150,0.3)" }}
             >
-              From the Book of Common Prayer
+              {t("user_onboarding.prayer_slide.bcp_caption")}
             </p>
           )}
         </div>
@@ -1121,7 +1146,7 @@ function OnboardingPrayerSlide({
           className="text-[12px] italic max-w-xs"
           style={{ color: "rgba(143,175,150,0.65)", fontFamily: C.font, marginTop: "-2px" }}
         >
-          Wait four seconds before you tap Amen — a small pause to actually pray the prayer.
+          {t("user_onboarding.prayer_slide.first_helper")}
         </p>
       )}
     </div>
@@ -1137,6 +1162,7 @@ function OnboardingPrayerSlide({
 
 function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -1183,17 +1209,17 @@ function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
           .catch((err) => {
             // Surface it so the user can retry — otherwise a stale
             // "Save & continue" button sits there doing nothing.
-            setSaveError(err?.message ?? "Couldn't save your photo. Try again?");
+            setSaveError(err?.message ?? t("user_onboarding.profile_picture.error_save"));
             throw err;
           })
           .finally(() => {
             setUploading(false);
           });
       };
-      img.onerror = () => { setUploading(false); setSaveError("Couldn't read that image."); };
+      img.onerror = () => { setUploading(false); setSaveError(t("user_onboarding.profile_picture.error_read")); };
       img.src = reader.result as string;
     };
-    reader.onerror = () => { setUploading(false); setSaveError("Couldn't read that image."); };
+    reader.onerror = () => { setUploading(false); setSaveError(t("user_onboarding.profile_picture.error_read")); };
     reader.readAsDataURL(file);
   }
 
@@ -1219,13 +1245,13 @@ function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
         className="text-2xl md:text-4xl font-semibold mb-4 leading-tight"
         style={{ color: C.text, fontFamily: C.font }}
       >
-        Add your face.
+        {t("user_onboarding.profile_picture.title")}
       </h2>
       <p
         className="text-sm md:text-base leading-relaxed font-light mb-10"
         style={{ color: C.sage, fontFamily: C.font }}
       >
-        A photo helps the people praying with you feel like they're praying with <em>you</em>. It shows up on your prayer requests, in your community, and when someone holds you in prayer.
+        {t("user_onboarding.profile_picture.body_part1")}<em>{t("user_onboarding.profile_picture.body_emphasis")}</em>{t("user_onboarding.profile_picture.body_part2")}
       </p>
 
       {/* Avatar + camera overlay */}
@@ -1238,7 +1264,7 @@ function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
         {preview ? (
           <img
             src={preview}
-            alt="Your photo"
+            alt={t("user_onboarding.profile_picture.photo_alt")}
             className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover"
             style={{ border: "3px solid rgba(46,107,64,0.5)" }}
           />
@@ -1285,7 +1311,7 @@ function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
             className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
             style={{ background: "#2D5E3F", color: C.text }}
           >
-            {uploading ? "Saving…" : "Save & continue →"}
+            {uploading ? t("user_onboarding.profile_picture.saving") : t("user_onboarding.profile_picture.save_continue")}
           </motion.button>
         ) : (
           <motion.button
@@ -1294,7 +1320,7 @@ function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
             className="px-6 py-3 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
             style={{ background: "#2D5E3F", color: C.text }}
           >
-            Upload a photo
+            {t("user_onboarding.profile_picture.upload")}
           </motion.button>
         )}
       </AnimatePresence>
@@ -1306,7 +1332,7 @@ function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
       )}
 
       <p className="text-xs mt-3 mb-3" style={{ color: "rgba(143,175,150,0.4)", fontFamily: C.font }}>
-        You can change this anytime in Settings.
+        {t("user_onboarding.profile_picture.change_hint")}
       </p>
 
       <button
@@ -1314,7 +1340,7 @@ function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
         className="text-sm transition-opacity hover:opacity-80"
         style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
       >
-        Skip for now
+        {t("user_onboarding.profile_picture.skip")}
       </button>
     </div>
   );
@@ -1323,6 +1349,7 @@ function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
 // ─── Prayer request slide (interactive, final) ────────────────────────────────
 
 function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () => void; preview?: boolean }) {
+  const { t } = useTranslation();
   const [text, setText] = useState("");
   const [submittedBody, setSubmittedBody] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -1348,7 +1375,7 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
       setDone(true);
     } catch (err) {
       setSubmitting(false);
-      setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setSubmitError(err instanceof Error ? err.message : t("user_onboarding.prayer_request.error_generic"));
     }
   }
 
@@ -1399,7 +1426,7 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
                   className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-1.5"
                   style={{ color: "rgba(143,175,150,0.7)" }}
                 >
-                  Your request
+                  {t("user_onboarding.prayer_request.your_request")}
                 </p>
                 <p
                   className="text-base leading-relaxed"
@@ -1416,7 +1443,7 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
               className="text-base md:text-lg font-light leading-relaxed"
               style={{ color: C.sage, fontFamily: C.font }}
             >
-              Your community will be holding this. 🌿
+              {t("user_onboarding.prayer_request.holding_this")} 🌿
             </motion.p>
           </>
         ) : (
@@ -1436,7 +1463,7 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
               ease: [0.22, 1, 0.36, 1],
             }}
           >
-            Welcome.
+            {t("user_onboarding.prayer_request.welcome")}
           </motion.h1>
         )}
       </motion.div>
@@ -1461,7 +1488,7 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
           className="text-xl font-semibold mb-2"
           style={{ color: C.text, fontFamily: C.font }}
         >
-          Your community will hold this.
+          {t("user_onboarding.prayer_request.will_hold")}
         </motion.p>
       </div>
     );
@@ -1473,13 +1500,13 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
         className="text-2xl md:text-4xl font-semibold mb-4 leading-tight"
         style={{ color: C.text, fontFamily: C.font }}
       >
-        Share your first prayer request.
+        {t("user_onboarding.prayer_request.title")}
       </h2>
       <p
         className="text-sm md:text-base leading-relaxed font-light mb-8"
         style={{ color: C.sage, fontFamily: C.font }}
       >
-        So others can start walking with you. It doesn't have to be big — nothing is too small to be held together.
+        {t("user_onboarding.prayer_request.subtitle")}
       </p>
 
       {/* Match the in-app prayer-request card: sage-tinted surface
@@ -1504,14 +1531,14 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
             className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-1.5"
             style={{ color: "rgba(143,175,150,0.7)" }}
           >
-            Your request
+            {t("user_onboarding.prayer_request.your_request")}
           </p>
           <textarea
             value={text}
             onChange={e => setText(e.target.value)}
             maxLength={1000}
             rows={3}
-            placeholder="What's going on in your week? 🌿"
+            placeholder={t("user_onboarding.prayer_request.compose_placeholder") + " 🌿"}
             className="w-full text-sm resize-none outline-none"
             style={{
               background: "transparent",
@@ -1539,11 +1566,11 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
         className="w-full px-6 py-3.5 rounded-full text-sm font-semibold transition-opacity disabled:opacity-40 mb-3"
         style={{ background: "#2D5E3F", color: C.text }}
       >
-        {submitting ? "Sharing…" : "Share with my community 🙏🏽"}
+        {submitting ? t("user_onboarding.prayer_request.sharing") : t("user_onboarding.prayer_request.share_button") + " 🙏🏽"}
       </button>
 
       <p className="text-xs mb-4" style={{ color: "rgba(143,175,150,0.5)", fontFamily: C.font }}>
-        You can also do this anytime from your prayer list.
+        {t("user_onboarding.prayer_request.list_hint")}
       </p>
 
       <button
@@ -1551,7 +1578,7 @@ function PrayerRequestSlide({ onComplete, preview = false }: { onComplete: () =>
         className="text-sm transition-opacity hover:opacity-80"
         style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
       >
-        Skip for now
+        {t("user_onboarding.prayer_request.skip")}
       </button>
     </div>
   );
@@ -1574,6 +1601,7 @@ export default function UserOnboarding() {
   const nextDestination =
     rawNext && rawNext.startsWith("/") ? rawNext : "/dashboard";
   const { user, isLoading } = useAuth();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [index, setIndex] = useState(0);
 
@@ -1952,7 +1980,7 @@ export default function UserOnboarding() {
           style={{ color: C.sage, opacity: 0.75 }}
         >
           <X size={16} />
-          <span className="hidden md:inline">Close</span>
+          <span className="hidden md:inline">{t("user_onboarding.nav.close")}</span>
         </button>
 
         {/* Mobile: slim progress bar */}
@@ -1977,7 +2005,7 @@ export default function UserOnboarding() {
                 height: 6,
                 background: i <= safeIndex ? C.sage : "rgba(200,212,192,0.2)",
               }}
-              aria-label={`Go to slide ${i + 1}`}
+              aria-label={t("user_onboarding.nav.go_to_slide", { number: i + 1 })}
             />
           ))}
         </div>
@@ -2016,7 +2044,7 @@ export default function UserOnboarding() {
             style={{ color: C.sage }}
           >
             <ChevronLeft size={18} />
-            Back
+            {t("user_onboarding.nav.back")}
           </button>
 
           <button
@@ -2024,7 +2052,7 @@ export default function UserOnboarding() {
             className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90"
             style={{ background: "#2D5E3F", color: C.text }}
           >
-            Next
+            {t("user_onboarding.nav.next")}
             <ChevronRight size={18} />
           </button>
         </div>
@@ -2042,7 +2070,7 @@ export default function UserOnboarding() {
             style={{ color: C.sage }}
           >
             <ChevronLeft size={18} />
-            Back
+            {t("user_onboarding.nav.back")}
           </button>
         </div>
       )}
