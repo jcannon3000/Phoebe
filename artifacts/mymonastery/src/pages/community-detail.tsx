@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useLocation, useSearch, Link } from "wouter";
 import { parseISO, format, isToday, addDays, startOfDay, startOfWeek, endOfWeek, addWeeks } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -131,15 +132,17 @@ type ServiceScheduleRecord = {
   updatedAt: string;
 };
 
-const DOW_NAMES: Array<{ value: number; label: string }> = [
-  { value: 0, label: "Sunday" },
-  { value: 1, label: "Monday" },
-  { value: 2, label: "Tuesday" },
-  { value: 3, label: "Wednesday" },
-  { value: 4, label: "Thursday" },
-  { value: 5, label: "Friday" },
-  { value: 6, label: "Saturday" },
-];
+function dowNames(t: (k: string) => string): Array<{ value: number; label: string }> {
+  return [
+    { value: 0, label: t("community_detail.day_sunday") },
+    { value: 1, label: t("community_detail.day_monday") },
+    { value: 2, label: t("community_detail.day_tuesday") },
+    { value: 3, label: t("community_detail.day_wednesday") },
+    { value: 4, label: t("community_detail.day_thursday") },
+    { value: 5, label: t("community_detail.day_friday") },
+    { value: 6, label: t("community_detail.day_saturday") },
+  ];
+}
 
 function formatHM12(hhmm: string): string {
   const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm);
@@ -152,6 +155,7 @@ function formatHM12(hhmm: string): string {
 }
 
 function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const { data } = useQuery<{ schedule: ServiceScheduleRecord | null; canEdit: boolean }>({
     queryKey: ["/api/groups", slug, "service-schedule"],
@@ -173,7 +177,7 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
       setName(schedule.name);
       setLocation(schedule.location ?? "");
       setDow(schedule.dayOfWeek);
-      setTimes(schedule.times.map(t => ({ label: t.label ?? "", time: t.time, location: t.location ?? "" })));
+      setTimes(schedule.times.map(row => ({ label: row.label ?? "", time: row.time, location: row.location ?? "" })));
     } else {
       setName("Sunday Services");
       setLocation("");
@@ -189,11 +193,11 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
       location: location.trim().length > 0 ? location.trim() : null,
       dayOfWeek: dow,
       times: times
-        .filter(t => /^\d{1,2}:\d{2}$/.test(t.time))
-        .map(t => ({
-          label: t.label.trim(),
-          time: t.time,
-          ...(t.location.trim() ? { location: t.location.trim() } : {}),
+        .filter(row => /^\d{1,2}:\d{2}$/.test(row.time))
+        .map(row => ({
+          label: row.label.trim(),
+          time: row.time,
+          ...(row.location.trim() ? { location: row.location.trim() } : {}),
         })),
     }),
     onSuccess: () => {
@@ -212,7 +216,7 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
     },
   });
 
-  const dayLabel = DOW_NAMES.find(d => d.value === (schedule?.dayOfWeek ?? 0))?.label ?? "Sunday";
+  const dayLabel = dowNames(t).find(d => d.value === (schedule?.dayOfWeek ?? 0))?.label ?? t("community_detail.day_sunday");
 
   // Non-editing view — hide entirely when there's nothing to show and the
   // user can't edit. Admins see the empty-state "add" button.
@@ -223,10 +227,10 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
         <div className="px-4 pt-3 pb-2 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(200,212,192,0.55)" }}>
-              {dayLabel} schedule
+              {t("community_detail.day_schedule", { day: dayLabel })}
             </p>
             <p className="text-base font-semibold mt-0.5" style={{ color: "#F0EDE6" }}>
-              ⛪ {schedule?.name ?? "Sunday Services"}
+              ⛪ {schedule?.name ?? t("community_detail.sunday_services")}
             </p>
           </div>
           {isAdmin && (
@@ -235,27 +239,27 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
               className="shrink-0 text-[11px] font-semibold uppercase tracking-widest px-3 py-1.5 rounded-full"
               style={{ background: "rgba(111,175,133,0.18)", color: "#C8D4C0", border: "1px solid rgba(111,175,133,0.3)" }}
             >
-              {schedule ? "Edit" : "Add"}
+              {schedule ? t("community_detail.edit") : t("community_detail.add")}
             </button>
           )}
         </div>
         {schedule && schedule.times.length > 0 ? (
           <ul className="px-4 pb-3 flex flex-col gap-1.5">
-            {schedule.times.map((t, i) => (
+            {schedule.times.map((row, i) => (
               <li key={i} className="text-sm flex items-baseline justify-between gap-3" style={{ color: "#C8D4C0" }}>
                 <span className="tabular-nums font-semibold" style={{ color: "#F0EDE6", minWidth: 84 }}>
-                  {formatHM12(t.time)}
+                  {formatHM12(row.time)}
                 </span>
                 <span className="flex-1 truncate">
-                  {t.label || "Service"}
-                  {t.location ? <span style={{ color: "#8FAF96" }}> · 📍 {t.location}</span> : null}
+                  {row.label || t("community_detail.service")}
+                  {row.location ? <span style={{ color: "#8FAF96" }}> · 📍 {row.location}</span> : null}
                 </span>
               </li>
             ))}
           </ul>
         ) : (
           <p className="px-4 pb-3 text-sm" style={{ color: "#8FAF96" }}>
-            {isAdmin ? "No service times yet. Tap Add to create the schedule." : "No service times yet."}
+            {isAdmin ? t("community_detail.no_service_times_admin") : t("community_detail.no_service_times")}
           </p>
         )}
       </div>
@@ -266,13 +270,13 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
   return (
     <div className="mb-4 rounded-xl p-4" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}>
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>Service schedule</p>
-        <button onClick={() => setEditing(false)} aria-label="Close">
+        <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>{t("community_detail.service_schedule")}</p>
+        <button onClick={() => setEditing(false)} aria-label={t("community_detail.close")}>
           <X size={16} style={{ color: "#8FAF96" }} />
         </button>
       </div>
       <label className="block text-[11px] font-semibold uppercase mb-1" style={{ color: "rgba(200,212,192,0.55)", letterSpacing: "0.08em" }}>
-        Name
+        {t("community_detail.name")}
       </label>
       <input
         type="text"
@@ -282,18 +286,18 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
         style={{ color: "#F0EDE6" }}
       />
       <label className="block text-[11px] font-semibold uppercase mb-1" style={{ color: "rgba(200,212,192,0.55)", letterSpacing: "0.08em" }}>
-        Location
+        {t("community_detail.location")}
       </label>
       <input
         type="text"
         value={location}
         onChange={e => setLocation(e.target.value)}
-        placeholder="e.g. Phoebe Chapel · 12 Elm St"
+        placeholder={t("community_detail.location_placeholder")}
         className="w-full px-3 py-2 mb-3 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
         style={{ color: "#F0EDE6" }}
       />
       <label className="block text-[11px] font-semibold uppercase mb-1" style={{ color: "rgba(200,212,192,0.55)", letterSpacing: "0.08em" }}>
-        Day of week
+        {t("community_detail.day_of_week")}
       </label>
       <select
         value={dow}
@@ -301,41 +305,41 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
         className="w-full px-3 py-2 mb-3 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
         style={{ color: "#F0EDE6", background: "#091A10" }}
       >
-        {DOW_NAMES.map(d => (
+        {dowNames(t).map(d => (
           <option key={d.value} value={d.value}>{d.label}</option>
         ))}
       </select>
       <label className="block text-[11px] font-semibold uppercase mb-1" style={{ color: "rgba(200,212,192,0.55)", letterSpacing: "0.08em" }}>
-        Service times
+        {t("community_detail.service_times")}
       </label>
       <div className="flex flex-col gap-2 mb-2">
-        {times.map((t, i) => (
+        {times.map((row, i) => (
           <div key={i} className="flex items-center gap-2">
             <input
               type="time"
-              value={t.time}
+              value={row.time}
               onChange={e => {
                 const v = e.target.value;
-                setTimes(prev => prev.map((row, idx) => idx === i ? { ...row, time: v } : row));
+                setTimes(prev => prev.map((r, idx) => idx === i ? { ...r, time: v } : r));
               }}
               className="px-2 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm tabular-nums"
               style={{ color: "#F0EDE6", minWidth: 110 }}
             />
             <input
               type="text"
-              value={t.label}
+              value={row.label}
               onChange={e => {
                 const v = e.target.value;
-                setTimes(prev => prev.map((row, idx) => idx === i ? { ...row, label: v } : row));
+                setTimes(prev => prev.map((r, idx) => idx === i ? { ...r, label: v } : r));
               }}
-              placeholder="Label (optional)"
+              placeholder={t("community_detail.label_optional")}
               className="flex-1 min-w-0 px-2 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
               style={{ color: "#F0EDE6" }}
             />
             <button
               type="button"
               onClick={() => setTimes(prev => prev.filter((_, idx) => idx !== i))}
-              aria-label="Remove time"
+              aria-label={t("community_detail.remove_time")}
               className="shrink-0 rounded-full p-1.5"
               style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0" }}
             >
@@ -350,7 +354,7 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold mb-3"
         style={{ background: "rgba(111,175,133,0.18)", color: "#C8D4C0", border: "1px solid rgba(111,175,133,0.3)" }}
       >
-        <Plus size={12} /> Add time
+        <Plus size={12} /> {t("community_detail.add_time")}
       </button>
       <div className="flex items-center gap-3">
         <button
@@ -359,25 +363,25 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
           className="px-5 py-2 rounded-lg text-xs font-semibold disabled:opacity-40"
           style={{ background: "#2D5E3F", color: "#F0EDE6" }}
         >
-          {saveMutation.isPending ? "Saving…" : "Save"}
+          {saveMutation.isPending ? t("community_detail.saving") : t("community_detail.save")}
         </button>
         <button
           onClick={() => setEditing(false)}
           className="text-xs"
           style={{ color: "#9a9390" }}
         >
-          Cancel
+          {t("community_detail.cancel")}
         </button>
         {schedule && (
           <button
             onClick={() => {
-              if (confirm("Delete the service schedule?")) deleteMutation.mutate();
+              if (confirm(t("community_detail.delete_schedule_confirm"))) deleteMutation.mutate();
             }}
             disabled={deleteMutation.isPending}
             className="ml-auto text-xs"
             style={{ color: "#C47A65" }}
           >
-            {deleteMutation.isPending ? "Deleting…" : "Delete"}
+            {deleteMutation.isPending ? t("community_detail.deleting") : t("community_detail.delete")}
           </button>
         )}
       </div>
@@ -395,6 +399,7 @@ function ServicesSection({ slug, isAdmin }: { slug: string; isAdmin: boolean }) 
 //   • Available → primary action button is live
 //   • Cooldown → button disabled, subtitle shows "Available in N days"
 function PrayerInviteCard({ slug }: { slug: string }) {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const search = useSearch();
   // The /ask page redirects back here with ?invited=1 right after a
@@ -435,25 +440,25 @@ function PrayerInviteCard({ slug }: { slug: string }) {
               className="text-[10px] font-semibold uppercase tracking-[0.18em] mb-1"
               style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
             >
-              Ask your community
+              {t("community_detail.ask_your_community")}
             </p>
             <p
               className="text-base font-semibold"
               style={{ color: "#F0EDE6", fontFamily: FONT, margin: 0 }}
             >
-              How can I pray for you?
+              {t("community_detail.how_can_i_pray")}
             </p>
             <p
               className="text-[12px] mt-1 leading-relaxed"
               style={{ color: "rgba(168,197,160,0.7)", fontFamily: FONT }}
             >
               {justSent
-                ? "Sent. Members will get a push + email."
+                ? t("community_detail.invite_sent")
                 : isLoading
                   ? "…"
                   : available
-                    ? "Sends a push + email to every member. You can send this once every 7 days."
-                    : `Available in ${daysLeft} ${daysLeft === 1 ? "day" : "days"}.`}
+                    ? t("community_detail.invite_available")
+                    : t("community_detail.invite_available_in", { count: daysLeft })}
             </p>
           </div>
           <button
@@ -466,7 +471,7 @@ function PrayerInviteCard({ slug }: { slug: string }) {
               fontFamily: FONT,
             }}
           >
-            <HandHeart size={13} className="inline mr-1" /> Send
+            <HandHeart size={13} className="inline mr-1" /> {t("community_detail.send")}
           </button>
         </div>
       </div>
@@ -482,6 +487,7 @@ function PrayerInviteCard({ slug }: { slug: string }) {
 // "Pick a source" sub) so they have a discoverable doorway in;
 // non-admin members see nothing until the source is set.
 function ReflectionEntryCard({ slug }: { slug: string }) {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const today = (() => new Date().toLocaleDateString("en-CA"))();
   const { data } = useQuery<{
@@ -532,7 +538,7 @@ function ReflectionEntryCard({ slug }: { slug: string }) {
               className="text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: "rgba(143,175,150,0.6)" }}
             >
-              Today's reflection
+              {t("community_detail.todays_reflection")}
               <span
                 className="ml-2 inline-flex items-center px-1.5 py-0 rounded-full text-[8px]"
                 style={{
@@ -541,23 +547,21 @@ function ReflectionEntryCard({ slug }: { slug: string }) {
                   letterSpacing: "0.1em",
                 }}
               >
-                BETA
+                {t("community_detail.beta")}
               </span>
             </p>
             <p
               className="text-sm font-semibold mt-0.5"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
             >
-              {sourceLabel ?? "Pick a daily reflection"}
+              {sourceLabel ?? t("community_detail.pick_daily_reflection")}
             </p>
             <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>
               {data.source
                 ? (count === 0
-                    ? "No reflections yet today"
-                    : count === 1
-                      ? "1 reflection shared"
-                      : `${count} reflections shared`)
-                : "Choose CAC or Forward Day by Day for your community"}
+                    ? t("community_detail.no_reflections_today")
+                    : t("community_detail.reflections_shared", { count }))
+                : t("community_detail.choose_reflection_source")}
             </p>
           </div>
           <span className="text-sm shrink-0" style={{ color: "#8FAF96" }}>→</span>
@@ -574,6 +578,7 @@ function ReflectionEntryCard({ slug }: { slug: string }) {
 // group (reusing the shared ReflectionEntryCard). Self-contained so the
 // 3k-line page body doesn't grow another inline branch.
 function ContemplationCommunityHome({ slug, group }: { slug: string; group: Group }) {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const goalMinutes = group.contemplationGoalMinutes ?? 20;
 
@@ -615,23 +620,23 @@ function ContemplationCommunityHome({ slug, group }: { slug: string; group: Grou
         style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}
       >
         <p className="text-[10px] font-semibold uppercase tracking-[0.14em]" style={{ color: "rgba(143,175,150,0.6)" }}>
-          Today's contemplation
+          {t("community_detail.todays_contemplation")}
           <span
             className="ml-2 inline-flex items-center px-1.5 py-0 rounded-full text-[8px]"
             style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", letterSpacing: "0.1em" }}
           >
-            BETA
+            {t("community_detail.beta")}
           </span>
         </p>
         <p className="text-2xl font-bold mt-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-          {iMet ? `You sat your ${effGoalMin} min 🕯️` : `Sit ${effGoalMin} minutes together`}
+          {iMet ? `${t("community_detail.you_sat_your_min", { count: effGoalMin })} 🕯️` : t("community_detail.sit_minutes_together", { count: effGoalMin })}
         </p>
         <p className="text-[13px] mt-1" style={{ color: "#8FAF96" }}>
           {iMet
-            ? "You've met today's shared goal. Rest in it."
+            ? t("community_detail.met_shared_goal")
             : myMin > 0
-              ? `You've sat ${myMin} of ${effGoalMin} min today.`
-              : "A few minutes of shared silence. Everyone holds the same goal."}
+              ? t("community_detail.you_sat_of_min", { min: myMin, goal: effGoalMin })
+              : t("community_detail.shared_silence_sub")}
         </p>
 
         <div className="mt-3 h-2 rounded-full overflow-hidden" style={{ background: "rgba(46,107,64,0.18)" }}>
@@ -640,8 +645,8 @@ function ContemplationCommunityHome({ slug, group }: { slug: string; group: Grou
 
         <p className="text-[12px] mt-2.5" style={{ color: "rgba(143,175,150,0.85)" }}>
           {memberCount > 0
-            ? `Together: ${totalMin} min today · ${metCount} of ${memberCount} sat their ${effGoalMin}`
-            : `Together: ${totalMin} min today`}
+            ? t("community_detail.together_min_met", { total: totalMin, met: metCount, members: memberCount, goal: effGoalMin })
+            : t("community_detail.together_min", { total: totalMin })}
         </p>
 
         <button
@@ -649,7 +654,7 @@ function ContemplationCommunityHome({ slug, group }: { slug: string; group: Grou
           className="w-full mt-4 py-3 rounded-xl text-sm font-semibold transition-opacity hover:opacity-90"
           style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
         >
-          {iMet ? "Sit again →" : "Sit in contemplation →"}
+          {iMet ? t("community_detail.sit_again") : t("community_detail.sit_in_contemplation")}
         </button>
       </div>
 
@@ -658,7 +663,7 @@ function ContemplationCommunityHome({ slug, group }: { slug: string; group: Grou
           /communities/:slug/reflection discussion thread. */}
       <div>
         <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
-          Reflect together
+          {t("community_detail.reflect_together")}
         </p>
         <ReflectionEntryCard slug={slug} />
       </div>
@@ -673,6 +678,7 @@ function ContemplationCommunityHome({ slug, group }: { slug: string; group: Grou
 // admins still see it (with a "Turn on in settings" sub) so they have a
 // discoverable way in.
 function SundayReflectionEntryCard({ slug }: { slug: string }) {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { data } = useQuery<{
     enabled: boolean;
@@ -713,7 +719,7 @@ function SundayReflectionEntryCard({ slug }: { slug: string }) {
               className="text-[10px] font-semibold uppercase tracking-widest"
               style={{ color: "rgba(143,175,150,0.6)" }}
             >
-              This Sunday's service
+              {t("community_detail.this_sundays_service")}
               <span
                 className="ml-2 inline-flex items-center px-1.5 py-0 rounded-full text-[8px]"
                 style={{
@@ -722,23 +728,21 @@ function SundayReflectionEntryCard({ slug }: { slug: string }) {
                   letterSpacing: "0.1em",
                 }}
               >
-                BETA
+                {t("community_detail.beta")}
               </span>
             </p>
             <p
               className="text-sm font-semibold mt-0.5"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
             >
-              {data.enabled ? "Reflect with your community" : "Turn on Sunday reflections"}
+              {data.enabled ? t("community_detail.reflect_with_community") : t("community_detail.turn_on_sunday_reflections")}
             </p>
             <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>
               {data.enabled
                 ? (count === 0
-                    ? "No reflections this week — be the first"
-                    : count === 1
-                      ? "1 reflection shared this week"
-                      : `${count} reflections shared this week`)
-                : "Send a Sunday-evening invitation to reflect"}
+                    ? t("community_detail.no_reflections_week")
+                    : t("community_detail.reflections_shared_week", { count }))
+                : t("community_detail.send_sunday_invitation")}
             </p>
           </div>
           <span className="text-sm shrink-0" style={{ color: "#8FAF96" }}>→</span>
@@ -754,11 +758,11 @@ function SundayReflectionEntryCard({ slug }: { slug: string }) {
 // Day-of-week short label for a gathering's upcoming slot, matching the
 // dashboard's `nextDayLabel` so the home tab and community tab read the
 // same way. Returns "Today" / "Tomorrow" / "Wednesday" etc.
-function gatheringDayLabel(date: Date): string {
-  if (isToday(date)) return "Today";
+function gatheringDayLabel(date: Date, t: (k: string, opts?: Record<string, unknown>) => string): string {
+  if (isToday(date)) return t("community_detail.day_today");
   const now = new Date();
   const tomorrow = addDays(startOfDay(now), 1);
-  if (startOfDay(date).getTime() === tomorrow.getTime()) return "Tomorrow";
+  if (startOfDay(date).getTime() === tomorrow.getTime()) return t("community_detail.day_tomorrow");
   // Weeks are Sun→Sat. If the date falls in *this* week (after today),
   // use the bare weekday — "Friday" reads as "this coming Friday."
   const thisWeekEnd = endOfWeek(now);
@@ -770,7 +774,7 @@ function gatheringDayLabel(date: Date): string {
   const nextWeekStart = startOfWeek(addWeeks(now, 1));
   const nextWeekEnd = endOfWeek(addWeeks(now, 1));
   if (date >= nextWeekStart && date <= nextWeekEnd) {
-    return `Next ${format(date, "EEEE")}`;
+    return t("community_detail.day_next_weekday", { weekday: format(date, "EEEE") });
   }
   // Two or more weeks out — bare weekday is ambiguous (which Wednesday?),
   // so fall back to a short date like "Wed, Jun 3".
@@ -822,6 +826,7 @@ function CommunityGatheringCard({
   g: Gathering;
   onOpen: () => void;
 }) {
+  const { t } = useTranslation();
   // Inside a community page every gathering already belongs to the
   // community whose name is in the header — a top-right eyebrow with
   // the same community name would render the community's emoji twice.
@@ -837,7 +842,7 @@ function CommunityGatheringCard({
   // the community header) already gives the venue context, and the
   // detail modal carries the full address.
   const next = computeNextGatheringDate(g);
-  const timeLabel = next ? `${gatheringDayLabel(next)} · ${format(next, "h:mm a")}` : null;
+  const timeLabel = next ? `${gatheringDayLabel(next, t)} · ${format(next, "h:mm a")}` : null;
   const isVideoGathering = typeof g.meetingUrl === "string" && !!g.meetingUrl.trim();
 
   return (
@@ -871,7 +876,7 @@ function CommunityGatheringCard({
           )}
           {isVideoGathering && (
             <div className="mt-1 text-[11px] font-medium" style={{ color: "rgba(143,175,150,0.85)" }}>
-              📹 Video call
+              📹 {t("community_detail.video_call")}
             </div>
           )}
         </div>
@@ -898,6 +903,7 @@ function CommunityGatheringDetailModal({
   isAdmin: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   // Communities the gathering is shared with (for the read-only chips).
   type ShareRow = { id: number; name: string; slug: string; emoji: string | null };
@@ -907,7 +913,7 @@ function CommunityGatheringDetailModal({
   });
   const next = computeNextGatheringDate(g);
   const dateLabel = next
-    ? (isToday(next) ? "Today" : format(next, "EEEE, MMM d"))
+    ? (isToday(next) ? t("community_detail.day_today") : format(next, "EEEE, MMM d"))
     : null;
   const timeLabel = next ? format(next, "h:mm a") : null;
   // Video-call gathering — show a "Join video call" button instead of
@@ -954,7 +960,7 @@ function CommunityGatheringDetailModal({
                     onClose();
                     setLocation(`/gatherings/${g.id}/settings`);
                   }}
-                  aria-label="Gathering settings"
+                  aria-label={t("community_detail.gathering_settings")}
                   className="rounded-full p-1.5 transition-opacity hover:opacity-80"
                   style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0", cursor: "pointer" }}
                 >
@@ -963,7 +969,7 @@ function CommunityGatheringDetailModal({
               )}
               <button
                 onClick={onClose}
-                aria-label="Close"
+                aria-label={t("community_detail.close")}
                 className="rounded-full p-1.5 transition-opacity hover:opacity-80"
                 style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0" }}
               >
@@ -983,7 +989,7 @@ function CommunityGatheringDetailModal({
                   <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>📍 {locationLabel}</p>
                 )}
                 {meetingUrl && (
-                  <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>📹 Video call</p>
+                  <p className="text-[12px] mt-0.5" style={{ color: "#8FAF96" }}>📹 {t("community_detail.video_call")}</p>
                 )}
               </div>
             )}
@@ -999,7 +1005,7 @@ function CommunityGatheringDetailModal({
                 className="rounded-xl px-4 py-3 text-center font-semibold text-sm cursor-pointer transition-opacity hover:opacity-90"
                 style={{ background: "#2D5E3F", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.6)" }}
               >
-                📹 Join video call →
+                📹 {t("community_detail.join_video_call")}
               </button>
             )}
             {description.trim() && (
@@ -1030,7 +1036,7 @@ function CommunityGatheringDetailModal({
                   className="text-[10px] font-bold uppercase tracking-[0.14em] mb-2"
                   style={{ color: "rgba(200,212,192,0.55)" }}
                 >
-                  Shared with
+                  {t("community_detail.shared_with")}
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {(shareQ.data?.additional ?? []).map((row) => (
@@ -1058,6 +1064,7 @@ function CommunityGatheringDetailModal({
 }
 
 function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) {
+  const { t } = useTranslation();
   // "<Month D> — <time>" when the community only has one service time on
   // their schedule; "<Month D> — Tap to See All Service Times" when there
   // are multiple. Single-service churches were getting an awkward "tap to
@@ -1076,7 +1083,7 @@ function ServiceTimesPillRow({ schedule }: { schedule: ServiceScheduleRecord }) 
   // Gatherings list uses so the rendering is consistent.
   const trailing = schedule.times.length === 1
     ? formatHM12(schedule.times[0].time)
-    : "Tap to See All Service Times";
+    : t("community_detail.tap_to_see_all_times");
   return (
     <div className="mt-2 text-xs font-medium" style={{ color: "#F0EDE6", letterSpacing: "-0.01em" }}>
       <span style={{ color: "#C8D4C0" }}>{dateLabel}</span>
@@ -1103,6 +1110,7 @@ function CommunityServiceHomeCard({
   groupEmoji: string | null;
   onOpen: () => void;
 }) {
+  const { t } = useTranslation();
   const { data } = useQuery<{ schedule: ServiceScheduleRecord | null; canEdit: boolean }>({
     queryKey: ["/api/groups", slug, "service-schedule"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/service-schedule`),
@@ -1111,8 +1119,8 @@ function CommunityServiceHomeCard({
   const schedule = data?.schedule ?? null;
   if (!schedule || schedule.times.length === 0) return null;
 
-  const dayLabel = DOW_NAMES.find(d => d.value === schedule.dayOfWeek)?.label ?? "Sunday";
-  const title = schedule.name || `${dayLabel} Services`;
+  const dayLabel = dowNames(t).find(d => d.value === schedule.dayOfWeek)?.label ?? t("community_detail.day_sunday");
+  const title = schedule.name || t("community_detail.day_services", { day: dayLabel });
 
   // Eyebrow-less card so the community home tab can stack it under a single
   // shared "Gatherings" label alongside the ritual cards. The outer
@@ -1173,6 +1181,7 @@ type PrayerActivityUser = {
 };
 
 function PrayedThisWeekTicker({ slug }: { slug: string }) {
+  const { t } = useTranslation();
   const { data } = useQuery<{ users: PrayerActivityUser[] }>({
     queryKey: ["/api/groups", slug, "prayer-activity"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-activity`),
@@ -1221,7 +1230,7 @@ function PrayedThisWeekTicker({ slug }: { slug: string }) {
   if (users.length === 0) return null;
 
   const renderPill = (u: PrayerActivityUser, key: string) => {
-    const first = (u.name ?? "").split(/\s+/)[0] || "Friend";
+    const first = (u.name ?? "").split(/\s+/)[0] || t("community_detail.friend");
     return (
       <div
         key={key}
@@ -1247,7 +1256,7 @@ function PrayedThisWeekTicker({ slug }: { slug: string }) {
           </div>
         )}
         <span className="text-xs font-medium whitespace-nowrap" style={{ color: "#F0EDE6" }}>
-          {first} prayed 🙏
+          {t("community_detail.name_prayed", { name: first })} 🙏
         </span>
       </div>
     );
@@ -1256,7 +1265,7 @@ function PrayedThisWeekTicker({ slug }: { slug: string }) {
   return (
     <div>
       <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
-        Prayed This Week
+        {t("community_detail.prayed_this_week")}
       </p>
       <div
         ref={containerRef}
@@ -1306,6 +1315,7 @@ function PrayedThisWeekTicker({ slug }: { slug: string }) {
 // compose already behaves.
 
 function CommunityPrayerComposeBar({ slug, groupName }: { slug: string; groupName: string }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [value, setValue] = useState("");
   const [saved, setSaved] = useState(false);
@@ -1341,7 +1351,7 @@ function CommunityPrayerComposeBar({ slug, groupName }: { slug: string; groupNam
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
-          placeholder="Share a prayer... 🌿"
+          placeholder={`${t("community_detail.share_a_prayer")} 🌿`}
           maxLength={1000}
           disabled={createRequest.isPending}
           className="flex-1 text-sm px-4 py-2.5 rounded-xl border placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/40 focus:border-[#8FAF96] transition-all"
@@ -1366,7 +1376,7 @@ function CommunityPrayerComposeBar({ slug, groupName }: { slug: string; groupNam
             className="text-xs mt-2"
             style={{ color: "#A8C5A0", fontFamily: FONT }}
           >
-            ✓ Shared with {groupName}
+            ✓ {t("community_detail.shared_with_group", { name: groupName })}
           </motion.p>
         )}
       </AnimatePresence>
@@ -1375,6 +1385,7 @@ function CommunityPrayerComposeBar({ slug, groupName }: { slug: string; groupNam
 }
 
 export default function CommunityDetailPage() {
+  const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -1385,9 +1396,9 @@ export default function CommunityDetailPage() {
   // Community Settings "Edit Members" drop the viewer straight on the list.
   const search = useSearch();
   const initialTab = (() => {
-    const t = new URLSearchParams(search).get("tab");
+    const tabParam = new URLSearchParams(search).get("tab");
     return (["home", "prayer", "practices", "gatherings", "announcements", "members"] as const)
-      .find((k) => k === t) ?? "home";
+      .find((k) => k === tabParam) ?? "home";
   })();
   const [activeTab, setActiveTab] = useState<"home" | "prayer" | "practices" | "gatherings" | "announcements" | "members">(initialTab);
 
@@ -1640,7 +1651,7 @@ export default function CommunityDetailPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
     },
     onError: (err: any) => {
-      setInviteError(err?.message || "Couldn't add that member. Please try again.");
+      setInviteError(err?.message || t("community_detail.add_member_error"));
     },
   });
 
@@ -1670,7 +1681,7 @@ export default function CommunityDetailPage() {
       // apiRequest hands us the raw response text; when the server replies
       // with JSON like `{"error":"..."}` we extract the message so the
       // user sees "Only pilot users can…" instead of a JSON blob.
-      let msg = err?.message || "Couldn't change that role. Please try again.";
+      let msg = err?.message || t("community_detail.change_role_error");
       try {
         const parsed = JSON.parse(msg);
         if (parsed && typeof parsed.error === "string") msg = parsed.error;
@@ -1717,7 +1728,7 @@ export default function CommunityDetailPage() {
   if (!groupData) return (
     <Layout>
       <div className="max-w-2xl mx-auto w-full text-center py-20">
-        <p className="text-sm" style={{ color: "#8FAF96" }}>Loading...</p>
+        <p className="text-sm" style={{ color: "#8FAF96" }}>{t("community_detail.loading")}</p>
       </div>
     </Layout>
   );
@@ -1733,10 +1744,10 @@ export default function CommunityDetailPage() {
   const canInviteByEmail = isAdmin && isBeta;
 
   const tabs = [
-    { key: "home" as const, label: "Home", emoji: "🏡" },
-    { key: "gatherings" as const, label: "Gatherings", emoji: "🤝🏽" },
-    { key: "members" as const, label: "Members", emoji: "👥" },
-    { key: "announcements" as const, label: "Announcements", emoji: "📮" },
+    { key: "home" as const, label: t("community_detail.tab_home"), emoji: "🏡" },
+    { key: "gatherings" as const, label: t("community_detail.tab_gatherings"), emoji: "🤝🏽" },
+    { key: "members" as const, label: t("community_detail.tab_members"), emoji: "👥" },
+    { key: "announcements" as const, label: t("community_detail.tab_announcements"), emoji: "📮" },
   ];
 
   return (
@@ -1749,7 +1760,7 @@ export default function CommunityDetailPage() {
             className="text-xs mb-3 flex items-center gap-1 transition-opacity hover:opacity-70"
             style={{ color: "#8FAF96" }}
           >
-            ← Communities
+            ← {t("community_detail.communities")}
           </button>
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -1772,7 +1783,7 @@ export default function CommunityDetailPage() {
                   // honest about how many people the community will
                   // *feel* like it has.
                   const joinedCount = members.filter(m => m.joinedAt !== null && m.role !== "hidden_admin").length;
-                  return `${joinedCount} ${joinedCount === 1 ? "member" : "members"}`;
+                  return t("community_detail.member_count", { count: joinedCount });
                 })()}
               </p>
             </div>
@@ -1782,7 +1793,7 @@ export default function CommunityDetailPage() {
                 onClick={() => setLocation(`/communities/${slug}/settings`)}
                 className="p-2 rounded-xl"
                 style={{ background: "rgba(46,107,64,0.15)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.25)" }}
-                title="Community settings"
+                title={t("community_detail.community_settings")}
               >
                 <Settings size={15} />
               </button>
@@ -1791,7 +1802,7 @@ export default function CommunityDetailPage() {
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                <Plus size={14} /> Invite
+                <Plus size={14} /> {t("community_detail.invite")}
               </button>
               </div>
             )}
@@ -1830,7 +1841,7 @@ export default function CommunityDetailPage() {
               className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2 px-1"
               style={{ color: "rgba(200,212,192,0.55)" }}
             >
-              Group intentions
+              {t("community_detail.group_intentions")}
             </p>
             {/* Compact intention cards — smaller than the earlier
                 "We pray" serif block. Keeps the italic voice for the
@@ -1878,18 +1889,18 @@ export default function CommunityDetailPage() {
 
           const headline = (() => {
             if (newMembers.length > 0 && newPrayers.length > 0) {
-              return `${totalCount} new arrivals`;
+              return t("community_detail.new_arrivals", { count: totalCount });
             }
             if (newMembers.length > 0) {
               if (newMembers.length === 1) {
                 const m = newMembers[0];
-                const first = (m.name ?? "").split(/\s+/)[0] || "Someone";
-                return `${first} joined ${group.name}`;
+                const first = (m.name ?? "").split(/\s+/)[0] || t("community_detail.someone");
+                return t("community_detail.name_joined", { name: first, group: group.name });
               }
-              return `${newMembers.length} new members joined`;
+              return t("community_detail.new_members_joined", { count: newMembers.length });
             }
-            if (newPrayers.length === 1) return "A new prayer request";
-            return `${newPrayers.length} new prayer requests`;
+            if (newPrayers.length === 1) return t("community_detail.a_new_prayer_request");
+            return t("community_detail.new_prayer_requests", { count: newPrayers.length });
           })();
 
           const dismiss = () => {
@@ -1919,7 +1930,7 @@ export default function CommunityDetailPage() {
                   <div className="flex items-center justify-center gap-2 mb-2">
                     <Sparkles size={18} style={{ color: "#E8B872" }} />
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: "#C8D4C0" }}>
-                      Something new
+                      {t("community_detail.something_new")}
                     </p>
                   </div>
                   <h2 className="text-xl font-bold" style={{ color: "#F0EDE6", fontFamily: FONT, letterSpacing: "-0.02em" }}>
@@ -1931,7 +1942,7 @@ export default function CommunityDetailPage() {
                 {newMembers.length > 0 && (
                   <div className="px-5 pb-3">
                     <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.55)" }}>
-                      {newMembers.length === 1 ? "New member" : "New members"}
+                      {newMembers.length === 1 ? t("community_detail.new_member") : t("community_detail.new_members")}
                     </p>
                     <div className="space-y-1.5">
                       {newMembers.slice(0, 5).map(m => (
@@ -1949,17 +1960,17 @@ export default function CommunityDetailPage() {
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate" style={{ color: "#F0EDE6" }}>
-                              {m.name || "A new friend"}
+                              {m.name || t("community_detail.a_new_friend")}
                             </p>
                             <p className="text-[11px]" style={{ color: "#8FAF96" }}>
-                              joined {new Date(m.joinedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                              {t("community_detail.joined_date", { date: new Date(m.joinedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) })}
                             </p>
                           </div>
                         </div>
                       ))}
                       {newMembers.length > 5 && (
                         <p className="text-[11px] text-center pt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
-                          + {newMembers.length - 5} more
+                          {t("community_detail.plus_n_more", { count: newMembers.length - 5 })}
                         </p>
                       )}
                     </div>
@@ -1970,7 +1981,7 @@ export default function CommunityDetailPage() {
                 {newPrayers.length > 0 && (
                   <div className="px-5 pb-3">
                     <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.55)" }}>
-                      {newPrayers.length === 1 ? "New prayer request" : "New prayer requests"}
+                      {newPrayers.length === 1 ? t("community_detail.new_prayer_request_label") : t("community_detail.new_prayer_requests_label")}
                     </p>
                     <div className="space-y-1.5">
                       {newPrayers.slice(0, 3).map(p => (
@@ -1980,7 +1991,7 @@ export default function CommunityDetailPage() {
                           style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.25)" }}
                         >
                           <p className="text-[10px] uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
-                            From {p.isAnonymous ? "Someone" : (p.ownerName ?? "A member")}
+                            {t("community_detail.from_name", { name: p.isAnonymous ? t("community_detail.someone") : (p.ownerName ?? t("community_detail.a_member")) })}
                           </p>
                           <p className="text-sm leading-relaxed line-clamp-2" style={{ color: "#F0EDE6", fontFamily: FONT }}>
                             {p.body}
@@ -1989,7 +2000,7 @@ export default function CommunityDetailPage() {
                       ))}
                       {newPrayers.length > 3 && (
                         <p className="text-[11px] text-center pt-1" style={{ color: "rgba(143,175,150,0.6)" }}>
-                          + {newPrayers.length - 3} more on the Prayer Wall
+                          {t("community_detail.plus_n_more_on_wall", { count: newPrayers.length - 3 })}
                         </p>
                       )}
                     </div>
@@ -2007,7 +2018,7 @@ export default function CommunityDetailPage() {
                       className="flex-1 py-2.5 rounded-lg text-xs font-semibold"
                       style={{ background: "rgba(46,107,64,0.2)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.4)" }}
                     >
-                      See prayers
+                      {t("community_detail.see_prayers")}
                     </button>
                   )}
                   {newMembers.length > 0 && newPrayers.length === 0 && (
@@ -2019,7 +2030,7 @@ export default function CommunityDetailPage() {
                       className="flex-1 py-2.5 rounded-lg text-xs font-semibold"
                       style={{ background: "rgba(46,107,64,0.2)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.4)" }}
                     >
-                      See members
+                      {t("community_detail.see_members")}
                     </button>
                   )}
                   <button
@@ -2027,7 +2038,7 @@ export default function CommunityDetailPage() {
                     className="flex-1 py-2.5 rounded-lg text-xs font-semibold"
                     style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                   >
-                    Got it
+                    {t("community_detail.got_it")}
                   </button>
                 </div>
               </div>
@@ -2061,14 +2072,14 @@ export default function CommunityDetailPage() {
           return (
             <div className="mb-4 rounded-xl p-4" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}>
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>Share invite link</p>
+                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>{t("community_detail.share_invite_link")}</p>
                 <button onClick={() => { setShowInvite(false); setLinkCopied(false); }}>
                   <X size={16} style={{ color: "#8FAF96" }} />
                 </button>
               </div>
 
               <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.75)" }}>
-                Anyone with this link can join {group.name}. If it's shared too widely, rotate it below.
+                {t("community_detail.invite_link_desc", { name: group.name })}
               </p>
 
               {inviteUrl ? (
@@ -2086,9 +2097,9 @@ export default function CommunityDetailPage() {
                       onClick={copyToClipboard}
                       className="px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 shrink-0"
                       style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-                      title="Copy to clipboard"
+                      title={t("community_detail.copy_to_clipboard")}
                     >
-                      {linkCopied ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}
+                      {linkCopied ? <><Check size={14} /> {t("community_detail.copied")}</> : <><Copy size={14} /> {t("community_detail.copy")}</>}
                     </button>
                   </div>
 
@@ -2102,7 +2113,7 @@ export default function CommunityDetailPage() {
                       web Share API, then to a `sms:` URL as last resort. */}
                   <button
                     onClick={() => {
-                      const text = `You're invited to join ${group.name} on Phoebe — a small private circle for shared prayer. Tap to join:`;
+                      const text = t("community_detail.invite_share_text", { name: group.name });
                       const shareDetail = { title: group.name, text, url: inviteUrl };
                       // Native shell path — dispatched event, Capacitor
                       // Share plugin opens the iOS share sheet.
@@ -2122,12 +2133,12 @@ export default function CommunityDetailPage() {
                     className="w-full py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 mb-2"
                     style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                   >
-                    <MessageSquareText size={14} /> Send via Messages
+                    <MessageSquareText size={14} /> {t("community_detail.send_via_messages")}
                   </button>
 
                   <button
                     onClick={() => {
-                      if (window.confirm("Rotate the invite link? The current URL will stop working immediately.")) {
+                      if (window.confirm(t("community_detail.rotate_link_confirm"))) {
                         rotateInviteMutation.mutate();
                       }
                     }}
@@ -2135,12 +2146,12 @@ export default function CommunityDetailPage() {
                     className="w-full py-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 disabled:opacity-40"
                     style={{ background: "rgba(46,107,64,0.15)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
                   >
-                    <RefreshCw size={12} /> {rotateInviteMutation.isPending ? "Rotating…" : "Rotate link"}
+                    <RefreshCw size={12} /> {rotateInviteMutation.isPending ? t("community_detail.rotating") : t("community_detail.rotate_link")}
                   </button>
                 </>
               ) : (
                 <p className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>
-                  Invite link not available.
+                  {t("community_detail.invite_link_unavailable")}
                 </p>
               )}
             </div>
@@ -2149,18 +2160,18 @@ export default function CommunityDetailPage() {
 
         {/* Tabs — user-scrollable horizontal strip */}
         <ScrollStrip className="mb-5" contentStyle={{ gap: 8 }}>
-            {tabs.map((t, i) => (
+            {tabs.map((tab, i) => (
               <button
                 key={i}
-                onClick={() => setActiveTab(t.key)}
+                onClick={() => setActiveTab(tab.key)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0"
                 style={{
-                  background: activeTab === t.key ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.1)",
-                  color: activeTab === t.key ? "#F0EDE6" : "#8FAF96",
-                  border: `1px solid ${activeTab === t.key ? "rgba(46,107,64,0.55)" : "rgba(46,107,64,0.2)"}`,
+                  background: activeTab === tab.key ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.1)",
+                  color: activeTab === tab.key ? "#F0EDE6" : "#8FAF96",
+                  border: `1px solid ${activeTab === tab.key ? "rgba(46,107,64,0.55)" : "rgba(46,107,64,0.2)"}`,
                 }}
               >
-                <span>{t.emoji}</span> {t.label}
+                <span>{tab.emoji}</span> {tab.label}
               </button>
             ))}
         </ScrollStrip>
@@ -2233,11 +2244,11 @@ export default function CommunityDetailPage() {
               otherGroups.length === 0
                 ? null
                 : otherGroups.length === 1
-                  ? `Also shared with ${otherGroups[0]}`
-                  : `Also shared with ${otherGroups.slice(0, 2).join(", ")}${otherGroups.length > 2 ? ` +${otherGroups.length - 2}` : ""}`;
+                  ? t("community_detail.also_shared_with", { groups: otherGroups[0] })
+                  : t("community_detail.also_shared_with", { groups: `${otherGroups.slice(0, 2).join(", ")}${otherGroups.length > 2 ? ` +${otherGroups.length - 2}` : ""}` });
             const goal = m.commitmentSessionsGoal ?? (m.goalDays && m.goalDays > 0 && m.goalDays < 365 ? m.goalDays : null);
             const logged = m.computedSessionsLogged ?? (m.commitmentSessionsLogged ?? 0);
-            const progressLabel = goal ? `${logged}/${goal} days` : null;
+            const progressLabel = goal ? t("community_detail.progress_days", { logged, goal }) : null;
             // Always land on the deep detail page — /moments/:id — which now
             // carries the full prayer + community ritual. Earlier we routed
             // window-open intercessions to the tiny /moment/:token/:userToken
@@ -2275,7 +2286,7 @@ export default function CommunityDetailPage() {
                             own pill made the list read like a
                             scoreboard rather than an invitation. */}
                         {prayedToday && (
-                          <span className="text-[10px]" style={{ color: "#8FAF96" }}>Prayed today 🌿</span>
+                          <span className="text-[10px]" style={{ color: "#8FAF96" }}>{t("community_detail.prayed_today")} 🌿</span>
                         )}
                       </div>
                     </div>
@@ -2321,7 +2332,7 @@ export default function CommunityDetailPage() {
                 <div>
                   <div className="flex items-baseline justify-between mb-3">
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
-                      Praying Today
+                      {t("community_detail.praying_today")}
                     </p>
                     {!showFocusForm && (
                       <button
@@ -2329,7 +2340,7 @@ export default function CommunityDetailPage() {
                         className="text-[11px] font-semibold flex items-center gap-1 transition-opacity hover:opacity-80"
                         style={{ color: "#A8C5A0" }}
                       >
-                        <Plus size={12} /> Add
+                        <Plus size={12} /> {t("community_detail.add")}
                       </button>
                     )}
                   </div>
@@ -2340,19 +2351,19 @@ export default function CommunityDetailPage() {
                       style={{ background: "rgba(46,107,64,0.1)", border: "1px solid rgba(46,107,64,0.28)" }}
                     >
                       <div className="flex gap-1.5 mb-2">
-                        {(["situation", "cause", "custom"] as const).map(t => (
+                        {(["situation", "cause", "custom"] as const).map(ft => (
                           <button
-                            key={t}
+                            key={ft}
                             type="button"
-                            onClick={() => setFocusType(t)}
+                            onClick={() => setFocusType(ft)}
                             className="text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full transition-all"
                             style={{
-                              background: focusType === t ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
-                              color: focusType === t ? "#F0EDE6" : "#8FAF96",
-                              border: `1px solid ${focusType === t ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.18)"}`,
+                              background: focusType === ft ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.08)",
+                              color: focusType === ft ? "#F0EDE6" : "#8FAF96",
+                              border: `1px solid ${focusType === ft ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.18)"}`,
                             }}
                           >
-                            {t === "situation" ? "Situation" : t === "cause" ? "Cause" : "Other"}
+                            {ft === "situation" ? t("community_detail.focus_situation") : ft === "cause" ? t("community_detail.focus_cause") : t("community_detail.focus_other")}
                           </button>
                         ))}
                       </div>
@@ -2362,10 +2373,10 @@ export default function CommunityDetailPage() {
                         onChange={e => setFocusSubject(e.target.value)}
                         placeholder={
                           focusType === "situation"
-                            ? "A situation or event we're holding in prayer…"
+                            ? t("community_detail.focus_placeholder_situation")
                             : focusType === "cause"
-                              ? "A cause we're lifting up…"
-                              : "What are we praying for?"
+                              ? t("community_detail.focus_placeholder_cause")
+                              : t("community_detail.focus_placeholder_custom")
                         }
                         maxLength={280}
                         className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
@@ -2381,7 +2392,7 @@ export default function CommunityDetailPage() {
                           className="text-[11px] px-3 py-1.5 rounded-lg"
                           style={{ color: "#8FAF96" }}
                         >
-                          Cancel
+                          {t("community_detail.cancel")}
                         </button>
                         <button
                           type="button"
@@ -2390,7 +2401,7 @@ export default function CommunityDetailPage() {
                           className="text-[11px] font-semibold px-3 py-1.5 rounded-lg disabled:opacity-40"
                           style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                         >
-                          {addFocusMutation.isPending ? "Adding…" : "Add"}
+                          {addFocusMutation.isPending ? t("community_detail.adding") : t("community_detail.add")}
                         </button>
                       </div>
                     </div>
@@ -2398,7 +2409,7 @@ export default function CommunityDetailPage() {
 
                   {focusEntries.length === 0 ? (
                     <p className="text-[12px] italic text-center py-3" style={{ color: "rgba(143,175,150,0.55)" }}>
-                      Nothing named yet today. Be the first to bring something to the circle.
+                      {t("community_detail.nothing_named_today")}
                     </p>
                   ) : (
                     <div className="space-y-2">
@@ -2406,14 +2417,14 @@ export default function CommunityDetailPage() {
                         const isAdder = f.addedBy?.email === currentUserEmail;
                         const canDelete = isAdder || isAdmin;
                         const label = f.focusType === "situation"
-                          ? "Situation"
+                          ? t("community_detail.focus_situation")
                           : f.focusType === "cause"
-                            ? "Cause"
+                            ? t("community_detail.focus_cause")
                             : f.focusType === "person"
-                              ? "Person"
+                              ? t("community_detail.focus_person")
                               : null;
                         const subjectLine = f.subject
-                          ? (f.subject.name || "A friend")
+                          ? (f.subject.name || t("community_detail.a_friend"))
                           : (f.subjectText || "");
                         return (
                           <div
@@ -2456,20 +2467,20 @@ export default function CommunityDetailPage() {
                                 </p>
                                 {f.addedBy && (
                                   <p className="text-[11px] mt-0.5" style={{ color: "rgba(143,175,150,0.55)" }}>
-                                    added by {isAdder ? "you" : (f.addedBy.name || f.addedBy.email.split("@")[0])}
+                                    {t("community_detail.added_by", { who: isAdder ? t("community_detail.you") : (f.addedBy.name || f.addedBy.email.split("@")[0]) })}
                                   </p>
                                 )}
                               </div>
                               {canDelete && (
                                 <button
                                   onClick={() => {
-                                    if (window.confirm("Remove this from today's prayer?")) {
+                                    if (window.confirm(t("community_detail.remove_from_prayer_confirm"))) {
                                       removeFocusMutation.mutate(f.id);
                                     }
                                   }}
                                   disabled={removeFocusMutation.isPending}
                                   className="shrink-0 p-1 rounded-lg transition-opacity hover:opacity-70 disabled:opacity-40"
-                                  title="Remove"
+                                  title={t("community_detail.remove")}
                                 >
                                   <X size={14} style={{ color: "rgba(143,175,150,0.55)" }} />
                                 </button>
@@ -2510,7 +2521,7 @@ export default function CommunityDetailPage() {
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
-                      Gatherings
+                      {t("community_detail.gatherings")}
                     </p>
                     {(gatheringsData?.gatherings ?? []).length > 3 && (
                       <button
@@ -2518,7 +2529,7 @@ export default function CommunityDetailPage() {
                         className="text-[11px] font-semibold transition-opacity hover:opacity-70"
                         style={{ color: "#8FAF96" }}
                       >
-                        See all →
+                        {t("community_detail.see_all")}
                       </button>
                     )}
                   </div>
@@ -2543,7 +2554,7 @@ export default function CommunityDetailPage() {
               {(intercessions.length > 0 || boundFeeds.length > 0) && (
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
-                    Intercessions
+                    {t("community_detail.intercessions")}
                   </p>
                   <div className="space-y-2">
                     {/* Bound prayer feeds — collapsed to one card per
@@ -2555,10 +2566,10 @@ export default function CommunityDetailPage() {
                       const cover = f.feedCoverEmoji ?? "🕊️";
                       const count = f.todayEntries.length;
                       const subtitle = count === 0
-                        ? "Nothing yet today"
+                        ? t("community_detail.nothing_yet_today")
                         : count === 1
                           ? f.todayEntries[0].title
-                          : `${count} intercessions today`;
+                          : t("community_detail.intercessions_today", { count });
                       return (
                         <Link key={`feed-${f.feedId}`} href={`/prayer-feeds/${f.feedSlug}`} className="block">
                           <div
@@ -2578,7 +2589,7 @@ export default function CommunityDetailPage() {
                               className="absolute top-1/2 -translate-y-1/2 right-3 text-[10px] font-semibold rounded-full px-2.5 py-0.5"
                               style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", letterSpacing: "0.06em" }}
                             >
-                              View
+                              {t("community_detail.view")}
                             </span>
                           </div>
                         </Link>
@@ -2593,7 +2604,7 @@ export default function CommunityDetailPage() {
               {otherPractices.length > 0 && (
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.14em] mb-3" style={{ color: "#C8D4C0" }}>
-                    Practices
+                    {t("community_detail.practices")}
                   </p>
                   <div className="space-y-2">
                     {otherPractices.map((m) => renderMomentCard(m, "🌿"))}
@@ -2610,7 +2621,7 @@ export default function CommunityDetailPage() {
               <div>
                 <div className="flex items-center gap-3 mb-3">
                   <h2 className="text-sm font-semibold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
-                    Prayer Requests
+                    {t("community_detail.prayer_requests")}
                   </h2>
                   <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
                 </div>
@@ -2622,8 +2633,8 @@ export default function CommunityDetailPage() {
                       // others show the owner's avatar, anonymous shows an
                       // initials bubble with "Anonymous".
                       const displayName = r.isAnonymous
-                        ? "Anonymous"
-                        : (r.isOwnRequest ? (user.name ?? "You") : (r.ownerName ?? "Someone"));
+                        ? t("community_detail.anonymous")
+                        : (r.isOwnRequest ? (user.name ?? t("community_detail.you_name")) : (r.ownerName ?? t("community_detail.someone")));
                       const displayAvatar = r.isAnonymous
                         ? null
                         : (r.isOwnRequest ? (user.avatarUrl ?? null) : r.ownerAvatarUrl);
@@ -2661,7 +2672,7 @@ export default function CommunityDetailPage() {
                               )}
                               <div className="min-w-0 flex-1">
                                 <p className="text-[10px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
-                                  {r.isOwnRequest ? "Your request" : `From ${displayName}`}
+                                  {r.isOwnRequest ? t("community_detail.your_request") : t("community_detail.from_name", { name: displayName })}
                                 </p>
                                 <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6", fontFamily: FONT }}>
                                   {r.body}
@@ -2671,7 +2682,7 @@ export default function CommunityDetailPage() {
                                 <span
                                   className="flex items-center gap-1 shrink-0 mt-1"
                                   style={{ color: "rgba(143,175,150,0.55)" }}
-                                  aria-label={`${r.wordCount} ${r.wordCount === 1 ? "word" : "words"} of comfort`}
+                                  aria-label={t("community_detail.words_of_comfort", { count: r.wordCount })}
                                 >
                                   <span className="text-[10px] tabular-nums">{r.wordCount}</span>
                                   <MessageCircle size={14} />
@@ -2691,14 +2702,14 @@ export default function CommunityDetailPage() {
                 <div>
                   <div className="flex items-baseline justify-between mb-3">
                     <p className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: "#C8D4C0" }}>
-                      Announcements
+                      {t("community_detail.announcements")}
                     </p>
                     <button
                       onClick={() => setActiveTab("announcements")}
                       className="text-[11px] font-medium transition-opacity hover:opacity-80"
                       style={{ color: "#A8C5A0" }}
                     >
-                      See all →
+                      {t("community_detail.see_all")}
                     </button>
                   </div>
                   <div className="space-y-2">
@@ -2718,7 +2729,7 @@ export default function CommunityDetailPage() {
 
               {nothingYet && (
                 <p className="text-sm text-center py-10" style={{ color: "rgba(143,175,150,0.5)" }}>
-                  Nothing here yet.{isAdmin ? " Start a practice, gathering, or announcement from the tabs above." : ""}
+                  {t("community_detail.nothing_here_yet")}{isAdmin ? ` ${t("community_detail.nothing_here_admin")}` : ""}
                 </p>
               )}
               {/* Compose + list now live in the unified Prayer Requests
@@ -2738,7 +2749,7 @@ export default function CommunityDetailPage() {
                 type="text"
                 value={newPrayer}
                 onChange={e => setNewPrayer(e.target.value)}
-                placeholder="Share a prayer request..."
+                placeholder={t("community_detail.share_prayer_request")}
                 maxLength={1000}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-[#2E6B40]/30 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
                 style={{ color: "#F0EDE6" }}
@@ -2756,14 +2767,14 @@ export default function CommunityDetailPage() {
 
             {(prayerData?.requests ?? []).length === 0 ? (
               <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.5)" }}>
-                No prayer requests yet. Be the first to share.
+                {t("community_detail.no_prayer_requests")}
               </p>
             ) : (
               <div className="space-y-2">
                 {prayerData!.requests.map(r => {
                   const displayName = r.isAnonymous
-                    ? "Anonymous"
-                    : (r.isOwnRequest ? (user.name ?? "You") : (r.ownerName ?? "Someone"));
+                    ? t("community_detail.anonymous")
+                    : (r.isOwnRequest ? (user.name ?? t("community_detail.you_name")) : (r.ownerName ?? t("community_detail.someone")));
                   const displayAvatar = r.isAnonymous
                     ? null
                     : (r.isOwnRequest ? (user.avatarUrl ?? null) : r.ownerAvatarUrl);
@@ -2794,7 +2805,7 @@ export default function CommunityDetailPage() {
                         <div className="flex items-start justify-between gap-2 flex-1 min-w-0">
                           <div className="flex-1 min-w-0">
                             <p className="text-[10px] font-medium uppercase tracking-widest mb-0.5" style={{ color: "rgba(200,212,192,0.45)" }}>
-                              {r.isOwnRequest ? "Your request" : `From ${displayName}`}
+                              {r.isOwnRequest ? t("community_detail.your_request") : t("community_detail.from_name", { name: displayName })}
                             </p>
                             <p className="text-sm leading-relaxed" style={{ color: "#F0EDE6", fontFamily: FONT }}>
                               {r.body}
@@ -2822,13 +2833,13 @@ export default function CommunityDetailPage() {
             {isAdmin && (
               <Link href="/moment/new" className="block mb-4">
                 <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm" style={{ background: "rgba(46,107,64,0.15)", border: "1px dashed rgba(46,107,64,0.3)", color: "#8FAF96" }}>
-                  <Plus size={16} /> Create a practice for this community
+                  <Plus size={16} /> {t("community_detail.create_practice")}
                 </div>
               </Link>
             )}
             {(practicesData?.practices ?? []).length === 0 ? (
               <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.5)" }}>
-                No practices yet.{isAdmin ? " Create one above." : ""}
+                {t("community_detail.no_practices")}{isAdmin ? ` ${t("community_detail.create_one_above")}` : ""}
               </p>
             ) : (
               <div className="space-y-2">
@@ -2855,13 +2866,13 @@ export default function CommunityDetailPage() {
             {isAdmin && (
               <Link href={`/tradition/new?community=${slug}`} className="block mb-4">
                 <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm" style={{ background: "rgba(46,107,64,0.15)", border: "1px dashed rgba(46,107,64,0.3)", color: "#8FAF96" }}>
-                  <Plus size={16} /> Create a gathering for this community
+                  <Plus size={16} /> {t("community_detail.create_gathering")}
                 </div>
               </Link>
             )}
             {(gatheringsData?.gatherings ?? []).length === 0 ? (
               <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.5)" }}>
-                No gatherings yet.{isAdmin ? " Create one above." : ""}
+                {t("community_detail.no_gatherings")}{isAdmin ? ` ${t("community_detail.create_one_above")}` : ""}
               </p>
             ) : (
               <div className="space-y-2">
@@ -2882,14 +2893,14 @@ export default function CommunityDetailPage() {
                 className="w-full flex items-center gap-2 px-4 py-3 rounded-xl text-sm mb-4"
                 style={{ background: "rgba(46,107,64,0.15)", border: "1px dashed rgba(46,107,64,0.3)", color: "#8FAF96" }}
               >
-                <Plus size={16} /> Post an announcement
+                <Plus size={16} /> {t("community_detail.post_announcement")}
               </button>
             )}
             {isAdmin && showAnnouncementForm && (
               <div className="mb-4 rounded-xl p-4" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}>
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>
-                    {newAnnouncementKind === "prayer_walk" ? "New Prayer Walk" : "New Announcement"}
+                    {newAnnouncementKind === "prayer_walk" ? t("community_detail.new_prayer_walk") : t("community_detail.new_announcement")}
                   </p>
                   <button onClick={() => setShowAnnouncementForm(false)}><X size={16} style={{ color: "#8FAF96" }} /></button>
                 </div>
@@ -2906,7 +2917,7 @@ export default function CommunityDetailPage() {
                       border: "1px solid rgba(46,107,64,0.3)",
                     }}
                   >
-                    Announcement
+                    {t("community_detail.announcement")}
                   </button>
                   <button
                     onClick={() => setNewAnnouncementKind("prayer_walk")}
@@ -2917,7 +2928,7 @@ export default function CommunityDetailPage() {
                       border: "1px solid rgba(46,107,64,0.3)",
                     }}
                   >
-                    🚶🏽 Prayer walk
+                    🚶🏽 {t("community_detail.prayer_walk")}
                   </button>
                 </div>
 
@@ -2925,7 +2936,7 @@ export default function CommunityDetailPage() {
                   type="text"
                   value={newAnnouncementTitle}
                   onChange={e => setNewAnnouncementTitle(e.target.value)}
-                  placeholder={newAnnouncementKind === "prayer_walk" ? "Walk title (e.g. Climate prayer along the Anacostia)" : "Title (optional)"}
+                  placeholder={newAnnouncementKind === "prayer_walk" ? t("community_detail.walk_title_placeholder") : t("community_detail.title_optional_placeholder")}
                   className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
                   style={{ color: "#F0EDE6" }}
                 />
@@ -2943,7 +2954,7 @@ export default function CommunityDetailPage() {
                       type="text"
                       value={newAnnouncementLocation}
                       onChange={e => setNewAnnouncementLocation(e.target.value)}
-                      placeholder="Location (e.g. Lincoln Park, DC)"
+                      placeholder={t("community_detail.walk_location_placeholder")}
                       className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
                       style={{ color: "#F0EDE6" }}
                     />
@@ -2953,7 +2964,7 @@ export default function CommunityDetailPage() {
                 <textarea
                   value={newAnnouncementContent}
                   onChange={e => setNewAnnouncementContent(e.target.value)}
-                  placeholder={newAnnouncementKind === "prayer_walk" ? "Describe the walk — what to expect, what to bring..." : "Write your announcement..."}
+                  placeholder={newAnnouncementKind === "prayer_walk" ? t("community_detail.walk_content_placeholder") : t("community_detail.announcement_content_placeholder")}
                   rows={4}
                   className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm resize-none mb-2"
                   style={{ color: "#F0EDE6" }}
@@ -2968,13 +2979,13 @@ export default function CommunityDetailPage() {
                   className="px-5 py-2 rounded-lg text-xs font-semibold disabled:opacity-40"
                   style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                 >
-                  {announcementMutation.isPending ? "Posting..." : "Post"}
+                  {announcementMutation.isPending ? t("community_detail.posting") : t("community_detail.post")}
                 </button>
               </div>
             )}
             {(announcementsData?.announcements ?? []).length === 0 ? (
               <p className="text-sm text-center py-8" style={{ color: "rgba(143,175,150,0.5)" }}>
-                No announcements yet.
+                {t("community_detail.no_announcements")}
               </p>
             ) : (
               <div className="space-y-3">
@@ -3021,11 +3032,11 @@ export default function CommunityDetailPage() {
           const addPerson = (person: { name?: string; email: string }, role?: "member" | "admin" | "hidden_admin") => {
             const email = person.email.trim().toLowerCase();
             if (!isValidEmail(email)) {
-              setInviteError("Please enter a valid email.");
+              setInviteError(t("community_detail.invalid_email"));
               return;
             }
             if (memberEmails.has(email)) {
-              setInviteError("That person is already in this community.");
+              setInviteError(t("community_detail.already_member"));
               return;
             }
             setInviteError("");
@@ -3090,7 +3101,7 @@ export default function CommunityDetailPage() {
                       </p>
                       {isRoleAdmin && (
                         <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded" style={{ background: "rgba(46,107,64,0.3)", color: "#8FAF96" }}>
-                          Admin
+                          {t("community_detail.role_admin")}
                         </span>
                       )}
                       {isHiddenAdmin && (
@@ -3100,18 +3111,18 @@ export default function CommunityDetailPage() {
                         <span
                           className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded"
                           style={{ background: "rgba(193,127,36,0.18)", color: "#E8B872", border: "1px solid rgba(193,127,36,0.35)" }}
-                          title="Invisible member with admin access (pilot-designated)"
+                          title={t("community_detail.hidden_admin_title")}
                         >
-                          Hidden admin
+                          {t("community_detail.role_hidden_admin")}
                         </span>
                       )}
                       {m.isBeta && (
                         <span
                           className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded"
                           style={{ background: "rgba(193,127,36,0.1)", color: "#E8B872", border: "1px solid rgba(193,127,36,0.3)" }}
-                          title="Pilot tester / app developer"
+                          title={t("community_detail.app_developer_title")}
                         >
-                          App developer
+                          {t("community_detail.app_developer")}
                         </span>
                       )}
                       {isRecentlyJoined(m.joinedAt) && (
@@ -3120,9 +3131,9 @@ export default function CommunityDetailPage() {
                         <span
                           className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded"
                           style={{ background: "rgba(193,127,36,0.18)", color: "#E8B872", border: "1px solid rgba(193,127,36,0.35)" }}
-                          title={`Joined ${new Date(m.joinedAt!).toLocaleDateString()}`}
+                          title={t("community_detail.joined_title", { date: new Date(m.joinedAt!).toLocaleDateString() })}
                         >
-                          New
+                          {t("community_detail.role_new")}
                         </span>
                       )}
                     </div>
@@ -3150,7 +3161,7 @@ export default function CommunityDetailPage() {
                           className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
                           style={{ color: "#A8C5A0", background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.3)" }}
                         >
-                          {changingThisRow ? "…" : "Make admin"}
+                          {changingThisRow ? "…" : t("community_detail.make_admin")}
                         </button>
                       )}
                       {!isSelf && isRoleAdmin && (
@@ -3158,7 +3169,7 @@ export default function CommunityDetailPage() {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            if (window.confirm(`Demote ${m.name || m.email} back to a regular member?`)) {
+                            if (window.confirm(t("community_detail.demote_confirm", { name: m.name || m.email }))) {
                               changeRoleMutation.mutate({ memberId: m.id, role: "member" });
                             }
                           }}
@@ -3166,7 +3177,7 @@ export default function CommunityDetailPage() {
                           className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
                           style={{ color: "rgba(143,175,150,0.75)", border: "1px solid rgba(143,175,150,0.2)" }}
                         >
-                          {changingThisRow ? "…" : "Demote"}
+                          {changingThisRow ? "…" : t("community_detail.demote")}
                         </button>
                       )}
                       {/* Pilot-only hidden-admin toggle — works on SELF too,
@@ -3179,10 +3190,9 @@ export default function CommunityDetailPage() {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            const who = isSelf ? "yourself" : (m.name || m.email);
                             const msg = isSelf
-                              ? "Make yourself a hidden admin? You'll keep admin powers but disappear from the roster for regular members."
-                              : `Make ${who} a hidden admin? They'll gain admin powers but won't appear in the roster for regular members.`;
+                              ? t("community_detail.make_hidden_self_confirm")
+                              : t("community_detail.make_hidden_confirm", { name: m.name || m.email });
                             if (window.confirm(msg)) {
                               changeRoleMutation.mutate({ memberId: m.id, role: "hidden_admin" });
                             }
@@ -3190,9 +3200,9 @@ export default function CommunityDetailPage() {
                           disabled={changingThisRow}
                           className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
                           style={{ color: "#E8B872", background: "rgba(193,127,36,0.1)", border: "1px solid rgba(193,127,36,0.3)" }}
-                          title="Pilot-only"
+                          title={t("community_detail.pilot_only")}
                         >
-                          {changingThisRow ? "…" : "Hidden"}
+                          {changingThisRow ? "…" : t("community_detail.hidden")}
                         </button>
                       )}
                       {rawIsBeta && isHiddenAdmin && (
@@ -3200,15 +3210,14 @@ export default function CommunityDetailPage() {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            const who = isSelf ? "yourself" : (m.name || m.email);
                             // "Reveal" only flips visibility — keep admin
                             // powers. Demoting all the way to "member"
                             // here surprised admins who only wanted to
                             // come out of hiding. If the goal is to
                             // demote, use the regular role control.
                             const msg = isSelf
-                              ? "Reveal yourself? You'll appear in the roster and stay an admin."
-                              : `Reveal ${who}? They'll appear in the roster and stay an admin.`;
+                              ? t("community_detail.reveal_self_confirm")
+                              : t("community_detail.reveal_confirm", { name: m.name || m.email });
                             if (window.confirm(msg)) {
                               changeRoleMutation.mutate({ memberId: m.id, role: "admin" });
                             }
@@ -3217,7 +3226,7 @@ export default function CommunityDetailPage() {
                           className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
                           style={{ color: "#E8B872", background: "rgba(193,127,36,0.1)", border: "1px solid rgba(193,127,36,0.3)" }}
                         >
-                          {changingThisRow ? "…" : "Reveal"}
+                          {changingThisRow ? "…" : t("community_detail.reveal")}
                         </button>
                       )}
                       {!isSelf && (
@@ -3226,7 +3235,7 @@ export default function CommunityDetailPage() {
                             e.preventDefault();
                             e.stopPropagation();
                             const label = m.name || m.email;
-                            if (window.confirm(`Remove ${label} from ${group.name}? They'll lose access to every practice attached to this community.`)) {
+                            if (window.confirm(t("community_detail.remove_member_confirm", { name: label, group: group.name }))) {
                               removeMemberMutation.mutate(m.id);
                             }
                           }}
@@ -3234,7 +3243,7 @@ export default function CommunityDetailPage() {
                           className="text-[10px] px-2 py-1 rounded-lg disabled:opacity-40"
                           style={{ color: "rgba(143,175,150,0.5)", border: "1px solid rgba(143,175,150,0.2)" }}
                         >
-                          Remove
+                          {t("community_detail.remove")}
                         </button>
                       )}
                     </div>
@@ -3250,7 +3259,7 @@ export default function CommunityDetailPage() {
                 {(groupData?.members ?? []).filter(m => !m.joinedAt).length > 0 && (
                   <>
                     <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(200,212,192,0.4)" }}>
-                      Pending Invites
+                      {t("community_detail.pending_invites")}
                     </p>
                     <div className="space-y-1">
                       {groupData!.members.filter(m => !m.joinedAt).map(m => (
@@ -3259,13 +3268,13 @@ export default function CommunityDetailPage() {
                             {m.name || m.email}
                           </p>
                           <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[10px] italic" style={{ color: "rgba(143,175,150,0.35)" }}>pending</span>
+                            <span className="text-[10px] italic" style={{ color: "rgba(143,175,150,0.35)" }}>{t("community_detail.pending")}</span>
                             <button
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 const label = m.name || m.email;
-                                if (window.confirm(`Cancel the invite for ${label}?`)) {
+                                if (window.confirm(t("community_detail.cancel_invite_confirm", { name: label }))) {
                                   removeMemberMutation.mutate(m.id);
                                 }
                               }}
@@ -3273,7 +3282,7 @@ export default function CommunityDetailPage() {
                               className="text-[10px] px-2 py-0.5 rounded-lg disabled:opacity-40"
                               style={{ color: "rgba(143,175,150,0.5)", border: "1px solid rgba(143,175,150,0.2)" }}
                             >
-                              Cancel
+                              {t("community_detail.cancel")}
                             </button>
                           </div>
                         </div>
@@ -3322,32 +3331,32 @@ export default function CommunityDetailPage() {
                   className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
                   style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
                 >
-                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📜 Start a Lectio Divina group</p>
-                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Read Sunday's gospel together, unhurried</p>
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📜 {t("community_detail.fab_lectio_title")}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("community_detail.fab_lectio_sub")}</p>
                 </button>
                 <button
                   onClick={() => { setFabOpen(false); setLocation(`/moment/new?template=intercession&community=${slug}`); }}
                   className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
                   style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
                 >
-                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 Start a group intercession</p>
-                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Build a rhythm of prayer together</p>
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 {t("community_detail.fab_intercession_title")}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("community_detail.fab_intercession_sub")}</p>
                 </button>
                 <button
                   onClick={() => { setFabOpen(false); setLocation(`/moment/new?template=fasting&community=${slug}`); }}
                   className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
                   style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
                 >
-                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🌿 Start a group fast</p>
-                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>Keep a shared discipline on the same day</p>
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🌿 {t("community_detail.fab_fast_title")}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("community_detail.fab_fast_sub")}</p>
                 </button>
                 <button
                   onClick={() => { setFabOpen(false); setLocation(`/tradition/new?community=${slug}`); }}
                   className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
                   style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
                 >
-                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📅 Add an event</p>
-                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>A gathering on the community calendar</p>
+                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📅 {t("community_detail.fab_event_title")}</p>
+                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("community_detail.fab_event_sub")}</p>
                 </button>
                 {isBeta && (
                   <button
@@ -3355,8 +3364,8 @@ export default function CommunityDetailPage() {
                     className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
                     style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
                   >
-                    <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕊️ Start a prayer feed</p>
-                    <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>A cause with a new intention every day</p>
+                    <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕊️ {t("community_detail.fab_feed_title")}</p>
+                    <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("community_detail.fab_feed_sub")}</p>
                   </button>
                 )}
               </motion.div>
@@ -3366,7 +3375,7 @@ export default function CommunityDetailPage() {
             onClick={() => setFabOpen(o => !o)}
             className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
             style={{ background: "#1A4A2E", color: "#F0EDE6" }}
-            aria-label={fabOpen ? "Close menu" : "Create new"}
+            aria-label={fabOpen ? t("community_detail.close_menu") : t("community_detail.create_new")}
           >
             <motion.div animate={{ rotate: fabOpen ? 45 : 0 }} transition={{ duration: 0.2 }}>
               {fabOpen ? <X size={24} /> : <Plus size={24} />}
@@ -3419,6 +3428,7 @@ function MemberPicker({
   setPendingRole: (v: "member" | "admin" | "hidden_admin") => void;
   onPick: (person: { name?: string; email: string }) => void;
 }) {
+  const { t } = useTranslation();
   const [q, setQ] = useState("");
   const { data: people = [], isLoading } = usePeople(ownerId);
 
@@ -3446,7 +3456,7 @@ function MemberPicker({
   const showEmailFallback = looksLikeEmail && !matchesCandidate;
 
   const roleLabel = (r: "member" | "admin" | "hidden_admin") =>
-    r === "admin" ? "Admin" : r === "hidden_admin" ? "Hidden admin" : "Member";
+    r === "admin" ? t("community_detail.role_admin") : r === "hidden_admin" ? t("community_detail.role_hidden_admin") : t("community_detail.role_member");
 
   return (
     <div
@@ -3454,17 +3464,16 @@ function MemberPicker({
       style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}
     >
       <div className="flex items-center justify-between mb-3">
-        <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>Add member</p>
+        <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>{t("community_detail.add_member")}</p>
         <span
           className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded"
           style={{ background: "rgba(232,184,114,0.15)", color: "#E8B872", border: "1px solid rgba(232,184,114,0.35)", letterSpacing: "0.08em" }}
         >
-          Pilot
+          {t("community_detail.pilot")}
         </span>
       </div>
       <p className="text-xs mb-3" style={{ color: "rgba(143,175,150,0.75)" }}>
-        Add someone to {groupName} directly. Type to search your fellowship,
-        or enter an email to invite someone new.
+        {t("community_detail.add_member_desc", { name: groupName })}
       </p>
 
       {/* Role segmented control. Server-enforced — the "hidden_admin"
@@ -3510,7 +3519,7 @@ function MemberPicker({
           type="text"
           value={q}
           onChange={(e) => { setQ(e.target.value); setInviteError(""); }}
-          placeholder="Search by name or email…"
+          placeholder={t("community_detail.search_name_email")}
           className="flex-1 bg-transparent text-sm outline-none"
           style={{ color: "#F0EDE6" }}
         />
@@ -3526,13 +3535,13 @@ function MemberPicker({
         style={{ maxHeight: 220, overflowY: "auto" }}
       >
         {isLoading && (
-          <p className="text-xs italic" style={{ color: "rgba(143,175,150,0.55)" }}>Loading your fellowship…</p>
+          <p className="text-xs italic" style={{ color: "rgba(143,175,150,0.55)" }}>{t("community_detail.loading_fellowship")}</p>
         )}
         {!isLoading && candidates.length === 0 && !showEmailFallback && (
           <p className="text-xs italic" style={{ color: "rgba(143,175,150,0.55)" }}>
             {q.trim()
-              ? "No one in your fellowship matches. Type their email below to invite directly."
-              : "Everyone in your fellowship is already here."}
+              ? t("community_detail.no_fellowship_match")
+              : t("community_detail.everyone_here")}
           </p>
         )}
         {!isLoading && candidates.map(p => (
@@ -3556,7 +3565,7 @@ function MemberPicker({
               <p className="text-[10px] truncate" style={{ color: "rgba(143,175,150,0.65)" }}>{p.email}</p>
             </div>
             <span className="text-[10px] shrink-0" style={{ color: "rgba(168,197,160,0.75)" }}>
-              Add {roleLabel(pendingRole).toLowerCase()}
+              {t("community_detail.add_role", { role: roleLabel(pendingRole).toLowerCase() })}
             </span>
           </button>
         ))}
@@ -3570,13 +3579,13 @@ function MemberPicker({
           style={{ background: "rgba(9,26,16,0.4)", border: "1px dashed rgba(46,107,64,0.35)" }}
         >
           <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
-            Not in your fellowship yet
+            {t("community_detail.not_in_fellowship")}
           </p>
           <input
             type="text"
             value={inviteName}
             onChange={e => { setInviteName(e.target.value); setInviteError(""); }}
-            placeholder="Name (optional)"
+            placeholder={t("community_detail.name_optional")}
             className="w-full px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm mb-2"
             style={{ color: "#F0EDE6" }}
           />
@@ -3585,7 +3594,7 @@ function MemberPicker({
               type="email"
               value={inviteEmail || trimmed}
               onChange={e => { setInviteEmail(e.target.value); setInviteError(""); }}
-              placeholder="Email"
+              placeholder={t("community_detail.email")}
               className="flex-1 px-3 py-2 rounded-lg border border-[#2E6B40]/40 focus:border-[#2E6B40] outline-none bg-transparent text-sm"
               style={{ color: "#F0EDE6" }}
             />
@@ -3598,7 +3607,7 @@ function MemberPicker({
               className="px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-40 shrink-0"
               style={{ background: "#2D5E3F", color: "#F0EDE6" }}
             >
-              {isPending ? "Adding…" : `Add ${roleLabel(pendingRole).toLowerCase()}`}
+              {isPending ? t("community_detail.adding") : t("community_detail.add_role", { role: roleLabel(pendingRole).toLowerCase() })}
             </button>
           </div>
         </div>
