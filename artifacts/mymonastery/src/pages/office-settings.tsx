@@ -26,6 +26,7 @@
  */
 
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -155,6 +156,7 @@ function SlideShell({
 }
 
 function ReminderTimeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { t } = useTranslation();
   return (
     <div
       className="flex items-center justify-between gap-3 rounded-2xl px-4 py-3.5 mt-1"
@@ -163,7 +165,7 @@ function ReminderTimeField({ value, onChange }: { value: string; onChange: (v: s
       <div className="flex items-center gap-3">
         <span style={{ fontSize: 22 }}>⏰</span>
         <p className="text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
-          Reminder time
+          {t("office_settings.reminder_time")}
         </p>
       </div>
       <input
@@ -183,6 +185,7 @@ function ReminderTimeField({ value, onChange }: { value: string; onChange: (v: s
 // ── Page ────────────────────────────────────────────────────────────
 
 export default function OfficeSettingsPage() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
 
@@ -215,7 +218,7 @@ export default function OfficeSettingsPage() {
     try { return new URLSearchParams(window.location.search).get("side") === "evening" ? "evening" : "morning"; }
     catch { return "morning"; }
   })();
-  const sideLabel = side === "evening" ? "Evening" : "Morning";
+  const sideLabel = side === "evening" ? t("office_settings.side_evening") : t("office_settings.side_morning");
 
   const morning = eff.morning ?? "none";
   const evening = eff.evening ?? "none";
@@ -267,10 +270,10 @@ export default function OfficeSettingsPage() {
       <div className="flex flex-col items-center text-center px-2">
         <div style={{ fontSize: 56, lineHeight: 1 }}>{side === "evening" ? "🌙" : "🌅"}</div>
         <h2 className="text-[27px] md:text-[31px] font-bold leading-tight mt-5 mb-2" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-          Shape your {side === "evening" ? "evenings" : "mornings"}
+          {side === "evening" ? t("office_settings.intro_headline_evening") : t("office_settings.intro_headline_morning")}
         </h2>
         <p className="text-[15px]" style={{ color: SAGE, lineHeight: 1.5, maxWidth: 360 }}>
-          A few quick questions to set your {side === "evening" ? "evening" : "morning"} rhythm — independent from the other. You can change any answer anytime.
+          {side === "evening" ? t("office_settings.intro_body_evening") : t("office_settings.intro_body_morning")}
         </p>
       </div>
     ),
@@ -278,17 +281,17 @@ export default function OfficeSettingsPage() {
     // 1 — Depth (per side)
     () => (
       <SlideShell
-        eyebrow={`Step 1 · Your ${side === "evening" ? "evening" : "morning"}`}
-        headline={`How do you want to pray each ${side === "evening" ? "evening" : "morning"}?`}
-        sub="This side's default depth — set independently from the other."
+        eyebrow={side === "evening" ? t("office_settings.depth_eyebrow_evening") : t("office_settings.depth_eyebrow_morning")}
+        headline={side === "evening" ? t("office_settings.depth_headline_evening") : t("office_settings.depth_headline_morning")}
+        sub={t("office_settings.depth_sub")}
       >
         {([
-          { value: "ask" as const, emoji: "🤔", label: "Ask each time", sub: "Show me the choices when I begin." },
-          { value: "devotion" as const, emoji: "🌱", label: "Daily Devotion", sub: "The short BCP form (~5 min). The gentlest start." },
-          { value: "office" as const, emoji: "📖", label: "Full Daily Office", sub: `${side === "evening" ? "Evening" : "Morning"} Prayer (~15–20 min).` },
-          { value: "intercessions" as const, emoji: "🙏🏽", label: "Community Intercessions", sub: "The slideshow of prayer requests your community holds." },
-          { value: "reflect-sit" as const, emoji: "🕯️", label: "Reflect & Sit", sub: "Forward Day by Day, read aloud, then a silent timer." },
-          { value: "journal" as const, emoji: "📓", label: "Journal", sub: "A private daily reflection you write." },
+          { value: "ask" as const, emoji: "🤔", label: t("office_settings.depth_ask_label"), sub: t("office_settings.depth_ask_sub") },
+          { value: "devotion" as const, emoji: "🌱", label: t("office_settings.depth_devotion_label"), sub: t("office_settings.depth_devotion_sub") },
+          { value: "office" as const, emoji: "📖", label: t("office_settings.depth_office_label"), sub: side === "evening" ? t("office_settings.depth_office_sub_evening") : t("office_settings.depth_office_sub_morning") },
+          { value: "intercessions" as const, emoji: "🙏🏽", label: t("office_settings.depth_intercessions_label"), sub: t("office_settings.depth_intercessions_sub") },
+          { value: "reflect-sit" as const, emoji: "🕯️", label: t("office_settings.depth_reflect_sit_label"), sub: t("office_settings.depth_reflect_sit_sub") },
+          { value: "journal" as const, emoji: "📓", label: t("office_settings.depth_journal_label"), sub: t("office_settings.depth_journal_sub") },
         ]).map((o) => (
           <OptionCard
             key={o.value}
@@ -308,20 +311,20 @@ export default function OfficeSettingsPage() {
     // "on" sentinel; the specific value no longer drives the reminder.)
     () => (
       <SlideShell
-        eyebrow="Step 2 · Mornings"
-        headline="Want a morning nudge?"
-        sub="A gentle push to begin your day in prayer — it opens whatever you chose as your default."
+        eyebrow={t("office_settings.morning_reminder_eyebrow")}
+        headline={t("office_settings.morning_reminder_headline")}
+        sub={t("office_settings.morning_reminder_sub")}
       >
         <OptionCard
           emoji="🔕"
-          label="No notification"
+          label={t("office_settings.reminder_off_label")}
           selected={morning === "none"}
           onSelect={() => saveServer({ morning: "none" })}
         />
         <OptionCard
           emoji="🔔"
-          label="Notify me each morning"
-          sub="Opens your default prayer"
+          label={t("office_settings.morning_reminder_on_label")}
+          sub={t("office_settings.reminder_on_sub")}
           selected={morning !== "none"}
           onSelect={() => saveServer({ morning: "office" })}
         />
@@ -335,20 +338,20 @@ export default function OfficeSettingsPage() {
     // the user's default prayer (begin-prayer routes by level + time of day).
     () => (
       <SlideShell
-        eyebrow="Step 3 · Evenings"
-        headline="And an evening nudge?"
-        sub="A reminder to close the day in prayer — it opens your default."
+        eyebrow={t("office_settings.evening_reminder_eyebrow")}
+        headline={t("office_settings.evening_reminder_headline")}
+        sub={t("office_settings.evening_reminder_sub")}
       >
         <OptionCard
           emoji="🔕"
-          label="No notification"
+          label={t("office_settings.reminder_off_label")}
           selected={evening === "none"}
           onSelect={() => saveServer({ evening: "none" })}
         />
         <OptionCard
           emoji="🔔"
-          label="Notify me each evening"
-          sub="Opens your default prayer"
+          label={t("office_settings.evening_reminder_on_label")}
+          sub={t("office_settings.reminder_on_sub")}
           selected={evening !== "none"}
           onSelect={() => saveServer({ evening: "office" })}
         />
@@ -361,13 +364,13 @@ export default function OfficeSettingsPage() {
     // 4 — Confession of Sin
     () => (
       <SlideShell
-        eyebrow="Step 4 · The opening"
-        headline="Open with the Confession of Sin?"
-        sub="Morning and Evening Prayer can begin with the BCP Confession & Absolution."
+        eyebrow={t("office_settings.confession_eyebrow")}
+        headline={t("office_settings.confession_headline")}
+        sub={t("office_settings.confession_sub")}
       >
         {([
-          { value: true, emoji: "🤲", label: "Include it", sub: "Begin with the Confession of Sin & Absolution." },
-          { value: false, emoji: "🌅", label: "Skip it", sub: "Begin straight at the Opening Sentence." },
+          { value: true, emoji: "🤲", label: t("office_settings.confession_include_label"), sub: t("office_settings.confession_include_sub") },
+          { value: false, emoji: "🌅", label: t("office_settings.confession_skip_label"), sub: t("office_settings.confession_skip_sub") },
         ]).map((o) => (
           <OptionCard
             key={String(o.value)}
@@ -384,15 +387,15 @@ export default function OfficeSettingsPage() {
     // 5 — Meditation timer
     () => (
       <SlideShell
-        eyebrow="Step 5 · Silence"
-        headline="A default for silent contemplation?"
-        sub="When you begin a silent sit, start straight at this length — or leave it off to choose each time."
+        eyebrow={t("office_settings.silence_eyebrow")}
+        headline={t("office_settings.silence_headline")}
+        sub={t("office_settings.silence_sub")}
       >
         {([
-          { value: 0, emoji: "🔕", label: "Off", sub: "No default — I’ll pick a length when I sit." },
-          { value: 5, emoji: "🕯️", label: "5 minutes", sub: "" },
-          { value: 10, emoji: "🕯️", label: "10 minutes", sub: "" },
-          { value: 20, emoji: "🕯️", label: "20 minutes", sub: "" },
+          { value: 0, emoji: "🔕", label: t("office_settings.silence_off_label"), sub: t("office_settings.silence_off_sub") },
+          { value: 5, emoji: "🕯️", label: t("office_settings.silence_minutes", { count: 5 }), sub: "" },
+          { value: 10, emoji: "🕯️", label: t("office_settings.silence_minutes", { count: 10 }), sub: "" },
+          { value: 20, emoji: "🕯️", label: t("office_settings.silence_minutes", { count: 20 }), sub: "" },
         ]).map((o) => (
           <OptionCard
             key={o.value}
@@ -409,14 +412,14 @@ export default function OfficeSettingsPage() {
     // 6 — Ways to pray (selectable default)
     () => (
       <SlideShell
-        eyebrow="Step 6 · Three ways to pray"
-        headline="How do you want to pray the office?"
-        sub="Choose your default. You can always switch on the office screen."
+        eyebrow={t("office_settings.ways_eyebrow")}
+        headline={t("office_settings.ways_headline")}
+        sub={t("office_settings.ways_sub")}
       >
         {([
-          { value: "read" as const, emoji: "📖", label: "Read along", sub: "The full text of the office, at your own pace." },
-          { value: "listen" as const, emoji: "🎧", label: "Listen", sub: `${side === "evening" ? "Evening" : "Morning"} Prayer read aloud (Forward Movement).` },
-          { value: "watch" as const, emoji: "📺", label: "Watch", sub: "Pray live with the National Cathedral each weekday morning." },
+          { value: "read" as const, emoji: "📖", label: t("office_settings.ways_read_label"), sub: t("office_settings.ways_read_sub") },
+          { value: "listen" as const, emoji: "🎧", label: t("office_settings.ways_listen_label"), sub: side === "evening" ? t("office_settings.ways_listen_sub_evening") : t("office_settings.ways_listen_sub_morning") },
+          { value: "watch" as const, emoji: "📺", label: t("office_settings.ways_watch_label"), sub: t("office_settings.ways_watch_sub") },
         ]).filter((o) => o.value !== "watch" || side === "morning").map((o) => (
           <OptionCard
             key={o.value}
@@ -436,15 +439,15 @@ export default function OfficeSettingsPage() {
     // 7 — After the office (reflection)
     () => (
       <SlideShell
-        eyebrow="Step 7 · After the office"
-        headline="A daily reflection to close with?"
-        sub="One reflection pill appears on the closing slide and as a home card."
+        eyebrow={t("office_settings.reflection_eyebrow")}
+        headline={t("office_settings.reflection_headline")}
+        sub={t("office_settings.reflection_sub")}
       >
         {([
-          { value: "cac" as const, emoji: "🌅", label: "Center for Action & Contemplation", sub: "Today’s CAC daily reflection." },
-          { value: "fdd" as const, emoji: "📖", label: "Forward Day by Day", sub: "Today’s Forward Movement meditation." },
-          { value: "ssje" as const, emoji: "✍🏽", label: "SSJE Reflections", sub: "Today’s “Brother, Give Us a Word.”" },
-          { value: "none" as const, emoji: "🚫", label: "None", sub: "No reflection pill or card." },
+          { value: "cac" as const, emoji: "🌅", label: t("office_settings.reflection_cac_label"), sub: t("office_settings.reflection_cac_sub") },
+          { value: "fdd" as const, emoji: "📖", label: t("office_settings.reflection_fdd_label"), sub: t("office_settings.reflection_fdd_sub") },
+          { value: "ssje" as const, emoji: "✍🏽", label: t("office_settings.reflection_ssje_label"), sub: t("office_settings.reflection_ssje_sub") },
+          { value: "none" as const, emoji: "🚫", label: t("office_settings.reflection_none_label"), sub: t("office_settings.reflection_none_sub") },
         ]).map((o) => (
           <OptionCard
             key={o.value}
@@ -461,13 +464,13 @@ export default function OfficeSettingsPage() {
     // 8 — Gratitude pause + finish
     () => (
       <SlideShell
-        eyebrow="Step 8 · The final touch"
-        headline="A gratitude pause before the close?"
-        sub="A short thanksgiving prompt slides in before the office ends."
+        eyebrow={t("office_settings.gratitude_eyebrow")}
+        headline={t("office_settings.gratitude_headline")}
+        sub={t("office_settings.gratitude_sub")}
       >
         {([
-          { value: true, emoji: "🌾", label: "Yes, add it", sub: "A gratitude prompt before the closing." },
-          { value: false, emoji: "🍃", label: "No thanks", sub: "Run straight to the closing." },
+          { value: true, emoji: "🌾", label: t("office_settings.gratitude_yes_label"), sub: t("office_settings.gratitude_yes_sub") },
+          { value: false, emoji: "🍃", label: t("office_settings.gratitude_no_label"), sub: t("office_settings.gratitude_no_sub") },
         ]).map((o) => (
           <OptionCard
             key={String(o.value)}
@@ -504,11 +507,11 @@ export default function OfficeSettingsPage() {
         <button
           type="button"
           onClick={close}
-          aria-label="Close"
+          aria-label={t("office_settings.close")}
           className="inline-flex items-center gap-1 text-sm transition-opacity hover:opacity-80"
           style={{ color: SAGE, background: "transparent", cursor: "pointer" }}
         >
-          <X size={18} /> Close
+          <X size={18} /> {t("office_settings.close")}
         </button>
         <div className="flex items-center gap-1.5">
           {Array.from({ length: TOTAL }).map((_, i) => (
@@ -559,7 +562,7 @@ export default function OfficeSettingsPage() {
             className="inline-flex items-center gap-1 text-[15px] font-medium px-3 py-3 transition-opacity hover:opacity-80"
             style={{ color: SAGE, background: "transparent", cursor: "pointer", fontFamily: SPACE_GROTESK }}
           >
-            <ChevronLeft size={18} /> Back
+            <ChevronLeft size={18} /> {t("office_settings.back")}
           </button>
         ) : (
           <span className="flex-1" />
@@ -572,7 +575,7 @@ export default function OfficeSettingsPage() {
             className="rounded-full px-7 py-3 text-[15px] font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
             style={{ background: ACCENT, color: BG, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
           >
-            Done ✓
+            {t("office_settings.done")} ✓
           </button>
         ) : (
           <button
@@ -581,7 +584,7 @@ export default function OfficeSettingsPage() {
             className="rounded-full px-7 py-3 text-[15px] font-semibold transition-opacity hover:opacity-90 active:scale-[0.98]"
             style={{ background: "#2D5E3F", color: WARM, border: `1px solid ${ACCENT}`, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
           >
-            {step === 0 ? "Get started →" : "Next →"}
+            {step === 0 ? `${t("office_settings.get_started")} →` : `${t("office_settings.next")} →`}
           </button>
         )}
       </div>
