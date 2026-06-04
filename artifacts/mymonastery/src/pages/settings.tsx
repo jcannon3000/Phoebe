@@ -121,14 +121,14 @@ function ReminderTimeRow({
 // every home-screen knob lives in one place. The server endpoint
 // (PUT /api/me/feed-first-home) is unchanged; only the surface is.)
 
-// Language toggle — beta-only. Phoebe is rolling out a Spanish locale
-// incrementally: the i18n scaffolding + ~180 common keys are translated
-// today, and more surfaces gain Spanish coverage as we wire `t()` through
-// each view. The toggle persists to `users.locale` via PATCH
-// /api/auth/me/locale and switches i18next + localStorage immediately so
-// the UI flips without waiting for the /me refetch.
+// Language toggle — open to EVERYONE, labeled "Beta" in the UI. Phoebe is
+// rolling out a Spanish locale incrementally: the i18n scaffolding + the
+// common keys are translated today, and more surfaces gain Spanish coverage as
+// we wire `t()` through each view (missing keys fall back to English at render
+// time). The toggle persists to `users.locale` via PATCH /api/auth/me/locale
+// and switches i18next + localStorage immediately so the UI flips without
+// waiting for the /me refetch.
 function LanguageSettings() {
-  const { isBeta } = useBetaStatus();
   const { user } = useAuth();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -146,8 +146,6 @@ function LanguageSettings() {
     },
   });
 
-  if (!isBeta) return null;
-
   const current: "en" | "es" = user?.locale ?? "en";
   const options: Array<{ value: "en" | "es"; label: string; sub: string }> = [
     { value: "en", label: t("settings.language_english"), sub: t("settings.language_english_sub") },
@@ -161,6 +159,12 @@ function LanguageSettings() {
         className="text-[13px] mb-3"
         style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}
       >
+        <span
+          className="not-italic text-[9px] font-semibold uppercase rounded-full px-2 py-0.5 mr-1.5 align-middle"
+          style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", letterSpacing: "0.1em", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          Beta
+        </span>
         {t("settings.language_blurb")}
       </p>
       <SettingsCard>
