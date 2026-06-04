@@ -3912,6 +3912,42 @@ export const en = {
     nav_done: "Done",
     nav_next: "Next",
   },
+  // Community metrics dashboard (pages/community-metrics.tsx).
+  community_metrics: {
+    back_to_settings: "← Settings",
+    beta_only: "Community metrics are available to beta users.",
+    loading: "Loading metrics…",
+    load_failed: "Couldn't load metrics.",
+    unknown_error: "Unknown error",
+    no_activity:
+      "No activity yet. Counts begin when members of this community post prayer requests or tap Amen — in the community tab or anywhere else in Phoebe.",
+    section_people_praying: "People praying",
+    section_times_prayed: "Times prayed",
+    times_prayed_note:
+      "One session per Amen tap or full-office reading (≥3 slides). Multiple sessions within 15 minutes for the same person collapse to one.",
+    section_offices: "Offices",
+    offices_note:
+      "Daily Office / Devotion completions. Up to two per person per day (morning + evening). Reaching ≥3 slides counts.",
+    section_prayer_requests: "Prayer requests",
+    section_community: "Community",
+    stat_today: "Today",
+    stat_this_week: "This week",
+    stat_this_month: "This month",
+    stat_all_time: "All time",
+    stat_members: "Members",
+    footer_note:
+      'Counts member activity across Phoebe — community and personal prayer requests alike. Refreshes every 30 seconds. "This week" means the last seven days including today.',
+    office_morning_prayer: "Morning Prayer",
+    office_morning_devotion: "Morning Devotion",
+    office_evening_prayer: "Evening Prayer",
+    office_evening_devotion: "Evening Devotion",
+    col_today: "Today",
+    col_week: "Week",
+    col_month: "Month",
+    more_detail: "More detail ↓",
+    hide_detail: "Hide detail ↑",
+    total_time: "Total time",
+  },
   // Reset password page (pages/reset-password.tsx).
   reset_password: {
     invalid_link: "This reset link is invalid or has expired.",

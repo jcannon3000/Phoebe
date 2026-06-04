@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -87,6 +88,7 @@ function formatPrayingDuration(seconds: number): string {
 // Standalone page (route: /communities/:slug/metrics). Thin wrapper
 // around MetricsDashboard with Layout + auth redirect.
 export default function CommunityMetricsPage() {
+  const { t } = useTranslation();
   const { slug } = useParams<{ slug: string }>();
   const { user, isLoading: authLoading } = useAuth();
   const [, setLocation] = useLocation();
@@ -103,7 +105,7 @@ export default function CommunityMetricsPage() {
         <div className="mb-8">
           <Link href={`/communities/${slug}/settings`}>
             <span className="text-xs" style={{ color: "rgba(143,175,150,0.65)", fontFamily: FONT }}>
-              ← Settings
+              {t("community_metrics.back_to_settings")}
             </span>
           </Link>
         </div>
@@ -118,6 +120,7 @@ export default function CommunityMetricsPage() {
 // the Metrics tab of community-settings.
 
 export function MetricsDashboard({ slug }: { slug: string }) {
+  const { t } = useTranslation();
   const { isBeta } = useBetaStatus();
 
   const { data, isLoading, error } = useQuery<Metrics>({
@@ -131,7 +134,7 @@ export function MetricsDashboard({ slug }: { slug: string }) {
     return (
       <div className="py-10 text-center">
         <p className="text-sm" style={{ color: "#8FAF96", fontFamily: FONT }}>
-          Community metrics are available to beta users.
+          {t("community_metrics.beta_only")}
         </p>
       </div>
     );
@@ -141,18 +144,18 @@ export function MetricsDashboard({ slug }: { slug: string }) {
     return (
       <div className="py-10 text-center">
         <p className="text-xs" style={{ color: "#8FAF96", fontFamily: FONT }}>
-          Loading metrics…
+          {t("community_metrics.loading")}
         </p>
       </div>
     );
   }
 
   if (error || !data) {
-    const msg = error instanceof Error ? error.message : "Unknown error";
+    const msg = error instanceof Error ? error.message : t("community_metrics.unknown_error");
     return (
       <div className="py-10 text-center">
         <p className="text-sm mb-3" style={{ color: "#8FAF96", fontFamily: FONT }}>
-          Couldn't load metrics.
+          {t("community_metrics.load_failed")}
         </p>
         <p
           className="text-[11px] mx-auto max-w-md rounded-lg px-3 py-2 text-left"
@@ -193,36 +196,32 @@ export function MetricsDashboard({ slug }: { slug: string }) {
           }}
         >
           <p className="text-xs leading-relaxed" style={{ color: "#8FAF96", fontFamily: FONT }}>
-            No activity yet. Counts begin when members of this
-            community post prayer requests or tap Amen — in the
-            community tab or anywhere else in Phoebe.
+            {t("community_metrics.no_activity")}
           </p>
         </div>
       )}
 
       {/* People praying — the headline metric */}
-      <SectionHeader label="People praying" />
+      <SectionHeader label={t("community_metrics.section_people_praying")} />
       <div className="grid grid-cols-3 gap-3 mb-8">
-        <StatTile label="Today" value={data.prayedToday} />
-        <StatTile label="This week" value={data.prayedThisWeek} />
-        <StatTile label="All time" value={data.prayedAllTime} />
+        <StatTile label={t("community_metrics.stat_today")} value={data.prayedToday} />
+        <StatTile label={t("community_metrics.stat_this_week")} value={data.prayedThisWeek} />
+        <StatTile label={t("community_metrics.stat_all_time")} value={data.prayedAllTime} />
       </div>
 
       {/* Times prayed — union of prayer-list completions + amens,
           one per person per day */}
-      <SectionHeader label="Times prayed" />
+      <SectionHeader label={t("community_metrics.section_times_prayed")} />
       <p
         className="text-[11px] leading-relaxed mb-3"
         style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
       >
-        One session per Amen tap or full-office reading (≥3 slides).
-        Multiple sessions within 15 minutes for the same person
-        collapse to one.
+        {t("community_metrics.times_prayed_note")}
       </p>
       <div className="grid grid-cols-3 gap-3 mb-8">
-        <StatTile label="Today" value={data.timesPrayedToday} />
-        <StatTile label="This week" value={data.timesPrayedThisWeek} />
-        <StatTile label="All time" value={data.timesPrayedTotal} />
+        <StatTile label={t("community_metrics.stat_today")} value={data.timesPrayedToday} />
+        <StatTile label={t("community_metrics.stat_this_week")} value={data.timesPrayedThisWeek} />
+        <StatTile label={t("community_metrics.stat_all_time")} value={data.timesPrayedTotal} />
       </div>
 
       {/* Offices — Daily Office / Devotion sessions, deduped to one
@@ -231,18 +230,17 @@ export function MetricsDashboard({ slug }: { slug: string }) {
           this separate from Times prayed because tracking the
           office cadence is a meaningfully different signal than
           tracking any prayer activity. */}
-      <SectionHeader label="Offices" />
+      <SectionHeader label={t("community_metrics.section_offices")} />
       <p
         className="text-[11px] leading-relaxed mb-3"
         style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}
       >
-        Daily Office / Devotion completions. Up to two per person
-        per day (morning + evening). Reaching ≥3 slides counts.
+        {t("community_metrics.offices_note")}
       </p>
       <div className="grid grid-cols-3 gap-3 mb-8">
-        <StatTile label="Today" value={data.officesToday} />
-        <StatTile label="This week" value={data.officesThisWeek} />
-        <StatTile label="All time" value={data.officesTotal} />
+        <StatTile label={t("community_metrics.stat_today")} value={data.officesToday} />
+        <StatTile label={t("community_metrics.stat_this_week")} value={data.officesThisWeek} />
+        <StatTile label={t("community_metrics.stat_all_time")} value={data.officesTotal} />
       </div>
 
       {/* Time praying section was removed from the metrics dashboard
@@ -261,26 +259,24 @@ export function MetricsDashboard({ slug }: { slug: string }) {
           want to bring it back later. */}
 
       {/* Prayer requests */}
-      <SectionHeader label="Prayer requests" />
+      <SectionHeader label={t("community_metrics.section_prayer_requests")} />
       <div className="grid grid-cols-3 gap-3 mb-8">
-        <StatTile label="Today" value={data.prayerRequestsToday} />
-        <StatTile label="This week" value={data.prayerRequestsThisWeek} />
-        <StatTile label="All time" value={data.prayerRequestsTotal} />
+        <StatTile label={t("community_metrics.stat_today")} value={data.prayerRequestsToday} />
+        <StatTile label={t("community_metrics.stat_this_week")} value={data.prayerRequestsThisWeek} />
+        <StatTile label={t("community_metrics.stat_all_time")} value={data.prayerRequestsTotal} />
       </div>
 
       {/* Community roster */}
-      <SectionHeader label="Community" />
+      <SectionHeader label={t("community_metrics.section_community")} />
       <div className="grid grid-cols-1 gap-3 mb-10">
-        <StatTile label="Members" value={data.totalMembers} wide />
+        <StatTile label={t("community_metrics.stat_members")} value={data.totalMembers} wide />
       </div>
 
       <p
         className="text-[11px] leading-relaxed text-center"
         style={{ color: "rgba(143,175,150,0.45)", fontFamily: FONT }}
       >
-        Counts member activity across Phoebe — community and personal
-        prayer requests alike. Refreshes every 30 seconds. "This week"
-        means the last seven days including today.
+        {t("community_metrics.footer_note")}
       </p>
     </div>
   );
@@ -353,6 +349,7 @@ function StatTextTile({ label, value }: { label: string; value: string }) {
 // counts the API already returns; the API doesn't need to ship a
 // separate aggregate field for this.
 function OfficesRow({ offices }: { offices: OfficesMetrics }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   // Defensive fill so a partial API response (e.g. server still
   // rolling out the new fields) doesn't crash the page. Each office
@@ -380,19 +377,19 @@ function OfficesRow({ offices }: { offices: OfficesMetrics }) {
     eveningDevotion.thisMonth;
 
   const rows: Array<{ label: string; counts: OfficeWindowCounts }> = [
-    { label: "Morning Prayer", counts: morningPrayer },
-    { label: "Morning Devotion", counts: morningDevotion },
-    { label: "Evening Prayer", counts: eveningPrayer },
-    { label: "Evening Devotion", counts: eveningDevotion },
+    { label: t("community_metrics.office_morning_prayer"), counts: morningPrayer },
+    { label: t("community_metrics.office_morning_devotion"), counts: morningDevotion },
+    { label: t("community_metrics.office_evening_prayer"), counts: eveningPrayer },
+    { label: t("community_metrics.office_evening_devotion"), counts: eveningDevotion },
   ];
 
   return (
     <div className="mb-8">
       {/* Collapsed: today / week / month aggregate tiles. */}
       <div className="grid grid-cols-3 gap-3 mb-2">
-        <StatTile label="Today" value={sumToday} />
-        <StatTile label="This week" value={sumWeek} />
-        <StatTile label="This month" value={sumMonth} />
+        <StatTile label={t("community_metrics.stat_today")} value={sumToday} />
+        <StatTile label={t("community_metrics.stat_this_week")} value={sumWeek} />
+        <StatTile label={t("community_metrics.stat_this_month")} value={sumMonth} />
       </div>
       <button
         type="button"
@@ -407,7 +404,7 @@ function OfficesRow({ offices }: { offices: OfficesMetrics }) {
           cursor: "pointer",
         }}
       >
-        {expanded ? "Hide detail ↑" : "More detail ↓"}
+        {expanded ? t("community_metrics.hide_detail") : t("community_metrics.more_detail")}
       </button>
 
       {expanded && (
@@ -427,13 +424,17 @@ function OfficesRow({ offices }: { offices: OfficesMetrics }) {
             }}
           >
             <span />
-            {(["Today", "Week", "Month"] as const).map((h) => (
+            {([
+              { key: "today", label: t("community_metrics.col_today") },
+              { key: "week", label: t("community_metrics.col_week") },
+              { key: "month", label: t("community_metrics.col_month") },
+            ] as const).map((h) => (
               <span
-                key={h}
+                key={h.key}
                 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-right"
                 style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}
               >
-                {h}
+                {h.label}
               </span>
             ))}
           </div>
@@ -477,7 +478,7 @@ function OfficesRow({ offices }: { offices: OfficesMetrics }) {
               className="text-[10px] font-semibold uppercase tracking-[0.14em]"
               style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}
             >
-              Total time
+              {t("community_metrics.total_time")}
             </span>
             <span className="text-[12px] tabular-nums text-right" style={{ color: "#F0EDE6", fontFamily: FONT, fontWeight: 600 }}>
               {formatPrayingDuration(offices.secondsToday ?? 0)}
