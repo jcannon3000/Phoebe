@@ -290,165 +290,182 @@ router.get("/people", async (req, res): Promise<void> => {
     .where(eq(momentUserTokensTable.email, ownerEmail));
   const ownerMomentIds = ownerTokenRowsForMoments.map(t => t.momentId);
 
-  const peopleEnriched = await Promise.all(
-    Array.from(map.values()).map(async (p) => {
-      let maxStreak = 0;
-      let score = 0;
-      let sharedMomentIds: number[] = [];
-      let sharedPractices: Array<{ id: number; name: string; currentStreak: number; templateType: string | null }> = [];
-      let lastActiveDate: string | null = null;
+  // ── Batch all per-person enrichment up front. This used to be an N+1:
+  // ~6 sequential DB queries PER garden peer (completed meetups, the peer's
+  // tokens, the shared moments, their windows ×3). For a large garden that's
+  // hundreds of round-trips. Instead we pull everything keyed by the OWNER's
+  // moments / the peers' emails / the shared rituals in a handful of inArray
+  // queries, bucket in memory, and the per-person map below is pure CPU. ───
+  const allPeople = Array.from(map.values());
+  const allPeerEmails = [...new Set(allPeople.map(p => p.email))];
+  const allSharedRitualIds = [...new Set(allPeople.flatMap(p => p.sharedRitualIds))];
 
-      // Shared tradition names
-      const sharedTraditions = p.sharedRitualIds
-        .map(rid => ({ id: rid, name: ritualNameMap.get(rid) ?? "Tradition" }))
-        .filter((v, i, a) => a.findIndex(x => x.id === v.id) === i);
+  // (A) completed-meetup count per shared ritual (one grouped query).
+  const completedByRitual = new Map<number, number>();
+  if (allSharedRitualIds.length > 0) {
+    const rows = await db
+      .select({ ritualId: meetupsTable.ritualId, count: sql<number>`cast(count(*) as int)` })
+      .from(meetupsTable)
+      .where(and(inArray(meetupsTable.ritualId, allSharedRitualIds), eq(meetupsTable.status, "completed")))
+      .groupBy(meetupsTable.ritualId);
+    for (const r of rows) completedByRitual.set(r.ritualId, r.count);
+  }
 
-      // Completed meetups across shared rituals
-      if (p.sharedRitualIds.length > 0) {
-        const completedRows = await db
-          .select({ count: sql<number>`cast(count(*) as int)` })
-          .from(meetupsTable)
-          .where(and(
-            inArray(meetupsTable.ritualId, p.sharedRitualIds),
-            eq(meetupsTable.status, "completed")
-          ));
-        score += completedRows[0]?.count ?? 0;
-      }
+  // (B) every peer's moment tokens (exact-email match, like the original),
+  // bucketed by email.
+  const peerMomentIds = new Map<string, Set<number>>();
+  if (ownerMomentIds.length > 0 && allPeerEmails.length > 0) {
+    const rows = await db
+      .select({ email: momentUserTokensTable.email, momentId: momentUserTokensTable.momentId })
+      .from(momentUserTokensTable)
+      .where(inArray(momentUserTokensTable.email, allPeerEmails));
+    for (const r of rows) {
+      let s = peerMomentIds.get(r.email);
+      if (!s) { s = new Set<number>(); peerMomentIds.set(r.email, s); }
+      s.add(r.momentId);
+    }
+  }
 
-      // Shared practices — only ACTIVE ones count. We mirror the filter used
-      // by /people/:email and the main moments list: archived moments and
-      // intercessions past their 1-day post-goal grace period are treated
-      // as past, not active. Without this the People list surfaces stale
-      // streaks from practices that have long since ended.
-      if (ownerMomentIds.length > 0) {
-        const personTokenRows = await db.select({ momentId: momentUserTokensTable.momentId })
-          .from(momentUserTokensTable)
-          .where(eq(momentUserTokensTable.email, p.email));
-        const personMomentIdSet = new Set(personTokenRows.map(t => t.momentId));
-        sharedMomentIds = ownerMomentIds.filter(id => personMomentIdSet.has(id));
+  // (C) the owner's moments (the universe every peer's shared set draws from)
+  // + (D) all their window rows — one query each — then derive per-moment
+  // streak / bloom-count / last-bloom-date once.
+  const momentById = new Map<number, {
+    id: number; name: string; currentStreak: number; templateType: string | null; state: string | null;
+    commitmentGoalReachedAt: Date | null; commitmentCycleStartedAt: Date | null; goalDays: number; totalBlooms: number;
+  }>();
+  const streakByMoment = new Map<number, number>();
+  const bloomCountByMoment = new Map<number, number>();
+  const lastBloomByMoment = new Map<number, string>();
+  if (ownerMomentIds.length > 0) {
+    const momentsRaw = await db
+      .select({
+        id: sharedMomentsTable.id,
+        name: sharedMomentsTable.name,
+        currentStreak: sharedMomentsTable.currentStreak,
+        templateType: sharedMomentsTable.templateType,
+        state: sharedMomentsTable.state,
+        commitmentGoalReachedAt: sharedMomentsTable.commitmentGoalReachedAt,
+        commitmentCycleStartedAt: sharedMomentsTable.commitmentCycleStartedAt,
+        goalDays: sharedMomentsTable.goalDays,
+        totalBlooms: sharedMomentsTable.totalBlooms,
+      })
+      .from(sharedMomentsTable)
+      .where(inArray(sharedMomentsTable.id, ownerMomentIds));
+    for (const m of momentsRaw) momentById.set(m.id, m);
 
-        if (sharedMomentIds.length > 0) {
-          const sharedMomentsRaw = await db
-            .select({
-              id: sharedMomentsTable.id,
-              name: sharedMomentsTable.name,
-              currentStreak: sharedMomentsTable.currentStreak,
-              templateType: sharedMomentsTable.templateType,
-              state: sharedMomentsTable.state,
-              commitmentGoalReachedAt: sharedMomentsTable.commitmentGoalReachedAt,
-              commitmentCycleStartedAt: sharedMomentsTable.commitmentCycleStartedAt,
-              goalDays: sharedMomentsTable.goalDays,
-              totalBlooms: sharedMomentsTable.totalBlooms,
-            })
-            .from(sharedMomentsTable)
-            .where(inArray(sharedMomentsTable.id, sharedMomentIds));
-
-          const nowMs = Date.now();
-          const graceMs = 2 * 24 * 60 * 60 * 1000;
-          const isExpiredIntercession = (m: typeof sharedMomentsRaw[number]) => {
-            if (m.templateType !== "intercession") return false;
-            const reachedAt = m.commitmentGoalReachedAt;
-            if (reachedAt && (nowMs - new Date(reachedAt).getTime()) > graceMs) return true;
-            // Time-window: hide once now > cycleStartedAt + goalDays.
-            // Mirrors the read filter in routes/moments.ts.
-            if (!reachedAt && m.goalDays > 0 && m.commitmentCycleStartedAt) {
-              const cycleEndMs = new Date(m.commitmentCycleStartedAt).getTime() + m.goalDays * 24 * 60 * 60 * 1000;
-              if (nowMs > cycleEndMs) return true;
-            }
-            return false;
-          };
-          const sharedMoments = sharedMomentsRaw.filter(
-            m => m.state !== "archived" && !isExpiredIntercession(m),
-          );
-          // Narrow sharedMomentIds so streak/bloom queries below only see active ones
-          sharedMomentIds = sharedMoments.map(m => m.id);
-          if (sharedMomentIds.length === 0) {
-            // No active shared practices — short-circuit so we don't query
-            // windows/posts for nothing.
-          }
-
-          // Compute group streak from actual window data (DB field can be corrupted)
-          const windowRows = await db
-            .select({
-              momentId: momentWindowsTable.momentId,
-              windowDate: momentWindowsTable.windowDate,
-              status: momentWindowsTable.status,
-            })
-            .from(momentWindowsTable)
-            .where(inArray(momentWindowsTable.momentId, sharedMomentIds))
-            .orderBy(desc(momentWindowsTable.windowDate));
-
-          const streakByMoment = new Map<number, number>();
-          for (const m of sharedMoments) {
-            const windows = windowRows
-              .filter(w => w.momentId === m.id)
-              .sort((a, b) => b.windowDate.localeCompare(a.windowDate));
-            let streak = 0;
-            for (const w of windows) {
-              if (w.status === "bloom") streak++;
-              else break;
-            }
-            streakByMoment.set(m.id, streak);
-          }
-
-          maxStreak = Math.max(0, ...Array.from(streakByMoment.values()));
-          sharedPractices = sharedMoments.map(m => ({
-            id: m.id,
-            name: m.name,
-            currentStreak: streakByMoment.get(m.id) ?? 0,
-            templateType: m.templateType,
-          }));
-
-          // Bloom windows = shared practice sessions done together
-          const bloomRows = await db
-            .select({ count: sql<number>`cast(count(*) as int)` })
-            .from(momentWindowsTable)
-            .where(and(
-              inArray(momentWindowsTable.momentId, sharedMomentIds),
-              eq(momentWindowsTable.status, "bloom")
-            ));
-          score += bloomRows[0]?.count ?? 0;
-
-          // Most recent bloom window for this person's shared practices
-          const lastBloomRow = await db
-            .select({ windowDate: momentWindowsTable.windowDate })
-            .from(momentWindowsTable)
-            .where(and(
-              inArray(momentWindowsTable.momentId, sharedMomentIds),
-              eq(momentWindowsTable.status, "bloom")
-            ))
-            .orderBy(desc(momentWindowsTable.windowDate))
-            .limit(1);
-          lastActiveDate = lastBloomRow[0]?.windowDate ?? null;
+    const windowRows = await db
+      .select({
+        momentId: momentWindowsTable.momentId,
+        windowDate: momentWindowsTable.windowDate,
+        status: momentWindowsTable.status,
+      })
+      .from(momentWindowsTable)
+      .where(inArray(momentWindowsTable.momentId, ownerMomentIds))
+      .orderBy(desc(momentWindowsTable.windowDate));
+    const windowsByMoment = new Map<number, { windowDate: string; status: string }[]>();
+    for (const w of windowRows) {
+      let arr = windowsByMoment.get(w.momentId);
+      if (!arr) { arr = []; windowsByMoment.set(w.momentId, arr); }
+      arr.push(w); // already desc by windowDate
+    }
+    for (const [mid, ws] of windowsByMoment) {
+      // streak = leading consecutive blooms (from the top, desc); blooms = all
+      // bloom windows; last = the most recent bloom date (first one seen).
+      let streak = 0, blooms = 0, counting = true;
+      let last: string | null = null;
+      for (const w of ws) {
+        if (w.status === "bloom") {
+          blooms++;
+          if (last === null) last = w.windowDate;
+          if (counting) streak++;
+        } else {
+          counting = false;
         }
       }
+      streakByMoment.set(mid, streak);
+      bloomCountByMoment.set(mid, blooms);
+      if (last !== null) lastBloomByMoment.set(mid, last);
+    }
+  }
 
-      const prayer = activePrayerMap.get(p.email) ?? null;
+  const nowMs = Date.now();
+  const graceMs = 2 * 24 * 60 * 60 * 1000;
+  // Only ACTIVE shared practices count — archived moments and intercessions
+  // past their post-goal grace / cycle window are treated as past (mirrors
+  // /people/:email and the read filter in routes/moments.ts).
+  const isExpiredIntercession = (m: { templateType: string | null; commitmentGoalReachedAt: Date | null; goalDays: number; commitmentCycleStartedAt: Date | null }) => {
+    if (m.templateType !== "intercession") return false;
+    const reachedAt = m.commitmentGoalReachedAt;
+    if (reachedAt && (nowMs - new Date(reachedAt).getTime()) > graceMs) return true;
+    if (!reachedAt && m.goalDays > 0 && m.commitmentCycleStartedAt) {
+      const cycleEndMs = new Date(m.commitmentCycleStartedAt).getTime() + m.goalDays * 24 * 60 * 60 * 1000;
+      if (nowMs > cycleEndMs) return true;
+    }
+    return false;
+  };
 
-      return {
-        // Internal user id — included so client-side flows that
-        // need to talk to user-id-keyed endpoints (e.g. tag-people)
-        // don't need a second email→id round trip. May be null
-        // for an invited email that doesn't yet have an account.
-        userId: userIdByEmail.get(p.email.toLowerCase()) ?? null,
-        name: p.name,
-        email: p.email,
-        avatarUrl: avatarByEmail.get(p.email.toLowerCase()) ?? null,
-        sharedCircleCount: p.sharedCircleCount,
-        firstCircleDate: p.firstCircleDate.toISOString(),
-        maxSharedStreak: maxStreak,
-        score,
-        // How many Amens the viewer has tapped on this person's prayer
-        // requests — the client sorts the garden by this so the people
-        // you pray for most rise to the top.
-        myAmenCount: myAmenByUserId.get(userIdByEmail.get(p.email.toLowerCase()) ?? -1) ?? 0,
-        sharedPractices,
-        sharedTraditions,
-        lastActiveDate: lastActiveDate ?? p.firstCircleDate.toISOString(),
-        activePrayerRequest: prayer,
-      };
-    })
-  );
+  const peopleEnriched = allPeople.map((p) => {
+    let score = 0;
+
+    // Shared tradition names (deduped)
+    const sharedTraditions = p.sharedRitualIds
+      .map(rid => ({ id: rid, name: ritualNameMap.get(rid) ?? "Tradition" }))
+      .filter((v, i, a) => a.findIndex(x => x.id === v.id) === i);
+
+    // Completed meetups across the peer's (distinct) shared rituals
+    for (const rid of new Set(p.sharedRitualIds)) score += completedByRitual.get(rid) ?? 0;
+
+    let maxStreak = 0;
+    let sharedPractices: Array<{ id: number; name: string; currentStreak: number; templateType: string | null }> = [];
+    let lastActiveDate: string | null = null;
+
+    if (ownerMomentIds.length > 0) {
+      const personSet = peerMomentIds.get(p.email);
+      const candidateIds = personSet ? ownerMomentIds.filter(id => personSet.has(id)) : [];
+      const activeMoments = candidateIds
+        .map(id => momentById.get(id))
+        .filter((m): m is NonNullable<typeof m> => !!m && m.state !== "archived" && !isExpiredIntercession(m));
+      if (activeMoments.length > 0) {
+        const activeIds = activeMoments.map(m => m.id);
+        sharedPractices = activeMoments.map(m => ({
+          id: m.id,
+          name: m.name,
+          currentStreak: streakByMoment.get(m.id) ?? 0,
+          templateType: m.templateType,
+        }));
+        maxStreak = Math.max(0, ...activeIds.map(id => streakByMoment.get(id) ?? 0));
+        for (const id of activeIds) {
+          score += bloomCountByMoment.get(id) ?? 0;
+          const d = lastBloomByMoment.get(id);
+          if (d && (lastActiveDate === null || d > lastActiveDate)) lastActiveDate = d;
+        }
+      }
+    }
+
+    const prayer = activePrayerMap.get(p.email) ?? null;
+
+    return {
+      // Internal user id — included so client-side flows that need to talk to
+      // user-id-keyed endpoints (e.g. tag-people) don't need a second
+      // email→id round trip. May be null for an invited email with no account.
+      userId: userIdByEmail.get(p.email.toLowerCase()) ?? null,
+      name: p.name,
+      email: p.email,
+      avatarUrl: avatarByEmail.get(p.email.toLowerCase()) ?? null,
+      sharedCircleCount: p.sharedCircleCount,
+      firstCircleDate: p.firstCircleDate.toISOString(),
+      maxSharedStreak: maxStreak,
+      score,
+      // How many Amens the viewer has tapped on this person's prayer requests —
+      // the client sorts the garden by this so the people you pray for most
+      // rise to the top.
+      myAmenCount: myAmenByUserId.get(userIdByEmail.get(p.email.toLowerCase()) ?? -1) ?? 0,
+      sharedPractices,
+      sharedTraditions,
+      lastActiveDate: lastActiveDate ?? p.firstCircleDate.toISOString(),
+      activePrayerRequest: prayer,
+    };
+  });
 
   res.json(peopleEnriched);
 });
