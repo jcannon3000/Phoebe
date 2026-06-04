@@ -198,8 +198,20 @@ router.get(
       .select()
       .from(correspondenceMembersTable)
       .where(inArray(correspondenceMembersTable.correspondenceId, correspondenceIds));
+    // Only the columns this list view uses — and just a 120-char preview of
+    // each body via SQL substring. The full content of every letter was being
+    // loaded only to slice(0,120) the first-unread one; letters accrue
+    // unbounded per correspondence, so this keeps the list cheap as they grow.
     const allLetterRows = await db
-      .select()
+      .select({
+        correspondenceId: lettersTable.correspondenceId,
+        authorEmail: lettersTable.authorEmail,
+        authorName: lettersTable.authorName,
+        sentAt: lettersTable.sentAt,
+        periodStartDate: lettersTable.periodStartDate,
+        readBy: lettersTable.readBy,
+        content: sql<string>`substring(${lettersTable.content} from 1 for 120)`,
+      })
       .from(lettersTable)
       .where(inArray(lettersTable.correspondenceId, correspondenceIds));
 
