@@ -100,7 +100,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useAuth();
   const logout = useLogout();
   const [, setLocation] = useLocation();
-  const { rawIsAdmin, rawIsBeta, isBeta } = useBetaStatus();
+  const { rawIsAdmin, rawIsBeta } = useBetaStatus();
   const { t } = useTranslation();
   // Offices-only accounts 403 on /api/groups, /api/me/pending-…,
   // and /api/prayer-feeds/mine (requireBeta). Firing them on every
@@ -252,50 +252,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 
               {/* Pilot view / community admin toggles moved to Admin Tools page */}
             </div>
-
-            {/* ── Your Way of Love (beta) ── Streak + per-stage WOL view/edit.
-                Gated on isBeta so it follows the beta-view preview toggle:
-                hidden whenever a beta user previews the regular (non-beta)
-                experience, matching the dashboard and the rest of the Way of
-                Love. Non-beta users never see it. */}
-            {isBeta && (
-              <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-                <button
-                  type="button"
-                  onClick={() => navigate("/daily-practice")}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-opacity hover:opacity-90"
-                  style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.28)" }}
-                >
-                  <span className="text-lg leading-none w-5 text-center" aria-hidden>🌿</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-                      {t("menu.daily_practice", { defaultValue: "Your Way of Love" })}
-                    </p>
-                    <p className="text-[11px]" style={{ color: "#8FAF96", margin: 0 }}>
-                      {t("menu.daily_practice_sub", { defaultValue: "Your seven practices" })}
-                    </p>
-                  </div>
-                  <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.4)", flexShrink: 0 }} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => navigate("/this-week")}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-opacity hover:opacity-90"
-                  style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.28)", marginTop: 8 }}
-                >
-                  <span className="text-lg leading-none w-5 text-center" aria-hidden>🗓️</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-                      {t("menu.this_week", { defaultValue: "This week" })}
-                    </p>
-                    <p className="text-[11px]" style={{ color: "#8FAF96", margin: 0 }}>
-                      {t("menu.this_week_sub", { defaultValue: "Connect, Serve, Bridge & Rest" })}
-                    </p>
-                  </div>
-                  <ChevronRight size={14} style={{ color: "rgba(200,212,192,0.4)", flexShrink: 0 }} />
-                </button>
-              </div>
-            )}
 
             {/* ── Prayer list ── moved here from the header pill (which now
                 opens the Way of Love drawer). Sits above Communities; hidden
@@ -744,7 +700,6 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 export function Layout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [wolDrawerOpen, setWolDrawerOpen] = useState(false);
   const [location] = useLocation();
   const { t } = useTranslation();
   // Beta testers get the "Way of Love" header pill (opens the progress
@@ -752,7 +707,6 @@ export function Layout({ children }: { children: ReactNode }) {
   // list. Gated on isBeta so previewing the regular experience (beta-view
   // toggle off) falls back to the Prayer list pill and hides the Way of Love
   // entirely — non-beta users never see the pill.
-  const { isBeta } = useBetaStatus();
   // Offices-only tier: no personal prayer requests + no garden. The
   // header "Prayer list" pill links into a surface they can't use, so
   // we hide it for that tier. Drawer filtering happens above.
@@ -838,39 +792,19 @@ export function Layout({ children }: { children: ReactNode }) {
                 tier — they have no personal prayer requests and no
                 garden, so the pill would land on an empty page. */}
             {!officesOnly && (
-              isBeta ? (
-                // Way of Love pill — opens the progress drawer (replaces the
-                // Prayer list pill for beta; Prayer list moved into the menu).
-                <button
-                  type="button"
-                  onClick={() => { playOpeningSwell(0); setWolDrawerOpen(true); }}
-                  className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
-                  style={{
-                    fontFamily: "'Space Grotesk', sans-serif",
-                    letterSpacing: "-0.01em",
-                    background: "rgba(200,212,192,0.08)",
-                    color: "#C8D4C0",
-                    border: "1px solid rgba(46,107,64,0.3)",
-                  }}
-                  aria-label="Open Way of Love"
-                >
-                  {t("header.way_of_love", { defaultValue: "Way of Love" })}
-                </button>
-              ) : (
-                <Link
-                  href="/prayer-list"
-                  className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
-                  style={{
-                    fontFamily: "'Space Grotesk', sans-serif",
-                    letterSpacing: "-0.01em",
-                    background: "rgba(200,212,192,0.08)",
-                    color: "#C8D4C0",
-                    border: "1px solid rgba(46,107,64,0.3)",
-                  }}
-                >
-                  {t("header.prayer_list")}
-                </Link>
-              )
+              <Link
+                href="/prayer-list"
+                className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  letterSpacing: "-0.01em",
+                  background: "rgba(200,212,192,0.08)",
+                  color: "#C8D4C0",
+                  border: "1px solid rgba(46,107,64,0.3)",
+                }}
+              >
+                {t("header.prayer_list")}
+              </Link>
             )}
             {/* (People moved into the drawer's Communities section.) */}
             <button
@@ -897,7 +831,6 @@ export function Layout({ children }: { children: ReactNode }) {
       </header>
 
       <DrawerMenu open={drawerOpen} onClose={() => setDrawerOpen(false)} />
-      <WayOfLoveDrawer open={wolDrawerOpen} onClose={() => setWolDrawerOpen(false)} />
 
       <main className="flex-1 flex flex-col pt-2 pb-12 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full">
         <motion.div

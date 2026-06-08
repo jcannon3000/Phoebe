@@ -83,10 +83,10 @@ function derivePrayChoice(defaultPrayerLevel: string | null | undefined): PrayCh
 // Keep in sync with HOME_LAYOUT_VERSION in dashboard.tsx.
 const HOME_LAYOUT_VERSION = 2;
 // The default home everyone starts at (and resets to on a version bump):
-// requests (pinned) → community prayers (office) → Listen (contemplation) →
+// requests (pinned) → community prayers (office) → Gratitude →
 // Forward Day by Day. Everything else is hidden but addable.
-const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
-const DEFAULT_HIDDEN: HomeModule[] = ["gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
+const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "gratitude", "fdd", "contemplation", "examen", "cac", "ssje", "ncmp", "podcasts"];
+const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "examen", "cac", "ssje", "ncmp", "podcasts"];
 
 function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub: string }> {
   const { t } = useTranslation();
