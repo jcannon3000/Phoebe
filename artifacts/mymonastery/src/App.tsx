@@ -10,7 +10,6 @@ import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
 import { DesktopAppPrompt } from "@/components/DesktopAppPrompt";
 import { BottomPromptStack } from "@/components/BottomPromptStack";
-import { PrayLocationInvite } from "@/components/PrayLocationInvite";
 import { ReflectionReturnRedirect } from "@/components/ReflectionReturnRedirect";
 import { ReflectionPreheater } from "@/components/ReflectionPreheater";
 import { OfficeAudioPreloader } from "@/components/OfficeAudioPreloader";
@@ -203,7 +202,6 @@ const MorningPrayerPage = lazy(() => import("./pages/morning-prayer"));
 const MomentsDashboard = lazy(() => import("./pages/moments-dashboard"));
 const MomentRedirect = lazy(() => import("./pages/moment-redirect"));
 const PrayerListPage = lazy(() => import("./pages/prayer-list"));
-const PrayedForMapPage = lazy(() => import("./pages/prayed-for-map"));
 const PrayerModePage = lazy(() => import("./pages/prayer-mode"));
 const DailyPracticePage = lazy(() => import("./pages/daily-practice"));
 const RuleOfLifePage = lazy(() => import("./pages/rule-of-life"));
@@ -649,7 +647,6 @@ function Router() {
       <Route path="/my-prayer-feeds" component={MyPrayerFeedsPage} />
       <Route path="/admin/newsletter" component={AdminNewsletterPage} />
       <Route path="/prayer-list" component={PrayerListPage} />
-      <Route path="/prayed-for-map" component={PrayedForMapPage} />
       <Route path="/my-prayer-requests" component={MyPrayerRequestsPage} />
       <Route path="/prayers-for-me" component={PrayersForMePage} />
       <Route path="/prayer-mode" component={PrayerModePage} />
@@ -846,7 +843,6 @@ function App() {
           <PushPermissionPrompt />
           <WebPushPermissionPrompt />
           <DesktopAppPrompt />
-          <PrayLocationInvite />
           <ForegroundPushToast />
           <NetworkBanner />
           <ServerDownScreen />

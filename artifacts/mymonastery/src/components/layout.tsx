@@ -11,7 +11,7 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
-import { useHealthMindfulToday } from "@/lib/appleHealth";
+import { useHealthMindfulToday, useSyncHealthMinutes } from "@/lib/appleHealth";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
 
@@ -128,16 +128,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
     staleTime: 30_000,
   });
 
-  // "Prayed-for map" only appears once at least one located prayer has
-  // arrived — an empty map isn't worth a menu row. Offices-only accounts
-  // 403 on /prayer-requests, so they're excluded (same as the queries above).
-  const { data: prayMapData } = useQuery<{ points: Array<unknown> }>({
-    queryKey: ["/api/prayer-requests/prayed-for-locations"],
-    queryFn: () => apiRequest("GET", "/api/prayer-requests/prayed-for-locations"),
-    enabled: open && !!user && !earlyOfficesOnly,
-    staleTime: 5 * 60_000,
-  });
-  const hasPrayMap = (prayMapData?.points?.length ?? 0) > 0;
 
   // Prayer feeds the user created (admins). Drives whether the
   // "Manage Prayer Feeds" entry appears in the side menu — non-
@@ -313,9 +303,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             {!officesOnly && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
                 <MenuRow emoji="🙏" label={t("menu.prayer_list", { defaultValue: "Prayer list" })} onClick={() => navigate("/prayer-list")} />
-                {hasPrayMap && (
-                  <MenuRow emoji="🗺️" label={t("menu.prayed_for_map", { defaultValue: "Prayed-for map" })} onClick={() => navigate("/prayed-for-map")} />
-                )}
               </div>
             )}
 
@@ -778,6 +765,11 @@ export function Layout({ children }: { children: ReactNode }) {
   const onCommunitiesPage =
     location === "/communities" || location.startsWith("/communities/");
 
+  // Best-effort sync of today's external Apple Health mindful minutes to the
+  // server from the app shell (so it runs on nearly every page), giving the
+  // ~7pm contemplation-goal nudge a fresh value even when the user never opens
+  // the Contemplation page. No-ops on web / when Health is unavailable.
+  useSyncHealthMinutes();
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10" }}>
