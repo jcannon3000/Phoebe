@@ -1148,6 +1148,15 @@ function wireDurableStorage() {
 // rotates tokens) and broadcast an `appactive` event the web app can use
 // to refetch state (e.g. the dashboard's "Today" section).
 function wireLifecycle() {
+  // Dismissing the in-app browser (SFSafariViewController) fires neither
+  // appStateChange (the app stayed active under the overlay) nor the WebView's
+  // visibilitychange, so emit a dedicated event the web app can act on — e.g.
+  // ReflectionReturnRedirect navigating to the in-app reflection page when the
+  // reader closes a daily-reflection newsletter. Kept separate from
+  // `phoebe:appactive` so it doesn't log a false app-open or rotate tokens.
+  void Browser.addListener("browserFinished", () => {
+    window.dispatchEvent(new Event("phoebe:browserfinished"));
+  });
   App.addListener("appStateChange", ({ isActive }) => {
     if (isActive) {
       window.dispatchEvent(new Event("phoebe:appactive"));

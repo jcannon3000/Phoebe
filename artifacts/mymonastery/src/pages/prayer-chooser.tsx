@@ -3,8 +3,6 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/useAuth";
-import { useBetaStatus } from "@/hooks/useDemo";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { readOfficeProgress, type LiturgyMode } from "@/pages/bcp-daily-office";
 import { useTranslation } from "react-i18next";
@@ -12,8 +10,7 @@ import { useTranslation } from "react-i18next";
 // Remembers which depth the user prayed last so the chooser can float
 // it to the top on the next visit. Plain localStorage — a soft UX hint,
 // not state worth syncing to the server. The value is one of the card
-// keys below ("intercessions" | "feed" | "devotion" | "office" |
-// "ncmp" | "examen").
+// keys below ("devotion" | "office").
 const LAST_CHOICE_KEY = "phoebe:last-prayer-choice";
 function readLastPrayerChoice(): string | null {
   try { return localStorage.getItem(LAST_CHOICE_KEY); } catch { return null; }
@@ -24,17 +21,13 @@ function recordPrayerChoice(key: string): void {
 
 // ── Prayer chooser ──────────────────────────────────────────────────────────
 // Replaces the dashboard's inline modal popup. The home-screen CTA links
-// here; this page presents three depth options for today's prayer:
+// here; this page presents two depth options for today's prayer:
 //
-//   • Community Intercessions — the slideshow walk through your parish
-//                               group's prayer requests + intercessions.
-//   • Daily Devotion          — BCP short form, includes the prayer list.
-//   • Daily Office            — BCP full Morning/Evening Prayer, includes
-//                               the prayer list at the end.
+//   • Daily Devotion — BCP short form, includes the prayer list.
+//   • Daily Office   — BCP full Morning/Evening Prayer, includes the
+//                      prayer list at the end.
 //
-// Time-of-day labels and links flip morning vs evening; the
-// intercession slideshow is the same either way (it's the same
-// underlying queue).
+// Time-of-day labels and links flip morning vs evening.
 //
 // On mount we play the opening swell — the same audio cue the prayer-
 // mode slideshow uses on entry. The user explicitly asked for a sound
@@ -46,31 +39,6 @@ const FONT = "'Space Grotesk', sans-serif";
 export default function PrayerChooserPage() {
   const [, setLocation] = useLocation();
   const { t } = useTranslation();
-  // The Examen is pilot-only — same gate as the menu entry + the
-  // habit-slide pill.
-  const { isBeta } = useBetaStatus();
-  // Offices-only accounts have no communities, no personal prayer
-  // requests, no garden. The first chooser option ("Community
-  // Intercessions" → /prayer-mode) makes no sense for them — the
-  // page would fetch /api/moments + /api/prayer-requests +
-  // /api/prayers-for, all of which 403, and the slideshow's
-  // dataReady gate would hang on a loading screen forever. Instead
-  // we surface their subscribed prayer feed as the first option and
-  // route directly to the feed walk (?queue=feed&slug=…), the same
-  // path the dashboard FeedPrayerCard's "Pray again" CTA uses.
-  const { user } = useAuth();
-  const officesOnly = user?.accessTier === "offices-only";
-
-  // Fetch subscribed feeds for offices-only users so we can route the
-  // first option to /prayer-mode?queue=feed&slug={firstFeed.slug}.
-  type SubscribedFeed = { feed: { id: number; slug: string; title: string; coverEmoji: string | null } };
-  const subscribedFeedsQuery = useQuery<{ subscriptions: SubscribedFeed[] }>({
-    queryKey: ["/api/prayer-feeds/subscribed"],
-    queryFn: () => apiRequest("GET", "/api/prayer-feeds/subscribed"),
-    enabled: !!user && officesOnly,
-    staleTime: 60_000,
-  });
-  const firstFeed = subscribedFeedsQuery.data?.subscriptions?.[0]?.feed ?? null;
 
   // Time-of-day split — same threshold the dashboard card uses (noon).
   const hour = new Date().getHours();
@@ -93,73 +61,6 @@ export default function PrayerChooserPage() {
   });
   const officeStreak = officePrefs?.officeStreak ?? 0;
 
-  // National Cathedral Morning Prayer — surfaced as a 4th option on
-  // the morning chooser, weekdays only (the broadcast is Mon-Fri at
-  // 7 AM ET). /api/ncmp/today-meta fetches the YouTube playlist RSS
-  // + scrapes today's video length so the card can show the actual
-  // duration ("≈ 13 min") rather than a static estimate.
-  //
-  // Gated on isMorning so the request only fires when the option is
-  // about to render. Weekends: still fires (cheap, server caches),
-  // but the card itself is hidden — saves us guarding the query in
-  // two places.
-  type NcmpMeta = {
-    url: string;
-    videoId: string | null;
-    title: string | null;
-    publishedAt: string | null;
-    durationSeconds: number | null;
-  };
-  const { data: ncmpMeta } = useQuery<NcmpMeta>({
-    queryKey: ["/api/ncmp/today-meta"],
-    queryFn: () => apiRequest("GET", "/api/ncmp/today-meta"),
-    enabled: isMorning,
-    staleTime: 60 * 60_000, // server already caches by day; this just dedupes within session
-  });
-  // Hide on weekends — no fresh broadcast Sat/Sun.
-  const isWeekday = (() => {
-    const d = new Date().getDay();
-    return d >= 1 && d <= 5;
-  })();
-  const showNcmpOption = isMorning && isWeekday;
-  // Static time-of-day badge — the user wanted broadcast time, not
-  // length, here. Keeps the meta query running so the URL + duration
-  // are still fetched (the durationSeconds is what the prayer-session
-  // log uses on tap), but the chip itself just names the broadcast
-  // schedule. "7 AM ET" matches the concise style of the other
-  // chooser badges ("5–10 Min", "15–20 Min").
-  const ncmpDurationLabel = t("chooser.ncmp_badge");
-
-  // Forward Movement's daily Episcopal office podcasts — Morning Prayer
-  // (mornings) and Evening Prayer (evenings), the BCP 1979 office read
-  // aloud. Both publish 7 days a week. We fetch the relevant show's
-  // episode meta to label the card with its real length; the in-app
-  // player at /podcast/:show does the playback + session log. Each query
-  // is gated on the half-of-day so only the one whose card will render
-  // actually fires.
-  type PodcastMeta = {
-    feedTitle: string | null;
-    title: string | null;
-    audioUrl: string | null;
-    durationSeconds: number | null;
-  };
-  const podcastDurationLabel = (s: number | null | undefined) => {
-    if (!s || s <= 0) return t("chooser.audio_fallback");
-    return t("chooser.audio_minutes", { min: Math.round(s / 60) });
-  };
-  const { data: morningPodcastMeta } = useQuery<PodcastMeta>({
-    queryKey: ["/api/podcast/morning-office/today"],
-    queryFn: () => apiRequest("GET", "/api/podcast/morning-office/today"),
-    enabled: isMorning,
-    staleTime: 30 * 60_000,
-  });
-  const { data: eveningPodcastMeta } = useQuery<PodcastMeta>({
-    queryKey: ["/api/podcast/evening-office/today"],
-    queryFn: () => apiRequest("GET", "/api/podcast/evening-office/today"),
-    enabled: !isMorning,
-    staleTime: 30 * 60_000,
-  });
-
   // Per-mode progress: drives the verb in the corner pill (Start /
   // Continue / Pray again) and the ?reset=1 suffix on the link.
   const devotionState = readOfficeProgress(devotionMode);
@@ -180,12 +81,9 @@ export default function PrayerChooserPage() {
     }
   }, []);
 
-  // Unified card model so every option — including the National
-  // Cathedral broadcast — flows through one ordering + render path.
-  // `key` is the stable id used to remember "last prayed"; `variant`
-  // picks the palette (purple for the cathedral broadcast, gold for the
-  // Morning at the Office podcast, green for the BCP / community
-  // options).
+  // Unified card model so every option flows through one ordering +
+  // render path. `key` is the stable id used to remember "last prayed";
+  // `variant` picks the palette (green for the BCP options).
   type ChooserCard = {
     key: string;
     variant: "green" | "purple" | "gold";
@@ -196,68 +94,7 @@ export default function PrayerChooserPage() {
     href: string;
   };
 
-  // First card swaps shape by tier:
-  //   • Full / parish-only / beta: "Community Intercessions" — the
-  //     daily walk through the viewer's requests + intercessions.
-  //   • Offices-only: "Prayer feed" — their subscribed feed's
-  //     intercessions, routed straight to /prayer-mode?queue=feed
-  //     so it doesn't hit any of the blocked-prefix endpoints.
-  //     Hidden entirely when the user has no subscription yet.
-  const firstCard: ChooserCard | null = officesOnly
-    ? (firstFeed
-        ? {
-            key: "feed",
-            variant: "green",
-            title: t("chooser.feed_title"),
-            sub: t("chooser.feed_sub", { name: `${firstFeed.coverEmoji ?? "🌿"} ${firstFeed.title}` }),
-            badge: t("chooser.badge_under5"),
-            verb: t("chooser.verb_start"),
-            href: `/prayer-mode?queue=feed&slug=${encodeURIComponent(firstFeed.slug)}`,
-          }
-        : null)
-    : {
-        key: "intercessions",
-        variant: "green",
-        title: t("chooser.intercessions_title"),
-        sub: t("chooser.intercessions_sub"),
-        badge: t("chooser.badge_under5"),
-        verb: t("chooser.verb_start"),
-        href: "/prayer-mode",
-      };
-
   const cards: ChooserCard[] = [
-    // National Cathedral Morning Prayer — weekday mornings only. Opens
-    // the in-app /ncmp/watch embed (logs the prayer session on mount).
-    ...(showNcmpOption ? [{
-      key: "ncmp",
-      variant: "purple" as const,
-      title: t("chooser.ncmp_title"),
-      sub: t("chooser.ncmp_sub"),
-      badge: ncmpDurationLabel,
-      verb: t("chooser.verb_watch"),
-      href: "/ncmp/watch",
-    }] : []),
-    // Forward Movement office podcast — Morning Prayer in the morning,
-    // Evening Prayer in the evening. Both publish 7 days a week. Opens
-    // the in-app audio player at /podcast/:show, which logs the session.
-    ...(isMorning ? [{
-      key: "podcast-morning",
-      variant: "gold" as const,
-      title: t("chooser.podcast_morning_title"),
-      sub: t("chooser.podcast_morning_sub"),
-      badge: podcastDurationLabel(morningPodcastMeta?.durationSeconds),
-      verb: t("chooser.verb_listen"),
-      href: "/podcast/morning-office",
-    }] : [{
-      key: "podcast-evening",
-      variant: "gold" as const,
-      title: t("chooser.podcast_evening_title"),
-      sub: t("chooser.podcast_evening_sub"),
-      badge: podcastDurationLabel(eveningPodcastMeta?.durationSeconds),
-      verb: t("chooser.verb_listen"),
-      href: "/podcast/evening-office",
-    }]),
-    ...(firstCard ? [firstCard] : []),
     {
       key: "devotion",
       variant: "green",
@@ -278,54 +115,19 @@ export default function PrayerChooserPage() {
       verb: verbFor(officeStateLocal),
       href: `/bcp/daily-office?mode=${encodeURIComponent(officeMode)}${officeStateLocal.kind === "done" ? "&reset=1" : ""}`,
     },
-    // Reflect & Sit — today's Forward Day by Day (read aloud) flowing
-    // seamlessly into a silent meditation timer; the whole set time logs
-    // as contemplation. One continuous experience (see /reflect/fdd).
-    {
-      key: "reflect-sit",
-      variant: "gold" as const,
-      title: t("chooser.reflect_sit_title", { defaultValue: "Reflect & Sit" }),
-      sub: t("chooser.reflect_sit_sub", { defaultValue: "Forward Day by Day, then silence" }),
-      badge: t("chooser.reflect_sit_badge", { defaultValue: "Set your time" }),
-      verb: t("chooser.verb_start"),
-      href: "/reflect/fdd",
-    },
-    // Journal — a private daily reflection. A rotating prompt over an
-    // open writing space; the entry is saved privately and the time
-    // spent writing counts toward prayer time (see /journal).
-    {
-      key: "journal",
-      variant: "green" as const,
-      title: t("chooser.journal_title", { defaultValue: "Journal" }),
-      sub: t("chooser.journal_sub", { defaultValue: "A private daily reflection" }),
-      badge: t("chooser.journal_badge", { defaultValue: "Write" }),
-      verb: t("chooser.verb_start"),
-      href: "/journal",
-    },
-    // Ignatian Examen — the contemplative close to the day. Only after
-    // 5pm (it's an end-of-day prayer) for pilot users.
-    ...(hour >= 17 && isBeta ? [{
-      key: "examen",
-      variant: "green" as const,
-      title: t("menu.examen"),
-      sub: t("chooser.examen_sub"),
-      badge: t("chooser.badge_5_10"),
-      verb: t("chooser.verb_start"),
-      href: "/examen",
-    }] : []),
   ];
 
   // Float the last-prayed card to the top, then a visual gap, then the
   // rest in their natural order. If the user has never chosen (or the
-  // remembered key isn't currently available — e.g. they last watched
-  // the cathedral but it's now afternoon), nothing is pinned and the
-  // list renders in its natural order with no divider.
+  // remembered key isn't currently available — e.g. a morning/evening
+  // mode they no longer match), nothing is pinned and the list renders
+  // in its natural order with no divider.
   const lastChoice = readLastPrayerChoice();
   const pinnedCard = lastChoice ? (cards.find(c => c.key === lastChoice) ?? null) : null;
   const restCards = pinnedCard ? cards.filter(c => c.key !== pinnedCard.key) : cards;
 
-  // Per-variant palette. Green = BCP/community, purple = National
-  // Cathedral broadcast, gold = "A Morning at the Office" podcast.
+  // Per-variant palette. Green = BCP options. (Purple/gold retained for
+  // the shared card model but unused by the current two options.)
   const palettes = {
     green: {
       cardBg: "rgba(46,107,64,0.14)", cardBorder: "rgba(46,107,64,0.35)",
@@ -493,8 +295,7 @@ export default function PrayerChooserPage() {
                 divider, then the rest. When nothing's pinned (first
                 visit, or the remembered card isn't available right
                 now) the divider is skipped and the list renders in
-                its natural order. The National Cathedral broadcast
-                floats up here too if it's what the user watched last. */}
+                its natural order. */}
             {pinnedCard && renderCard(pinnedCard, 0)}
             {pinnedCard && restCards.length > 0 && (
               <div className="flex items-center gap-3 py-1" aria-hidden>

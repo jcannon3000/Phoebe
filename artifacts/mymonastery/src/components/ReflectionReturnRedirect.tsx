@@ -21,8 +21,9 @@ import { REFLECTION_RETURN_KEY } from "@/lib/cacReadState";
 export function ReflectionReturnRedirect() {
   const [location, setLocation] = useLocation();
   useEffect(() => {
-    const check = () => {
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+    // Consume the stashed return path once and navigate to the in-app
+    // reflection page. Shared by every trigger below.
+    const consume = () => {
       let target: string | null = null;
       try {
         target = sessionStorage.getItem(REFLECTION_RETURN_KEY);
@@ -30,11 +31,24 @@ export function ReflectionReturnRedirect() {
       } catch { return; }
       if (target && location !== target) setLocation(target);
     };
-    document.addEventListener("visibilitychange", check);
-    window.addEventListener("phoebe:appactive", check);
+    // Web / app-foreground path: only act when the document is actually
+    // visible (guards against a stray background refocus).
+    const checkVisible = () => {
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+      consume();
+    };
+    document.addEventListener("visibilitychange", checkVisible);
+    window.addEventListener("phoebe:appactive", checkVisible);
+    // iOS in-app browser dismissal fires neither of the above (the app stayed
+    // active under the SFSafariViewController overlay). The native shell emits
+    // this dedicated event on Browser close — we know the reader just came
+    // back, so consume unconditionally (next tick, after the WebView reveals).
+    const onBrowserFinished = () => setTimeout(consume, 0);
+    window.addEventListener("phoebe:browserfinished", onBrowserFinished);
     return () => {
-      document.removeEventListener("visibilitychange", check);
-      window.removeEventListener("phoebe:appactive", check);
+      document.removeEventListener("visibilitychange", checkVisible);
+      window.removeEventListener("phoebe:appactive", checkVisible);
+      window.removeEventListener("phoebe:browserfinished", onBrowserFinished);
     };
   }, [location, setLocation]);
   return null;
