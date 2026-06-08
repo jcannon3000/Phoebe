@@ -16,8 +16,10 @@
 // minutes into the goal/streak (with de-duplication of Phoebe's own in-app
 // sits) is a deliberate follow-up.
 
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { apiRequest } from "@/lib/queryClient";
 
 interface MindfulHealthPlugin {
   isAvailable: () => Promise<{ available: boolean }>;
@@ -119,4 +121,42 @@ export function useHealthMindfulToday(): boolean {
     staleTime: 5 * 60_000,
   });
   return (q.data?.minutes ?? 0) > 0;
+}
+
+// Module-level so the dedup survives Layout remounts on navigation (each page
+// renders its own <Layout>, so a per-component ref would re-upload the same
+// value on every route change). Reset implicitly on a full app reload.
+let lastHealthUpload = "";
+
+/**
+ * Side-effect hook: best-effort upload of today's EXTERNAL mindful minutes to
+ * the server (PUT /api/me/contemplation-health-minutes), so the ~7pm goal
+ * nudge and the contemplation-stats endpoint can count silence kept in other
+ * apps even when the user never opens the Contemplation page. Mounted in the
+ * global Layout shell, so it runs on (nearly) every authenticated page.
+ *
+ * Reads with excludeOwn=true — Phoebe's own sits are already counted server-
+ * side via prayer_sessions, so uploading them would double-count. iOS-native
+ * only (no-ops on web); shares the Contemplation card's query key so the two
+ * dedupe to a single HealthKit read. Only uploads a positive value, so an
+ * ungranted/empty read can't clobber a real total synced earlier.
+ */
+export function useSyncHealthMinutes(): void {
+  const day = new Date().toLocaleDateString("en-CA");
+  const q = useQuery<{ minutes: number; sessions: number } | null>({
+    // Same key/queryFn as the Contemplation goal card → one shared fetch.
+    queryKey: ["apple-health-mindful-external", day],
+    queryFn: () => getMindfulMinutesToday(true),
+    enabled: appleHealthAvailable(),
+    staleTime: 5 * 60_000,
+  });
+  const minutes = q.data?.minutes ?? 0;
+  useEffect(() => {
+    if (minutes <= 0) return;
+    const key = `${day}:${minutes}`;
+    if (lastHealthUpload === key) return;
+    lastHealthUpload = key;
+    void apiRequest("PUT", "/api/me/contemplation-health-minutes", { minutes, day })
+      .catch(() => { if (lastHealthUpload === key) lastHealthUpload = ""; }); // allow retry
+  }, [minutes, day]);
 }
