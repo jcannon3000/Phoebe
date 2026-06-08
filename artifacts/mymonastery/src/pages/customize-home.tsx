@@ -66,13 +66,15 @@ const PRAY_CARD: Record<PrayChoice, { emoji: string; label: string; sub: string 
   offices: { emoji: "📖", label: "Daily Office", sub: "Morning & Evening Prayer" },
 };
 // Which choice is active. Mirrors PrayerOfficeCard's programmedLevel: any
-// "office" signal wins, then "devotion", else community (the default).
+// "office" signal wins, then "devotion", then explicit community —
+// otherwise the Daily Devotion default.
 function derivePrayChoice(defaultPrayerLevel: string | null | undefined): PrayChoice {
   const m = getSideLevel("morning");
   const e = getSideLevel("evening");
   if (defaultPrayerLevel === "office" || m === "office" || e === "office") return "offices";
   if (defaultPrayerLevel === "devotion" || m === "devotion" || e === "devotion") return "devotion";
-  return "community";
+  if (defaultPrayerLevel === "intercessions" || m === "intercessions" || e === "intercessions") return "community";
+  return "devotion";
 }
 
 // Home-layout version. Bump to force a one-time global reset to the default

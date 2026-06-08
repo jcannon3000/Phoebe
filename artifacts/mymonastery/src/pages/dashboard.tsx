@@ -3002,12 +3002,12 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
   });
   const officeStreak = officePrefs?.officeStreak ?? 0;
   // "Programmed an office" = the user explicitly chose the daily office as their
-  // prayer — either the global default or either per-side level. Everyone else
-  // gets the communal "Pray Together" default on this card (once a day).
+  // prayer — either the global default or either per-side level. Everyone
+  // without an explicit community pick now gets the Daily Devotion default.
   // Which programmed prayer the user committed to (Rule of Life → Pray):
   //   "office"   → full Morning/Evening Prayer
-  //   "devotion" → the shorter Daily Devotion
-  //   null       → community ("Pray Together"), the default
+  //   "devotion" → the shorter Daily Devotion (the default)
+  //   null       → community ("Pray Together"), only when explicitly chosen
   const programmedLevel: "office" | "devotion" | null =
     (officePrefs?.defaultPrayerLevel === "office" ||
       getSideLevel("morning") === "office" ||
@@ -3017,48 +3017,51 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
           getSideLevel("morning") === "devotion" ||
           getSideLevel("evening") === "devotion")
         ? "devotion"
-        : null;
+        : (officePrefs?.defaultPrayerLevel === "intercessions" ||
+            getSideLevel("morning") === "intercessions" ||
+            getSideLevel("evening") === "intercessions")
+          ? null
+          : "devotion";
   // "Programmed prayer" (office OR devotion) → the begin-prayer CTA + per-half
   // "prayed today" tracking; community keeps the once-a-day Pray Together flow.
   const programmedOffice = programmedLevel !== null;
 
-  // ── One-time reset to the "Pray Together" card (this update) ────────────
-  // The new home default is the communal "Pray Together" card. This is a
-  // one-time, per-device migration: anyone currently programmed onto the
-  // Offices (Morning/Evening Prayer) or the Daily Devotion is moved to
-  // community prayers — the "intercessions" level that programmedLevel /
-  // derivePrayChoice read as community. People already on community
-  // ("ask"/intercessions) are left untouched. A localStorage stamp makes it
-  // fire once, so a user can re-pick Offices/Devotion in Customize home
-  // afterward without being pulled back. Mirrors pickPray("community").
+  // ── One-time switch to the Daily Devotion default (this update) ─────────
+  // The home prayer card now defaults to the Daily Devotion. One-time,
+  // per-device migration: anyone currently sitting on the communal "Pray
+  // Together" card (the "intercessions"/community level, which most users
+  // were moved onto by the previous Pray-Together migration) is switched to
+  // the Daily Devotion. People who explicitly chose the Offices or are
+  // already on Devotion are left untouched. A localStorage stamp fires it
+  // once, so a user can re-pick community in Customize home afterward
+  // without being pulled back.
   const queryClient = useQueryClient();
-  const prayTogetherResetRanRef = useRef(false);
+  const devotionDefaultRanRef = useRef(false);
   useEffect(() => {
-    if (prayTogetherResetRanRef.current) return;
+    if (devotionDefaultRanRef.current) return;
     // Wait for office-prefs so we read the true server level, not the
-    // transient null before the query resolves.
+    // transient value before the query resolves.
     if (officePrefs === undefined) return;
-    const KEY = "phoebe:reset:pray-together:v1";
+    const KEY = "phoebe:reset:devotion-default:v2";
     try {
-      if (localStorage.getItem(KEY) === "1") { prayTogetherResetRanRef.current = true; return; }
+      if (localStorage.getItem(KEY) === "1") { devotionDefaultRanRef.current = true; return; }
     } catch {
       return; // no localStorage (private mode) — skip rather than loop
     }
-    prayTogetherResetRanRef.current = true;
+    devotionDefaultRanRef.current = true;
     const markDone = () => { try { localStorage.setItem(KEY, "1"); } catch { /* retry next load */ } };
-    if (programmedLevel === "office" || programmedLevel === "devotion") {
-      // Flip both the local per-side levels and the server default to
-      // community (intercessions) — same as customize-home's pickPray.
-      setSideLevel("morning", "intercessions");
-      setSideLevel("evening", "intercessions");
-      apiRequest("PUT", "/api/me/office-prefs", { defaultPrayerLevel: "intercessions" })
+    if (programmedLevel === null) {
+      // On the community card → switch to the Daily Devotion default.
+      setSideLevel("morning", "devotion");
+      setSideLevel("evening", "devotion");
+      apiRequest("PUT", "/api/me/office-prefs", { defaultPrayerLevel: "devotion" })
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ["/api/me/office-prefs"] });
           markDone();
         })
-        .catch(() => { prayTogetherResetRanRef.current = false; /* leave unstamped — retry next load */ });
+        .catch(() => { devotionDefaultRanRef.current = false; /* leave unstamped — retry next load */ });
     } else {
-      markDone(); // already on community — nothing to migrate
+      markDone(); // already on office or devotion — nothing to migrate
     }
   }, [officePrefs, programmedLevel, queryClient]);
 
