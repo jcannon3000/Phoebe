@@ -3028,12 +3028,11 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
 
   // ── One-time switch to the Daily Devotion default (this update) ─────────
   // The home prayer card now defaults to the Daily Devotion. One-time,
-  // per-device migration: anyone currently sitting on the communal "Pray
-  // Together" card (the "intercessions"/community level, which most users
-  // were moved onto by the previous Pray-Together migration) is switched to
-  // the Daily Devotion. People who explicitly chose the Offices or are
-  // already on Devotion are left untouched. A localStorage stamp fires it
-  // once, so a user can re-pick community in Customize home afterward
+  // per-device migration: EVERY user not already on Devotion — including
+  // those on the communal "Pray Together" card AND those on the Daily
+  // Offices — is switched to the Daily Devotion. Only users already on
+  // Devotion are left untouched. A localStorage stamp fires it once, so a
+  // user can re-pick the Office or community in Customize home afterward
   // without being pulled back.
   const queryClient = useQueryClient();
   const devotionDefaultRanRef = useRef(false);
@@ -3042,7 +3041,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
     // Wait for office-prefs so we read the true server level, not the
     // transient value before the query resolves.
     if (officePrefs === undefined) return;
-    const KEY = "phoebe:reset:devotion-default:v2";
+    const KEY = "phoebe:reset:devotion-default:v3";
     try {
       if (localStorage.getItem(KEY) === "1") { devotionDefaultRanRef.current = true; return; }
     } catch {
@@ -3050,8 +3049,8 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
     }
     devotionDefaultRanRef.current = true;
     const markDone = () => { try { localStorage.setItem(KEY, "1"); } catch { /* retry next load */ } };
-    if (programmedLevel === null) {
-      // On the community card → switch to the Daily Devotion default.
+    if (programmedLevel !== "devotion") {
+      // On the community OR an Office card → switch to the Daily Devotion default.
       setSideLevel("morning", "devotion");
       setSideLevel("evening", "devotion");
       apiRequest("PUT", "/api/me/office-prefs", { defaultPrayerLevel: "devotion" })
@@ -3061,7 +3060,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
         })
         .catch(() => { devotionDefaultRanRef.current = false; /* leave unstamped — retry next load */ });
     } else {
-      markDone(); // already on office or devotion — nothing to migrate
+      markDone(); // already on Devotion — nothing to migrate
     }
   }, [officePrefs, programmedLevel, queryClient]);
 
