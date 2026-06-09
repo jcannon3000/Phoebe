@@ -1293,8 +1293,8 @@ export async function migrate() {
     // Created on the first non-owner amen of a request on a given day
     // (in the recipient's tz); incremented on each subsequent amen
     // during the 2-hour batching window; claimed by the scanner after
-    // 2h and pushed once. Unique on (request, day) so re-amens after
-    // sent_at don't generate a second notification that day.
+    // 2h and pushed once. Unique on (request, recipient, day) so re-amens
+    // after sent_at don't generate a second notification that day.
     await run(client, `
       CREATE TABLE IF NOT EXISTS prayer_held_notifications (
         id SERIAL PRIMARY KEY,
@@ -1307,16 +1307,21 @@ export async function migrate() {
         sent_at TIMESTAMPTZ
       )
     `);
-    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_phn_request_day ON prayer_held_notifications (request_id, day_key)`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_phn_pending ON prayer_held_notifications (sent_at, first_amen_at)`);
-    // Recipient-scoped unique. The original index above was
+    // Recipient-scoped uniqueness. An earlier model batched per
     // (request_id, day_key) — fine when only the owner ever got
-    // batched. We now also enqueue rows for tagged users (the
+    // notified. We now also enqueue rows for tagged users (the
     // "praying for my friend Matthew" feature), so a SECOND row per
-    // (request, day) with a different recipient_id is legitimate.
-    // Add a wider index covering all three columns and drop the
-    // narrower one. IF NOT EXISTS / IF EXISTS make this safe on
-    // re-deploys.
+    // (request, day) with a different recipient_id is legitimate. This
+    // three-column index is the real constraint the amen upsert targets
+    // (routes/prayer.ts → ON CONFLICT request_id, recipient_id, day_key).
+    //
+    // We DROP the legacy narrow index if a prior deploy created it, but we
+    // no longer CREATE it first: once multi-recipient rows exist, the
+    // narrow (request_id, day_key) unique index can't be built, so that
+    // step failed on EVERY boot ("could not create unique index
+    // uniq_phn_request_day … is duplicated"). Harmless (it's superseded +
+    // dropped right after) but noisy — removed.
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_phn_request_recipient_day ON prayer_held_notifications (request_id, recipient_id, day_key)`);
     await run(client, `DROP INDEX IF EXISTS uniq_phn_request_day`);
 
@@ -2707,6 +2712,29 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS cac_reflections_user ON cac_reflections (user_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS cac_reflections_shared_created ON cac_reflections (shared, created_at)`);
+
+    // ── Shared "thoughts" for the other daily reflections (fdd, ssje) ───────
+    // CAC's Daily Meditation has cac_reflections (above). "Forward Day by Day"
+    // (fdd) and the Society of St John the Evangelist (ssje) get the same
+    // community surface here — what others in your garden wrote about a given
+    // day's reflection. Unlike cac_reflections (day inferred from created_at),
+    // these carry the newsletter `day` explicitly so a thought maps to the
+    // exact reflection it responds to. shared defaults TRUE — these are
+    // community-facing by design. The uniform /api/reflections/:source/thoughts
+    // endpoints read cac_reflections for "cac" and this table for "fdd"/"ssje".
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS reflection_thoughts (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        source TEXT NOT NULL,
+        day TEXT NOT NULL,
+        text TEXT NOT NULL,
+        shared BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS reflection_thoughts_source_day ON reflection_thoughts (source, day)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS reflection_thoughts_user ON reflection_thoughts (user_id)`);
 
     // ── Hot-path performance indexes ────────────────────────────────────────
     // The "garden" (getGardenUserIds) joins group_members.email ↔ users.email
