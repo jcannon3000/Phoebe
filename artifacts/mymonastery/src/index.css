@@ -570,3 +570,22 @@ a:active,
   border: 1px solid rgba(46, 107, 64, 0.3);
   animation: prayer-avatar-pulse 2.4s ease-in-out infinite;
 }
+
+/* Community-pills ticker (intercession slides) — a single line that gently
+   scrolls so a multi-community intercession shows every community without
+   wrapping. The markup duplicates the pills, so translateX(-50%) loops
+   seamlessly; the mask softens both edges. */
+@keyframes pill-ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.pill-ticker {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  width: max-content;
+  animation: pill-ticker 18s linear infinite;
+}
+.pill-ticker-mask {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
+}

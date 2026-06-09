@@ -960,22 +960,27 @@ function SlideContent({
           Non-intercession slides (prayer requests etc.) keep their
           attribution. */}
       {slide.kind === "intercession" && slide.groups && slide.groups.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5 justify-center">
-          {slide.groups.map((g) => (
-            <span
-              key={g.id}
-              className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium"
-              style={{
-                background: "rgba(46,107,64,0.18)",
-                color: "#A8C5A0",
-                border: "1px solid rgba(46,107,64,0.32)",
-                fontFamily: "'Space Grotesk', sans-serif",
-              }}
-            >
-              {g.emoji && <span aria-hidden>{g.emoji}</span>}
-              <span>{g.name}</span>
-            </span>
-          ))}
+        <div className="overflow-hidden w-full pill-ticker-mask">
+          {/* One gently-scrolling line (a ticker) — pills duplicated so the
+              loop is seamless; the second copy is aria-hidden. */}
+          <div className="pill-ticker gap-1.5">
+            {[...slide.groups!, ...slide.groups!].map((g, i) => (
+              <span
+                key={`${g.id}-${i}`}
+                aria-hidden={i >= slide.groups!.length}
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap shrink-0"
+                style={{
+                  background: "rgba(46,107,64,0.18)",
+                  color: "#A8C5A0",
+                  border: "1px solid rgba(46,107,64,0.32)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              >
+                {g.emoji && <span aria-hidden>{g.emoji}</span>}
+                <span>{g.name}</span>
+              </span>
+            ))}
+          </div>
         </div>
       ) : slide.kind !== "intercession" && slide.attribution ? (
         <p className="text-sm" style={{ color: "#8FAF96" }}>
