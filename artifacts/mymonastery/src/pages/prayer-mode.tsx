@@ -3164,10 +3164,6 @@ export default function PrayerModePage() {
   // Keeping initialisation in an effect (not the useState initialiser)
   // ensures we don't read `slides` while it's still empty.
   const [index, setIndex] = useState<number>(-1);
-  // Whether the user has completed at least one Amen this session. Gates the
-  // "Pray a liturgy" shortcut so it surfaces after the first amen rather than
-  // on the untouched first slide.
-  const [hasAmenedOnce, setHasAmenedOnce] = useState(false);
   const swipeTouchStartXRef = useRef<number | null>(null);
   const swipeTouchStartYRef = useRef<number | null>(null);
 
@@ -3564,8 +3560,6 @@ export default function PrayerModePage() {
     // Feedback (haptic + chime) fires immediately on tap so the response
     // feels coupled to the gesture, not to the fade.
     triggerAmenFeedback();
-    // First amen this session unlocks the "Pray a liturgy" shortcut.
-    setHasAmenedOnce(true);
     // Clear today's bell (morning / midday / evening) from the lock
     // screen the moment the user prays. Each Amen tap is a "yes, I'm
     // praying" signal — the nudge has done its job and shouldn't
@@ -3915,22 +3909,6 @@ export default function PrayerModePage() {
         ×
       </button>
 
-      {/* "Pray a liturgy" shortcut into the full BCP office options (the
-          chooser), opposite the exit button. Surfaces after the first amen
-          rather than on the untouched first slide, so the opening prayer
-          isn't competing with a navigation pill. */}
-      {hasAmenedOnce && phase === "prayer" && (
-        <button
-          type="button"
-          onClick={() => setLocation("/prayer-chooser")}
-          aria-label="Pray a liturgy"
-          className="absolute top-6 left-6 z-10 inline-flex items-center rounded-full transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ padding: "7px 13px", fontSize: 12.5, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", color: "#A8C5A0", background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.5)", cursor: "pointer" }}
-        >
-          Pray a liturgy →
-        </button>
-      )}
-
       {/* Daily reflection — embedded in-app as the slide BEFORE the closing
           summary (covers the whole screen with its own Continue bar). Only
           on the office-finish walk, when a reflection source is turned on. */}
@@ -4005,6 +3983,27 @@ export default function PrayerModePage() {
                 setContemplationOpen(true);
               }}
             />
+            {/* "Pray a liturgy" fork — opening slide only, directly beneath
+                the Amen button: Amen to continue the quick prayer flow, or
+                tap here to pray a full BCP office (the chooser). Hidden on
+                every later slide — and hidden entirely when the community
+                prayers are already embedded in an office flow (the seamless
+                mid-office intercessions handoff, after-office, or the office
+                closing), where the user is mid-liturgy and the fork is
+                redundant. */}
+            {index === 0 && !seamlessFlow && !afterOffice && !closingOnly && (
+              <div className="mt-4 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setLocation("/prayer-chooser")}
+                  aria-label="Pray a liturgy"
+                  className="inline-flex items-center rounded-full transition-opacity hover:opacity-90 active:scale-[0.98]"
+                  style={{ padding: "7px 13px", fontSize: 12.5, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", color: "#A8C5A0", background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.5)", cursor: "pointer" }}
+                >
+                  Pray a liturgy →
+                </button>
+              </div>
+            )}
           </div>
         )}
 
