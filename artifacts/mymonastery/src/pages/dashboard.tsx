@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Plus, X, Camera, Sliders } from "lucide-react";
+import { Plus, X, Camera, Sliders, EyeOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -4926,6 +4926,30 @@ export default function Dashboard() {
 
   const queryClient = useQueryClient();
 
+  // Persist a home-layout change (same endpoint customize-home uses).
+  // Powers the per-tile "eye-off" hide button on the news cards: tapping
+  // it adds that module to `hidden`, optimistically dropping the card so
+  // it vanishes instantly, then re-syncs from the server. Re-add from the
+  // Customize home screen.
+  const saveHomeLayout = useMutation({
+    mutationFn: (layout: { order: string[]; hidden: string[]; v: number }) =>
+      apiRequest("PUT", "/api/me/home-layout", layout),
+    onMutate: async (layout) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/auth/me"] });
+      const prev = queryClient.getQueryData(["/api/auth/me"]);
+      queryClient.setQueryData(["/api/auth/me"], (curr: unknown) => {
+        if (!curr || typeof curr !== "object") return curr;
+        return { ...(curr as Record<string, unknown>), homeLayout: layout };
+      });
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      const c = ctx as { prev?: unknown } | undefined;
+      if (c && "prev" in c) queryClient.setQueryData(["/api/auth/me"], c.prev);
+    },
+    onSettled: () => { queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }); },
+  });
+
   const { isBeta } = useBetaStatus();
   const [betaWelcomeVisible, setBetaWelcomeVisible] = useState(false);
   const betaWelcomeShownRef = useRef(false);
@@ -5217,6 +5241,16 @@ export default function Dashboard() {
   const primaryAnchor = homeOrder.find(
     (k) => (k === "office" || k === "feeds") && !homeHidden.has(k),
   );
+
+  // "News" tiles — the optional external-content cards (daily readings,
+  // broadcast, podcasts). Each gets a corner eye-off button so the user
+  // can hide it straight from the home screen; re-add from Customize.
+  const NEWS_MODULES = new Set<HomeModule>(["cac", "fdd", "ssje", "ncmp", "podcasts"]);
+  const hideModule = (key: HomeModule) => {
+    const nextHidden = new Set(homeHidden);
+    nextHidden.add(key);
+    saveHomeLayout.mutate({ order: homeOrder, hidden: [...nextHidden], v: HOME_LAYOUT_VERSION });
+  };
 
   // Podcast shows the user has added to home (localStorage-backed). The
   // "podcasts" module expands to one PodcastHomeCard per followed show,
@@ -6176,11 +6210,25 @@ export default function Dashboard() {
               .filter((m) => m.node != null);
             return (
               <>
-                {rendered.map((m, i) => (
-                  <div key={m.k} className={i === 0 ? "mt-5" : "mt-3"}>
-                    {m.node}
-                  </div>
-                ))}
+                {rendered.map((m, i) => {
+                  const isNews = NEWS_MODULES.has(m.k);
+                  return (
+                    <div key={m.k} className={`${i === 0 ? "mt-5" : "mt-3"}${isNews ? " relative" : ""}`}>
+                      {isNews && (
+                        <button
+                          type="button"
+                          aria-label={t("customize_home.hide")}
+                          onClick={(e) => { e.stopPropagation(); hideModule(m.k); }}
+                          className="absolute -top-2 -right-2 z-10 flex items-center justify-center rounded-full active:scale-90 transition-transform"
+                          style={{ width: 24, height: 24, background: "rgba(20,28,22,0.94)", border: "1px solid rgba(143,175,150,0.45)", color: "#8FAF96", boxShadow: "0 1px 4px rgba(0,0,0,0.35)" }}
+                        >
+                          <EyeOff size={13} strokeWidth={2} aria-hidden />
+                        </button>
+                      )}
+                      {m.node}
+                    </div>
+                  );
+                })}
               </>
             );
           })()}
