@@ -17,7 +17,7 @@
 // sits) is a deliberate follow-up.
 
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -189,6 +189,7 @@ let lastHealthUpload = "";
  */
 export function useSyncHealthMinutes(): void {
   const day = new Date().toLocaleDateString("en-CA");
+  const qc = useQueryClient();
   const q = useQuery<{ minutes: number; sessions: number } | null>({
     // Same key/queryFn as the Contemplation goal card → one shared fetch.
     queryKey: ["apple-health-mindful-external", day],
@@ -203,6 +204,11 @@ export function useSyncHealthMinutes(): void {
     if (lastHealthUpload === key) return;
     lastHealthUpload = key;
     void apiRequest("PUT", "/api/me/contemplation-health-minutes", { minutes, day })
+      .then(() => {
+        // Invalidate so ContemplationHomeCard on the dashboard picks up the
+        // new external minutes without waiting for the 60s stale window.
+        qc.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+      })
       .catch(() => { if (lastHealthUpload === key) lastHealthUpload = ""; }); // allow retry
-  }, [minutes, day]);
+  }, [minutes, day, qc]);
 }

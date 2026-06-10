@@ -2364,6 +2364,21 @@ function NewPrayerRequestsCard({
 // default; surfaced (and pinnable to the top) from the Customize page so
 // someone whose daily rhythm is silent prayer can lead with it.
 export function ContemplationHomeCard() {
+  const qc = useQueryClient();
+
+  // Invalidate contemplation-stats whenever the dashboard becomes visible —
+  // covers returning from the contemplation page, switching back from another
+  // app, or receiving a new Apple Health sync.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        qc.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [qc]);
+
   // When a daily contemplation goal is set, show live progress under the title
   // ("8 of 15 min today" / "Goal reached"). Reads the same office-prefs goal +
   // contemplation-stats the Contemplation page uses, so they never disagree.
