@@ -39,6 +39,17 @@ export const en = {
     days_left_one: "{{count}} day left",
     days_left_other: "{{count}} days left",
   },
+  // Prayer chooser / "begin prayer" landing (pages/prayer-start.tsx).
+  prayer_start: {
+    morning_devotion: "Morning Devotion",
+    evening_devotion: "Evening Devotion",
+    full_morning_prayer: "Pray full Morning Prayer",
+    full_evening_prayer: "Pray full Evening Prayer",
+    from_bcp: "from the Book of Common Prayer",
+    begin: "Begin",
+    skip_feed: "Skip to prayer feed →",
+    skip_community: "Skip to community prayer list →",
+  },
   // 404 page (pages/not-found.tsx).
   not_found: {
     title: "Lost in the post",

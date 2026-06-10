@@ -45,6 +45,17 @@ export const es: Translations = {
     days_left_one: "Queda {{count}} día",
     days_left_other: "Quedan {{count}} días",
   },
+  // Prayer chooser / "begin prayer" landing (pages/prayer-start.tsx).
+  prayer_start: {
+    morning_devotion: "Devoción matutina",
+    evening_devotion: "Devoción vespertina",
+    full_morning_prayer: "Rezar la Oración Matutina completa",
+    full_evening_prayer: "Rezar la Oración Vespertina completa",
+    from_bcp: "del Libro de Oración Común",
+    begin: "Comenzar",
+    skip_feed: "Ir al feed de oración →",
+    skip_community: "Ir a la lista de oración de la comunidad →",
+  },
   // 404 page (pages/not-found.tsx).
   not_found: {
     title: "Perdido en el correo",

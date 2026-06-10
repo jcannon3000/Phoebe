@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
@@ -25,39 +26,36 @@ const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const GEORGIA = "Georgia, 'Times New Roman', serif";
 
 interface DevotionContext {
-  // Big title at the top of the screen — what kind of devotion this
-  // is, in plain BCP language.
-  title: string;
+  // Time of day decides morning vs evening copy + routes. The title and
+  // full-office label are resolved via t() in the component (this helper
+  // can't use the hook), keyed off this flag.
+  isMorning: boolean;
   // The route the primary "Begin" button navigates to.
   href: string;
   // The route the "Pray full office" link navigates to — same time-
   // of-day, just the unabbreviated form.
   fullOfficeHref: string;
-  // The label on the full-office secondary link, since it changes
-  // morning vs evening.
-  fullOfficeLabel: string;
 }
 
 function buildDevotionContext(): DevotionContext {
   const isMorning = new Date().getHours() < 12;
   return isMorning
     ? {
-        title: "Morning Devotion",
+        isMorning: true,
         href: "/bcp/daily-devotions?mode=morning-devotion",
         fullOfficeHref: "/bcp/daily-office?mode=morning",
-        fullOfficeLabel: "Pray full Morning Prayer",
       }
     : {
-        title: "Evening Devotion",
+        isMorning: false,
         href: "/bcp/daily-devotions?mode=early-evening-devotion",
         fullOfficeHref: "/bcp/daily-office?mode=evening",
-        fullOfficeLabel: "Pray full Evening Prayer",
       };
 }
 
 export default function PrayerStartPage() {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const officesOnly = user?.accessTier === "offices-only";
 
   // Offices-only users have no /prayer-mode default queue (it 403s
@@ -81,12 +79,14 @@ export default function PrayerStartPage() {
   if (isLoading || !user) return null;
 
   const ctx = buildDevotionContext();
+  const title = ctx.isMorning ? t("prayer_start.morning_devotion") : t("prayer_start.evening_devotion");
+  const fullOfficeLabel = ctx.isMorning ? t("prayer_start.full_morning_prayer") : t("prayer_start.full_evening_prayer");
   // What the "Skip …" link reads + where it goes, per tier.
   const skipLink: { label: string; href: string } | null = officesOnly
     ? (firstFeedSlug
-        ? { label: "Skip to prayer feed →", href: `/prayer-mode?queue=feed&slug=${encodeURIComponent(firstFeedSlug)}` }
+        ? { label: t("prayer_start.skip_feed"), href: `/prayer-mode?queue=feed&slug=${encodeURIComponent(firstFeedSlug)}` }
         : null)
-    : { label: "Skip to community prayer list →", href: "/prayer-mode" };
+    : { label: t("prayer_start.skip_community"), href: "/prayer-mode" };
 
   return (
     <Layout>
@@ -119,7 +119,7 @@ export default function PrayerStartPage() {
               margin: 0,
             }}
           >
-            {ctx.title}
+            {title}
           </h1>
           <p
             style={{
@@ -131,7 +131,7 @@ export default function PrayerStartPage() {
               marginBottom: 0,
             }}
           >
-            from the Book of Common Prayer
+            {t("prayer_start.from_bcp")}
           </p>
         </motion.div>
 
@@ -159,7 +159,7 @@ export default function PrayerStartPage() {
             marginTop: 8,
           }}
         >
-          Begin
+          {t("prayer_start.begin")}
         </motion.button>
 
         {/* Spacer pushes the secondary actions toward the bottom of
@@ -212,7 +212,7 @@ export default function PrayerStartPage() {
               textUnderlineOffset: 4,
             }}
           >
-            {ctx.fullOfficeLabel} →
+            {fullOfficeLabel} →
           </button>
         </motion.div>
 
@@ -233,7 +233,7 @@ export default function PrayerStartPage() {
             marginTop: 8,
           }}
         >
-          ← Back
+          ← {t("common.back")}
         </motion.button>
       </div>
       <style>{`body { background: ${BG}; }`}</style>
