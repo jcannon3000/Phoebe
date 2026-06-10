@@ -1253,7 +1253,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     cursor: "pointer",
                   }}
                 >
-                  📕 In your book
+                  📕 {bcpGuideText("In your book")}
                 </button>
               </div>
             </div>
@@ -2896,6 +2896,73 @@ function buildBookSections(slides: Slide[]): BookSection[] {
   return deduped;
 }
 
+// Spanish display strings for the physical-book guide. Keyed by the
+// English source string so the logic in buildBookSections (dedup,
+// suffrages/intercessions placement) keeps comparing English labels;
+// translation happens only at render via gt(). Values are descriptive
+// UI copy (section names, chrome) — NOT copyrighted liturgical text.
+// {name} tokens interpolate via the vars arg.
+const BCP_GUIDE_ES: Record<string, string> = {
+  // Office titles (English source comes from MODE_CONFIG)
+  "Morning Prayer": "Oración Matutina",
+  "Evening Prayer": "Oración Vespertina",
+  Compline: "Completas",
+  "Morning Devotion": "Devoción Matutina",
+  "Early Evening Devotion": "Devoción al Anochecer",
+  // Section labels (must match buildBookSections output exactly)
+  "The Opening Sentence": "La Sentencia de Apertura",
+  "The Confession": "La Confesión",
+  "The Invitatory": "El Invitatorio",
+  "The Psalms Appointed": "Los Salmos Señalados",
+  "First Lesson": "Primera Lectura",
+  "Second Lesson": "Segunda Lectura",
+  "The Gospel": "El Evangelio",
+  "The Canticle": "El Cántico",
+  "The Apostles' Creed": "El Credo de los Apóstoles",
+  "The Lord's Prayer": "El Padrenuestro",
+  "The Suffrages": "Las Súplicas",
+  "The Closing Versicle": "El Versículo de Conclusión",
+  "The Collect of the Day": "La Colecta del Día",
+  "The Collect": "La Colecta",
+  "A Prayer for Mission": "Una Oración por la Misión",
+  "The General Thanksgiving": "La Acción de Gracias General",
+  "The Closing": "La Conclusión",
+  "A Concluding Blessing": "Una Bendición Final",
+  // Chrome
+  "In your book": "En tu libro",
+  "1979 Book of Common Prayer · Rite II": "Libro de Oración Común de 1979 · Rito II",
+  "1979 Book of Common Prayer": "Libro de Oración Común de 1979",
+  "Begin at {page}": "Comienza en {page}",
+  "Read it here instead ↗": "Léela aquí en su lugar ↗",
+  "your Bible": "tu Biblia",
+  "The Intercessions": "Las Intercesiones",
+  "{count} waiting for your prayers — pray them here, then return to your book":
+    "{count} esperan tus oraciones — ora por ellas aquí y luego vuelve a tu libro",
+  "Pray for your people — one at a time, then return to your book":
+    "Ora por tu gente — una a una, y luego vuelve a tu libro",
+  "The Psalter begins at p. 585. Lessons are read from your own Bible.":
+    "El Salterio comienza en la p. 585. Las lecturas se hacen desde tu propia Biblia.",
+  "🙏 I prayed this office": "🙏 Recé este oficio",
+  "✓ Already logged today — praying it again still counts toward your rhythm.":
+    "✓ Ya registrado hoy — rezarlo de nuevo igual cuenta para tu ritmo.",
+  "Counts toward today's practice — your rhythm, your streak, and the day's reminders.":
+    "Cuenta para la práctica de hoy — tu ritmo, tu racha y los recordatorios del día.",
+};
+
+// Translate a guide string to Spanish when the UI locale is es, else
+// return the English source unchanged. {name} tokens in the string are
+// replaced from vars in both languages.
+function bcpGuideText(en: string, vars?: Record<string, string | number>): string {
+  const isEs = i18n.language?.startsWith("es");
+  let out = (isEs && BCP_GUIDE_ES[en]) || en;
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) {
+      out = out.replace(`{${k}}`, String(v));
+    }
+  }
+  return out;
+}
+
 function PhysicalBookGuide(props: {
   slides: Slide[];
   officeTitle: string;
@@ -3021,7 +3088,7 @@ function PhysicalBookGuide(props: {
         <div className="max-w-2xl w-full mx-auto" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ textAlign: "center", marginBottom: 6 }}>
             <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>
-              In your book
+              {bcpGuideText("In your book")}
             </p>
             <h1
               style={{
@@ -3034,13 +3101,13 @@ function PhysicalBookGuide(props: {
                 lineHeight: 1.05,
               }}
             >
-              {officeTitle}
+              {bcpGuideText(officeTitle)}
             </h1>
             {dayLabel && (
               <p style={{ margin: "0 0 2px", fontSize: 14, color: MUTED_GREEN }}>{dayLabel}</p>
             )}
             <p style={{ margin: 0, fontSize: 12, color: FAINT_GREEN }}>
-              {isFullOffice ? "1979 Book of Common Prayer · Rite II" : "1979 Book of Common Prayer"}
+              {bcpGuideText(isFullOffice ? "1979 Book of Common Prayer · Rite II" : "1979 Book of Common Prayer")}
             </p>
             <div
               style={{
@@ -3057,7 +3124,7 @@ function PhysicalBookGuide(props: {
                 color: "#E8D5BC",
               }}
             >
-              📕 Begin at {startPage}
+              📕 {bcpGuideText("Begin at {page}", { page: startPage })}
             </div>
           </div>
 
@@ -3074,7 +3141,7 @@ function PhysicalBookGuide(props: {
             const sectionCard = (sec: BookSection) => (
               <div key={sec.key} style={cardStyle}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={labelStyle}>{sec.label}</p>
+                  <p style={labelStyle}>{bcpGuideText(sec.label)}</p>
                   {sec.detail && <p style={detailStyle}>{sec.detail}</p>}
                   {sec.readUrl && (
                     <button
@@ -3092,7 +3159,7 @@ function PhysicalBookGuide(props: {
                         fontFamily: SPACE_GROTESK,
                       }}
                     >
-                      Read it here instead ↗
+                      {bcpGuideText("Read it here instead ↗")}
                     </button>
                   )}
                 </div>
@@ -3100,7 +3167,7 @@ function PhysicalBookGuide(props: {
                   <span style={badgeStyle}>{sec.page}</span>
                 ) : sec.readUrl ? (
                   <span style={{ ...badgeStyle, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "#CFE3C8" }}>
-                    your Bible
+                    {bcpGuideText("your Bible")}
                   </span>
                 ) : null}
               </div>
@@ -3114,11 +3181,11 @@ function PhysicalBookGuide(props: {
                 style={{ ...cardStyle, width: "100%", textAlign: "left", cursor: "pointer", background: "rgba(46,107,64,0.20)", border: "1px solid rgba(46,107,64,0.45)" }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={labelStyle}>The Intercessions</p>
+                  <p style={labelStyle}>{bcpGuideText("The Intercessions")}</p>
                   <p style={detailStyle}>
                     {intercessionCount > 0
-                      ? `${intercessionCount} waiting for your prayers — pray them here, then return to your book`
-                      : "Pray for your people — one at a time, then return to your book"}
+                      ? bcpGuideText("{count} waiting for your prayers — pray them here, then return to your book", { count: intercessionCount })
+                      : bcpGuideText("Pray for your people — one at a time, then return to your book")}
                   </p>
                 </div>
                 <span style={{ flexShrink: 0, fontSize: 18 }}>🕊️ →</span>
@@ -3135,7 +3202,7 @@ function PhysicalBookGuide(props: {
           })()}
 
           <p style={{ margin: "4px 0 0", fontSize: 12, lineHeight: 1.6, color: FAINT_GREEN, textAlign: "center" }}>
-            The Psalter begins at p. 585. Lessons are read from your own Bible.
+            {bcpGuideText("The Psalter begins at p. 585. Lessons are read from your own Bible.")}
           </p>
 
           {/* Completion — the physical pray-er's Amen. Logs the office to
@@ -3157,12 +3224,12 @@ function PhysicalBookGuide(props: {
               cursor: "pointer",
             }}
           >
-            🙏 I prayed this office
+            {bcpGuideText("🙏 I prayed this office")}
           </button>
           <p style={{ margin: "2px 0 0", fontSize: 12, color: FAINT_GREEN, textAlign: "center" }}>
             {alreadyDoneToday
-              ? "✓ Already logged today — praying it again still counts toward your rhythm."
-              : "Counts toward today's practice — your rhythm, your streak, and the day's reminders."}
+              ? bcpGuideText("✓ Already logged today — praying it again still counts toward your rhythm.")
+              : bcpGuideText("Counts toward today's practice — your rhythm, your streak, and the day's reminders.")}
           </p>
         </div>
       </main>
