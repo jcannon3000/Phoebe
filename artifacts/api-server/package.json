@@ -3,6 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "export NODE_ENV=development && export RUN_SCHEDULERS_IN_WEB=true && export PATH=/Applications/Postgres.app/Contents/Versions/latest/bin:/Users/jeremycannon/.local/bin:$PATH && pnpm --filter @workspace/mymonastery run build && BASE_PATH=/mail pnpm --filter @workspace/letters-app run build && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
@@ -29,7 +32,7 @@
     "pino": "^9",
     "pino-http": "^10",
     "web-push": "^3.6.7",
-    "ws": "^8.20.0",
+    "ws": "^8.20.1",
     "zod": "catalog:"
   },
   "devDependencies": {

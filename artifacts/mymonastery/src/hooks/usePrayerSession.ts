@@ -56,6 +56,11 @@ export function usePrayerSession(
    *  endpoint uses this to filter "actually prayed an office"
    *  (≥3 slides) from "tap-and-bail" (<3). */
   slidesCompletedRef?: React.MutableRefObject<number>,
+  /** Optional ref the parent flips to true when it has already logged
+   *  this session itself — e.g. the office's physical-book "I prayed
+   *  this office" button POSTs a deliberate session row, and the
+   *  automatic unmount commit here would double-count it. */
+  suppressPostRef?: React.MutableRefObject<boolean>,
 ) {
   // Refs so the visibility / unload handlers always read the live
   // accumulator without needing surface as a dep — the hook can be
@@ -121,6 +126,7 @@ export function usePrayerSession(
         total > 0
         && startedAt
         && surfaceAtCleanup
+        && !suppressPostRef?.current
       ) {
         const endedAt = new Date();
         // Fire-and-forget — the hook is unmounting and we don't want

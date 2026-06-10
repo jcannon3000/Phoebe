@@ -418,6 +418,7 @@ export default function OfficeSettingsPage() {
       >
         {([
           { value: "read" as const, emoji: "📖", label: t("office_settings.ways_read_label"), sub: t("office_settings.ways_read_sub") },
+          { value: "book" as const, emoji: "📕", label: t("office_settings.ways_book_label"), sub: t("office_settings.ways_book_sub") },
           { value: "listen" as const, emoji: "🎧", label: t("office_settings.ways_listen_label"), sub: side === "evening" ? t("office_settings.ways_listen_sub_evening") : t("office_settings.ways_listen_sub_morning") },
           { value: "watch" as const, emoji: "📺", label: t("office_settings.ways_watch_label"), sub: t("office_settings.ways_watch_sub") },
         ]).filter((o) => o.value !== "watch" || side === "morning").map((o) => (

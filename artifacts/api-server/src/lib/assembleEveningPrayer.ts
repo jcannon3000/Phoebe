@@ -242,14 +242,21 @@ export async function assembleEveningPrayer(
 
   // Pull psalm rows from bcp_texts (the same seeded source MP uses).
   // EP_BCP_TEXTS only carries canticles + invariant prayers, not the
-  // 150 psalms.
+  // 150 psalms — and not the ~150 seasonal collects either, so fetch
+  // the Collect of the Day's row here too. (Before this, EP fell back
+  // to collect_fallback — "A Collect for the Renewal of Life", a
+  // MORNING collect — as the Collect of the Day on every day that
+  // wasn't one of the four majors in the static map.)
   const psalmKeys = appointedPsalms.map((p) => `psalm_${p.number}`);
+  const rowKeys = liturgicalDay.collectKey
+    ? [...psalmKeys, liturgicalDay.collectKey]
+    : psalmKeys;
   const psalmRows =
-    psalmKeys.length > 0
+    rowKeys.length > 0
       ? await db
           .select()
           .from(bcpTextsTable)
-          .where(inArray(bcpTextsTable.textKey, psalmKeys))
+          .where(inArray(bcpTextsTable.textKey, rowKeys))
       : [];
   const psalmTexts: Record<string, { content: string; title: string | null; bcpReference: string | null }> = {};
   for (const row of psalmRows) {
@@ -575,8 +582,12 @@ export async function assembleEveningPrayer(
   // 15. Collect of the Day — satisfies the BCP rubric's "one or more
   // of the following Collects, the Collect of the Day being first."
   // A Prayer for Mission follows below as the BCP appoints.
-  const collectContent = getText(liturgicalDay.collectKey) || getText("collect_fallback");
-  const collectRef = getTextData(liturgicalDay.collectKey).bcpReference || getTextData("collect_fallback").bcpReference;
+  // DB row first (the seeded Collects of the Christian Year, with the
+  // real text + page ref), then the static map's four majors, then the
+  // generic fallback.
+  const collectRow = psalmTexts[liturgicalDay.collectKey];
+  const collectContent = collectRow?.content || getText(liturgicalDay.collectKey) || getText("collect_fallback");
+  const collectRef = collectRow?.bcpReference || getTextData(liturgicalDay.collectKey).bcpReference || getTextData("collect_fallback").bcpReference;
   slides.push(
     slide(id(), "collect", "📅", pick(locale, EYEBROWS.the_collect_of_the_day), collectContent, {
       title: liturgicalDay.sundayLabel,

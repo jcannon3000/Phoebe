@@ -176,7 +176,6 @@
 				723D51D80F039BB835FE6A6C /* Info.plist */,
 				CD6994986DD0CAC2938F8675 /* PhoebeWidget.entitlements */,
 			);
-			name = PhoebeWidget;
 			path = PhoebeWidget;
 			sourceTree = "<group>";
 		};
@@ -241,6 +240,9 @@
 					504EC3031FED79650016851F = {
 						CreatedOnToolsVersion = 9.2;
 						LastSwiftMigration = 1100;
+						ProvisioningStyle = Automatic;
+					};
+					50EA64061AE68BF7A1959494 = {
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -501,7 +503,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 5.1;
+				MARKETING_VERSION = 5.2;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = app.withphoebe.mobile;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -524,7 +526,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 5.1;
+				MARKETING_VERSION = 5.2;
 				PRODUCT_BUNDLE_IDENTIFIER = app.withphoebe.mobile;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";

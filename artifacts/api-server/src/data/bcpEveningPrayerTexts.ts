@@ -212,6 +212,9 @@ t("collect_pentecost", "Day of Pentecost", "BCP p. 227",
 t("collect_trinity", "Trinity Sunday", "BCP p. 228",
   "Almighty and everlasting God, you have given to us your servants grace, by the confession of a true faith, to acknowledge the glory of the eternal Trinity, and in the power of your divine Majesty to worship the Unity: Keep us steadfast in this faith and worship, and bring us at last to see you in your one and eternal glory, O Father; who with the Son and the Holy Spirit live and reign, one God, for ever and ever. Amen.");
 
-// Fallback collect for when we don't have the specific week's collect
-t("collect_fallback", "A Collect for the Renewal of Life", "BCP p. 133",
+// Fallback collect for when we don't have the specific week's collect.
+// (Rarely reached now that the assembler pulls the Collect of the Day
+// from the seeded bcp_texts rows — this only fires on a seeding gap.)
+// Renewal of Life lives in Morning Prayer's collects, BCP p. 99.
+t("collect_fallback", "A Collect for the Renewal of Life", "BCP p. 99",
   "O God, the King eternal, whose light divides the day from the night and turns the shadow of death into the morning: Drive far from us all wrong desires, incline our hearts to keep your law, and guide our feet into the way of peace; that, having done your will with cheerfulness during the day, we may, when night comes, rejoice to give you thanks; through Jesus Christ our Lord. Amen.");

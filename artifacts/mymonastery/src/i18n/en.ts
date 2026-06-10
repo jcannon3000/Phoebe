@@ -1979,11 +1979,13 @@ export const en = {
     silence_minutes_one: "{{count}} minute",
     silence_minutes_other: "{{count}} minutes",
     // Slide 6 — Ways to pray
-    ways_eyebrow: "Step 6 · Three ways to pray",
+    ways_eyebrow: "Step 6 · Ways to pray",
     ways_headline: "How do you want to pray the office?",
     ways_sub: "Choose your default. You can always switch on the office screen.",
     ways_read_label: "Read along",
     ways_read_sub: "The full text of the office, at your own pace.",
+    ways_book_label: "From my Prayer Book",
+    ways_book_sub: "Today's page numbers, psalms, and readings for your physical BCP.",
     ways_listen_label: "Listen",
     ways_listen_sub_morning: "Morning Prayer read aloud (Forward Movement).",
     ways_listen_sub_evening: "Evening Prayer read aloud (Forward Movement).",
@@ -4018,6 +4020,19 @@ export const en = {
     tile_today: "Today",
     tile_this_week: "This week",
     tile_all_time: "All time",
+  },
+  // Community thoughts on a daily reflection (components/ReflectionThoughts.tsx) —
+  // what others in your community wrote about today's reflection, day-scoped.
+  reflection_thoughts: {
+    heading: "Community",
+    subhead: "What others are saying about today's reflection.",
+    placeholder: "Share a thought on today's reflection…",
+    share: "Share",
+    sharing: "Sharing…",
+    error: "Couldn't share that. Please try again.",
+    loading: "Loading thoughts…",
+    empty: "No one has shared a thought yet. Be the first.",
+    you: "You",
   },
   // Reset password page (pages/reset-password.tsx).
   reset_password: {

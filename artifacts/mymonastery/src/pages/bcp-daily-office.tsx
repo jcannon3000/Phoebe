@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -115,6 +115,11 @@ interface OfficeViewerProps {
   // dashboard's "Pray" tap, which skips any chooser) leave the
   // alternate routes visible — that's why they live on this slide.
   cameFromPicker?: boolean;
+  // Open straight into the physical-book page-number guide (the Daily
+  // Office chooser's "In your book" rows set this). The guide is also
+  // reachable via ?book=1 and the per-side "way to pray" pref — this
+  // prop covers in-page navigation where no URL change happens.
+  initialBook?: boolean;
 }
 
 interface OfficeDayInfo {
@@ -383,7 +388,7 @@ const MODE_CONFIG: Record<LiturgyMode, { endpoint: string; title: string }> = {
   "early-evening-devotion": { endpoint: "/api/devotion/early-evening", title: "Early Evening Devotion" },
 };
 
-export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker }: OfficeViewerProps) {
+export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker, initialBook }: OfficeViewerProps) {
   const resolvedMode: LiturgyMode = mode ?? office ?? "morning";
   const { endpoint, title: officeTitle } = MODE_CONFIG[resolvedMode];
   const player = usePodcastPlayer();
@@ -400,6 +405,42 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
   // The National Cathedral broadcasts Morning Prayer Mon–Fri only, so the
   // in-office "Watch" shortcut hides on weekends (nothing to watch live).
   const isWeekday = (() => { const d = new Date().getDay(); return d >= 1 && d <= 5; })();
+
+  // ── Physical-book mode ──────────────────────────────────────────────
+  // The page-number guide for praying this office from a paper Book of
+  // Common Prayer. Three ways in:
+  //   • ?book=1 deep link — also how the intercessions handoff returns
+  //     here without dropping the user back into the slide deck
+  //   • the per-side "way to pray" pref set to "book" (full offices)
+  //   • the 📕 pill on the office_intro slide (setBookOpen below)
+  // Mid-liturgy returns (?slide= / ?seamlessReturn=) stay in the slide
+  // deck unless the return URL explicitly asks for the book view.
+  const [bookOpen, setBookOpen] = useState<boolean>(() => {
+    try {
+      const search = new URLSearchParams(window.location.search);
+      if (search.get("book") === "1") return true;
+      if (search.has("slide") || search.has("seamlessReturn")) return false;
+    } catch { /* non-browser */ }
+    if (initialBook) return true;
+    if (resolvedMode === "morning" || resolvedMode === "evening") {
+      return getSideEntry(officeSide) === "book";
+    }
+    return false;
+  });
+  // Wall-clock stamp of when the book guide first opened this mount.
+  // The "I prayed this office" log uses it as the session start, so
+  // time spent praying with the phone set down — which the foreground-
+  // only usePrayerSession clock can't see — still gets credited.
+  const bookOpenedAtRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (bookOpen && bookOpenedAtRef.current === null) {
+      bookOpenedAtRef.current = Date.now();
+    }
+  }, [bookOpen]);
+  // Flipped true once the book guide has logged its own deliberate
+  // session row, so usePrayerSession's automatic unmount commit doesn't
+  // double-count the same office.
+  const suppressSessionPostRef = useRef(false);
 
   // Phoebe Parish — when the user is in the parish-only tier we
   // route them to the parish celebration screen on Amen instead of
@@ -426,7 +467,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
     resolvedMode === "morning" ? "morning-prayer"
     : resolvedMode === "evening" ? "evening-prayer"
     : (resolvedMode as PrayerSurface);
-  usePrayerSession(officeSurface, slidesReachedRef);
+  usePrayerSession(officeSurface, slidesReachedRef, suppressSessionPostRef);
   // The Daily Devotions are explicitly the personal short forms
   // (BCP pp. 137 / 139). The full Daily Office's missal-page layout
   // (top-aligned, left-aligned, role-labelled) reads as overkill
@@ -618,7 +659,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
           seamlessReturnRef.current = true;
           portalHandedOffRef.current = true;
         }
-        if (search.has("slide") || search.has("mode") || search.has("returnTo") || search.has("seamlessReturn") || search.has("reset")) {
+        if (search.has("slide") || search.has("mode") || search.has("returnTo") || search.has("seamlessReturn") || search.has("reset") || search.has("book")) {
           try {
             window.history.replaceState(null, "", window.location.pathname);
           } catch { /* non-fatal */ }
@@ -699,6 +740,78 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
           ← Back to Daily Offices
         </button>
       </div>
+    );
+  }
+
+  // ── Physical-book mode handlers + view ──────────────────────────────
+  // "I prayed this office" — the book guide's completion path. The user
+  // attests they prayed the office from their physical book, so we log
+  // a deliberate prayer-session row (the foreground-only auto clock
+  // misses prayer time spent with the phone face-down) and then run the
+  // same completion side-effects the slideshow's closing Amen runs, so
+  // the rhythm grid, daily progress, and reminder-clearing all behave
+  // identically however the office was prayed.
+  function markPrayedFromBook() {
+    const openedAt = bookOpenedAtRef.current ?? Date.now();
+    const endedAt = new Date();
+    const wallSeconds = Math.round((endedAt.getTime() - openedAt) / 1000);
+    // Wall-clock since the guide opened, with a one-minute floor (a
+    // user logging after the fact still gets a real row — the same
+    // attestation model as the National Cathedral tap) and the server's
+    // one-hour cap applied client-side too.
+    const durationSeconds = Math.min(Math.max(wallSeconds, 60), 3600);
+    suppressSessionPostRef.current = true;
+    apiRequest("POST", "/api/prayer-sessions", {
+      surface: officeSurface,
+      durationSeconds,
+      slidesCompleted: slides.length,
+      startedAt: new Date(openedAt).toISOString(),
+      endedAt: endedAt.toISOString(),
+    })
+      .then(() => {
+        // The prayer-rhythm habit grid + daily-practice "prayed today"
+        // checks read this — refetch so they flip without an app restart.
+        queryClient.invalidateQueries({ queryKey: ["/api/me/office-history-week"] });
+      })
+      .catch(() => { /* best-effort — the localStorage flag below still flips the local UI */ });
+    try {
+      localStorage.setItem(officeCompletedKey(resolvedMode), "1");
+      localStorage.removeItem(officeProgressKey(resolvedMode));
+    } catch { /* non-fatal */ }
+    clearOfficeReminderNotifications();
+    if (onComplete) { onComplete(); return; }
+    if (officesOnlyViewer) { setViewerLocation("/parish"); return; }
+    setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
+  }
+
+  // Hand into the prayer-mode intercessions slideshow from the book
+  // guide, returning HERE (the book view, via &book=1 — which wins over
+  // the seamless-return flag in the bookOpen initializer) rather than
+  // into the slide deck, so a physical-book pray-er can hold their
+  // people mid-office and come back to the page map.
+  function prayBookIntercessions() {
+    const basePath = isDevotion ? "/bcp/daily-devotions" : "/bcp/daily-office";
+    const returnTo = `${basePath}?mode=${encodeURIComponent(resolvedMode)}&book=1`;
+    setViewerLocation(`/prayer-mode?returnTo=${encodeURIComponent(returnTo)}&seamless=1`);
+  }
+
+  if (bookOpen) {
+    return (
+      <PhysicalBookGuide
+        slides={slides}
+        officeTitle={officeTitle}
+        mode={resolvedMode}
+        dayLabel={officeDay?.feastName ?? officeDay?.weekdayLabel ?? officeDay?.sundayLabel ?? ""}
+        intercessionCount={slides.filter((s) => s.type === "intercessions").length}
+        playerDocked={!!player.current}
+        // onComplete marks "public mode" (the unauthenticated /pray page)
+        // — /prayer-mode is auth-only, so hide the intercessions card.
+        showIntercessions={!onComplete}
+        alreadyDoneToday={readOfficeProgress(resolvedMode).kind === "done"}
+        onClose={() => setBookOpen(false)}
+        onPrayIntercessions={prayBookIntercessions}
+        onMarkPrayed={markPrayedFromBook}
+      />
     );
   }
 
@@ -1064,7 +1177,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
                   the Washington National Cathedral broadcast, which is
                   Morning Prayer specifically, so it only shows on the
                   morning side. Both navigate away from the slideshow
-                  into the dedicated player / watch surfaces. */}
+                  into the dedicated player / watch surfaces. "Book" →
+                  the in-page physical-BCP guide: today's page numbers,
+                  psalms, and readings for praying from a paper book. */}
               <div
                 style={{
                   display: "flex",
@@ -1118,6 +1233,28 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
                     📺 Watch
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setBookOpen(true)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 7,
+                    // Warm leather brown — the physical book, distinct
+                    // from the green chrome and the Cathedral purple.
+                    background: "rgba(166,124,82,0.18)",
+                    color: WARM_TEXT,
+                    border: "1px solid rgba(166,124,82,0.50)",
+                    borderRadius: 999,
+                    padding: "10px 20px",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    fontFamily: SPACE_GROTESK,
+                    cursor: "pointer",
+                  }}
+                >
+                  📕 In your book
+                </button>
               </div>
             </div>
           ) : currentSlide.type === "intercessions_portal" ? (
@@ -2537,6 +2674,485 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker 
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 
+// ── Physical-book guide ─────────────────────────────────────────────────────
+// "Pray from your book" — a one-screen map of today's office for someone
+// holding a paper 1979 Book of Common Prayer: where the office begins,
+// today's invitatory, the appointed psalms and canticles with their page
+// numbers, the lessons to read from their own Bible, and the collect of
+// the day. Derived entirely from the already-fetched slide deck (the
+// assemblers stamp bcpReference on every text-bearing slide), so it
+// tracks the liturgical day — feast canticles, seasonal invitatories,
+// multi-psalm days — with zero extra fetches.
+
+// Where each liturgy begins in the 1979 BCP — the headline page badge.
+const MODE_START_PAGE: Record<LiturgyMode, string> = {
+  morning: "p. 75",
+  evening: "p. 115",
+  compline: "p. 127",
+  "morning-devotion": "p. 137",
+  "early-evening-devotion": "p. 139",
+};
+
+type BookSection = {
+  key: string;
+  label: string;          // the section of the office ("The Canticle")
+  detail: string | null;  // what today appoints ("Canticle 21 · You Are God")
+  page: string | null;    // "p. 585" — BCP page badge
+  readUrl: string | null; // lessons only: the read-online fallback
+};
+
+// Title-case an all-caps eyebrow ("THE COLLECT OF THE DAY" → "The
+// Collect of the Day") with the little words kept lowercase.
+function bookTitleCase(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\b[a-z]/g, (c) => c.toUpperCase())
+    .replace(/\b(Of|The|For|And|To|In|A|An)\b/g, (m, _p, off: number) =>
+      off === 0 ? m : m.toLowerCase());
+}
+
+// First usable page ref in a run of slides, stripped of the "BCP "
+// prefix the seed data carries ("BCP p. 585" → "p. 585").
+function bookPageRef(...refs: Array<string | null | undefined>): string | null {
+  for (const r of refs) {
+    if (r) return r.replace(/^BCP\s*/i, "");
+  }
+  return null;
+}
+
+// Walk the slide deck and collapse it into the office's sections, one
+// card each. Slide types that are sub-parts of a section (verse chunks,
+// the Gloria, the absolution, title cards' bodies) fold into their
+// parent; purely on-screen types (intro, portal) are skipped.
+function buildBookSections(slides: Slide[]): BookSection[] {
+  const sections: BookSection[] = [];
+
+  for (let i = 0; i < slides.length; i++) {
+    const s = slides[i];
+    switch (s.type) {
+      case "opening":
+      case "opening_sentence": {
+        sections.push({ key: s.id, label: "The Opening Sentence", detail: null, page: bookPageRef(s.bcpReference), readUrl: null });
+        break;
+      }
+      case "confession": {
+        sections.push({ key: s.id, label: "The Confession", detail: null, page: bookPageRef(s.bcpReference), readUrl: null });
+        break;
+      }
+      case "psalm_title": {
+        // A psalm block: the title slide plus its verse chunks (and the
+        // sealing Gloria). Two flavors — the invitatory (Venite /
+        // Jubilate / Pascha Nostrum / Phos hilaron) and the appointed
+        // psalms of the day.
+        const meta = s.metadata as { invitatory?: unknown; psalmHeadline?: unknown } | undefined;
+        const isInvitatory = meta?.invitatory === true;
+        const headline =
+          typeof meta?.psalmHeadline === "string" && meta.psalmHeadline.length > 0
+            ? meta.psalmHeadline
+            : bookTitleCase(s.eyebrow || "Psalm");
+        let ref: string | null = s.bcpReference;
+        let latin: string | null = s.title;
+        let j = i + 1;
+        while (
+          j < slides.length &&
+          // "antiphon" exists in the server's SlideType but not (yet) the
+          // client union — compare as string so an antiphon slide folds
+          // into the psalm block instead of splitting it.
+          (slides[j].type === "psalm" || slides[j].type === "invitatory_psalm" || slides[j].type === "psalm_gloria" || (slides[j].type as string) === "antiphon")
+        ) {
+          if (!ref && slides[j].bcpReference) ref = slides[j].bcpReference;
+          if (!latin && slides[j].title) latin = slides[j].title;
+          j++;
+        }
+        i = j - 1;
+        sections.push({
+          key: s.id,
+          label: isInvitatory ? "The Invitatory" : "The Psalms Appointed",
+          detail: isInvitatory ? headline : latin ? `${headline} · ${latin}` : headline,
+          page: bookPageRef(ref),
+          readUrl: null,
+        });
+        break;
+      }
+      case "lesson": {
+        // Lessons are read from the user's own Bible — the card carries
+        // the citation plus the read-online fallback the slide ships.
+        const lmeta = s.metadata as { readUrl?: unknown } | undefined;
+        sections.push({
+          key: s.id,
+          label: bookTitleCase(s.eyebrow || "Lesson"),
+          detail: s.title,
+          page: null,
+          readUrl: typeof lmeta?.readUrl === "string" ? lmeta.readUrl : null,
+        });
+        break;
+      }
+      case "canticle_title":
+      case "canticle": {
+        // MP emits a title card + verse slides; EP pushes canticle
+        // slides directly (Phos hilaron, the Magnificat). Either way,
+        // collapse the run into one card.
+        const cmeta = s.metadata as { canticleHeadline?: unknown } | undefined;
+        const headline = typeof cmeta?.canticleHeadline === "string" ? cmeta.canticleHeadline : null;
+        let ref: string | null = s.bcpReference;
+        let name: string | null = s.title;
+        let j = i + 1;
+        while (j < slides.length && slides[j].type === "canticle") {
+          if (!ref && slides[j].bcpReference) ref = slides[j].bcpReference;
+          if (!name && slides[j].title) name = slides[j].title;
+          j++;
+        }
+        i = j - 1;
+        // Some canticle titles already lead with their number
+        // ("Canticle 11 — The Third Song of Isaiah") — don't prefix
+        // the headline a second time.
+        const detail =
+          headline && name
+            ? name.startsWith(headline) ? name : `${headline} · ${name}`
+            : headline ?? name;
+        sections.push({
+          key: s.id,
+          label: "The Canticle",
+          detail,
+          page: bookPageRef(ref),
+          readUrl: null,
+        });
+        break;
+      }
+      case "creed": {
+        let j = i + 1;
+        while (j < slides.length && slides[j].type === "creed") j++;
+        i = j - 1;
+        sections.push({ key: s.id, label: "The Apostles' Creed", detail: null, page: bookPageRef(s.bcpReference), readUrl: null });
+        break;
+      }
+      case "lords_prayer": {
+        sections.push({ key: s.id, label: "The Lord's Prayer", detail: null, page: bookPageRef(s.bcpReference), readUrl: null });
+        break;
+      }
+      case "suffrages": {
+        let j = i + 1;
+        while (j < slides.length && slides[j].type === "suffrages") j++;
+        i = j - 1;
+        // A suffrages-typed slide after the General Thanksgiving is the
+        // closing versicle ("Let us bless the Lord"), not the Suffrages
+        // proper — label it for what the reader will find on that page.
+        const afterThanksgiving = sections.some((sec) => sec.label === "The General Thanksgiving");
+        sections.push({
+          key: s.id,
+          label: afterThanksgiving ? "The Closing Versicle" : "The Suffrages",
+          detail: null,
+          page: bookPageRef(s.bcpReference),
+          readUrl: null,
+        });
+        break;
+      }
+      case "collect": {
+        sections.push({
+          key: s.id,
+          label: bookTitleCase(s.eyebrow || "The Collect"),
+          detail: s.title,
+          page: bookPageRef(s.bcpReference),
+          readUrl: null,
+        });
+        break;
+      }
+      case "prayer_for_mission": {
+        sections.push({ key: s.id, label: "A Prayer for Mission", detail: s.title, page: bookPageRef(s.bcpReference), readUrl: null });
+        break;
+      }
+      case "general_thanksgiving": {
+        let j = i + 1;
+        while (j < slides.length && slides[j].type === "general_thanksgiving") j++;
+        i = j - 1;
+        sections.push({ key: s.id, label: "The General Thanksgiving", detail: null, page: bookPageRef(s.bcpReference), readUrl: null });
+        break;
+      }
+      case "closing": {
+        let j = i + 1;
+        while (j < slides.length && slides[j].type === "closing") j++;
+        i = j - 1;
+        sections.push({ key: s.id, label: "The Closing", detail: null, page: bookPageRef(s.bcpReference), readUrl: null });
+        break;
+      }
+      default:
+        // office_intro, invitatory versicle, absolution, doxology,
+        // intercessions (the guide has its own card), portals — all
+        // either fold into a neighboring section's pages or have no
+        // place in a paper book.
+        break;
+    }
+  }
+
+  // Collapse accidental doubles (e.g. an opening sentence emitted as
+  // both "opening" and "opening_sentence" types) — same label back to
+  // back with no new page information reads as a glitch.
+  const deduped: BookSection[] = [];
+  for (const sec of sections) {
+    const prev = deduped[deduped.length - 1];
+    if (prev && prev.label === sec.label && (!sec.page || prev.page === sec.page)) continue;
+    deduped.push(sec);
+  }
+  return deduped;
+}
+
+function PhysicalBookGuide(props: {
+  slides: Slide[];
+  officeTitle: string;
+  mode: LiturgyMode;
+  dayLabel: string;
+  intercessionCount: number;
+  playerDocked: boolean;
+  showIntercessions: boolean;
+  alreadyDoneToday: boolean;
+  onClose: () => void;
+  onPrayIntercessions: () => void;
+  onMarkPrayed: () => void;
+}) {
+  const { slides, officeTitle, mode, dayLabel, intercessionCount, playerDocked, showIntercessions, alreadyDoneToday, onClose, onPrayIntercessions, onMarkPrayed } = props;
+  const sections = useMemo(() => buildBookSections(slides), [slides]);
+  const startPage = MODE_START_PAGE[mode];
+  const isFullOffice = mode === "morning" || mode === "evening";
+
+  const cardStyle: CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 14,
+    background: "rgba(46,107,64,0.10)",
+    border: `1px solid ${BORDER}`,
+    borderRadius: 16,
+    padding: "14px 16px",
+  };
+  const labelStyle: CSSProperties = {
+    margin: 0,
+    fontSize: 15,
+    fontWeight: 600,
+    color: WARM_TEXT,
+    fontFamily: SPACE_GROTESK,
+  };
+  const detailStyle: CSSProperties = {
+    margin: "3px 0 0",
+    fontSize: 13,
+    lineHeight: 1.5,
+    color: MUTED_GREEN,
+    fontFamily: SPACE_GROTESK,
+  };
+  const badgeStyle: CSSProperties = {
+    flexShrink: 0,
+    background: "rgba(166,124,82,0.18)",
+    border: "1px solid rgba(166,124,82,0.45)",
+    color: "#E8D5BC",
+    borderRadius: 999,
+    padding: "5px 12px",
+    fontSize: 13,
+    fontWeight: 700,
+    fontFamily: SPACE_GROTESK,
+    whiteSpace: "nowrap",
+  };
+
+  return (
+    <div
+      style={{
+        height: "100dvh",
+        overflow: "hidden",
+        overscrollBehavior: "none",
+        background: BG,
+        color: WARM_TEXT,
+        display: "flex",
+        flexDirection: "column",
+        fontFamily: SPACE_GROTESK,
+        position: "relative",
+        isolation: "isolate",
+      }}
+    >
+      <AnimatedBackground base={BG} variant="subtle" fadeTop />
+      {/* Top bar mirrors the slide deck's chrome; Back returns to the
+          slides (never exits the office — that lives on the intro slide). */}
+      <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, pointerEvents: "none" }}>
+        <div
+          className="max-w-2xl mx-auto w-full px-5 pb-2"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr auto 1fr",
+            alignItems: "center",
+            gap: 12,
+            pointerEvents: "auto",
+            paddingTop: "max(1.5rem, calc(env(safe-area-inset-top) + 0.5rem))",
+          }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            style={{ color: FAINT_GREEN, fontSize: 13, background: "none", border: "none", padding: 0, textAlign: "left", cursor: "pointer", fontFamily: SPACE_GROTESK }}
+          >
+            ← Back
+          </button>
+          <span
+            className="rounded-full"
+            style={{
+              background: "rgba(19,44,29,0.85)",
+              border: `1px solid ${BORDER}`,
+              color: WARM_TEXT,
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: "0.04em",
+              padding: "6px 16px",
+            }}
+          >
+            {officeTitle}
+          </span>
+          <div />
+        </div>
+      </header>
+
+      <main
+        className="flex-1 px-5"
+        style={{
+          minHeight: 0,
+          overflowY: "auto",
+          overscrollBehavior: "contain",
+          WebkitOverflowScrolling: "touch",
+          paddingTop: "max(76px, calc(env(safe-area-inset-top) + 64px))",
+          paddingBottom: playerDocked
+            ? "calc(env(safe-area-inset-bottom) + 176px)"
+            : "calc(env(safe-area-inset-bottom) + 64px)",
+        }}
+      >
+        <div className="max-w-2xl w-full mx-auto" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ textAlign: "center", marginBottom: 6 }}>
+            <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>
+              In your book
+            </p>
+            <h1
+              style={{
+                fontFamily: SPACE_GROTESK,
+                fontSize: "clamp(30px, 6vw, 44px)",
+                fontWeight: 700,
+                letterSpacing: "-0.02em",
+                color: WARM_TEXT,
+                margin: "8px 0 4px",
+                lineHeight: 1.05,
+              }}
+            >
+              {officeTitle}
+            </h1>
+            {dayLabel && (
+              <p style={{ margin: "0 0 2px", fontSize: 14, color: MUTED_GREEN }}>{dayLabel}</p>
+            )}
+            <p style={{ margin: 0, fontSize: 12, color: FAINT_GREEN }}>
+              {isFullOffice ? "1979 Book of Common Prayer · Rite II" : "1979 Book of Common Prayer"}
+            </p>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                marginTop: 14,
+                background: "rgba(166,124,82,0.18)",
+                border: "1px solid rgba(166,124,82,0.45)",
+                borderRadius: 999,
+                padding: "8px 18px",
+                fontSize: 15,
+                fontWeight: 700,
+                color: "#E8D5BC",
+              }}
+            >
+              📕 Begin at {startPage}
+            </div>
+          </div>
+
+          {sections.map((sec) => (
+            <div key={sec.key} style={cardStyle}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={labelStyle}>{sec.label}</p>
+                {sec.detail && <p style={detailStyle}>{sec.detail}</p>}
+                {sec.readUrl && (
+                  <button
+                    type="button"
+                    onClick={() => openExternal(sec.readUrl as string)}
+                    style={{
+                      marginTop: 6,
+                      background: "none",
+                      border: "none",
+                      padding: 0,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#A8C5A0",
+                      cursor: "pointer",
+                      fontFamily: SPACE_GROTESK,
+                    }}
+                  >
+                    Read it here instead ↗
+                  </button>
+                )}
+              </div>
+              {sec.page ? (
+                <span style={badgeStyle}>{sec.page}</span>
+              ) : sec.readUrl ? (
+                <span style={{ ...badgeStyle, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "#CFE3C8" }}>
+                  your Bible
+                </span>
+              ) : null}
+            </div>
+          ))}
+
+          {/* Intercessions — the one part of the office the app holds for
+              you. Opens the prayer-mode slideshow and returns here.
+              Hidden on the public /pray page (prayer-mode is auth-only). */}
+          {showIntercessions && (
+            <button
+              type="button"
+              onClick={onPrayIntercessions}
+              style={{ ...cardStyle, width: "100%", textAlign: "left", cursor: "pointer", background: "rgba(46,107,64,0.20)", border: "1px solid rgba(46,107,64,0.45)" }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={labelStyle}>The Intercessions</p>
+                <p style={detailStyle}>
+                  {intercessionCount > 0
+                    ? `${intercessionCount} waiting for your prayers — pray them here, then return to your book`
+                    : "Pray for your people — one at a time, then return to your book"}
+                </p>
+              </div>
+              <span style={{ flexShrink: 0, fontSize: 18 }}>🕊️ →</span>
+            </button>
+          )}
+
+          <p style={{ margin: "4px 0 0", fontSize: 12, lineHeight: 1.6, color: FAINT_GREEN, textAlign: "center" }}>
+            The Psalter begins at p. 585. Lessons are read from your own Bible.
+          </p>
+
+          {/* Completion — the physical pray-er's Amen. Logs the office to
+              today's practice exactly like finishing the slideshow. */}
+          <button
+            type="button"
+            onClick={onMarkPrayed}
+            style={{
+              marginTop: 10,
+              width: "100%",
+              background: BUTTON_BG,
+              color: WARM_TEXT,
+              border: "none",
+              borderRadius: 16,
+              padding: "16px 20px",
+              fontSize: 17,
+              fontWeight: 700,
+              fontFamily: SPACE_GROTESK,
+              cursor: "pointer",
+            }}
+          >
+            🙏 I prayed this office
+          </button>
+          <p style={{ margin: "2px 0 0", fontSize: 12, color: FAINT_GREEN, textAlign: "center" }}>
+            {alreadyDoneToday
+              ? "✓ Already logged today — praying it again still counts toward your rhythm."
+              : "Counts toward today's practice — your rhythm, your streak, and the day's reminders."}
+          </p>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 export default function BcpDailyOfficePage() {
   const { user, isLoading } = useAuth();
   const { rawIsBeta, isLoading: betaLoading } = useBetaStatus();
@@ -2544,6 +3160,9 @@ export default function BcpDailyOfficePage() {
   // All five liturgies live behind this one picker now (the Daily
   // Devotions menu entry was folded in). null = show the chooser.
   const [showMode, setShowMode] = useState<LiturgyMode | null>(null);
+  // True when the user picked an "In your book" row — the viewer opens
+  // on the physical-book page guide instead of the slide deck.
+  const [showBook, setShowBook] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
@@ -2602,6 +3221,9 @@ export default function BcpDailyOfficePage() {
         }
         // "watch" + "evening" falls through to the text office (no evening
         // broadcast equivalent — the Cathedral only streams morning prayer).
+        // "book" (physical BCP) also falls through — OfficeViewer reads the
+        // same per-side pref and opens its page-number guide instead of the
+        // slide deck.
       }
       setShowMode(mode);
     }
@@ -2649,7 +3271,13 @@ export default function BcpDailyOfficePage() {
   if (isLoading || betaLoading || !user) return null;
 
   if (showMode) {
-    return <OfficeViewer mode={showMode} onBack={() => setShowMode(null)} />;
+    return (
+      <OfficeViewer
+        mode={showMode}
+        initialBook={showBook}
+        onBack={() => { setShowMode(null); setShowBook(false); }}
+      />
+    );
   }
 
   // Evening = the afternoon window 14:00–20:00; Compline owns the
@@ -2660,6 +3288,7 @@ export default function BcpDailyOfficePage() {
   type OfficeOption = {
     mode?: LiturgyMode;     // in-page office (setShowMode)
     navigateTo?: string;    // OR a route to navigate to (Listen / Watch)
+    book?: boolean;         // open the office's physical-book page guide
     emoji: string;
     label: string;
     sub: string;
@@ -2673,9 +3302,11 @@ export default function BcpDailyOfficePage() {
   // evening).
   const morningDevotion: OfficeOption = { mode: "morning-devotion", emoji: "🌿", label: "Morning Devotion", sub: "A short devotion · BCP p. 137", now: isMorning };
   const morningPrayer: OfficeOption = { mode: "morning", emoji: "🌅", label: "Morning Prayer", sub: "Rite II · the full Daily Office", now: isMorning };
+  const morningBook: OfficeOption = { mode: "morning", book: true, emoji: "📕", label: "In your book", sub: "Today's page numbers for your physical Prayer Book", now: isMorning };
   const morningListen: OfficeOption = { navigateTo: "/podcast/morning-office", emoji: "🎧", label: "Listen", sub: "Morning Prayer read aloud · Forward Movement", now: isMorning };
   const eveningDevotion: OfficeOption = { mode: "early-evening-devotion", emoji: "🌆", label: "Early Evening Devotion", sub: "A short devotion · BCP p. 139", now: isEvening };
   const eveningPrayer: OfficeOption = { mode: "evening", emoji: "🌙", label: "Evening Prayer", sub: "Rite II · the full Daily Office", now: isEvening };
+  const eveningBook: OfficeOption = { mode: "evening", book: true, emoji: "📕", label: "In your book", sub: "Today's page numbers for your physical Prayer Book", now: isEvening };
   const eveningListen: OfficeOption = { navigateTo: "/podcast/evening-office", emoji: "🎧", label: "Listen", sub: "Evening Prayer read aloud · Forward Movement", now: isEvening };
   // Compline — beta-only. Stays in the list anytime so an early-bedder
   // can pray it before 8 PM; "Available now" highlights only after 20:00.
@@ -2703,19 +3334,34 @@ export default function BcpDailyOfficePage() {
         const entry = getSideEntry(s);
         if (entry === "listen") keys.add(`/podcast/${s}-office`);
         else if (entry === "watch" && s === "morning") keys.add("/ncmp/watch");
+        else if (entry === "book") keys.add(`${s}:book`); // physical-BCP page guide
         else keys.add(s); // "read" → the full office mode
       }
     }
     return keys;
   })();
-  const optIsDefault = (opt: OfficeOption): boolean =>
-    !!((opt.mode && defaultKeys.has(opt.mode)) || (opt.navigateTo && defaultKeys.has(opt.navigateTo)));
+  // An option's identity for the default badge — book rows share a mode
+  // with the plain office row, so they get a distinct ":book" key.
+  const optKey = (opt: OfficeOption): string | null =>
+    opt.book && opt.mode ? `${opt.mode}:book` : opt.mode ?? opt.navigateTo ?? null;
+  const optIsDefault = (opt: OfficeOption): boolean => {
+    const k = optKey(opt);
+    return !!k && defaultKeys.has(k);
+  };
 
   const OptionButton = ({ opt }: { opt: OfficeOption }) => {
     const isDefault = optIsDefault(opt);
     return (
       <button
-        onClick={() => { if (opt.navigateTo) setLocation(opt.navigateTo); else if (opt.mode) setShowMode(opt.mode); }}
+        onClick={() => {
+          if (opt.navigateTo) { setLocation(opt.navigateTo); return; }
+          if (opt.mode) {
+            // Book rows open the same office, landing on the physical-
+            // book page guide instead of the slide deck.
+            setShowBook(!!opt.book);
+            setShowMode(opt.mode);
+          }
+        }}
         className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
         style={{
           background: opt.now ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.08)",
@@ -2797,6 +3443,7 @@ export default function BcpDailyOfficePage() {
         <div className="space-y-3">
           <OptionButton opt={morningDevotion} />
           <OptionButton opt={morningPrayer} />
+          <OptionButton opt={morningBook} />
           <OptionButton opt={morningListen} />
           {/* "Watch" — National Cathedral Morning Prayer, weekday-only purple
               card slotted alongside the BCP full offices. Live at
@@ -2866,6 +3513,7 @@ export default function BcpDailyOfficePage() {
         <div className="space-y-3">
           <OptionButton opt={eveningDevotion} />
           <OptionButton opt={eveningPrayer} />
+          <OptionButton opt={eveningBook} />
           <OptionButton opt={eveningListen} />
           {/* Compline closes the evening. Beta-only — the server
               endpoint 403s non-beta callers (office.ts), so this is the

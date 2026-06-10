@@ -583,7 +583,7 @@ a:active,
   display: inline-flex;
   flex-wrap: nowrap;
   width: max-content;
-  animation: pill-ticker 18s linear infinite;
+  animation: pill-ticker 30s linear infinite;
 }
 .pill-ticker-mask {
   -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);

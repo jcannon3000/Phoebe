@@ -50,7 +50,9 @@ const KEY_INCLUDE_GRATITUDE_SLIDE = "phoebe:office:include-gratitude-slide";
 const KEY_CONTEMPLATION_MINUTES = "phoebe:office:contemplation-minutes";
 // Default "way to pray" for the full offices (Morning Prayer / Evening Prayer).
 // "read" = the text slideshow (default); "listen" = the Forward Movement
-// read-aloud podcast; "watch" = the National Cathedral morning broadcast.
+// read-aloud podcast; "watch" = the National Cathedral morning broadcast;
+// "book" = pray from your physical Book of Common Prayer — the office opens
+// to the page-number guide instead of the slide deck.
 // Only applies to the full offices — devotions and Compline always open as
 // text (no listen/watch equivalents).
 const KEY_DEFAULT_OFFICE_ENTRY = "phoebe:office:default-entry";
@@ -61,8 +63,8 @@ const REFLECTION_SOURCES: ReflectionSource[] = ["cac", "fdd", "ssje", "none"];
 export type OfficeAudioSource = "forward-movement" | "church-of-england";
 const OFFICE_AUDIO_SOURCES: OfficeAudioSource[] = ["forward-movement", "church-of-england"];
 
-export type DefaultOfficeEntry = "read" | "listen" | "watch";
-const DEFAULT_OFFICE_ENTRIES: DefaultOfficeEntry[] = ["read", "listen", "watch"];
+export type DefaultOfficeEntry = "read" | "listen" | "watch" | "book";
+const DEFAULT_OFFICE_ENTRIES: DefaultOfficeEntry[] = ["read", "listen", "watch", "book"];
 
 // ── Events ─────────────────────────────────────────────────────────
 export const OFFICE_PREFS_EVENT = "phoebe:office-prefs";

@@ -7,6 +7,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday, openHealthApp } from "@/lib/appleHealth";
 import i18n from "@/i18n";
 import { LogOut, Camera, Pencil, Trash2, Download } from "lucide-react";
 import {
@@ -39,6 +40,111 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
     >
       {children}
     </div>
+  );
+}
+
+// ─── Apple Health (iOS native shell only) ─────────────────────────────────
+//
+// Connect + status for the Mindful Minutes sync, so meditation kept in other
+// apps (Calm, Insight Timer, Apple Mindfulness) counts toward the
+// contemplation goal. The Contemplation goal card has the same connect
+// button, but it hides once the user has been through the prompt — and
+// HealthKit shows its permission sheet exactly ONCE per app. So if someone
+// dismissed or denied it there, Settings is the recovery path: re-trigger
+// the request (no-op if already answered) and deep-link into the Health app,
+// where read access is actually granted after the fact (Profile → Apps →
+// Phoebe → allow Mindfulness). Renders nothing on the web.
+function AppleHealthSettings() {
+  const { t } = useTranslation();
+  const [connecting, setConnecting] = useState(false);
+  const [connected, setConnected] = useState<boolean>(() => {
+    try { return localStorage.getItem("phoebe:health-connected") === "1"; } catch { return false; }
+  });
+  // Same query key as the contemplation goal card + the Layout sync hook, so
+  // all three share one HealthKit read. excludeOwn → external minutes only.
+  const day = new Date().toLocaleDateString("en-CA");
+  const healthQ = useQuery<{ minutes: number; sessions: number } | null>({
+    queryKey: ["apple-health-mindful-external", day],
+    queryFn: () => getMindfulMinutesToday(true),
+    enabled: appleHealthAvailable(),
+    staleTime: 5 * 60_000,
+  });
+
+  if (!appleHealthAvailable()) return null;
+  const minutes = healthQ.data?.minutes ?? 0;
+  // Minutes flowing in = access works, even if they never tapped our button
+  // (e.g. granted directly in the Health app).
+  const looksConnected = connected || minutes > 0;
+
+  const connect = async () => {
+    setConnecting(true);
+    try {
+      await requestMindfulAuthorization();
+      try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* private mode */ }
+      setConnected(true);
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  return (
+    <>
+      <SectionHeader label={t("settings.apple_health", { defaultValue: "Apple Health" })} />
+      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+        {t("settings.apple_health_blurb", { defaultValue: "Count meditation from Calm, Insight Timer, or Apple Mindfulness toward your contemplation goal — and save Phoebe sits back to Health." })}
+      </p>
+      <SettingsCard>
+        {looksConnected ? (
+          <>
+            <div className="flex items-center gap-2.5 py-1">
+              <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>🍎</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                  {minutes > 0
+                    ? t("settings.apple_health_today", { count: minutes, defaultValue: `${minutes} mindful min from other apps today` })
+                    : t("settings.apple_health_none", { defaultValue: "Connected — no outside mindful minutes today" })}
+                </p>
+                <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+                  {t("settings.apple_health_manage", { defaultValue: "Missing minutes? Allow Mindfulness for Phoebe in the Health app (Profile → Apps)." })}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => { void openHealthApp(); }}
+              className="w-full flex items-center justify-between gap-3 py-2.5 text-left mt-1"
+              style={{ borderTop: "1px solid rgba(200,212,192,0.12)", background: "transparent", cursor: "pointer" }}
+            >
+              <p className="text-[14px]" style={{ color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                {t("settings.apple_health_open", { defaultValue: "Open the Health app" })}
+              </p>
+              <span aria-hidden style={{ color: "#8FAF96", fontSize: 15 }}>↗</span>
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => { void connect(); }}
+            disabled={connecting}
+            className="w-full flex items-center gap-2.5 py-1.5 text-left disabled:opacity-50"
+            style={{ background: "transparent", cursor: "pointer" }}
+          >
+            <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>🍎</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p className="text-[14px] font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+                {connecting
+                  ? t("settings.apple_health_connecting", { defaultValue: "Connecting…" })
+                  : t("settings.apple_health_connect", { defaultValue: "Connect Apple Health" })}
+              </p>
+              <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
+                {t("settings.apple_health_connect_sub", { defaultValue: "iOS will ask to share Mindful Minutes with Phoebe" })}
+              </p>
+            </div>
+            <span aria-hidden style={{ color: "#8FAF96", fontSize: 16 }}>›</span>
+          </button>
+        )}
+      </SettingsCard>
+    </>
   );
 }
 
@@ -712,6 +818,8 @@ function OfficeReminderSettings() {
           </button>
         )}
       </SettingsCard>
+
+      <AppleHealthSettings />
 
       {/* Weekly Way of Love review — the Sunday-evening examen reminder
           (opt-out). Shares the same office-prefs query/mutation. */}

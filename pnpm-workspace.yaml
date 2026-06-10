@@ -42,6 +42,10 @@ onlyBuiltDependencies:
   - unrs-resolver
 
 overrides:
+  # Force patched transitive versions for remotely-triggerable DoS advisories
+  # (see `pnpm audit`): qs via express 5, ws via api-server.
+  qs: '>=6.15.2'
+  ws: '>=8.20.1'
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64': '-'
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-x64': '-'

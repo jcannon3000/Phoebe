@@ -819,6 +819,10 @@ export async function assembleMorningPrayer(
     slides.push(
       slide(id(), "psalm_title", PSALM_EMOJI[firstPsalm.number] ?? "📖", combinedEyebrow, "", {
         title: combinedTitle,
+        // Psalter page of the first appointed psalm — the physical-book
+        // guide reads this off the title slide. (EP's psalm slides
+        // already carry it; MP historically dropped it.)
+        bcpReference: firstData?.bcpReference ?? null,
         isScrollable: false,
         scrollHint: null,
         metadata: {
@@ -859,6 +863,7 @@ export async function assembleMorningPrayer(
       slides.push(
         slide(id(), "psalm", PSALM_EMOJI[psalmNum] ?? "📖", eyebrow, c.content, {
           title: psalmData?.title ?? null,
+          bcpReference: psalmData?.bcpReference ?? null,
           isScrollable: false,
           scrollHint: null,
           metadata: {

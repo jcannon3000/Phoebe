@@ -26,6 +26,7 @@ interface MindfulHealthPlugin {
   requestAuthorization: () => Promise<{ requested: boolean }>;
   mindfulMinutesToday: (opts?: { excludeOwn?: boolean }) => Promise<{ minutes: number; sessions: number }>;
   writeMindfulSession: (opts: { startMs: number; endMs: number }) => Promise<{ written: boolean }>;
+  openApp: (opts: { scheme: string; fallbackUrl?: string }) => Promise<{ opened: boolean; usedFallback: boolean }>;
 }
 
 function getPlugin(): MindfulHealthPlugin | null {
@@ -121,6 +122,23 @@ export function useHealthMindfulToday(): boolean {
     staleTime: 5 * 60_000,
   });
   return (q.data?.minutes ?? 0) > 0;
+}
+
+/**
+ * Open the Apple Health app (best-effort, native only). HealthKit shows its
+ * permission sheet exactly once — after a denial the ONLY way to grant read
+ * access is inside the Health app (Profile → Apps → Phoebe → allow
+ * Mindfulness), so settings deep-links there.
+ */
+export async function openHealthApp(): Promise<boolean> {
+  const p = getPlugin();
+  if (!p) return false;
+  try {
+    const r = await p.openApp({ scheme: "x-apple-health://" });
+    return !!r?.opened;
+  } catch {
+    return false;
+  }
 }
 
 // Module-level so the dedup survives Layout remounts on navigation (each page

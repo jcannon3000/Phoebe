@@ -1107,8 +1107,12 @@ function wireContemplation() {
   // Foreground in-app close bell — when the sit finishes while the app is
   // open, we play the same bell through the native session so the silent
   // switch doesn't mute it. Falls back to whatever the web layer plays.
-  window.addEventListener("phoebe:contemplation-play-bell", async () => {
-    try { await getPhoebeAudio()?.playNow?.({ sound: CONTEMPLATION_BELL_FILE }); }
+  window.addEventListener("phoebe:contemplation-play-bell", async e => {
+    // The web side picks a voicing: "PhoebeRising-low.caf" for the opening
+    // swell, "-high.caf" for the close. Default to the close bell.
+    const detail = (e as CustomEvent).detail as { sound?: string } | undefined;
+    const sound = detail?.sound ?? CONTEMPLATION_BELL_FILE;
+    try { await getPhoebeAudio()?.playNow?.({ sound }); }
     catch { /* best-effort — web layer also plays its synthesized bell */ }
   });
 }

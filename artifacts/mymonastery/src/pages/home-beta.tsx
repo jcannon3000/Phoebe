@@ -31,6 +31,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { PRACTICES, type PracticeId } from "@/lib/wayOfLove";
 import { computeTurnConsistency, engagementDays } from "@/lib/turnConsistency";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
+import { useHealthMindfulToday } from "@/lib/appleHealth";
 // Reused production home cards + helpers (exported from dashboard, not rebuilt).
 import {
   PrayerOfficeCard,
@@ -264,7 +265,10 @@ export default function HomeBetaPage() {
   // completionSignal, surfaced here.
   const reflectionReadToday = hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday();
   const contemplationDoneToday = (contemplationQ.data?.todaySeconds ?? 0) > 0;
-  const dailyPrayerEngaged = officePrayedToday || reflectionReadToday || contemplationDoneToday;
+  // iOS + Health connected: meditation logged in other apps (Insight Timer,
+  // Calm, Apple Mindfulness) counts as a Pray sit too — matches home-beta-section.
+  const healthMindfulToday = useHealthMindfulToday();
+  const dailyPrayerEngaged = officePrayedToday || reflectionReadToday || contemplationDoneToday || healthMindfulToday;
 
   const has = (section: string, localDate: string) =>
     rows.some((r) => r.section === section && r.localDate === localDate);

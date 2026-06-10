@@ -99,7 +99,10 @@ export default function WelcomePublicPage() {
           >
             {t("welcome_public.title")}
           </h1>
-          <p className="text-[15px] leading-relaxed" style={{ color: SAGE }}>
+          {/* Auto-fit so the (long, ~61-char) tagline stays on ONE line across
+              phone widths. No `nowrap`: a longer translation (e.g. Spanish) then
+              wraps gracefully instead of clipping/overflowing. */}
+          <p className="leading-relaxed" style={{ color: SAGE, fontSize: "clamp(9px, 2.6vw, 12px)" }}>
             {t("welcome_public.tagline", { defaultValue: "A relational app that cultivates connections between Sundays." })}
           </p>
         </motion.div>

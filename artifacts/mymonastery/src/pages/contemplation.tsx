@@ -293,10 +293,14 @@ function DailyGoalCard({
   // prompt. The upload to the server happens app-wide from the Layout shell
   // (useSyncHealthMinutes), so the goal card no longer uploads itself.
   const liveHealthMin = healthQ.data?.minutes ?? 0;
-  // What we display/count: prefer the live read; fall back to the server's
-  // stored value so web + cross-device reflect minutes synced from the phone.
-  // (`0 ?? x` keeps 0 — a granted device reporting no minutes isn't overridden.)
-  const healthMin = healthQ.data?.minutes ?? healthMinutesToday;
+  // What we display/count: the larger of the live read and the server's
+  // stored value. A live read of 0 is ambiguous — HealthKit hides read-grant
+  // state, so "granted but no minutes" and "not granted on THIS device" both
+  // read {minutes: 0} — and `0 ?? server` kept the 0, discarding minutes the
+  // user's phone had already synced (this card said 0 while the dashboard
+  // card, which always uses the server value, said 25). Math.max keeps the
+  // two surfaces in agreement; the server value resets at the day boundary.
+  const healthMin = Math.max(liveHealthMin, healthMinutesToday);
 
   // Today's progress = Phoebe's own logged time + meditation synced from Health.
   // todaySeconds is prayer-only (server keeps Health minutes in a separate
@@ -325,7 +329,11 @@ function DailyGoalCard({
     setHealthConnected(true);
     queryClient.invalidateQueries({ queryKey: ["apple-health-mindful-external"] });
   };
-  const showHealthConnect = appleHealthAvailable() && !healthConnected && liveHealthMin === 0;
+  // Gate on the DISPLAYED value, not the live read — when the card is already
+  // crediting server-synced minutes (healthMin > 0), showing "Connect Apple
+  // Health" alongside "Including N min from Apple Health" reads as a
+  // contradiction even if THIS device hasn't granted read access yet.
+  const showHealthConnect = appleHealthAvailable() && !healthConnected && healthMin === 0;
 
   return (
     <div className="rounded-2xl p-4 mt-4" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>

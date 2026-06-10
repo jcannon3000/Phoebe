@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, usersTable } from "@workspace/db";
+import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, usersTable, contemplationHealthMinutesTable } from "@workspace/db";
 import { and, desc, eq, gte, gt, lt, inArray, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { getGardenUserIds } from "../lib/garden";
@@ -178,15 +178,37 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
       return { seconds: row?.seconds ?? 0, count: row?.count ?? 0, days: row?.days ?? 0 };
     };
 
-    const [today, week, all] = await Promise.all([
+    // External Apple Health mindful minutes the iOS client uploaded for the
+    // viewer's LOCAL day (Calm / Insight Timer / Apple Mindfulness; Phoebe's
+    // own sits already excluded client-side). Returned as a SEPARATE field —
+    // not folded into todaySeconds, which also backs the prayer-only Stats
+    // tiles + History — so "done today" consumers can add it without making
+    // the Today tile disagree with the week / all-time tiles. The card adds
+    // its live value instead; this serves the home card + any surface without
+    // a live HealthKit read.
+    let localDay: string;
+    try { localDay = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date()); }
+    catch { localDay = new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" }).format(new Date()); }
+
+    const [today, week, all, healthRow] = await Promise.all([
       windowStats(todaySince),
       windowStats(weekAgo),
       windowStats(null),
+      db
+        .select({ minutes: contemplationHealthMinutesTable.minutes })
+        .from(contemplationHealthMinutesTable)
+        .where(and(
+          eq(contemplationHealthMinutesTable.userId, sessionUserId),
+          eq(contemplationHealthMinutesTable.day, localDay),
+        ))
+        .then((r) => r[0]),
     ]);
 
     res.json({
       todaySeconds: today.seconds,
       todayCount: today.count,
+      // External mindful minutes synced from Apple Health for today (0 if none).
+      healthMinutesToday: healthRow?.minutes ?? 0,
       // Today is one local day — a sit means 1 day, not the UTC-split
       // count, so the per-day average == today's total.
       todayDays: today.count > 0 ? 1 : 0,
@@ -482,6 +504,57 @@ router.post("/me/contemplation-sessions", async (req, res): Promise<void> => {
     res.json({ ok: true, id: created?.id ?? null });
   } catch (err) {
     console.error("[/me/contemplation-sessions POST] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// PUT /api/me/contemplation-health-minutes — the iOS client best-effort
+// uploads today's EXTERNAL mindful minutes it read from Apple Health (Calm,
+// Insight Timer, Apple Mindfulness; Phoebe's own sits already excluded
+// client-side so they're never double-counted). Stored per (user, local day)
+// so the ~7pm goal nudge (lib/bellSender) and /me/contemplation-stats fold
+// them into "done today" the same way the Contemplation card does. Upsert —
+// GREATEST wins: a daily mindful total only grows within a day, so a stale
+// cached read (react-query staleTime) or a second device whose HealthKit
+// lags can't clobber a higher total already synced from the user's phone.
+const healthMinutesSchema = z.object({
+  // Bounded at 24h to reject garbage; external mindful minutes are small.
+  minutes: z.number().int().min(0).max(24 * 60),
+  // The user's LOCAL calendar day (YYYY-MM-DD) the minutes belong to.
+  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+router.put("/me/contemplation-health-minutes", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parsed = healthMinutesSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
+  const { minutes, day } = parsed.data;
+  // Accept only a day within ±1 of the server's UTC today. The value is
+  // "today's" mindful minutes from the device, whose local day is always
+  // within a day of UTC — so this bounds stray / backfilled writes without
+  // needing the caller's tz. (The row is user-scoped; this is a sanity
+  // bound, not an authorization check.)
+  const dayMs = Date.parse(`${day}T00:00:00Z`);
+  if (Number.isNaN(dayMs)) { res.status(400).json({ error: "Invalid day" }); return; }
+  const now = new Date();
+  const utcTodayMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  if (Math.abs(dayMs - utcTodayMs) > 86400000) { res.status(400).json({ error: "Day out of range" }); return; }
+  try {
+    await db.insert(contemplationHealthMinutesTable)
+      .values({ userId: sessionUserId, day, minutes })
+      .onConflictDoUpdate({
+        target: [contemplationHealthMinutesTable.userId, contemplationHealthMinutesTable.day],
+        // Monotonic within the day — see route comment. Tradeoff: a genuine
+        // decrease (user deletes a Health session) won't propagate until the
+        // day rolls over; we prefer that over under-counting the goal.
+        set: {
+          minutes: sql`GREATEST(${contemplationHealthMinutesTable.minutes}, EXCLUDED.minutes)`,
+          updatedAt: new Date(),
+        },
+      });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[/me/contemplation-health-minutes PUT] failed:", err);
     res.status(500).json({ error: "internal_error" });
   }
 });

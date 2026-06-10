@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
 import { playOpeningSwell, primeAudio } from "@/lib/amenFeedback";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { writeMindfulSession } from "@/lib/appleHealth";
 
@@ -227,6 +228,21 @@ export function ContemplationTimer({
   function nativeEvent(name: string, detail?: unknown) {
     try { window.dispatchEvent(new CustomEvent(name, detail !== undefined ? { detail } : undefined)); }
     catch { /* non-fatal */ }
+  }
+
+  // Ring the contemplation bell. On the native iOS shell, route through the
+  // PhoebeAudio plugin's .playback AVAudioSession (playNow) so the silent
+  // switch doesn't mute it — the Web Audio swell below is silenced by the mute
+  // switch and suspended when backgrounded. On web, keep the synthesized swell.
+  // octave 0 = the lower opening voicing, 2 = the brighter close.
+  function playBell(octave: 0 | 2) {
+    if (isNativeShell()) {
+      nativeEvent("phoebe:contemplation-play-bell", {
+        sound: octave === 0 ? "PhoebeRising-low.caf" : "PhoebeRising-high.caf",
+      });
+    } else {
+      playOpeningSwell(octave);
+    }
   }
 
   // ── Keep the screen on during a sit. Two layers, because each covers
@@ -502,7 +518,7 @@ export function ContemplationTimer({
     scheduleEndBell(endAtRef.current);
     // Opening swell — the chapel-exhale that marks the hand-off from
     // listening into stillness (octave 0, the base voicing).
-    playOpeningSwell(0);
+    playBell(0);
   }
 
   // The set time has elapsed. Ring the closing bell and flip into
@@ -517,10 +533,22 @@ export function ContemplationTimer({
     // the bell, so a second one would double up. Either way drop the
     // pending notification.
     const onTime = Date.now() - endAtRef.current < 2500;
-    cancelEndBell();
+    const native = isNativeShell();
+    // On the native shell, the scheduled bell (PhoebeAudio.scheduleBellAt)
+    // fires at endAt on the AUDIO clock — it IS the close bell, and by the
+    // time this JS tick runs it may already be ringing. Cancelling here
+    // would stop it mid-ring, and playing again would stutter/restart it —
+    // so on an on-time native finish we touch nothing: the plugin's own
+    // cleanup timer stops the silence loop ~10s later, and the endAt local
+    // notification has already fired (cancelling it is moot). Every other
+    // case keeps the cancel: late catch-up (bell long finished; cancel just
+    // reaps the silence loop) and web (cancel no-ops; we ring the swell).
+    if (!(onTime && native)) cancelEndBell();
     if (onTime) {
-      // Closing swell — same slideshow sound, brighter (octave 2).
-      playOpeningSwell(2);
+      if (!native) {
+        // Closing swell — same slideshow sound, brighter (octave 2).
+        playBell(2);
+      }
       try {
         window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } }));
       } catch { /* non-fatal */ }
@@ -545,7 +573,7 @@ export function ContemplationTimer({
     if (!reachedRef.current) {
       // Closing swell — same slideshow sound, brighter (octave 2) so the
       // ending reads as a resolution rather than a repeat of the opening.
-      playOpeningSwell(2);
+      playBell(2);
       try {
         window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } }));
       } catch { /* non-fatal */ }

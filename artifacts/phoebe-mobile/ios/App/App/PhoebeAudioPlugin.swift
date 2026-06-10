@@ -59,6 +59,14 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     // scheduled play(atTime:) deadline.
     private var bellPlayer: AVAudioPlayer?
 
+    // Foreground playNow player — deliberately SEPARATE from bellPlayer.
+    // playNow used to write self.bellPlayer, which dropped the last strong
+    // reference to the armed play(atTime:) close-bell player the moment the
+    // OPENING bell rang (startSilence schedules the end bell, then plays the
+    // opening) — deallocating it and silencing the end of every backgrounded
+    // sit. The two players must never share a reference.
+    private var nowPlayer: AVAudioPlayer?
+
     // Cleanup timer that stops the silent loop a few seconds after
     // the bell rings. We don't want to keep the audio session warm
     // (and the phone awake) any longer than necessary.
@@ -180,8 +188,10 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             player.prepareToPlay()
             player.play()
             // Hold a reference until natural completion so the player
-            // isn't deallocated mid-playback.
-            self.bellPlayer = player
+            // isn't deallocated mid-playback. NOT bellPlayer — that slot
+            // belongs to the scheduled close bell (see nowPlayer above).
+            self.nowPlayer?.stop()
+            self.nowPlayer = player
             call.resolve()
         } catch {
             call.reject("play failed: \(error.localizedDescription)")

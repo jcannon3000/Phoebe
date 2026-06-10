@@ -4,8 +4,8 @@ import { prayerRequestsTable } from "./prayer_requests";
 
 // Daily "you've been held in prayer today" notification queue.
 //
-// One row per (request, day in recipient's tz) — created on the first
-// non-owner amen of the day, incremented on each subsequent amen during
+// One row per (request, recipient, day in recipient's tz) — created on the
+// first non-owner amen of the day, incremented on each subsequent amen during
 // the 2-hour batching window, then claimed and pushed by the background
 // scanner once first_amen_at is older than 2h.
 //
@@ -37,7 +37,13 @@ export const prayerHeldNotificationsTable = pgTable(
     sentAt: timestamp("sent_at", { withTimezone: true }),
   },
   (t) => ({
-    uniqRequestDay: uniqueIndex("uniq_phn_request_day").on(t.requestId, t.dayKey),
+    // Recipient-scoped: one request can notify multiple tagged recipients,
+    // each once per day (the "praying for my friend Matthew" feature), so the
+    // unique key includes recipient_id. Matches migrate.ts and the amen
+    // upsert's ON CONFLICT (request_id, recipient_id, day_key). The earlier
+    // narrow (request_id, day_key) index was replaced — declaring it here let
+    // `drizzle-kit push --force` (run on every deploy) fight migrate.ts.
+    uniqRequestRecipientDay: uniqueIndex("uniq_phn_request_recipient_day").on(t.requestId, t.recipientId, t.dayKey),
     pendingIdx: index("idx_phn_pending").on(t.sentAt, t.firstAmenAt),
   }),
 );

@@ -19,6 +19,7 @@ import {
   prayerFeedSubscriptionsTable,
   prayerFeedEventsTable,
   practiceCompletionTable,
+  contemplationHealthMinutesTable,
 } from "@workspace/db";
 import { eq, and, gte, ne, sql, isNull, inArray, isNotNull } from "drizzle-orm";
 import {
@@ -1024,7 +1025,43 @@ export async function runContemplationGoalSender(opts: { forceNow?: boolean } = 
           secondsToday += s.durationSeconds ?? 0;
         }
       }
-      const doneMinutes = Math.floor(secondsToday / 60);
+      // Fold in today's EXTERNAL Apple Health mindful minutes (the iOS client
+      // uploads them to contemplation_health_minutes). Without this the nudge
+      // counts only Phoebe's own sits and would fire "you haven't reached
+      // your goal" even when the user hit it via Calm / Insight Timer /
+      // Apple Mindfulness — exactly what the Contemplation card credits.
+      //
+      // Day-key caveat: the client writes `day` from the DEVICE's local
+      // date, while `today` here comes from the STORED users.timezone — a
+      // stale/unset timezone (travel, the America/New_York default) makes
+      // the two straddle a date boundary and an exact-match lookup miss the
+      // row, false-firing the nudge. So: exact `today` match first, else the
+      // latest row within ±1 day (the device's "today" is the user's lived
+      // today). Worst case of the fallback is crediting an adjacent day and
+      // SUPPRESSING a nudge — strictly gentler than a wrong "you haven't
+      // reached your goal" push.
+      const dayAnchorMs = Date.parse(`${today}T12:00:00Z`);
+      const adjacentDays = [
+        new Date(dayAnchorMs - 86_400_000).toISOString().slice(0, 10),
+        today,
+        new Date(dayAnchorMs + 86_400_000).toISOString().slice(0, 10),
+      ];
+      const healthRows = await db
+        .select({
+          day: contemplationHealthMinutesTable.day,
+          minutes: contemplationHealthMinutesTable.minutes,
+        })
+        .from(contemplationHealthMinutesTable)
+        .where(
+          and(
+            eq(contemplationHealthMinutesTable.userId, r.userId),
+            inArray(contemplationHealthMinutesTable.day, adjacentDays),
+          ),
+        );
+      const healthRow =
+        healthRows.find((h) => h.day === today) ??
+        [...healthRows].sort((a, b) => b.day.localeCompare(a.day))[0];
+      const doneMinutes = Math.floor(secondsToday / 60) + (healthRow?.minutes ?? 0);
 
       if (doneMinutes >= goalMinutes) {
         // Goal already met — stamp so we don't re-evaluate on later ticks.
