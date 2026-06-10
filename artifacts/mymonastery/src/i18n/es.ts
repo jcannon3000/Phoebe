@@ -3124,6 +3124,7 @@ export const es: Translations = {
       subtitle: "Opcional. Si nombras una, aparece para todos al abrir la oración.",
       placeholder: "p. ej. Nuestros enemigos y aquellos con quienes estamos en conflicto…",
       full_prayer: "La oración completa",
+      add_specific: "Añadir una intención específica",
     },
     intention_custom: {
       title_action: "Crea una acción",
@@ -3136,6 +3137,9 @@ export const es: Translations = {
       prayer_ph: "Escribe la oración que tu grupo orará junto...",
       action_link_label: "Enlace de acción",
       action_link_hint: "Se muestra como un enlace \"Toma acción →\" en la diapositiva de la oración.",
+      learn_more_label: "Enlace del artículo",
+      learn_more_hint: "Pega un enlace — traeremos el título del artículo para todos los que oran.",
+      add_article: "Añadir artículo",
     },
     logging: {
       title: "¿Cómo se sostendrá tu práctica?",

@@ -3208,6 +3208,7 @@ export const en = {
       subtitle: "Optional. If you name one, it appears for everyone when they open the prayer.",
       placeholder: "e.g. Our enemies and those with whom we are in conflict…",
       full_prayer: "The full prayer",
+      add_specific: "Add a specific intention",
     },
     intention_custom: {
       title_action: "Create an action",
@@ -3220,6 +3221,9 @@ export const en = {
       prayer_ph: "Write the prayer your group will pray together...",
       action_link_label: "Action link",
       action_link_hint: "Shown as a \"Take action →\" link on the prayer slide.",
+      learn_more_label: "Article link",
+      learn_more_hint: "Paste a link — we'll pull in the article's title for everyone praying.",
+      add_article: "Add article",
     },
     logging: {
       title: "How will your practice be held?",
