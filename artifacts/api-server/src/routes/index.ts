@@ -1,4 +1,5 @@
 import { Router, type IRouter, type RequestHandler } from "express";
+import jardinRouter from "./jardin";
 import healthRouter from "./health";
 import emailRouter from "./email";
 import statsRouter from "./stats";
@@ -179,5 +180,6 @@ router.use(officeAlignmentRouter);
 router.use(practiceCompletionRouter);
 router.use(buildfaithRouter);
 router.use("/rule-of-life", ruleOfLifeRouter);
+router.use(jardinRouter);
 
 export default router;

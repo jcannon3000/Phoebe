@@ -166,6 +166,13 @@ const PrayerChooserPage = lazy(() => import("./pages/prayer-chooser"));
 const NcmpWatchPage = lazy(() => import("./pages/ncmp-watch"));
 const OfficePodcastPage = lazy(() => import("./pages/office-podcast"));
 const MenuPage = lazy(() => import("./pages/menu"));
+const MenuJardinPage = lazy(() => import("./pages/menu-jardin"));
+const JardinBiblePage = lazy(() => import("./pages/jardin-bible"));
+const JardinBibleStudyPage = lazy(() => import("./pages/jardin-bible-study"));
+const JardinCharacterStudyPage = lazy(() => import("./pages/jardin-character-study"));
+const JardinSermonNotesPage = lazy(() => import("./pages/jardin-sermon-notes"));
+const JardinNextSundayPage = lazy(() => import("./pages/jardin-next-sunday"));
+const JardinLeaderboardPage = lazy(() => import("./pages/jardin-leaderboard"));
 const MenuBcpPage = lazy(() => import("./pages/menu-bcp"));
 const MenuPracticesPage = lazy(() => import("./pages/menu-practices"));
 const MenuReflectionsPage = lazy(() => import("./pages/menu-reflections"));
@@ -549,6 +556,13 @@ function Router() {
       <Route path="/podcast/morning-office" component={OfficePodcastPage} />
       <Route path="/podcast/evening-office" component={OfficePodcastPage} />
       <Route path="/menu" component={MenuPage} />
+      <Route path="/menu/jardin" component={MenuJardinPage} />
+      <Route path="/jardin/bible" component={JardinBiblePage} />
+      <Route path="/jardin/bible-study" component={JardinBibleStudyPage} />
+      <Route path="/jardin/character-study" component={JardinCharacterStudyPage} />
+      <Route path="/jardin/sermon-notes" component={JardinSermonNotesPage} />
+      <Route path="/jardin/next-sunday" component={JardinNextSundayPage} />
+      <Route path="/jardin/leaderboard" component={JardinLeaderboardPage} />
       <Route path="/menu/bcp" component={MenuBcpPage} />
       <Route path="/menu/practices" component={MenuPracticesPage} />
       <Route path="/menu/reflections" component={MenuReflectionsPage} />

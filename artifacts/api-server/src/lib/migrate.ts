@@ -2750,6 +2750,79 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS idx_users_lower_email ON users (LOWER(email))`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_prayer_request_amens_user_prayed ON prayer_request_amens (user_id, prayed_at)`);
 
+    // ── El Jardin — personal study + formation tools ─────────────────────────
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS jardin_bible_studies (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        book_chapter TEXT NOT NULL DEFAULT '',
+        main_theme TEXT NOT NULL DEFAULT '',
+        key_verses TEXT NOT NULL DEFAULT '',
+        symbols_keywords TEXT NOT NULL DEFAULT '',
+        application TEXT NOT NULL DEFAULT '',
+        takeaways TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS jardin_bible_studies_user ON jardin_bible_studies (user_id)`);
+
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS jardin_character_studies (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL DEFAULT '',
+        name_meaning TEXT NOT NULL DEFAULT '',
+        origin TEXT NOT NULL DEFAULT '',
+        time_period TEXT NOT NULL DEFAULT '',
+        strengths TEXT NOT NULL DEFAULT '',
+        weaknesses TEXT NOT NULL DEFAULT '',
+        key_events TEXT NOT NULL DEFAULT '',
+        lessons_learned TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS jardin_character_studies_user ON jardin_character_studies (user_id)`);
+
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS jardin_sermon_notes (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        sermon_date TEXT NOT NULL DEFAULT '',
+        preacher TEXT NOT NULL DEFAULT '',
+        title TEXT NOT NULL DEFAULT '',
+        scripture TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS jardin_sermon_notes_user ON jardin_sermon_notes (user_id, created_at DESC)`);
+
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS jardin_next_sunday (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT NOT NULL DEFAULT '',
+        scripture TEXT NOT NULL DEFAULT '',
+        web_link TEXT NOT NULL DEFAULT '',
+        notes TEXT NOT NULL DEFAULT '',
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS jardin_friends (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        friend_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (user_id, friend_id)
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS jardin_friends_user ON jardin_friends (user_id)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns
