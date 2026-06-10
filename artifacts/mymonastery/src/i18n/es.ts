@@ -449,6 +449,7 @@ export const es: Translations = {
     preparing: "Preparando la reflexión de hoy…",
     reflect_title_fallback: "La reflexión de hoy",
     reflect_intro: "Has guardado el silencio. ¿Qué se quedó contigo?",
+    read: "Leer la reflexión →",
     done: "Listo",
   },
   building_faith: {

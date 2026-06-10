@@ -35,6 +35,7 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "requestAuthorization", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "mindfulMinutesToday", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "mindfulSessionsToday", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "writeMindfulSession", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openApp", returnType: CAPPluginReturnPromise),
     ]
@@ -107,6 +108,40 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
             }
             let minutes = Int((totalSeconds / 60.0).rounded())
             call.resolve(["minutes": minutes, "sessions": sessions.count])
+        }
+        healthStore.execute(query)
+    }
+
+    // Today's mindful sessions as a LIST (for the Contemplation history) —
+    // each with its start/end, rounded minutes, the writing app's name, and
+    // whether Phoebe itself wrote it (so the client can drop its own sits,
+    // which already show as in-app history cards, and surface only external
+    // meditation from Calm / Insight Timer / Apple Mindfulness).
+    @objc func mindfulSessionsToday(_ call: CAPPluginCall) {
+        guard HKHealthStore.isHealthDataAvailable(), let type = mindfulType else {
+            call.resolve(["sessions": []])
+            return
+        }
+        let startOfDay = Calendar.current.startOfDay(for: Date())
+        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: Date(), options: .strictStartDate)
+        let sort = [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)]
+        let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: sort) { _, samples, error in
+            if let error = error {
+                call.reject("Query failed: \(error.localizedDescription)")
+                return
+            }
+            let own = HKSource.default()
+            let out: [[String: Any]] = (samples ?? []).map { sample in
+                let secs = sample.endDate.timeIntervalSince(sample.startDate)
+                return [
+                    "startMs": sample.startDate.timeIntervalSince1970 * 1000.0,
+                    "endMs": sample.endDate.timeIntervalSince1970 * 1000.0,
+                    "minutes": Int((secs / 60.0).rounded()),
+                    "source": sample.sourceRevision.source.name,
+                    "isOwn": sample.sourceRevision.source == own,
+                ]
+            }
+            call.resolve(["sessions": out])
         }
         healthStore.execute(query)
     }

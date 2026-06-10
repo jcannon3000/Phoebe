@@ -226,17 +226,20 @@ router.get("/cac/readers", async (req: Request, res: Response): Promise<void> =>
 router.post("/cac/reflections", async (req: Request, res: Response): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
-  const { text, shared } = req.body as { text?: unknown; shared?: unknown };
+  const { text, shared, title } = req.body as { text?: unknown; shared?: unknown; title?: unknown };
   if (!text || typeof text !== "string" || text.trim().length === 0) {
     res.status(400).json({ error: "Text is required" }); return;
   }
   const trimmed = text.trim();
   if (wordCount(trimmed) > CAC_WORD_MAX) { res.status(400).json({ error: `Maximum ${CAC_WORD_MAX} words` }); return; }
+  // The reflection the entry was written about — stored so "Your reflections"
+  // can label each by date + title. Trimmed/capped; null when absent.
+  const entryTitle = typeof title === "string" && title.trim().length > 0 ? title.trim().slice(0, 200) : null;
   try {
     const result = await pool.query(
-      `INSERT INTO cac_reflections (user_id, text, shared) VALUES ($1, $2, $3)
+      `INSERT INTO cac_reflections (user_id, text, shared, title) VALUES ($1, $2, $3, $4)
        RETURNING id, created_at, shared`,
-      [user.id, trimmed, shared === true],
+      [user.id, trimmed, shared === true, entryTitle],
     );
     res.json({ id: result.rows[0].id, createdAt: result.rows[0].created_at, shared: result.rows[0].shared });
   } catch (err) {
@@ -271,11 +274,11 @@ router.get("/cac/reflections/mine", async (req: Request, res: Response): Promise
   if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
   try {
     const rows = await pool.query(
-      `SELECT id, text, shared, created_at FROM cac_reflections
+      `SELECT id, text, shared, title, created_at FROM cac_reflections
        WHERE user_id = $1 ORDER BY created_at DESC LIMIT 200`,
       [user.id],
     );
-    res.json({ entries: rows.rows.map((r: { id: number; text: string; shared: boolean; created_at: Date }) => ({ id: r.id, text: r.text, shared: r.shared, createdAt: r.created_at })) });
+    res.json({ entries: rows.rows.map((r: { id: number; text: string; shared: boolean; title: string | null; created_at: Date }) => ({ id: r.id, text: r.text, shared: r.shared, title: r.title ?? null, createdAt: r.created_at })) });
   } catch (err) {
     logger.error({ err }, "GET /cac/reflections/mine failed");
     res.status(500).json({ error: "Server error" });

@@ -32,7 +32,7 @@ const CARD_B = "rgba(46,107,64,0.26)";
 const CTA = "#2D5E3F";
 
 type Reader = { id: number; name: string; avatarUrl: string | null; isYou: boolean };
-type Entry = { id: number; text: string; shared: boolean; createdAt: string };
+type Entry = { id: number; text: string; shared: boolean; title: string | null; createdAt: string };
 type Response = { id: number; text: string; createdAt: string; authorName: string; avatarUrl: string | null; isYou: boolean };
 
 function initials(name: string): string {
@@ -52,7 +52,9 @@ export default function ReflectCacPage() {
   const today = new Date().toLocaleDateString("en-CA");
 
   const [text, setText] = useState("");
-  const [share, setShare] = useState(false);
+  // Share to the community wall by default — most reflections are meant to be
+  // shared; the toggle lets you keep one private.
+  const [share, setShare] = useState(true);
 
   const metaQ = useQuery<{ title: string; url: string }>({
     queryKey: ["/api/cac/today-meta"],
@@ -79,9 +81,10 @@ export default function ReflectCacPage() {
   });
 
   const post = useMutation({
-    mutationFn: (v: { text: string; shared: boolean }) => apiRequest("POST", "/api/cac/reflections", v),
+    mutationFn: (v: { text: string; shared: boolean }) =>
+      apiRequest("POST", "/api/cac/reflections", { ...v, title: metaQ.data?.title ?? null }),
     onSuccess: () => {
-      setText(""); setShare(false);
+      setText(""); setShare(true);
       qc.invalidateQueries({ queryKey: ["/api/cac/reflections/mine"] });
       qc.invalidateQueries({ queryKey: ["/api/cac/reflections/responses"] });
     },
@@ -167,12 +170,22 @@ export default function ReflectCacPage() {
           <>
             <p style={{ ...eyebrow, margin: "26px 0 10px" }}>{t("reflect_cac.yours", { defaultValue: "Your reflections" })}</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {mine.map((e) => (
-                <div key={e.id} style={{ background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "12px 14px" }}>
-                  <p style={{ color: WARM, fontSize: 14.5, fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", lineHeight: 1.5, margin: 0 }}>{e.text}</p>
-                  {e.shared && <p style={{ ...eyebrow, fontSize: 10, margin: "6px 0 0" }}>{t("reflect_cac.shared_badge", { defaultValue: "Shared" })}</p>}
-                </div>
-              ))}
+              {mine.map((e) => {
+                // Label each entry by date (+ the reflection's title when we
+                // have it). Older entries predate the stored title → date only.
+                const d = new Date(e.createdAt);
+                const dateLabel = Number.isNaN(d.getTime())
+                  ? ""
+                  : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+                const metaLabel = [dateLabel, e.title].filter(Boolean).join(" · ");
+                return (
+                  <div key={e.id} style={{ background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "12px 14px" }}>
+                    {metaLabel && <p style={{ ...eyebrow, fontSize: 10, margin: "0 0 6px" }}>{metaLabel}</p>}
+                    <p style={{ color: WARM, fontSize: 14.5, fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", lineHeight: 1.5, margin: 0 }}>{e.text}</p>
+                    {e.shared && <p style={{ ...eyebrow, fontSize: 10, margin: "6px 0 0" }}>{t("reflect_cac.shared_badge", { defaultValue: "Shared" })}</p>}
+                  </div>
+                );
+              })}
             </div>
           </>
         )}

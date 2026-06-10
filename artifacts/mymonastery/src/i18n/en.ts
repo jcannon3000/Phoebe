@@ -453,6 +453,7 @@ export const en = {
     preparing: "Preparing today's reflection…",
     reflect_title_fallback: "Today's reflection",
     reflect_intro: "You've kept the silence. What stayed with you?",
+    read: "Read the reflection →",
     done: "Done",
   },
   building_faith: {

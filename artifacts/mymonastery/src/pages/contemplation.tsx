@@ -7,7 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { getSideMinutes } from "@/lib/officePrefs";
 import { openExternal } from "@/lib/openExternal";
-import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday, writeMindfulSession } from "@/lib/appleHealth";
+import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday, getMindfulSessionsToday, writeMindfulSession, type MindfulSession } from "@/lib/appleHealth";
 
 // Curated "Learn" resources — talks, videos, and guides on contemplative /
 // centering prayer. Opened externally (SFSafariViewController on iOS via
@@ -175,85 +175,6 @@ function StatTile({ label, value }: { label: string; value: string }) {
 // HealthKit). Hidden on web. This proves the read pipeline end-to-end; it does
 // NOT yet feed the goal — wiring it in (with de-dup of Phoebe's own sits, and
 // uploading to the server so the 7pm nudge sees it) is the deliberate next step.
-function AppleHealthCard() {
-  const { t } = useTranslation();
-  const [connecting, setConnecting] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const [minutes, setMinutes] = useState(0);
-  const [sessions, setSessions] = useState(0);
-
-  if (!appleHealthAvailable()) return null;
-
-  const sync = async () => {
-    setConnecting(true);
-    try {
-      await requestMindfulAuthorization();
-      const r = await getMindfulMinutesToday();
-      setMinutes(r?.minutes ?? 0);
-      setSessions(r?.sessions ?? 0);
-      setLoaded(true);
-    } finally {
-      setConnecting(false);
-    }
-  };
-
-  return (
-    <div className="rounded-2xl p-4 mt-3" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
-          {t("contemplation.health_title", { defaultValue: "Apple Health" })}
-        </p>
-        {loaded && (
-          <button
-            type="button"
-            onClick={sync}
-            disabled={connecting}
-            className="text-[12px] transition-opacity hover:opacity-80 disabled:opacity-50"
-            style={{ background: "none", border: "none", padding: 0, color: SAGE, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
-          >
-            {t("common.refresh", { defaultValue: "Refresh" })}
-          </button>
-        )}
-      </div>
-
-      {loaded ? (
-        <>
-          <p className="text-sm" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
-            {minutes > 0
-              ? t("contemplation.health_minutes", { defaultValue: `${minutes} mindful min today`, count: minutes })
-              : t("contemplation.health_none", { defaultValue: "No mindful minutes in Apple Health today." })}
-          </p>
-          <p className="text-[12px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK, margin: "4px 0 0" }}>
-            {sessions > 0
-              ? t("contemplation.health_sub", { count: sessions, defaultValue: `${sessions} session(s) in Apple Health (Phoebe, Calm, Insight Timer…)` })
-              : t("contemplation.health_sub_empty", { defaultValue: "Sits here — and meditation in Calm, Insight Timer, or Apple Mindfulness — appear once connected." })}
-          </p>
-          <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK, margin: "8px 0 0" }}>
-            {t("contemplation.health_preview_note", { defaultValue: "Preview — not yet counted toward your goal." })}
-          </p>
-        </>
-      ) : (
-        <>
-          <p className="text-[12px]" style={{ color: SAGE, margin: "0 0 12px" }}>
-            {t("contemplation.health_prompt", { defaultValue: "Connect Apple Health to count meditation from other apps — and save your Phoebe sits back to Health." })}
-          </p>
-          <button
-            type="button"
-            onClick={sync}
-            disabled={connecting}
-            className="rounded-full px-4 py-2 text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: "#2D5E3F", color: WARM, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
-          >
-            {connecting
-              ? t("contemplation.health_connecting", { defaultValue: "Connecting…" })
-              : t("contemplation.health_sync", { defaultValue: "Sync from Apple Health" })}
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
 // Daily goal card — set a minutes/day target and see today's progress toward
 // it. Setting a goal (> 0) turns on a gentle ~7pm reminder ONLY on days it's
 // still unmet (no nudge once the goal is reached). The target is a free field —
@@ -271,18 +192,14 @@ function DailyGoalCard({
   saving: boolean;
 }) {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const hasGoal = goalMinutes > 0;
 
   // iOS only: meditation logged in OTHER apps (Calm, Insight Timer, Apple
   // Mindfulness) lands in Apple Health as Mindful Minutes. We read today's
   // total — excludeOwn drops the sits Phoebe itself wrote back to Health, so
-  // they're never double-counted — and fold it into the goal below. Reads 0
-  // until the user grants access (the connect button triggers that prompt);
-  // keyed by local day so it refetches across midnight.
-  const [healthConnected, setHealthConnected] = useState<boolean>(() => {
-    try { return localStorage.getItem("phoebe:health-connected") === "1"; } catch { return false; }
-  });
+  // they're never double-counted — and fold it into the goal below. Access is
+  // requested + synced automatically (no connect button); keyed by local day
+  // so it refetches across midnight.
   const healthQ = useQuery<{ minutes: number; sessions: number } | null>({
     queryKey: ["apple-health-mindful-external", new Date().toLocaleDateString("en-CA")],
     queryFn: () => getMindfulMinutesToday(true),
@@ -320,20 +237,6 @@ function DailyGoalCard({
   const parsed = Math.min(180, Math.max(0, Math.floor(Number(draft))));
   const canSet = !saving && Number.isFinite(parsed) && parsed > 0 && parsed !== goalMinutes;
 
-  // HealthKit doesn't expose read-grant state, so once they've gone through the
-  // connect prompt (or we already see synced minutes — e.g. access granted in
-  // iOS Settings) we stop nudging.
-  const connectHealth = async () => {
-    try { await requestMindfulAuthorization(); } catch { /* user may cancel */ }
-    try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* private mode */ }
-    setHealthConnected(true);
-    queryClient.invalidateQueries({ queryKey: ["apple-health-mindful-external"] });
-  };
-  // Gate on the DISPLAYED value, not the live read — when the card is already
-  // crediting server-synced minutes (healthMin > 0), showing "Connect Apple
-  // Health" alongside "Including N min from Apple Health" reads as a
-  // contradiction even if THIS device hasn't granted read access yet.
-  const showHealthConnect = appleHealthAvailable() && !healthConnected && healthMin === 0;
 
   return (
     <div className="rounded-2xl p-4 mt-4" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
@@ -408,28 +311,6 @@ function DailyGoalCard({
           style={{ background: "none", border: "none", padding: 0, color: SAGE, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
         >
           {t("contemplation.goal_turn_off", { defaultValue: "Turn off goal" })}
-        </button>
-      )}
-
-      {/* iOS: connect Apple Health so meditation-app minutes count toward the
-          goal. Shown until the user has gone through the connect prompt. */}
-      {showHealthConnect && (
-        <button
-          type="button"
-          onClick={connectHealth}
-          className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 mt-3 text-left transition-opacity hover:opacity-90"
-          style={{ background: "rgba(46,107,64,0.12)", border: "1px dashed rgba(46,107,64,0.4)", cursor: "pointer" }}
-        >
-          <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>🍎</span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span className="block text-[13px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-              {t("contemplation.health_connect", { defaultValue: "Connect meditation app data" })}
-            </span>
-            <span className="block text-[11px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK, marginTop: 1, lineHeight: 1.35 }}>
-              {t("contemplation.health_connect_sub", { defaultValue: "Count Calm, Insight Timer & Apple Mindfulness toward your goal" })}
-            </span>
-          </span>
-          <span aria-hidden style={{ color: SAGE, fontSize: 16, flexShrink: 0 }}>›</span>
         </button>
       )}
 
@@ -534,8 +415,20 @@ function SessionRow({ s, onDelete, deleting }: { s: Session; onDelete: () => voi
 }
 
 export default function ContemplationPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [timerOpen, setTimerOpen] = useState(false);
+
+  // Auto-configure Apple Health (iOS only): request read + write access on
+  // first open so Mindful Minutes sync automatically — no connect button.
+  // requestAuthorization is a no-op after the user has already responded, so
+  // calling it on mount is safe; HealthKit shows its sheet at most once. Stamp
+  // the connected flag so the shared useHealthMindfulToday surfaces light up.
+  useEffect(() => {
+    if (!appleHealthAvailable()) return;
+    void requestMindfulAuthorization()
+      .then(() => { try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* private mode */ } })
+      .catch(() => { /* user may decline */ });
+  }, []);
   // Set by a quick button (5/10/20) to start that length immediately;
   // left undefined by "Begin contemplation" so the timer shows its
   // full picker.
@@ -575,6 +468,21 @@ export default function ContemplationPage() {
     queryKey: ["/api/me/contemplation-sessions"],
     queryFn: () => apiRequest("GET", "/api/me/contemplation-sessions") as Promise<Session[]>,
   });
+
+  // Today's mindful sessions read from Apple Health (iOS only). We surface
+  // only EXTERNAL ones (Calm, Insight Timer, Apple Mindfulness) as history
+  // cards — Phoebe's own sits already appear above as logged sits, so showing
+  // the copies Phoebe wrote back to Health would double them.
+  const { data: healthSessions = [] } = useQuery<MindfulSession[]>({
+    queryKey: ["apple-health-mindful-sessions", new Date().toLocaleDateString("en-CA")],
+    queryFn: () => getMindfulSessionsToday(),
+    enabled: appleHealthAvailable(),
+    staleTime: 5 * 60_000,
+  });
+  const externalHealthSessions = useMemo(
+    () => healthSessions.filter((h) => !h.isOwn && h.minutes > 0),
+    [healthSessions],
+  );
 
   // History grouping: today's & yesterday's sits stay as individual cards;
   // every older day collapses into ONE summary card (date + sit count + total
@@ -767,12 +675,6 @@ export default function ContemplationPage() {
           saving={goalMutation.isPending}
         />
 
-        {/* Apple Health connect/sync — a persistent card (iOS only) so the
-            connect path never disappears. The goal card's inline prompt is
-            sticky (hides for good once tapped via a localStorage flag), which
-            left users with no way back; this card always re-requests auth. */}
-        <AppleHealthCard />
-
         {/* Section selector — History · Stats · Learn. The Begin card
             leads; these reveal the supporting surfaces below it. */}
         <div
@@ -939,12 +841,36 @@ export default function ContemplationPage() {
             </div>
           )}
 
-          {sessions.length === 0 ? (
+          {sessions.length === 0 && externalHealthSessions.length === 0 ? (
             <p className="text-[13px] text-center py-6" style={{ color: "rgba(143,175,150,0.5)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
               {t("contemplation.no_sessions")}
             </p>
           ) : (
             <div className="space-y-2">
+              {/* Apple Health — today's mindful minutes from OTHER apps (Calm,
+                  Insight Timer, Apple Mindfulness), each as its own card. */}
+              {externalHealthSessions.map((h, idx) => {
+                const iso = new Date(h.startMs).toISOString();
+                return (
+                  <div
+                    key={`hk-${h.startMs}-${idx}`}
+                    className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
+                    style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.20)" }}
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+                        {formatSessionDate(iso, t, i18n.language)}
+                      </p>
+                      <p className="text-[12px] mt-0.5 truncate" style={{ color: SAGE, margin: 0 }}>
+                        {formatSessionTime(iso)} · 🍎 {h.source || t("contemplation.health_title", { defaultValue: "Apple Health" })}
+                      </p>
+                    </div>
+                    <span className="text-sm font-semibold shrink-0" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+                      {humanMinutes(h.minutes * 60)}
+                    </span>
+                  </div>
+                );
+              })}
               {/* Today & yesterday — individual sits (with per-entry delete). */}
               {historyGroups.recent.map((s) => (
                 <SessionRow

@@ -21,10 +21,20 @@ import { useQuery } from "@tanstack/react-query";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { apiRequest } from "@/lib/queryClient";
 
+/** One mindful session read from Apple Health (for the history list). */
+export type MindfulSession = {
+  startMs: number;
+  endMs: number;
+  minutes: number;
+  source: string;   // the app that logged it ("Calm", "Mindfulness", "Phoebe"…)
+  isOwn: boolean;    // true when Phoebe itself wrote it (already shown in-app)
+};
+
 interface MindfulHealthPlugin {
   isAvailable: () => Promise<{ available: boolean }>;
   requestAuthorization: () => Promise<{ requested: boolean }>;
   mindfulMinutesToday: (opts?: { excludeOwn?: boolean }) => Promise<{ minutes: number; sessions: number }>;
+  mindfulSessionsToday: () => Promise<{ sessions: MindfulSession[] }>;
   writeMindfulSession: (opts: { startMs: number; endMs: number }) => Promise<{ written: boolean }>;
   openApp: (opts: { scheme: string; fallbackUrl?: string }) => Promise<{ opened: boolean; usedFallback: boolean }>;
 }
@@ -82,6 +92,24 @@ export async function getMindfulMinutesToday(excludeOwn = false): Promise<{ minu
     return await p.mindfulMinutesToday({ excludeOwn });
   } catch {
     return null;
+  }
+}
+
+/**
+ * Today's mindful sessions from Apple Health as a list (newest first), or []
+ * off-native. Each carries its start/end, minutes, the writing app's name, and
+ * isOwn — so the Contemplation history can show external meditation (Calm,
+ * Insight Timer, Apple Mindfulness) as cards while dropping Phoebe's own sits,
+ * which already appear as in-app history.
+ */
+export async function getMindfulSessionsToday(): Promise<MindfulSession[]> {
+  const p = getPlugin();
+  if (!p) return [];
+  try {
+    const r = await p.mindfulSessionsToday();
+    return r?.sessions ?? [];
+  } catch {
+    return [];
   }
 }
 

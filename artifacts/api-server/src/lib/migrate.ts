@@ -2712,6 +2712,10 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS cac_reflections_user ON cac_reflections (user_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS cac_reflections_shared_created ON cac_reflections (shared, created_at)`);
+    // Title of the reflection the entry was written about (e.g. "Giving Is
+    // Receiving"), so "Your reflections" can label each by date + title.
+    // Nullable — older rows predate it and just show the date.
+    await run(client, `ALTER TABLE cac_reflections ADD COLUMN IF NOT EXISTS title TEXT`);
 
     // ── Shared "thoughts" for the other daily reflections (fdd, ssje) ───────
     // CAC's Daily Meditation has cac_reflections (above). "Forward Day by Day"
