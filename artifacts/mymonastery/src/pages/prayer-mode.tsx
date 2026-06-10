@@ -1769,6 +1769,12 @@ function ReflectionSlide({
     queryFn: () => apiRequest("GET", "/api/cac/today-meta"),
     enabled: source === "cac",
     staleTime: 30 * 60_000,
+    // Always refetch when the office opens so the reflection shows the CURRENT
+    // day's meditation — not one cached from an earlier session. The query key
+    // isn't date-scoped, so with the app left open across the midnight/publish
+    // boundary the 30-min staleTime could otherwise serve yesterday's title.
+    // The server's own 30-min cache keeps repeated opens cheap.
+    refetchOnMount: "always",
   });
   const cacTitle = cacMeta?.title ?? "";
 
