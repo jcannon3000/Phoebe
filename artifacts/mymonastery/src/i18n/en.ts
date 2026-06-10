@@ -80,6 +80,8 @@ export const en = {
   dashboard: {
     prayer_list: "Prayer list",
     daily_prayer_list: "Daily Prayer List",
+    office_customize_short: "Customize",
+    office_customize: "Customize the Daily Office",
     pray_again: "Pray again →",
     view_list: "View list →",
     submit_prayer_request: "What are you carrying? 🌿",
@@ -449,6 +451,9 @@ export const en = {
     eyebrow: "Forward Day by Day",
     listening: "Listen, and let it settle.",
     preparing: "Preparing today's reflection…",
+    reflect_title_fallback: "Today's reflection",
+    reflect_intro: "You've kept the silence. What stayed with you?",
+    done: "Done",
   },
   building_faith: {
     blurb: "Faith-formation articles from Building Faith — a resource of Forward Movement & Virginia Theological Seminary.",

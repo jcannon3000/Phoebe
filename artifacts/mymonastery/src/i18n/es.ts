@@ -86,6 +86,8 @@ export const es: Translations = {
   dashboard: {
     prayer_list: "Lista de oración",
     daily_prayer_list: "Lista de oración diaria",
+    office_customize_short: "Personalizar",
+    office_customize: "Personalizar el Oficio Diario",
     pray_again: "Orar de nuevo →",
     view_list: "Ver lista →",
     submit_prayer_request: "¿Qué llevas hoy? 🌿",
@@ -445,6 +447,9 @@ export const es: Translations = {
     eyebrow: "Forward Day by Day",
     listening: "Escucha, y deja que se asiente.",
     preparing: "Preparando la reflexión de hoy…",
+    reflect_title_fallback: "La reflexión de hoy",
+    reflect_intro: "Has guardado el silencio. ¿Qué se quedó contigo?",
+    done: "Listo",
   },
   building_faith: {
     blurb: "Artículos de formación en la fe de Building Faith — un recurso de Forward Movement y Virginia Theological Seminary.",

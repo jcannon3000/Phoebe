@@ -1,9 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { Layout } from "@/components/layout";
+import ReflectionThoughts from "@/components/ReflectionThoughts";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 
 // ── /reflect/fdd — Forward Day by Day, then sit ─────────────────────────
@@ -37,7 +39,9 @@ type FddToday = {
 };
 
 const BG = "#0C1F12";
+const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
+const SAGE_DIM = "rgba(143,175,150,0.55)";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
 function Splash({ text, onBack }: { text: string; onBack: () => void }) {
@@ -65,6 +69,11 @@ export default function FddSitPage() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const { t } = useTranslation();
+  // After the sit, the page flips from the timer to a reflection screen
+  // (like CAC's companion page) rather than dropping back to the dashboard
+  // / Contemplation timer. Local day so the thoughts are keyed to today.
+  const [reflecting, setReflecting] = useState(false);
+  const today = new Date().toLocaleDateString("en-CA");
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -100,6 +109,36 @@ export default function FddSitPage() {
   const label = t("fdd_sit.eyebrow", { defaultValue: "Forward Day by Day" });
   const audioTitle = data.title ? `${label} · ${data.title}` : label;
 
+  // Post-sit reflection — mirrors the CAC companion page (eyebrow + title +
+  // the shared community-thoughts surface). Reached when the sit's closing
+  // bell rings, so the experience ends on "what stayed with you?" instead
+  // of bouncing back to the Contemplation timer.
+  if (reflecting) {
+    return (
+      <Layout>
+        <div style={{ width: "100%", maxWidth: 600, margin: "0 auto", padding: "4px 2px 28px", fontFamily: FONT }}>
+          <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, fontFamily: FONT, margin: "4px 0 2px" }}>
+            {label}
+          </p>
+          <h1 style={{ color: WARM, fontSize: 23, fontWeight: 700, fontFamily: FONT, margin: "0 0 6px", lineHeight: 1.25 }}>
+            {data.title || t("fdd_sit.reflect_title_fallback", { defaultValue: "Today's reflection" })}
+          </h1>
+          <p style={{ color: SAGE, fontSize: 13.5, fontFamily: FONT, margin: "0 0 22px", lineHeight: 1.5 }}>
+            {t("fdd_sit.reflect_intro", { defaultValue: "You've kept the silence. What stayed with you?" })}
+          </p>
+          <ReflectionThoughts source="fdd" day={today} />
+          <button
+            type="button"
+            onClick={() => setLocation("/dashboard")}
+            style={{ display: "block", margin: "28px auto 0", background: "none", border: "none", color: SAGE_DIM, fontFamily: FONT, fontSize: 13, cursor: "pointer" }}
+          >
+            {t("fdd_sit.done", { defaultValue: "Done" })}
+          </button>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <ContemplationTimer
       open
@@ -114,7 +153,13 @@ export default function FddSitPage() {
       audioDurationSeconds={data.durationSeconds}
       audioStartSec={data.scriptureStartSec ?? null}
       audioEndSec={data.appealStartSec ?? null}
-      onClose={() => setLocation("/dashboard")}
+      // On the closing bell, flip to the reflection screen instead of the
+      // dashboard. A bail-out before the bell (completed === false) still
+      // just goes home.
+      onClose={(result) => {
+        if (result?.completed) setReflecting(true);
+        else setLocation("/dashboard");
+      }}
     />
   );
 }

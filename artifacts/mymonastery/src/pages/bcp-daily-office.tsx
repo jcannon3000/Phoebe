@@ -15,7 +15,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
-import { getSideEntry, getSideConfession, getSideLevel } from "@/lib/officePrefs";
+import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, type OfficeSide, type DefaultOfficeEntry } from "@/lib/officePrefs";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 
 // ── Daily Office viewer ─────────────────────────────────────────────────────
@@ -3061,61 +3061,78 @@ function PhysicalBookGuide(props: {
             </div>
           </div>
 
-          {sections.map((sec) => (
-            <div key={sec.key} style={cardStyle}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={labelStyle}>{sec.label}</p>
-                {sec.detail && <p style={detailStyle}>{sec.detail}</p>}
-                {sec.readUrl && (
-                  <button
-                    type="button"
-                    onClick={() => openExternal(sec.readUrl as string)}
-                    style={{
-                      marginTop: 6,
-                      background: "none",
-                      border: "none",
-                      padding: 0,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: "#A8C5A0",
-                      cursor: "pointer",
-                      fontFamily: SPACE_GROTESK,
-                    }}
-                  >
-                    Read it here instead ↗
-                  </button>
-                )}
+          {(() => {
+            // Weave the Intercessions card into liturgical order — right
+            // after the Suffrages, where free intercessions fall in the
+            // office itself — rather than trailing at the end of the page
+            // map. Falls back to the end if there's no Suffrages section
+            // (e.g. the Devotions).
+            const suffragesIdx = sections.findIndex((s) => s.label === "The Suffrages");
+            const interAfter = showIntercessions
+              ? (suffragesIdx >= 0 ? suffragesIdx : sections.length - 1)
+              : -2;
+            const sectionCard = (sec: BookSection) => (
+              <div key={sec.key} style={cardStyle}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={labelStyle}>{sec.label}</p>
+                  {sec.detail && <p style={detailStyle}>{sec.detail}</p>}
+                  {sec.readUrl && (
+                    <button
+                      type="button"
+                      onClick={() => openExternal(sec.readUrl as string)}
+                      style={{
+                        marginTop: 6,
+                        background: "none",
+                        border: "none",
+                        padding: 0,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "#A8C5A0",
+                        cursor: "pointer",
+                        fontFamily: SPACE_GROTESK,
+                      }}
+                    >
+                      Read it here instead ↗
+                    </button>
+                  )}
+                </div>
+                {sec.page ? (
+                  <span style={badgeStyle}>{sec.page}</span>
+                ) : sec.readUrl ? (
+                  <span style={{ ...badgeStyle, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "#CFE3C8" }}>
+                    your Bible
+                  </span>
+                ) : null}
               </div>
-              {sec.page ? (
-                <span style={badgeStyle}>{sec.page}</span>
-              ) : sec.readUrl ? (
-                <span style={{ ...badgeStyle, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "#CFE3C8" }}>
-                  your Bible
-                </span>
-              ) : null}
-            </div>
-          ))}
-
-          {/* Intercessions — the one part of the office the app holds for
-              you. Opens the prayer-mode slideshow and returns here.
-              Hidden on the public /pray page (prayer-mode is auth-only). */}
-          {showIntercessions && (
-            <button
-              type="button"
-              onClick={onPrayIntercessions}
-              style={{ ...cardStyle, width: "100%", textAlign: "left", cursor: "pointer", background: "rgba(46,107,64,0.20)", border: "1px solid rgba(46,107,64,0.45)" }}
-            >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={labelStyle}>The Intercessions</p>
-                <p style={detailStyle}>
-                  {intercessionCount > 0
-                    ? `${intercessionCount} waiting for your prayers — pray them here, then return to your book`
-                    : "Pray for your people — one at a time, then return to your book"}
-                </p>
-              </div>
-              <span style={{ flexShrink: 0, fontSize: 18 }}>🕊️ →</span>
-            </button>
-          )}
+            );
+            // Opens the prayer-mode slideshow and returns to the book.
+            const intercessionsCard = (
+              <button
+                key="__intercessions__"
+                type="button"
+                onClick={onPrayIntercessions}
+                style={{ ...cardStyle, width: "100%", textAlign: "left", cursor: "pointer", background: "rgba(46,107,64,0.20)", border: "1px solid rgba(46,107,64,0.45)" }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={labelStyle}>The Intercessions</p>
+                  <p style={detailStyle}>
+                    {intercessionCount > 0
+                      ? `${intercessionCount} waiting for your prayers — pray them here, then return to your book`
+                      : "Pray for your people — one at a time, then return to your book"}
+                  </p>
+                </div>
+                <span style={{ flexShrink: 0, fontSize: 18 }}>🕊️ →</span>
+              </button>
+            );
+            const out: React.ReactNode[] = [];
+            sections.forEach((sec, i) => {
+              out.push(sectionCard(sec));
+              if (i === interAfter) out.push(intercessionsCard);
+            });
+            // No sections but intercessions still wanted — show it alone.
+            if (interAfter === -1 && sections.length === 0) out.push(intercessionsCard);
+            return out;
+          })()}
 
           <p style={{ margin: "4px 0 0", fontSize: 12, lineHeight: 1.6, color: FAINT_GREEN, textAlign: "center" }}>
             The Psalter begins at p. 585. Lessons are read from your own Bible.
@@ -3149,6 +3166,115 @@ function PhysicalBookGuide(props: {
           </p>
         </div>
       </main>
+    </div>
+  );
+}
+
+// ── Full-office card with a "way to pray" dropdown ──────────────────────────
+// One card per side (Morning Prayer / Evening Prayer) that folds the four
+// ways to pray — read along, from your physical book, listen, watch — into
+// a single card with a method picker at the bottom, preset to the user's
+// saved per-side preference. Tapping the card begins the office the chosen
+// way; changing the dropdown also saves it as the default (so the chooser
+// and the office customizer stay in sync). Mirrors the office chrome's
+// green palette so it reads as part of the same picker.
+const OFFICE_METHOD_META: Record<DefaultOfficeEntry, { emoji: string; label: string; sub: (side: OfficeSide) => string }> = {
+  read: { emoji: "📖", label: "Read along", sub: () => "The full text, at your own pace" },
+  book: { emoji: "📕", label: "In your book", sub: () => "Today's page numbers for your physical BCP" },
+  listen: { emoji: "🎧", label: "Listen", sub: (s) => `${s === "morning" ? "Morning" : "Evening"} Prayer read aloud · Forward Movement` },
+  watch: { emoji: "📺", label: "Watch", sub: () => "National Cathedral · live 7 AM ET weekdays" },
+};
+
+function OfficeMethodCard(props: {
+  side: OfficeSide;
+  title: string;
+  weekday: boolean;
+  now: boolean;
+  isDefault: boolean;
+  onLaunch: (method: DefaultOfficeEntry) => void;
+}) {
+  const { side, title, weekday, now, isDefault, onLaunch } = props;
+  // Watch is Morning-only (the Cathedral streams morning prayer) and
+  // weekday-only (no weekend broadcast). Everything else applies to both.
+  const methods: DefaultOfficeEntry[] = [
+    "read",
+    "book",
+    "listen",
+    ...(side === "morning" && weekday ? (["watch"] as const) : []),
+  ];
+  // Initialize from the saved preference, clamped to a method that's
+  // actually offered here (e.g. a "watch" default on a weekend, or on the
+  // evening side, falls back to "read").
+  const [method, setMethod] = useState<DefaultOfficeEntry>(() => {
+    const saved = getSideEntry(side);
+    return methods.includes(saved) ? saved : "read";
+  });
+  const meta = OFFICE_METHOD_META[method];
+
+  return (
+    <div
+      className="w-full rounded-2xl overflow-hidden"
+      style={{
+        background: now ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.08)",
+        border: isDefault ? "2px solid #A8C5A0" : `1px solid ${now ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.18)"}`,
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => onLaunch(method)}
+        className="w-full text-left p-5 transition-all active:scale-[0.99]"
+      >
+        <div className="flex items-center gap-4">
+          <span className="text-3xl">{meta.emoji}</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              {title}
+            </p>
+            <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>
+              Rite II · {meta.sub(side)}
+            </p>
+            {isDefault
+              ? <p className="text-xs mt-1.5 font-semibold" style={{ color: "#A8C5A0" }}>Your default</p>
+              : now && <p className="text-xs mt-1.5 font-medium" style={{ color: "#6FAF85" }}>Available now</p>}
+          </div>
+          <span className="text-sm" style={{ color: "#8FAF96" }}>→</span>
+        </div>
+      </button>
+      {/* Method picker — a native select so iOS shows its wheel. Kept
+          OUTSIDE the launch button (nested interactive elements are
+          invalid) as a footer row. Changing it saves the per-side
+          preference too. */}
+      <label
+        className="flex items-center justify-between gap-3 px-5 py-3 cursor-pointer"
+        style={{ borderTop: "1px solid rgba(46,107,64,0.22)", background: "rgba(9,26,16,0.25)" }}
+      >
+        <span className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+          How to pray
+        </span>
+        <select
+          value={method}
+          onChange={(e) => {
+            const v = e.target.value as DefaultOfficeEntry;
+            setMethod(v);
+            setSideEntry(side, v); // persist as the new default for this side
+          }}
+          className="text-sm font-semibold rounded-lg px-3 py-1.5"
+          style={{
+            color: "#F0EDE6",
+            fontFamily: "'Space Grotesk', sans-serif",
+            background: "rgba(46,107,64,0.22)",
+            border: "1px solid rgba(46,107,64,0.45)",
+            // Let the native control own its disclosure chrome.
+            appearance: "auto",
+          }}
+        >
+          {methods.map((m) => (
+            <option key={m} value={m}>
+              {OFFICE_METHOD_META[m].emoji}  {OFFICE_METHOD_META[m].label}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   );
 }
@@ -3229,44 +3355,17 @@ export default function BcpDailyOfficePage() {
     }
   }, [betaLoading, rawIsBeta]);
 
-  // ── National Cathedral Morning Prayer metadata ─────────────────────────
-  // Lives ABOVE the early returns. Hoisting this matters: on a fresh
-  // mount showMode is null and the picker renders + calls this hook;
-  // when the user taps an office showMode flips to "evening" /
-  // "morning" / etc. and the page short-circuits to <OfficeViewer/>.
-  // If the hook stayed below the early return, the second render
-  // would call ONE FEWER hook than the first, and React would throw
-  // "Rendered fewer hooks than expected" (minified error #300). The
-  // user originally saw this as "opening the evening office goes to
-  // an error" — the picker mounted, the useQuery ran on render 1,
-  // then setShowMode("evening") triggered render 2 which never
-  // reached the hook because the early return fired first.
+  // Time-of-day flags driving which card highlights "Available now".
   const hour = new Date().getHours();
   const isMorning = hour < 14;
   const isNight = hour >= 20;
   // Weekday flag for the National Cathedral Morning Prayer broadcast
-  // (Mon–Fri 7 AM ET). Used to hide the NCMP card on Sat/Sun.
+  // (Mon–Fri 7 AM ET). Gates the "Watch" option in the Morning Prayer
+  // method dropdown — there's no weekend broadcast to watch.
   const weekday = (() => {
     const d = new Date().getDay();
     return d >= 1 && d <= 5;
   })();
-  // Fetch today's broadcast metadata so the tap can log the actual
-  // video length as the prayer-session duration. The badge itself
-  // shows the broadcast TIME ("7 AM ET"), not length, per product
-  // direction — same handling as the prayer-chooser NCMP card.
-  type NcmpMeta = {
-    url: string;
-    videoId: string | null;
-    title: string | null;
-    publishedAt: string | null;
-    durationSeconds: number | null;
-  };
-  const { data: ncmpMeta } = useQuery<NcmpMeta>({
-    queryKey: ["/api/ncmp/today-meta"],
-    queryFn: () => apiRequest("GET", "/api/ncmp/today-meta"),
-    enabled: weekday,
-    staleTime: 60 * 60_000,
-  });
 
   if (isLoading || betaLoading || !user) return null;
 
@@ -3287,27 +3386,20 @@ export default function BcpDailyOfficePage() {
 
   type OfficeOption = {
     mode?: LiturgyMode;     // in-page office (setShowMode)
-    navigateTo?: string;    // OR a route to navigate to (Listen / Watch)
-    book?: boolean;         // open the office's physical-book page guide
+    navigateTo?: string;    // OR a route to navigate to
     emoji: string;
     label: string;
     sub: string;
     now: boolean;
   };
-  // The chooser is grouped by TIME OF DAY (Morning / Evening) rather than
-  // by office type. Within each block the order walks from lightest to
-  // fullest practice: Devotion → full Office → Listen (the Forward
-  // Movement spoken office) → and then the day-specific tail (Watch /
-  // National Cathedral in the morning, Compline at the close of the
-  // evening).
+  // The chooser is grouped by TIME OF DAY (Morning / Evening). Each block
+  // is the short Devotion, then ONE full-office card whose "way to pray"
+  // (read / book / listen / watch) is chosen from a dropdown at the
+  // bottom — preset to the user's saved preference — so the four ways
+  // collapse into a single card instead of four. Compline closes the
+  // evening as its own (beta) card.
   const morningDevotion: OfficeOption = { mode: "morning-devotion", emoji: "🌿", label: "Morning Devotion", sub: "A short devotion · BCP p. 137", now: isMorning };
-  const morningPrayer: OfficeOption = { mode: "morning", emoji: "🌅", label: "Morning Prayer", sub: "Rite II · the full Daily Office", now: isMorning };
-  const morningBook: OfficeOption = { mode: "morning", book: true, emoji: "📕", label: "In your book", sub: "Today's page numbers for your physical Prayer Book", now: isMorning };
-  const morningListen: OfficeOption = { navigateTo: "/podcast/morning-office", emoji: "🎧", label: "Listen", sub: "Morning Prayer read aloud · Forward Movement", now: isMorning };
   const eveningDevotion: OfficeOption = { mode: "early-evening-devotion", emoji: "🌆", label: "Early Evening Devotion", sub: "A short devotion · BCP p. 139", now: isEvening };
-  const eveningPrayer: OfficeOption = { mode: "evening", emoji: "🌙", label: "Evening Prayer", sub: "Rite II · the full Daily Office", now: isEvening };
-  const eveningBook: OfficeOption = { mode: "evening", book: true, emoji: "📕", label: "In your book", sub: "Today's page numbers for your physical Prayer Book", now: isEvening };
-  const eveningListen: OfficeOption = { navigateTo: "/podcast/evening-office", emoji: "🎧", label: "Listen", sub: "Evening Prayer read aloud · Forward Movement", now: isEvening };
   // Compline — beta-only. Stays in the list anytime so an early-bedder
   // can pray it before 8 PM; "Available now" highlights only after 20:00.
   const compline: OfficeOption = {
@@ -3318,35 +3410,32 @@ export default function BcpDailyOfficePage() {
     now: isNight,
   };
 
-  // Per-side default highlight. The Morning/Evening wizard sets each side's
-  // depth + way-to-pray; the option that matches gets a more pronounced
-  // border. A "default key" is an option's mode ("morning"/"evening"/
-  // "morning-devotion"/…) or navigateTo ("/podcast/morning-office",
-  // "/ncmp/watch"). Per-side OVERRIDES only — an unset side (ask / global
-  // fallback / intercessions) isn't badged.
+  // Per-side default highlight — only the Devotion cards are badged via
+  // this set (the full-office card carries its own "Your default" when
+  // the side's level is "office", computed inline below). Per-side
+  // OVERRIDES only — an unset side (ask / global fallback) isn't badged.
   const defaultKeys = (() => {
     const keys = new Set<string>();
     for (const s of ["morning", "evening"] as const) {
-      const lvl = getSideLevel(s);
-      if (lvl === "devotion") {
+      if (getSideLevel(s) === "devotion") {
         keys.add(s === "morning" ? "morning-devotion" : "early-evening-devotion");
-      } else if (lvl === "office") {
-        const entry = getSideEntry(s);
-        if (entry === "listen") keys.add(`/podcast/${s}-office`);
-        else if (entry === "watch" && s === "morning") keys.add("/ncmp/watch");
-        else if (entry === "book") keys.add(`${s}:book`); // physical-BCP page guide
-        else keys.add(s); // "read" → the full office mode
       }
     }
     return keys;
   })();
-  // An option's identity for the default badge — book rows share a mode
-  // with the plain office row, so they get a distinct ":book" key.
-  const optKey = (opt: OfficeOption): string | null =>
-    opt.book && opt.mode ? `${opt.mode}:book` : opt.mode ?? opt.navigateTo ?? null;
   const optIsDefault = (opt: OfficeOption): boolean => {
-    const k = optKey(opt);
+    const k = opt.mode ?? opt.navigateTo ?? null;
     return !!k && defaultKeys.has(k);
+  };
+
+  // Launch the full office for a side via the chosen method. "listen" /
+  // "watch" navigate away to the player/broadcast; "read" / "book" open
+  // the in-page viewer (book = the physical-BCP page guide).
+  const launchOffice = (side: OfficeSide, method: DefaultOfficeEntry) => {
+    if (method === "listen") { setLocation(`/podcast/${side}-office`); return; }
+    if (method === "watch" && side === "morning") { setLocation("/ncmp/watch"); return; }
+    setShowBook(method === "book");
+    setShowMode(side === "morning" ? "morning" : "evening");
   };
 
   const OptionButton = ({ opt }: { opt: OfficeOption }) => {
@@ -3355,12 +3444,9 @@ export default function BcpDailyOfficePage() {
       <button
         onClick={() => {
           if (opt.navigateTo) { setLocation(opt.navigateTo); return; }
-          if (opt.mode) {
-            // Book rows open the same office, landing on the physical-
-            // book page guide instead of the slide deck.
-            setShowBook(!!opt.book);
-            setShowMode(opt.mode);
-          }
+          // Devotions + Compline always open as the slide deck (the
+          // full offices' book guide is reached via OfficeMethodCard).
+          if (opt.mode) { setShowBook(false); setShowMode(opt.mode); }
         }}
         className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
         style={{
@@ -3442,79 +3528,27 @@ export default function BcpDailyOfficePage() {
         <SectionLabel>Morning</SectionLabel>
         <div className="space-y-3">
           <OptionButton opt={morningDevotion} />
-          <OptionButton opt={morningPrayer} />
-          <OptionButton opt={morningBook} />
-          <OptionButton opt={morningListen} />
-          {/* "Watch" — National Cathedral Morning Prayer, weekday-only purple
-              card slotted alongside the BCP full offices. Live at
-              7 AM ET; the cathedral.org page handles live-vs-recording
-              by itself once the user lands. Tap → opens today's
-              YouTube video externally + best-effort prayer-session
-              log (surface "national-cathedral", duration = actual
-              video length from /api/ncmp/today-meta if known, else
-              a 20-min fallback). Badge shows the broadcast time,
-              not length. */}
-          {weekday && (
-            <button
-              type="button"
-              onClick={() => {
-                // Navigate to the in-app embed page; that page
-                // handles the prayer-session log on mount + renders
-                // the YouTube iframe inline. ncmpMeta stays in scope
-                // because the duration badge below still reads from
-                // it for the chooser-style preview.
-                setLocation("/ncmp/watch");
-              }}
-              className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
-              style={{
-                background: "rgba(120,80,180,0.14)",
-                border: defaultKeys.has("/ncmp/watch")
-                  ? "2px solid rgba(190,150,240,0.9)"
-                  : "1px solid rgba(120,80,180,0.40)",
-              }}
-            >
-              <div className="flex items-center gap-4">
-                <span className="text-3xl">📺</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p
-                      className="font-semibold text-base"
-                      style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
-                    >
-                      National Cathedral Morning Prayer
-                    </p>
-                    <span
-                      className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                      style={{
-                        background: "rgba(120,80,180,0.22)",
-                        color: "rgba(210,190,240,0.95)",
-                        border: "1px solid rgba(120,80,180,0.42)",
-                        fontFamily: "'Space Grotesk', sans-serif",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      7 AM ET
-                    </span>
-                  </div>
-                  <p className="text-sm mt-0.5" style={{ color: "rgba(199,176,235,0.85)" }}>
-                    Weekday live broadcast · Washington National Cathedral
-                  </p>
-                  {defaultKeys.has("/ncmp/watch") && (
-                    <p className="text-xs mt-1.5 font-semibold" style={{ color: "rgba(210,190,240,0.95)" }}>Your default</p>
-                  )}
-                </div>
-                <span className="text-sm" style={{ color: "#D0BFEF" }}>→</span>
-              </div>
-            </button>
-          )}
+          <OfficeMethodCard
+            side="morning"
+            title="Morning Prayer"
+            weekday={weekday}
+            now={isMorning}
+            isDefault={getSideLevel("morning") === "office"}
+            onLaunch={(m) => launchOffice("morning", m)}
+          />
         </div>
 
         <SectionLabel>Evening</SectionLabel>
         <div className="space-y-3">
           <OptionButton opt={eveningDevotion} />
-          <OptionButton opt={eveningPrayer} />
-          <OptionButton opt={eveningBook} />
-          <OptionButton opt={eveningListen} />
+          <OfficeMethodCard
+            side="evening"
+            title="Evening Prayer"
+            weekday={weekday}
+            now={isEvening}
+            isDefault={getSideLevel("evening") === "office"}
+            onLaunch={(m) => launchOffice("evening", m)}
+          />
           {/* Compline closes the evening. Beta-only — the server
               endpoint 403s non-beta callers (office.ts), so this is the
               visual mirror of that gate. */}

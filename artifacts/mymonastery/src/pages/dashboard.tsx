@@ -3293,23 +3293,41 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
         <div className="flex-1 px-4 pt-[20px] pb-[20px]">
           <div className="flex items-start justify-between gap-2">
             <p
-              className="text-[11px] font-semibold uppercase tracking-widest"
+              className="text-[11px] font-semibold uppercase tracking-widest min-w-0 truncate"
               style={{ color: "rgba(143,175,150,0.55)", margin: 0 }}
             >
               {eyebrow}
             </p>
-            <Link
-              href="/prayer-list"
-              className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center shrink-0 transition-opacity hover:opacity-80"
-              style={{
-                background: "rgba(46,107,64,0.22)",
-                color: "#A8C5A0",
-                border: "1px solid rgba(46,107,64,0.4)",
-                fontFamily: "'Space Grotesk', sans-serif",
-              }}
-            >
-              {t("dashboard.prayer_list", { defaultValue: "Prayer list" })}
-            </Link>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {/* Customize → the per-side office wizard (depth, way to pray,
+                  confession, reflection). Sits beside Prayer list so the
+                  office's settings are reachable from the card itself. */}
+              <Link
+                href="/bcp/daily-office/settings"
+                className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center transition-opacity hover:opacity-80"
+                style={{
+                  background: "rgba(46,107,64,0.22)",
+                  color: "#A8C5A0",
+                  border: "1px solid rgba(46,107,64,0.4)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+                aria-label={t("dashboard.office_customize", { defaultValue: "Customize the Daily Office" })}
+              >
+                {t("dashboard.office_customize_short", { defaultValue: "Customize" })}
+              </Link>
+              <Link
+                href="/prayer-list"
+                className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center transition-opacity hover:opacity-80"
+                style={{
+                  background: "rgba(46,107,64,0.22)",
+                  color: "#A8C5A0",
+                  border: "1px solid rgba(46,107,64,0.4)",
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              >
+                {t("dashboard.prayer_list", { defaultValue: "Prayer list" })}
+              </Link>
+            </div>
           </div>
           {/* LEFT  column = title + "N people prayed with you this week"
               RIGHT column = avatar stack only (no copy beside it).
