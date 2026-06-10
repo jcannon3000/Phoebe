@@ -32,6 +32,22 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { GratitudeNudge } from "@/components/GratitudeComposer";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 
+// Drive the NATIVE iOS status-bar color (Capacitor StatusBar plugin) so the
+// strip above the WebView matches the slide background. The app sets it once
+// to the app green (#091A10) at launch; prayer-mode's slides — especially the
+// warmer closing slide (#11291C) — differ, leaving a visible mismatched band
+// at the top. Best-effort + native-only (no-ops on web / when the plugin is
+// absent); the web/PWA equivalent is the theme-color meta handled alongside.
+const APP_STATUS_BAR = "#091A10";
+function setNativeStatusBarColor(color: string): void {
+  try {
+    const sb = (window as unknown as {
+      Capacitor?: { Plugins?: { StatusBar?: { setBackgroundColor?: (o: { color: string }) => void } } };
+    }).Capacitor?.Plugins?.StatusBar;
+    sb?.setBackgroundColor?.({ color });
+  } catch { /* web / plugin absent */ }
+}
+
 // Scale the big prayer-text block by character length so long prayers
 // (like the BCP collects) stay on one screen without scrolling, and short
 // ones still feel like liturgy.
@@ -3580,9 +3596,23 @@ export default function PrayerModePage() {
       body.style.backgroundColor = prevBodyBg;
       html.style.backgroundColor = prevHtmlBg;
       meta?.setAttribute("content", prevMeta);
+      // Hand the native status bar back to the app green on exit.
+      setNativeStatusBarColor(APP_STATUS_BAR);
       clearTimeout(t);
     };
   }, []);
+
+  // Keep the status bar (native iOS strip + web theme-color + the body/html
+  // ground) matched to the CURRENT phase's background — the closing slide is
+  // the warmer #11291C, every other phase is #0C1F12 — so the top of the
+  // screen never reads as a different color than the slide under it.
+  useEffect(() => {
+    const phaseBg = phase === "closing" ? "#11291C" : "#0C1F12";
+    document.body.style.backgroundColor = phaseBg;
+    document.documentElement.style.backgroundColor = phaseBg;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", phaseBg);
+    setNativeStatusBarColor(phaseBg);
+  }, [phase]);
 
   // Fade out + navigate to finishHref without showing the closing
   // summary. Used by queue=feed walks: a feed's "Pray the full list"
