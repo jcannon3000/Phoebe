@@ -3275,9 +3275,9 @@ export const en = {
       w2: { label: "2 weeks", sub: "Finding a rhythm" },
       w4: { label: "4 weeks", sub: "A month together" },
       ongoing: { label: "Ongoing", sub: "Until you feel released" },
-      d3: { label: "3 days", sub: "A first act of prayer" },
-      d7: { label: "7 days", sub: "One week of holding them" },
-      d14: { label: "14 days", sub: "Two weeks of faithful intercession" },
+      length_label: "Length",
+      n_days_one: "{{count}} day",
+      n_days_other: "{{count}} days",
     },
     invite_lectio: {
       title: "Who will read together?",

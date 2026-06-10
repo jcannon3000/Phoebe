@@ -3191,9 +3191,9 @@ export const es: Translations = {
       w2: { label: "2 semanas", sub: "Encontrando un ritmo" },
       w4: { label: "4 semanas", sub: "Un mes juntos" },
       ongoing: { label: "En curso", sub: "Hasta que te sientas liberado" },
-      d3: { label: "3 días", sub: "Un primer acto de oración" },
-      d7: { label: "7 días", sub: "Una semana llevándolos" },
-      d14: { label: "14 días", sub: "Dos semanas de intercesión fiel" },
+      length_label: "Duración",
+      n_days_one: "{{count}} día",
+      n_days_other: "{{count}} días",
     },
     invite_lectio: {
       title: "¿Quién leerá contigo?",

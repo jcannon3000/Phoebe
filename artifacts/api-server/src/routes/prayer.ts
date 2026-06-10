@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, desc, inArray, notInArray, and, isNull, isNotNull, or, gt, lt } from "drizzle-orm";
+import { eq, asc, desc, inArray, notInArray, and, isNull, isNotNull, or, gt, lt } from "drizzle-orm";
 import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, fellowsTable, prayerRequestTagsTable, prayerFeedSubscriptionsTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
@@ -1051,6 +1051,35 @@ router.post("/prayer-requests/:id/word", rateLimit({
       .returning();
   }
 
+  // Merge with the first-amen push when this author is ALSO the request's
+  // first amen-er: the recipient already got "the first amen just went up
+  // by {Name}" — a separate word banner from the same person reads as a
+  // double-tap. The merged word push covers both moments and reuses the
+  // first-amen collapse-id so iOS replaces that banner with ONE
+  // notification. Scoped to the FIRST insert only — edits keep the plain
+  // body + per-author collapse-id so they replace the author's own banner
+  // rather than re-announcing a stale "first amen". The condition mirrors
+  // firstAmenFire exactly: the request's earliest amen OVERALL is this
+  // author's, and the author isn't the owner (owner self-amens never fire
+  // a first-amen push, so there'd be nothing to merge with). Best-effort:
+  // a lookup failure falls back to the plain word push.
+  let mergedFirstAmen = false;
+  if (!existing && sessionUserId !== request.ownerId) {
+    try {
+      const [earliest] = await db.select({ userId: prayerRequestAmensTable.userId })
+        .from(prayerRequestAmensTable)
+        .where(and(
+          eq(prayerRequestAmensTable.requestId, id),
+          isNotNull(prayerRequestAmensTable.prayedAt),
+        ))
+        .orderBy(asc(prayerRequestAmensTable.prayedAt))
+        .limit(1);
+      mergedFirstAmen = earliest?.userId === sessionUserId;
+    } catch (err) {
+      console.warn("[prayer/word] first-amen merge lookup failed:", err);
+    }
+  }
+
   // Push the owner on every word submission, not just the first — the
   // owner wants to feel each act of prayer, not just the initial ping.
   // Self-words still suppressed (the rare case where the owner writes
@@ -1063,6 +1092,7 @@ router.post("/prayer-requests/:id/word", rateLimit({
       authorUserId: sessionUserId,
       authorName,
       prayerRequestId: id,
+      mergedFirstAmen,
     }).catch((err) => {
       console.warn("[prayer/word] push dispatch failed:", err);
     });
@@ -1084,6 +1114,7 @@ router.post("/prayer-requests/:id/word", rateLimit({
           authorUserId: sessionUserId,
           authorName,
           prayerRequestId: id,
+          mergedFirstAmen,
         }).catch(err => console.warn("[prayer/word] tagged push failed:", err))
       ));
     } catch (err) {
@@ -1588,9 +1619,30 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
     const [prayer] = await db.select({ name: usersTable.name })
       .from(usersTable).where(eq(usersTable.id, sessionUserId));
     const prayerName = prayer?.name || "Someone";
+    // If this first amen-er already left a word of comfort on the request,
+    // the owner just got a "{Name} prayed for you" word push — merge the
+    // two into ONE notification (merged body + the word push's collapse-id
+    // so iOS replaces it) instead of stacking a second banner. PRIVATE
+    // words are excluded: the same opts fan out to tagged users, who can't
+    // see a private word — advertising one would leak that it exists.
+    let withWordFromUserId: number | undefined;
+    try {
+      const [existingWord] = await db.select({ id: prayerWordsTable.id })
+        .from(prayerWordsTable)
+        .where(and(
+          eq(prayerWordsTable.requestId, id),
+          eq(prayerWordsTable.authorUserId, sessionUserId),
+          eq(prayerWordsTable.isPrivate, false),
+        ))
+        .limit(1);
+      if (existingWord) withWordFromUserId = sessionUserId;
+    } catch (err) {
+      console.warn("[prayer/amen] word merge lookup failed:", err);
+    }
     sendFirstAmenPush(request.ownerId, {
       prayerRequestId: id,
       prayerName,
+      withWordFromUserId,
     }).catch((err) => {
       console.warn("[prayer/amen] first-amen push failed:", err);
     });
@@ -1615,6 +1667,7 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
           sendFirstAmenPush(uid, {
             prayerRequestId: id,
             prayerName,
+            withWordFromUserId,
           }).catch(err => console.warn("[prayer/amen] tagged first-amen push failed:", err))
         ));
       } catch (err) {

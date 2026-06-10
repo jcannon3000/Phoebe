@@ -860,13 +860,36 @@ export function sendLetterFollowUpPush(
 // author+request, not on edits), but the collapse-id is belt-and-
 // suspenders: if the route ever fires twice for the same pair,
 // iOS replaces rather than stacks.
+// Collapse-id formats shared by the word + first-amen pushes. Each format
+// has ONE owner here because the merged variants deliberately cross-reference
+// the other push's id (so iOS replaces the sibling banner instead of
+// stacking) — a hand-written literal in one function would silently drift.
+function firstAmenCollapseId(prayerRequestId: number): string {
+  return `first-amen-${prayerRequestId}`;
+}
+function prayerWordCollapseId(prayerRequestId: number, authorUserId: number): string {
+  return `prayer-word-${prayerRequestId}-${authorUserId}`;
+}
+
 export function sendPrayerWordPush(
   recipientUserId: number,
-  opts: { authorUserId?: number; authorName: string; prayerRequestId?: number }
+  opts: {
+    authorUserId?: number;
+    authorName: string;
+    prayerRequestId?: number;
+    /** True when this word's author is ALSO the request's first amen-er.
+     *  The recipient already got (or will get) a first-amen push naming the
+     *  same person, so this push MERGES the two moments: the body covers
+     *  both, and the collapse-id reuses the first-amen one so iOS REPLACES
+     *  that banner instead of stacking a second notification. */
+    mergedFirstAmen?: boolean;
+  }
 ) {
-  const collapseId = opts.prayerRequestId && opts.authorUserId
-    ? `prayer-word-${opts.prayerRequestId}-${opts.authorUserId}`
-    : undefined;
+  const collapseId = opts.mergedFirstAmen && opts.prayerRequestId
+    ? firstAmenCollapseId(opts.prayerRequestId)
+    : opts.prayerRequestId && opts.authorUserId
+      ? prayerWordCollapseId(opts.prayerRequestId, opts.authorUserId)
+      : undefined;
   // Deep-link to the dedicated comment landing page — a slide-styled
   // view of the request and the latest word of comfort. Falls back to
   // the bare /prayer-list if the prayerRequestId is missing (defensive).
@@ -876,7 +899,9 @@ export function sendPrayerWordPush(
   const firstName = (opts.authorName || "Someone").split(/\s+/)[0] || "Someone";
   return sendPushToUser(recipientUserId, {
     title: `${firstName} prayed for you`,
-    body: "Open Phoebe to read what they wrote.",
+    body: opts.mergedFirstAmen
+      ? "They said the first amen and left you a word of comfort."
+      : "Open Phoebe to read what they wrote.",
     path,
     threadId: opts.prayerRequestId ? `prayer-request-${opts.prayerRequestId}` : "prayer-word",
     collapseId,
@@ -1223,18 +1248,32 @@ export async function sendNewGroupMomentPushToMany(
 // another tap.
 export function sendFirstAmenPush(
   recipientUserId: number,
-  opts: { prayerRequestId: number; prayerName: string },
+  opts: {
+    prayerRequestId: number;
+    prayerName: string;
+    /** Set to the amen-er's user id when they ALREADY left a word of
+     *  comfort on this request. The recipient got a word push naming the
+     *  same person, so this push MERGES the two: the body covers both,
+     *  and the collapse-id reuses the word one so iOS REPLACES that
+     *  banner instead of stacking a second notification. */
+    withWordFromUserId?: number;
+  },
 ) {
   const firstName = (opts.prayerName || "Someone").split(/\s+/)[0] || "Someone";
+  const merged = typeof opts.withWordFromUserId === "number";
   return sendPushToUser(recipientUserId, {
     title: "You've been held in prayer",
-    body: `The first amen just went up for your request by ${firstName}.`,
+    body: merged
+      ? `The first amen just went up for your request by ${firstName} — with a word of comfort.`
+      : `The first amen just went up for your request by ${firstName}.`,
     // ?amen=1 tells the detail page this is the first-amen landing, so it
     // features the pray-er. Opening the request any other way (e.g. the
     // prayer list) omits the param and shows no single featured amen.
     path: `/prayer-requests/${opts.prayerRequestId}?amen=1`,
     threadId: `prayer-request-${opts.prayerRequestId}`,
-    collapseId: `first-amen-${opts.prayerRequestId}`,
+    collapseId: merged
+      ? prayerWordCollapseId(opts.prayerRequestId, opts.withWordFromUserId as number)
+      : firstAmenCollapseId(opts.prayerRequestId),
     sound: PHOEBE_SOUND_HIGH,
   });
 }

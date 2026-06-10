@@ -445,6 +445,24 @@ export default function MomentNew() {
   const [commitmentDays, setCommitmentDays] = useState(30);
   const [commitmentSessionsGoal, setCommitmentSessionsGoal] = useState<number | null>(3);
   const [practiceDurationDays, setPracticeDurationDays] = useState<number | null>(null);
+  // The daily-intercession duration step renders a dropdown that displays
+  // "7 days" by default — seed the state to match when that step opens so
+  // Continue isn't gated on a value the user can already see selected.
+  // Also CLAMP a stale weekly leftover into the dropdown's 1–14 range:
+  // picking "Ongoing" (0) or "4 weeks" (28) on the weekly flow and then
+  // switching the frequency to daily would otherwise submit the hidden
+  // 0/28 while the dropdown displays "7 days".
+  useEffect(() => {
+    if (
+      step === "duration" &&
+      templateId !== "fasting" &&
+      frequency !== "weekly" &&
+      (practiceDurationDays === null || practiceDurationDays < 1 || practiceDurationDays > 14)
+    ) {
+      setPracticeDurationDays(7);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, frequency]);
   const [invitedPeople, setInvitedPeople] = useState<{ name: string; email: string }[]>([]);
   const [showInviteDisabledMsg, setShowInviteDisabledMsg] = useState(false);
 
@@ -1882,15 +1900,11 @@ export default function MomentNew() {
                 const useWeeks = isFastingFlow || frequency === "weekly";
 
                 type DurationOpt = { days: number; emoji: string; label: string; sub: string };
-                const durationOptions: DurationOpt[] = useWeeks ? [
+                const durationOptions: DurationOpt[] = [
                   { days: 7,  emoji: "🌱", label: t("moment_new.duration.w1.label"),  sub: t("moment_new.duration.w1.sub") },
                   { days: 14, emoji: "🌿", label: t("moment_new.duration.w2.label"),  sub: t("moment_new.duration.w2.sub") },
                   { days: 28, emoji: "🌳", label: t("moment_new.duration.w4.label"),  sub: t("moment_new.duration.w4.sub") },
                   { days: 0,  emoji: "✨", label: t("moment_new.duration.ongoing.label"), sub: t("moment_new.duration.ongoing.sub") },
-                ] : [
-                  { days: 3,  emoji: "🕊️", label: t("moment_new.duration.d3.label"),  sub: t("moment_new.duration.d3.sub") },
-                  { days: 7,  emoji: "🌱", label: t("moment_new.duration.d7.label"),  sub: t("moment_new.duration.d7.sub") },
-                  { days: 14, emoji: "🌿", label: t("moment_new.duration.d14.label"), sub: t("moment_new.duration.d14.sub") },
                 ];
 
                 const title = isFastingFlow
@@ -1899,6 +1913,58 @@ export default function MomentNew() {
                 const subtitle = isFastingFlow
                   ? t("moment_new.duration.subtitle_fasting")
                   : t("moment_new.duration.subtitle_intercession");
+
+                // Daily intercessions: a plain length dropdown (1–14 days)
+                // instead of the old 3-/7-day "goal" cards — the question is
+                // simply how long the intention stays before the community.
+                if (!useWeeks) {
+                  const selDays = practiceDurationDays && practiceDurationDays >= 1 && practiceDurationDays <= 14
+                    ? practiceDurationDays
+                    : 7;
+                  return (
+                    <div className="flex-1 flex flex-col gap-4">
+                      <div>
+                        <h2 className="text-[1.6rem] font-bold leading-tight mb-1"
+                          style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
+                          {title}
+                        </h2>
+                        <p className="text-sm italic" style={{ color: "#8FAF96" }}>
+                          {subtitle}
+                        </p>
+                      </div>
+                      <label
+                        className="flex items-center justify-between gap-3 rounded-2xl px-5 py-4 cursor-pointer"
+                        style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.5)" }}
+                      >
+                        <span className="flex items-center gap-3 min-w-0">
+                          <span className="text-2xl leading-none shrink-0">🕊️</span>
+                          <span className="font-bold text-[15px]"
+                            style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
+                            {t("moment_new.duration.length_label", { defaultValue: "Length" })}
+                          </span>
+                        </span>
+                        <select
+                          value={selDays}
+                          onChange={(e) => setPracticeDurationDays(parseInt(e.target.value, 10))}
+                          className="text-[15px] font-semibold rounded-xl px-3 py-2"
+                          style={{
+                            color: "#F0EDE6",
+                            fontFamily: "'Space Grotesk', sans-serif",
+                            background: "#1A4A2E",
+                            border: "1px solid rgba(46,107,64,0.7)",
+                            appearance: "auto",
+                          }}
+                        >
+                          {Array.from({ length: 14 }, (_, i) => i + 1).map((d) => (
+                            <option key={d} value={d}>
+                              {t("moment_new.duration.n_days", { count: d, defaultValue: d === 1 ? "1 day" : `${d} days` })}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  );
+                }
 
                 return (
                   <div className="flex-1 flex flex-col gap-4">

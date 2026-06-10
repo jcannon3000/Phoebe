@@ -1912,6 +1912,107 @@ function ReflectionSlide({
   );
 }
 
+// ── "Let your community hold you in prayer" — closing-card composer ────────
+// A compact prayer-request composer on the closing slide, so the moment of
+// having prayed for others flows naturally into asking for prayer yourself.
+// Posts the same body shape as /pray-request/new; the dropdown picks how
+// many days the request stays before the community (1–14, default 7).
+// Hidden for offices-only viewers (no prayer-requests access) and the
+// parish-only tier (the server 403s prayer-request creation for them).
+function HoldMeComposer() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [body, setBody] = useState("");
+  const [days, setDays] = useState(7);
+  const create = useMutation({
+    mutationFn: () =>
+      apiRequest("POST", "/api/prayer-requests", {
+        body: body.trim(),
+        isAnonymous: false,
+        durationDays: days,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/last-mine"] });
+    },
+  });
+
+  if (user?.accessTier === "parish-only") return null;
+
+  if (create.isSuccess) {
+    return (
+      <p
+        className="text-[13px]"
+        style={{ color: "rgba(168,197,160,0.85)", fontFamily: "'Space Grotesk', sans-serif", maxWidth: 380 }}
+      >
+        🙏 Shared — your community will hold you in prayer.
+      </p>
+    );
+  }
+
+  return (
+    <div className="w-full flex flex-col items-stretch gap-2.5 text-left" style={{ maxWidth: 380 }}>
+      <p
+        className="text-[10px] uppercase tracking-[0.18em] font-semibold text-center"
+        style={{ color: "rgba(143,175,150,0.55)" }}
+      >
+        Let your community hold you in prayer
+      </p>
+      <textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value.slice(0, 1000))}
+        rows={2}
+        placeholder="Share something on your heart, an important event coming up, someone you care for, or a cause that is dear to you…"
+        className="w-full rounded-2xl px-4 py-3 text-[14px] outline-none resize-none"
+        style={{
+          background: "rgba(46,107,64,0.12)",
+          border: "1px solid rgba(46,107,64,0.3)",
+          color: "#F0EDE6",
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontStyle: "italic",
+          lineHeight: 1.6,
+        }}
+      />
+      <div className="flex items-center justify-between gap-2">
+        <label className="flex items-center gap-2">
+          <span className="text-[12px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+            How long
+          </span>
+          <select
+            value={days}
+            onChange={(e) => setDays(parseInt(e.target.value, 10))}
+            className="text-[13px] font-semibold rounded-lg px-2.5 py-1.5"
+            style={{
+              color: "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+              background: "rgba(46,107,64,0.22)",
+              border: "1px solid rgba(46,107,64,0.45)",
+              appearance: "auto",
+            }}
+          >
+            {Array.from({ length: 14 }, (_, i) => i + 1).map((d) => (
+              <option key={d} value={d}>{d === 1 ? "1 day" : `${d} days`}</option>
+            ))}
+          </select>
+        </label>
+        <button
+          onClick={() => body.trim() && create.mutate()}
+          disabled={body.trim().length === 0 || create.isPending}
+          className="px-5 py-2 rounded-full text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
+          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+        >
+          {create.isPending ? "Sharing…" : "Share →"}
+        </button>
+      </div>
+      {create.isError && (
+        <p className="text-[12px]" style={{ color: "#D98A8A", fontFamily: "'Space Grotesk', sans-serif" }}>
+          Couldn't share right now — your words are still here, try again in a moment.
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Closing slide ─────────────────────────────────────────────────────────
 // Shown after the user finishes the prayer-list. Headline metric is
 // "You prayed with N people" — community count, not streak. The streak
@@ -2087,6 +2188,18 @@ function ClosingSlide({
             : "Come back tomorrow — your friends will be carrying things, and so will you."}
         </p>
       </motion.div>
+
+      {/* Ask for prayer right where you just prayed for others. */}
+      {!officesOnly && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.35 }}
+          className="w-full flex justify-center"
+        >
+          <HoldMeComposer />
+        </motion.div>
+      )}
 
       <button
         onClick={onDone}
