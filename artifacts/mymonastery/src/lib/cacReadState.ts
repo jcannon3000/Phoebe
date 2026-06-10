@@ -116,10 +116,12 @@ export function getFddReadDay(): string | null { return fddTracker.getLastReadDa
 export function hasReadFddToday(): boolean { return fddTracker.hasReadToday(); }
 export function markFddRead(): void { fddTracker.markRead(); }
 // Opened from the home card → mark read + (when flagged) stash the return path
-// so coming back from the browser lands on the in-app reflection reader.
+// so coming back from the browser lands on the FDD journey page (/reflect/fdd
+// — read-aloud + sit), matching CAC's return to its companion page. Was the
+// inline reader (/menu/reflections/fdd), which just re-showed what they'd read.
 export function recordFddOpened(opts?: { flagReturn?: boolean }): void {
   markFddRead();
-  if (opts?.flagReturn) flagReflectionReturn("/menu/reflections/fdd");
+  if (opts?.flagReturn) flagReflectionReturn("/reflect/fdd");
 }
 
 // ── SSJE Reflections (Society of Saint John the Evangelist) ──

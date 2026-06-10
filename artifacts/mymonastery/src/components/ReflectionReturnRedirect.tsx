@@ -2,7 +2,7 @@
  * After the reader opens a daily reflection from a home card and comes back,
  * take them to that reflection's in-app page:
  *   • CAC  → /reflect/cac (companion page: who-read-today + journal)
- *   • FDD  → /menu/reflections/fdd (the in-app reflection reader)
+ *   • FDD  → /reflect/fdd (the FDD journey page: read-aloud + sit)
  *   • SSJE → /menu/reflections/ssje
  *
  * The home card stashes the destination path via recordCacOpened /
