@@ -13,7 +13,6 @@ import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback } from "@/
 import { openExternal } from "@/lib/openExternal";
 import { isNativeShell } from "@/lib/isNativeShell";
 import FddJournalSheet from "@/components/FddJournalSheet";
-import { useEffectiveReflectionSource } from "@/lib/officePrefs";
 import {
   CAC_TODAY_URL,
   FDD_TODAY_URL,
@@ -3430,19 +3429,10 @@ export default function PrayerModePage() {
   // "As you go" news slide between the closing summary and the habit
   // rhythm screen. Empty (and free) for anyone who follows nothing.
   const unseenNews = useUnseenNews();
-  // Daily reflection (CAC / FDD / SSJE). On the office-finish walk we show it
-  // IN-APP as a slide right before the closing summary — replacing the old
-  // "Read reflection" pill that ejected to SFSafariViewController. Effective
-  // precedence: explicit Settings pick → visible home card → FDD default.
-  const reflectionSource = useEffectiveReflectionSource(closingIsEvening ? "evening" : "morning");
-  const [reflectionDone, setReflectionDone] = useState(false);
-  // Hold the closing summary behind the reflection slide until the user taps
-  // Continue — but only on an office-finish walk (closingOnly / offices-only)
-  // and only when a reflection is actually turned on. Gating on phase ===
-  // "closing" means offices-only feed-walkers still pray their whole list
-  // first; the reflection appears the moment they reach the summary.
-  const showReflectionGate =
-    (closingOnly || officesOnly || afterOffice) && phase === "closing" && reflectionSource !== "none" && !reflectionDone;
+  // Daily reflections (CAC / FDD / SSJE) are no longer shown inside the
+  // office slideshow — they live only on the home screen now. The office
+  // close goes straight to the celebration summary.
+  const showReflectionGate = false;
   // Contemplation timer overlay — opened from the pause slide's
   // quick-start card. Rendered at the page root below so it covers the
   // whole screen regardless of which slide is showing. startMinutes is
@@ -4062,16 +4052,6 @@ export default function PrayerModePage() {
       >
         ×
       </button>
-
-      {/* Daily reflection — embedded in-app as the slide BEFORE the closing
-          summary (covers the whole screen with its own Continue bar). Only
-          on the office-finish walk, when a reflection source is turned on. */}
-      {showReflectionGate && (
-        <ReflectionSlide
-          source={reflectionSource as "cac" | "fdd" | "ssje"}
-          onContinue={() => setReflectionDone(true)}
-        />
-      )}
 
       {/* Content — anchored toward the top of the viewport so short
           slides (prayer requests, intercessions with no BCP block) don't

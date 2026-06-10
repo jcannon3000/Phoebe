@@ -504,30 +504,6 @@ export function HomeAuthoringFAB() {
               <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 {t("home_fab.prayer_request")}</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.prayer_request_sub")}</p>
             </button>
-            <button
-              onClick={() => { setOpen(false); setLocation("/pray-request/new?kind=life-event"); }}
-              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
-            >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🌱 {t("home_fab.life_event")}</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.life_event_sub")}</p>
-            </button>
-            <button
-              onClick={() => { setOpen(false); setLocation("/pray-request/new?kind=justice"); }}
-              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
-            >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>⚖️ {t("home_fab.justice")}</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.justice_sub")}</p>
-            </button>
-            <button
-              onClick={() => { setOpen(false); setLocation("/pray-for/new"); }}
-              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
-            >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🤝 {t("home_fab.prayer_for_other")}</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.prayer_for_other_sub")}</p>
-            </button>
             {isAdminOfAny && (
               <button
                 onClick={() => { setOpen(false); setLocation("/moment/new?template=intercession"); }}
@@ -536,16 +512,6 @@ export function HomeAuthoringFAB() {
               >
                 <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕯️ {t("home_fab.community_intercession")}</p>
                 <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.community_intercession_sub")}</p>
-              </button>
-            )}
-            {isAdminOfAny && (
-              <button
-                onClick={() => { setOpen(false); setLocation("/actions/new"); }}
-                className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-                style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
-              >
-                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📣 {t("home_fab.community_action")}</p>
-                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.community_action_sub")}</p>
               </button>
             )}
           </motion.div>
@@ -2430,9 +2396,9 @@ export function ContemplationHomeCard() {
         role="button"
         tabIndex={0}
         className="relative flex rounded-xl overflow-hidden cursor-pointer"
-        style={{ background: "rgba(62,124,122,0.12)", border: "1px solid rgba(62,124,122,0.35)" }}
+        style={{ background: "rgba(62,124,122,0.12)", border: `1px solid rgba(62,124,122,${met || goalMin <= 0 ? 0.35 : 0.18})` }}
       >
-        <div className="w-1 flex-shrink-0" style={{ background: "rgba(62,124,122,0.85)" }} />
+        <div className="w-1 flex-shrink-0" style={{ background: `rgba(62,124,122,${met || goalMin <= 0 ? 0.85 : 0.4})` }} />
         <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p
@@ -2603,9 +2569,9 @@ export function CacHomeCard() {
       // Contemplation) rather than reading as an external/foreign
       // surface. Slightly deeper saturation than its siblings so it
       // still reads as distinct when stacked next to them.
-      style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.40)" }}
+      style={{ background: "rgba(46,107,64,0.14)", border: `1px solid rgba(46,107,64,${hasRead ? 0.40 : 0.20})` }}
     >
-      <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(46,107,64,${hasRead ? 0.9 : 0.4})` }} />
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
         {/* flex-1 + min-w-0 (not just min-w-0): the headline is now a long
             nowrap line ("CAC Daily Reflection 🌵"); on iOS Safari a min-w-0-only
@@ -2811,9 +2777,9 @@ function FddHomeCard() {
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
       className="relative flex rounded-xl overflow-hidden cursor-pointer"
-      style={{ background: "rgba(96,141,209,0.13)", border: "1px solid rgba(96,141,209,0.40)" }}
+      style={{ background: "rgba(96,141,209,0.13)", border: `1px solid rgba(96,141,209,${hasRead ? 0.40 : 0.20})` }}
     >
-      <div className="w-1 flex-shrink-0" style={{ background: "rgba(96,141,209,0.85)" }} />
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(96,141,209,${hasRead ? 0.85 : 0.4})` }} />
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
         <p
           className="font-semibold min-w-0 truncate"
@@ -2877,9 +2843,9 @@ function SsjeHomeCard() {
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
       className="relative flex rounded-xl overflow-hidden cursor-pointer"
-      style={{ background: "rgba(193,127,36,0.13)", border: "1px solid rgba(193,127,36,0.42)" }}
+      style={{ background: "rgba(193,127,36,0.13)", border: `1px solid rgba(193,127,36,${hasRead ? 0.42 : 0.20})` }}
     >
-      <div className="w-1 flex-shrink-0" style={{ background: "rgba(193,127,36,0.85)" }} />
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(193,127,36,${hasRead ? 0.85 : 0.4})` }} />
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
         <p
           className="font-semibold min-w-0 truncate"
@@ -3295,11 +3261,12 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
       style={{
         background: "rgba(46,107,64,0.08)",
         // Match the border weight on the parish-weekly + count cards
-        // so the two stacked cards read as a paired set.
-        border: "1px solid rgba(46,107,64,0.4)",
+        // so the two stacked cards read as a paired set. Muted until the
+        // office is prayed today, full strength once it is.
+        border: `1px solid rgba(46,107,64,${prayedToday ? 0.4 : 0.2})`,
       }}
       >
-        <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
+        <div className="w-1 flex-shrink-0" style={{ background: `rgba(46,107,64,${prayedToday ? 0.9 : 0.4})` }} />
         <div className="flex-1 px-4 pt-[20px] pb-[20px]">
           <div className="flex items-start justify-between gap-2">
             <p

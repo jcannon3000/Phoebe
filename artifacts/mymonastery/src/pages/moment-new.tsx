@@ -304,6 +304,29 @@ function PersonRow({ person, index, showRemove, onUpdate, onRemove, onSelect }: 
 }
 
 // ─── BCP Prayer List ──────────────────────────────────────────────────────────
+// Emoji per BCP intercession category. Unmapped categories fall back to 🙏🏽.
+const BCP_CATEGORY_EMOJI: Record<string, string> = {
+  "For the Church": "⛪",
+  "For the Mission of the Church": "✝️",
+  "For the Nation": "🏛️",
+  "For the World": "🌍",
+  "For the Natural Order": "🌿",
+  "For the Environment": "🌱",
+  "For Cities and Towns": "🏙️",
+  "For Vocation and Work": "🛠️",
+  "For the Poor and Neglected": "🤲",
+  "For Social Justice": "⚖️",
+  "For Families": "👪",
+  "For Those in Need": "🫶",
+  "For the Sick": "🩺",
+  "For the Dead": "🕊️",
+  "Thanksgivings": "🌾",
+  "Other Prayers": "🙏🏽",
+};
+function bcpCategoryEmoji(cat: string): string {
+  return BCP_CATEGORY_EMOJI[cat] ?? "🙏🏽";
+}
+
 function BcpPrayerList({ onSelect }: { onSelect: (prayer: BcpPrayer) => void }) {
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
   const grouped = BCP_PRAYERS.reduce<Record<string, BcpPrayer[]>>((acc, p) => {
@@ -313,14 +336,17 @@ function BcpPrayerList({ onSelect }: { onSelect: (prayer: BcpPrayer) => void }) 
   }, {});
 
   return (
-    <div className="space-y-1.5 max-h-[440px] overflow-y-auto pr-1">
+    <div className="space-y-1.5">
       {Object.entries(grouped).map(([cat, prayers]) => (
         <div key={cat} className="border border-border/40 rounded-xl overflow-hidden">
           <button
             className="w-full text-left px-4 py-3 flex items-center justify-between bg-secondary/20 hover:bg-secondary/40 transition-colors"
             onClick={() => setExpandedCat(expandedCat === cat ? null : cat)}
           >
-            <span className="text-sm font-semibold text-foreground">{cat}</span>
+            <span className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <span aria-hidden>{bcpCategoryEmoji(cat)}</span>
+              {cat}
+            </span>
             <span className="text-muted-foreground text-xs ml-2 shrink-0">{expandedCat === cat ? "▲" : "▼"}</span>
           </button>
           {expandedCat === cat && (
@@ -445,21 +471,21 @@ export default function MomentNew() {
   const [commitmentDays, setCommitmentDays] = useState(30);
   const [commitmentSessionsGoal, setCommitmentSessionsGoal] = useState<number | null>(3);
   const [practiceDurationDays, setPracticeDurationDays] = useState<number | null>(null);
-  // The daily-intercession duration step renders a dropdown that displays
-  // "7 days" by default — seed the state to match when that step opens so
-  // Continue isn't gated on a value the user can already see selected.
-  // Also CLAMP a stale weekly leftover into the dropdown's 1–14 range:
-  // picking "Ongoing" (0) or "4 weeks" (28) on the weekly flow and then
-  // switching the frequency to daily would otherwise submit the hidden
-  // 0/28 while the dropdown displays "7 days".
+  // BCP-prayer intention step: the prayer is shown by default and the
+  // specific-intention field stays hidden behind a pill until asked for.
+  const [showSpecificIntention, setShowSpecificIntention] = useState(false);
+  // Intercession length lives on the schedule step now (under "How often").
+  // Seed a sensible default so it shows a value and the submit never sends
+  // 0 ("ongoing") by accident; clamp a daily value into the dropdown's 1–14
+  // range when the user toggles from weekly back to daily.
   useEffect(() => {
-    if (
-      step === "duration" &&
-      templateId !== "fasting" &&
-      frequency !== "weekly" &&
-      (practiceDurationDays === null || practiceDurationDays < 1 || practiceDurationDays > 14)
-    ) {
-      setPracticeDurationDays(7);
+    if (step !== "schedule" || templateId !== "intercession") return;
+    if (frequency === "weekly") {
+      if (practiceDurationDays === null) setPracticeDurationDays(7);
+    } else {
+      if (practiceDurationDays === null || practiceDurationDays < 1 || practiceDurationDays > 14) {
+        setPracticeDurationDays(7);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, frequency]);
@@ -706,7 +732,7 @@ export default function MomentNew() {
       // drop the "name" step (name defaults from template prefill) and
       // the "logging" step (reflectionPrompt defaults from prefill too)
       // so custom flows through the same minimal path as BCP.
-      ? ["template", "intercession", "intention", "schedule", "duration", "invite"]
+      ? ["template", "intercession", "intention", "schedule", "invite"]
     : templateId === "contemplative"
       ? ["template", "contemplative-duration", "name", "intention", "logging", "schedule", "invite"]
     : templateId === "fasting"
@@ -1173,7 +1199,9 @@ export default function MomentNew() {
         )}
 
         <div className={step === "template" ? "flex flex-col" : "flex flex-col min-h-[calc(100dvh-160px)]"}>
-          <div className="flex-1 overflow-y-auto min-h-0">
+          {/* Bottom padding clears the fixed Continue bar so the last field
+              isn't hidden behind it (and behind the keyboard). */}
+          <div className="flex-1 overflow-y-auto min-h-0" style={{ paddingBottom: 120 }}>
           <AnimatePresence mode="wait">
             <motion.div key={step} variants={sv} initial="initial" animate="animate" exit="exit"
               transition={{ duration: 0.22 }} className="flex-1 flex flex-col">
@@ -1655,29 +1683,36 @@ export default function MomentNew() {
                       {t("moment_new.intention_bcp.subtitle")}
                     </p>
                   </div>
-                  <div className="relative">
-                    <textarea autoFocus value={intention}
-                      onChange={e => setIntention(e.target.value.slice(0, 200))}
-                      rows={4}
-                      placeholder={t("moment_new.intention_bcp.placeholder")}
-                      className="w-full px-4 py-4 rounded-2xl resize-none text-base focus:outline-none transition-colors"
-                      style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
-                    />
-                    {intention.length > 150 && (
-                      <p className="text-right text-xs mt-1" style={{ color: "rgba(143,175,150,0.5)" }}>{intention.length}/200</p>
-                    )}
+                  {/* The BCP prayer itself, shown by default. */}
+                  <div style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", borderRadius: "16px", padding: "16px 18px" }}>
+                    <p className="text-sm italic leading-[1.85] font-serif" style={{ color: "#C8D4C0" }}>{selectedBcpPrayer.text}</p>
+                    <p className="text-xs mt-3" style={{ color: "rgba(143,175,150,0.5)" }}>{t("moment_new.from_bcp")}</p>
                   </div>
-                  <div style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", borderRadius: "16px", overflow: "hidden" }}>
-                    <details>
-                      <summary className="px-4 py-3 cursor-pointer list-none flex items-center gap-2" style={{ color: "#C8D4C0", fontSize: "13px", fontWeight: 600 }}>
-                        📖 {t("moment_new.intention_bcp.full_prayer")}
-                      </summary>
-                      <div className="px-4 pb-4 pt-1" style={{ background: "#0F2818" }}>
-                        <p className="text-sm italic leading-[1.85] font-serif" style={{ color: "#8FAF96" }}>{selectedBcpPrayer.text}</p>
-                        <p className="text-xs mt-3" style={{ color: "rgba(143,175,150,0.5)" }}>{t("moment_new.from_bcp")}</p>
-                      </div>
-                    </details>
-                  </div>
+                  {/* Optional specific intention — hidden behind a pill. */}
+                  {showSpecificIntention ? (
+                    <div className="relative">
+                      <textarea autoFocus value={intention}
+                        onChange={e => setIntention(e.target.value.slice(0, 200))}
+                        rows={3}
+                        placeholder={t("moment_new.intention_bcp.placeholder")}
+                        className="w-full px-4 py-4 rounded-2xl resize-none text-base focus:outline-none transition-colors"
+                        style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
+                      />
+                      {intention.length > 150 && (
+                        <p className="text-right text-xs mt-1" style={{ color: "rgba(143,175,150,0.5)" }}>{intention.length}/200</p>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowSpecificIntention(true)}
+                      className="w-full flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-semibold transition-colors"
+                      style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "#C8D4C0" }}
+                    >
+                      <span aria-hidden>✍🏽</span>
+                      {t("moment_new.intention_bcp.add_specific", { defaultValue: "Add a specific intention" })}
+                    </button>
+                  )}
                 </div>
               ) : step === "intention" && templateId === "intercession" && (intercessionSource === "custom" || intercessionSource === "action") ? (
                 <div className="space-y-8 flex-1">
@@ -1864,32 +1899,37 @@ export default function MomentNew() {
                     </motion.div>
                   )}
 
-                  {/* Time of day */}
-                  <div>
-                    <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>
-                      {t("moment_new.schedule.time_of_day")}
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {TIME_OF_DAY_OPTIONS.map(opt => (
-                        <button
-                          key={opt.id}
-                          onClick={() => {
-                            setTimeOfDay(opt.id);
-                            const c = TOD_CONSTRAINTS[opt.id];
-                            if (c) { setScheduledHour(c.defaultH); setScheduledAmPm(c.defaultAmPm); }
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-semibold transition-all"
-                          style={timeOfDay === opt.id
-                            ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)" }
-                            : { background: "rgba(200,212,192,0.06)", color: "#8FAF96", border: "1px solid rgba(46,107,64,0.3)" }}
-                        >
-                          <span>{opt.emoji}</span>
-                          <span>{opt.label}</span>
-                        </button>
-                      ))}
+                  {/* Length — how long the intention stays before the
+                      community. Sits under "How often" (time of day was
+                      dropped; the intention runs all day on the calendar). */}
+                  {templateId === "intercession" && (
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>
+                        {t("moment_new.duration.length_label", { defaultValue: "Length" })}
+                      </label>
+                      <select
+                        value={frequency === "weekly"
+                          ? (practiceDurationDays ?? 7)
+                          : ((practiceDurationDays && practiceDurationDays >= 1 && practiceDurationDays <= 14) ? practiceDurationDays : 7)}
+                        onChange={(e) => setPracticeDurationDays(parseInt(e.target.value, 10))}
+                        className="w-full rounded-xl px-4 py-3 text-sm font-semibold"
+                        style={{ background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)", appearance: "auto" }}
+                      >
+                        {frequency === "weekly"
+                          ? [
+                              <option key={7} value={7}>{t("moment_new.duration.w1.label", { defaultValue: "1 week" })}</option>,
+                              <option key={14} value={14}>{t("moment_new.duration.w2.label", { defaultValue: "2 weeks" })}</option>,
+                              <option key={28} value={28}>{t("moment_new.duration.w4.label", { defaultValue: "4 weeks" })}</option>,
+                              <option key={0} value={0}>{t("moment_new.duration.ongoing.label", { defaultValue: "Ongoing" })}</option>,
+                            ]
+                          : Array.from({ length: 14 }, (_, i) => i + 1).map((d) => (
+                              <option key={d} value={d}>
+                                {t("moment_new.duration.n_days", { count: d, defaultValue: d === 1 ? "1 day" : `${d} days` })}
+                              </option>
+                            ))}
+                      </select>
                     </div>
-                    <p className="text-xs mt-2" style={{ color: "rgba(143,175,150,0.45)" }}>{t("moment_new.schedule.whole_day")} 🌿</p>
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -2399,9 +2439,16 @@ export default function MomentNew() {
               on devices that don't have one. */}
           {step !== "template" && step !== "daily-office-choice" && step !== "intercession" && step !== "bcp-commitment" && step !== "contemplative-duration" && step !== "fasting-type" && (
             <div
-              className="mt-4 pt-4 border-t border-border/30 shrink-0"
-              style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+              className="fixed left-0 right-0 bottom-0 z-40 border-t border-border/30 pt-3 px-4 sm:px-6 md:px-8"
+              style={{
+                background: "#091A10",
+                // Float above the home indicator, and rise above the keyboard
+                // when it's open (--kb-inset is set by the native shell; the
+                // WebView doesn't resize, so we lift the bar ourselves).
+                paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + var(--kb-inset, 0px) + 12px)",
+              }}
             >
+              <div className="max-w-2xl mx-auto w-full">
               {/* Disabled inline message for invite step */}
               {step === "invite" && showInviteDisabledMsg && invitedPeople.length === 0 && (
                 <div className="mb-3 px-4 py-3 rounded-2xl bg-[#5C7A5F]/8 border border-[#5C7A5F]/20 text-center">
@@ -2456,6 +2503,7 @@ export default function MomentNew() {
                   </p>
                 );
               })()}
+              </div>
             </div>
           )}
         </div>
