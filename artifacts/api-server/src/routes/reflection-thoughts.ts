@@ -6,11 +6,13 @@
 //   GET  /api/reflections/:source/thoughts?ymd=YYYY-MM-DD
 //   POST /api/reflections/:source/thoughts { day, text }
 //
-// CAC already has a store (cac_reflections, written from routes/cac.ts) — we
-// reuse it rather than building a parallel CAC table. cac_reflections has no
-// `day` column, so the day is carried by created_at (day-scoped via
-// created_at::date = ymd). fdd/ssje use the reflection_thoughts table, which
-// carries `source` + an explicit `day`.
+// All three sources use the reflection_thoughts table, keyed by (source, day)
+// — a thought is scoped to ONE newsletter day and stays separate from the CAC
+// gratitude journal. We deliberately do NOT route cac thoughts into
+// cac_reflections: that table is the user's CAC journal + community wall, so
+// writing here leaked thoughts onto those surfaces, and its day came from a
+// UTC created_at rather than the reader's local day (an off-by-one at
+// midnight). reflection_thoughts carries an explicit local `day`, fixing both.
 //
 // Auth + the garden+me id set mirror routes/cac.ts exactly.
 
@@ -25,14 +27,18 @@ function getUser(req: Request): { id: number } | null {
   return (req as unknown as { user?: { id: number } }).user ?? null;
 }
 
-// The reflections that have a per-day community thoughts surface. "cac" reads
-// the existing cac_reflections store; the others read reflection_thoughts.
-// Anything outside this set is a 400 (never a silent empty result).
+// The reflections that have a per-day community thoughts surface. Anything
+// outside this set is a 400 (never a silent empty result).
 const SOURCES = ["cac", "fdd", "ssje"] as const;
 type Source = (typeof SOURCES)[number];
 function isSource(s: string): s is Source {
   return (SOURCES as readonly string[]).includes(s);
 }
+
+// Hard cap on a thought's length — a thought is a short note, not an essay.
+// Without it, a single request (express.json's 10mb limit) could store a
+// giant row that a LIMIT 100 read would then have to haul back.
+const MAX_THOUGHT_CHARS = 2000;
 
 // Shared output row shape returned by both GET and POST so the frontend has
 // one contract regardless of source. Mirrors GET /cac/reflections/responses.
@@ -69,24 +75,15 @@ router.get("/api/reflections/:source/thoughts", async (req: Request, res: Respon
   try {
     const garden = await getGardenUserIds(user.id);
     const ids = Array.from(new Set([user.id, ...garden]));
-    // CAC reuses cac_reflections (no `day` column → day comes from created_at).
-    // Compare against the calendar day in the DB's timezone, matching how
-    // cac_reads records the local day; ymd is treated as that day's date.
-    const rows = source === "cac"
-      ? await pool.query(
-          `SELECT cr.id, cr.text, cr.created_at, cr.user_id, u.name, u.email, u.avatar_url
-           FROM cac_reflections cr JOIN users u ON u.id = cr.user_id
-           WHERE cr.shared = TRUE AND cr.user_id = ANY($1::int[]) AND cr.created_at::date = $2::date
-           ORDER BY cr.created_at DESC LIMIT 100`,
-          [ids, ymd],
-        )
-      : await pool.query(
-          `SELECT rt.id, rt.text, rt.created_at, rt.user_id, u.name, u.email, u.avatar_url
-           FROM reflection_thoughts rt JOIN users u ON u.id = rt.user_id
-           WHERE rt.shared = TRUE AND rt.source = $1 AND rt.day = $2 AND rt.user_id = ANY($3::int[])
-           ORDER BY rt.created_at DESC LIMIT 100`,
-          [source, ymd, ids],
-        );
+    // Uniform across sources: shared, day-scoped (explicit local `day`), from
+    // the viewer's community (garden + self), newest first.
+    const rows = await pool.query(
+      `SELECT rt.id, rt.text, rt.created_at, rt.user_id, u.name, u.email, u.avatar_url
+       FROM reflection_thoughts rt JOIN users u ON u.id = rt.user_id
+       WHERE rt.shared = TRUE AND rt.source = $1 AND rt.day = $2 AND rt.user_id = ANY($3::int[])
+       ORDER BY rt.created_at DESC LIMIT 100`,
+      [source, ymd, ids],
+    );
     res.json({ thoughts: (rows.rows as ThoughtRow[]).map((r) => toThought(r, user.id)) });
   } catch (err) {
     logger.error({ err, source }, "GET /api/reflections/:source/thoughts failed");
@@ -109,21 +106,19 @@ router.post("/api/reflections/:source/thoughts", async (req: Request, res: Respo
     res.status(400).json({ error: "Text is required" }); return;
   }
   const trimmed = body.text.trim();
+  if (trimmed.length > MAX_THOUGHT_CHARS) {
+    res.status(400).json({ error: "Text is too long" }); return;
+  }
   try {
-    // cac_reflections has no `day` column — created_at carries the day. For
-    // fdd/ssje we store the explicit day + source. Both insert shared=TRUE.
-    const inserted = source === "cac"
-      ? await pool.query(
-          `INSERT INTO cac_reflections (user_id, text, shared) VALUES ($1, $2, TRUE)
-           RETURNING id, text, created_at, user_id`,
-          [user.id, trimmed],
-        )
-      : await pool.query(
-          `INSERT INTO reflection_thoughts (user_id, source, day, text, shared)
-           VALUES ($1, $2, $3, $4, TRUE)
-           RETURNING id, text, created_at, user_id`,
-          [user.id, source, day, trimmed],
-        );
+    // Uniform across all three sources: store the explicit (source, day),
+    // shared=TRUE. Kept out of cac_reflections so a thought never lands in the
+    // CAC journal / community wall.
+    const inserted = await pool.query(
+      `INSERT INTO reflection_thoughts (user_id, source, day, text, shared)
+       VALUES ($1, $2, $3, $4, TRUE)
+       RETURNING id, text, created_at, user_id`,
+      [user.id, source, day, trimmed],
+    );
     // Pull the author's display fields so the created row matches GET's shape.
     const me = await pool.query(
       `SELECT name, email, avatar_url FROM users WHERE id = $1`,
