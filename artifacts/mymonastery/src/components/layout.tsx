@@ -785,8 +785,24 @@ export function Layout({ children }: { children: ReactNode }) {
                 {t("header.home")}
               </Link>
             )}
-            {/* (Prayer list pill removed from the header — it lives in the
-                drawer menu now. People moved into Communities there too.) */}
+            {/* Prayer list pill — sits just left of Menu. Hidden for the
+                offices-only tier (no personal prayer requests / garden, so
+                the page would be empty for them). */}
+            {!officesOnly && (
+              <Link
+                href="/prayer-list"
+                className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  letterSpacing: "-0.01em",
+                  background: "rgba(200,212,192,0.08)",
+                  color: "#C8D4C0",
+                  border: "1px solid rgba(46,107,64,0.3)",
+                }}
+              >
+                {t("menu.prayer_list", { defaultValue: "Prayer list" })}
+              </Link>
+            )}
             <button
               onClick={() => { playOpeningSwell(0); setDrawerOpen(true); }}
               className="flex items-center justify-center transition-colors"
