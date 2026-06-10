@@ -530,93 +530,31 @@ function EmailSettings() {
 // OfficeReminderSettings options below. Shares the same /api/me/office-prefs
 // endpoint so the picker save is a single round-trip with the rest of
 // the office prefs.
+// The full default-prayer + office-shape settings now live in the dedicated
+// office customizer ("customize slideshow", /bcp/daily-office/settings). This
+// page just links there with a single pill so there's one home for all the
+// office knobs rather than two diverging copies.
 function DefaultPrayerLevelSettings() {
-  const queryClient = useQueryClient();
-  const { data } = useQuery<OfficePrefs>({
-    queryKey: ["/api/me/office-prefs"],
-    queryFn: () => apiRequest("GET", "/api/me/office-prefs") as Promise<OfficePrefs>,
-  });
-  const save = useMutation({
-    mutationFn: (patch: Partial<OfficePrefs>) =>
-      apiRequest("PUT", "/api/me/office-prefs", patch),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/me/office-prefs"] }),
-  });
-  const value: DefaultPrayerLevel = data?.defaultPrayerLevel ?? "ask";
-
-  const options: Array<{ value: DefaultPrayerLevel; label: string; sub: string }> = [
-    {
-      value: "ask",
-      label: "Ask me each time",
-      sub: "Show the options, with your last prayer on top",
-    },
-    {
-      value: "devotion",
-      label: "Daily Devotion",
-      sub: "Short BCP form — gentle daily rhythm",
-    },
-    {
-      value: "office",
-      label: "Daily Office",
-      sub: "Full Morning or Evening Prayer",
-    },
-    {
-      value: "intercessions",
-      label: "Community Intercessions",
-      sub: "Your prayer list slideshow",
-    },
-    {
-      value: "reflect-sit",
-      label: "Reflect & Sit",
-      sub: "Forward Day by Day, then a silent timer",
-    },
-    {
-      value: "journal",
-      label: "Journal",
-      sub: "A private daily reflection you write",
-    },
-  ];
-
   return (
     <>
-      <SectionHeader label="Default prayer" />
+      <SectionHeader label="Your daily prayer habit" />
       <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-        When you tap "Begin prayer" on the home screen, this is where you'll land. Leave it on "Ask me each time" to see the chooser, or pick a depth to jump straight in. You can always reach the other depths from inside the prayer.
+        Choose what "Begin prayer" opens, how the office reads, the confession, the closing reflection, and more.
       </p>
-      <SettingsCard>
-        {options.map((opt, i) => {
-          const isSelected = value === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => save.mutate({ defaultPrayerLevel: opt.value })}
-              className="w-full flex items-center gap-3 py-2.5 text-left"
-              style={{
-                borderTop: i === 0 ? "none" : "1px solid rgba(200,212,192,0.12)",
-                background: "transparent",
-                cursor: "pointer",
-              }}
-            >
-              <div
-                style={{
-                  width: 18, height: 18, borderRadius: "50%",
-                  border: `2px solid ${isSelected ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
-                  background: isSelected ? "#A8C5A0" : "transparent",
-                  flexShrink: 0,
-                }}
-              />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-                  {opt.label}
-                </p>
-                <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
-                  {opt.sub}
-                </p>
-              </div>
-            </button>
-          );
-        })}
-      </SettingsCard>
+      <Link
+        href="/bcp/daily-office/settings"
+        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-[14px] font-semibold transition-opacity hover:opacity-90"
+        style={{
+          background: "rgba(46,107,64,0.22)",
+          color: "#C8D4C0",
+          border: "1px solid rgba(46,107,64,0.4)",
+          fontFamily: "'Space Grotesk', sans-serif",
+        }}
+      >
+        <span aria-hidden>⚙️</span>
+        Customize your daily prayer habit
+        <span aria-hidden>→</span>
+      </Link>
     </>
   );
 }
@@ -644,8 +582,6 @@ function OfficeReminderSettings() {
   const DEFAULT_EVENING = "18:00";
   const morningTime = data?.morningTime ?? DEFAULT_MORNING;
   const eveningTime = data?.eveningTime ?? DEFAULT_EVENING;
-  const goalMin = data?.contemplationGoalMinutes ?? 0;
-  const reminderOn = data?.contemplationReminderEnabled ?? true;
 
   // On/off only — the reminder opens whatever the user set as their default
   // prayer (begin-prayer routes by level + time of day), so we don't pick an
@@ -763,131 +699,10 @@ function OfficeReminderSettings() {
         )}
       </SettingsCard>
 
-      {/* Daily contemplation goal — minutes/day of silent prayer. When set,
-          a gentle ~7pm nudge fires on days it isn't met. Shares the same
-          office-prefs query/mutation as the reminders above. */}
-      <SectionHeader label={t("settings.contemplation_goal", { defaultValue: "Daily contemplation goal" })} />
-      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-        {t("settings.contemplation_goal_blurb", { defaultValue: "Aim for a few quiet minutes of silent prayer each day." })}
-      </p>
-      <SettingsCard>
-        <div className="flex flex-wrap gap-2 py-1">
-          {[0, 5, 10, 15, 20, 30].map((m) => {
-            const on = goalMin === m;
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => save.mutate({ contemplationGoalMinutes: m })}
-                className="rounded-full px-3.5 py-1.5 text-[13px] font-semibold"
-                style={{
-                  background: on ? "rgba(46,107,64,0.5)" : "transparent",
-                  border: `1px solid ${on ? "rgba(46,107,64,0.8)" : "rgba(46,107,64,0.35)"}`,
-                  color: on ? "#F0EDE6" : "#8FAF96",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  cursor: "pointer",
-                }}
-              >
-                {m === 0 ? t("settings.goal_off", { defaultValue: "Off" }) : `${m} min`}
-              </button>
-            );
-          })}
-        </div>
-        {goalMin > 0 && (
-          <button
-            type="button"
-            onClick={() => save.mutate({ contemplationReminderEnabled: !reminderOn })}
-            className="w-full flex items-center justify-between gap-3 py-2.5 text-left mt-1"
-            style={{ borderTop: "1px solid rgba(200,212,192,0.12)", background: "transparent", cursor: "pointer" }}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-                {t("settings.contemplation_remind", { defaultValue: "Remind me around 7pm if unmet" })}
-              </p>
-            </div>
-            <div
-              aria-hidden
-              style={{
-                width: 42, height: 24, borderRadius: 999, position: "relative", flexShrink: 0, transition: "background 0.15s",
-                background: reminderOn ? "#2D5E3F" : "rgba(143,175,150,0.25)",
-                border: `1px solid ${reminderOn ? "rgba(168,197,160,0.5)" : "rgba(143,175,150,0.3)"}`,
-              }}
-            >
-              <div style={{ width: 18, height: 18, borderRadius: 999, background: "#F0EDE6", position: "absolute", top: 2, left: reminderOn ? 22 : 2, transition: "left 0.15s" }} />
-            </div>
-          </button>
-        )}
-      </SettingsCard>
-
+      {/* The daily contemplation goal lives on the Contemplation page; the
+          Confession of Sin toggle and the weekly review live in the office
+          customizer ("customize slideshow") — not duplicated here. */}
       <AppleHealthSettings />
-
-      {/* Weekly Way of Love review — the Sunday-evening examen reminder
-          (opt-out). Shares the same office-prefs query/mutation. */}
-      <SectionHeader label={t("settings.weekly_review", { defaultValue: "Weekly review" })} />
-      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-        {t("settings.weekly_review_blurb", { defaultValue: "A gentle Sunday-evening prompt to look back on your week and set the one ahead." })}
-      </p>
-      <SettingsCard>
-        <button
-          type="button"
-          onClick={() => save.mutate({ weeklyReviewReminder: !(data?.weeklyReviewReminder ?? true) })}
-          className="w-full flex items-center justify-between gap-3 py-2.5 text-left"
-          style={{ background: "transparent", cursor: "pointer" }}
-        >
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-              {t("settings.weekly_review_toggle", { defaultValue: "Remind me Sunday evening" })}
-            </p>
-          </div>
-          <div
-            aria-hidden
-            style={{
-              width: 42, height: 24, borderRadius: 999, position: "relative", flexShrink: 0, transition: "background 0.15s",
-              background: (data?.weeklyReviewReminder ?? true) ? "#2D5E3F" : "rgba(143,175,150,0.25)",
-              border: `1px solid ${(data?.weeklyReviewReminder ?? true) ? "rgba(168,197,160,0.5)" : "rgba(143,175,150,0.3)"}`,
-            }}
-          >
-            <div style={{ width: 18, height: 18, borderRadius: 999, background: "#F0EDE6", position: "absolute", top: 2, left: (data?.weeklyReviewReminder ?? true) ? 22 : 2, transition: "left 0.15s" }} />
-          </div>
-        </button>
-      </SettingsCard>
-
-
-      {/* Confession of Sin — opt-out. On by default so the office opens
-          with the BCP confession + absolution (p. 79–80 / p. 116–117,
-          "may be said"), the way most parishes pray it; turn it off to
-          begin Morning and Evening Prayer at the Opening Sentence
-          instead. Renders below the daily-reminder cards because it
-          shares the same office-prefs query/mutation. */}
-      <SectionHeader label={t("settings.confession_of_sin")} />
-      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-        {t("settings.confession_blurb")}
-      </p>
-      <SettingsCard>
-        <button
-          type="button"
-          onClick={() => save.mutate({ showConfession: !data?.showConfession })}
-          className="w-full flex items-center gap-3 py-2.5 text-left"
-          style={{ background: "transparent", cursor: "pointer" }}
-        >
-          <div
-            style={{
-              width: 18, height: 18, borderRadius: "50%",
-              border: `2px solid ${data?.showConfession ? "#A8C5A0" : "rgba(143,175,150,0.4)"}`,
-              background: data?.showConfession ? "#A8C5A0" : "transparent",
-              flexShrink: 0,
-            }}
-          />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p className="text-[14px]" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
-              Include Confession of Sin
-            </p>
-            <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
-              {data?.showConfession ? "Shown before the Opening Sentence." : "The office begins with the Opening Sentence."}
-            </p>
-          </div>
-        </button>
-      </SettingsCard>
     </>
   );
 }
@@ -1840,23 +1655,12 @@ export default function SettingsPage() {
         {/* ── Office reminders ── */}
         <OfficeReminderSettings />
 
-        {/* ── Office close-up extras ──
-            Three localStorage-backed toggles that shape how Morning
-            and Evening Prayer end. See OfficeCloseExtrasSettings
-            above for the rationale on each. Right after the office
-            reminders because they're conceptually office settings. */}
-        <OfficeCloseExtrasSettings />
+        {/* The office close-up extras (after-the-office reflection,
+            gratitude slide), the audio tradition, and News & Actions now
+            live in the office customizer ("customize slideshow") reached
+            from the pill above — not duplicated here. */}
 
-        {/* ── Audio office tradition ──
-            Default voice for the read-aloud office (Forward Movement /
-            Church of England). Sits with the other office-shape settings;
-            the audio player can also switch it live. */}
-        <OfficeAudioSourceSettings />
-
-        {/* ── News & Actions (beta) ── */}
-        <NewsActionsSettings />
-
-        {/* ── Language (beta) ── */}
+        {/* ── Language ── */}
         <LanguageSettings />
 
         {/* ── Offices-only extras ──
@@ -1870,9 +1674,6 @@ export default function SettingsPage() {
                 office. Both preferences are read by the offices-
                 only home (parish-dashboard) on next paint. */}
         {user.accessTier === "offices-only" && <OfficesOnlyExtras />}
-
-        {/* ── Weekly prayer-feed digest ── (beta-only for now) */}
-        <WeeklyDigestSettings />
 
         {/* ── Phone number — used for contact discovery so people who
               already have you in their address book can find you on

@@ -3179,8 +3179,8 @@ function PhysicalBookGuide(props: {
 // and the office customizer stay in sync). Mirrors the office chrome's
 // green palette so it reads as part of the same picker.
 const OFFICE_METHOD_META: Record<DefaultOfficeEntry, { emoji: string; label: string; sub: (side: OfficeSide) => string }> = {
-  read: { emoji: "📖", label: "Read along", sub: () => "The full text, at your own pace" },
-  book: { emoji: "📕", label: "In your book", sub: () => "Today's page numbers for your physical BCP" },
+  read: { emoji: "📖", label: "Digital Slideshow", sub: () => "The full text, at your own pace" },
+  book: { emoji: "📕", label: "Physical BCP", sub: () => "Today's page numbers for your physical Prayer Book" },
   listen: { emoji: "🎧", label: "Listen", sub: (s) => `${s === "morning" ? "Morning" : "Evening"} Prayer read aloud · Forward Movement` },
   watch: { emoji: "📺", label: "Watch", sub: () => "National Cathedral · live 7 AM ET weekdays" },
 };

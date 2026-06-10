@@ -1792,14 +1792,16 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   { name: "renewal-nudge",         run: runPrayerRenewalNudgeSender },
   { name: "parish-office",         run: runParishOfficeReminderSender },
   { name: "contemplation-goal",    run: runContemplationGoalSender },
-  { name: "weekly-review",         run: runWeeklyReviewSender },
+  // Weekly review + weekly digest are turned OFF for now (the settings
+  // UI for both was removed). Re-add these lines to bring them back.
+  // { name: "weekly-review",         run: runWeeklyReviewSender },
   { name: "parish-evening",        run: runParishEveningRecapSender },
   { name: "gathering-reminder",    run: runGatheringReminderSender },
   { name: "feed-event-reminder",   run: runFeedEventReminderSender },
   { name: "sunday-reflection",     run: runSundayReflectionPushSender },
   { name: "feed-intercession-push", run: runFeedIntercessionPushSender },
   { name: "action-reminder",       run: runActionReminderSender },
-  { name: "digest",                run: runWeeklyDigestSender },
+  // { name: "digest",                run: runWeeklyDigestSender },
   { name: "parish-weekly",         run: runParishWeeklyRecapSender },
 ];
 

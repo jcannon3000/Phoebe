@@ -2432,6 +2432,7 @@ export function ContemplationHomeCard() {
         className="relative flex rounded-xl overflow-hidden cursor-pointer"
         style={{ background: "rgba(62,124,122,0.12)", border: "1px solid rgba(62,124,122,0.35)" }}
       >
+        <div className="w-1 flex-shrink-0" style={{ background: "rgba(62,124,122,0.85)" }} />
         <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p
@@ -2474,10 +2475,12 @@ export function ContemplationHomeCard() {
 // Same one-line tap-through shape as ContemplationHomeCard. Both default
 // to hidden on the home; surfaced + reorderable from the Customize page.
 function PracticeHomeCard({
-  href, label, cta, tintBg, tintBorder, pillBg, pillBorder,
+  href, label, cta, tintBg, tintBorder, pillBg, pillBorder, accentBar,
 }: {
   href: string; label: string; cta: string;
   tintBg: string; tintBorder: string; pillBg: string; pillBorder: string;
+  /** Solid color for the thick left accent bar, matching the event cards. */
+  accentBar: string;
 }) {
   return (
     <Link href={href} className="block">
@@ -2487,6 +2490,7 @@ function PracticeHomeCard({
         className="relative flex rounded-xl overflow-hidden cursor-pointer"
         style={{ background: tintBg, border: `1px solid ${tintBorder}` }}
       >
+        <div className="w-1 flex-shrink-0" style={{ background: accentBar }} />
         <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
           <p
             className="font-semibold min-w-0 truncate"
@@ -2521,10 +2525,11 @@ function GratitudeHomeCard() {
       href="/gratitude"
       label="Gratitude 🌾"
       cta="Give thanks"
-      tintBg="rgba(142,158,66,0.12)"
-      tintBorder="rgba(142,158,66,0.35)"
-      pillBg="rgba(142,158,66,0.28)"
-      pillBorder="rgba(142,158,66,0.45)"
+      tintBg="rgba(110,152,84,0.12)"
+      tintBorder="rgba(110,152,84,0.35)"
+      pillBg="rgba(110,152,84,0.28)"
+      pillBorder="rgba(110,152,84,0.45)"
+      accentBar="rgba(110,152,84,0.85)"
     />
   );
 }
@@ -2539,6 +2544,7 @@ function ExamenHomeCard() {
       tintBorder="rgba(90,140,114,0.35)"
       pillBg="rgba(90,140,114,0.28)"
       pillBorder="rgba(90,140,114,0.45)"
+      accentBar="rgba(90,140,114,0.85)"
     />
   );
 }
@@ -2599,6 +2605,7 @@ export function CacHomeCard() {
       // still reads as distinct when stacked next to them.
       style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.40)" }}
     >
+      <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
         {/* flex-1 + min-w-0 (not just min-w-0): the headline is now a long
             nowrap line ("CAC Daily Reflection 🌵"); on iOS Safari a min-w-0-only
@@ -2806,6 +2813,7 @@ function FddHomeCard() {
       className="relative flex rounded-xl overflow-hidden cursor-pointer"
       style={{ background: "rgba(96,141,209,0.13)", border: "1px solid rgba(96,141,209,0.40)" }}
     >
+      <div className="w-1 flex-shrink-0" style={{ background: "rgba(96,141,209,0.85)" }} />
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
         <p
           className="font-semibold min-w-0 truncate"
@@ -2871,6 +2879,7 @@ function SsjeHomeCard() {
       className="relative flex rounded-xl overflow-hidden cursor-pointer"
       style={{ background: "rgba(193,127,36,0.13)", border: "1px solid rgba(193,127,36,0.42)" }}
     >
+      <div className="w-1 flex-shrink-0" style={{ background: "rgba(193,127,36,0.85)" }} />
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
         <p
           className="font-semibold min-w-0 truncate"
@@ -3290,6 +3299,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
         border: "1px solid rgba(46,107,64,0.4)",
       }}
       >
+        <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
         <div className="flex-1 px-4 pt-[20px] pb-[20px]">
           <div className="flex items-start justify-between gap-2">
             <p
