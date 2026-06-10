@@ -428,6 +428,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
               {rawIsBeta && (
                 <MenuRow emoji="✉️" label={t("menu.messages", { defaultValue: "Messages" })} badge={t("menu.beta")} onClick={() => navigate("/messages")} />
               )}
+              {rawIsBeta && (
+                <MenuRow emoji="🌿" label="El Jardín" badge={t("menu.beta")} onClick={() => navigate("/menu/jardin")} />
+              )}
             </div>
 
             {/* ── Account + info footer ── */}
