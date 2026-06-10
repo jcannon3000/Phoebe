@@ -799,12 +799,11 @@ router.post("/moments", perUserRateLimit("moments_create", {
 
   const { name, intention, loggingType, reflectionPrompt, templateType, intercessionTopic, intercessionSource, intercessionFullText, learnMoreUrl, frequency, scheduledTime, dayOfWeek, goalDays, timezone, timeOfDay, participants, frequencyType, frequencyDaysPerWeek, practiceDays, ritualId: providedRitualId, contemplativeDurationMinutes, fastingType, fastingFrom, fastingIntention, fastingFrequency, fastingDate, fastingDay, fastingDayOfMonth, commitmentDuration, commitmentSessionsGoal, groupId, additionalGroupIds } = parsed.data;
 
-  // An "action" intercession is a prayer + a take-action link — the
-  // link is what makes it an action, so reject one without a URL
-  // rather than shipping an action with no "Take action" pill.
-  if (intercessionSource === "action" && !learnMoreUrl) {
-    res.status(400).json({ error: "An action needs a link." }); return;
-  }
+  // The "action" intercession type was retired (the learn-more link is now
+  // an optional field on a normal custom intercession). For back-compat a
+  // legacy client may still send source "action" — normalize it to "custom"
+  // so it doesn't create ghost "action" rows or get rejected.
+  const normalizedIntercessionSource = intercessionSource === "action" ? "custom" : intercessionSource;
 
   // ── Group practice validation — only admins can create ──
   let groupMembers: Array<{ email: string; name: string }> | null = null;
@@ -961,7 +960,7 @@ router.post("/moments", perUserRateLimit("moments_create", {
       reflectionPrompt: reflectionPrompt ?? null,
       templateType: templateType ?? null,
       intercessionTopic: intercessionTopic ?? null,
-      intercessionSource: intercessionSource ?? null,
+      intercessionSource: normalizedIntercessionSource ?? null,
       intercessionFullText: intercessionFullText ?? null,
       frequency,
       scheduledTime,
@@ -1416,6 +1415,25 @@ router.post("/moments", perUserRateLimit("moments_create", {
         });
       } catch (err) {
         console.warn("[moments] group push dispatch setup failed:", err);
+      }
+    })();
+  }
+
+  // Optional "learn more" article link — scrape its title in the background
+  // (same as feed intercessions) so everyone praying sees what it points to.
+  // Fire-and-forget so the create response isn't blocked on the fetch.
+  if (learnMoreUrl) {
+    void (async () => {
+      try {
+        const { fetchArticleTitle } = await import("../lib/articleTitle");
+        const title = await fetchArticleTitle(learnMoreUrl);
+        if (title) {
+          await db.update(sharedMomentsTable)
+            .set({ learnMoreTitle: title })
+            .where(eq(sharedMomentsTable.id, moment.id));
+        }
+      } catch (err) {
+        console.warn("[moments] learn-more title fetch failed:", err);
       }
     })();
   }
