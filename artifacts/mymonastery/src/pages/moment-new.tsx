@@ -448,7 +448,6 @@ export default function MomentNew() {
   const [templateId, setTemplateId] = useState<string | null>(null);
 
   // Intercession
-  const [intercessionMode, setIntercessionMode] = useState<"choose" | "bcp" | "custom" | null>(null);
   // Outbound URL for the "Action" intercession type. Slideshow
   // renders a "Take action →" pill that opens this in-browser.
   const [actionLearnMoreUrl, setActionLearnMoreUrl] = useState("");
@@ -474,6 +473,9 @@ export default function MomentNew() {
   // BCP-prayer intention step: the prayer is shown by default and the
   // specific-intention field stays hidden behind a pill until asked for.
   const [showSpecificIntention, setShowSpecificIntention] = useState(false);
+  // Write-your-own intention step: the article ("learn more") link field
+  // stays hidden behind an "Add article" button until asked for.
+  const [showArticleLink, setShowArticleLink] = useState(false);
   // Intercession length lives on the schedule step now (under "How often").
   // Seed a sensible default so it shows a value and the submit never sends
   // 0 ("ongoing") by accident; clamp a daily value into the dropdown's 1–14
@@ -691,7 +693,6 @@ export default function MomentNew() {
     setIntention("");
     setLoggingType("reflection");
     setReflectionPrompt("What is on your heart today?");
-    setIntercessionMode(null);
     setStep("intention");
   }
 
@@ -700,7 +701,6 @@ export default function MomentNew() {
     setIntercessionFullText("");
     setLoggingType("reflection");
     setReflectionPrompt("What is on your heart today?");
-    setIntercessionMode(null);
     // Skip the "What is this practice called?" step — custom intercession
     // uses the default name "Intercession 🙏🏽" from the template prefill.
     // Go straight to the combined intention + prayer screen so the flow
@@ -1249,82 +1249,25 @@ export default function MomentNew() {
               {/* ── Intercession sub-flow ───────────────────────── */}
               {step === "intercession" && (
                 <div className="flex-1">
-                  {intercessionMode === null && (
-                    <>
-                      <div className="mb-6">
-                        <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.intercession.title")}</h2>
-                        <p className="text-sm text-muted-foreground italic">{t("moment_new.intercession.subtitle")}</p>
-                      </div>
-                      <div className="grid gap-4">
-                        <button onClick={() => setIntercessionMode("bcp")}
-                          className="w-full text-left p-5 rounded-2xl transition-all"
-                          style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.35)" }}
-                          onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.65)")}
-                          onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.35)")}>
-                          <div className="flex items-start gap-4">
-                            <span className="text-3xl">📖</span>
-                            <div>
-                              <p className="font-semibold text-foreground">{t("moment_new.intercession.from_bcp_title")}</p>
-                              <p className="text-sm text-muted-foreground mt-0.5">{t("moment_new.intercession.from_bcp_desc")}</p>
-                            </div>
-                          </div>
-                        </button>
-                        <button onClick={confirmCustomIntercession}
-                          className="w-full text-left p-5 rounded-2xl transition-all"
-                          style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.35)" }}
-                          onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.65)")}
-                          onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.35)")}>
-                          <div className="flex items-start gap-4">
-                            <span className="text-3xl">✍🏽</span>
-                            <div>
-                              <p className="font-semibold text-foreground">{t("moment_new.intercession.own_title")}</p>
-                              <p className="text-sm text-muted-foreground mt-0.5">{t("moment_new.intercession.own_desc")}</p>
-                            </div>
-                          </div>
-                        </button>
-                      </div>
-                    </>
-                  )}
-
-                  {intercessionMode === "bcp" && (
-                    <>
-                      <div className="mb-4 flex items-center gap-2">
-                        <button onClick={() => setIntercessionMode(null)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">← {t("moment_new.nav_back")}</button>
-                        <h2 className="text-lg font-semibold">{t("moment_new.intercession.bcp_heading")}</h2>
-                      </div>
-                      <BcpPrayerList onSelect={selectBcpPrayer} />
-                    </>
-                  )}
-
-                  {intercessionMode === "custom" && (
-                    <>
-                      <div className="mb-5 flex items-center gap-2">
-                        <button onClick={() => setIntercessionMode(null)} className="text-xs text-muted-foreground hover:text-foreground transition-colors">← {t("moment_new.nav_back")}</button>
-                        <h2 className="text-lg font-semibold">{t("moment_new.intercession.name_heading")}</h2>
-                      </div>
-                      <label className="block text-sm text-muted-foreground mb-2">{t("moment_new.intercession.praying_for_label")}</label>
-                      <textarea
-                        value={intercessionTopic}
-                        onChange={e => setIntercessionTopic(e.target.value.slice(0, 200))}
-                        rows={4}
-                        placeholder={t("moment_new.intercession.topic_ph")}
-                        className="w-full px-4 py-3 rounded-xl border border-border focus:border-[#5C7A5F] focus:ring-1 focus:ring-[#5C7A5F] focus:outline-none resize-none"
-                      />
-                      <p className="text-xs text-muted-foreground/60 text-right mt-1">{intercessionTopic.length}/200</p>
-                      <div className="text-xs text-muted-foreground/60 italic mt-2 space-y-0.5">
-                        <p>{t("moment_new.intercession.example_1")} 🌿</p>
-                        <p>{t("moment_new.intercession.example_2")} 🌱</p>
-                        <p>{t("moment_new.intercession.example_3")}</p>
-                      </div>
-                      <button
-                        onClick={confirmCustomIntercession}
-                        disabled={!intercessionTopic.trim()}
-                        className="mt-4 w-full py-3 bg-[#5C7A5F] text-white rounded-xl font-medium hover:bg-[#5a7a60] transition-colors disabled:opacity-40"
-                      >
-                        {t("moment_new.intercession.set_intention_cta")} →
-                      </button>
-                    </>
-                  )}
+                  <div className="mb-5">
+                    <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.intercession.title")}</h2>
+                    <p className="text-sm text-muted-foreground italic">{t("moment_new.intercession.subtitle")}</p>
+                  </div>
+                  {/* Land straight on the BCP picker; "Write your own" sits
+                      at the bottom as a card. */}
+                  <BcpPrayerList onSelect={selectBcpPrayer} />
+                  <button
+                    onClick={confirmCustomIntercession}
+                    className="w-full text-left p-4 rounded-2xl transition-all mt-3 flex items-start gap-3"
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.45)" }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.7)")}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.45)")}>
+                    <span className="text-2xl">✍🏽</span>
+                    <div>
+                      <p className="font-semibold text-foreground">{t("moment_new.intercession.own_title")}</p>
+                      <p className="text-sm text-muted-foreground mt-0.5">{t("moment_new.intercession.own_desc")}</p>
+                    </div>
+                  </button>
                 </div>
               )}
 
@@ -1713,23 +1656,35 @@ export default function MomentNew() {
                     />
                   </div>
 
-                  {/* Optional article / "learn more" link — the same feature
-                      as prayer feeds: paste a link and the server scrapes the
-                      article's title to show alongside the intention. */}
-                  <div className="space-y-2">
-                    <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>
-                      {t("moment_new.intention_custom.learn_more_label", { defaultValue: "Add an article (optional)" })}
-                    </label>
-                    <input type="url" value={actionLearnMoreUrl}
-                      onChange={e => setActionLearnMoreUrl(e.target.value.slice(0, 500))}
-                      placeholder="https://…"
-                      className="w-full px-4 py-3 rounded-2xl text-base focus:outline-none transition-colors"
-                      style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
-                    />
-                    <p className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>
-                      {t("moment_new.intention_custom.learn_more_hint", { defaultValue: "Paste a link — we'll pull in the article's title for everyone praying." })}
-                    </p>
-                  </div>
+                  {/* Optional article / "learn more" link — hidden behind an
+                      "Add article" button. Same feature as prayer feeds: the
+                      server scrapes the article's title to show with it. */}
+                  {showArticleLink ? (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold uppercase tracking-widest" style={{ color: "#8FAF96" }}>
+                        {t("moment_new.intention_custom.learn_more_label", { defaultValue: "Article link" })}
+                      </label>
+                      <input autoFocus type="url" value={actionLearnMoreUrl}
+                        onChange={e => setActionLearnMoreUrl(e.target.value.slice(0, 500))}
+                        placeholder="https://…"
+                        className="w-full px-4 py-3 rounded-2xl text-base focus:outline-none transition-colors"
+                        style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6" }}
+                      />
+                      <p className="text-xs" style={{ color: "rgba(143,175,150,0.55)" }}>
+                        {t("moment_new.intention_custom.learn_more_hint", { defaultValue: "Paste a link — we'll pull in the article's title for everyone praying." })}
+                      </p>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowArticleLink(true)}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-semibold transition-colors"
+                      style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "#C8D4C0" }}
+                    >
+                      <span aria-hidden>🔗</span>
+                      {t("moment_new.intention_custom.add_article", { defaultValue: "Add article" })}
+                    </button>
+                  )}
                 </div>
               ) : step === "intention" && (
                 <div className="space-y-6 flex-1">

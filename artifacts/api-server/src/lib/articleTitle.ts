@@ -85,15 +85,33 @@ export async function fetchArticleTitle(rawUrl: string): Promise<string | null> 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(url.toString(), {
-      signal: controller.signal,
-      redirect: "follow",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-        Accept: "text/html,application/xhtml+xml",
-      },
-    });
+    // Follow redirects MANUALLY so the SSRF guard runs on every hop — a
+    // public URL that 30x-redirects to a private/metadata host would
+    // otherwise bypass the initial check (Node fetch follows redirects
+    // internally without re-validating). Bounded hop count.
+    const MAX_REDIRECTS = 5;
+    let currentUrl = url.toString();
+    let res: Response;
+    for (let hop = 0; ; hop++) {
+      res = await fetch(currentUrl, {
+        signal: controller.signal,
+        redirect: "manual",
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+          Accept: "text/html,application/xhtml+xml",
+        },
+      });
+      if (res.status < 300 || res.status >= 400) break;
+      // Redirect — re-validate the Location target before following it.
+      const loc = res.headers.get("location");
+      if (!loc || hop >= MAX_REDIRECTS) return null;
+      let next: URL;
+      try { next = new URL(loc, currentUrl); } catch { return null; }
+      if (next.protocol !== "https:" && next.protocol !== "http:") return null;
+      try { await assertPublicHttpUrl(next.toString()); } catch { return null; }
+      currentUrl = next.toString();
+    }
     if (!res.ok) return null;
     const ctype = res.headers.get("content-type") ?? "";
     if (!ctype.includes("text/html") && !ctype.includes("application/xhtml")) return null;
