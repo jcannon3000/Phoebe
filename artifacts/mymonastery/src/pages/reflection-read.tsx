@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
+import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { openExternal } from "@/lib/openExternal";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
@@ -39,6 +40,7 @@ const TABS: Array<{ key: Source; emoji: string; short: string; full: string; ext
 
 export default function ReflectionReadPage() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const { source: rawSource } = useParams<{ source: string }>();
   const initial: Embeddable = rawSource === "ssje" ? "ssje" : "fdd";
 
@@ -62,7 +64,7 @@ export default function ReflectionReadPage() {
     if (active === "fdd") setActive("ssje");
     else openCac();
   };
-  const nextLabel = active === "fdd" ? "Next →" : "CAC ↗";
+  const nextLabel = active === "fdd" ? `${t("reflection_read.next")} →` : "CAC ↗";
 
   // Edge-to-edge in the native app; a padded, rounded card on web.
   const fullBleed = isNativeShell();
@@ -93,7 +95,7 @@ export default function ReflectionReadPage() {
           onClick={() => openExternal(url)}
           style={{ background: "none", border: "none", color: SAGE, fontSize: 12, fontFamily: FONT, cursor: "pointer", padding: 0, whiteSpace: "nowrap" }}
         >
-          Open ↗
+          {t("reflection_read.open")} ↗
         </button>
       </div>
 
@@ -173,7 +175,7 @@ export default function ReflectionReadPage() {
           className="transition-opacity hover:opacity-90 active:scale-[0.98]"
           style={{ background: "none", border: "none", color: "#A8C5A0", fontFamily: FONT, fontSize: 14, fontWeight: 600, cursor: "pointer", padding: "12px 8px", whiteSpace: "nowrap" }}
         >
-          ← Back
+          ← {t("common.back")}
         </button>
         <button
           type="button"
@@ -181,7 +183,7 @@ export default function ReflectionReadPage() {
           className="px-6 py-3.5 rounded-full text-sm font-semibold tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
           style={{ background: "rgba(46,107,64,0.25)", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.5)", fontFamily: FONT }}
         >
-          ✎ Journal
+          ✎ {t("reflection_read.journal")}
         </button>
         <button
           type="button"

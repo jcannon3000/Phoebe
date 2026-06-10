@@ -50,6 +50,12 @@ export const en = {
     skip_feed: "Skip to prayer feed →",
     skip_community: "Skip to community prayer list →",
   },
+  // Reflections reader — today's FDD / SSJE / CAC (pages/reflection-read.tsx).
+  reflection_read: {
+    open: "Open",
+    journal: "Journal",
+    next: "Next",
+  },
   // 404 page (pages/not-found.tsx).
   not_found: {
     title: "Lost in the post",

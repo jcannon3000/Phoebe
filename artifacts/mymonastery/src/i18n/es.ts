@@ -56,6 +56,12 @@ export const es: Translations = {
     skip_feed: "Ir al feed de oración →",
     skip_community: "Ir a la lista de oración de la comunidad →",
   },
+  // Reflections reader — today's FDD / SSJE / CAC (pages/reflection-read.tsx).
+  reflection_read: {
+    open: "Abrir",
+    journal: "Diario",
+    next: "Siguiente",
+  },
   // 404 page (pages/not-found.tsx).
   not_found: {
     title: "Perdido en el correo",
