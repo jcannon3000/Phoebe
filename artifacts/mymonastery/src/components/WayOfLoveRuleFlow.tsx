@@ -13,9 +13,9 @@
  * seven-practice WayOfLoveStep as the rule-of-life experience.
  */
 
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Check } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
@@ -24,6 +24,9 @@ import {
   setSideReflection,
   setSideMinutes,
   setReflectionSource,
+  getSideLevel,
+  getSideMinutes,
+  getReflectionSource,
   type ReflectionSource,
 } from "@/lib/officePrefs";
 
@@ -53,6 +56,14 @@ const PRAY_LEVEL: Record<PrayChoice, "intercessions" | "devotion" | "office"> = 
   devotion: "devotion",
   offices: "office",
 };
+// Inverse of PRAY_LEVEL — read an existing office level back into a Pray
+// choice so Customize opens with the user's current pick selected.
+function prayFromLevel(level: string | null | undefined): PrayChoice | null {
+  if (level === "office") return "offices";
+  if (level === "devotion") return "devotion";
+  if (level === "intercessions") return "community";
+  return null;
+}
 // …and the existing PRACTICES option id, so the saved selections stay readable
 // by the Way of Love drawer / weekly review (commitmentLines).
 const PRAY_OPTION_ID: Record<PrayChoice, string> = {
@@ -77,9 +88,41 @@ export default function WayOfLoveRuleFlow({
   const { t } = useTranslation();
   const qc = useQueryClient();
   const [step, setStep] = useState<Step>("listen");
-  const [goal, setGoal] = useState("5");
-  const [pray, setPray] = useState<PrayChoice>("community");
-  const [newsletter, setNewsletter] = useState<ReflectionSource>("fdd");
+  // Preload from the user's current settings so Customize reflects what they
+  // already chose, not the first-run defaults. localStorage per-side levels +
+  // reflection + minutes are instant; the server office-prefs (the global
+  // default + goal) hydrate a moment later for users whose pref was set
+  // globally without a per-side override.
+  const [goal, setGoal] = useState(() => {
+    const m = getSideMinutes("morning");
+    return m > 0 ? String(m) : "5";
+  });
+  const [pray, setPray] = useState<PrayChoice>(
+    () => prayFromLevel(getSideLevel("morning")) ?? prayFromLevel(getSideLevel("evening")) ?? "community",
+  );
+  const [newsletter, setNewsletter] = useState<ReflectionSource>(() => {
+    const r = getReflectionSource();
+    return r && r !== "none" ? r : "fdd";
+  });
+
+  const { data: prefs } = useQuery<{ defaultPrayerLevel?: string; contemplationGoalMinutes?: number }>({
+    queryKey: ["/api/me/office-prefs"],
+    queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
+    staleTime: 60_000,
+  });
+  const hydrated = useRef(false);
+  useEffect(() => {
+    if (hydrated.current || !prefs) return;
+    hydrated.current = true;
+    // Only fall back to the server's global default when there's no explicit
+    // per-side choice in localStorage (which the user set here before).
+    const local = prayFromLevel(getSideLevel("morning")) ?? prayFromLevel(getSideLevel("evening"));
+    const fromServer = prayFromLevel(prefs.defaultPrayerLevel);
+    if (!local && fromServer) setPray(fromServer);
+    if (getSideMinutes("morning") <= 0 && typeof prefs.contemplationGoalMinutes === "number" && prefs.contemplationGoalMinutes > 0) {
+      setGoal(String(prefs.contemplationGoalMinutes));
+    }
+  }, [prefs]);
 
   const goalMin = Math.max(0, Math.min(180, parseInt(goal, 10) || 0));
   // Picking a devotion / the offices already includes the day's Scripture, so
