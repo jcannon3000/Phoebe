@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { openExternal } from "@/lib/openExternal";
 
@@ -112,13 +113,14 @@ const QUICK_REFS = [
 
 export default function JardinBiblePage() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const [ref, setRef] = useState("");
   const [version, setVersion] = useState(128);
   const [error, setError] = useState("");
 
   const open = (refStr: string) => {
     const parsed = parseRef(refStr);
-    if (!parsed) { setError(`Couldn't parse "${refStr}" — try "John 3:16" or "Salmos 23"`); return; }
+    if (!parsed) { setError(t("jardin.bl_parse_error", { ref: refStr })); return; }
     setError("");
     openExternal(`https://www.bible.com/bible/${version}/${parsed}`);
   };
@@ -133,12 +135,12 @@ export default function JardinBiblePage() {
           ← El Jardín
         </button>
 
-        <p style={{ ...eyebrow, margin: "4px 0 2px" }}>Bible Lookup</p>
-        <h1 style={{ color: WARM, fontSize: 22, fontWeight: 700, margin: "0 0 18px", lineHeight: 1.25 }}>Open any passage</h1>
+        <p style={{ ...eyebrow, margin: "4px 0 2px" }}>{t("jardin.bible_lookup")}</p>
+        <h1 style={{ color: WARM, fontSize: 22, fontWeight: 700, margin: "0 0 18px", lineHeight: 1.25 }}>{t("jardin.bl_open_any")}</h1>
 
         {/* Version picker */}
         <div style={{ marginBottom: 14 }}>
-          <p style={{ ...eyebrow, margin: "0 0 8px" }}>Translation</p>
+          <p style={{ ...eyebrow, margin: "0 0 8px" }}>{t("jardin.bl_translation")}</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {VERSIONS.map((v) => (
               <button key={v.id} type="button" onClick={() => setVersion(v.id)}
@@ -158,7 +160,7 @@ export default function JardinBiblePage() {
             value={ref}
             onChange={(e) => { setRef(e.target.value); setError(""); }}
             onKeyDown={(e) => e.key === "Enter" && open(ref)}
-            placeholder="e.g. John 3:16 or Salmos 23"
+            placeholder={t("jardin.bl_ph_ref")}
             style={{ flex: 1, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "11px 14px",
               color: WARM, fontFamily: FONT, fontSize: 15, outline: "none" }}
           />
@@ -166,13 +168,13 @@ export default function JardinBiblePage() {
             style={{ padding: "11px 20px", borderRadius: 12, background: ref.trim() ? CTA : CARD,
               border: `1px solid rgba(168,197,160,0.35)`, color: WARM, fontFamily: FONT, fontSize: 15, fontWeight: 700,
               cursor: ref.trim() ? "pointer" : "default" }}>
-            Open ↗
+            {t("jardin.open_ext")}
           </button>
         </div>
         {error && <p style={{ color: "#E07070", fontSize: 13, margin: "8px 0 0", fontFamily: FONT }}>{error}</p>}
 
         {/* Quick references */}
-        <p style={{ ...eyebrow, margin: "22px 0 10px" }}>Quick references</p>
+        <p style={{ ...eyebrow, margin: "22px 0 10px" }}>{t("jardin.bl_quick_refs")}</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {QUICK_REFS.map((q) => (
             <button key={q} type="button" onClick={() => open(q)}
@@ -184,7 +186,7 @@ export default function JardinBiblePage() {
         </div>
 
         <p style={{ color: SAGE_DIM, fontSize: 12, marginTop: 24, lineHeight: 1.5 }}>
-          Opens in Bible.com — tap Back to return here.
+          {t("jardin.bl_footnote")}
         </p>
       </div>
     </Layout>

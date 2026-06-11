@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -23,6 +24,7 @@ const empty = (): Omit<Study, "id" | "updated_at"> => ({
 
 export default function JardinBibleStudyPage() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [open, setOpen] = useState<Study | "new" | null>(null);
   const [form, setForm] = useState(empty());
@@ -83,22 +85,22 @@ export default function JardinBibleStudyPage() {
         <div style={{ width: "100%", maxWidth: 600, margin: "0 auto", padding: "4px 2px 28px", fontFamily: FONT }}>
           <button type="button" onClick={() => setOpen(null)}
             style={{ background: "none", border: "none", color: SAGE_DIM, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: "0 0 12px" }}>
-            ← Studies
+            ← {t("jardin.back_studies")}
           </button>
           <h1 style={{ color: WARM, fontSize: 21, fontWeight: 700, margin: "0 0 18px" }}>
-            {open === "new" ? "New Bible study" : "Edit study"}
+            {open === "new" ? t("jardin.bs_new") : t("jardin.bs_edit")}
           </h1>
-          {fieldRow("Book & chapter", "e.g. John 6 or Romans 8", "book_chapter")}
-          {fieldRow("Main theme", "What is the central message?", "main_theme")}
-          {fieldRow("Key verses", "Which verses stand out? Why?", "key_verses", true)}
-          {fieldRow("Symbols & keywords", "Words or images worth digging into", "symbols_keywords", true)}
-          {fieldRow("Application", "How does this apply to your life now?", "application", true)}
-          {fieldRow("Takeaways", "What are you walking away with?", "takeaways", true)}
+          {fieldRow(t("jardin.bs_f_book"), t("jardin.bs_ph_book"), "book_chapter")}
+          {fieldRow(t("jardin.bs_f_theme"), t("jardin.bs_ph_theme"), "main_theme")}
+          {fieldRow(t("jardin.bs_f_verses"), t("jardin.bs_ph_verses"), "key_verses", true)}
+          {fieldRow(t("jardin.bs_f_symbols"), t("jardin.bs_ph_symbols"), "symbols_keywords", true)}
+          {fieldRow(t("jardin.bs_f_app"), t("jardin.bs_ph_app"), "application", true)}
+          {fieldRow(t("jardin.bs_f_takeaways"), t("jardin.bs_ph_takeaways"), "takeaways", true)}
           <button type="button" onClick={save} disabled={create.isPending || update.isPending}
             style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: CTA, color: WARM,
               border: "1px solid rgba(168,197,160,0.4)", fontFamily: FONT, fontSize: 15, fontWeight: 700, cursor: "pointer",
               opacity: (create.isPending || update.isPending) ? 0.6 : 1 }}>
-            Save
+            {t("common.save")}
           </button>
         </div>
       </Layout>
@@ -115,17 +117,17 @@ export default function JardinBibleStudyPage() {
           ← El Jardín
         </button>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-          <h1 style={{ color: WARM, fontSize: 22, fontWeight: 700, margin: 0 }}>Bible Studies</h1>
+          <h1 style={{ color: WARM, fontSize: 22, fontWeight: 700, margin: 0 }}>{t("jardin.bible_studies")}</h1>
           <button type="button" onClick={openNew}
             style={{ padding: "8px 18px", borderRadius: 12, background: CTA, color: WARM,
               border: "1px solid rgba(168,197,160,0.4)", fontFamily: FONT, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            + New
+            {t("jardin.new_btn")}
           </button>
         </div>
 
-        {isLoading && <p style={{ color: SAGE_DIM, fontFamily: FONT }}>Loading…</p>}
+        {isLoading && <p style={{ color: SAGE_DIM, fontFamily: FONT }}>{t("common.loading")}</p>}
         {!isLoading && studies.length === 0 && (
-          <p style={{ color: SAGE_DIM, fontFamily: FONT, fontSize: 14 }}>No studies yet — tap + New to begin your first passage study.</p>
+          <p style={{ color: SAGE_DIM, fontFamily: FONT, fontSize: 14 }}>{t("jardin.bs_empty")}</p>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {studies.map((s) => (
@@ -133,7 +135,7 @@ export default function JardinBibleStudyPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <p style={{ color: WARM, fontSize: 15, fontWeight: 700, margin: "0 0 2px", fontFamily: FONT }}>
-                    {s.book_chapter || "(no passage)"}
+                    {s.book_chapter || t("jardin.bs_no_passage")}
                   </p>
                   {s.main_theme && (
                     <p style={{ color: SAGE, fontSize: 13, margin: 0, fontFamily: FONT }}>{s.main_theme}</p>
@@ -148,12 +150,12 @@ export default function JardinBibleStudyPage() {
                 </div>
                 <div style={{ display: "flex", gap: 8, marginLeft: 10, flexShrink: 0 }}>
                   <button type="button" onClick={() => openEdit(s)}
-                    style={{ background: "none", border: "none", color: SAGE, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>Edit</button>
+                    style={{ background: "none", border: "none", color: SAGE, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>{t("jardin.edit")}</button>
                   {confirm === s.id
                     ? <><button type="button" onClick={() => del.mutate(s.id)}
-                          style={{ background: "none", border: "none", color: "#E07070", fontSize: 13, cursor: "pointer", fontFamily: FONT }}>Delete?</button>
+                          style={{ background: "none", border: "none", color: "#E07070", fontSize: 13, cursor: "pointer", fontFamily: FONT }}>{t("jardin.delete_q")}</button>
                         <button type="button" onClick={() => setConfirm(null)}
-                          style={{ background: "none", border: "none", color: SAGE_DIM, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>Cancel</button></>
+                          style={{ background: "none", border: "none", color: SAGE_DIM, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>{t("common.cancel")}</button></>
                     : <button type="button" onClick={() => setConfirm(s.id)}
                         style={{ background: "none", border: "none", color: SAGE_DIM, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>×</button>}
                 </div>

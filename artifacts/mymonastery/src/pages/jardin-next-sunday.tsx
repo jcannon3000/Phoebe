@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
@@ -17,6 +18,7 @@ type NextSunday = { title: string; scripture: string; web_link: string; notes: s
 
 export default function JardinNextSundayPage() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [form, setForm] = useState<NextSunday>({ title: "", scripture: "", web_link: "", notes: "" });
   const [saved, setSaved] = useState(false);
@@ -48,24 +50,24 @@ export default function JardinNextSundayPage() {
         </button>
 
         <p style={{ ...eyebrow, margin: "4px 0 2px" }}>El Jardín</p>
-        <h1 style={{ color: WARM, fontSize: 22, fontWeight: 700, margin: "0 0 20px", lineHeight: 1.25 }}>Next Sunday</h1>
+        <h1 style={{ color: WARM, fontSize: 22, fontWeight: 700, margin: "0 0 20px", lineHeight: 1.25 }}>{t("jardin.next_sunday")}</h1>
 
         <div style={{ marginBottom: 14 }}>
-          <p style={{ ...eyebrow, margin: "0 0 5px" }}>Sermon title</p>
-          <input value={form.title} onChange={set("title")} placeholder="e.g. The Feeding of the Five Thousand"
+          <p style={{ ...eyebrow, margin: "0 0 5px" }}>{t("jardin.sn_title")}</p>
+          <input value={form.title} onChange={set("title")} placeholder={t("jardin.ns_ph_title")}
             style={{ width: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12,
               padding: "10px 13px", color: WARM, fontFamily: FONT, fontSize: 14, outline: "none" }} />
         </div>
 
         <div style={{ marginBottom: 14 }}>
-          <p style={{ ...eyebrow, margin: "0 0 5px" }}>Scripture</p>
-          <input value={form.scripture} onChange={set("scripture")} placeholder="e.g. John 6:1-21"
+          <p style={{ ...eyebrow, margin: "0 0 5px" }}>{t("jardin.scripture")}</p>
+          <input value={form.scripture} onChange={set("scripture")} placeholder={t("jardin.ns_ph_scripture")}
             style={{ width: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12,
               padding: "10px 13px", color: WARM, fontFamily: FONT, fontSize: 14, outline: "none" }} />
         </div>
 
         <div style={{ marginBottom: 14 }}>
-          <p style={{ ...eyebrow, margin: "0 0 5px" }}>Link (bulletin, livestream, etc.)</p>
+          <p style={{ ...eyebrow, margin: "0 0 5px" }}>{t("jardin.ns_link")}</p>
           <div style={{ display: "flex", gap: 8 }}>
             <input value={form.web_link} onChange={set("web_link")} placeholder="https://…"
               style={{ flex: 1, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12,
@@ -74,16 +76,16 @@ export default function JardinNextSundayPage() {
               <button type="button" onClick={() => openExternal(form.web_link)}
                 style={{ padding: "10px 14px", borderRadius: 12, background: CARD, border: `1px solid ${CARD_B}`,
                   color: SAGE, fontFamily: FONT, fontSize: 14, cursor: "pointer" }}>
-                Open ↗
+                {t("jardin.open_ext")}
               </button>
             )}
           </div>
         </div>
 
         <div style={{ marginBottom: 20 }}>
-          <p style={{ ...eyebrow, margin: "0 0 5px" }}>Prep notes</p>
+          <p style={{ ...eyebrow, margin: "0 0 5px" }}>{t("jardin.ns_prep_notes")}</p>
           <textarea value={form.notes} onChange={set("notes")} rows={5}
-            placeholder="Questions, themes, things to pray about before Sunday…"
+            placeholder={t("jardin.ns_ph_notes")}
             style={{ width: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12,
               padding: "10px 13px", color: WARM, fontFamily: FONT, fontSize: 14, lineHeight: 1.5, resize: "vertical", outline: "none" }} />
         </div>
@@ -92,11 +94,11 @@ export default function JardinNextSundayPage() {
           style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: CTA, color: WARM,
             border: "1px solid rgba(168,197,160,0.4)", fontFamily: FONT, fontSize: 15, fontWeight: 700, cursor: "pointer",
             opacity: save.isPending ? 0.6 : 1 }}>
-          {saved ? "Saved ✓" : "Save"}
+          {saved ? t("jardin.saved") : t("common.save")}
         </button>
 
         <p style={{ color: SAGE_DIM, fontSize: 12, marginTop: 14, textAlign: "center", fontFamily: FONT }}>
-          One record per account — updates replace the previous week's prep.
+          {t("jardin.ns_footnote")}
         </p>
       </div>
     </Layout>

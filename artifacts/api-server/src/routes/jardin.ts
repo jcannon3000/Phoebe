@@ -43,6 +43,9 @@ router.post(
       passwordHash,
       jardinEnrolled: true,
       jardinOnly: true,
+      // El Jardín is Spanish-first — default the portal account to Spanish so
+      // they land in es (LocaleSync applies users.locale from /me).
+      locale: "es",
       // Skip Phoebe's general onboarding tour — the portal is self-contained.
       onboardingCompleted: true,
     }).returning();

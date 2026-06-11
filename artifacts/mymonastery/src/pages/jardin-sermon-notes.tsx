@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -22,14 +23,15 @@ const empty = (): Omit<Note, "id" | "updated_at"> => ({
   preacher: "", title: "", scripture: "", content: "",
 });
 
-function fmtDate(d: string): string {
+function fmtDate(d: string, locale: string): string {
   if (!d) return "";
   const [y, m, day] = d.split("-").map(Number);
-  return new Date(y, m - 1, day).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+  return new Date(y, m - 1, day).toLocaleDateString(locale === "es" ? "es-ES" : "en-US", { year: "numeric", month: "long", day: "numeric" });
 }
 
 export default function JardinSermonNotesPage() {
   const [, setLocation] = useLocation();
+  const { t, i18n } = useTranslation();
   const qc = useQueryClient();
   const [open, setOpen] = useState<Note | "new" | null>(null);
   const [form, setForm] = useState(empty());
@@ -93,21 +95,21 @@ export default function JardinSermonNotesPage() {
         <div style={{ width: "100%", maxWidth: 600, margin: "0 auto", padding: "4px 2px 28px", fontFamily: FONT }}>
           <button type="button" onClick={() => setOpen(null)}
             style={{ background: "none", border: "none", color: SAGE_DIM, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: "0 0 12px" }}>
-            ← Notes
+            ← {t("jardin.back_notes")}
           </button>
           <h1 style={{ color: WARM, fontSize: 21, fontWeight: 700, margin: "0 0 18px" }}>
-            {open === "new" ? "New sermon note" : "Edit note"}
+            {open === "new" ? t("jardin.sn_new") : t("jardin.sn_edit")}
           </h1>
-          {field("Date", "sermon_date")}
-          {field("Preacher", "preacher", false, "e.g. Rev. Smith")}
-          {field("Sermon title", "title", false, "e.g. The Good Shepherd")}
-          {field("Scripture", "scripture", false, "e.g. John 10:1-18")}
-          {field("Notes", "content", true, "Key points, quotes, things to reflect on…")}
+          {field(t("jardin.sn_date"), "sermon_date")}
+          {field(t("jardin.sn_preacher"), "preacher", false, t("jardin.sn_ph_preacher"))}
+          {field(t("jardin.sn_title"), "title", false, t("jardin.sn_ph_title"))}
+          {field(t("jardin.scripture"), "scripture", false, t("jardin.sn_ph_scripture"))}
+          {field(t("jardin.sn_notes"), "content", true, t("jardin.sn_ph_notes"))}
           <button type="button" onClick={save} disabled={create.isPending || update.isPending}
             style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: CTA, color: WARM,
               border: "1px solid rgba(168,197,160,0.4)", fontFamily: FONT, fontSize: 15, fontWeight: 700, cursor: "pointer",
               opacity: (create.isPending || update.isPending) ? 0.6 : 1 }}>
-            Save
+            {t("common.save")}
           </button>
         </div>
       </Layout>
@@ -124,17 +126,17 @@ export default function JardinSermonNotesPage() {
           ← El Jardín
         </button>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-          <h1 style={{ color: WARM, fontSize: 22, fontWeight: 700, margin: 0 }}>Sermon Notes</h1>
+          <h1 style={{ color: WARM, fontSize: 22, fontWeight: 700, margin: 0 }}>{t("jardin.sermon_notes")}</h1>
           <button type="button" onClick={openNew}
             style={{ padding: "8px 18px", borderRadius: 12, background: CTA, color: WARM,
               border: "1px solid rgba(168,197,160,0.4)", fontFamily: FONT, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            + New
+            {t("jardin.new_btn")}
           </button>
         </div>
 
-        {isLoading && <p style={{ color: SAGE_DIM, fontFamily: FONT }}>Loading…</p>}
+        {isLoading && <p style={{ color: SAGE_DIM, fontFamily: FONT }}>{t("common.loading")}</p>}
         {!isLoading && notes.length === 0 && (
-          <p style={{ color: SAGE_DIM, fontFamily: FONT, fontSize: 14 }}>No notes yet — tap + New to capture your first sermon.</p>
+          <p style={{ color: SAGE_DIM, fontFamily: FONT, fontSize: 14 }}>{t("jardin.sn_empty")}</p>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {notes.map((n) => (
@@ -142,10 +144,10 @@ export default function JardinSermonNotesPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <p style={{ color: WARM, fontSize: 15, fontWeight: 700, margin: "0 0 2px", fontFamily: FONT }}>
-                    {n.title || "(untitled)"}
+                    {n.title || t("jardin.sn_untitled")}
                   </p>
                   <p style={{ color: SAGE, fontSize: 13, margin: 0, fontFamily: FONT }}>
-                    {[n.preacher, n.scripture, fmtDate(n.sermon_date)].filter(Boolean).join(" · ")}
+                    {[n.preacher, n.scripture, fmtDate(n.sermon_date, i18n.language)].filter(Boolean).join(" · ")}
                   </p>
                   {n.content && (
                     <p style={{ color: WARM, fontSize: 13, opacity: 0.7, margin: "6px 0 0", fontFamily: "Georgia, serif", fontStyle: "italic",
@@ -156,12 +158,12 @@ export default function JardinSermonNotesPage() {
                 </div>
                 <div style={{ display: "flex", gap: 8, marginLeft: 10, flexShrink: 0 }}>
                   <button type="button" onClick={() => openEdit(n)}
-                    style={{ background: "none", border: "none", color: SAGE, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>Edit</button>
+                    style={{ background: "none", border: "none", color: SAGE, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>{t("jardin.edit")}</button>
                   {confirm === n.id
                     ? <><button type="button" onClick={() => del.mutate(n.id)}
-                          style={{ background: "none", border: "none", color: "#E07070", fontSize: 13, cursor: "pointer", fontFamily: FONT }}>Delete?</button>
+                          style={{ background: "none", border: "none", color: "#E07070", fontSize: 13, cursor: "pointer", fontFamily: FONT }}>{t("jardin.delete_q")}</button>
                         <button type="button" onClick={() => setConfirm(null)}
-                          style={{ background: "none", border: "none", color: SAGE_DIM, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>Cancel</button></>
+                          style={{ background: "none", border: "none", color: SAGE_DIM, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>{t("common.cancel")}</button></>
                     : <button type="button" onClick={() => setConfirm(n.id)}
                         style={{ background: "none", border: "none", color: SAGE_DIM, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>×</button>}
                 </div>

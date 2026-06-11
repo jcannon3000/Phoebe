@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -24,6 +25,7 @@ const empty = (): Omit<Study, "id" | "updated_at"> => ({
 
 export default function JardinCharacterStudyPage() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [open, setOpen] = useState<Study | "new" | null>(null);
   const [form, setForm] = useState(empty());
@@ -84,66 +86,66 @@ export default function JardinCharacterStudyPage() {
         <div style={{ width: "100%", maxWidth: 600, margin: "0 auto", padding: "4px 2px 28px", fontFamily: FONT }}>
           <button type="button" onClick={() => setOpen(null)}
             style={{ background: "none", border: "none", color: SAGE_DIM, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: "0 0 12px" }}>
-            ← Studies
+            ← {t("jardin.back_studies")}
           </button>
           <h1 style={{ color: WARM, fontSize: 21, fontWeight: 700, margin: "0 0 18px" }}>
-            {open === "new" ? "New character study" : `${(open as Study).name || "Edit study"}`}
+            {open === "new" ? t("jardin.cs_new") : ((open as Study).name || t("jardin.cs_edit_fallback"))}
           </h1>
 
           {/* Identity */}
-          <p style={{ ...eyebrow, margin: "0 0 10px" }}>Identity</p>
+          <p style={{ ...eyebrow, margin: "0 0 10px" }}>{t("jardin.cs_identity")}</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
             <div>
-              <p style={{ ...eyebrow, fontSize: 10, margin: "0 0 4px" }}>Name</p>
-              <input value={form.name} onChange={set("name")} placeholder="e.g. Ruth"
+              <p style={{ ...eyebrow, fontSize: 10, margin: "0 0 4px" }}>{t("jardin.cs_name")}</p>
+              <input value={form.name} onChange={set("name")} placeholder={t("jardin.cs_ph_name")}
                 style={{ width: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12,
                   padding: "10px 13px", color: WARM, fontFamily: FONT, fontSize: 14, outline: "none" }} />
             </div>
             <div>
-              <p style={{ ...eyebrow, fontSize: 10, margin: "0 0 4px" }}>Name meaning</p>
-              <input value={form.name_meaning} onChange={set("name_meaning")} placeholder="e.g. Friend, companion"
+              <p style={{ ...eyebrow, fontSize: 10, margin: "0 0 4px" }}>{t("jardin.cs_name_meaning")}</p>
+              <input value={form.name_meaning} onChange={set("name_meaning")} placeholder={t("jardin.cs_ph_name_meaning")}
                 style={{ width: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12,
                   padding: "10px 13px", color: WARM, fontFamily: FONT, fontSize: 14, outline: "none" }} />
             </div>
             <div>
-              <p style={{ ...eyebrow, fontSize: 10, margin: "0 0 4px" }}>Origin</p>
-              <input value={form.origin} onChange={set("origin")} placeholder="e.g. Moab"
+              <p style={{ ...eyebrow, fontSize: 10, margin: "0 0 4px" }}>{t("jardin.cs_origin")}</p>
+              <input value={form.origin} onChange={set("origin")} placeholder={t("jardin.cs_ph_origin")}
                 style={{ width: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12,
                   padding: "10px 13px", color: WARM, fontFamily: FONT, fontSize: 14, outline: "none" }} />
             </div>
             <div>
-              <p style={{ ...eyebrow, fontSize: 10, margin: "0 0 4px" }}>Time period</p>
-              <input value={form.time_period} onChange={set("time_period")} placeholder="e.g. Judges era"
+              <p style={{ ...eyebrow, fontSize: 10, margin: "0 0 4px" }}>{t("jardin.cs_time_period")}</p>
+              <input value={form.time_period} onChange={set("time_period")} placeholder={t("jardin.cs_ph_time_period")}
                 style={{ width: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12,
                   padding: "10px 13px", color: WARM, fontFamily: FONT, fontSize: 14, outline: "none" }} />
             </div>
           </div>
 
           {/* Traits */}
-          <p style={{ ...eyebrow, margin: "4px 0 10px" }}>Traits</p>
+          <p style={{ ...eyebrow, margin: "4px 0 10px" }}>{t("jardin.cs_traits")}</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
             <div>
-              <p style={{ ...eyebrow, fontSize: 10, margin: "0 0 4px", color: "rgba(143,175,150,0.8)" }}>Strengths</p>
-              <textarea value={form.strengths} onChange={set("strengths")} placeholder="Loyalty, courage…" rows={3}
+              <p style={{ ...eyebrow, fontSize: 10, margin: "0 0 4px", color: "rgba(143,175,150,0.8)" }}>{t("jardin.cs_strengths")}</p>
+              <textarea value={form.strengths} onChange={set("strengths")} placeholder={t("jardin.cs_ph_strengths")} rows={3}
                 style={{ width: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12,
                   padding: "10px 13px", color: WARM, fontFamily: FONT, fontSize: 13, lineHeight: 1.5, resize: "vertical", outline: "none" }} />
             </div>
             <div>
-              <p style={{ ...eyebrow, fontSize: 10, margin: "0 0 4px", color: "rgba(143,175,150,0.8)" }}>Weaknesses</p>
-              <textarea value={form.weaknesses} onChange={set("weaknesses")} placeholder="Doubt, fear…" rows={3}
+              <p style={{ ...eyebrow, fontSize: 10, margin: "0 0 4px", color: "rgba(143,175,150,0.8)" }}>{t("jardin.cs_weaknesses")}</p>
+              <textarea value={form.weaknesses} onChange={set("weaknesses")} placeholder={t("jardin.cs_ph_weaknesses")} rows={3}
                 style={{ width: "100%", boxSizing: "border-box", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12,
                   padding: "10px 13px", color: WARM, fontFamily: FONT, fontSize: 13, lineHeight: 1.5, resize: "vertical", outline: "none" }} />
             </div>
           </div>
 
-          {fieldRow("Key events", "What happened in their story?", "key_events", true)}
-          {fieldRow("Lessons learned", "What does their life teach us?", "lessons_learned", true)}
+          {fieldRow(t("jardin.cs_key_events"), t("jardin.cs_ph_key_events"), "key_events", true)}
+          {fieldRow(t("jardin.cs_lessons"), t("jardin.cs_ph_lessons"), "lessons_learned", true)}
 
           <button type="button" onClick={save} disabled={create.isPending || update.isPending}
             style={{ width: "100%", padding: "13px 0", borderRadius: 14, background: CTA, color: WARM,
               border: "1px solid rgba(168,197,160,0.4)", fontFamily: FONT, fontSize: 15, fontWeight: 700, cursor: "pointer",
               opacity: (create.isPending || update.isPending) ? 0.6 : 1 }}>
-            Save
+            {t("common.save")}
           </button>
         </div>
       </Layout>
@@ -160,17 +162,17 @@ export default function JardinCharacterStudyPage() {
           ← El Jardín
         </button>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-          <h1 style={{ color: WARM, fontSize: 22, fontWeight: 700, margin: 0 }}>Character Studies</h1>
+          <h1 style={{ color: WARM, fontSize: 22, fontWeight: 700, margin: 0 }}>{t("jardin.character_studies")}</h1>
           <button type="button" onClick={openNew}
             style={{ padding: "8px 18px", borderRadius: 12, background: CTA, color: WARM,
               border: "1px solid rgba(168,197,160,0.4)", fontFamily: FONT, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-            + New
+            {t("jardin.new_btn")}
           </button>
         </div>
 
-        {isLoading && <p style={{ color: SAGE_DIM, fontFamily: FONT }}>Loading…</p>}
+        {isLoading && <p style={{ color: SAGE_DIM, fontFamily: FONT }}>{t("common.loading")}</p>}
         {!isLoading && studies.length === 0 && (
-          <p style={{ color: SAGE_DIM, fontFamily: FONT, fontSize: 14 }}>No studies yet — tap + New to study your first biblical figure.</p>
+          <p style={{ color: SAGE_DIM, fontFamily: FONT, fontSize: 14 }}>{t("jardin.cs_empty")}</p>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {studies.map((s) => (
@@ -178,7 +180,7 @@ export default function JardinCharacterStudyPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <p style={{ color: WARM, fontSize: 15, fontWeight: 700, margin: "0 0 2px", fontFamily: FONT }}>
-                    {s.name || "(unnamed)"}
+                    {s.name || t("jardin.cs_unnamed")}
                     {s.time_period && <span style={{ color: SAGE_DIM, fontWeight: 400, fontSize: 13 }}> · {s.time_period}</span>}
                   </p>
                   {s.name_meaning && <p style={{ color: SAGE, fontSize: 13, margin: "0 0 2px", fontFamily: FONT }}>{s.name_meaning}</p>}
@@ -192,12 +194,12 @@ export default function JardinCharacterStudyPage() {
                 </div>
                 <div style={{ display: "flex", gap: 8, marginLeft: 10, flexShrink: 0 }}>
                   <button type="button" onClick={() => openEdit(s)}
-                    style={{ background: "none", border: "none", color: SAGE, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>Edit</button>
+                    style={{ background: "none", border: "none", color: SAGE, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>{t("jardin.edit")}</button>
                   {confirm === s.id
                     ? <><button type="button" onClick={() => del.mutate(s.id)}
-                          style={{ background: "none", border: "none", color: "#E07070", fontSize: 13, cursor: "pointer", fontFamily: FONT }}>Delete?</button>
+                          style={{ background: "none", border: "none", color: "#E07070", fontSize: 13, cursor: "pointer", fontFamily: FONT }}>{t("jardin.delete_q")}</button>
                         <button type="button" onClick={() => setConfirm(null)}
-                          style={{ background: "none", border: "none", color: SAGE_DIM, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>Cancel</button></>
+                          style={{ background: "none", border: "none", color: SAGE_DIM, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>{t("common.cancel")}</button></>
                     : <button type="button" onClick={() => setConfirm(s.id)}
                         style={{ background: "none", border: "none", color: SAGE_DIM, fontSize: 13, cursor: "pointer", fontFamily: FONT }}>×</button>}
                 </div>
