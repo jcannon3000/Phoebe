@@ -95,7 +95,10 @@ export default function DailyProgressPage() {
 
   return (
     <Layout>
-      <div className="flex flex-col w-full max-w-2xl mx-auto pb-24 px-4 sm:px-0">
+      {/* Full width (no inner max-width cap) so the rhythm + practice cards
+          are as wide as the home-screen cards — the Layout already provides
+          the page's max-width and horizontal padding. */}
+      <div className="flex flex-col w-full pb-24">
         <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm mb-3" style={{ color: SAGE }}>
           <ChevronLeft size={14} /> {t("common.home", { defaultValue: "Home" })}
         </Link>
