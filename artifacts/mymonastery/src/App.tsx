@@ -296,7 +296,7 @@ const ParishIntercessionsPage = lazy(() => import("./pages/parish-intercessions"
 import { useAuth as useAuthForGate } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { PHOEBE_PARISH_ENABLED } from "@/lib/parishFlag";
-import { isJardinHost } from "@/lib/jardinMode";
+import { isJardinHost, isJardinPath } from "@/lib/jardinMode";
 
 // Climate is now just a prayer feed (slug: phoebe-climate). The old
 // /climate*, /climate/admin, /climate/parish routes redirect to the
@@ -420,11 +420,18 @@ const PARISH_DENIED_PATHS = [
 // host isJardinHost() is false and this is a no-op, so the main app's routing
 // is never affected. On eljardin.withphoebe.app it sends visitors into the
 // Jardín experience — signup when logged out, the Jardín hub when logged in.
+// Keeps El Jardín accounts (and the eljardin subdomain / /jardin path) inside
+// the portal: logged-out visitors land on the Spanish signup, and a logged-in
+// Jardín account is bounced off the generic Phoebe roots (/, /dashboard,
+// /welcome) onto the Jardín hub. A jardinOnly account is treated as portal
+// everywhere, so this also fixes the post-login landing (login → /dashboard →
+// hub). Entirely no-op for ordinary Phoebe users on the main app.
 function JardinHostGate() {
   const [location, setLocation] = useLocation();
   const { user, isLoading } = useAuthForGate();
   useEffect(() => {
-    if (!isJardinHost()) return; // main app untouched
+    const portal = isJardinHost() || isJardinPath() || !!user?.jardinOnly;
+    if (!portal) return; // main app untouched
     if (isLoading) return;
     if (!user) {
       // Logged out → the portal front door (allow login too).
@@ -432,7 +439,7 @@ function JardinHostGate() {
       return;
     }
     // Logged in → land on the Jardín hub from the generic roots.
-    if (location === "/" || location === "/dashboard" || location === "/welcome" || location === "/jardin/signup") {
+    if (location === "/" || location === "/dashboard" || location === "/welcome" || location === "/jardin/signup" || location === "/jardin") {
       setLocation("/menu/jardin");
     }
   }, [location, user, isLoading, setLocation]);

@@ -35,6 +35,10 @@ export interface AuthUser {
   climateEnrolled: boolean;
   climateOnboardingCompleted: boolean;
   climateOnly: boolean;
+  // El Jardín — jardinOnly accounts are created via the Jardín portal and
+  // see only the Jardín experience; jardinEnrolled is any Jardín user.
+  jardinEnrolled: boolean;
+  jardinOnly: boolean;
   parishId: number | null;
   bellEnabled: boolean;
   // Phoebe Parish — see AccessTier comment above.

@@ -12,6 +12,7 @@ import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
 import { useRhythmState } from "@/hooks/useRhythmState";
+import { isJardinHost } from "@/lib/jardinMode";
 import { useHealthMindfulToday, useSyncHealthMinutes } from "@/lib/appleHealth";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
@@ -170,6 +171,12 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   // The full app's content gates already block the routes server-side;
   // this is the visual mirror so the menu doesn't dangle dead links.
   const officesOnly = user?.accessTier === "offices-only";
+  // Sealed El Jardín shell: a jardinOnly account (or the eljardin subdomain)
+  // sees only the Jardín experience — the drawer hides every non-Jardín
+  // surface (Communities, Prayer list, BCP, Practices, Letters, Parish…),
+  // leaving El Jardín + Settings + Sign out. (A dual user who merely enrolled
+  // in Jardín keeps the full app, so we gate on jardinOnly, not jardinEnrolled.)
+  const jardinShell = isJardinHost() || !!user?.jardinOnly;
 
   // The drawer is organized into collapsible sections (Communities,
   // Offices, Practices, Resources) plus a footer. These flags gate the
@@ -257,7 +264,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
             {/* ── Prayer list ── moved here from the header pill (which now
                 opens the Way of Love drawer). Sits above Communities; hidden
                 for offices-only, who have no personal list. */}
-            {!officesOnly && (
+            {!officesOnly && !jardinShell && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
                 <MenuRow emoji="🙏" label={t("menu.prayer_list", { defaultValue: "Prayer list" })} onClick={() => navigate("/prayer-list")} />
               </div>
@@ -276,7 +283,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 straight to the requests panel when there are
                 pending joins waiting on them — same logic as the
                 multi-community case. */}
-            {!officesOnly && (
+            {!officesOnly && !jardinShell && (
               <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
                 {(() => {
                   const groups = groupsData?.groups ?? [];
@@ -417,20 +424,26 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   contemplative practices are supplemental. */}
               {/* Each category is a single row that navigates to its own
                   list page (MenuHub style) rather than expanding inline. */}
-              <MenuRow emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })} onClick={() => goCategory("/menu/bcp")} />
-              <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
-              <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
-              <MenuRow emoji="🎧" label={t("menu.audio", { defaultValue: "Audio" })} onClick={() => goCategory("/menu/audio")} />
-              {showLetters && (
-                <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
+              {!jardinShell && (
+                <>
+                  <MenuRow emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })} onClick={() => goCategory("/menu/bcp")} />
+                  <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
+                  <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
+                  <MenuRow emoji="🎧" label={t("menu.audio", { defaultValue: "Audio" })} onClick={() => goCategory("/menu/audio")} />
+                  {showLetters && (
+                    <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
+                  )}
+                  {/* Beta Messages — unlimited 1:1 messaging between beta
+                      users. Beta-gated (the server 403s non-beta anyway). */}
+                  {rawIsBeta && (
+                    <MenuRow emoji="✉️" label={t("menu.messages", { defaultValue: "Messages" })} badge={t("menu.beta")} onClick={() => navigate("/messages")} />
+                  )}
+                </>
               )}
-              {/* Beta Messages — unlimited 1:1 messaging between beta
-                  users. Beta-gated (the server 403s non-beta anyway). */}
-              {rawIsBeta && (
-                <MenuRow emoji="✉️" label={t("menu.messages", { defaultValue: "Messages" })} badge={t("menu.beta")} onClick={() => navigate("/messages")} />
-              )}
-              {rawIsBeta && (
-                <MenuRow emoji="🌿" label="El Jardín" badge={t("menu.beta")} onClick={() => navigate("/menu/jardin")} />
+              {/* El Jardín — always visible to a Jardín account (the portal's
+                  home); otherwise a beta entry into the experience. */}
+              {(rawIsBeta || jardinShell) && (
+                <MenuRow emoji="🌿" label="El Jardín" badge={jardinShell ? undefined : t("menu.beta")} onClick={() => navigate("/menu/jardin")} />
               )}
             </div>
 
@@ -450,7 +463,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   picker + dashboard end-to-end. Routes to
                   /parish/onboarding if the user hasn't subscribed
                   yet, else /parish. */}
-              {rawIsBeta && (
+              {rawIsBeta && !jardinShell && (
                 <MenuRow
                   emoji="🏛️"
                   label={t("menu.phoebe_parish")}
@@ -756,6 +769,9 @@ export function Layout({ children }: { children: ReactNode }) {
   // header "Prayer list" pill links into a surface they can't use, so
   // we hide it for that tier. Drawer filtering happens above.
   const officesOnly = user?.accessTier === "offices-only";
+  // Jardín shell — hide Phoebe's daily-progress pill (the office/reflect/
+  // silence rhythm) for portal accounts; it's not part of the Jardín day.
+  const headerJardinShell = isJardinHost() || !!user?.jardinOnly;
 
   // Best-effort sync of today's external Apple Health mindful minutes to the
   // server from the app shell (so it runs on nearly every page), giving the
@@ -808,7 +824,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 old Prayer-list pill (which now lives in the Menu drawer). The
                 four dots reflect today's rhythm; tapping opens /daily-progress.
                 Hidden for the offices-only tier to match the prior pill. */}
-            {!officesOnly && <DailyProgressPill />}
+            {!officesOnly && !headerJardinShell && <DailyProgressPill />}
             <button
               onClick={() => { playOpeningSwell(0); setDrawerOpen(true); }}
               className="flex items-center justify-center transition-colors"
