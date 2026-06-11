@@ -2411,9 +2411,9 @@ export function ContemplationHomeCard() {
         role="button"
         tabIndex={0}
         className="relative flex rounded-xl overflow-hidden cursor-pointer"
-        style={{ background: "rgba(62,124,122,0.12)", border: `1px solid rgba(62,124,122,${met || goalMin <= 0 ? 0.35 : 0.09})` }}
+        style={{ background: "rgba(62,124,122,0.12)", border: `1px solid rgba(62,124,122,0.35)` }}
       >
-        <div className="w-1 flex-shrink-0" style={{ background: `rgba(62,124,122,${met || goalMin <= 0 ? 0.85 : 0.4})` }} />
+        <div className="w-1 flex-shrink-0" style={{ background: `rgba(62,124,122,0.85)` }} />
         <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p
@@ -2584,9 +2584,9 @@ export function CacHomeCard() {
       // Contemplation) rather than reading as an external/foreign
       // surface. Slightly deeper saturation than its siblings so it
       // still reads as distinct when stacked next to them.
-      style={{ background: "rgba(46,107,64,0.14)", border: `1px solid rgba(46,107,64,${hasRead ? 0.40 : 0.09})` }}
+      style={{ background: "rgba(46,107,64,0.14)", border: `1px solid rgba(46,107,64,0.40)` }}
     >
-      <div className="w-1 flex-shrink-0" style={{ background: `rgba(46,107,64,${hasRead ? 0.9 : 0.22})` }} />
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(46,107,64,0.9)` }} />
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
         {/* flex-1 + min-w-0 (not just min-w-0): the headline is now a long
             nowrap line ("CAC Daily Reflection 🌵"); on iOS Safari a min-w-0-only
@@ -2792,9 +2792,9 @@ function FddHomeCard() {
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
       className="relative flex rounded-xl overflow-hidden cursor-pointer"
-      style={{ background: "rgba(96,141,209,0.13)", border: `1px solid rgba(96,141,209,${hasRead ? 0.40 : 0.09})` }}
+      style={{ background: "rgba(96,141,209,0.13)", border: `1px solid rgba(96,141,209,0.40)` }}
     >
-      <div className="w-1 flex-shrink-0" style={{ background: `rgba(96,141,209,${hasRead ? 0.85 : 0.22})` }} />
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(96,141,209,0.85)` }} />
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
         <p
           className="font-semibold min-w-0 truncate"
@@ -2858,9 +2858,9 @@ function SsjeHomeCard() {
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
       className="relative flex rounded-xl overflow-hidden cursor-pointer"
-      style={{ background: "rgba(193,127,36,0.13)", border: `1px solid rgba(193,127,36,${hasRead ? 0.42 : 0.09})` }}
+      style={{ background: "rgba(193,127,36,0.13)", border: `1px solid rgba(193,127,36,0.42)` }}
     >
-      <div className="w-1 flex-shrink-0" style={{ background: `rgba(193,127,36,${hasRead ? 0.85 : 0.22})` }} />
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(193,127,36,0.85)` }} />
       <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
         <p
           className="font-semibold min-w-0 truncate"
