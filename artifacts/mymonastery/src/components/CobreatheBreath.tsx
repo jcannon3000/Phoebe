@@ -267,12 +267,14 @@ export function CobreatheBreath({
           any flat gradient to band. Driven by the global clock, so everyone
           breathing at this moment sees the same bloom at the same size. */}
       <svg
-        width="320" height="320" viewBox="-150 -150 300 300"
-        style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", pointerEvents: "none" }}
+        width="384" height="384" viewBox="-180 -180 360 360"
+        style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", pointerEvents: "none", overflow: "visible" }}
         aria-hidden="true"
       >
         <defs>
-          <filter id="cb-soft" x="-40%" y="-40%" width="180%" height="180%">
+          {/* Generous filter region so the blur isn't clipped at full inhale —
+              that clipping is what showed as straight edges on the bloom. */}
+          <filter id="cb-soft" x="-60%" y="-60%" width="220%" height="220%">
             <feGaussianBlur stdDeviation="2.4" />
           </filter>
           <radialGradient id="cb-core" cx="50%" cy="50%" r="50%">
