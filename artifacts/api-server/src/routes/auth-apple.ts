@@ -22,6 +22,7 @@
  */
 
 import { Router, type IRouter } from "express";
+import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { z } from "zod/v4";
 import { createRemoteJWKSet, jwtVerify } from "jose";
@@ -81,10 +82,15 @@ router.post("/auth/apple/native", async (req, res): Promise<void> => {
   // the returned token when the client sent one. For the native plugin
   // the raw nonce is echoed verbatim — we accept either form so we're
   // resilient to plugin version drift.
+  // Apple echoes the nonce in one of two forms: the raw string (what the
+  // native plugin sends) or its SHA-256 hex digest. Accept either. The
+  // request schema REQUIRES a nonce, so a token that carries NO nonce
+  // claim is a replay/forgery signal, not a legacy client — reject it
+  // rather than silently skipping the check (the old `if (tokenNonce && …)`
+  // let a nonce-less token through).
   const tokenNonce = typeof payload["nonce"] === "string" ? (payload["nonce"] as string) : null;
-  const tokenNonceHex = typeof payload["nonce_supported"] === "boolean" ? payload["nonce"] : null;
-  void tokenNonceHex; // reserved for future use if we switch to SHA-256 echo
-  if (tokenNonce && tokenNonce !== nonce) {
+  const nonceSha256Hex = createHash("sha256").update(nonce).digest("hex");
+  if (!tokenNonce || (tokenNonce !== nonce && tokenNonce.toLowerCase() !== nonceSha256Hex)) {
     console.warn("[auth:apple] nonce_mismatch");
     res.status(401).json({ error: "nonce_mismatch" });
     return;

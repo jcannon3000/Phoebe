@@ -3302,9 +3302,14 @@ router.get("/moment/:momentToken/:userToken", async (req, res): Promise<void> =>
 
   // Build member presence: who has prayed today
   const prayedTokens = new Set(allTodayPosts.map(p => p.userToken));
+  // NB: expose a non-secret per-member row id, NOT the userToken. The
+  // userToken is the bearer credential for posting/amen-ing as that
+  // member; returning everyone's token in this (link-shareable) payload
+  // let any participant act as any other. The client only needs a stable
+  // id for presence keys + self-identification (see myMemberId below).
   const memberPresence = allMembers.map(m => ({
+    id: m.id,
     name: m.name ?? m.email.split("@")[0],
-    userToken: m.userToken,
     prayed: prayedTokens.has(m.userToken),
     avatarUrl: publicAvatarByEmail.get(m.email.toLowerCase()) ?? null,
   }));
@@ -3367,6 +3372,10 @@ router.get("/moment/:momentToken/:userToken", async (req, res): Promise<void> =>
         }
       : null,
     userName: userTokenRow.name ?? userTokenRow.email,
+    // The caller's own presence-row id, so the client can self-identify
+    // ("you", optimistic prayed, exclude-self attribution) without us
+    // having to leak every member's userToken.
+    myMemberId: userTokenRow.id,
   });
 });
 

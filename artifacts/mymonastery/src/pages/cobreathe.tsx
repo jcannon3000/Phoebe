@@ -491,6 +491,50 @@ export default function CobreathePage() {
           const s = doneState;
           const othersDone = Math.max(0, (s?.count ?? 1) - 1);
           const line = s ? companionLine(s.companions, s.companionCount) : "";
+          // The breath POST failed and we never got a count back. Without
+          // this branch the screen sits on "Breath held" forever and the
+          // breath silently never recorded — offer a retry (re-sends the
+          // same seconds) and a way out.
+          if (!s && record.isError) {
+            return (
+              <div className="flex flex-col items-center text-center flex-1 justify-center py-10">
+                <div className="text-5xl mb-5">🌬️</div>
+                <h2 className="text-[1.4rem] font-bold mb-3 px-4" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+                  {t("cobreathe.save_failed", { defaultValue: "Your breath didn't save" })}
+                </h2>
+                <p className="text-[14px] leading-relaxed px-6 mb-8" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
+                  {t("cobreathe.save_failed_sub", { defaultValue: "The breath you kept is real — we just couldn't reach the server to count it. Try again." })}
+                </p>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => record.mutate(record.variables ?? 0)}
+                    disabled={record.isPending}
+                    className="rounded-xl py-3 px-8"
+                    style={{
+                      background: "rgba(62,124,122,0.22)", color: WARM, border: "1px solid rgba(62,124,122,0.5)",
+                      fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: record.isPending ? "default" : "pointer", opacity: record.isPending ? 0.6 : 1,
+                    }}
+                  >
+                    {record.isPending
+                      ? t("common.saving", { defaultValue: "Saving…" })
+                      : t("common.try_again", { defaultValue: "Try again" })}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode("intro")}
+                    className="rounded-xl py-3 px-6"
+                    style={{
+                      background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.4)",
+                      fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer",
+                    }}
+                  >
+                    {t("common.not_now", { defaultValue: "Not now" })}
+                  </button>
+                </div>
+              </div>
+            );
+          }
           return (
             <div className="flex flex-col items-center text-center flex-1 justify-center py-10">
               <div className="text-5xl mb-5">🌬️</div>

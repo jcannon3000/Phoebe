@@ -33,7 +33,16 @@ import { getGardenUserIds } from "../lib/garden";
 
 const router: IRouter = Router();
 
-const YMD = /^\d{4}-\d{2}-\d{2}$/;
+// A real local calendar day: well-formed AND an actual date. The shape
+// regex alone admits nonsense like 2099-99-99 or 2024-02-30, which would
+// seed a junk breath row (inflating allBreaths / a user's myDays) under a
+// day key that no honest client would ever send. Round-trip through UTC to
+// reject impossible dates.
+function isValidYmd(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
 
 function uid(req: Request): number | null {
   const u = req.user as { id?: number } | undefined;
@@ -96,7 +105,7 @@ router.get("/breath/today", async (req: Request, res: Response): Promise<void> =
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
 
   const dayRaw = req.query.day;
-  const day = typeof dayRaw === "string" && YMD.test(dayRaw) ? dayRaw : null;
+  const day = typeof dayRaw === "string" && isValidYmd(dayRaw) ? dayRaw : null;
   if (!day) { res.status(400).json({ error: "bad_request" }); return; }
 
   try {
@@ -112,7 +121,7 @@ router.post("/breath/today", async (req: Request, res: Response): Promise<void> 
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
 
   const day = String(req.body?.day ?? "");
-  if (!YMD.test(day)) { res.status(400).json({ error: "bad_request" }); return; }
+  if (!isValidYmd(day)) { res.status(400).json({ error: "bad_request" }); return; }
   const secondsRaw = Number(req.body?.seconds);
   const seconds = Number.isFinite(secondsRaw) ? Math.max(0, Math.min(3600, Math.round(secondsRaw))) : 0;
 

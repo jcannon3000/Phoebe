@@ -83,7 +83,6 @@ export async function createGatheringCalendarEvent(opts: {
   const calendar = google.calendar({ version: "v3", auth });
   const start = opts.startDate;
   const end = opts.endDate ?? new Date(start.getTime() + 60 * 60 * 1000);
-  const tz = opts.timeZone ?? "UTC";
 
   const cleanedAttendees = Array.from(
     new Set(
@@ -103,8 +102,16 @@ export async function createGatheringCalendarEvent(opts: {
         summary: opts.summary,
         description: opts.description,
         location: opts.location,
-        start: { dateTime: start.toISOString(), timeZone: tz },
-        end: { dateTime: end.toISOString(), timeZone: tz },
+        // `start`/`end` are absolute instants, so .toISOString() already
+        // carries the UTC offset (the trailing Z). Pair that with
+        // timeZone:"UTC" — NOT the caller's tz. A Z-time tagged with a
+        // named zone like "America/New_York" makes Google read the wall
+        // clock as that zone's, shifting the event by the offset. (Mirrors
+        // the correct else-branch in createCalendarEvent.) If a gathering
+        // ever needs a local wall-clock + zone, thread a startLocalStr
+        // through like createCalendarEvent does, don't tag a Z-time.
+        start: { dateTime: start.toISOString(), timeZone: "UTC" },
+        end: { dateTime: end.toISOString(), timeZone: "UTC" },
         attendees: cleanedAttendees,
         guestsCanInviteOthers: false,
         guestsCanSeeOtherGuests: true,

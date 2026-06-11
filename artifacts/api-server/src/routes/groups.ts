@@ -138,6 +138,16 @@ export async function reconcileGroupPracticeMembers(momentId: number): Promise<v
 
     const groupEmailToName = new Map<string, string | null>();
     for (const gm of joined) {
+      // hidden_admin members are invisible observers — they must never
+      // become praying participants on the practice. Minting a moment
+      // token for them would surface their name/email in every roster,
+      // presence row, count, and attribution line the practice exposes
+      // (GET /moments/:id and the public /moment/:t/:t share endpoint),
+      // defeating the whole point of the role. A person who is
+      // hidden_admin in one attached group but a normal member of
+      // another is still included via that visible row, so we skip per
+      // row, not per email.
+      if (gm.role === "hidden_admin") continue;
       // Account email wins; fall back to the invite email only for
       // members who haven't linked a user account yet.
       const resolvedEmail =

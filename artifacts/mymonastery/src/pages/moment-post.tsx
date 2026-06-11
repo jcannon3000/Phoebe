@@ -18,7 +18,11 @@ const SPIRITUAL_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer", "int
 const BCP_TEMPLATE_IDS = new Set(["morning-prayer", "evening-prayer"]);
 const RRULE_DAY_MAP: Record<string, number> = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
 
-type MomentMember = { name: string; userToken: string; prayed: boolean; avatarUrl?: string | null };
+// `id` is the member's presence-row id (non-secret) — used for keys and
+// self-identification. The server no longer exposes other members'
+// userTokens here (that was an impersonation vector); the caller learns
+// its own row via MomentData.myMemberId.
+type MomentMember = { id: number; name: string; prayed: boolean; avatarUrl?: string | null };
 
 // Maps a time-of-day enum value to its i18n key suffix (under moment_post.tod.*).
 const TIME_OF_DAY_KEYS: Record<string, string> = {
@@ -96,6 +100,7 @@ type MomentData = {
   memberCount: number;
   todayPostCount: number;
   members: MomentMember[];
+  myMemberId?: number;
   myPost: { photoUrl: string | null; reflectionText: string | null; isCheckin: boolean } | null;
   userName: string;
   inviterName: string;
@@ -224,13 +229,13 @@ function PresenceDots({ count, total }: { count: number; total: number }) {
 }
 
 // ─── Named presence circles (standard) ────────────────────────────────────────
-function NamedPresence({ members, myToken }: { members: MomentMember[]; myToken?: string }) {
+function NamedPresence({ members, myMemberId }: { members: MomentMember[]; myMemberId?: number }) {
   const shown = Math.min(members.length, 8);
   return (
     <div className="flex flex-wrap justify-center gap-4">
       {members.slice(0, shown).map((m, i) => {
         const initial = (m.name ?? "?")[0].toUpperCase();
-        const isMe = m.userToken === myToken;
+        const isMe = m.id === myMemberId;
         return (
           <div key={i} className="flex flex-col items-center gap-1">
             <motion.div
@@ -279,7 +284,7 @@ function presenceInitials(name: string | null | undefined): string {
 // hidden — this is a "who's here with me" indicator, not a checklist.
 const PAGE_SIZE = 8;
 
-function NamedPresenceWithBloom({ members, justBloomed }: { members: MomentMember[]; myToken?: string; justBloomed: Set<string> }) {
+function NamedPresenceWithBloom({ members, justBloomed }: { members: MomentMember[]; justBloomed: Set<number> }) {
   const prayed = members.filter(m => m.prayed);
   const pages: MomentMember[][] = [];
   for (let i = 0; i < prayed.length; i += PAGE_SIZE) {
@@ -313,10 +318,10 @@ function NamedPresenceWithBloom({ members, justBloomed }: { members: MomentMembe
         >
           {page.map((m, i) => {
             const ini = presenceInitials(m.name);
-            const isBloomin = justBloomed.has(m.userToken);
+            const isBloomin = justBloomed.has(m.id);
             return (
               <motion.div
-                key={`${m.userToken}-${i}`}
+                key={`${m.id}-${i}`}
                 initial={isBloomin ? { scale: 0.8 } : { scale: 1 }}
                 animate={{ scale: isBloomin ? [0.8, 1.15, 1] : 1 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
@@ -344,11 +349,11 @@ function NamedPresenceWithBloom({ members, justBloomed }: { members: MomentMembe
 // ─── Intercession prayer page ─────────────────────────────────────────────────
 function IntercessionPrayerPage({
   topic, fullText, intention, attribution, reflectionPrompt, intercessionSource, memberCount, todayPostCount,
-  members, myToken, canPray, alreadyPosted, myReflection, isPraying, postFailed, nextWindowLabel: _nwl, onComplete, onBack,
+  members, canPray, alreadyPosted, myReflection, isPraying, postFailed, nextWindowLabel: _nwl, onComplete, onBack,
 }: {
   topic: string; fullText: string; intention: string; attribution: string; reflectionPrompt: string;
   intercessionSource: string | null;
-  memberCount: number; todayPostCount: number; members: MomentMember[]; myToken?: string;
+  memberCount: number; todayPostCount: number; members: MomentMember[];
   canPray: boolean; alreadyPosted: boolean; myReflection: string | null;
   isPraying: boolean; postFailed: boolean; nextWindowLabel: string;
   onComplete: (reflection: string) => void; onBack: () => void;
@@ -383,7 +388,7 @@ function IntercessionPrayerPage({
   const [confirmStep, setConfirmStep] = useState<"prayer" | "amen-text" | "confirmed">("prayer");
   const [amenPulse, setAmenPulse] = useState(false);
   const [showGlow, setShowGlow] = useState(false);
-  const [justBloomed, setJustBloomed] = useState<Set<string>>(new Set());
+  const [justBloomed, setJustBloomed] = useState<Set<number>>(new Set());
 
   // When alreadyPosted transitions false → true, animate through amen-text → confirmed
   const prevPostedRef = useRef(alreadyPosted);
@@ -410,20 +415,20 @@ function IntercessionPrayerPage({
   }, [todayPostCount]);
 
   // Bloom animation: track newly-prayed members
-  const prevPrayedRef = useRef<Set<string>>(
-    new Set(members.filter(m => m.prayed).map(m => m.userToken))
+  const prevPrayedRef = useRef<Set<number>>(
+    new Set(members.filter(m => m.prayed).map(m => m.id))
   );
   useEffect(() => {
     const newBlooms = members
-      .filter(m => m.prayed && !prevPrayedRef.current.has(m.userToken))
-      .map(m => m.userToken);
+      .filter(m => m.prayed && !prevPrayedRef.current.has(m.id))
+      .map(m => m.id);
     if (newBlooms.length > 0) {
       setJustBloomed(prev => new Set([...prev, ...newBlooms]));
-      newBlooms.forEach(token => {
-        setTimeout(() => setJustBloomed(prev => { const s = new Set(prev); s.delete(token); return s; }), 600);
+      newBlooms.forEach(id => {
+        setTimeout(() => setJustBloomed(prev => { const s = new Set(prev); s.delete(id); return s; }), 600);
       });
     }
-    prevPrayedRef.current = new Set(members.filter(m => m.prayed).map(m => m.userToken));
+    prevPrayedRef.current = new Set(members.filter(m => m.prayed).map(m => m.id));
   }, [members]);
 
   function handleAmen() {
@@ -454,7 +459,7 @@ function IntercessionPrayerPage({
         <h1 className="text-3xl font-bold text-[#2C1A0E] mb-2" style={{ fontFamily: "Space Grotesk, sans-serif" }}>{t("moment_post.amen_period")}</h1>
         <p className="text-sm text-[#6b5c4a] mb-6">{t("moment_post.prayed_together_today_count", { count: todayPostCount, total: memberCount })}</p>
         <div className="mb-8">
-          <NamedPresenceWithBloom members={members} myToken={myToken} justBloomed={justBloomed} />
+          <NamedPresenceWithBloom members={members} justBloomed={justBloomed} />
         </div>
         {!myReflection && (
           <div className="mb-6">
@@ -579,7 +584,7 @@ function IntercessionPrayerPage({
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="mb-3 text-center rounded-2xl py-2"
         >
-          <NamedPresenceWithBloom members={members} myToken={myToken} justBloomed={justBloomed} />
+          <NamedPresenceWithBloom members={members} justBloomed={justBloomed} />
         </motion.div>
 
         <div className="mt-3 mb-2" />
@@ -1065,13 +1070,13 @@ export default function MomentPostPage() {
   if (moment.templateType === "intercession") {
     const liveMembers: MomentMember[] = members.map(m => ({
       ...m,
-      prayed: m.prayed || (posted && m.userToken === userToken),
+      prayed: m.prayed || (posted && m.id === data?.myMemberId),
     }));
     // Attribution matches the slideshow: prefer group name, else list up to 3 fellow members.
     const attributionLabel = data?.group?.name
       ? data.group.name
       : members
-          .filter(m => m.userToken !== userToken)
+          .filter(m => m.id !== data?.myMemberId)
           .map(m => m.name)
           .slice(0, 3)
           .join(", ");
@@ -1095,7 +1100,6 @@ export default function MomentPostPage() {
         memberCount={actualMemberCount}
         todayPostCount={actualTodayCount}
         members={liveMembers}
-        myToken={userToken}
         canPray={effectiveWindowOpen && !alreadyPosted}
         alreadyPosted={alreadyPosted}
         myReflection={myPost?.reflectionText ?? null}
@@ -1240,10 +1244,11 @@ export default function MomentPostPage() {
                   {reflection.trim() && (
                     <button
                       onClick={() => postMutation.mutate({ isCheckin: true, reflectionText: reflection.trim() })}
-                      className="mt-2 px-4 py-2 rounded-xl text-xs font-semibold"
+                      disabled={postMutation.isPending}
+                      className="mt-2 px-4 py-2 rounded-xl text-xs font-semibold disabled:opacity-60"
                       style={{ background: "#2D5E3F", color: "#F0EDE6" }}
                     >
-                      {t("moment_post.share")}
+                      {postMutation.isPending ? t("moment_post.logging") : t("moment_post.share")}
                     </button>
                   )}
                 </div>
