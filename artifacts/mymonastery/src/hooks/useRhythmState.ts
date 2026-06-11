@@ -52,13 +52,15 @@ export type RhythmState = {
 export function useRhythmState(): RhythmState {
   const day = localDay();
 
-  // Reflection read-state (localStorage). Re-read on the read events so the
-  // anchor flips the moment a reflection is opened, without a refetch.
-  const [reflectDone, setReflectDone] = useState(
+  // Reflection read-state. localStorage is per-device and flips instantly, but
+  // doesn't sync across devices (read CAC on mobile → web wouldn't know). CAC
+  // reads are also logged server-side, so we OR in a server check below; the
+  // local flags keep the anchor responsive on the device that did the reading.
+  const [reflectLocal, setReflectLocal] = useState(
     () => hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday(),
   );
   useEffect(() => {
-    const recheck = () => setReflectDone(hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday());
+    const recheck = () => setReflectLocal(hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday());
     // The reflection is read on a separate surface (often the in-app browser),
     // which stamps localStorage + fires a read-event. We re-check on those
     // events, but iOS WebViews don't fire `visibilitychange` reliably when the
@@ -126,6 +128,16 @@ export function useRhythmState(): RhythmState {
     queryFn: () => apiRequest("GET", "/api/prayer-streak"),
     staleTime: 60_000,
   });
+
+  // Server-backed CAC read for today — so the Reflect anchor is correct on a
+  // device that didn't do the reading (e.g. web, after reading on mobile).
+  const { data: cacRead } = useQuery<{ read: boolean }>({
+    queryKey: ["/api/cac/read", day],
+    queryFn: () => apiRequest("GET", `/api/cac/read?ymd=${day}`),
+    staleTime: 60_000,
+  });
+
+  const reflectDone = reflectLocal || !!cacRead?.read;
 
   const todayOffice = officeHistory?.days?.[officeHistory.days.length - 1];
   const morningDone = !!todayOffice?.morning || officeLocalDone(["morning", "morning-devotion"]);

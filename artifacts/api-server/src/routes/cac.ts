@@ -191,6 +191,28 @@ router.post("/cac/read", async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// GET /api/cac/read?ymd= — did the CALLER read today's reflection? Reads back
+// the cac_reads row the POST above writes, so "read today" survives across
+// devices (the client otherwise only knows from this device's localStorage —
+// which is why the daily-progress Reflect anchor showed undone on web after a
+// read on mobile). ymd is the caller's local date.
+router.get("/cac/read", async (req: Request, res: Response): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const ymd = String((req.query as { ymd?: unknown }).ymd ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) { res.status(400).json({ error: "Bad ymd" }); return; }
+  try {
+    const result = await pool.query(
+      `SELECT 1 FROM cac_reads WHERE user_id = $1 AND ymd = $2 LIMIT 1`,
+      [user.id, ymd],
+    );
+    res.json({ read: result.rowCount ? result.rowCount > 0 : false });
+  } catch (err) {
+    logger.error({ err }, "GET /cac/read failed");
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // GET /api/cac/readers?ymd= — people in my community (garden + me) who read
 // the reflection on that local day. Returns a count + faces, newest first.
 router.get("/cac/readers", async (req: Request, res: Response): Promise<void> => {
