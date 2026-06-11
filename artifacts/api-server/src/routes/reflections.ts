@@ -16,7 +16,14 @@ import { and, eq, sql } from "drizzle-orm";
 
 const router: IRouter = Router();
 
-const YMD = /^\d{4}-\d{2}-\d{2}$/;
+// A real local calendar day: well-formed AND an actual date (rejects junk like
+// 2099-99-99 / 2024-02-30 that the shape regex alone would admit), matching the
+// breath route's validation so reflection_reads can't accumulate junk rows.
+function isValidYmd(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
 const SOURCES = new Set(["fdd", "ssje"]);
 
 function uid(req: Request): number | null {
@@ -29,7 +36,7 @@ router.post("/reflections/read", async (req: Request, res: Response): Promise<vo
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
   const source = String(req.body?.source ?? "");
   const ymd = String(req.body?.ymd ?? "");
-  if (!SOURCES.has(source) || !YMD.test(ymd)) { res.status(400).json({ error: "bad_request" }); return; }
+  if (!SOURCES.has(source) || !isValidYmd(ymd)) { res.status(400).json({ error: "bad_request" }); return; }
   try {
     await db
       .insert(reflectionReadsTable)
@@ -46,7 +53,7 @@ router.get("/me/reflections-read", async (req: Request, res: Response): Promise<
   const userId = uid(req);
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
   const ymd = String(req.query.ymd ?? "");
-  if (!YMD.test(ymd)) { res.status(400).json({ error: "bad_request" }); return; }
+  if (!isValidYmd(ymd)) { res.status(400).json({ error: "bad_request" }); return; }
   try {
     const rows = await db
       .select({ source: reflectionReadsTable.source })

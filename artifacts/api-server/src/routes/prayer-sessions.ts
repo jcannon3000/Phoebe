@@ -4,6 +4,7 @@ import { and, desc, eq, gte, gt, lt, inArray, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { getGardenUserIds } from "../lib/garden";
 import { sendContemplationGoalReachedPush } from "../lib/pushSender";
+import { todayDateInTz, isValidTimeZone } from "../lib/tz";
 
 const router: IRouter = Router();
 
@@ -53,11 +54,26 @@ router.get("/me/prayer-days", async (req, res): Promise<void> => {
     const nRaw = typeof req.query.days === "string" ? parseInt(req.query.days, 10) : NaN;
     const N = Number.isFinite(nRaw) ? Math.min(Math.max(nRaw, 7), 30) : 14;
 
+    // Timezone: prefer the client's IANA zone (passed as ?tz=, matching how
+    // Cobreathe writes breath_sessions.day in the device-local day) over the
+    // stored profile zone, so "today" agrees with what the client recorded.
+    // Both fall back to UTC. todayDateInTz never throws on a bad zone.
     const [meTz] = await db
       .select({ timezone: usersTable.timezone })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
-    const tz = meTz?.timezone || "UTC";
+    const tzParam = typeof req.query.tz === "string" && isValidTimeZone(req.query.tz) ? req.query.tz : null;
+    const tz = tzParam ?? (meTz?.timezone && isValidTimeZone(meTz.timezone) ? meTz.timezone : "UTC");
+
+    // YMD for "i days before today" in the resolved timezone.
+    const todayYmd = todayDateInTz(tz);
+    const [ty, tm, td] = todayYmd.split("-").map((n) => parseInt(n, 10));
+    const ymdMinus = (i: number): string => {
+      const dt = new Date(Date.UTC(ty, tm - 1, td));
+      dt.setUTCDate(dt.getUTCDate() - i);
+      return dt.toISOString().slice(0, 10);
+    };
+    const windowStart = ymdMinus(400); // bound for both reads
 
     // Distinct local-day strings from prayer sessions in the window. Cast the
     // session's ended_at into the user's tz before taking the date, so an
@@ -68,24 +84,19 @@ router.get("/me/prayer-days", async (req, res): Promise<void> => {
       WHERE user_id = ${sessionUserId}
         AND ended_at >= NOW() - INTERVAL '400 days'
     `);
-    // Cobreathe already stores the user's local-day string directly.
+    // Cobreathe already stores the user's local-day string directly — bound to
+    // the window so this scan doesn't fetch the user's entire breath history.
     const breathDays = await db
       .select({ day: breathSessionsTable.day })
       .from(breathSessionsTable)
-      .where(eq(breathSessionsTable.userId, sessionUserId));
+      .where(and(
+        eq(breathSessionsTable.userId, sessionUserId),
+        gte(breathSessionsTable.day, windowStart),
+      ));
 
     const kept = new Set<string>();
     for (const r of sessionDays.rows) if (r.day) kept.add(r.day);
     for (const r of breathDays) if (r.day) kept.add(r.day);
-
-    // YMD for "i days before today" in the user's timezone.
-    const todayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
-    const [ty, tm, td] = todayYmd.split("-").map((n) => parseInt(n, 10));
-    const ymdMinus = (i: number): string => {
-      const dt = new Date(Date.UTC(ty, tm - 1, td));
-      dt.setUTCDate(dt.getUTCDate() - i);
-      return dt.toISOString().slice(0, 10);
-    };
 
     // The N-day window (oldest first; today at index N-1) for any display use.
     const days: { ymd: string; kept: boolean }[] = [];

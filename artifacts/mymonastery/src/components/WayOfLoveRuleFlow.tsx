@@ -111,8 +111,14 @@ export default function WayOfLoveRuleFlow({
     staleTime: 60_000,
   });
   const hydrated = useRef(false);
+  // Set once the user touches any control — so a slow office-prefs response
+  // can't clobber a choice they've already made while it was loading.
+  const touchedRef = useRef(false);
+  const choosePray = (p: PrayChoice) => { touchedRef.current = true; setPray(p); };
+  const chooseGoal = (g: string) => { touchedRef.current = true; setGoal(g); };
+  const chooseNewsletter = (n: ReflectionSource) => { touchedRef.current = true; setNewsletter(n); };
   useEffect(() => {
-    if (hydrated.current || !prefs) return;
+    if (hydrated.current || touchedRef.current || !prefs) return;
     hydrated.current = true;
     // Only fall back to the server's global default when there's no explicit
     // per-side choice in localStorage (which the user set here before).
@@ -239,7 +245,7 @@ export default function WayOfLoveRuleFlow({
           {["5", "10", "20"].map((m) => {
             const on = goal === m;
             return (
-              <button key={m} onClick={() => setGoal(m)} style={{ background: on ? CARD_ACTIVE : CARD, border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`, color: CREAM, borderRadius: 12, padding: "12px 0", flex: 1, fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+              <button key={m} onClick={() => chooseGoal(m)} style={{ background: on ? CARD_ACTIVE : CARD, border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`, color: CREAM, borderRadius: 12, padding: "12px 0", flex: 1, fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
                 {m}
               </button>
             );
@@ -250,7 +256,7 @@ export default function WayOfLoveRuleFlow({
             min={0}
             max={180}
             value={goal}
-            onChange={(e) => setGoal(e.target.value)}
+            onChange={(e) => chooseGoal(e.target.value)}
             aria-label={t("wol_rule.listen_goal_label", { defaultValue: "Minutes of silence a day" })}
             style={{ width: 72, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 10px", color: CREAM, fontSize: 15, fontFamily: FONT, textAlign: "center", outline: "none" }}
           />
@@ -273,9 +279,9 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.pray_body", { defaultValue: "How will you pray each day?" })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {choiceRow(pray === "community", t("wol_rule.pray_community", { defaultValue: "Community prayers" }), t("wol_rule.pray_community_sub", { defaultValue: "Pray with your community through the day's intercessions." }), () => setPray("community"))}
-          {choiceRow(pray === "devotion", t("wol_rule.pray_devotion", { defaultValue: "Daily devotion" }), t("wol_rule.pray_devotion_sub", { defaultValue: "A short form of Morning or Evening Prayer." }), () => setPray("devotion"))}
-          {choiceRow(pray === "offices", t("wol_rule.pray_offices", { defaultValue: "The offices" }), t("wol_rule.pray_offices_sub", { defaultValue: "The full Daily Office — Morning & Evening Prayer." }), () => setPray("offices"))}
+          {choiceRow(pray === "community", t("wol_rule.pray_community", { defaultValue: "Community prayers" }), t("wol_rule.pray_community_sub", { defaultValue: "Pray with your community through the day's intercessions." }), () => choosePray("community"))}
+          {choiceRow(pray === "devotion", t("wol_rule.pray_devotion", { defaultValue: "Daily devotion" }), t("wol_rule.pray_devotion_sub", { defaultValue: "A short form of Morning or Evening Prayer." }), () => choosePray("devotion"))}
+          {choiceRow(pray === "offices", t("wol_rule.pray_offices", { defaultValue: "The offices" }), t("wol_rule.pray_offices_sub", { defaultValue: "The full Daily Office — Morning & Evening Prayer." }), () => choosePray("offices"))}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => setStep("learn"))}
       </>,
@@ -302,7 +308,7 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.learn_body", { defaultValue: "Choose a daily reflection to read." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {NEWSLETTERS.map((n) => choiceRow(newsletter === n.id, n.label, n.sub, () => setNewsletter(n.id)))}
+          {NEWSLETTERS.map((n) => choiceRow(newsletter === n.id, n.label, n.sub, () => chooseNewsletter(n.id)))}
         </div>
         {ctaButton(t("wol_rule.finish", { defaultValue: "Set my Way of Love" }), commit)}
       </>,

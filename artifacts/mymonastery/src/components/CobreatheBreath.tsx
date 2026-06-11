@@ -143,6 +143,10 @@ export function CobreatheBreath({
   // turning, but it won't record. `endedRef` guards a single onEnd.
   const invalidRef = useRef(false);
   const endedRef = useRef(false);
+  // Timestamp of the previous count tick — a large gap means the timer was
+  // suspended (app/tab backgrounded), even if visibilitychange hasn't fired
+  // its handler yet on resume. Used to invalidate before the reach check.
+  const lastTickRef = useRef(0);
 
   // A rAF loop writes transforms straight to the DOM from the global clock —
   // no React re-render per frame, perfectly synced for everyone, and only
@@ -185,13 +189,26 @@ export function CobreatheBreath({
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => {
-      const since = Date.now() - countStartRef.current;
+      const now = Date.now();
+      // Presence guard, evaluated BEFORE the reach check so a backgrounded
+      // session can never record. Two signals, covering both platforms:
+      //   • document.hidden — a hidden web tab still fires throttled ticks.
+      //   • a >1.5s gap since the last tick — the timer was suspended (iOS app
+      //     backgrounded), which can race ahead of the visibilitychange handler
+      //     on resume.
+      const gap = lastTickRef.current ? now - lastTickRef.current : 0;
+      lastTickRef.current = now;
+      if (!reachedRef.current &&
+          ((typeof document !== "undefined" && document.hidden) || gap > 1500)) {
+        invalidRef.current = true;
+      }
+      const since = now - countStartRef.current;
       const completed = since >= 0 ? Math.floor(since / CYCLE_MS) : 0;
-      // Only credit the breath if the session stayed visible — a backgrounded
-      // tab/app that "completed" the count while away doesn't count.
+      // Only credit the breath if the session stayed open + visible the whole
+      // time — a backgrounded tab/app that "completed" the count doesn't count.
       if (!reachedRef.current && !invalidRef.current && completed >= totalBreaths) {
         reachedRef.current = true;
-        onReachTarget?.(Math.round((Date.now() - startRef.current) / 1000));
+        onReachTarget?.(Math.round((now - startRef.current) / 1000));
       }
       setTick((n) => n + 1);
     }, 150);

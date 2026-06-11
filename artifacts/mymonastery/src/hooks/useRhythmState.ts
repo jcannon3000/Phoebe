@@ -126,8 +126,8 @@ export function useRhythmState(): RhythmState {
   });
 
   const { data: rhythm } = useQuery<{ streak: number; last7: number; keptToday: boolean }>({
-    queryKey: ["/api/me/prayer-days"],
-    queryFn: () => apiRequest("GET", "/api/me/prayer-days"),
+    queryKey: ["/api/me/prayer-days", tz],
+    queryFn: () => apiRequest("GET", `/api/me/prayer-days?tz=${encodeURIComponent(tz)}`),
     staleTime: 60_000,
   });
 

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
@@ -41,6 +41,13 @@ export function CobreatheOverlay({
   const [phase, setPhase] = useState<"breathing" | "done">("breathing");
   const [resp, setResp] = useState<BreathResp | null>(null);
 
+  // The overlay stays mounted (prayer-mode toggles `open`), so reset to a fresh
+  // breath each time it opens — otherwise reopening after a finished breath
+  // lands straight on the stale "you cobreathed with N" done screen.
+  useEffect(() => {
+    if (open) { setPhase("breathing"); setResp(null); }
+  }, [open]);
+
   // Today's count, so "N breathing with you today" can show during the breath
   // even before this user has recorded theirs. Only fetched while open.
   const { data: today } = useQuery<BreathResp>({
@@ -53,10 +60,14 @@ export function CobreatheOverlay({
   // 12 breaths kept — record the day's breath so the count climbs while they
   // keep breathing. Contemplation time is logged on finish.
   const handleReachTarget = useCallback((secondsKept: number) => {
-    void apiRequest<BreathResp>("POST", "/api/breath/today", { day, seconds: secondsKept })
+    // Recompute the local day at call time — this overlay is mounted long
+    // before the breath finishes, so a captured `day` could be yesterday's
+    // (e.g. the breath crosses midnight).
+    const d = localDay();
+    void apiRequest<BreathResp>("POST", "/api/breath/today", { day: d, seconds: secondsKept })
       .then((r) => {
         setResp(r);
-        queryClient.invalidateQueries({ queryKey: ["/api/breath/today", day] });
+        queryClient.invalidateQueries({ queryKey: ["/api/breath/today", d] });
       })
       .catch(() => { /* best-effort — the breath still happened */ });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -65,9 +76,10 @@ export function CobreatheOverlay({
   const handleEnd = useCallback((secondsKept: number, reached: boolean) => {
     if (!reached) { onClose(); return; }
     setPhase("done");
+    const d = localDay();
     // Record (idempotent) in case reach didn't fire, then log the sit.
-    void apiRequest<BreathResp>("POST", "/api/breath/today", { day, seconds: secondsKept })
-      .then((r) => { setResp(r); queryClient.invalidateQueries({ queryKey: ["/api/breath/today", day] }); })
+    void apiRequest<BreathResp>("POST", "/api/breath/today", { day: d, seconds: secondsKept })
+      .then((r) => { setResp(r); queryClient.invalidateQueries({ queryKey: ["/api/breath/today", d] }); })
       .catch(() => { /* best-effort */ });
     if (secondsKept >= 5) {
       const endedAt = new Date();

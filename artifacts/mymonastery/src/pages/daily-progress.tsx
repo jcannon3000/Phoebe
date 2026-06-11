@@ -27,9 +27,12 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 // rhythm hook reads (React Query dedupes), but here we also use `days`.
 function StreakCard() {
   const { t } = useTranslation();
+  const tz = (() => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
+  })();
   const { data } = useQuery<{ days: Array<{ ymd: string; kept: boolean }>; streak: number; last7: number; keptToday: boolean }>({
-    queryKey: ["/api/me/prayer-days"],
-    queryFn: () => apiRequest("GET", "/api/me/prayer-days"),
+    queryKey: ["/api/me/prayer-days", tz],
+    queryFn: () => apiRequest("GET", `/api/me/prayer-days?tz=${encodeURIComponent(tz)}`),
     staleTime: 60_000,
   });
   if (!data) return null;
