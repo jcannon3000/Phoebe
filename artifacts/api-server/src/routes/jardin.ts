@@ -1,11 +1,67 @@
 import { Router, type IRouter } from "express";
-import { pool } from "@workspace/db";
+import { pool, db, usersTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
+import { hashPassword } from "./auth";
+import { rateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
 function getUser(req: any): { id: number; username: string; displayName: string } | null {
   return (req as any).user ?? null;
 }
+
+// ─── POST /api/jardin/signup ──────────────────────────────────────────────────
+// Open signup for the El Jardín portal (eljardin.withphoebe.app). Creates a
+// jardin-only account that sees only the Jardín experience — mirrors the
+// /climate/signup pattern (jardinEnrolled + jardinOnly, skip the general
+// onboarding tour). `website` is a honeypot.
+router.post(
+  "/jardin/signup",
+  rateLimit({
+    name: "jardin_signup",
+    max: 5,
+    windowMs: 60 * 60 * 1000,
+    message: "Too many signup attempts from your network. Please try again in an hour.",
+  }),
+  async (req, res): Promise<void> => {
+    const { email, name, password, website } = req.body as {
+      email?: string; name?: string; password?: string; website?: string;
+    };
+    if (website && website.trim().length > 0) { res.status(400).json({ error: "Invalid submission." }); return; }
+    if (!email || !email.includes("@")) { res.status(400).json({ error: "A valid email address is required." }); return; }
+    if (!name || name.trim().length < 1) { res.status(400).json({ error: "Your name is required." }); return; }
+    if (!password || password.length < 6) { res.status(400).json({ error: "Password must be at least 6 characters." }); return; }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const [existing] = await db.select().from(usersTable).where(eq(usersTable.email, normalizedEmail));
+    if (existing) { res.status(400).json({ error: "An account with that email already exists." }); return; }
+
+    const passwordHash = await hashPassword(password);
+    const [user] = await db.insert(usersTable).values({
+      email: normalizedEmail,
+      name: name.trim(),
+      passwordHash,
+      jardinEnrolled: true,
+      jardinOnly: true,
+      // Skip Phoebe's general onboarding tour — the portal is self-contained.
+      onboardingCompleted: true,
+    }).returning();
+
+    req.login(user as Express.User, (err) => {
+      if (err) { res.status(500).json({ error: "Login failed after signup." }); return; }
+      req.session.save(() => res.json({ ok: true }));
+    });
+  },
+);
+
+// POST /api/jardin/enroll-self — an existing Phoebe user opts into Jardín
+// (jardinEnrolled true, jardinOnly stays false so they keep the full app).
+router.post("/jardin/enroll-self", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  await db.update(usersTable).set({ jardinEnrolled: true }).where(eq(usersTable.id, user.id));
+  res.json({ ok: true });
+});
 
 // ── Bible Studies ──────────────────────────────────────────────────────────
 

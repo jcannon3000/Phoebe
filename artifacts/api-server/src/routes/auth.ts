@@ -235,6 +235,8 @@ router.get("/auth/me", async (req, res) => {
     climateEnrolled: boolean;
     climateOnboardingCompleted: boolean;
     climateOnly: boolean;
+    jardinEnrolled: boolean;
+    jardinOnly: boolean;
     parishId: number | null;
     parishFeedId: number | null;
     bellEnabled: boolean;
@@ -277,6 +279,8 @@ router.get("/auth/me", async (req, res) => {
     climateEnrolled: u.climateEnrolled ?? false,
     climateOnboardingCompleted: u.climateOnboardingCompleted ?? false,
     climateOnly: u.climateOnly ?? false,
+    jardinEnrolled: u.jardinEnrolled ?? false,
+    jardinOnly: u.jardinOnly ?? false,
     parishId: u.parishId ?? null,
     bellEnabled: u.bellEnabled ?? false,
     locale: u.locale ?? "en",

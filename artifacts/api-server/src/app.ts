@@ -89,6 +89,8 @@ app.use(
 const allowedOrigins = new Set<string>([
   "https://withphoebe.app",
   "https://www.withphoebe.app",
+  // El Jardín portal subdomain (shares the same API + accounts).
+  "https://eljardin.withphoebe.app",
   "capacitor://localhost",
   "https://localhost",
   ...(process.env["NODE_ENV"] !== "production"
@@ -148,6 +150,15 @@ app.use(
       secure: process.env["NODE_ENV"] === "production",
       maxAge: 30 * 24 * 60 * 60 * 1000,
       sameSite: process.env["NODE_ENV"] === "production" ? "none" : "lax",
+      // Flag-gated shared-session domain. Set SESSION_COOKIE_DOMAIN=
+      // ".withphoebe.app" to share the login across subdomains (so a Phoebe
+      // session is recognized on eljardin.withphoebe.app and vice versa).
+      // Unset → the cookie stays scoped to the exact origin (today's
+      // behavior). ⚠️ Flipping this re-scopes the cookie, so every current
+      // user is logged out once — deploy it deliberately.
+      ...(process.env["SESSION_COOKIE_DOMAIN"]
+        ? { domain: process.env["SESSION_COOKIE_DOMAIN"] }
+        : {}),
     },
   })
 );

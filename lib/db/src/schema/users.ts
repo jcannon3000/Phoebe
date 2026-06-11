@@ -84,6 +84,15 @@ export const usersTable = pgTable("users", {
   // Used in the drawer/nav to hide non-climate surfaces from the W&W
   // cohort while leaving dual users' experience intact.
   climateOnly: boolean("climate_only").notNull().default(false),
+  // ── El Jardín portal ───────────────────────────────────────────────────────
+  // jardinEnrolled: the user has opted into El Jardín (the Spanish-first
+  // Bible-study + groups portal). jardinOnly: created via the Jardín portal
+  // signup (eljardin.withphoebe.app) — like climateOnly, it hides non-Jardín
+  // surfaces in the nav so the account sees only the Jardín experience. A
+  // normal Phoebe user can also use Jardín (jardinEnrolled true, jardinOnly
+  // false).
+  jardinEnrolled: boolean("jardin_enrolled").notNull().default(false),
+  jardinOnly: boolean("jardin_only").notNull().default(false),
   parishId: integer("parish_id"),  // FK to groups.id, enforced only in migration SQL — no .references() here to avoid circular import
   // ── Phoebe Parish ─────────────────────────────────────────────────────────
   // FK to prayer_feeds.id when the feed has kind="parish". This is the

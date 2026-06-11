@@ -22,6 +22,12 @@ export default function MenuJardinPage() {
           ],
         },
         {
+          header: "Community",
+          items: [
+            { emoji: "👥", label: "Groups", sub: "Your groups and their forums", onClick: () => go("/communities") },
+          ],
+        },
+        {
           header: "Scripture & Accountability",
           items: [
             { emoji: "🔍", label: "Bible Lookup", sub: "Open any passage on Bible.com", onClick: () => go("/jardin/bible") },

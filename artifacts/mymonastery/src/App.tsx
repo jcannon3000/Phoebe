@@ -167,6 +167,7 @@ const NcmpWatchPage = lazy(() => import("./pages/ncmp-watch"));
 const OfficePodcastPage = lazy(() => import("./pages/office-podcast"));
 const MenuPage = lazy(() => import("./pages/menu"));
 const MenuJardinPage = lazy(() => import("./pages/menu-jardin"));
+const JardinSignupPage = lazy(() => import("./pages/jardin-signup"));
 const JardinBiblePage = lazy(() => import("./pages/jardin-bible"));
 const JardinBibleStudyPage = lazy(() => import("./pages/jardin-bible-study"));
 const JardinCharacterStudyPage = lazy(() => import("./pages/jardin-character-study"));
@@ -257,6 +258,8 @@ const WelcomePage = lazy(() => import("./pages/welcome"));
 import WelcomePublicPage from "./pages/welcome-public";
 const CommunityNewPage = lazy(() => import("./pages/community-new"));
 const CommunityDetailPage = lazy(() => import("./pages/community-detail"));
+const ForumPage = lazy(() => import("./pages/forum"));
+const ForumThreadPage = lazy(() => import("./pages/forum-thread"));
 const CommunityAskPage = lazy(() => import("./pages/community-ask"));
 const CommunityReflectionPage = lazy(() => import("./pages/community-reflection"));
 const CommunitySundayReflectionPage = lazy(() => import("./pages/community-sunday-reflection"));
@@ -292,6 +295,7 @@ const ParishIntercessionsPage = lazy(() => import("./pages/parish-intercessions"
 import { useAuth as useAuthForGate } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { PHOEBE_PARISH_ENABLED } from "@/lib/parishFlag";
+import { isJardinHost } from "@/lib/jardinMode";
 
 // Climate is now just a prayer feed (slug: phoebe-climate). The old
 // /climate*, /climate/admin, /climate/parish routes redirect to the
@@ -410,6 +414,29 @@ const PARISH_DENIED_PATHS = [
   "/ritual",
   "/tradition",
 ];
+
+// El Jardín portal landing. Entirely host-gated: on the main withphoebe.app
+// host isJardinHost() is false and this is a no-op, so the main app's routing
+// is never affected. On eljardin.withphoebe.app it sends visitors into the
+// Jardín experience — signup when logged out, the Jardín hub when logged in.
+function JardinHostGate() {
+  const [location, setLocation] = useLocation();
+  const { user, isLoading } = useAuthForGate();
+  useEffect(() => {
+    if (!isJardinHost()) return; // main app untouched
+    if (isLoading) return;
+    if (!user) {
+      // Logged out → the portal front door (allow login too).
+      if (location !== "/jardin/signup" && location !== "/login") setLocation("/jardin/signup");
+      return;
+    }
+    // Logged in → land on the Jardín hub from the generic roots.
+    if (location === "/" || location === "/dashboard" || location === "/welcome" || location === "/jardin/signup") {
+      setLocation("/menu/jardin");
+    }
+  }, [location, user, isLoading, setLocation]);
+  return null;
+}
 
 function ParishGate({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -547,6 +574,7 @@ function Router() {
           mounted at /signin now — /onboarding kept as an alias so any
           older deep links still resolve. */}
       <Route path="/" component={WelcomePublicPage} />
+      <Route path="/jardin/signup" component={JardinSignupPage} />
       <Route path="/signin" component={Onboarding} />
       {/* /onboarding is the post-signup UserOnboarding slideshow,
           mounted below. Don't claim it here for the signin form —
@@ -741,6 +769,8 @@ function Router() {
       <Route path="/communities/:slug/ask" component={CommunityAskPage} />
       <Route path="/communities/:slug/reflection" component={CommunityReflectionPage} />
       <Route path="/communities/:slug/sunday-reflection" component={CommunitySundayReflectionPage} />
+      <Route path="/communities/:slug/forum/:postId" component={ForumThreadPage} />
+      <Route path="/communities/:slug/forum" component={ForumPage} />
       <Route path="/communities/:slug" component={CommunityDetailPage} />
       <Route path="/beta" component={BetaAdminPage} />
       <Route path="/waitlist" component={WaitlistAdminPage} />
@@ -884,6 +914,7 @@ function App() {
             {/* Global podcast player — mounted above the route Switch so
                 audio keeps playing as you navigate. Renders its own
                 persistent <audio> + mini-player bar. */}
+            <JardinHostGate />
             <PodcastPlayerProvider>
               <ParishGate>
                 <Router />

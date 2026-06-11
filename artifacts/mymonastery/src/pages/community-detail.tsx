@@ -11,7 +11,7 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart, Search as SearchIcon, MessageSquareText, HandHeart } from "lucide-react";
+import { Plus, Users, MessageCircle, X, Settings, Copy, Check, RefreshCw, Sparkles, Heart, Search as SearchIcon, MessageSquareText, HandHeart, ChevronRight } from "lucide-react";
 import { useCommunityAdminToggle, useBetaStatus } from "@/hooks/useDemo";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 import { MomentCard, type Moment } from "@/pages/dashboard";
@@ -1826,6 +1826,25 @@ export default function CommunityDetailPage() {
         {/* Beta-only — Sunday-service reflection entry. Mirrors the
             daily card pattern. Also hidden for admins (see above). */}
         {rawIsBeta && !isAdmin && <SundayReflectionEntryCard slug={slug} />}
+
+        {/* Group forum — a message board for the community. Open to every
+            joined member; the forum page itself enforces membership. */}
+        <Link
+          href={`/communities/${slug}/forum`}
+          className="flex items-center gap-3 rounded-2xl px-4 py-3.5 mb-3 transition-opacity hover:opacity-90 active:scale-[0.99]"
+          style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
+        >
+          <span className="text-xl flex-shrink-0">💬</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[14px] font-semibold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              {t("community_detail.forum", { defaultValue: "Forum" })}
+            </p>
+            <p className="text-[12px] mt-0.5 leading-snug" style={{ color: "#8FAF96" }}>
+              {t("community_detail.forum_blurb", { defaultValue: "Start a conversation with the group" })}
+            </p>
+          </div>
+          <ChevronRight size={16} style={{ color: "rgba(143,175,150,0.6)", flexShrink: 0 }} />
+        </Link>
 
         {/* ── Prayer Circle intentions ──────────────────────────────────
             For circle groups, surface every active intention as its own card
