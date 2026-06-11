@@ -10,15 +10,78 @@
  */
 
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Sliders } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
+import { apiRequest } from "@/lib/queryClient";
 import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { useRhythmState } from "@/hooks/useRhythmState";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
+
+// Streak card — the unified days-of-prayer run, with a dot for each of the
+// last 14 days (filled = kept, ringed = today). Same /api/me/prayer-days the
+// rhythm hook reads (React Query dedupes), but here we also use `days`.
+function StreakCard() {
+  const { t } = useTranslation();
+  const { data } = useQuery<{ days: Array<{ ymd: string; kept: boolean }>; streak: number; last7: number; keptToday: boolean }>({
+    queryKey: ["/api/me/prayer-days"],
+    queryFn: () => apiRequest("GET", "/api/me/prayer-days"),
+    staleTime: 60_000,
+  });
+  if (!data) return null;
+  const { days, streak, last7 } = data;
+  const AMBER = "193,127,36";
+  return (
+    <div
+      className="relative flex rounded-2xl overflow-hidden mt-2"
+      style={{ background: `rgba(${AMBER},0.08)`, border: `1px solid rgba(${AMBER},0.28)` }}
+    >
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(${AMBER},0.85)` }} />
+      <div className="flex-1 px-4 py-4">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🔥</span>
+          <div className="flex-1 min-w-0">
+            <p className="leading-none" style={{ color: WARM, fontFamily: FONT, fontSize: 26, fontWeight: 700 }}>
+              {streak}
+              <span className="text-[13px] font-semibold ml-2" style={{ color: "#D9A45B" }}>
+                {t("rhythm.streak_unit", { count: streak, defaultValue: streak === 1 ? "day rhythm" : "day rhythm" })}
+              </span>
+            </p>
+            <p className="text-[12px] mt-1.5" style={{ color: SAGE, fontFamily: FONT }}>
+              {t("rhythm.last7_line", { last7, defaultValue: `Kept ${last7} of the last 7 days` })}
+            </p>
+          </div>
+        </div>
+        {/* Last-14-days strip — oldest left, today right (ringed). */}
+        <div className="flex items-center gap-1.5 mt-3.5">
+          {days.map((d, i) => {
+            const isToday = i === days.length - 1;
+            return (
+              <span
+                key={d.ymd}
+                title={d.ymd}
+                className="flex-1 rounded-full"
+                style={{
+                  height: 8,
+                  maxWidth: 22,
+                  background: d.kept ? `rgba(${AMBER},0.85)` : "rgba(143,175,150,0.16)",
+                  border: isToday ? "1.5px solid rgba(240,237,230,0.75)" : "1px solid transparent",
+                }}
+              />
+            );
+          })}
+        </div>
+        <p className="text-[10.5px] mt-1.5" style={{ color: "rgba(143,175,150,0.5)", fontFamily: FONT }}>
+          {t("rhythm.last14_label", { defaultValue: "Last 14 days" })}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin). Matches the dashboard
@@ -159,6 +222,9 @@ export default function DailyProgressPage() {
             />
           ))}
         </div>
+
+        {/* Streak — the unified days-of-prayer run + last-14-days strip. */}
+        <StreakCard />
 
         {/* Customize — shape which practices make up your rhythm. */}
         <div className="flex justify-center mt-8">
