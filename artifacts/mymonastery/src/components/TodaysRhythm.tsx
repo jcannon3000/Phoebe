@@ -174,9 +174,12 @@ export function TodaysRhythm() {
 
   return (
     <div
-      className="rounded-2xl p-4 mb-5"
+      className="rounded-2xl overflow-hidden mb-8 flex"
       style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.24)" }}
     >
+      {/* Left accent bar — the "side panel" that matches the other home cards. */}
+      <div className="w-1 flex-shrink-0" style={{ background: "rgba(110,180,130,0.85)" }} />
+      <div className="flex-1 p-4">
       {/* Anchor strip */}
       <div className="flex items-start justify-around">
         {anchors.map((a) => (
@@ -263,6 +266,7 @@ export function TodaysRhythm() {
           </p>
         </Link>
       )}
+      </div>
     </div>
   );
 }

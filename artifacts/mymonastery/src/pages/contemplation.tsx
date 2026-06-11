@@ -702,7 +702,7 @@ export default function ContemplationPage() {
                   ? t("cobreathe.card_done", { defaultValue: "Today's breath is held 🌿" })
                   : (cobreathe?.count ?? 0) > 0
                     ? t("cobreathe.card_count", { count: cobreathe?.count ?? 0, defaultValue: `${cobreathe?.count} ${cobreathe?.count === 1 ? "person has" : "people have"} breathed for justice today` })
-                    : t("cobreathe.card_blurb", { defaultValue: "Nine slow breaths, once a day, as one body" })}
+                    : t("cobreathe.card_blurb", { defaultValue: "Twelve slow breaths, once a day, in one shared rhythm" })}
               </p>
             </div>
             <span style={{ color: SAGE, fontSize: 18 }}>›</span>

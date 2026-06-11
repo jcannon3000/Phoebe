@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { writeMindfulSession } from "@/lib/appleHealth";
+import { CobreatheBreath } from "@/components/CobreatheBreath";
 
 // Cobreathe (beta) — from "conspire", con + spirare, to breathe together.
 // A short daily guided breath held as embodied prayer for justice: not
@@ -24,28 +25,6 @@ const SAGE = "#8FAF96";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
 
-// Breath pacing — 4s in, 2s hold, 6s out. The long exhale is the calming
-// half; nine cycles ≈ 2 minutes, short enough to keep daily.
-const INHALE_MS = 4000;
-const HOLD_MS = 2000;
-const EXHALE_MS = 6000;
-const CYCLE_MS = INHALE_MS + HOLD_MS + EXHALE_MS;
-const TOTAL_BREATHS = 9;
-
-// One line per breath, shown as the cycle begins. Ordered as a small arc:
-// etymology → interconnection → ruach → justice → commitment.
-const INTENTIONS: Array<{ text: string; key: string }> = [
-  { key: "conspire", text: "To conspire — con spirare — is to breathe together." },
-  { key: "shared_air", text: "The air in your lungs has passed through every living thing." },
-  { key: "reciprocal", text: "Trees breathe out what you breathe in. You breathe out what they breathe in." },
-  { key: "ruach", text: "Ruach — breath, wind, Spirit. One word. One breath." },
-  { key: "cannot_breathe", text: "Breathe with those who cannot breathe freely." },
-  { key: "no_one_alone", text: "No one breathes alone." },
-  { key: "borrowed", text: "Every breath is borrowed from the whole." },
-  { key: "commit", text: "To breathe together is to be bound to one another." },
-  { key: "justice", text: "Let this breath become work for justice." },
-];
-
 // The week's intention — who this week's breath is held for. Rotates by
 // week-of-year so the whole community holds the same focus at the same time.
 const WEEKLY_FOCI: Array<{ emoji: string; key: string; title: string; line: string }> = [
@@ -58,8 +37,6 @@ const WEEKLY_FOCI: Array<{ emoji: string; key: string; title: string; line: stri
   { emoji: "🕊️", key: "displaced", title: "The displaced", line: "for refugees and migrants breathing unfamiliar air, far from home, and for the welcome they deserve." },
   { emoji: "🌍", key: "creation", title: "The whole creation", line: "groaning as in labor — and the ruach that has hovered over the waters since the beginning." },
 ];
-
-type Phase = "in" | "hold" | "out";
 
 // Local calendar day, YYYY-MM-DD (en-CA locale formats exactly that way).
 function localDay(): string {
@@ -126,98 +103,6 @@ function Faces({ companions }: { companions: Companion[] }) {
   );
 }
 
-// The animated breath itself — a circle that swells on the inhale, rests,
-// and falls on the exhale, with the phase word and the cycle's line.
-function BreathSession({ onDone, onCancel }: { onDone: (secondsKept: number) => void; onCancel: () => void }) {
-  const { t } = useTranslation();
-  const [breath, setBreath] = useState(0); // 0-based cycle index
-  const [phase, setPhase] = useState<Phase>("in");
-  const startRef = useRef(Date.now());
-
-  // Schedule the whole session's phase flips up front; simpler than a
-  // chained state machine and immune to re-render drift.
-  useEffect(() => {
-    const ts: ReturnType<typeof setTimeout>[] = [];
-    for (let i = 0; i < TOTAL_BREATHS; i++) {
-      const base = i * CYCLE_MS;
-      if (i > 0) ts.push(setTimeout(() => { setBreath(i); setPhase("in"); }, base));
-      ts.push(setTimeout(() => setPhase("hold"), base + INHALE_MS));
-      ts.push(setTimeout(() => setPhase("out"), base + INHALE_MS + HOLD_MS));
-    }
-    ts.push(setTimeout(() => {
-      onDone(Math.round((Date.now() - startRef.current) / 1000));
-    }, TOTAL_BREATHS * CYCLE_MS));
-    return () => ts.forEach(clearTimeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const phaseLabel =
-    phase === "in" ? t("cobreathe.phase_in", { defaultValue: "Breathe in" })
-    : phase === "hold" ? t("cobreathe.phase_hold", { defaultValue: "Hold" })
-    : t("cobreathe.phase_out", { defaultValue: "Breathe out" });
-
-  // Circle scale: grow over the inhale, stay big through the hold, shrink
-  // over the exhale. transition-duration tracks the current phase length so
-  // CSS does the easing.
-  const scale = phase === "out" ? 1 : 1.5;
-  const durMs = phase === "in" ? INHALE_MS : phase === "hold" ? HOLD_MS : EXHALE_MS;
-
-  const intention = INTENTIONS[breath % INTENTIONS.length];
-
-  return (
-    <div className="flex flex-col items-center justify-between flex-1 py-6" style={{ minHeight: "70vh" }}>
-      <p
-        className="text-center text-[15px] px-8 leading-relaxed"
-        style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic", minHeight: 48 }}
-      >
-        {t(`cobreathe.intention.${intention.key}`, { defaultValue: intention.text })}
-      </p>
-
-      <div className="flex flex-col items-center justify-center flex-1 my-6">
-        <div className="relative flex items-center justify-center" style={{ width: 260, height: 260 }}>
-          {/* Outer halo */}
-          <div
-            style={{
-              position: "absolute", width: 170, height: 170, borderRadius: "50%",
-              background: "rgba(62,124,122,0.12)",
-              transform: `scale(${scale * 1.25})`,
-              transition: `transform ${durMs}ms ease-in-out`,
-            }}
-          />
-          {/* Breath circle */}
-          <div
-            style={{
-              position: "absolute", width: 150, height: 150, borderRadius: "50%",
-              background: "radial-gradient(circle at 38% 32%, rgba(143,175,150,0.55), rgba(46,107,64,0.85))",
-              border: "1px solid rgba(143,175,150,0.5)",
-              boxShadow: "0 0 60px rgba(62,124,122,0.35)",
-              transform: `scale(${scale})`,
-              transition: `transform ${durMs}ms ease-in-out`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 600 }}>
-              {phaseLabel}
-            </span>
-          </div>
-        </div>
-        <p className="mt-8 text-[13px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>
-          {t("cobreathe.breath_counter", { current: breath + 1, total: TOTAL_BREATHS, defaultValue: `Breath ${breath + 1} of ${TOTAL_BREATHS}` })}
-        </p>
-      </div>
-
-      <button
-        type="button"
-        onClick={onCancel}
-        className="text-[13px] py-2 px-6"
-        style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK, background: "none", border: "none", cursor: "pointer" }}
-      >
-        {t("cobreathe.end_early", { defaultValue: "End early" })}
-      </button>
-    </div>
-  );
-}
-
 export default function CobreathePage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -244,12 +129,21 @@ export default function CobreathePage() {
     },
   });
 
-  const finish = useCallback((secondsKept: number) => {
+  // Reaching the 12th breath records the day's breath right away — so the
+  // count climbs and companions appear while they keep breathing. The breath
+  // itself keeps going; nothing stops here.
+  const handleReachTarget = useCallback((secondsKept: number) => {
+    record.mutate(secondsKept);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Finishing (or backing out). Bailed before the target → straight back to
+  // the intro, nothing logged. Finished → record (idempotent) and log the
+  // time as a contemplation sit (daily goal, history, companions + Health).
+  const handleEnd = useCallback((secondsKept: number, reached: boolean) => {
+    if (!reached) { setMode("intro"); return; }
     setMode("done");
     record.mutate(secondsKept);
-    // The breath was contemplation — log it as a contemplation sit so it
-    // counts toward the daily goal, history, and companions, and mirror it
-    // to Apple Health. Both best-effort; the count is the canonical record.
     const endedAt = new Date();
     const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
     if (secondsKept >= 5) {
@@ -307,7 +201,11 @@ export default function CobreathePage() {
         </div>
 
         {mode === "breathing" && (
-          <BreathSession onDone={finish} onCancel={() => setMode("intro")} />
+          <CobreatheBreath
+            othersToday={others}
+            onReachTarget={handleReachTarget}
+            onEnd={handleEnd}
+          />
         )}
 
         {mode === "intro" && (
@@ -321,7 +219,7 @@ export default function CobreathePage() {
                 {t("cobreathe.framing_1", { defaultValue: "To conspire — con spirare — is, literally, to breathe together." })}
               </p>
               <p className="text-[13.5px] leading-relaxed" style={{ color: SAGE, fontFamily: SERIF }}>
-                {t("cobreathe.framing_2", { defaultValue: "Once a day, people across Phoebe keep nine slow breaths — not at the same hour, but as one body. When you finish, you'll learn how many people you breathed with: a small, bodily recognition that we are interconnected, and that the work of justice is work we can only do together." })}
+                {t("cobreathe.framing_2", { defaultValue: "Once a day, hold twelve slow breaths in one shared rhythm — the circle is paced by the same clock for everyone, so anyone breathing in that moment is breathing with you. When you finish, you'll learn how many people kept the breath today: a small, bodily recognition that we are interconnected, and that the work of justice is work we can only do together." })}
               </p>
             </div>
 
@@ -444,11 +342,11 @@ export default function CobreathePage() {
             >
               {today?.done
                 ? t("cobreathe.begin_again", { defaultValue: "Breathe again" })
-                : t("cobreathe.begin", { defaultValue: "Cobreathe — nine breaths" })}
+                : t("cobreathe.begin", { defaultValue: "Cobreathe — twelve breaths" })}
             </button>
 
             <p className="text-[12px] mt-4 text-center px-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SERIF, fontStyle: "italic" }}>
-              {t("cobreathe.caption", { defaultValue: "About two minutes — it counts toward your contemplation goal. Sit comfortably; let the circle pace you." })}
+              {t("cobreathe.caption", { defaultValue: "About two and a half minutes — it counts toward your contemplation goal. Sit comfortably; let the circle pace you." })}
             </p>
 
             {/* Quiet lifetime line */}

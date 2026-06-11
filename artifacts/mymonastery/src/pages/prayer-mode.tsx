@@ -27,6 +27,7 @@ import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
+import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { GratitudeNudge } from "@/components/GratitudeComposer";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
@@ -351,6 +352,7 @@ function SlideContent({
   onRenewLastMine,
   renewingLastMine,
   onStartContemplation,
+  onStartCobreathe,
 }: {
   slide: PrayerSlide;
   // Stable key per slide — drives the 3-second Amen pause-reset. The
@@ -379,6 +381,10 @@ function SlideContent({
   // number starts a sit of that length immediately (the quick 5/10/20
   // buttons); undefined opens the full duration picker.
   onStartContemplation: (minutes?: number) => void;
+  // Opens the Cobreathe overlay from the pause slide — a daily communal
+  // breath for justice, paced by a shared clock so everyone breathes
+  // together. Logs a contemplation sit like the timer does.
+  onStartCobreathe: () => void;
 }) {
   const { i18n } = useTranslation();
   const [askBody, setAskBody] = useState("");
@@ -662,6 +668,22 @@ function SlideContent({
             }}
           >
             🕯️ Begin contemplation
+          </button>
+          {/* Cobreathe — the silence can be a shared one. Twelve breaths
+              paced by a common clock, held as prayer for justice. */}
+          <button
+            type="button"
+            onClick={onStartCobreathe}
+            className="w-full rounded-xl py-3 mt-2.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+            style={{
+              background: "rgba(62,124,122,0.18)",
+              border: "1px solid rgba(62,124,122,0.45)",
+              color: "#F0EDE6",
+              fontFamily: "'Space Grotesk', sans-serif",
+              cursor: "pointer",
+            }}
+          >
+            🌬️ Cobreathe — breathe together
           </button>
         </div>
       </div>
@@ -3440,6 +3462,8 @@ export default function PrayerModePage() {
   // from "Begin contemplation" shows the picker.
   const [contemplationOpen, setContemplationOpen] = useState(false);
   const [contemplationStartMinutes, setContemplationStartMinutes] = useState<number | undefined>(undefined);
+  // Cobreathe overlay — also opened from the pause slide, beside the timer.
+  const [cobreatheOpen, setCobreatheOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const [slideVisible, setSlideVisible] = useState(true);
   // Track which intercessions the viewer has already "amened" this
@@ -4116,6 +4140,7 @@ export default function PrayerModePage() {
                 setContemplationStartMinutes(minutes);
                 setContemplationOpen(true);
               }}
+              onStartCobreathe={() => setCobreatheOpen(true)}
             />
             {/* "Pray a liturgy" fork — opening slide only, directly beneath
                 the Amen button: Amen to continue the quick prayer flow, or
@@ -4252,6 +4277,17 @@ export default function PrayerModePage() {
           // A completed sit returns to the "take a breath" slide and
           // proceeds to the next slide (same as tapping Continue);
           // backing out of the picker just closes the overlay.
+          if (result?.completed) advance();
+        }}
+      />
+
+      {/* Cobreathe — full-screen overlay launched from the pause slide,
+          beside the contemplation timer. A finished breath advances the
+          slideshow like a completed sit. */}
+      <CobreatheOverlay
+        open={cobreatheOpen}
+        onClose={(result) => {
+          setCobreatheOpen(false);
           if (result?.completed) advance();
         }}
       />

@@ -1817,15 +1817,15 @@ export default function CommunityDetailPage() {
         {/* Beta-only — daily reflection entry (CAC / Forward Day by
             Day). Renders for every joined member of a beta-gated
             community; the page itself handles the "not enabled"
-            empty state when the admin hasn't picked a source yet. */}
-        {rawIsBeta && <ReflectionEntryCard slug={slug} />}
+            empty state when the admin hasn't picked a source yet.
+            Hidden for admins, who manage these surfaces from settings
+            and don't want the member-facing reflection cards cluttering
+            their admin view. */}
+        {rawIsBeta && !isAdmin && <ReflectionEntryCard slug={slug} />}
 
         {/* Beta-only — Sunday-service reflection entry. Mirrors the
-            daily card pattern: hidden for non-admin members when the
-            feature isn't enabled, visible to admins (with an "Enable
-            in settings" sub) so they have a discoverable doorway in.
-            Members see it once the admin turns it on. */}
-        {rawIsBeta && <SundayReflectionEntryCard slug={slug} />}
+            daily card pattern. Also hidden for admins (see above). */}
+        {rawIsBeta && !isAdmin && <SundayReflectionEntryCard slug={slug} />}
 
         {/* ── Prayer Circle intentions ──────────────────────────────────
             For circle groups, surface every active intention as its own card
