@@ -95,28 +95,29 @@ export function CobreatheOverlay({
   const liveOthers = Math.max(0, (liveState?.count ?? 0) - (liveState?.done ? 1 : 0));
   const others = Math.max(0, (resp?.count ?? 1) - 1);
 
+  // While breathing, CobreatheBreath is itself a full-screen deep-blue
+  // takeover — render it directly, no wrapper or header to peek around it.
+  if (phase === "breathing") {
+    return (
+      <CobreatheBreath
+        othersToday={liveOthers}
+        onReachTarget={handleReachTarget}
+        onEnd={handleEnd}
+      />
+    );
+  }
+
   return (
     <div
       className="flex flex-col"
       style={{
         position: "fixed", inset: 0, zIndex: 60,
-        background: "#091A10",
+        background: "radial-gradient(circle at 50% 42%, #0E2A1E 0%, #0A1C14 55%, #06120C 100%)",
         paddingTop: "env(safe-area-inset-top)",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      {phase === "breathing" ? (
-        <div className="flex-1 flex flex-col max-w-xl w-full mx-auto px-5">
-          <p className="text-center text-[11px] uppercase tracking-[0.18em] font-semibold mt-6" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
-            🌬️ {t("cobreathe.title", { defaultValue: "Cobreathe" })}
-          </p>
-          <CobreatheBreath
-            othersToday={liveOthers}
-            onReachTarget={handleReachTarget}
-            onEnd={handleEnd}
-          />
-        </div>
-      ) : (
+      {(
         <div className="flex-1 flex flex-col items-center justify-center text-center px-8 max-w-xl mx-auto">
           <div className="text-5xl mb-5">🌬️</div>
           <h2 className="text-[1.4rem] font-bold mb-3" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>

@@ -94,10 +94,12 @@ export function CobreatheBreath({
   othersToday?: number;
 }) {
   const { t } = useTranslation();
-  const circleRef = useRef<HTMLDivElement>(null);
+  // The breath is a full-bleed teal glow that swells on the inhale and
+  // recedes on the exhale — no circle, just light expanding and contracting
+  // over a deep-blue field. A second, larger layer trails it for depth.
   const glowRef = useRef<HTMLDivElement>(null);
-  const ring1Ref = useRef<HTMLDivElement>(null);
-  const ring2Ref = useRef<HTMLDivElement>(null);
+  const glow2Ref = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLDivElement>(null);
 
   // Anchor points (fixed at mount): when the user arrived, and the next clean
   // cycle boundary where the count begins. There is NO end anchor — the rhythm
@@ -106,33 +108,26 @@ export function CobreatheBreath({
   const countStartRef = useRef(Math.ceil(startRef.current / CYCLE_MS) * CYCLE_MS);
   const reachedRef = useRef(false);
 
-  // Smooth circle: a rAF loop writes transforms straight to the DOM from the
-  // global clock — no React re-render per frame, perfectly synced for all.
-  // Every animated property is transform/opacity only (GPU-composited); the
-  // glow is a pre-blurred radial layer whose opacity breathes, NOT an
-  // animated box-shadow (which forces repaints and reads as judder).
+  // A rAF loop writes transforms straight to the DOM from the global clock —
+  // no React re-render per frame, perfectly synced for everyone, and only
+  // transform/opacity (GPU-composited) so the swell stays glass-smooth.
   useEffect(() => {
     let raf = 0;
     const loop = () => {
       const pos = Date.now() % CYCLE_MS;
       const s = scaleAt(pos);
-      // 0 at rest → 1 at full inhale; drives glow + ring presence.
+      // 0 at rest (full exhale) → 1 at full inhale.
       const p = (s - SMALL) / (BIG - SMALL);
-      if (circleRef.current) circleRef.current.style.transform = `scale(${s})`;
       if (glowRef.current) {
-        glowRef.current.style.transform = `scale(${0.9 + p * 0.55})`;
-        glowRef.current.style.opacity = String(0.35 + p * 0.5);
+        glowRef.current.style.transform = `scale(${0.55 + p * 0.95})`;
+        glowRef.current.style.opacity = String(0.42 + p * 0.5);
       }
-      // Outer ripple rings — trail the circle at widening offsets and fade
-      // as the breath fills, like rings on still water.
-      if (ring1Ref.current) {
-        ring1Ref.current.style.transform = `scale(${s * 1.16})`;
-        ring1Ref.current.style.opacity = String(0.35 + p * 0.25);
+      if (glow2Ref.current) {
+        glow2Ref.current.style.transform = `scale(${0.7 + p * 1.05})`;
+        glow2Ref.current.style.opacity = String(0.18 + p * 0.28);
       }
-      if (ring2Ref.current) {
-        ring2Ref.current.style.transform = `scale(${s * 1.34})`;
-        ring2Ref.current.style.opacity = String(0.16 + p * 0.18);
-      }
+      // The phase word breathes a hair with the glow.
+      if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + p * 0.06})`;
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -173,81 +168,64 @@ export function CobreatheBreath({
   const reachedNow = counting && completed >= totalBreaths;
   const intention = counting ? INTENTIONS[(breathNum - 1) % INTENTIONS.length] : null;
 
+  // Soft sage tones that sit calmly on the deep-green field.
+  const TEXT_DIM = "rgba(182,210,188,0.72)";
+  const TEXT_FAINT = "rgba(182,210,188,0.48)";
+
   return (
-    <div className="flex flex-col items-center justify-between flex-1 py-6" style={{ minHeight: "70vh" }}>
+    <div
+      style={{
+        position: "fixed", inset: 0, zIndex: 50, overflow: "hidden",
+        background: "radial-gradient(circle at 50% 42%, #0E2A1E 0%, #0A1C14 55%, #06120C 100%)",
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between",
+        paddingTop: "calc(env(safe-area-inset-top) + 28px)",
+        paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
+      }}
+    >
+      {/* The breath — two stacked teal radial glows, centered and full-bleed,
+          swelling on the inhale and receding on the exhale. Pure transform +
+          opacity, driven by the global clock, so the motion is glass-smooth
+          and identical for everyone breathing at this moment. */}
+      <div
+        ref={glow2Ref}
+        style={{
+          position: "absolute", inset: "-20%",
+          background: "radial-gradient(circle at 50% 47%, rgba(120,196,126,0.34) 0%, rgba(98,176,108,0.22) 20%, rgba(74,150,86,0.12) 40%, rgba(50,120,66,0.04) 62%, rgba(34,96,52,0) 82%)",
+          transform: "scale(0.7)", opacity: 0.18, willChange: "transform, opacity", pointerEvents: "none",
+        }}
+      />
+      <div
+        ref={glowRef}
+        style={{
+          position: "absolute", inset: "-10%",
+          background: "radial-gradient(circle at 50% 47%, rgba(150,224,150,0.52) 0%, rgba(126,206,132,0.34) 16%, rgba(100,182,112,0.20) 34%, rgba(72,152,88,0.09) 54%, rgba(48,122,66,0.02) 72%, rgba(34,96,52,0) 84%)",
+          transform: "scale(0.55)", opacity: 0.42, willChange: "transform, opacity", pointerEvents: "none",
+        }}
+      />
+
+      {/* Intention — top */}
       <p
-        className="text-center text-[15px] px-8 leading-relaxed"
-        style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic", minHeight: 48 }}
+        className="text-center text-[15px] px-10 leading-relaxed"
+        style={{ color: TEXT_DIM, fontFamily: SERIF, fontStyle: "italic", minHeight: 48, position: "relative", maxWidth: 460 }}
       >
         {intention
           ? t(`cobreathe.intention.${intention.key}`, { defaultValue: intention.text })
           : t("cobreathe.settle", { defaultValue: "Settle in, and find the rhythm — others are already breathing." })}
       </p>
 
-      <div className="flex flex-col items-center justify-center flex-1 my-6">
-        <div className="relative flex items-center justify-center" style={{ width: 290, height: 290 }}>
-          {/* Ambient glow — a soft pre-blurred radial wash that brightens as
-              the lungs fill. Opacity-only animation, so it never repaints. */}
-          <div
-            ref={glowRef}
+      {/* Phase word — center, over the glow */}
+      <div className="flex flex-col items-center" style={{ position: "relative" }}>
+        <div ref={labelRef} style={{ willChange: "transform" }}>
+          <span
             style={{
-              position: "absolute", width: 260, height: 260, borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(86,156,142,0.45) 0%, rgba(62,124,122,0.18) 45%, transparent 70%)",
-              transform: "scale(0.9)",
-              opacity: 0.35,
-              willChange: "transform, opacity",
-              pointerEvents: "none",
-            }}
-          />
-          {/* Ripple rings — two thin halos trailing the circle outward. */}
-          <div
-            ref={ring2Ref}
-            style={{
-              position: "absolute", width: 150, height: 150, borderRadius: "50%",
-              border: "1px solid rgba(143,175,150,0.35)",
-              transform: `scale(${SMALL * 1.34})`,
-              opacity: 0.16,
-              willChange: "transform, opacity",
-              pointerEvents: "none",
-            }}
-          />
-          <div
-            ref={ring1Ref}
-            style={{
-              position: "absolute", width: 150, height: 150, borderRadius: "50%",
-              border: "1.5px solid rgba(143,175,150,0.45)",
-              transform: `scale(${SMALL * 1.16})`,
-              opacity: 0.35,
-              willChange: "transform, opacity",
-              pointerEvents: "none",
-            }}
-          />
-          {/* Breath circle — layered radial gradient for a soft, dimensional
-              sphere; no box-shadow (the glow layer above carries the light). */}
-          <div
-            ref={circleRef}
-            style={{
-              position: "absolute", width: 150, height: 150, borderRadius: "50%",
-              background:
-                "radial-gradient(circle at 36% 30%, rgba(178,205,182,0.65) 0%, rgba(110,164,138,0.6) 32%, rgba(52,112,84,0.9) 72%, rgba(36,84,64,0.95) 100%)",
-              border: "1px solid rgba(160,195,170,0.55)",
-              transform: `scale(${SMALL})`,
-              willChange: "transform",
-              display: "flex", alignItems: "center", justifyContent: "center",
+              color: WARM, fontFamily: SPACE_GROTESK, fontSize: 26, fontWeight: 600,
+              letterSpacing: "0.04em", textShadow: "0 2px 18px rgba(8,30,18,0.6)",
             }}
           >
-            <span
-              style={{
-                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
-                letterSpacing: "0.02em",
-                textShadow: "0 1px 8px rgba(9,26,16,0.45)",
-              }}
-            >
-              {phaseLabel}
-            </span>
-          </div>
+            {phaseLabel}
+          </span>
         </div>
-        <p className="mt-8 text-[13px]" style={{ color: reachedNow ? "rgba(110,180,130,0.9)" : "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>
+        <p className="mt-6 text-[13px]" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK }}>
           {!counting
             ? t("cobreathe.finding_rhythm", { defaultValue: "Finding the rhythm…" })
             : reachedNow
@@ -255,20 +233,21 @@ export function CobreatheBreath({
               : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `Breath ${breathNum} of ${totalBreaths}` })}
         </p>
         {othersToday != null && othersToday > 0 && (
-          <p className="mt-1.5 text-[12px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SERIF, fontStyle: "italic" }}>
+          <p className="mt-1.5 text-[12px]" style={{ color: TEXT_FAINT, fontFamily: SERIF, fontStyle: "italic" }}>
             {t("cobreathe.breathing_with_you", { count: othersToday, defaultValue: `${othersToday} ${othersToday === 1 ? "person is" : "people are"} breathing with you today` })}
           </p>
         )}
       </div>
 
+      {/* End / Finish — bottom */}
       <button
         type="button"
         onClick={() => onEnd(Math.round((Date.now() - startRef.current) / 1000), reachedRef.current)}
         className="text-[13px] py-2 px-6"
         style={{
-          color: reachedNow ? "#F0EDE6" : "rgba(143,175,150,0.55)",
+          color: reachedNow ? "#EAF6F4" : TEXT_FAINT,
           fontWeight: reachedNow ? 600 : 400,
-          fontFamily: SPACE_GROTESK, background: "none", border: "none", cursor: "pointer",
+          fontFamily: SPACE_GROTESK, background: "none", border: "none", cursor: "pointer", position: "relative",
         }}
       >
         {reachedNow
