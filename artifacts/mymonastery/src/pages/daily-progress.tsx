@@ -120,10 +120,11 @@ export default function DailyProgressPage() {
 
   return (
     <Layout>
-      {/* Full width (no inner max-width cap) so the rhythm + practice cards
-          are as wide as the home-screen cards — the Layout already provides
-          the page's max-width and horizontal padding. */}
-      <div className="flex flex-col w-full pb-24">
+      {/* Capped on desktop, full-width on mobile: the max-width constrains the
+          column on wide screens (so the cards aren't stretched across the
+          page), while phones — narrower than the cap — fill edge to edge
+          within the Layout's padding. */}
+      <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
         <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm mb-3" style={{ color: SAGE }}>
           <ChevronLeft size={14} /> {t("common.home", { defaultValue: "Home" })}
         </Link>
