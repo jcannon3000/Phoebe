@@ -65,3 +65,4 @@ export * from "./bless_intention";
 export * from "./bless_week";
 export * from "./gather";
 export * from "./reflection_thoughts";
+export * from "./forum";
