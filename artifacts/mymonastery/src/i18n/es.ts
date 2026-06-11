@@ -551,6 +551,7 @@ export const es: Translations = {
   header: {
     home: "Inicio",
     prayer_list: "Lista de oración",
+    daily_progress: "Progreso diario",
     people: "Personas",
     menu: "Menú",
     way_of_love: "Camino del Amor",

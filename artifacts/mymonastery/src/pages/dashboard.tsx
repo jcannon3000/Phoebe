@@ -12,7 +12,6 @@ import { PodcastsRail } from "@/components/PodcastsRail";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
-import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
 import { preheatReflection } from "@/lib/reflectionPreheat";
@@ -6075,12 +6074,10 @@ export default function Dashboard() {
             <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
           </div>
 
-          {/* Today's Rhythm — the daily-habit cue. Four anchors
-              (Morning / Reflect / Silence / Evening) fill as the day
-              is kept, a single time-aware prompt names the next step,
-              and a grace-based streak line rewards consistency. Only
-              in the unfiltered home view. */}
-          {filter === null && <TodaysRhythm />}
+          {/* Today's Rhythm card moved off the home top: it now lives on the
+              slideshow closing slide and on the /daily-progress page (reached
+              via the "Daily progress" header pill, whose four dots mirror it).
+              The home screen stays focused on praying. */}
 
           {/* The Way of Love daily/weekly progress strip was removed from the
               home top — that progress now lives in the Way of Love drawer

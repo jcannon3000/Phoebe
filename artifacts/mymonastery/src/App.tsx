@@ -211,6 +211,7 @@ const MomentRedirect = lazy(() => import("./pages/moment-redirect"));
 const PrayerListPage = lazy(() => import("./pages/prayer-list"));
 const PrayerModePage = lazy(() => import("./pages/prayer-mode"));
 const DailyPracticePage = lazy(() => import("./pages/daily-practice"));
+const DailyProgressPage = lazy(() => import("./pages/daily-progress"));
 const RuleOfLifePage = lazy(() => import("./pages/rule-of-life"));
 const RuleOfLifeViewPage = lazy(() => import("./pages/rule-of-life-view"));
 const BeginPrayerPage = lazy(() => import("./pages/begin-prayer"));
@@ -679,6 +680,7 @@ function Router() {
       <Route path="/pray-for/:email" component={PrayerForDetail} />
       <Route path="/settings" component={SettingsPage} />
       <Route path="/daily-practice" component={DailyPracticePage} />
+      <Route path="/daily-progress" component={DailyProgressPage} />
       {/* /rule-of-life/:id must sit above /rule-of-life so the id param isn't lost */}
       <Route path="/rule-of-life/:id" component={RuleOfLifeViewPage} />
       <Route path="/rule-of-life" component={RuleOfLifePage} />

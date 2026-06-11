@@ -30,6 +30,7 @@ import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { GratitudeNudge } from "@/components/GratitudeComposer";
+import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 
 // Drive the NATIVE iOS status-bar color (Capacitor StatusBar plugin) so the
@@ -1447,7 +1448,6 @@ function HabitSlide({
   const today = days[days.length - 1];
   const morningDone = today?.morning ?? false;
   const eveningDone = today?.evening ?? false;
-  const daysWithEither = days.filter(d => d.morning || d.evening).length;
 
   // Celebration haptic burst when the user has prayed both offices
   // today. A single impact felt understated for a full-day milestone
@@ -1477,65 +1477,6 @@ function HabitSlide({
     fire("success", 620);
   }, [morningDone, eveningDone]);
 
-  // Encouragement copy keys off this morning's + evening's state. We
-  // don't shame partial days — every line is forward-leaning.
-  const encouragement = (() => {
-    // Both-done state: no line — the row pills + grid say it. Adding
-    // copy here read as overclaim per user direction.
-    if (morningDone && eveningDone) return null;
-    if (morningDone) return "Morning is held. Evening waits when you're ready.";
-    if (eveningDone) return "Evening is held. Tomorrow begins again with morning.";
-    return "One a day grows the rhythm — both deepens it.";
-  })();
-
-  const Row = ({ label, emoji, done }: { label: string; emoji: string; done: boolean }) => (
-    <div
-      // animate-turn-pulse-practices: same border-color keyframe the
-      // home-screen "X prayer requests waiting" card uses. Borrowed
-      // here so the rhythm rows feel celebratory when the office is
-      // done — the inline borderColor is dropped in the done case so
-      // the CSS keyframe (which sets border-color) can take effect
-      // without the inline shorthand winning specificity.
-      className={`flex items-center justify-between w-full px-4 py-3 rounded-xl ${done ? "animate-turn-pulse-practices" : ""}`}
-      style={{
-        background: done ? "rgba(46,107,64,0.20)" : "rgba(46,107,64,0.08)",
-        borderWidth: 1,
-        borderStyle: "solid",
-        ...(done ? {} : { borderColor: "rgba(46,107,64,0.22)" }),
-      }}
-    >
-      <div className="flex items-center gap-3">
-        <span style={{ fontSize: 28 }}>{emoji}</span>
-        <span
-          className="font-semibold text-[19px]"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          {label}
-        </span>
-      </div>
-      {done ? (
-        <span
-          className="text-[12px] font-semibold px-2.5 py-0.5 rounded-full"
-          style={{
-            background: "rgba(111,175,133,0.25)",
-            color: "#C8D4C0",
-            border: "1px solid rgba(111,175,133,0.55)",
-            fontFamily: "'Space Grotesk', sans-serif",
-          }}
-        >
-          Completed ✓
-        </span>
-      ) : (
-        <span
-          className="text-[12px] font-medium"
-          style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          Not yet
-        </span>
-      )}
-    </div>
-  );
-
   return (
     <div
       className="w-full flex flex-col items-center text-center"
@@ -1546,149 +1487,19 @@ function HabitSlide({
         maxWidth: 380,
       }}
     >
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="flex flex-col items-center"
-      >
-        <p
-          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-          style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          Today
-        </p>
-        <p
-          className="text-[22px] font-semibold leading-tight mt-1"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          Your prayer rhythm
-        </p>
-      </motion.div>
-
+      {/* The day's rhythm — the four anchors (Morning · Reflect · Silence ·
+          Evening), the weekly streak, and what's next — the shared
+          TodaysRhythm card, the same one behind the header "Daily progress"
+          pill. Replaces the old bespoke Morning/Evening rows + 7-day grid so
+          the closing reads consistently with the rest of the app. */}
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
-        className="w-full flex flex-col gap-2"
-      >
-        <Row label="Morning" emoji="🌅" done={morningDone} />
-        <Row label="Evening" emoji="🌙" done={eveningDone} />
-      </motion.div>
-
-      {/* Past 7 days grid — two rows (morning, evening) × 7 columns.
-          Filled dot = office completed that day. Today sits at the
-          right edge. */}
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.2 }}
         className="w-full"
       >
-        <p
-          className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3"
-          style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          Past 7 days
-        </p>
-        <div
-          className="grid w-full gap-2"
-          style={{ gridTemplateColumns: "auto repeat(7, 1fr)" }}
-        >
-          <span />
-          {days.map((d) => (
-            <span
-              key={`label-${d.dateKey}`}
-              className="text-[10px] font-semibold text-center"
-              style={{
-                color: d.isToday ? "#C8D4C0" : "rgba(143,175,150,0.55)",
-                fontFamily: "'Space Grotesk', sans-serif",
-              }}
-            >
-              {d.label}
-            </span>
-          ))}
-          <span
-            className="text-[10px] text-right pr-1"
-            style={{ color: "rgba(143,175,150,0.65)", fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            🌅
-          </span>
-          {days.map((d) => (
-            <div key={`m-${d.dateKey}`} className="flex justify-center">
-              <span
-                className="block rounded-full"
-                style={{
-                  width: 14,
-                  height: 14,
-                  background: d.morning ? "#6FAF85" : "rgba(46,107,64,0.18)",
-                  border: `1px solid ${d.morning ? "rgba(111,175,133,0.7)" : "rgba(46,107,64,0.3)"}`,
-                }}
-              />
-            </div>
-          ))}
-          <span
-            className="text-[10px] text-right pr-1"
-            style={{ color: "rgba(143,175,150,0.65)", fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            🌙
-          </span>
-          {days.map((d) => (
-            <div key={`e-${d.dateKey}`} className="flex justify-center">
-              <span
-                className="block rounded-full"
-                style={{
-                  width: 14,
-                  height: 14,
-                  background: d.evening ? "#8B9DC3" : "rgba(46,107,64,0.18)",
-                  border: `1px solid ${d.evening ? "rgba(139,157,195,0.7)" : "rgba(46,107,64,0.3)"}`,
-                }}
-              />
-            </div>
-          ))}
-        </div>
-        {daysWithEither > 0 && (
-          <p
-            className="text-[11px] mt-3"
-            style={{ color: "rgba(143,175,150,0.75)", fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            {daysWithEither} {daysWithEither === 1 ? "day" : "days"} of prayer this week
-          </p>
-        )}
-        {/* Reminders pill — sits directly below the "N days of prayer
-            this week" tally so it reads as the natural next step from
-            the rhythm count. Deep-links to /settings where the
-            OfficeReminderSettings card lives. */}
-        <div className="mt-3 flex justify-center">
-          <Link href="/settings">
-            <button
-              type="button"
-              className="text-[11px] font-semibold px-3 py-1 rounded-full transition-opacity hover:opacity-90"
-              style={{
-                background: "rgba(46,107,64,0.22)",
-                color: "#A8C5A0",
-                border: "1px solid rgba(46,107,64,0.4)",
-                fontFamily: "'Space Grotesk', sans-serif",
-                cursor: "pointer",
-              }}
-            >
-              Reminders →
-            </button>
-          </Link>
-        </div>
+        <TodaysRhythm />
       </motion.div>
-
-      {encouragement && (
-        <motion.p
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-          className="text-[14px] leading-relaxed"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          {encouragement}
-        </motion.p>
-      )}
 
       {/* Give-thanks pill — a gratitude beat the office close offers
           before you go. Opens the GratitudeNudge overlay (name one

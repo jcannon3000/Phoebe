@@ -11,6 +11,7 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
+import { useRhythmState } from "@/hooks/useRhythmState";
 import { useHealthMindfulToday, useSyncHealthMinutes } from "@/lib/appleHealth";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
@@ -700,6 +701,48 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 
 // ─── Layout ──────────────────────────────────────────────────────────────────
 
+// Header pill that replaces the old "Prayer list" pill: links to the
+// /daily-progress page and shows four dots — one per daily anchor (Morning ·
+// Reflect · Silence · Evening) — filled as each is kept. Self-contained so the
+// rhythm queries only fire when the pill is actually rendered (signed-in).
+// Prayer list now lives in the side Menu drawer.
+function DailyProgressPill() {
+  const { t } = useTranslation();
+  const { morningDone, reflectDone, silenceDone, eveningDone } = useRhythmState();
+  const dots = [morningDone, reflectDone, silenceDone, eveningDone];
+  return (
+    <Link
+      href="/daily-progress"
+      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+      style={{
+        fontFamily: "'Space Grotesk', sans-serif",
+        letterSpacing: "-0.01em",
+        background: "rgba(200,212,192,0.08)",
+        color: "#C8D4C0",
+        border: "1px solid rgba(46,107,64,0.3)",
+      }}
+      aria-label={t("header.daily_progress", { defaultValue: "Daily progress" })}
+    >
+      {t("header.daily_progress", { defaultValue: "Daily progress" })}
+      <span className="inline-flex items-center gap-[3px]" aria-hidden>
+        {dots.map((done, i) => (
+          <span
+            key={i}
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: 999,
+              display: "inline-block",
+              background: done ? "rgba(110,180,130,0.95)" : "transparent",
+              border: done ? "none" : "1px solid rgba(143,175,150,0.5)",
+            }}
+          />
+        ))}
+      </span>
+    </Link>
+  );
+}
+
 export function Layout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -788,24 +831,11 @@ export function Layout({ children }: { children: ReactNode }) {
                 {t("header.home")}
               </Link>
             )}
-            {/* Prayer list pill — sits just left of Menu. Hidden for the
-                offices-only tier (no personal prayer requests / garden, so
-                the page would be empty for them). */}
-            {!officesOnly && (
-              <Link
-                href="/prayer-list"
-                className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
-                style={{
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  letterSpacing: "-0.01em",
-                  background: "rgba(200,212,192,0.08)",
-                  color: "#C8D4C0",
-                  border: "1px solid rgba(46,107,64,0.3)",
-                }}
-              >
-                {t("menu.prayer_list", { defaultValue: "Prayer list" })}
-              </Link>
-            )}
+            {/* Daily-progress pill — sits just left of Menu, replacing the
+                old Prayer-list pill (which now lives in the Menu drawer). The
+                four dots reflect today's rhythm; tapping opens /daily-progress.
+                Hidden for the offices-only tier to match the prior pill. */}
+            {!officesOnly && <DailyProgressPill />}
             <button
               onClick={() => { playOpeningSwell(0); setDrawerOpen(true); }}
               className="flex items-center justify-center transition-colors"

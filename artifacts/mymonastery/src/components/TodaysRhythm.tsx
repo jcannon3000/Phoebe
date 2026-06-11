@@ -1,47 +1,25 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "wouter";
-import { apiRequest } from "@/lib/queryClient";
-import {
-  hasReadCacToday, hasReadFddToday, hasReadSsjeToday,
-  CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT,
-} from "@/lib/cacReadState";
+import { useRhythmState } from "@/hooks/useRhythmState";
 
 // ── Today's Rhythm ──────────────────────────────────────────────────────────
 //
-// A glanceable header that answers "where am I in today's rhythm, and what's
-// next?" — the daily-habit cue the home screen was missing. Four anchors
-// (Morning · Reflect · Silence · Evening) fill as the day is kept; a single
-// time-aware prompt names the next step; a grace-based streak line rewards
-// consistency without punishing the occasional missed day; and a quiet
-// garden line turns "my checklist" into "our common life".
+// A glanceable card that answers "where am I in today's rhythm, and what's
+// next?" — four anchors (Morning · Reflect · Silence · Evening) fill as the
+// day is kept; a single time-aware prompt names the next step; a grace-based
+// streak line rewards consistency; and a quiet garden line turns "my
+// checklist" into "our common life".
 //
-// It reads its own queries, but every queryKey matches what the dashboard /
-// contemplation page already fetch, so React Query dedupes — no extra
-// network. Reflection state is localStorage-only, so we read it synchronously
-// and live-update off the read events the reflection cards fire.
+// The done-state + counts come from useRhythmState (shared with the header
+// "Daily progress" pill and the /daily-progress page). This card no longer
+// lives on the home top — it's shown on the slideshow closing slide and on
+// the daily-progress page.
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
-
-function localDay(): string {
-  return new Date().toLocaleDateString("en-CA");
-}
-
-// Did the user finish an office on a given side today, per the localStorage
-// flags the office viewer writes synchronously (before the server query
-// lands)? Mirrors the dashboard's own fallback check.
-function officeLocalDone(sides: string[]): boolean {
-  const day = localDay();
-  try {
-    return sides.some((s) => localStorage.getItem(`phoebe:office-completed:${s}:${day}`) !== null);
-  } catch {
-    return false;
-  }
-}
 
 type Anchor = {
   key: "morning" | "reflect" | "silence" | "evening";
@@ -56,70 +34,12 @@ type Anchor = {
 export function TodaysRhythm() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
-  const day = localDay();
   const hour = new Date().getHours();
 
-  // Reflection read-state (localStorage). Re-read on the read events so the
-  // anchor flips the moment a reflection is opened, without a refetch.
-  const [reflectDone, setReflectDone] = useState(
-    () => hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday(),
-  );
-  useEffect(() => {
-    const recheck = () => setReflectDone(hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday());
-    window.addEventListener(CAC_READ_EVENT, recheck);
-    window.addEventListener(FDD_READ_EVENT, recheck);
-    window.addEventListener(SSJE_READ_EVENT, recheck);
-    window.addEventListener("visibilitychange", recheck);
-    return () => {
-      window.removeEventListener(CAC_READ_EVENT, recheck);
-      window.removeEventListener(FDD_READ_EVENT, recheck);
-      window.removeEventListener(SSJE_READ_EVENT, recheck);
-      window.removeEventListener("visibilitychange", recheck);
-    };
-  }, []);
-
-  const { data: officeHistory } = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean }> }>({
-    queryKey: ["/api/me/office-history-week"],
-    queryFn: () => apiRequest("GET", "/api/me/office-history-week"),
-    staleTime: 30_000,
-  });
-
-  const todaySince = useMemo(() => {
-    const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString();
-  }, []);
-  const tz = useMemo(() => {
-    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
-  }, []);
-  const { data: contStats } = useQuery<{ todaySeconds: number; healthMinutesToday: number }>({
-    queryKey: ["/api/me/contemplation-stats", todaySince.slice(0, 10), tz],
-    queryFn: () => apiRequest("GET", `/api/me/contemplation-stats?todaySince=${encodeURIComponent(todaySince)}&tz=${encodeURIComponent(tz)}`),
-    staleTime: 30_000,
-  });
-
-  const { data: cobreathe } = useQuery<{ done: boolean; count: number }>({
-    queryKey: ["/api/breath/today", day],
-    queryFn: () => apiRequest("GET", `/api/breath/today?day=${day}`),
-    staleTime: 60_000,
-  });
-
-  const { data: rhythm } = useQuery<{ streak: number; last7: number; keptToday: boolean }>({
-    queryKey: ["/api/me/prayer-days"],
-    queryFn: () => apiRequest("GET", "/api/me/prayer-days"),
-    staleTime: 60_000,
-  });
-
-  const { data: prayerStreak } = useQuery<{ gardenPrayedTodayCount?: number }>({
-    queryKey: ["/api/prayer-streak"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak"),
-    staleTime: 60_000,
-  });
-
-  const todayOffice = officeHistory?.days?.[officeHistory.days.length - 1];
-  const morningDone = !!todayOffice?.morning || officeLocalDone(["morning", "morning-devotion"]);
-  const eveningDone = !!todayOffice?.evening || officeLocalDone(["evening", "early-evening-devotion", "compline"]);
-  const silenceDone =
-    (contStats ? contStats.todaySeconds > 0 || contStats.healthMinutesToday > 0 : false) ||
-    !!cobreathe?.done;
+  const {
+    morningDone, reflectDone, silenceDone, eveningDone,
+    streak, last7, gardenCount, cobreatheCount,
+  } = useRhythmState();
 
   const anchors: Anchor[] = [
     {
@@ -164,11 +84,6 @@ export function TodaysRhythm() {
   const byKey = (k: Anchor["key"]) => anchors.find((a) => a.key === k)!;
   const next = order.map(byKey).find((a) => !a.done) ?? null;
   const allKept = anchors.every((a) => a.done);
-
-  const gardenCount = prayerStreak?.gardenPrayedTodayCount ?? 0;
-  const cobreatheCount = cobreathe?.count ?? 0;
-  const streak = rhythm?.streak ?? 0;
-  const last7 = rhythm?.last7 ?? 0;
 
   const go = useCallback((href: string) => setLocation(href), [setLocation]);
 
