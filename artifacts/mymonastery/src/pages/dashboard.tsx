@@ -3276,13 +3276,14 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
       className="relative flex rounded-xl overflow-hidden"
       style={{
         background: "rgba(46,107,64,0.08)",
-        // Match the border weight on the parish-weekly + count cards
-        // so the two stacked cards read as a paired set. Muted until the
-        // office is prayed today, full strength once it is.
-        border: `1px solid rgba(46,107,64,${prayedToday ? 0.4 : 0.2})`,
+        // Match the border weight on the parish-weekly + count cards so the
+        // stacked cards read as a paired set. Always full strength now — the
+        // top progress indicator signals completion, so the card no longer
+        // dims itself to mark "not prayed yet".
+        border: "1px solid rgba(46,107,64,0.4)",
       }}
       >
-        <div className="w-1 flex-shrink-0" style={{ background: `rgba(46,107,64,${prayedToday ? 0.9 : 0.4})` }} />
+        <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
         <div className="flex-1 px-4 pt-[20px] pb-[20px]">
           <div className="flex items-start justify-between gap-2">
             <p
