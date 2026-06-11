@@ -5,12 +5,11 @@ import { apiRequest } from "@/lib/queryClient";
 // Prayer closing pill) can flip their label between "Read" and
 // "Read again."
 //
-// Storage is plain localStorage — per-device, not synced. That's the
-// right grain here: "did I already open today's reflection from this
-// phone?" is a UX nudge, not a piece of user state worth a server
-// round-trip + a column. If the user opens the link from a different
-// device, the second device will still say "Read" until they tap
-// there too. We consider this acceptable.
+// Storage is localStorage for instant, offline-safe per-device state, AND a
+// best-effort server write on each read so the state syncs across devices —
+// the daily-progress "Reflect" anchor reads the server side back, so a read
+// on mobile shows on web and vice versa. CAC writes to cac_reads (which also
+// powers community read-presence); FDD/SSJE write to reflection_reads.
 //
 // "Today" is computed in the user's LOCAL timezone. We don't try to
 // align to a publisher's publish-day rollover — the publisher handles
@@ -35,7 +34,7 @@ function todayLocalISO(): string {
 // Factory: returns a tiny tracker tied to one localStorage key + one
 // custom event. Keeps the per-source surfaces honest without a
 // second copy of the same logic.
-function makeDailyReadTracker(storageKey: string, eventName: string) {
+function makeDailyReadTracker(storageKey: string, eventName: string, syncRead: (ymd: string) => void) {
   return {
     /** "YYYY-MM-DD" of the last tap, or null. Returns null on storage errors. */
     getLastReadDay(): string | null {
@@ -53,23 +52,36 @@ function makeDailyReadTracker(storageKey: string, eventName: string) {
     hasReadToday(): boolean {
       return this.getLastReadDay() === todayLocalISO();
     },
-    /** Stamp today as read + notify listeners (so cards flip without remount). */
+    /** Stamp today as read locally + notify listeners, and best-effort sync to
+     *  the server so the read shows up on the user's other devices too. */
     markRead(): void {
+      const ymd = todayLocalISO();
       try {
-        localStorage.setItem(storageKey, todayLocalISO());
+        localStorage.setItem(storageKey, ymd);
         window.dispatchEvent(new Event(eventName));
       } catch {
         /* private mode / quota — non-fatal */
       }
+      // Fire-and-forget; an unauthenticated/offline call just no-ops.
+      try { syncRead(ymd); } catch { /* best effort */ }
     },
     /** Event name to subscribe to for hot updates from other surfaces. */
     eventName,
   };
 }
 
-const cacTracker = makeDailyReadTracker("phoebe:cac:last-read-day", "phoebe:cac-read");
-const fddTracker = makeDailyReadTracker("phoebe:fdd:last-read-day", "phoebe:fdd-read");
-const ssjeTracker = makeDailyReadTracker("phoebe:ssje:last-read-day", "phoebe:ssje-read");
+const cacTracker = makeDailyReadTracker(
+  "phoebe:cac:last-read-day", "phoebe:cac-read",
+  (ymd) => { void apiRequest("POST", "/api/cac/read", { ymd }).catch(() => { /* best effort */ }); },
+);
+const fddTracker = makeDailyReadTracker(
+  "phoebe:fdd:last-read-day", "phoebe:fdd-read",
+  (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "fdd", ymd }).catch(() => { /* best effort */ }); },
+);
+const ssjeTracker = makeDailyReadTracker(
+  "phoebe:ssje:last-read-day", "phoebe:ssje-read",
+  (ymd) => { void apiRequest("POST", "/api/reflections/read", { source: "ssje", ymd }).catch(() => { /* best effort */ }); },
+);
 
 // ── CAC Daily Reflection (Center for Action & Contemplation) ──
 // /api/cac/today on the server 302-redirects to today's permalink with
@@ -94,15 +106,12 @@ function flagReflectionReturn(path: string): void {
   try { sessionStorage.setItem(REFLECTION_RETURN_KEY, path); } catch { /* private mode / quota */ }
 }
 
-// Record opening today's CAC reflection: flip the local "read" state, log it
-// server-side for the community read-presence (best-effort), and — when opened
-// from a surface that should redirect on return (the home card) — stash the
-// return path the redirect watches.
+// Record opening today's CAC reflection: flip the local "read" state (which
+// also syncs to cac_reads server-side via markRead, powering community
+// read-presence) and — when opened from a surface that should redirect on
+// return (the home card) — stash the return path the redirect watches.
 export function recordCacOpened(opts?: { flagReturn?: boolean }): void {
   markCacRead();
-  try {
-    void apiRequest("POST", "/api/cac/read", { ymd: todayLocalISO() }).catch(() => { /* best effort */ });
-  } catch { /* best effort */ }
   if (opts?.flagReturn) flagReflectionReturn("/reflect/cac");
 }
 

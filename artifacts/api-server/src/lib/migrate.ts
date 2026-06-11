@@ -1767,6 +1767,11 @@ export async function migrate() {
     // climate_enrolled. Used to hide non-climate nav from the W&W cohort.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS climate_only BOOLEAN NOT NULL DEFAULT FALSE`);
 
+    // El Jardín portal tier flags (mirror the climate pattern). jardin_only
+    // accounts are created via the Jardín portal signup and see only Jardín.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS jardin_enrolled BOOLEAN NOT NULL DEFAULT FALSE`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS jardin_only BOOLEAN NOT NULL DEFAULT FALSE`);
+
     // parish_id FK (nullable, no NOT NULL)
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS parish_id INTEGER REFERENCES groups(id)`);
 
@@ -2840,6 +2845,22 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS breath_sessions_user_day_uk ON breath_sessions (user_id, day)`);
     await run(client, `CREATE INDEX IF NOT EXISTS breath_sessions_day_idx ON breath_sessions (day)`);
+
+    // ── reflection_reads (Forward Day by Day / SSJE read-state) ──────────────
+    // CAC reads live in cac_reads (richer — community read presence); this
+    // table carries the other daily-reflection sources so the daily-progress
+    // Reflect anchor syncs across devices for them too. `ymd` is the user's
+    // local YYYY-MM-DD; unique (user, source, day) makes a repeat open a no-op.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS reflection_reads (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        source TEXT NOT NULL,
+        ymd TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS reflection_reads_user_source_ymd_uk ON reflection_reads (user_id, source, ymd)`);
 
     // ── forum_posts / forum_replies (group forum) ────────────────────────────
     // A message board scoped to a group: members post threads, any member

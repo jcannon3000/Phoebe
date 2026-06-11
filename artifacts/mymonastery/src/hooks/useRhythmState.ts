@@ -129,15 +129,16 @@ export function useRhythmState(): RhythmState {
     staleTime: 60_000,
   });
 
-  // Server-backed CAC read for today — so the Reflect anchor is correct on a
-  // device that didn't do the reading (e.g. web, after reading on mobile).
-  const { data: cacRead } = useQuery<{ read: boolean }>({
-    queryKey: ["/api/cac/read", day],
-    queryFn: () => apiRequest("GET", `/api/cac/read?ymd=${day}`),
+  // Server-backed reflection reads (CAC + FDD + SSJE) for today — so the
+  // Reflect anchor is correct on a device that didn't do the reading (e.g. web,
+  // after reading on mobile). OR'd with the instant local flag below.
+  const { data: reflRead } = useQuery<{ cac: boolean; fdd: boolean; ssje: boolean }>({
+    queryKey: ["/api/me/reflections-read", day],
+    queryFn: () => apiRequest("GET", `/api/me/reflections-read?ymd=${day}`),
     staleTime: 60_000,
   });
 
-  const reflectDone = reflectLocal || !!cacRead?.read;
+  const reflectDone = reflectLocal || !!reflRead?.cac || !!reflRead?.fdd || !!reflRead?.ssje;
 
   const todayOffice = officeHistory?.days?.[officeHistory.days.length - 1];
   const morningDone = !!todayOffice?.morning || officeLocalDone(["morning", "morning-devotion"]);

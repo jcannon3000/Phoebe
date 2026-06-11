@@ -45,6 +45,7 @@ export * from "./content_reports";
 export * from "./prayer_sessions";
 export * from "./contemplation_health_minutes";
 export * from "./breath_sessions";
+export * from "./reflection_reads";
 export * from "./actions";
 export * from "./action_rsvps";
 export * from "./action_officials";
