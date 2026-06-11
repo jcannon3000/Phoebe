@@ -609,6 +609,18 @@ export const es: Translations = {
     bible_lookup_sub: "Abre cualquier pasaje en Bible.com",
     leaderboard: "Tabla de rachas",
     leaderboard_sub: "Rachas de oración con amigos",
+    // Leaderboard page
+    streak_none: "Aún sin racha",
+    streak_one: "1 día",
+    streak_other: "{{count}} días",
+    you_paren: "tú",
+    remove_q: "¿Quitar?",
+    add_friends_hint: "Agrega amigos por nombre de usuario para comparar rachas.",
+    add_a_friend: "Agregar un amigo",
+    username_placeholder: "Ingresa su nombre de usuario",
+    add: "Agregar",
+    user_not_found: "Usuario no encontrado",
+    streak_footnote: "La racha cuenta los registros diarios de oración. La tuya se actualiza automáticamente cuando oras.",
   },
   // Way of Love drawer (Layout > WayOfLoveDrawer) — beta only.
   wol: {

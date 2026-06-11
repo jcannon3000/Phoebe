@@ -614,6 +614,18 @@ export const en = {
     bible_lookup_sub: "Open any passage on Bible.com",
     leaderboard: "Streak Leaderboard",
     leaderboard_sub: "Prayer streaks with friends",
+    // Leaderboard page
+    streak_none: "No streak yet",
+    streak_one: "1 day",
+    streak_other: "{{count}} days",
+    you_paren: "you",
+    remove_q: "Remove?",
+    add_friends_hint: "Add friends by username to compare streaks.",
+    add_a_friend: "Add a friend",
+    username_placeholder: "Enter their username",
+    add: "Add",
+    user_not_found: "User not found",
+    streak_footnote: "Streak counts daily prayer check-ins. Yours updates automatically when you pray.",
   },
   // Way of Love drawer (Layout > WayOfLoveDrawer) — beta only.
   wol: {
