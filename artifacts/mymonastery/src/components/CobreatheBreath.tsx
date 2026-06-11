@@ -21,7 +21,6 @@ import { useTranslation } from "react-i18next";
 // beginning on an inhale.
 
 const WARM = "#F0EDE6";
-const SAGE = "#8FAF96";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
 
@@ -76,6 +75,32 @@ function phaseAt(pos: number): Phase {
   return "out";
 }
 
+// ── The bloom ────────────────────────────────────────────────────────────────
+// A soft, layered bloom of translucent green blades that swells on the inhale
+// and recedes on the exhale, slowly turning. Two offset rings of broad,
+// rounded blades overlap (screen-blended) into a luminous flower of light —
+// no flat radial gradient, so nothing bands. Geometry is computed once.
+function bladePath(r1: number, w: number, c: number): string {
+  return `M 0 -6 C ${w} ${-r1 * 0.32 + c}, ${w * 0.7} ${-r1 * 0.84}, 0 ${-r1} ` +
+    `C ${-w * 0.7} ${-r1 * 0.84}, ${-w} ${-r1 * 0.32 - c}, 0 -6 Z`;
+}
+const BLOOM_BLADES: Array<{ d: string; grad: number; ang: number }> = (() => {
+  const out: Array<{ d: string; grad: number; ang: number }> = [];
+  const ring = (count: number, offset: number, r1: number, w: number, curve: number, bias: number) => {
+    for (let i = 0; i < count; i++) {
+      out.push({ d: bladePath(r1, w, curve), grad: (i + bias) % 3, ang: (360 / count) * i + offset });
+    }
+  };
+  ring(6, 0, 104, 48, 16, 2);   // back ring — broad
+  ring(6, 30, 82, 34, 12, 0);   // front ring — narrower, offset, brighter
+  return out;
+})();
+const BLOOM_GRADS = [
+  ["#EAF7D2", "#46864A"],
+  ["#CFEFA8", "#347140"],
+  ["#A9DE88", "#276636"],
+];
+
 export function CobreatheBreath({
   onReachTarget,
   onEnd,
@@ -94,11 +119,10 @@ export function CobreatheBreath({
   othersToday?: number;
 }) {
   const { t } = useTranslation();
-  // The breath is a full-bleed teal glow that swells on the inhale and
-  // recedes on the exhale — no circle, just light expanding and contracting
-  // over a deep-blue field. A second, larger layer trails it for depth.
-  const glowRef = useRef<HTMLDivElement>(null);
-  const glow2Ref = useRef<HTMLDivElement>(null);
+  // The breath is a soft green bloom that swells on the inhale and recedes on
+  // the exhale, turning slowly, over a deep-green field.
+  const bloomRef = useRef<SVGGElement>(null);
+  const dotRef = useRef<SVGCircleElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
 
   // Anchor points (fixed at mount): when the user arrived, and the next clean
@@ -114,19 +138,18 @@ export function CobreatheBreath({
   useEffect(() => {
     let raf = 0;
     const loop = () => {
-      const pos = Date.now() % CYCLE_MS;
+      const now = Date.now();
+      const pos = now % CYCLE_MS;
       const s = scaleAt(pos);
       // 0 at rest (full exhale) → 1 at full inhale.
       const p = (s - SMALL) / (BIG - SMALL);
-      if (glowRef.current) {
-        glowRef.current.style.transform = `scale(${0.55 + p * 0.95})`;
-        glowRef.current.style.opacity = String(0.42 + p * 0.5);
+      const rot = (now / 1000 * 3) % 360; // a slow, steady turn
+      if (bloomRef.current) {
+        bloomRef.current.setAttribute("transform", `scale(${(0.7 + s * 0.55).toFixed(4)}) rotate(${rot.toFixed(3)})`);
+        bloomRef.current.style.opacity = String(0.55 + p * 0.4);
       }
-      if (glow2Ref.current) {
-        glow2Ref.current.style.transform = `scale(${0.7 + p * 1.05})`;
-        glow2Ref.current.style.opacity = String(0.18 + p * 0.28);
-      }
-      // The phase word breathes a hair with the glow.
+      if (dotRef.current) dotRef.current.setAttribute("transform", `scale(${(0.8 + s * 0.4).toFixed(4)})`);
+      // The phase word breathes a hair with the bloom.
       if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + p * 0.06})`;
       raf = requestAnimationFrame(loop);
     };
@@ -182,26 +205,40 @@ export function CobreatheBreath({
         paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
       }}
     >
-      {/* The breath — two stacked teal radial glows, centered and full-bleed,
-          swelling on the inhale and receding on the exhale. Pure transform +
-          opacity, driven by the global clock, so the motion is glass-smooth
-          and identical for everyone breathing at this moment. */}
-      <div
-        ref={glow2Ref}
-        style={{
-          position: "absolute", inset: "-20%",
-          background: "radial-gradient(circle at 50% 47%, rgba(120,196,126,0.34) 0%, rgba(98,176,108,0.22) 20%, rgba(74,150,86,0.12) 40%, rgba(50,120,66,0.04) 62%, rgba(34,96,52,0) 82%)",
-          transform: "scale(0.7)", opacity: 0.18, willChange: "transform, opacity", pointerEvents: "none",
-        }}
-      />
-      <div
-        ref={glowRef}
-        style={{
-          position: "absolute", inset: "-10%",
-          background: "radial-gradient(circle at 50% 47%, rgba(150,224,150,0.52) 0%, rgba(126,206,132,0.34) 16%, rgba(100,182,112,0.20) 34%, rgba(72,152,88,0.09) 54%, rgba(48,122,66,0.02) 72%, rgba(34,96,52,0) 84%)",
-          transform: "scale(0.55)", opacity: 0.42, willChange: "transform, opacity", pointerEvents: "none",
-        }}
-      />
+      {/* The breath — a soft layered green bloom, centered, swelling on the
+          inhale and receding on the exhale, turning slowly. Built from
+          overlapping translucent blades (screen-blended) so it glows without
+          any flat gradient to band. Driven by the global clock, so everyone
+          breathing at this moment sees the same bloom at the same size. */}
+      <svg
+        width="320" height="320" viewBox="-150 -150 300 300"
+        style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", pointerEvents: "none" }}
+        aria-hidden="true"
+      >
+        <defs>
+          <filter id="cb-soft" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur stdDeviation="2.4" />
+          </filter>
+          <radialGradient id="cb-core" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#CFEFB8" stopOpacity="0.5" />
+            <stop offset="55%" stopColor="#6FB85F" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="#6FB85F" stopOpacity="0" />
+          </radialGradient>
+          {BLOOM_GRADS.map((g, i) => (
+            <linearGradient key={i} id={`cb-bl${i}`} x1="0" y1="0" x2="0.45" y2="1">
+              <stop offset="0%" stopColor={g[0]} stopOpacity="0.78" />
+              <stop offset="100%" stopColor={g[1]} stopOpacity="0.4" />
+            </linearGradient>
+          ))}
+        </defs>
+        <circle cx="0" cy="0" r="120" fill="url(#cb-core)" />
+        <g ref={bloomRef} filter="url(#cb-soft)" style={{ mixBlendMode: "screen" }}>
+          {BLOOM_BLADES.map((b, i) => (
+            <path key={i} d={b.d} fill={`url(#cb-bl${b.grad})`} transform={`rotate(${b.ang})`} />
+          ))}
+        </g>
+        <circle ref={dotRef} cx="0" cy="0" r="16" fill="#CFEFA8" opacity="0.36" />
+      </svg>
 
       {/* Intention — top */}
       <p
@@ -210,7 +247,7 @@ export function CobreatheBreath({
       >
         {intention
           ? t(`cobreathe.intention.${intention.key}`, { defaultValue: intention.text })
-          : t("cobreathe.settle", { defaultValue: "Settle in, and find the rhythm — others are already breathing." })}
+          : t("cobreathe.settle", { defaultValue: "Everyone breathes to one shared pace, the same for all of us. Settle in — on the next breath, you'll join it." })}
       </p>
 
       {/* Phase word — center, over the glow */}
@@ -227,7 +264,7 @@ export function CobreatheBreath({
         </div>
         <p className="mt-6 text-[13px]" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK }}>
           {!counting
-            ? t("cobreathe.finding_rhythm", { defaultValue: "Finding the rhythm…" })
+            ? t("cobreathe.finding_rhythm", { defaultValue: "Waiting for the next breath to begin together…" })
             : reachedNow
               ? t("cobreathe.kept_keep_going", { count: totalBreaths, defaultValue: `🌿 ${totalBreaths} breaths kept — keep going as long as you like` })
               : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `Breath ${breathNum} of ${totalBreaths}` })}
