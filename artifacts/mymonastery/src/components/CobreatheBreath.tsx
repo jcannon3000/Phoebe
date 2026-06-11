@@ -75,31 +75,16 @@ function phaseAt(pos: number): Phase {
   return "out";
 }
 
-// ── The bloom ────────────────────────────────────────────────────────────────
-// A soft, layered bloom of translucent green blades that swells on the inhale
-// and recedes on the exhale, slowly turning. Two offset rings of broad,
-// rounded blades overlap (screen-blended) into a luminous flower of light —
-// no flat radial gradient, so nothing bands. Geometry is computed once.
-function bladePath(r1: number, w: number, c: number): string {
-  return `M 0 -6 C ${w} ${-r1 * 0.32 + c}, ${w * 0.7} ${-r1 * 0.84}, 0 ${-r1} ` +
-    `C ${-w * 0.7} ${-r1 * 0.84}, ${-w} ${-r1 * 0.32 - c}, 0 -6 Z`;
-}
-const BLOOM_BLADES: Array<{ d: string; grad: number; ang: number }> = (() => {
-  const out: Array<{ d: string; grad: number; ang: number }> = [];
-  const ring = (count: number, offset: number, r1: number, w: number, curve: number, bias: number) => {
-    for (let i = 0; i < count; i++) {
-      out.push({ d: bladePath(r1, w, curve), grad: (i + bias) % 3, ang: (360 / count) * i + offset });
-    }
-  };
-  ring(6, 0, 104, 48, 16, 2);   // back ring — broad
-  ring(6, 30, 82, 34, 12, 0);   // front ring — narrower, offset, brighter
-  return out;
-})();
-const BLOOM_GRADS = [
-  ["#EAF7D2", "#46864A"],
-  ["#CFEFA8", "#347140"],
-  ["#A9DE88", "#276636"],
-];
+// ── The circle ───────────────────────────────────────────────────────────────
+// A single solid-colour circle that swells on the inhale and contracts on the
+// exhale — no gradients, no bloom, nothing to band. Base diameter; the rAF
+// loop scales it by scaleAt() each frame (transform only, GPU-composited, so
+// the swell stays glass-smooth). A faint solid ring behind it breathes a touch
+// wider for a little depth.
+const CIRCLE_BASE = 170;
+const CIRCLE_FILL = "#5FA277";        // solid sage green — the breath
+const RING_FILL = "rgba(125,185,145,0.14)"; // solid, faintly translucent halo
+const FIELD = "#0A1C14";              // solid deep-green field (no gradient)
 
 export function CobreatheBreath({
   onReachTarget,
@@ -123,11 +108,11 @@ export function CobreatheBreath({
   todayCount?: number;
 }) {
   const { t } = useTranslation();
-  // The breath is a soft green bloom that swells on the inhale and recedes on
-  // the exhale, turning slowly, over a deep-green field.
-  const bloomRef = useRef<SVGGElement>(null);
-  const bloom2Ref = useRef<SVGGElement>(null);
-  const dotRef = useRef<SVGCircleElement>(null);
+  // The breath is a single solid green circle that swells on the inhale and
+  // contracts on the exhale, over a solid deep-green field. A faint ring sits
+  // behind it for depth.
+  const circleRef = useRef<HTMLDivElement>(null);
+  const ringRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
 
   // Anchor points (fixed at mount): when the user arrived, and the next clean
@@ -159,24 +144,16 @@ export function CobreatheBreath({
       const s = scaleAt(pos);
       // 0 at rest (full exhale) → 1 at full inhale.
       const p = (s - SMALL) / (BIG - SMALL);
-      const rot = (now / 1000 * 3) % 360; // a slow, steady turn
-      if (bloomRef.current) {
-        bloomRef.current.setAttribute("transform", `scale(${(0.7 + s * 0.55).toFixed(4)}) rotate(${rot.toFixed(3)})`);
-        bloomRef.current.style.opacity = String(0.55 + p * 0.4);
+      // Pure transform scale — GPU-composited, so the swell is glass-smooth.
+      if (circleRef.current) {
+        circleRef.current.style.transform = `translate(-50%, -50%) scale(${s.toFixed(4)})`;
       }
-      // A larger, fainter bloom turning the other way, a touch behind the
-      // beat — gives the light depth and a slow, living parallax.
-      if (bloom2Ref.current) {
-        const rot2 = -(now / 1000 * 1.7) % 360;
-        bloom2Ref.current.setAttribute("transform", `scale(${(0.95 + s * 0.62).toFixed(4)}) rotate(${rot2.toFixed(3)})`);
-        bloom2Ref.current.style.opacity = String(0.14 + p * 0.20);
+      // The halo breathes a touch wider, and brightens slightly as it fills.
+      if (ringRef.current) {
+        ringRef.current.style.transform = `translate(-50%, -50%) scale(${(s * 1.16).toFixed(4)})`;
+        ringRef.current.style.opacity = String(0.55 + p * 0.45);
       }
-      // The core glows brighter and swells slightly as the breath fills.
-      if (dotRef.current) {
-        dotRef.current.setAttribute("transform", `scale(${(0.7 + s * 0.55).toFixed(4)})`);
-        dotRef.current.style.opacity = String(0.28 + p * 0.30);
-      }
-      // The phase word breathes a hair with the bloom.
+      // The phase word breathes a hair with the circle.
       if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + p * 0.06})`;
       raf = requestAnimationFrame(loop);
     };
@@ -272,53 +249,39 @@ export function CobreatheBreath({
     <div
       style={{
         position: "fixed", inset: 0, zIndex: 50, overflow: "hidden",
-        background: "radial-gradient(circle at 50% 42%, #0E2A1E 0%, #0A1C14 55%, #06120C 100%)",
+        background: FIELD,
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between",
         paddingTop: "calc(env(safe-area-inset-top) + 28px)",
         paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
       }}
     >
-      {/* The breath — a soft layered green bloom, centered, swelling on the
-          inhale and receding on the exhale, turning slowly. Built from
-          overlapping translucent blades (screen-blended) so it glows without
-          any flat gradient to band. Driven by the global clock, so everyone
-          breathing at this moment sees the same bloom at the same size. */}
-      <svg
-        width="384" height="384" viewBox="-180 -180 360 360"
-        style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", pointerEvents: "none", overflow: "visible" }}
-        aria-hidden="true"
-      >
-        <defs>
-          {/* Generous filter region so the blur isn't clipped at full inhale —
-              that clipping is what showed as straight edges on the bloom. */}
-          <filter id="cb-soft" x="-60%" y="-60%" width="220%" height="220%">
-            <feGaussianBlur stdDeviation="2.4" />
-          </filter>
-          <radialGradient id="cb-core" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#CFEFB8" stopOpacity="0.5" />
-            <stop offset="55%" stopColor="#6FB85F" stopOpacity="0.16" />
-            <stop offset="100%" stopColor="#6FB85F" stopOpacity="0" />
-          </radialGradient>
-          {BLOOM_GRADS.map((g, i) => (
-            <linearGradient key={i} id={`cb-bl${i}`} x1="0" y1="0" x2="0.45" y2="1">
-              <stop offset="0%" stopColor={g[0]} stopOpacity="0.78" />
-              <stop offset="100%" stopColor={g[1]} stopOpacity="0.4" />
-            </linearGradient>
-          ))}
-        </defs>
-        <circle cx="0" cy="0" r="120" fill="url(#cb-core)" />
-        <g ref={bloom2Ref} filter="url(#cb-soft)" style={{ mixBlendMode: "screen" }} opacity={0.14}>
-          {BLOOM_BLADES.map((b, i) => (
-            <path key={`b2-${i}`} d={b.d} fill={`url(#cb-bl${b.grad})`} transform={`rotate(${b.ang})`} />
-          ))}
-        </g>
-        <g ref={bloomRef} filter="url(#cb-soft)" style={{ mixBlendMode: "screen" }}>
-          {BLOOM_BLADES.map((b, i) => (
-            <path key={i} d={b.d} fill={`url(#cb-bl${b.grad})`} transform={`rotate(${b.ang})`} />
-          ))}
-        </g>
-        <circle ref={dotRef} cx="0" cy="0" r="16" fill="#CFEFA8" opacity="0.36" />
-      </svg>
+      {/* The breath — a single solid-colour circle, centered, swelling on the
+          inhale and contracting on the exhale. Driven by the global clock, so
+          everyone breathing at this moment sees the same circle at the same
+          size. A faint solid halo behind it breathes a touch wider for depth.
+          Transform-only animation keeps it perfectly smooth. */}
+      <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+        <div
+          ref={ringRef}
+          style={{
+            position: "absolute", top: "50%", left: "50%",
+            width: CIRCLE_BASE, height: CIRCLE_BASE, borderRadius: "50%",
+            background: RING_FILL,
+            transform: "translate(-50%, -50%) scale(1.16)",
+            willChange: "transform, opacity",
+          }}
+        />
+        <div
+          ref={circleRef}
+          style={{
+            position: "absolute", top: "50%", left: "50%",
+            width: CIRCLE_BASE, height: CIRCLE_BASE, borderRadius: "50%",
+            background: CIRCLE_FILL,
+            transform: "translate(-50%, -50%) scale(1)",
+            willChange: "transform",
+          }}
+        />
+      </div>
 
       {/* Cancel — top-right, exits the breath (no count unless already kept). */}
       <button

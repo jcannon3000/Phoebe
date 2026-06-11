@@ -125,7 +125,7 @@ export function CobreatheOverlay({
       className="flex flex-col"
       style={{
         position: "fixed", inset: 0, zIndex: 60,
-        background: "radial-gradient(circle at 50% 42%, #0E2A1E 0%, #0A1C14 55%, #06120C 100%)",
+        background: "#0A1C14",
         paddingTop: "env(safe-area-inset-top)",
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
