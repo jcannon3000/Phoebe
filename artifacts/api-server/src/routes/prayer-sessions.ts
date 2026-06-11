@@ -3,6 +3,7 @@ import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, usersTable, con
 import { and, desc, eq, gte, gt, lt, inArray, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { getGardenUserIds } from "../lib/garden";
+import { sendContemplationGoalReachedPush } from "../lib/pushSender";
 
 const router: IRouter = Router();
 
@@ -539,7 +540,20 @@ router.put("/me/contemplation-health-minutes", async (req, res): Promise<void> =
   const now = new Date();
   const utcTodayMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   if (Math.abs(dayMs - utcTodayMs) > 86400000) { res.status(400).json({ error: "Day out of range" }); return; }
+  // Read the previous stored value before the upsert so we can detect
+  // when this upload crosses the daily goal for the first time today.
+  // Declared before the try so it's accessible in the post-response check.
+  const [prevRow] = await db
+    .select({ minutes: contemplationHealthMinutesTable.minutes })
+    .from(contemplationHealthMinutesTable)
+    .where(and(
+      eq(contemplationHealthMinutesTable.userId, sessionUserId),
+      eq(contemplationHealthMinutesTable.day, day),
+    ));
+  const prevHealthMin = prevRow?.minutes ?? 0;
+
   try {
+
     await db.insert(contemplationHealthMinutesTable)
       .values({ userId: sessionUserId, day, minutes })
       .onConflictDoUpdate({
@@ -552,10 +566,45 @@ router.put("/me/contemplation-health-minutes", async (req, res): Promise<void> =
           updatedAt: new Date(),
         },
       });
+
     res.json({ ok: true });
   } catch (err) {
     console.error("[/me/contemplation-health-minutes PUT] failed:", err);
     res.status(500).json({ error: "internal_error" });
+    return;
+  }
+
+  // After responding: check if this upload just crossed the daily goal.
+  // GREATEST means the stored value only grows, so we only fire once per day.
+  // Runs outside the main try/catch so a push failure can't retrigger 500.
+  const newHealthMin = Math.max(prevHealthMin, minutes);
+  if (newHealthMin > prevHealthMin) {
+    try {
+      const todayStart = new Date(day + "T00:00:00");
+      const [userRow, prayerRow] = await Promise.all([
+        db.select({ goalMinutes: usersTable.contemplationGoalMinutes })
+          .from(usersTable)
+          .where(eq(usersTable.id, sessionUserId))
+          .then((r) => r[0]),
+        db.select({ seconds: sql<number>`COALESCE(SUM(${prayerSessionsTable.durationSeconds}), 0)::int` })
+          .from(prayerSessionsTable)
+          .where(and(
+            eq(prayerSessionsTable.userId, sessionUserId),
+            eq(prayerSessionsTable.surface, "contemplation"),
+            gte(prayerSessionsTable.endedAt, todayStart),
+          ))
+          .then((r) => r[0]),
+      ]);
+      const goalMin = userRow?.goalMinutes ?? 0;
+      if (goalMin > 0) {
+        const prayerMin = Math.floor((prayerRow?.seconds ?? 0) / 60);
+        const oldTotal = prayerMin + prevHealthMin;
+        const newTotal = prayerMin + newHealthMin;
+        if (oldTotal < goalMin && newTotal >= goalMin) {
+          void sendContemplationGoalReachedPush(sessionUserId, { goalMinutes: goalMin, doneMinutes: newTotal }).catch(() => {});
+        }
+      }
+    } catch { /* best-effort — don't surface push errors to the client */ }
   }
 });
 

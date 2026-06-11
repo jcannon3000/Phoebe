@@ -1069,6 +1069,23 @@ export function sendContemplationGoalReminderPush(
   });
 }
 
+// Congrats push when external Health minutes (Calm, Insight Timer, Apple
+// Mindfulness) push the user over their daily contemplation goal. Fired from
+// the PUT /me/contemplation-health-minutes endpoint at the moment of crossing.
+export function sendContemplationGoalReachedPush(
+  userId: number,
+  opts: { goalMinutes: number; doneMinutes: number }
+) {
+  return sendPushToUser(userId, {
+    title: "Goal reached 🌿",
+    body: `${opts.doneMinutes} minutes of silence today — you've hit your ${opts.goalMinutes}-minute goal.`,
+    path: "/contemplation",
+    threadId: "contemplation-goal",
+    collapseId: `contemplation-goal-reached-${userId}`,
+    sound: PHOEBE_SOUND_LOW,
+  });
+}
+
 // Weekly Way of Love review — the Sunday-evening examen nudge. Invites the user
 // to look back on the week and set the one ahead. Deep-links into the review;
 // deduped to once per Sunday by the sender.

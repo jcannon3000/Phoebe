@@ -90,9 +90,14 @@ function AppleHealthSettings() {
   return (
     <>
       <SectionHeader label={t("settings.apple_health", { defaultValue: "Apple Health" })} />
-      <p className="text-[13px] mb-3" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-        {t("settings.apple_health_blurb", { defaultValue: "Count meditation from Calm, Insight Timer, or Apple Mindfulness toward your contemplation goal — and save Phoebe sits back to Health." })}
-      </p>
+      <div className="mb-3 space-y-1">
+        <p className="text-[13px]" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+          📥 {t("settings.apple_health_read_blurb", { defaultValue: "Read — count meditation from Calm, Insight Timer, or Apple Mindfulness toward your daily contemplation goal." })}
+        </p>
+        <p className="text-[13px]" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+          📤 {t("settings.apple_health_write_blurb", { defaultValue: "Write — save your Phoebe sits to Apple Health as Mindful Minutes." })}
+        </p>
+      </div>
       <SettingsCard>
         {looksConnected ? (
           <>
@@ -137,7 +142,7 @@ function AppleHealthSettings() {
                   : t("settings.apple_health_connect", { defaultValue: "Connect Apple Health" })}
               </p>
               <p className="text-[12px]" style={{ color: "#8FAF96", margin: "2px 0 0" }}>
-                {t("settings.apple_health_connect_sub", { defaultValue: "iOS will ask to share Mindful Minutes with Phoebe" })}
+                {t("settings.apple_health_connect_sub", { defaultValue: "iOS will ask to read and write Mindful Minutes" })}
               </p>
             </div>
             <span aria-hidden style={{ color: "#8FAF96", fontSize: 16 }}>›</span>
