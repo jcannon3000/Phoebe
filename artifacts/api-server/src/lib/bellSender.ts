@@ -47,30 +47,7 @@ import { PHOEBE_PARISH_ENABLED } from "./parishFlag";
 import { loadFeedDigest } from "./feedDigest";
 import { sendWeeklyDigestEmail } from "./email";
 import { withSchedulerLog } from "./schedulerHeartbeat";
-
-// ─── Timezone helpers ───────────────────────────────────────────────────────
-
-function getCurrentTimeInTz(timezone: string): { hour: number; minute: number } {
-  try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone, hour: "numeric", minute: "numeric", hour12: false,
-    }).formatToParts(new Date());
-    const hour = parseInt(parts.find(p => p.type === "hour")?.value ?? "0", 10);
-    const minute = parseInt(parts.find(p => p.type === "minute")?.value ?? "0", 10);
-    return { hour: isNaN(hour) ? 0 : hour, minute: isNaN(minute) ? 0 : minute };
-  } catch {
-    const now = new Date();
-    return { hour: now.getUTCHours(), minute: now.getUTCMinutes() };
-  }
-}
-
-function todayDateInTz(timezone: string): string {
-  try {
-    return new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
-  } catch {
-    return new Date().toISOString().slice(0, 10);
-  }
-}
+import { getCurrentTimeInTz, todayDateInTz, todayInZone } from "./tz";
 
 // ─── Main bell sender ───────────────────────────────────────────────────────
 //
@@ -793,16 +770,6 @@ export async function runPrayerRenewalNudgeSender(opts: { forceNow?: boolean } =
 //
 // Push deep-links straight into the chosen liturgy via
 // sendParishOfficeReminderPush.
-
-function todayInZone(tz: string): string {
-  try {
-    return new Intl.DateTimeFormat("en-CA", {
-      timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit",
-    }).format(new Date());
-  } catch {
-    return new Date().toISOString().slice(0, 10);
-  }
-}
 
 // Sunday (start of the local week) on-or-before today, as YYYY-MM-DD in
 // the given tz. Date-only math off a UTC anchor avoids tz drift. The

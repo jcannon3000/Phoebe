@@ -18,6 +18,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
+import { todayInZone } from "@/lib/tz";
 import { Layout } from "@/components/layout";
 import { ChevronLeft } from "lucide-react";
 
@@ -44,18 +45,7 @@ type FeedEntry = {
   prayCount: number;
 };
 
-function todayInZone(tz: string): string {
-  try {
-    return new Intl.DateTimeFormat("en-CA", {
-      timeZone: tz,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date());
-  } catch {
-    return new Date().toISOString().slice(0, 10);
-  }
-}
+// todayInZone (today's YYYY-MM-DD in an IANA zone) lives in @/lib/tz.
 
 const SLOT_LABEL: Record<number, string> = {
   1: "First intercession",

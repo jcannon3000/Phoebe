@@ -1,4 +1,5 @@
 import { getInviteBaseUrl } from "../lib/urls";
+import { getCurrentTimeInTz, todayDateInTz } from "../lib/tz";
 import { Router, type IRouter } from "express";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { z } from "zod/v4";
@@ -152,29 +153,8 @@ async function saveConnectionCache(members: Array<{ email: string; name: string 
   } catch { /* non-fatal */ }
 }
 
-// ─── Timezone-aware time helpers ─────────────────────────────────────────────
-
-function getCurrentTimeInTz(timezone: string): { hour: number; minute: number } {
-  try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone, hour: "numeric", minute: "numeric", hour12: false,
-    }).formatToParts(new Date());
-    const hour = parseInt(parts.find(p => p.type === "hour")?.value ?? "0", 10);
-    const minute = parseInt(parts.find(p => p.type === "minute")?.value ?? "0", 10);
-    return { hour: isNaN(hour) ? 0 : hour, minute: isNaN(minute) ? 0 : minute };
-  } catch {
-    const now = new Date();
-    return { hour: now.getUTCHours(), minute: now.getUTCMinutes() };
-  }
-}
-
-function todayDateInTz(timezone: string): string {
-  try {
-    return new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
-  } catch {
-    return new Date().toISOString().slice(0, 10);
-  }
-}
+// Timezone-aware time helpers (getCurrentTimeInTz / todayDateInTz) live in
+// ../lib/tz — imported at the top of this file.
 
 // ─── Current window date (YYYY-MM-DD) — falls back to UTC ───────────────────
 function todayDate(): string {

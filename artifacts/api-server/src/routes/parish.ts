@@ -35,6 +35,7 @@ import {
 } from "@workspace/db";
 import { z } from "zod/v4";
 import { isUserBeta } from "../lib/parishGate";
+import { todayInZone } from "../lib/tz";
 
 const router: IRouter = Router();
 
@@ -42,18 +43,7 @@ function getUser(req: { user?: unknown }): { id: number } | null {
   return req.user ? (req.user as { id: number }) : null;
 }
 
-function todayInZone(tz: string): string {
-  try {
-    return new Intl.DateTimeFormat("en-CA", {
-      timeZone: tz,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date());
-  } catch {
-    return new Date().toISOString().slice(0, 10);
-  }
-}
+// todayInZone (today's YYYY-MM-DD in an IANA zone) lives in ../lib/tz.
 
 // ─── GET /api/parishes/public ─────────────────────────────────────────────
 // List every approved (live) parish so the onboarding picker can show
