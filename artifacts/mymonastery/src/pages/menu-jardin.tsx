@@ -2,6 +2,7 @@ import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { MenuHub } from "@/components/MenuHub";
 import { JardinReadingCard } from "@/components/JardinReadingCard";
+import { LanguageToggle } from "@/components/LanguageToggle";
 
 export default function MenuJardinPage() {
   const [, setLocation] = useLocation();
@@ -14,7 +15,12 @@ export default function MenuJardinPage() {
       subtitle={t("jardin.subtitle")}
       backLabel={t("header.menu")}
       backHref="/menu"
-      headerSlot={<JardinReadingCard />}
+      headerSlot={
+        <div className="flex flex-col gap-3">
+          <div className="flex justify-end"><LanguageToggle /></div>
+          <JardinReadingCard />
+        </div>
+      }
       groups={[
         {
           header: t("jardin.study"),
