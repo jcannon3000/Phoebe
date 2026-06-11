@@ -210,6 +210,101 @@ export default function CobreathePage() {
 
         {mode === "intro" && (
           <>
+            {/* ── Stats hero — who has breathed today, leading the page.
+                The big number is the practice's heartbeat; faces make the
+                "we" concrete; the small row underneath carries your own
+                days and the all-time count. */}
+            <div
+              className="rounded-2xl p-5 mb-4"
+              style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.30)" }}
+            >
+              <div className="flex items-center gap-4">
+                <span className="text-3xl">🫁</span>
+                <div className="flex-1 min-w-0">
+                  <p className="leading-none" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 34, fontWeight: 700 }}>
+                    {state?.count ?? 0}
+                  </p>
+                  <p className="text-[12.5px] mt-1.5 leading-snug" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                    {today?.done
+                      ? others === 0
+                        ? t("cobreathe.stats_done_first", { defaultValue: "breathed today — you were the first breath of the day" })
+                        : t("cobreathe.stats_done", { count: others, defaultValue: `breathed today, you among them — with ${others} other ${others === 1 ? "person" : "people"}` })
+                      : (state?.count ?? 0) === 0
+                        ? t("cobreathe.stats_none_yet", { defaultValue: "have breathed yet today — yours can be the first breath" })
+                        : t("cobreathe.stats_count", { defaultValue: "breathed today — join your breath to theirs" })}
+                  </p>
+                </div>
+              </div>
+              {state && state.companions.length > 0 && (
+                <div className="flex items-center gap-2 mt-3.5">
+                  <Faces companions={state.companions} />
+                  <p className="text-[12px]" style={{ color: "rgba(143,175,150,0.75)", fontFamily: SPACE_GROTESK }}>
+                    {t("cobreathe.including", { names: withLine, defaultValue: `including ${withLine}` })}
+                  </p>
+                </div>
+              )}
+              {state && (state.myDays > 0 || state.allBreaths > 0) && (
+                <div className="flex gap-3 mt-4 pt-3.5" style={{ borderTop: "1px solid rgba(46,107,64,0.22)" }}>
+                  <div className="flex-1">
+                    <p className="leading-none" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 19, fontWeight: 700 }}>
+                      {state.myDays}
+                    </p>
+                    <p className="text-[11px] mt-1" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>
+                      {t("cobreathe.stats_my_days", { defaultValue: "days you've breathed" })}
+                    </p>
+                  </div>
+                  <div className="flex-1">
+                    <p className="leading-none" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 19, fontWeight: 700 }}>
+                      {state.allBreaths.toLocaleString()}
+                    </p>
+                    <p className="text-[11px] mt-1" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>
+                      {t("cobreathe.stats_all", { defaultValue: "breaths held across Phoebe" })}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── CTA — right under the stats, above the teaching. */}
+            <button
+              type="button"
+              onClick={() => setMode("breathing")}
+              className="w-full rounded-xl py-3.5 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+              style={{
+                background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)",
+                fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              {today?.done
+                ? t("cobreathe.begin_again", { defaultValue: "Breathe again" })
+                : t("cobreathe.begin", { defaultValue: "Cobreathe — twelve breaths" })}
+            </button>
+
+            <p className="text-[12px] mt-3 mb-6 text-center px-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SERIF, fontStyle: "italic" }}>
+              {t("cobreathe.caption", { defaultValue: "About two and a half minutes — it counts toward your contemplation goal. Sit comfortably; let the circle pace you." })}
+            </p>
+
+            {/* ── Information — the weekly intention, then the teaching. */}
+
+            {/* This week's intention */}
+            <div
+              className="rounded-2xl p-4 mb-4 flex gap-3"
+              style={{ background: "rgba(193,127,36,0.08)", border: "1px solid rgba(193,127,36,0.28)" }}
+            >
+              <span className="text-2xl leading-none mt-0.5">{focus.emoji}</span>
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: "#D9A45B", fontFamily: SPACE_GROTESK }}>
+                  {t("cobreathe.this_week", { defaultValue: "This week we breathe for" })}
+                </p>
+                <p className="text-[14px] font-bold mb-0.5" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+                  {t(`cobreathe.focus.${focus.key}.title`, { defaultValue: focus.title })}
+                </p>
+                <p className="text-[13px] leading-relaxed" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
+                  {t(`cobreathe.focus.${focus.key}.line`, { defaultValue: focus.line })}
+                </p>
+              </div>
+            </div>
+
             {/* Framing card */}
             <div
               className="rounded-2xl p-5 mb-4"
@@ -285,81 +380,8 @@ export default function CobreathePage() {
               </div>
             </div>
 
-            {/* This week's intention */}
-            <div
-              className="rounded-2xl p-4 mb-4 flex gap-3"
-              style={{ background: "rgba(193,127,36,0.08)", border: "1px solid rgba(193,127,36,0.28)" }}
-            >
-              <span className="text-2xl leading-none mt-0.5">{focus.emoji}</span>
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: "#D9A45B", fontFamily: SPACE_GROTESK }}>
-                  {t("cobreathe.this_week", { defaultValue: "This week we breathe for" })}
-                </p>
-                <p className="text-[14px] font-bold mb-0.5" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                  {t(`cobreathe.focus.${focus.key}.title`, { defaultValue: focus.title })}
-                </p>
-                <p className="text-[13px] leading-relaxed" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
-                  {t(`cobreathe.focus.${focus.key}.line`, { defaultValue: focus.line })}
-                </p>
-              </div>
-            </div>
-
-            {/* Today's count / state */}
-            <div
-              className="rounded-2xl p-4 mb-4"
-              style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.25)" }}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🫁</span>
-                <p className="text-[13.5px] leading-snug flex-1" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                  {today?.done
-                    ? others === 0
-                      ? t("cobreathe.done_today_first", { defaultValue: "You kept today's breath — the first breath of the day." })
-                      : t("cobreathe.done_today_short", { count: others, defaultValue: `You kept today's breath, with ${others} other ${others === 1 ? "person" : "people"}.` })
-                    : (today?.count ?? 0) === 0
-                      ? t("cobreathe.none_yet", { defaultValue: "No one has breathed yet today. Yours can be the first breath." })
-                      : t("cobreathe.count_so_far", { count: today?.count ?? 0, defaultValue: `${today?.count} ${today?.count === 1 ? "person has" : "people have"} breathed today. Join your breath to theirs.` })}
-                </p>
-              </div>
-              {state && state.companions.length > 0 && (
-                <div className="flex items-center gap-2 mt-3 pl-1">
-                  <Faces companions={state.companions} />
-                  <p className="text-[12px]" style={{ color: "rgba(143,175,150,0.75)", fontFamily: SPACE_GROTESK }}>
-                    {t("cobreathe.including", { names: withLine, defaultValue: `including ${withLine}` })}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setMode("breathing")}
-              className="w-full rounded-xl py-3.5 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-              style={{
-                background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)",
-                fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600, cursor: "pointer",
-              }}
-            >
-              {today?.done
-                ? t("cobreathe.begin_again", { defaultValue: "Breathe again" })
-                : t("cobreathe.begin", { defaultValue: "Cobreathe — twelve breaths" })}
-            </button>
-
-            <p className="text-[12px] mt-4 text-center px-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SERIF, fontStyle: "italic" }}>
-              {t("cobreathe.caption", { defaultValue: "About two and a half minutes — it counts toward your contemplation goal. Sit comfortably; let the circle pace you." })}
-            </p>
-
-            {/* Quiet lifetime line */}
-            {state && (state.myDays > 0 || state.allBreaths > 0) && (
-              <p className="text-[12px] mt-3 text-center" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
-                {state.myDays > 0
-                  ? t("cobreathe.lifetime_mine", { mine: state.myDays, all: state.allBreaths, defaultValue: `You've cobreathed on ${state.myDays} ${state.myDays === 1 ? "day" : "days"} · ${state.allBreaths.toLocaleString()} breaths held across Phoebe` })
-                  : t("cobreathe.lifetime_all", { all: state.allBreaths, defaultValue: `${state.allBreaths.toLocaleString()} breaths held across Phoebe since the practice began` })}
-              </p>
-            )}
-
             {/* Why breath? — the justice grounding, kept short */}
-            <div className="mt-8">
+            <div className="mt-4">
               <h2 className="text-[13px] font-bold uppercase tracking-widest mb-3" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
                 {t("cobreathe.why_title", { defaultValue: "Why breath?" })}
               </h2>

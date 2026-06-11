@@ -95,7 +95,9 @@ export function CobreatheBreath({
 }) {
   const { t } = useTranslation();
   const circleRef = useRef<HTMLDivElement>(null);
-  const haloRef = useRef<HTMLDivElement>(null);
+  const glowRef = useRef<HTMLDivElement>(null);
+  const ring1Ref = useRef<HTMLDivElement>(null);
+  const ring2Ref = useRef<HTMLDivElement>(null);
 
   // Anchor points (fixed at mount): when the user arrived, and the next clean
   // cycle boundary where the count begins. There is NO end anchor — the rhythm
@@ -104,15 +106,33 @@ export function CobreatheBreath({
   const countStartRef = useRef(Math.ceil(startRef.current / CYCLE_MS) * CYCLE_MS);
   const reachedRef = useRef(false);
 
-  // Smooth circle: a rAF loop writes the transform straight to the DOM from the
+  // Smooth circle: a rAF loop writes transforms straight to the DOM from the
   // global clock — no React re-render per frame, perfectly synced for all.
+  // Every animated property is transform/opacity only (GPU-composited); the
+  // glow is a pre-blurred radial layer whose opacity breathes, NOT an
+  // animated box-shadow (which forces repaints and reads as judder).
   useEffect(() => {
     let raf = 0;
     const loop = () => {
       const pos = Date.now() % CYCLE_MS;
       const s = scaleAt(pos);
+      // 0 at rest → 1 at full inhale; drives glow + ring presence.
+      const p = (s - SMALL) / (BIG - SMALL);
       if (circleRef.current) circleRef.current.style.transform = `scale(${s})`;
-      if (haloRef.current) haloRef.current.style.transform = `scale(${s * 1.22})`;
+      if (glowRef.current) {
+        glowRef.current.style.transform = `scale(${0.9 + p * 0.55})`;
+        glowRef.current.style.opacity = String(0.35 + p * 0.5);
+      }
+      // Outer ripple rings — trail the circle at widening offsets and fade
+      // as the breath fills, like rings on still water.
+      if (ring1Ref.current) {
+        ring1Ref.current.style.transform = `scale(${s * 1.16})`;
+        ring1Ref.current.style.opacity = String(0.35 + p * 0.25);
+      }
+      if (ring2Ref.current) {
+        ring2Ref.current.style.transform = `scale(${s * 1.34})`;
+        ring2Ref.current.style.opacity = String(0.16 + p * 0.18);
+      }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -165,31 +185,64 @@ export function CobreatheBreath({
       </p>
 
       <div className="flex flex-col items-center justify-center flex-1 my-6">
-        <div className="relative flex items-center justify-center" style={{ width: 280, height: 280 }}>
-          {/* Outer halo */}
+        <div className="relative flex items-center justify-center" style={{ width: 290, height: 290 }}>
+          {/* Ambient glow — a soft pre-blurred radial wash that brightens as
+              the lungs fill. Opacity-only animation, so it never repaints. */}
           <div
-            ref={haloRef}
+            ref={glowRef}
             style={{
-              position: "absolute", width: 170, height: 170, borderRadius: "50%",
-              background: "rgba(62,124,122,0.12)",
-              transform: `scale(${SMALL * 1.22})`,
-              willChange: "transform",
+              position: "absolute", width: 260, height: 260, borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(86,156,142,0.45) 0%, rgba(62,124,122,0.18) 45%, transparent 70%)",
+              transform: "scale(0.9)",
+              opacity: 0.35,
+              willChange: "transform, opacity",
+              pointerEvents: "none",
             }}
           />
-          {/* Breath circle */}
+          {/* Ripple rings — two thin halos trailing the circle outward. */}
+          <div
+            ref={ring2Ref}
+            style={{
+              position: "absolute", width: 150, height: 150, borderRadius: "50%",
+              border: "1px solid rgba(143,175,150,0.35)",
+              transform: `scale(${SMALL * 1.34})`,
+              opacity: 0.16,
+              willChange: "transform, opacity",
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            ref={ring1Ref}
+            style={{
+              position: "absolute", width: 150, height: 150, borderRadius: "50%",
+              border: "1.5px solid rgba(143,175,150,0.45)",
+              transform: `scale(${SMALL * 1.16})`,
+              opacity: 0.35,
+              willChange: "transform, opacity",
+              pointerEvents: "none",
+            }}
+          />
+          {/* Breath circle — layered radial gradient for a soft, dimensional
+              sphere; no box-shadow (the glow layer above carries the light). */}
           <div
             ref={circleRef}
             style={{
               position: "absolute", width: 150, height: 150, borderRadius: "50%",
-              background: "radial-gradient(circle at 38% 32%, rgba(143,175,150,0.55), rgba(46,107,64,0.85))",
-              border: "1px solid rgba(143,175,150,0.5)",
-              boxShadow: "0 0 60px rgba(62,124,122,0.35)",
+              background:
+                "radial-gradient(circle at 36% 30%, rgba(178,205,182,0.65) 0%, rgba(110,164,138,0.6) 32%, rgba(52,112,84,0.9) 72%, rgba(36,84,64,0.95) 100%)",
+              border: "1px solid rgba(160,195,170,0.55)",
               transform: `scale(${SMALL})`,
               willChange: "transform",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}
           >
-            <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 600 }}>
+            <span
+              style={{
+                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
+                letterSpacing: "0.02em",
+                textShadow: "0 1px 8px rgba(9,26,16,0.45)",
+              }}
+            >
               {phaseLabel}
             </span>
           </div>
