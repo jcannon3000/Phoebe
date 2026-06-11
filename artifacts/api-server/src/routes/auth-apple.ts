@@ -122,6 +122,16 @@ router.post("/auth/apple/native", async (req, res): Promise<void> => {
     if (!user && email) {
       const byEmail = await db.select().from(usersTable).where(eq(usersTable.email, email));
       if (byEmail[0]) {
+        // Only graft this Apple identity onto a pre-existing (password or
+        // Google) account when Apple has VERIFIED the email. Linking on an
+        // unverified email would let someone whose Apple ID merely claims a
+        // victim's address take over the victim's account. Apple sends
+        // email_verified as a boolean or the string "true".
+        const emailVerified = payload["email_verified"] === true || payload["email_verified"] === "true";
+        if (!emailVerified) {
+          res.status(409).json({ error: "email_not_verified" });
+          return;
+        }
         const [linked] = await db
           .update(usersTable)
           .set({ appleId: sub })

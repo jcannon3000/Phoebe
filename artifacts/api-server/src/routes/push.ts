@@ -64,6 +64,19 @@ router.post("/push/device-token", async (req, res): Promise<void> => {
           invalidatedAt: null,
         },
       });
+
+    // A physical device's push token belongs to exactly ONE account at a
+    // time. Retire the same (platform, token) under any OTHER user so a
+    // shared or handed-down device stops delivering the previous owner's
+    // prayer notifications to whoever holds it now. (Logout does not clear
+    // device tokens, so without this the stale binding persists.)
+    await db.update(deviceTokensTable)
+      .set({ invalidatedAt: sql`now()` })
+      .where(and(
+        eq(deviceTokensTable.platform, parsed.data.platform),
+        eq(deviceTokensTable.token, parsed.data.token),
+        sql`${deviceTokensTable.userId} <> ${user.id}`,
+      ));
     // Visible log so we can confirm from Railway whether a given
     // user actually registered a token. Log only the prefix of the
     // token (tokens are not secret, but 72-char log lines are noise).

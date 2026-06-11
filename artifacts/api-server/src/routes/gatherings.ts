@@ -11,7 +11,7 @@ import {
 import { eq, and, inArray, or } from "drizzle-orm";
 import { z } from "zod/v4";
 import { parseIcal, normalizeCalendarUrl, type ICalEvent } from "../lib/ical";
-import { assertPublicHttpUrl } from "../lib/ssrfGuard";
+import { assertPublicHttpUrl, safeFetch } from "../lib/ssrfGuard";
 
 const router: IRouter = Router();
 
@@ -50,7 +50,10 @@ router.post("/gatherings/calendars", async (req, res): Promise<void> => {
   // Quick validation: try to fetch a few events to confirm it works
   let calendarName = (req.body.name as string | undefined)?.trim() ?? "";
   try {
-    const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    // safeFetch re-runs the SSRF guard on every redirect hop — a plain
+    // fetch() would follow a 30x to an internal/metadata host without
+    // re-checking, defeating the assertPublicHttpUrl above.
+    const resp = await safeFetch(url, { timeoutMs: 8000 });
     if (!resp.ok) {
       res.status(400).json({ error: "Could not fetch that calendar. Make sure it's public." });
       return;
@@ -122,9 +125,9 @@ router.get("/gatherings/calendar-events", async (req, res): Promise<void> => {
   await Promise.all(subs.map(async (sub) => {
     try {
       // Re-check at fetch time too (a sub stored before this guard existed,
-      // or a name that has since rebound to an internal address).
-      await assertPublicHttpUrl(sub.url);
-      const resp = await fetch(sub.url, { signal: AbortSignal.timeout(8000) });
+      // or a name that has since rebound to an internal address). safeFetch
+      // also re-validates each redirect hop.
+      const resp = await safeFetch(sub.url, { timeoutMs: 8000 });
       if (!resp.ok) return;
       const text = await resp.text();
       const events = parseIcal(text);

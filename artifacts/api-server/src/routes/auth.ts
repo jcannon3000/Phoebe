@@ -62,6 +62,14 @@ if (GOOGLE_CONFIGURED) {
 
           const byEmail = await db.select().from(usersTable).where(eq(usersTable.email, email));
           if (byEmail.length > 0) {
+            // Only link this Google identity to a pre-existing account when
+            // Google has VERIFIED the email. Otherwise a Google account that
+            // merely claims a victim's address (e.g. an unverified custom
+            // Workspace domain) could take over the victim's password account.
+            const emailVerified = (profile as { _json?: { email_verified?: boolean } })._json?.email_verified === true;
+            if (!emailVerified) {
+              return done(null, undefined);
+            }
             const [user] = await db
               .update(usersTable)
               .set({ googleId, avatarUrl })

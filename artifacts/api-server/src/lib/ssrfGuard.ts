@@ -69,3 +69,33 @@ export async function assertPublicHttpUrl(raw: string): Promise<void> {
     if (ipIsBlocked(ip)) throw new Error("URL resolves to a blocked address");
   }
 }
+
+/**
+ * SSRF-safe fetch for any URL whose host is influenced by user input.
+ *
+ * The trap with a plain `assertPublicHttpUrl(url)` + `fetch(url)` is that
+ * Node's fetch follows 30x redirects INTERNALLY without re-validating — so a
+ * public URL that redirects to http://169.254.169.254/… or http://localhost/…
+ * sails straight past the guard. This follows redirects MANUALLY and runs the
+ * guard on every hop (including the initial URL), with a bounded hop count and
+ * a total-time deadline that also bounds the caller's body read.
+ *
+ * Returns the final (non-redirect) Response. Throws if any hop resolves to a
+ * blocked address, the redirect chain is too long, or the request times out.
+ */
+export async function safeFetch(
+  rawUrl: string,
+  opts: { timeoutMs?: number; maxRedirects?: number; headers?: Record<string, string> } = {},
+): Promise<Response> {
+  const maxRedirects = opts.maxRedirects ?? 5;
+  const signal = AbortSignal.timeout(opts.timeoutMs ?? 8000);
+  let current = rawUrl;
+  for (let hop = 0; ; hop++) {
+    await assertPublicHttpUrl(current);
+    const res = await fetch(current, { signal, redirect: "manual", headers: opts.headers });
+    if (res.status < 300 || res.status >= 400) return res;
+    const loc = res.headers.get("location");
+    if (!loc || hop >= maxRedirects) throw new Error("Too many redirects");
+    current = new URL(loc, current).toString();
+  }
+}

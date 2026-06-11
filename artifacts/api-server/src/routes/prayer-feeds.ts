@@ -20,6 +20,7 @@ import {
 import { inArray } from "drizzle-orm";
 import { z } from "zod/v4";
 import crypto from "crypto";
+import { todayInZone } from "../lib/tz";
 
 const router: IRouter = Router();
 
@@ -118,21 +119,8 @@ async function uniqueSlug(base: string): Promise<string> {
   return `${slug}-${crypto.randomBytes(3).toString("hex")}`;
 }
 
-// Compute today's calendar date (YYYY-MM-DD) in the feed's timezone.
-// Falls back to UTC if the IANA zone is invalid.
-function todayInZone(tz: string): string {
-  try {
-    const fmt = new Intl.DateTimeFormat("en-CA", {
-      timeZone: tz,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-    return fmt.format(new Date()); // "YYYY-MM-DD"
-  } catch {
-    return new Date().toISOString().slice(0, 10);
-  }
-}
+// todayInZone (today's YYYY-MM-DD in the feed's timezone, UTC fallback) lives
+// in ../lib/tz.
 
 async function getFeedBySlug(slug: string) {
   const [feed] = await db.select().from(prayerFeedsTable)
@@ -829,19 +817,23 @@ async function bindFeedToGroup(feedId: number, groupSlug: string, byUserId: numb
   // Permission: feed creator OR admin of this group.
   const [feed] = await db.select().from(prayerFeedsTable).where(eq(prayerFeedsTable.id, feedId));
   if (!feed) throw new Error("feed_not_found");
-  const isCreator = feed.creatorUserId === byUserId;
-  let isGroupAdmin = false;
-  if (!isCreator) {
-    const [membership] = await db
-      .select({ role: groupMembersTable.role })
-      .from(groupMembersTable)
-      .where(and(
-        eq(groupMembersTable.groupId, group.id),
-        eq(groupMembersTable.userId, byUserId),
-      ));
-    isGroupAdmin = membership?.role === "admin" || membership?.role === "hidden_admin";
-  }
-  if (!isCreator && !isGroupAdmin) throw new Error("forbidden");
+  // Permission: the caller must be an ADMIN of the TARGET group — they are
+  // the ones whose members are about to be auto-subscribed. Being the
+  // feed's creator does NOT authorize this: otherwise any beta user could
+  // mint a throwaway feed (becoming its creator) and force-subscribe ANY
+  // community to it by its public slug, then push-spam the whole roster.
+  // Feed-creator-ship governs the feed side, not the conscription of an
+  // arbitrary community's members.
+  const [membership] = await db
+    .select({ role: groupMembersTable.role })
+    .from(groupMembersTable)
+    .where(and(
+      eq(groupMembersTable.groupId, group.id),
+      eq(groupMembersTable.userId, byUserId),
+      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+    ));
+  const isGroupAdmin = membership?.role === "admin" || membership?.role === "hidden_admin";
+  if (!isGroupAdmin) throw new Error("forbidden");
 
   // Bind row (idempotent).
   await db.insert(prayerFeedGroupsTable).values({
@@ -2117,8 +2109,10 @@ router.get("/prayer-feeds/:slug/entries/:date/prayers", requireBeta, async (req,
 
   const rows = await db
     .select({
+      // No email here: this roster only needs name + avatar (matching the
+      // WeekPrayer roster elsewhere). Returning account emails to every
+      // feed viewer over-exposes PII for no UI need.
       name: usersTable.name,
-      email: usersTable.email,
       avatarUrl: usersTable.avatarUrl,
       createdAt: prayerFeedPrayersTable.createdAt,
     })

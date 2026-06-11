@@ -267,8 +267,15 @@ async function enrichRitual(ritual: typeof ritualsTable.$inferSelect, meetups: t
 }
 
 router.get("/rituals", async (req, res): Promise<void> => {
-  const rawOwnerId = req.query.ownerId;
-  const ownerId = rawOwnerId !== undefined ? parseInt(String(rawOwnerId), 10) : null;
+  // AuthZ: you may only list your OWN gatherings. This previously trusted
+  // ?ownerId from the query (so any user's id could be enumerated) and,
+  // with no param at all, fell through to an undefined WHERE that returned
+  // EVERY ritual in the system — an unauthenticated cross-tenant dump of
+  // participants and meeting logistics. Derive the owner from the session
+  // and ignore any client-supplied id.
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const ownerId: number | null = sessionUserId;
 
   // Also fetch rituals where the user appears as a participant (by email)
   let userEmail: string | null = null;
@@ -549,11 +556,15 @@ router.get("/rituals/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, params.data.id));
-  if (!ritual) {
-    res.status(404).json({ error: "Ritual not found" });
-    return;
-  }
+  // AuthZ: only a member of the gathering may read it. Previously this
+  // only checked the ritual existed, so any id could be enumerated to read
+  // a stranger's participants, chat history, and meeting logistics.
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const access = await getRitualAccess(params.data.id, sessionUserId);
+  if (!access) { res.status(404).json({ error: "Ritual not found" }); return; }
+  if (!access.isMember) { res.status(403).json({ error: "Only members of this gathering can view it" }); return; }
+  const ritual = access.ritual;
 
   const [meetups, messages] = await Promise.all([
     db.select().from(meetupsTable).where(eq(meetupsTable.ritualId, ritual.id)).orderBy(desc(meetupsTable.scheduledDate)),
@@ -892,6 +903,14 @@ router.get("/rituals/:id/meetups", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
+
+  // AuthZ: only a member may list a gathering's meetups (times, locations,
+  // notes). Was existence-only, so any id could be enumerated by a stranger.
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const access = await getRitualAccess(params.data.id, sessionUserId);
+  if (!access) { res.status(404).json({ error: "Ritual not found" }); return; }
+  if (!access.isMember) { res.status(403).json({ error: "Only members of this gathering can view its meetups" }); return; }
 
   const meetups = await db
     .select()
@@ -1353,13 +1372,21 @@ router.patch("/rituals/:id/meetups/:meetupId", async (req, res): Promise<void> =
   const parsed = z.object({ status: z.enum(["completed", "skipped"]) }).safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "status must be completed or skipped" }); return; }
 
-  const [ritual] = await db.select().from(ritualsTable).where(eq(ritualsTable.id, ritualId));
-  if (!ritual) { res.status(404).json({ error: "Ritual not found" }); return; }
+  // AuthZ: only a member may change a meetup's status. Was existence-only
+  // AND the update was keyed solely on meetupId — so an unauthenticated
+  // caller could flip the status of ANY gathering's meetup by enumerating
+  // ids, corrupting strangers' streaks. Gate on membership and scope the
+  // update to this ritual.
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const access = await getRitualAccess(ritualId, sessionUserId);
+  if (!access) { res.status(404).json({ error: "Ritual not found" }); return; }
+  if (!access.isMember) { res.status(403).json({ error: "Only members of this gathering can update meetups" }); return; }
 
   const [updated] = await db
     .update(meetupsTable)
     .set({ status: parsed.data.status })
-    .where(eq(meetupsTable.id, meetupId))
+    .where(and(eq(meetupsTable.id, meetupId), eq(meetupsTable.ritualId, ritualId)))
     .returning();
 
   if (!updated) { res.status(404).json({ error: "Meetup not found" }); return; }

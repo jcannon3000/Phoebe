@@ -225,8 +225,12 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     // so the deep-link page renders the same chip.
     kind: r.kind ?? "request",
     ownerId: r.ownerId,
-    ownerName: owner?.name ?? null,
-    ownerAvatarUrl: owner?.avatarUrl ?? null,
+    // Honor anonymity. Every other surface (feed list at ~531, the
+    // slideshow, push copy) suppresses the author's name + avatar for an
+    // anonymous request; this detail endpoint must too — otherwise a garden
+    // viewer who opens an anonymous request sees exactly who posted it.
+    ownerName: r.isAnonymous ? null : (owner?.name ?? null),
+    ownerAvatarUrl: r.isAnonymous ? null : (owner?.avatarUrl ?? null),
     viewerIsOwner,
     viewerIsTagged,
     // Tagged users — rendered in a "Tagged" row beneath the body.

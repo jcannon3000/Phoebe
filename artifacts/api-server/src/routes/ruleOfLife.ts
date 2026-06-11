@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request } from "express";
 import { pool } from "@workspace/db";
 import { sendNewsletterEmail } from "../lib/email";
+import { perUserRateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -387,10 +388,13 @@ router.post("/:id/apply", async (req, res): Promise<void> => {
 });
 
 // POST /api/rule-of-life/:id/email
-router.post("/:id/email", async (req, res): Promise<void> => {
+// Rate-limited: this sends a Phoebe-branded email to a caller-supplied
+// address, so without a cap an authed user could spray mail to arbitrary
+// recipients and burn the sender domain's reputation.
+router.post("/:id/email", perUserRateLimit("rule_of_life_email", { max: 10, windowMs: 60 * 60 * 1000 }), async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
-  const id = parseInt(req.params.id ?? "", 10);
+  const id = parseInt(String(req.params.id ?? ""), 10);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const { to } = req.body as { to?: string };

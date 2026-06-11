@@ -67,19 +67,18 @@ export function rateLimit(options: RateLimitOptions) {
   };
 }
 
-// Railway / any reverse proxy sets X-Forwarded-For. Take the leftmost entry
-// (the original client). Express's req.ip will already be correct if
-// `trust proxy` is configured, but we fall back for safety.
+// Use Express's req.ip for the client identity. With `trust proxy` set
+// (app.ts: app.set("trust proxy", 1)), Express derives req.ip from the
+// X-Forwarded-For entry contributed by the single trusted hop (Railway's
+// proxy) — i.e. the real client as the proxy saw it.
+//
+// We deliberately do NOT parse X-Forwarded-For ourselves and take the
+// leftmost entry: that entry is fully CLIENT-controlled (anyone can send
+// `X-Forwarded-For: <anything>`), so trusting it let an attacker rotate the
+// value on every request to land in a fresh rate-limit bucket and bypass
+// all IP-based limits — including the brute-force guards on login,
+// password reset, and magic-code verification.
 export function getClientIp(req: Request): string {
-  const xff = req.headers["x-forwarded-for"];
-  if (typeof xff === "string" && xff.length > 0) {
-    const first = xff.split(",")[0]?.trim();
-    if (first) return first;
-  }
-  if (Array.isArray(xff) && xff.length > 0) {
-    const first = xff[0]?.split(",")[0]?.trim();
-    if (first) return first;
-  }
   return req.ip ?? req.socket.remoteAddress ?? "unknown";
 }
 
