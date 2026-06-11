@@ -27,6 +27,7 @@ export const es: Translations = {
     refresh: "Actualizar",
     remove: "Quitar",
     saving: "Guardando…",
+    posting: "Publicando…",
     set: "Establecer",
     continue: "Continuar",
     back: "Atrás",
@@ -555,6 +556,59 @@ export const es: Translations = {
     people: "Personas",
     menu: "Menú",
     way_of_love: "Camino del Amor",
+  },
+
+  // ── Foro de grupo (El Jardín y cualquier comunidad) ──────────────────────
+  forum: {
+    title: "Foro",
+    back: "Volver al grupo",
+    back_to_forum: "Foro",
+    new_post: "Nueva publicación",
+    title_placeholder: "Título (opcional)",
+    body_placeholder: "Comparte algo con el grupo…",
+    post: "Publicar",
+    post_failed: "No se pudo publicar — inténtalo de nuevo.",
+    load_failed: "No se pudo cargar el foro.",
+    empty: "Aún no hay publicaciones. Sé el primero en comenzar la conversación.",
+    you: "Tú",
+    someone: "Alguien",
+    thread_missing: "No se encontró esta publicación.",
+    confirm_delete_post: "¿Eliminar esta publicación y sus respuestas?",
+    reply: "respuesta",
+    replies: "respuestas",
+    reply_placeholder: "Escribe una respuesta…",
+    reply_cta: "Responder",
+    reply_failed: "No se pudo publicar tu respuesta — inténtalo de nuevo.",
+  },
+
+  // ── Página de progreso diario (detrás de la píldora del encabezado) ──────
+  daily_progress: {
+    title: "Progreso diario",
+    subtitle: "Dónde estás en el ritmo de hoy — y qué sigue.",
+    practices_heading: "Forma tu práctica",
+  },
+
+  // ── Portal El Jardín ─────────────────────────────────────────────────────
+  jardin: {
+    title: "El Jardín",
+    subtitle: "Herramientas de formación para un estudio y una reflexión más profundos.",
+    study: "Estudio",
+    bible_study: "Estudio bíblico",
+    bible_study_sub: "Hoja de trabajo estructurada por pasaje",
+    character_study: "Estudio de personajes",
+    character_study_sub: "Profundiza en un personaje bíblico",
+    sermon_notes: "Notas del sermón",
+    sermon_notes_sub: "Captura el mensaje del domingo",
+    next_sunday: "Próximo domingo",
+    next_sunday_sub: "Prepárate para el próximo servicio",
+    community: "Comunidad",
+    groups: "Grupos",
+    groups_sub: "Tus grupos y sus foros",
+    scripture_accountability: "Escritura y crecimiento",
+    bible_lookup: "Buscar en la Biblia",
+    bible_lookup_sub: "Abre cualquier pasaje en Bible.com",
+    leaderboard: "Tabla de rachas",
+    leaderboard_sub: "Rachas de oración con amigos",
   },
   // Way of Love drawer (Layout > WayOfLoveDrawer) — beta only.
   wol: {
@@ -3331,6 +3385,9 @@ export const es: Translations = {
     },
   },
   community_detail: {
+    // Group forum entry card.
+    forum: "Foro",
+    forum_blurb: "Inicia una conversación con el grupo",
     // Days of week + relative day labels.
     day_sunday: "domingo",
     day_monday: "lunes",

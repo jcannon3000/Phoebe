@@ -1,37 +1,39 @@
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { MenuHub } from "@/components/MenuHub";
 
 export default function MenuJardinPage() {
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
   const go = (p: string) => setLocation(p);
   return (
     <MenuHub
-      title="El Jardín"
+      title={t("jardin.title")}
       emoji="🌿"
-      subtitle="Formation tools for deeper study and reflection."
-      backLabel="Menu"
+      subtitle={t("jardin.subtitle")}
+      backLabel={t("header.menu")}
       backHref="/menu"
       groups={[
         {
-          header: "Study",
+          header: t("jardin.study"),
           items: [
-            { emoji: "📖", label: "Bible Study", sub: "Structured worksheet per passage", onClick: () => go("/jardin/bible-study") },
-            { emoji: "👤", label: "Character Study", sub: "Deep-dive on a biblical figure", onClick: () => go("/jardin/character-study") },
-            { emoji: "🎤", label: "Sermon Notes", sub: "Capture Sunday's message", onClick: () => go("/jardin/sermon-notes") },
-            { emoji: "📅", label: "Next Sunday", sub: "Prepare for the coming service", onClick: () => go("/jardin/next-sunday") },
+            { emoji: "📖", label: t("jardin.bible_study"), sub: t("jardin.bible_study_sub"), onClick: () => go("/jardin/bible-study") },
+            { emoji: "👤", label: t("jardin.character_study"), sub: t("jardin.character_study_sub"), onClick: () => go("/jardin/character-study") },
+            { emoji: "🎤", label: t("jardin.sermon_notes"), sub: t("jardin.sermon_notes_sub"), onClick: () => go("/jardin/sermon-notes") },
+            { emoji: "📅", label: t("jardin.next_sunday"), sub: t("jardin.next_sunday_sub"), onClick: () => go("/jardin/next-sunday") },
           ],
         },
         {
-          header: "Community",
+          header: t("jardin.community"),
           items: [
-            { emoji: "👥", label: "Groups", sub: "Your groups and their forums", onClick: () => go("/communities") },
+            { emoji: "👥", label: t("jardin.groups"), sub: t("jardin.groups_sub"), onClick: () => go("/communities") },
           ],
         },
         {
-          header: "Scripture & Accountability",
+          header: t("jardin.scripture_accountability"),
           items: [
-            { emoji: "🔍", label: "Bible Lookup", sub: "Open any passage on Bible.com", onClick: () => go("/jardin/bible") },
-            { emoji: "🏆", label: "Streak Leaderboard", sub: "Prayer streaks with friends", onClick: () => go("/jardin/leaderboard") },
+            { emoji: "🔍", label: t("jardin.bible_lookup"), sub: t("jardin.bible_lookup_sub"), onClick: () => go("/jardin/bible") },
+            { emoji: "🏆", label: t("jardin.leaderboard"), sub: t("jardin.leaderboard_sub"), onClick: () => go("/jardin/leaderboard") },
           ],
         },
       ]}

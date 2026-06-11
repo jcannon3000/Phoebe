@@ -21,6 +21,7 @@ export const en = {
     refresh: "Refresh",
     remove: "Remove",
     saving: "Saving…",
+    posting: "Posting…",
     set: "Set",
     continue: "Continue",
     back: "Back",
@@ -560,6 +561,59 @@ export const en = {
     people: "People",
     menu: "Menu",
     way_of_love: "Way of Love",
+  },
+
+  // ── Group forum (El Jardín + any community) ──────────────────────────────
+  forum: {
+    title: "Forum",
+    back: "Back to group",
+    back_to_forum: "Forum",
+    new_post: "New post",
+    title_placeholder: "Title (optional)",
+    body_placeholder: "Share something with the group…",
+    post: "Post",
+    post_failed: "Couldn't post — try again.",
+    load_failed: "Couldn't load the forum.",
+    empty: "No posts yet. Be the first to start the conversation.",
+    you: "You",
+    someone: "Someone",
+    thread_missing: "This post couldn't be found.",
+    confirm_delete_post: "Delete this post and its replies?",
+    reply: "reply",
+    replies: "replies",
+    reply_placeholder: "Write a reply…",
+    reply_cta: "Reply",
+    reply_failed: "Couldn't post your reply — try again.",
+  },
+
+  // ── Daily progress page (behind the header pill) ─────────────────────────
+  daily_progress: {
+    title: "Daily progress",
+    subtitle: "Where you are in today's rhythm — and what's next.",
+    practices_heading: "Shape your practice",
+  },
+
+  // ── El Jardín portal hub ─────────────────────────────────────────────────
+  jardin: {
+    title: "El Jardín",
+    subtitle: "Formation tools for deeper study and reflection.",
+    study: "Study",
+    bible_study: "Bible Study",
+    bible_study_sub: "Structured worksheet per passage",
+    character_study: "Character Study",
+    character_study_sub: "Deep-dive on a biblical figure",
+    sermon_notes: "Sermon Notes",
+    sermon_notes_sub: "Capture Sunday's message",
+    next_sunday: "Next Sunday",
+    next_sunday_sub: "Prepare for the coming service",
+    community: "Community",
+    groups: "Groups",
+    groups_sub: "Your groups and their forums",
+    scripture_accountability: "Scripture & Accountability",
+    bible_lookup: "Bible Lookup",
+    bible_lookup_sub: "Open any passage on Bible.com",
+    leaderboard: "Streak Leaderboard",
+    leaderboard_sub: "Prayer streaks with friends",
   },
   // Way of Love drawer (Layout > WayOfLoveDrawer) — beta only.
   wol: {
@@ -3416,6 +3470,9 @@ export const en = {
   },
   // Community detail page (pages/community-detail.tsx).
   community_detail: {
+    // Group forum entry card.
+    forum: "Forum",
+    forum_blurb: "Start a conversation with the group",
     // Days of week + relative day labels.
     day_sunday: "Sunday",
     day_monday: "Monday",
