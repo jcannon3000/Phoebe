@@ -590,7 +590,7 @@ export const en = {
   daily_progress: {
     title: "Daily progress",
     subtitle: "Where you are in today's rhythm — and what's next.",
-    practices_heading: "Shape your practice",
+    practices_heading: "Today's practices",
   },
 
   // ── El Jardín portal hub ─────────────────────────────────────────────────

@@ -15,7 +15,6 @@ import { ChevronLeft, Sliders } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { useRhythmState } from "@/hooks/useRhythmState";
 
 const WARM = "#F0EDE6";
@@ -148,7 +147,7 @@ function PracticeCard({
 
 export default function DailyProgressPage() {
   const { t } = useTranslation();
-  const { morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin } = useRhythmState();
+  const { morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, doneCount } = useRhythmState();
   const hour = new Date().getHours();
   const kept = t("rhythm.kept", { defaultValue: "Kept today" });
   // Contemplation card sub-line: goal progress until the goal is met.
@@ -220,13 +219,19 @@ export default function DailyProgressPage() {
           {t("daily_progress.subtitle", { defaultValue: "Where you are in today's rhythm — and what's next." })}
         </p>
 
-        {/* The rhythm card itself — four anchors, streak, what's next. */}
-        <TodaysRhythm />
-
-        {/* Each of the four practices as its own card. */}
-        <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
-          {t("daily_progress.practices_heading", { defaultValue: "Today's practices" })}
-        </p>
+        {/* The four practices, each its own actionable card (done state +
+            progress + CTA). This list is the page's heart — the compact
+            "Today's Rhythm" dot card lives on the header pill + slideshow
+            closing slide; repeating it here was redundant. The header carries
+            the at-a-glance count the dots used to. */}
+        <div className="flex items-baseline justify-between mb-2">
+          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
+            {t("daily_progress.practices_heading", { defaultValue: "Today's practices" })}
+          </p>
+          <p className="text-[11px] font-semibold" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
+            {t("daily_progress.kept_count", { count: doneCount, defaultValue: `${doneCount} of 4 kept` })}
+          </p>
+        </div>
         <div className="flex flex-col gap-2">
           {cards.map((c) => (
             <PracticeCard

@@ -585,7 +585,7 @@ export const es: Translations = {
   daily_progress: {
     title: "Progreso diario",
     subtitle: "Dónde estás en el ritmo de hoy — y qué sigue.",
-    practices_heading: "Forma tu práctica",
+    practices_heading: "Prácticas de hoy",
   },
 
   // ── Portal El Jardín ─────────────────────────────────────────────────────
