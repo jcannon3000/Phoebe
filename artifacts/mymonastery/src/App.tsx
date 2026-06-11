@@ -439,6 +439,20 @@ function JardinHostGate() {
   return null;
 }
 
+// /jardin — the El Jardín portal entry on the main domain
+// (withphoebe.app/jardin). Lands logged-in users on the Jardín hub and
+// logged-out visitors on the Spanish signup — the same front door the
+// eljardin.* subdomain gives via JardinHostGate, but without needing DNS.
+function JardinEntry() {
+  const [, setLocation] = useLocation();
+  const { user, isLoading } = useAuthForGate();
+  useEffect(() => {
+    if (isLoading) return;
+    setLocation(user ? "/menu/jardin" : "/jardin/signup");
+  }, [user, isLoading, setLocation]);
+  return null;
+}
+
 function ParishGate({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const { user, isLoading } = useAuthForGate();
@@ -577,6 +591,7 @@ function Router() {
           older deep links still resolve. */}
       <Route path="/" component={WelcomePublicPage} />
       <Route path="/jardin/signup" component={JardinSignupPage} />
+      <Route path="/jardin" component={JardinEntry} />
       <Route path="/signin" component={Onboarding} />
       {/* /onboarding is the post-signup UserOnboarding slideshow,
           mounted below. Don't claim it here for the signin form —
