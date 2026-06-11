@@ -61,9 +61,9 @@ export function TodaysRhythm() {
           : t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" }),
     },
     {
-      key: "silence", label: t("rhythm.silence", { defaultValue: "Silence" }), icon: "🕯️",
-      done: silenceDone, href: "/cobreathe",
-      cta: t("rhythm.cta_silence", { defaultValue: "Keep two minutes of silence" }),
+      key: "silence", label: t("rhythm.silence", { defaultValue: "Contemplation" }), icon: "🕯️",
+      done: silenceDone, href: "/contemplation",
+      cta: t("rhythm.cta_silence", { defaultValue: "Sit in contemplation" }),
       blurb: t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" }),
     },
     {

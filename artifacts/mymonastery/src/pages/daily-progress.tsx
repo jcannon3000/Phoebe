@@ -90,12 +90,15 @@ function StreakCard() {
 // its state today (a "kept" check or a CTA to begin). Matches the dashboard
 // PracticeHomeCard look so the page feels of a piece with home.
 function PracticeCard({
-  href, emoji, title, blurb, cta, done, rgb, later, laterLabel,
+  href, emoji, title, blurb, cta, done, rgb, later, laterLabel, progress,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   /** Not yet actionable (e.g. evening before noon) — shows a muted "Later"
    *  pill instead of a CTA, and isn't tappable. */
   later?: boolean; laterLabel?: string;
+  /** Goal progress bar (e.g. contemplation minutes toward the daily goal),
+   *  shown under the text until the goal is met. */
+  progress?: { current: number; goal: number };
 }) {
   const waiting = !!later && !done;
   const pill = done ? (
@@ -125,6 +128,14 @@ function PracticeCard({
         <div className="flex-1 min-w-0">
           <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
           <p className="text-[12px] mt-0.5 leading-snug" style={{ color: SAGE }}>{blurb}</p>
+          {progress && progress.goal > 0 && !done && (
+            <div className="mt-2 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${Math.min(100, Math.round((progress.current / progress.goal) * 100))}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }}
+              />
+            </div>
+          )}
         </div>
         {pill}
       </div>
@@ -137,9 +148,15 @@ function PracticeCard({
 
 export default function DailyProgressPage() {
   const { t } = useTranslation();
-  const { morningDone, reflectDone, silenceDone, eveningDone, prayerKind } = useRhythmState();
+  const { morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin } = useRhythmState();
   const hour = new Date().getHours();
   const kept = t("rhythm.kept", { defaultValue: "Kept today" });
+  // Contemplation card sub-line: goal progress until the goal is met.
+  const contemplationBlurb = silenceDone
+    ? kept
+    : contemplationGoalMin > 0
+      ? t("rhythm.contemplation_progress", { current: contemplationMin, goal: contemplationGoalMin, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min today` })
+      : t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" });
 
   // Title for an office side matches what the user prays (their Customize-home
   // / Rule of Life pick): Prayer (office), Devotion, or community "Pray together".
@@ -161,10 +178,11 @@ export default function DailyProgressPage() {
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     },
     {
-      key: "silence", emoji: "🕯️", rgb: "62,124,122", done: silenceDone, href: "/cobreathe",
-      title: t("rhythm.card_silence", { defaultValue: "Silence" }),
-      blurb: silenceDone ? kept : t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" }),
+      key: "silence", emoji: "🕯️", rgb: "62,124,122", done: silenceDone, href: "/contemplation",
+      title: t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
+      blurb: contemplationBlurb,
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+      progress: { current: contemplationMin, goal: contemplationGoalMin },
     },
     {
       key: "reflect", emoji: "📖", rgb: "96,141,209", done: reflectDone, href: "/menu/reflections",
@@ -222,6 +240,7 @@ export default function DailyProgressPage() {
               rgb={c.rgb}
               later={c.later}
               laterLabel={t("rhythm.later", { defaultValue: "Later" })}
+              progress={"progress" in c ? c.progress : undefined}
             />
           ))}
         </div>

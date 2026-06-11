@@ -55,6 +55,10 @@ export type RhythmState = {
   /** Office / Devotion / community — so the Morning & Evening labels match
    *  what the user actually prays (their Customize-home / Rule of Life pick). */
   prayerKind: PrayerKind;
+  /** Today's contemplation minutes and the daily goal (0 = no goal) — for the
+   *  Contemplation card's goal progress. */
+  contemplationMin: number;
+  contemplationGoalMin: number;
 };
 
 export function useRhythmState(): RhythmState {
@@ -151,7 +155,7 @@ export function useRhythmState(): RhythmState {
   // What the user prays for the office — global default (office-prefs) OR a
   // per-side override. Mirrors the home prayer card's resolution, so the
   // Morning/Evening anchors read "Devotion"/"Prayer"/"Pray together" to match.
-  const { data: officePrefs } = useQuery<{ defaultPrayerLevel?: "devotion" | "office" | "intercessions" }>({
+  const { data: officePrefs } = useQuery<{ defaultPrayerLevel?: "devotion" | "office" | "intercessions"; contemplationGoalMinutes?: number }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     staleTime: 60_000,
@@ -168,9 +172,16 @@ export function useRhythmState(): RhythmState {
   const todayOffice = officeHistory?.days?.[officeHistory.days.length - 1];
   const morningDone = !!todayOffice?.morning || officeLocalDone(["morning", "morning-devotion"]);
   const eveningDone = !!todayOffice?.evening || officeLocalDone(["evening", "early-evening-devotion", "compline"]);
-  const silenceDone =
-    (contStats ? contStats.todaySeconds > 0 || contStats.healthMinutesToday > 0 : false) ||
-    !!cobreathe?.done;
+
+  // Contemplation (was "Silence"): today's minutes = Phoebe sits + any external
+  // Apple Health mindful minutes (a Cobreathe breath logs a contemplation sit,
+  // so it's already counted here). It only counts as KEPT once the daily goal is
+  // met — if no goal is set, any silence counts.
+  const contemplationMin = Math.floor((contStats?.todaySeconds ?? 0) / 60) + (contStats?.healthMinutesToday ?? 0);
+  const contemplationGoalMin = officePrefs?.contemplationGoalMinutes ?? 0;
+  const silenceDone = contemplationGoalMin > 0
+    ? contemplationMin >= contemplationGoalMin
+    : contemplationMin > 0;
 
   const doneCount = [morningDone, reflectDone, silenceDone, eveningDone].filter(Boolean).length;
 
@@ -186,5 +197,7 @@ export function useRhythmState(): RhythmState {
     gardenCount: prayerStreak?.gardenPrayedTodayCount ?? 0,
     cobreatheCount: cobreathe?.count ?? 0,
     prayerKind,
+    contemplationMin,
+    contemplationGoalMin,
   };
 }
