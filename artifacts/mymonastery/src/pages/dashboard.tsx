@@ -12,6 +12,7 @@ import { PodcastsRail } from "@/components/PodcastsRail";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
+import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
 import { preheatReflection } from "@/lib/reflectionPreheat";
@@ -6073,6 +6074,13 @@ export default function Dashboard() {
             <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
           </div>
 
+          {/* Today's Rhythm — the daily-habit cue. Four anchors
+              (Morning / Reflect / Silence / Evening) fill as the day
+              is kept, a single time-aware prompt names the next step,
+              and a grace-based streak line rewards consistency. Only
+              in the unfiltered home view. */}
+          {filter === null && <TodaysRhythm />}
+
           {/* The Way of Love daily/weekly progress strip was removed from the
               home top — that progress now lives in the Way of Love drawer
               (the header pill). */}
@@ -6219,6 +6227,45 @@ export default function Dashboard() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
+                {/* Prayer request section — compose field + Prayer List
+                    carousel, ABOVE the events sections: prayer leads the
+                    home, the schedule follows. The count card "X prayer
+                    requests waiting" stays at the very top of the page
+                    (above the office card). */}
+                {filter === null && (
+                  <div className="mt-6">
+                    <ActiveRequestsCard activeCount={ownActiveCount} />
+                  </div>
+                )}
+                {filter === null && (() => {
+                  const carouselRows: PrayerListCarouselRow[] = (dashPrayerRequests ?? [])
+                    .filter((r) => {
+                      if (r.isAnswered) return false;
+                      if (r.closedAt) return false;
+                      if (typeof r.body !== "string" || r.body.length === 0) return false;
+                      if (!r.isOwnRequest && r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
+                      return true;
+                    })
+                    .map((r) => ({
+                      id: r.id,
+                      body: r.body ?? "",
+                      isOwnRequest: r.isOwnRequest,
+                      isAnonymous: r.isAnonymous,
+                      ownerName: r.ownerName ?? null,
+                      ownerAvatarUrl: r.ownerAvatarUrl ?? null,
+                    }));
+                  // Sits directly under the compose card, so the two read
+                  // as one prayer section — keep them close.
+                  return (
+                    <PrayerListCarousel
+                      requests={carouselRows}
+                      viewerName={userName || null}
+                      viewerAvatarUrl={user?.avatarUrl ?? null}
+                      tight
+                    />
+                  );
+                })()}
+
                 {/* 1. Today. The daily-prayer anchor card now lives
                     under the feast line up top, so the Today section
                     no longer carries a trailing PrayerListCard — it's
@@ -6256,61 +6303,6 @@ export default function Dashboard() {
 
                 {/* 4. Upcoming — everything past the upcoming Sunday. */}
                 <TimeSection label={t("dashboard.upcoming_section")} items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
-
-                {/* Prayer request compose — only the field moves
-                    down here, below the events sections. The count
-                    card "X prayer requests waiting" stays at the
-                    top of the page (above the office card). The
-                    compose field reads as "what I'm carrying" once
-                    the user has scrolled past their schedule. */}
-                {filter === null && (
-                  <div className="mt-6">
-                    <ActiveRequestsCard activeCount={ownActiveCount} />
-                  </div>
-                )}
-
-                {/* Prayer List carousel — sits AFTER Upcoming so it
-                    reads as a peek into a different surface (the
-                    management list) rather than as a daily-action
-                    bucket. Only renders when the unfiltered ("all")
-                    view is active; a category filter would make it
-                    off-topic. */}
-                {filter === null && (() => {
-                  const carouselRows: PrayerListCarouselRow[] = (dashPrayerRequests ?? [])
-                    .filter((r) => {
-                      if (r.isAnswered) return false;
-                      if (r.closedAt) return false;
-                      if (typeof r.body !== "string" || r.body.length === 0) return false;
-                      if (!r.isOwnRequest && r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
-                      return true;
-                    })
-                    .map((r) => ({
-                      id: r.id,
-                      body: r.body ?? "",
-                      isOwnRequest: r.isOwnRequest,
-                      isAnonymous: r.isAnonymous,
-                      ownerName: r.ownerName ?? null,
-                      ownerAvatarUrl: r.ownerAvatarUrl ?? null,
-                    }));
-                  // When the four time sections (Today / Tomorrow /
-                  // This week / Upcoming) all render empty, there's
-                  // a stretch of nothing between the compose bar and
-                  // the Prayer List section. Pull the carousel up so
-                  // it lands closer to the compose bar in that case.
-                  const noEvents =
-                    fToday.length === 0 &&
-                    fTomorrow.length === 0 &&
-                    fWeek.length === 0 &&
-                    fMonth.length === 0;
-                  return (
-                    <PrayerListCarousel
-                      requests={carouselRows}
-                      viewerName={userName || null}
-                      viewerAvatarUrl={user?.avatarUrl ?? null}
-                      tight={noEvents}
-                    />
-                  );
-                })()}
 
                 {/* Filtered empty state */}
                 {filteredEmpty && (() => {

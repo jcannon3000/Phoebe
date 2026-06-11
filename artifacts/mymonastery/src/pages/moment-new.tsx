@@ -10,6 +10,149 @@ import { InviteStep } from "@/components/InviteStep";
 import { useCommunityAdminToggle } from "@/hooks/useDemo";
 import { BCP_PRAYERS, type BcpPrayer } from "@/lib/bcp-prayers";
 
+// ─── DrumPicker ───────────────────────────────────────────────────────────────
+// iOS-alarm-style scroll-wheel picker. Snap-scrolls to the nearest item;
+// fades items above/below the centre. Works inside Capacitor WebView.
+function DrumPicker({
+  options,
+  value,
+  onChange,
+}: {
+  options: Array<{ value: number; label: string }>;
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  const ITEM_H = 48;
+  const VISIBLE = 5;
+  const containerH = ITEM_H * VISIBLE;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const settleTid = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const lastIdxRef = useRef(-1);
+  const [centerIdx, setCenterIdx] = useState(() =>
+    Math.max(0, options.findIndex(o => o.value === value))
+  );
+
+  // Initialise scroll position on mount
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const idx = Math.max(0, options.findIndex(o => o.value === value));
+    el.scrollTop = idx * ITEM_H;
+    lastIdxRef.current = idx;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync scroll when value changes externally (e.g. default value set)
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const idx = options.findIndex(o => o.value === value);
+    if (idx < 0) return;
+    if (Math.abs(el.scrollTop - idx * ITEM_H) > ITEM_H * 0.6) {
+      el.scrollTo({ top: idx * ITEM_H, behavior: "smooth" });
+    }
+  }, [value, options]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Live visual update — no React state batching delay
+    const raw = el.scrollTop / ITEM_H;
+    const nearest = Math.round(raw);
+    const clamped = Math.max(0, Math.min(options.length - 1, nearest));
+    setCenterIdx(clamped);
+    // Debounce settle: snap precisely and notify parent
+    clearTimeout(settleTid.current);
+    settleTid.current = setTimeout(() => {
+      if (!scrollRef.current) return;
+      scrollRef.current.scrollTo({ top: clamped * ITEM_H, behavior: "smooth" });
+      if (lastIdxRef.current !== clamped) {
+        lastIdxRef.current = clamped;
+        onChange(options[clamped].value);
+      }
+    }, 100);
+  }, [options, onChange]);
+
+  const scrollTo = (i: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: i * ITEM_H, behavior: "smooth" });
+    setCenterIdx(i);
+    lastIdxRef.current = i;
+    onChange(options[i].value);
+  };
+
+  const BG = "#091A10";
+
+  return (
+    <div style={{ position: "relative", height: containerH, overflow: "hidden", userSelect: "none" }}>
+      {/* Selection band */}
+      <div style={{
+        position: "absolute", top: ITEM_H * 2, left: 12, right: 12, height: ITEM_H,
+        background: "rgba(46,107,64,0.20)",
+        border: "1px solid rgba(46,107,64,0.50)",
+        borderRadius: 12,
+        pointerEvents: "none", zIndex: 1,
+      }} />
+      {/* Top fade */}
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: ITEM_H * 2 + 8,
+        background: `linear-gradient(to bottom, ${BG} 20%, transparent)`,
+        pointerEvents: "none", zIndex: 2,
+      }} />
+      {/* Bottom fade */}
+      <div style={{
+        position: "absolute", bottom: 0, left: 0, right: 0, height: ITEM_H * 2 + 8,
+        background: `linear-gradient(to top, ${BG} 20%, transparent)`,
+        pointerEvents: "none", zIndex: 2,
+      }} />
+      {/* Scroll drum */}
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        style={{
+          height: "100%",
+          overflowY: "scroll",
+          scrollSnapType: "y mandatory",
+          scrollbarWidth: "none",
+          WebkitOverflowScrolling: "touch",
+          paddingTop: ITEM_H * 2,
+          paddingBottom: ITEM_H * 2,
+        } as React.CSSProperties}
+      >
+        {options.map((opt, i) => {
+          const dist = Math.abs(i - centerIdx);
+          return (
+            <div
+              key={opt.value}
+              onClick={() => scrollTo(i)}
+              style={{
+                height: ITEM_H,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                scrollSnapAlign: "center",
+                fontSize: dist === 0 ? 22 : dist === 1 ? 17 : 14,
+                fontWeight: dist === 0 ? 700 : 400,
+                color: dist === 0
+                  ? "#F0EDE6"
+                  : dist === 1
+                  ? "rgba(240,237,230,0.55)"
+                  : "rgba(240,237,230,0.25)",
+                fontFamily: "'Space Grotesk', sans-serif",
+                cursor: "pointer",
+                transition: "color 0.12s, font-size 0.12s",
+                letterSpacing: dist === 0 ? "0.01em" : undefined,
+              }}
+            >
+              {opt.label}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 type StepId = "template" | "daily-office-choice" | "intercession" | "name" | "intention" | "logging" | "schedule" | "commitment" | "duration" | "invite"
   | "bcp-commitment" | "bcp-frequency" | "bcp-days" | "bcp-time" | "bcp-invite" | "intercession-frequency"
@@ -1827,27 +1970,23 @@ export default function MomentNew() {
                       <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>
                         {t("moment_new.duration.length_label", { defaultValue: "Length" })}
                       </label>
-                      <select
+                      <DrumPicker
                         value={frequency === "weekly"
                           ? (practiceDurationDays ?? 7)
                           : ((practiceDurationDays && practiceDurationDays >= 1 && practiceDurationDays <= 14) ? practiceDurationDays : 7)}
-                        onChange={(e) => setPracticeDurationDays(parseInt(e.target.value, 10))}
-                        className="w-full rounded-xl px-4 py-3 text-sm font-semibold"
-                        style={{ background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)", appearance: "auto" }}
-                      >
-                        {frequency === "weekly"
+                        onChange={(v) => setPracticeDurationDays(v)}
+                        options={frequency === "weekly"
                           ? [
-                              <option key={7} value={7}>{t("moment_new.duration.w1.label", { defaultValue: "1 week" })}</option>,
-                              <option key={14} value={14}>{t("moment_new.duration.w2.label", { defaultValue: "2 weeks" })}</option>,
-                              <option key={28} value={28}>{t("moment_new.duration.w4.label", { defaultValue: "4 weeks" })}</option>,
-                              <option key={0} value={0}>{t("moment_new.duration.ongoing.label", { defaultValue: "Ongoing" })}</option>,
+                              { value: 7,  label: t("moment_new.duration.w1.label", { defaultValue: "1 week" }) },
+                              { value: 14, label: t("moment_new.duration.w2.label", { defaultValue: "2 weeks" }) },
+                              { value: 28, label: t("moment_new.duration.w4.label", { defaultValue: "4 weeks" }) },
+                              { value: 0,  label: t("moment_new.duration.ongoing.label", { defaultValue: "Ongoing" }) },
                             ]
-                          : Array.from({ length: 14 }, (_, i) => i + 1).map((d) => (
-                              <option key={d} value={d}>
-                                {t("moment_new.duration.n_days", { count: d, defaultValue: d === 1 ? "1 day" : `${d} days` })}
-                              </option>
-                            ))}
-                      </select>
+                          : Array.from({ length: 14 }, (_, i) => i + 1).map((d) => ({
+                              value: d,
+                              label: t("moment_new.duration.n_days", { count: d, defaultValue: d === 1 ? "1 day" : `${d} days` }),
+                            }))}
+                      />
                     </div>
                   )}
                 </div>
@@ -1892,36 +2031,26 @@ export default function MomentNew() {
                           {subtitle}
                         </p>
                       </div>
-                      <label
-                        className="flex items-center justify-between gap-3 rounded-2xl px-5 py-4 cursor-pointer"
+                      <div
+                        className="rounded-2xl px-5 pt-4 pb-3"
                         style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.5)" }}
                       >
-                        <span className="flex items-center gap-3 min-w-0">
+                        <span className="flex items-center gap-3 min-w-0 mb-3">
                           <span className="text-2xl leading-none shrink-0">🕊️</span>
                           <span className="font-bold text-[15px]"
                             style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>
                             {t("moment_new.duration.length_label", { defaultValue: "Length" })}
                           </span>
                         </span>
-                        <select
+                        <DrumPicker
                           value={selDays}
-                          onChange={(e) => setPracticeDurationDays(parseInt(e.target.value, 10))}
-                          className="text-[15px] font-semibold rounded-xl px-3 py-2"
-                          style={{
-                            color: "#F0EDE6",
-                            fontFamily: "'Space Grotesk', sans-serif",
-                            background: "#1A4A2E",
-                            border: "1px solid rgba(46,107,64,0.7)",
-                            appearance: "auto",
-                          }}
-                        >
-                          {Array.from({ length: 14 }, (_, i) => i + 1).map((d) => (
-                            <option key={d} value={d}>
-                              {t("moment_new.duration.n_days", { count: d, defaultValue: d === 1 ? "1 day" : `${d} days` })}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
+                          onChange={(v) => setPracticeDurationDays(v)}
+                          options={Array.from({ length: 14 }, (_, i) => i + 1).map((d) => ({
+                            value: d,
+                            label: t("moment_new.duration.n_days", { count: d, defaultValue: d === 1 ? "1 day" : `${d} days` }),
+                          }))}
+                        />
+                      </div>
                     </div>
                   );
                 }

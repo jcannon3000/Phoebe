@@ -2823,6 +2823,24 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS jardin_friends_user ON jardin_friends (user_id)`);
 
+    // ── breath_sessions (Breathing Together beta) ────────────────────────────
+    // "Con-spire" — con + spirare, to breathe together. One row per (user,
+    // local day); the completion screen counts rows for that day string to
+    // tell the person how many others they breathed with. `day` is the
+    // user's local YYYY-MM-DD, same TEXT convention as practice_completion
+    // and contemplation_health_minutes. Additive + idempotent.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS breath_sessions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day TEXT NOT NULL,
+        seconds INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS breath_sessions_user_day_uk ON breath_sessions (user_id, day)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS breath_sessions_day_idx ON breath_sessions (day)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

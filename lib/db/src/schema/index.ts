@@ -44,6 +44,7 @@ export * from "./web_push_subscriptions";
 export * from "./content_reports";
 export * from "./prayer_sessions";
 export * from "./contemplation_health_minutes";
+export * from "./breath_sessions";
 export * from "./actions";
 export * from "./action_rsvps";
 export * from "./action_officials";

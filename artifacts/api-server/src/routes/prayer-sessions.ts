@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, usersTable, contemplationHealthMinutesTable } from "@workspace/db";
+import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, usersTable, contemplationHealthMinutesTable, breathSessionsTable } from "@workspace/db";
 import { and, desc, eq, gte, gt, lt, inArray, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { getGardenUserIds } from "../lib/garden";
@@ -26,6 +26,87 @@ router.post("/app-open", async (req, res): Promise<void> => {
     console.error("[/app-open] failed:", err);
     // Non-fatal — a dropped open ping shouldn't surface an error.
     res.json({ ok: false });
+  }
+});
+
+// GET /api/me/prayer-days?days=N — the unified "days of prayer" history that
+// backs the Today's Rhythm header. A day is "kept" if the user did ANY
+// server-recorded prayer that local day: a prayer_session of any surface
+// (the morning/evening office, contemplation, a community sit, the prayer
+// slideshow) OR a Cobreathe breath. Reflections are localStorage-only on the
+// client, so the component ORs today's reflection state in on top — but the
+// streak/grace backbone is this server union, so it's consistent across
+// devices.
+//
+// Returns the last N local days (default 14, max 30; today at index N-1),
+// plus a grace-aware `streak` and `last7`:
+//   • streak — consecutive kept days ending TODAY or YESTERDAY. Today not yet
+//     prayed does NOT break the streak (you still have the day to keep it);
+//     a gap of two full days does. This is the Benedictine "begin again"
+//     rule, not a brittle Duolingo reset.
+//   • last7 — count of kept days in the last 7 (the "kept 5 of the last 7"
+//     line; survives the occasional missed day).
+router.get("/me/prayer-days", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const nRaw = typeof req.query.days === "string" ? parseInt(req.query.days, 10) : NaN;
+    const N = Number.isFinite(nRaw) ? Math.min(Math.max(nRaw, 7), 30) : 14;
+
+    const [meTz] = await db
+      .select({ timezone: usersTable.timezone })
+      .from(usersTable)
+      .where(eq(usersTable.id, sessionUserId));
+    const tz = meTz?.timezone || "UTC";
+
+    // Distinct local-day strings from prayer sessions in the window. Cast the
+    // session's ended_at into the user's tz before taking the date, so an
+    // evening sit lands on the right calendar day.
+    const sessionDays = await db.execute<{ day: string }>(sql`
+      SELECT DISTINCT to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day
+      FROM prayer_sessions
+      WHERE user_id = ${sessionUserId}
+        AND ended_at >= NOW() - INTERVAL '40 days'
+    `);
+    // Cobreathe already stores the user's local-day string directly.
+    const breathDays = await db
+      .select({ day: breathSessionsTable.day })
+      .from(breathSessionsTable)
+      .where(eq(breathSessionsTable.userId, sessionUserId));
+
+    const kept = new Set<string>();
+    for (const r of sessionDays.rows) if (r.day) kept.add(r.day);
+    for (const r of breathDays) if (r.day) kept.add(r.day);
+
+    // Build the N-day window in user-tz, oldest first (today at index N-1).
+    const todayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+    const [ty, tm, td] = todayYmd.split("-").map((n) => parseInt(n, 10));
+    const days: { ymd: string; kept: boolean }[] = [];
+    for (let i = N - 1; i >= 0; i--) {
+      const dt = new Date(Date.UTC(ty, tm - 1, td));
+      dt.setUTCDate(dt.getUTCDate() - i);
+      const ymd = dt.toISOString().slice(0, 10);
+      days.push({ ymd, kept: kept.has(ymd) });
+    }
+
+    const last7 = days.slice(-7).filter((d) => d.kept).length;
+
+    // Streak: walk backward from today. If today isn't kept yet, start the
+    // count from yesterday (grace) but don't credit today. Stop at the first
+    // unkept day.
+    let streak = 0;
+    const lastIdx = days.length - 1;
+    let cursor = lastIdx;
+    if (!days[lastIdx].kept) cursor = lastIdx - 1; // today still open — look back from yesterday
+    for (let i = cursor; i >= 0; i--) {
+      if (days[i].kept) streak++;
+      else break;
+    }
+
+    res.json({ days, streak, last7, keptToday: days[lastIdx].kept });
+  } catch (err) {
+    console.error("[/me/prayer-days] failed:", err);
+    res.status(500).json({ error: "internal_error" });
   }
 });
 

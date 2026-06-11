@@ -51,6 +51,7 @@ import blessRouter from "./bless";
 import gatherRouter from "./gather";
 import officeAlignmentRouter from "./office-alignment";
 import practiceCompletionRouter from "./practice-completion";
+import breathRouter from "./breath";
 import ruleOfLifeRouter from "./ruleOfLife";
 import buildfaithRouter from "./buildfaith";
 
@@ -178,6 +179,7 @@ router.use(blessRouter);
 router.use(gatherRouter);
 router.use(officeAlignmentRouter);
 router.use(practiceCompletionRouter);
+router.use(breathRouter);
 router.use(buildfaithRouter);
 router.use("/rule-of-life", ruleOfLifeRouter);
 router.use(jardinRouter);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, type ReactNode } from "react";
+import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
@@ -454,6 +455,14 @@ export default function ContemplationPage() {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; }
     catch { return "UTC"; }
   })();
+  // Cobreathe (beta) — today's communal-breath count for the teaser card.
+  const cobreatheDay = new Date().toLocaleDateString("en-CA");
+  const { data: cobreathe } = useQuery<{ done: boolean; count: number }>({
+    queryKey: ["/api/breath/today", cobreatheDay],
+    queryFn: () => apiRequest("GET", `/api/breath/today?day=${cobreatheDay}`),
+    staleTime: 60_000,
+  });
+
   const { data: stats } = useQuery<Stats>({
     queryKey: ["/api/me/contemplation-stats", todaySince.slice(0, 10), tz],
     queryFn: () =>
@@ -666,6 +675,39 @@ export default function ContemplationPage() {
         <p className="text-[12px] mt-4 text-center" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
           {t("contemplation.caption")}
         </p>
+
+        {/* Cobreathe (beta) — daily communal breath for justice. The card
+            shows today's count so the invitation is concrete: join your
+            breath to the N already held. */}
+        <Link href="/cobreathe">
+          <div
+            className="rounded-2xl p-4 mt-4 flex items-center gap-3 cursor-pointer transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{ background: "rgba(62,124,122,0.10)", border: `1px solid rgba(62,124,122,${cobreathe?.done ? 0.38 : 0.24})` }}
+          >
+            <span className="text-2xl">🌬️</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-[14.5px]" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+                  {t("cobreathe.title", { defaultValue: "Cobreathe" })}
+                </span>
+                <span
+                  className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                  style={{ background: "rgba(193,127,36,0.18)", border: "1px solid rgba(193,127,36,0.45)", color: "#D9A45B", fontFamily: SPACE_GROTESK }}
+                >
+                  {t("common.beta", { defaultValue: "Beta" })}
+                </span>
+              </div>
+              <p className="text-[12px] mt-0.5 leading-snug" style={{ color: SAGE }}>
+                {cobreathe?.done
+                  ? t("cobreathe.card_done", { defaultValue: "Today's breath is held 🌿" })
+                  : (cobreathe?.count ?? 0) > 0
+                    ? t("cobreathe.card_count", { count: cobreathe?.count ?? 0, defaultValue: `${cobreathe?.count} ${cobreathe?.count === 1 ? "person has" : "people have"} breathed for justice today` })
+                    : t("cobreathe.card_blurb", { defaultValue: "Nine slow breaths, once a day, as one body" })}
+              </p>
+            </div>
+            <span style={{ color: SAGE, fontSize: 18 }}>›</span>
+          </div>
+        </Link>
 
         <DailyGoalCard
           goalMinutes={goalMinutes}
