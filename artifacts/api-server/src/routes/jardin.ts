@@ -66,6 +66,54 @@ router.post("/jardin/enroll-self", async (req, res): Promise<void> => {
   res.json({ ok: true });
 });
 
+// ── Daily reading plan check-in ──────────────────────────────────────────────
+// One row per (user, local day) marks that they read the day's passage; the
+// client passes its local day (YYYY-MM-DD). The reading streak is the run of
+// consecutive days read ending today (or yesterday, if today isn't read yet).
+
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+function ymdMinus(ymd: string, n: number): string {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+// Consecutive days read, ending at `day` if read, else at the day before.
+async function readingStreak(userId: number, day: string): Promise<{ done: boolean; streak: number }> {
+  const { rows } = await pool.query<{ day: string }>(
+    `SELECT day FROM jardin_reading_reads WHERE user_id = $1 ORDER BY day DESC LIMIT 400`,
+    [userId],
+  );
+  const set = new Set(rows.map((r) => r.day));
+  const done = set.has(day);
+  let streak = 0;
+  let cursor = done ? day : ymdMinus(day, 1);
+  while (set.has(cursor)) { streak++; cursor = ymdMinus(cursor, 1); }
+  return { done, streak };
+}
+
+router.get("/jardin/reading", async (req, res) => {
+  const user = getUser(req);
+  if (!user) return res.status(401).json({ error: "Not authenticated" });
+  const day = typeof req.query.day === "string" && YMD_RE.test(req.query.day) ? req.query.day : null;
+  if (!day) return res.status(400).json({ error: "bad_request" });
+  return res.json(await readingStreak(user.id, day));
+});
+
+router.post("/jardin/reading", async (req, res) => {
+  const user = getUser(req);
+  if (!user) return res.status(401).json({ error: "Not authenticated" });
+  const day = typeof req.body?.day === "string" && YMD_RE.test(req.body.day) ? req.body.day : null;
+  if (!day) return res.status(400).json({ error: "bad_request" });
+  const planIndexRaw = Number(req.body?.planIndex);
+  const planIndex = Number.isInteger(planIndexRaw) ? planIndexRaw : null;
+  await pool.query(
+    `INSERT INTO jardin_reading_reads (user_id, day, plan_index) VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, day) DO NOTHING`,
+    [user.id, day, planIndex],
+  );
+  return res.json(await readingStreak(user.id, day));
+});
+
 // ── Bible Studies ──────────────────────────────────────────────────────────
 
 router.get("/jardin/bible-studies", async (req, res) => {

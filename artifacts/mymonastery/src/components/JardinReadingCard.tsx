@@ -1,12 +1,15 @@
 /**
  * El Jardín "Today's reading" — a chapter-a-day plan through the New
- * Testament. Self-contained (no backend): the day index advances daily from a
- * fixed epoch, and the passage opens on Bible.com in the Spanish NVI. Drives a
- * daily habit and gives the portal content of its own.
+ * Testament. Self-contained (no backend) for the passage itself: the day index
+ * advances daily from a fixed epoch and opens on Bible.com in the Spanish NVI.
+ * The "mark as read" check-in IS server-backed — it records the day and drives
+ * a reading streak, turning the daily passage into a habit.
  */
 
 import { useTranslation } from "react-i18next";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { openExternal } from "@/lib/openExternal";
+import { apiRequest } from "@/lib/queryClient";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -31,29 +34,71 @@ const PLAN: Array<{ ref: string; yv: string }> = NT.flatMap(([name, code, chapte
 
 const NVI = 128; // Bible.com Spanish NVI version id
 
+function localDay(): string {
+  return new Date().toLocaleDateString("en-CA");
+}
+
 export function JardinReadingCard() {
   const { t } = useTranslation();
+  const qc = useQueryClient();
   const epoch = Date.UTC(2024, 0, 1);
   const dayNum = Math.floor((Date.now() - epoch) / 86400000);
   const idx = ((dayNum % PLAN.length) + PLAN.length) % PLAN.length;
   const today = PLAN[idx]!;
+  const day = localDay();
+
+  const { data } = useQuery<{ done: boolean; streak: number }>({
+    queryKey: ["/api/jardin/reading", day],
+    queryFn: () => apiRequest("GET", `/api/jardin/reading?day=${day}`),
+  });
+  const markRead = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/jardin/reading", { day, planIndex: idx }),
+    onSuccess: (d) => qc.setQueryData(["/api/jardin/reading", day], d),
+  });
+
+  const done = !!data?.done;
+  const streak = data?.streak ?? 0;
 
   return (
     <div className="rounded-2xl overflow-hidden flex" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.24)" }}>
       <div className="w-1 flex-shrink-0" style={{ background: "rgba(110,180,130,0.85)" }} />
       <div className="flex-1 p-4">
-        <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, fontFamily: FONT, margin: 0 }}>
-          {t("jardin.todays_reading")} · {t("jardin.reading_day", { day: idx + 1 })}
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 700, fontFamily: FONT, margin: 0 }}>
+            {t("jardin.todays_reading")} · {t("jardin.reading_day", { day: idx + 1 })}
+          </p>
+          {streak > 0 && (
+            <span style={{ color: "#D9A45B", fontSize: 11.5, fontWeight: 600, fontFamily: FONT, flexShrink: 0 }}>
+              🔥 {t("jardin.reading_streak", { count: streak })}
+            </span>
+          )}
+        </div>
         <p style={{ color: WARM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: "4px 0 12px" }}>{today.ref}</p>
-        <button
-          type="button"
-          onClick={() => openExternal(`https://www.bible.com/bible/${NVI}/${today.yv}`)}
-          className="rounded-full px-5 py-2 text-sm font-semibold transition-opacity hover:opacity-90"
-          style={{ background: CTA, color: WARM, border: "1px solid rgba(168,197,160,0.4)", fontFamily: FONT, cursor: "pointer" }}
-        >
-          {t("jardin.open_passage")}
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => openExternal(`https://www.bible.com/bible/${NVI}/${today.yv}`)}
+            className="rounded-full px-5 py-2 text-sm font-semibold transition-opacity hover:opacity-90"
+            style={{ background: CTA, color: WARM, border: "1px solid rgba(168,197,160,0.4)", fontFamily: FONT, cursor: "pointer" }}
+          >
+            {t("jardin.open_passage")}
+          </button>
+          {done ? (
+            <span className="rounded-full px-4 py-2 text-sm font-semibold" style={{ background: "rgba(46,107,64,0.18)", color: "rgba(240,237,230,0.85)", border: "1px solid rgba(46,107,64,0.45)", fontFamily: FONT }}>
+              {t("jardin.read_today")}
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => markRead.mutate()}
+              disabled={markRead.isPending}
+              className="rounded-full px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
+              style={{ background: "transparent", color: SAGE, border: "1px solid rgba(46,107,64,0.45)", fontFamily: FONT, cursor: "pointer" }}
+            >
+              {t("jardin.mark_as_read")}
+            </button>
+          )}
+        </div>
         <p style={{ color: SAGE_DIM, fontSize: 11.5, marginTop: 12, lineHeight: 1.5, fontFamily: FONT }}>
           {t("jardin.reading_plan_note")}
         </p>

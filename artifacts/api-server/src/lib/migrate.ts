@@ -2828,6 +2828,20 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS jardin_friends_user ON jardin_friends (user_id)`);
 
+    // ── jardin_reading_reads (El Jardín daily reading plan check-in) ─────────
+    // One row per (user, local day) marking that they read the day's passage.
+    // Powers the "Lectura de hoy" check-in + a reading streak.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS jardin_reading_reads (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day TEXT NOT NULL,
+        plan_index INTEGER,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS jardin_reading_reads_user_day_uk ON jardin_reading_reads (user_id, day)`);
+
     // ── breath_sessions (Breathing Together beta) ────────────────────────────
     // "Con-spire" — con + spirare, to breathe together. One row per (user,
     // local day); the completion screen counts rows for that day string to
