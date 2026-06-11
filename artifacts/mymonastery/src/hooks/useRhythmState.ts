@@ -5,6 +5,11 @@ import {
   hasReadCacToday, hasReadFddToday, hasReadSsjeToday,
   CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT,
 } from "@/lib/cacReadState";
+import { getSideLevel } from "@/lib/officePrefs";
+
+// How the user has chosen to pray the daily office — drives whether the
+// Morning/Evening anchor reads "Prayer", "Devotion", or "Pray together".
+export type PrayerKind = "office" | "devotion" | "community";
 
 // ── useRhythmState ───────────────────────────────────────────────────────────
 //
@@ -47,6 +52,9 @@ export type RhythmState = {
   keptToday: boolean;
   gardenCount: number;
   cobreatheCount: number;
+  /** Office / Devotion / community — so the Morning & Evening labels match
+   *  what the user actually prays (their Customize-home / Rule of Life pick). */
+  prayerKind: PrayerKind;
 };
 
 export function useRhythmState(): RhythmState {
@@ -140,6 +148,23 @@ export function useRhythmState(): RhythmState {
 
   const reflectDone = reflectLocal || !!reflRead?.cac || !!reflRead?.fdd || !!reflRead?.ssje;
 
+  // What the user prays for the office — global default (office-prefs) OR a
+  // per-side override. Mirrors the home prayer card's resolution, so the
+  // Morning/Evening anchors read "Devotion"/"Prayer"/"Pray together" to match.
+  const { data: officePrefs } = useQuery<{ defaultPrayerLevel?: "devotion" | "office" | "intercessions" }>({
+    queryKey: ["/api/me/office-prefs"],
+    queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
+    staleTime: 60_000,
+  });
+  const dpl = officePrefs?.defaultPrayerLevel;
+  const ml = getSideLevel("morning");
+  const el = getSideLevel("evening");
+  const prayerKind: PrayerKind =
+    (dpl === "office" || ml === "office" || el === "office") ? "office"
+    : (dpl === "devotion" || ml === "devotion" || el === "devotion") ? "devotion"
+    : (dpl === "intercessions" || ml === "intercessions" || el === "intercessions") ? "community"
+    : "devotion";
+
   const todayOffice = officeHistory?.days?.[officeHistory.days.length - 1];
   const morningDone = !!todayOffice?.morning || officeLocalDone(["morning", "morning-devotion"]);
   const eveningDone = !!todayOffice?.evening || officeLocalDone(["evening", "early-evening-devotion", "compline"]);
@@ -160,5 +185,6 @@ export function useRhythmState(): RhythmState {
     keptToday: !!rhythm?.keptToday,
     gardenCount: prayerStreak?.gardenPrayedTodayCount ?? 0,
     cobreatheCount: cobreathe?.count ?? 0,
+    prayerKind,
   };
 }

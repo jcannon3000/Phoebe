@@ -38,15 +38,27 @@ export function TodaysRhythm() {
 
   const {
     morningDone, reflectDone, silenceDone, eveningDone,
-    streak, last7, gardenCount, cobreatheCount,
+    streak, last7, gardenCount, cobreatheCount, prayerKind,
   } = useRhythmState();
+
+  // The office word matches what the user prays: "Prayer" (office),
+  // "Devotion", or — for community — a "pray together" phrasing.
+  const prayWord = prayerKind === "devotion"
+    ? t("rhythm.word_devotion", { defaultValue: "Devotion" })
+    : t("rhythm.word_prayer", { defaultValue: "Prayer" });
 
   const anchors: Anchor[] = [
     {
       key: "morning", label: t("rhythm.morning", { defaultValue: "Morning" }), icon: "🌅",
       done: morningDone, href: "/begin-prayer",
-      cta: t("rhythm.cta_morning", { defaultValue: "Pray Morning Prayer" }),
-      blurb: t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" }),
+      cta: prayerKind === "community"
+        ? t("rhythm.cta_community", { defaultValue: "Pray with your community" })
+        : t("rhythm.cta_morning", { word: prayWord, defaultValue: `Pray Morning ${prayWord}` }),
+      blurb: prayerKind === "devotion"
+        ? t("rhythm.blurb_morning_devotion", { defaultValue: "Begin the day with the devotion" })
+        : prayerKind === "community"
+          ? t("rhythm.blurb_morning_community", { defaultValue: "Begin the day with your community" })
+          : t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" }),
     },
     {
       key: "reflect", label: t("rhythm.reflect", { defaultValue: "Reflect" }), icon: "📖",
@@ -65,10 +77,14 @@ export function TodaysRhythm() {
       done: eveningDone, href: hour >= 20 ? "/examen" : "/begin-prayer",
       cta: hour >= 20
         ? t("rhythm.cta_compline", { defaultValue: "Close the day — Compline & examen" })
-        : t("rhythm.cta_evening", { defaultValue: "Pray Evening Prayer" }),
+        : prayerKind === "community"
+          ? t("rhythm.cta_community", { defaultValue: "Pray with your community" })
+          : t("rhythm.cta_evening", { word: prayWord, defaultValue: `Pray Evening ${prayWord}` }),
       blurb: hour >= 20
         ? t("rhythm.blurb_compline", { defaultValue: "Examine the day and rest" })
-        : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
+        : prayerKind === "devotion"
+          ? t("rhythm.blurb_evening_devotion", { defaultValue: "Mark the day's end with the devotion" })
+          : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
     },
   ];
 

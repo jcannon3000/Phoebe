@@ -66,7 +66,7 @@ router.get("/me/prayer-days", async (req, res): Promise<void> => {
       SELECT DISTINCT to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day
       FROM prayer_sessions
       WHERE user_id = ${sessionUserId}
-        AND ended_at >= NOW() - INTERVAL '40 days'
+        AND ended_at >= NOW() - INTERVAL '400 days'
     `);
     // Cobreathe already stores the user's local-day string directly.
     const breathDays = await db
@@ -78,32 +78,36 @@ router.get("/me/prayer-days", async (req, res): Promise<void> => {
     for (const r of sessionDays.rows) if (r.day) kept.add(r.day);
     for (const r of breathDays) if (r.day) kept.add(r.day);
 
-    // Build the N-day window in user-tz, oldest first (today at index N-1).
+    // YMD for "i days before today" in the user's timezone.
     const todayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
     const [ty, tm, td] = todayYmd.split("-").map((n) => parseInt(n, 10));
-    const days: { ymd: string; kept: boolean }[] = [];
-    for (let i = N - 1; i >= 0; i--) {
+    const ymdMinus = (i: number): string => {
       const dt = new Date(Date.UTC(ty, tm - 1, td));
       dt.setUTCDate(dt.getUTCDate() - i);
-      const ymd = dt.toISOString().slice(0, 10);
+      return dt.toISOString().slice(0, 10);
+    };
+
+    // The N-day window (oldest first; today at index N-1) for any display use.
+    const days: { ymd: string; kept: boolean }[] = [];
+    for (let i = N - 1; i >= 0; i--) {
+      const ymd = ymdMinus(i);
       days.push({ ymd, kept: kept.has(ymd) });
     }
 
-    const last7 = days.slice(-7).filter((d) => d.kept).length;
+    const keptToday = kept.has(ymdMinus(0));
+    const last7 = Array.from({ length: 7 }, (_, i) => ymdMinus(i)).filter((d) => kept.has(d)).length;
 
-    // Streak: walk backward from today. If today isn't kept yet, start the
-    // count from yesterday (grace) but don't credit today. Stop at the first
-    // unkept day.
+    // Streak: consecutive kept days ending today — or yesterday, by grace, if
+    // today isn't prayed yet. Walk backward over the kept SET, not the N-day
+    // display window, so the count is NOT capped at the window size. Bounded at
+    // the session lookback (~400 days) so the loop always terminates.
     let streak = 0;
-    const lastIdx = days.length - 1;
-    let cursor = lastIdx;
-    if (!days[lastIdx].kept) cursor = lastIdx - 1; // today still open — look back from yesterday
-    for (let i = cursor; i >= 0; i--) {
-      if (days[i].kept) streak++;
+    for (let i = keptToday ? 0 : 1; i < 400; i++) {
+      if (kept.has(ymdMinus(i))) streak++;
       else break;
     }
 
-    res.json({ days, streak, last7, keptToday: days[lastIdx].kept });
+    res.json({ days, streak, last7, keptToday });
   } catch (err) {
     console.error("[/me/prayer-days] failed:", err);
     res.status(500).json({ error: "internal_error" });

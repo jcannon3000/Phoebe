@@ -59,15 +59,24 @@ function PracticeCard({
 
 export default function DailyProgressPage() {
   const { t } = useTranslation();
-  const { morningDone, reflectDone, silenceDone, eveningDone } = useRhythmState();
+  const { morningDone, reflectDone, silenceDone, eveningDone, prayerKind } = useRhythmState();
   const hour = new Date().getHours();
   const kept = t("rhythm.kept", { defaultValue: "Kept today" });
+
+  // Title for an office side matches what the user prays (their Customize-home
+  // / Rule of Life pick): Prayer (office), Devotion, or community "Pray together".
+  const officeTitle = (side: "Morning" | "Evening") =>
+    prayerKind === "community"
+      ? t("rhythm.card_community", { defaultValue: "Pray together" })
+      : prayerKind === "devotion"
+        ? t(`rhythm.card_${side.toLowerCase()}_devotion`, { defaultValue: `${side} Devotion` })
+        : t(`rhythm.card_${side.toLowerCase()}`, { defaultValue: `${side} Prayer` });
 
   // The four anchors as home-style cards — same hrefs/order as the rhythm card.
   const cards = [
     {
       key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer",
-      title: t("rhythm.card_morning", { defaultValue: "Morning Prayer" }),
+      title: officeTitle("Morning"),
       blurb: morningDone ? kept : t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" }),
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
     },
@@ -85,7 +94,7 @@ export default function DailyProgressPage() {
     },
     {
       key: "evening", emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: hour >= 20 ? "/examen" : "/begin-prayer",
-      title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : t("rhythm.card_evening", { defaultValue: "Evening Prayer" }),
+      title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
       blurb: eveningDone
         ? kept
         : hour >= 20 ? t("rhythm.blurb_compline", { defaultValue: "Examine the day and rest" }) : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
