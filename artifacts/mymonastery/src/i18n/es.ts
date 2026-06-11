@@ -3478,6 +3478,7 @@ export const es: Translations = {
     // Group forum entry card.
     forum: "Foro",
     forum_blurb: "Inicia una conversación con el grupo",
+    leaderboard_blurb: "Mira cómo se comparan las rachas de oración del grupo",
     // Days of week + relative day labels.
     day_sunday: "domingo",
     day_monday: "lunes",

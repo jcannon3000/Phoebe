@@ -3563,6 +3563,7 @@ export const en = {
     // Group forum entry card.
     forum: "Forum",
     forum_blurb: "Start a conversation with the group",
+    leaderboard_blurb: "See how the group's prayer streaks compare",
     // Days of week + relative day labels.
     day_sunday: "Sunday",
     day_monday: "Monday",

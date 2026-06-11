@@ -261,6 +261,7 @@ const CommunityNewPage = lazy(() => import("./pages/community-new"));
 const CommunityDetailPage = lazy(() => import("./pages/community-detail"));
 const ForumPage = lazy(() => import("./pages/forum"));
 const ForumThreadPage = lazy(() => import("./pages/forum-thread"));
+const GroupLeaderboardPage = lazy(() => import("./pages/group-leaderboard"));
 const CommunityAskPage = lazy(() => import("./pages/community-ask"));
 const CommunityReflectionPage = lazy(() => import("./pages/community-reflection"));
 const CommunitySundayReflectionPage = lazy(() => import("./pages/community-sunday-reflection"));
@@ -796,6 +797,7 @@ function Router() {
       <Route path="/communities/:slug/sunday-reflection" component={CommunitySundayReflectionPage} />
       <Route path="/communities/:slug/forum/:postId" component={ForumThreadPage} />
       <Route path="/communities/:slug/forum" component={ForumPage} />
+      <Route path="/communities/:slug/leaderboard" component={GroupLeaderboardPage} />
       <Route path="/communities/:slug" component={CommunityDetailPage} />
       <Route path="/beta" component={BetaAdminPage} />
       <Route path="/waitlist" component={WaitlistAdminPage} />

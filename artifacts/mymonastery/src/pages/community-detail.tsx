@@ -1848,6 +1848,26 @@ export default function CommunityDetailPage() {
           </Link>
         )}
 
+        {/* Group streak leaderboard — also El Jardín-only. */}
+        {groupData?.group?.focus === "jardin" && (
+          <Link
+            href={`/communities/${slug}/leaderboard`}
+            className="flex items-center gap-3 rounded-2xl px-4 py-3.5 mb-3 transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{ background: "rgba(193,127,36,0.08)", border: "1px solid rgba(193,127,36,0.28)" }}
+          >
+            <span className="text-xl flex-shrink-0">🔥</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[14px] font-semibold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {t("jardin.leaderboard", { defaultValue: "Streak Leaderboard" })}
+              </p>
+              <p className="text-[12px] mt-0.5 leading-snug" style={{ color: "#8FAF96" }}>
+                {t("community_detail.leaderboard_blurb", { defaultValue: "See how the group's prayer streaks compare" })}
+              </p>
+            </div>
+            <ChevronRight size={16} style={{ color: "rgba(143,175,150,0.6)", flexShrink: 0 }} />
+          </Link>
+        )}
+
         {/* ── Prayer Circle intentions ──────────────────────────────────
             For circle groups, surface every active intention as its own card
             above the regular community content. Each card leads with the

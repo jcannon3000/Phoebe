@@ -9,6 +9,7 @@ import {
   usersTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
+import { sendPushToUser, sendPushToUsers } from "../lib/pushSender";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Group forum
@@ -115,6 +116,23 @@ router.post("/groups/:slug/forum", async (req, res): Promise<void> => {
     body: parsed.data.body,
   }).returning();
 
+  // Notify the other joined members of the new post (Jardín study groups are
+  // small, so a per-post nudge is welcome, not noise). Fire-and-forget.
+  void (async () => {
+    const members = await db.select({ userId: groupMembersTable.userId })
+      .from(groupMembersTable)
+      .where(and(eq(groupMembersTable.groupId, access.group.id), sql`${groupMembersTable.joinedAt} IS NOT NULL`));
+    const others = members.map((m) => m.userId).filter((id): id is number => typeof id === "number" && id !== user.id);
+    if (others.length === 0) return;
+    const who = (user.name || "Alguien").split(/\s+/)[0];
+    await sendPushToUsers(others, {
+      title: access.group.name,
+      body: `${who} publicó en el foro`,
+      path: `/communities/${access.group.slug}/forum/${post.id}`,
+      threadId: `forum-${access.group.id}`,
+    });
+  })().catch(() => { /* best-effort */ });
+
   res.status(201).json({ post });
 });
 
@@ -185,7 +203,7 @@ router.post("/groups/:slug/forum/:postId/replies", async (req, res): Promise<voi
   if (!parsed.success) { res.status(400).json({ error: "Invalid input", issues: parsed.error.issues }); return; }
 
   // The post must exist AND belong to this group (no cross-group replies).
-  const [post] = await db.select({ id: forumPostsTable.id, groupId: forumPostsTable.groupId })
+  const [post] = await db.select({ id: forumPostsTable.id, groupId: forumPostsTable.groupId, authorUserId: forumPostsTable.authorUserId })
     .from(forumPostsTable).where(eq(forumPostsTable.id, postId));
   if (!post || post.groupId !== access.group.id) { res.status(404).json({ error: "Not found" }); return; }
 
@@ -194,6 +212,17 @@ router.post("/groups/:slug/forum/:postId/replies", async (req, res): Promise<voi
     authorUserId: user.id,
     body: parsed.data.body,
   }).returning();
+
+  // Notify the post author of the reply (unless they replied to themselves).
+  if (post.authorUserId !== user.id) {
+    const who = (user.name || "Alguien").split(/\s+/)[0];
+    void sendPushToUser(post.authorUserId, {
+      title: access.group.name,
+      body: `${who} respondió a tu publicación`,
+      path: `/communities/${access.group.slug}/forum/${postId}`,
+      threadId: `forum-${access.group.id}`,
+    }).catch(() => { /* best-effort */ });
+  }
 
   res.status(201).json({ reply });
 });
@@ -243,6 +272,36 @@ router.delete("/groups/:slug/forum/replies/:replyId", async (req, res): Promise<
   }
   await db.delete(forumRepliesTable).where(eq(forumRepliesTable.id, replyId));
   res.json({ ok: true });
+});
+
+// ── GET /groups/:slug/leaderboard — the group's prayer-streak board ─────────
+// El Jardín-only (requireMember gates to jardin groups). Ranks every joined
+// member by their daily-prayer streak — a group-scoped alternative to the
+// friend-list leaderboard. hidden_admins are excluded from the board.
+router.get("/groups/:slug/leaderboard", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const access = await requireMember(req.params.slug, user.id);
+  if (!access) { res.status(403).json({ error: "Not a member of this group" }); return; }
+
+  const rows = await db
+    .select({
+      userId: usersTable.id,
+      name: usersTable.name,
+      avatarUrl: usersTable.avatarUrl,
+      streak: usersTable.prayerStreakCount,
+      lastDate: usersTable.prayerStreakLastDate,
+    })
+    .from(groupMembersTable)
+    .innerJoin(usersTable, eq(usersTable.id, groupMembersTable.userId))
+    .where(and(
+      eq(groupMembersTable.groupId, access.group.id),
+      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+      sql`${groupMembersTable.role} <> 'hidden_admin'`,
+    ))
+    .orderBy(desc(usersTable.prayerStreakCount));
+
+  res.json({ members: rows.map((r) => ({ ...r, isMe: r.userId === user.id })) });
 });
 
 export default router;
