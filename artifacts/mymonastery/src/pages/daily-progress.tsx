@@ -24,37 +24,49 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 // its state today (a "kept" check or a CTA to begin). Matches the dashboard
 // PracticeHomeCard look so the page feels of a piece with home.
 function PracticeCard({
-  href, emoji, title, blurb, cta, done, rgb,
+  href, emoji, title, blurb, cta, done, rgb, later, laterLabel,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
+  /** Not yet actionable (e.g. evening before noon) — shows a muted "Later"
+   *  pill instead of a CTA, and isn't tappable. */
+  later?: boolean; laterLabel?: string;
 }) {
-  return (
-    <Link href={href} className="block">
-      <div
-        className="relative flex rounded-2xl overflow-hidden transition-opacity hover:opacity-90 active:scale-[0.99]"
-        style={{ background: `rgba(${rgb},0.10)`, border: `1px solid rgba(${rgb},${done ? 0.42 : 0.22})` }}
-      >
-        <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
-        <div className="flex-1 px-4 py-3.5 flex items-center gap-3">
-          <span className="text-xl flex-shrink-0">{emoji}</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
-            <p className="text-[12px] mt-0.5 leading-snug" style={{ color: SAGE }}>{blurb}</p>
-          </div>
-          <span
-            className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
-            style={
-              done
-                ? { background: `rgba(${rgb},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${rgb},0.45)` }
-                : { background: `rgba(${rgb},0.85)`, color: WARM }
-            }
-          >
-            {done ? "✓" : <>{cta} <span aria-hidden>→</span></>}
-          </span>
-        </div>
-      </div>
-    </Link>
+  const waiting = !!later && !done;
+  const pill = done ? (
+    <span
+      className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
+      style={{ background: `rgba(${rgb},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${rgb},0.45)` }}
+    >✓</span>
+  ) : waiting ? (
+    <span
+      className="flex-shrink-0 rounded-full text-[12px] font-medium px-3.5 py-1.5"
+      style={{ background: "transparent", color: "rgba(182,210,188,0.5)", border: "1px solid rgba(143,175,150,0.22)" }}
+    >{laterLabel}</span>
+  ) : (
+    <span className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5" style={{ background: `rgba(${rgb},0.85)`, color: WARM }}>
+      {cta} <span aria-hidden>→</span>
+    </span>
   );
+
+  const row = (
+    <div
+      className={`relative flex rounded-2xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
+      style={{ background: `rgba(${rgb},0.10)`, border: `1px solid rgba(${rgb},${done ? 0.42 : 0.18})`, opacity: waiting ? 0.72 : 1 }}
+    >
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.85})` }} />
+      <div className="flex-1 px-4 py-3.5 flex items-center gap-3">
+        <span className="text-xl flex-shrink-0">{emoji}</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
+          <p className="text-[12px] mt-0.5 leading-snug" style={{ color: SAGE }}>{blurb}</p>
+        </div>
+        {pill}
+      </div>
+    </div>
+  );
+
+  // Not yet actionable → a plain (non-navigating) card.
+  return waiting ? row : <Link href={href} className="block">{row}</Link>;
 }
 
 export default function DailyProgressPage() {
@@ -72,25 +84,27 @@ export default function DailyProgressPage() {
         ? t(`rhythm.card_${side.toLowerCase()}_devotion`, { defaultValue: `${side} Devotion` })
         : t(`rhythm.card_${side.toLowerCase()}`, { defaultValue: `${side} Prayer` });
 
-  // The four anchors as home-style cards — same hrefs/order as the rhythm card.
+  // The four anchors as home-style cards — Morning · Silence · Reflect ·
+  // Evening (silence before reflect). The evening card waits to become
+  // actionable until the afternoon (it shows "Later" until noon).
   const cards = [
     {
       key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer",
       title: officeTitle("Morning"),
       blurb: morningDone ? kept : t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" }),
-      cta: t("rhythm.begin", { defaultValue: "Begin" }),
-    },
-    {
-      key: "reflect", emoji: "📖", rgb: "96,141,209", done: reflectDone, href: "/menu/reflections",
-      title: t("rhythm.card_reflect", { defaultValue: "Today's reflection" }),
-      blurb: reflectDone ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" }),
-      cta: t("rhythm.read", { defaultValue: "Read" }),
+      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     },
     {
       key: "silence", emoji: "🕯️", rgb: "62,124,122", done: silenceDone, href: "/cobreathe",
       title: t("rhythm.card_silence", { defaultValue: "Silence" }),
       blurb: silenceDone ? kept : t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" }),
-      cta: t("rhythm.begin", { defaultValue: "Begin" }),
+      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+    },
+    {
+      key: "reflect", emoji: "📖", rgb: "96,141,209", done: reflectDone, href: "/menu/reflections",
+      title: t("rhythm.card_reflect", { defaultValue: "Today's reflection" }),
+      blurb: reflectDone ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" }),
+      cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
     },
     {
       key: "evening", emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: hour >= 20 ? "/examen" : "/begin-prayer",
@@ -99,6 +113,8 @@ export default function DailyProgressPage() {
         ? kept
         : hour >= 20 ? t("rhythm.blurb_compline", { defaultValue: "Examine the day and rest" }) : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
+      // Evening isn't actionable until the afternoon (after noon).
+      later: hour < 12,
     },
   ];
 
@@ -137,6 +153,8 @@ export default function DailyProgressPage() {
               cta={c.cta}
               done={c.done}
               rgb={c.rgb}
+              later={c.later}
+              laterLabel={t("rhythm.later", { defaultValue: "Later" })}
             />
           ))}
         </div>

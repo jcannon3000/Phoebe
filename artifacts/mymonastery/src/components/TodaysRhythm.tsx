@@ -61,16 +61,16 @@ export function TodaysRhythm() {
           : t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" }),
     },
     {
-      key: "reflect", label: t("rhythm.reflect", { defaultValue: "Reflect" }), icon: "📖",
-      done: reflectDone, href: "/menu/reflections",
-      cta: t("rhythm.cta_reflect", { defaultValue: "Read today's reflection" }),
-      blurb: t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" }),
-    },
-    {
       key: "silence", label: t("rhythm.silence", { defaultValue: "Silence" }), icon: "🕯️",
       done: silenceDone, href: "/cobreathe",
       cta: t("rhythm.cta_silence", { defaultValue: "Keep two minutes of silence" }),
       blurb: t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" }),
+    },
+    {
+      key: "reflect", label: t("rhythm.reflect", { defaultValue: "Reflect" }), icon: "📖",
+      done: reflectDone, href: "/menu/reflections",
+      cta: t("rhythm.cta_reflect", { defaultValue: "Read today's reflection" }),
+      blurb: t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" }),
     },
     {
       key: "evening", label: t("rhythm.evening", { defaultValue: "Evening" }), icon: "🌙",
@@ -92,8 +92,8 @@ export function TodaysRhythm() {
   // before noon; the reflective middle leads through the afternoon; the
   // evening close leads after 8pm. All done → a benediction.
   const order: Anchor["key"][] = useMemo(() => {
-    if (hour < 12) return ["morning", "reflect", "silence", "evening"];
-    if (hour < 20) return ["reflect", "silence", "evening", "morning"];
+    if (hour < 12) return ["morning", "silence", "reflect", "evening"];
+    if (hour < 20) return ["silence", "reflect", "evening", "morning"];
     return ["evening", "silence", "reflect", "morning"];
   }, [hour]);
 

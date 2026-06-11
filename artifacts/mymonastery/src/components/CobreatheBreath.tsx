@@ -106,6 +106,7 @@ export function CobreatheBreath({
   onEnd,
   totalBreaths = DEFAULT_TOTAL_BREATHS,
   othersToday,
+  todayCount,
 }: {
   // Fired ONCE, when the target number of breaths has been kept. The breath
   // does NOT stop here — people can keep breathing as long as they like.
@@ -117,11 +118,15 @@ export function CobreatheBreath({
   // How many others have breathed with them today — shown live under the
   // counter so the practice feels held in company, not alone.
   othersToday?: number;
+  // Everyone who has breathed today (incl. the caller once recorded) — shown
+  // as the participation detail under the title.
+  todayCount?: number;
 }) {
   const { t } = useTranslation();
   // The breath is a soft green bloom that swells on the inhale and recedes on
   // the exhale, turning slowly, over a deep-green field.
   const bloomRef = useRef<SVGGElement>(null);
+  const bloom2Ref = useRef<SVGGElement>(null);
   const dotRef = useRef<SVGCircleElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
 
@@ -155,7 +160,18 @@ export function CobreatheBreath({
         bloomRef.current.setAttribute("transform", `scale(${(0.7 + s * 0.55).toFixed(4)}) rotate(${rot.toFixed(3)})`);
         bloomRef.current.style.opacity = String(0.55 + p * 0.4);
       }
-      if (dotRef.current) dotRef.current.setAttribute("transform", `scale(${(0.8 + s * 0.4).toFixed(4)})`);
+      // A larger, fainter bloom turning the other way, a touch behind the
+      // beat — gives the light depth and a slow, living parallax.
+      if (bloom2Ref.current) {
+        const rot2 = -(now / 1000 * 1.7) % 360;
+        bloom2Ref.current.setAttribute("transform", `scale(${(0.95 + s * 0.62).toFixed(4)}) rotate(${rot2.toFixed(3)})`);
+        bloom2Ref.current.style.opacity = String(0.14 + p * 0.20);
+      }
+      // The core glows brighter and swells slightly as the breath fills.
+      if (dotRef.current) {
+        dotRef.current.setAttribute("transform", `scale(${(0.7 + s * 0.55).toFixed(4)})`);
+        dotRef.current.style.opacity = String(0.28 + p * 0.30);
+      }
       // The phase word breathes a hair with the bloom.
       if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + p * 0.06})`;
       raf = requestAnimationFrame(loop);
@@ -272,6 +288,11 @@ export function CobreatheBreath({
           ))}
         </defs>
         <circle cx="0" cy="0" r="120" fill="url(#cb-core)" />
+        <g ref={bloom2Ref} filter="url(#cb-soft)" style={{ mixBlendMode: "screen" }} opacity={0.14}>
+          {BLOOM_BLADES.map((b, i) => (
+            <path key={`b2-${i}`} d={b.d} fill={`url(#cb-bl${b.grad})`} transform={`rotate(${b.ang})`} />
+          ))}
+        </g>
         <g ref={bloomRef} filter="url(#cb-soft)" style={{ mixBlendMode: "screen" }}>
           {BLOOM_BLADES.map((b, i) => (
             <path key={i} d={b.d} fill={`url(#cb-bl${b.grad})`} transform={`rotate(${b.ang})`} />
@@ -280,15 +301,40 @@ export function CobreatheBreath({
         <circle ref={dotRef} cx="0" cy="0" r="16" fill="#CFEFA8" opacity="0.36" />
       </svg>
 
-      {/* Intention — top */}
-      <p
-        className="text-center text-[15px] px-10 leading-relaxed"
-        style={{ color: TEXT_DIM, fontFamily: SERIF, fontStyle: "italic", minHeight: 48, position: "relative", maxWidth: 460 }}
+      {/* Cancel — top-right, exits the breath (no count unless already kept). */}
+      <button
+        type="button"
+        aria-label={t("common.cancel", { defaultValue: "Cancel" })}
+        onClick={() => onEnd(Math.round((Date.now() - startRef.current) / 1000), reachedRef.current)}
+        style={{
+          position: "absolute", top: "calc(env(safe-area-inset-top) + 16px)", right: 16,
+          width: 34, height: 34, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(255,255,255,0.06)", border: "1px solid rgba(182,210,188,0.22)",
+          color: TEXT_DIM, fontSize: 16, lineHeight: 1, cursor: "pointer", zIndex: 2,
+        }}
       >
-        {intention
-          ? t(`cobreathe.intention.${intention.key}`, { defaultValue: intention.text })
-          : t("cobreathe.settle", { defaultValue: "Everyone breathes to one shared pace, the same for all of us. Settle in — on the next breath, you'll join it." })}
-      </p>
+        ✕
+      </button>
+
+      {/* Title + participation + intention — top */}
+      <div className="flex flex-col items-center" style={{ position: "relative", maxWidth: 460 }}>
+        <p className="text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "rgba(182,210,188,0.55)", fontFamily: SPACE_GROTESK }}>
+          🌬️ {t("cobreathe.title", { defaultValue: "Cobreathe" })}
+        </p>
+        {todayCount != null && todayCount > 0 && (
+          <p className="text-[12px] mt-1" style={{ color: TEXT_FAINT, fontFamily: SPACE_GROTESK }}>
+            {t("cobreathe.breathed_today_count", { count: todayCount, defaultValue: `${todayCount} ${todayCount === 1 ? "person has" : "people have"} breathed today` })}
+          </p>
+        )}
+        <p
+          className="text-center text-[15px] px-10 leading-relaxed mt-5"
+          style={{ color: TEXT_DIM, fontFamily: SERIF, fontStyle: "italic", minHeight: 48 }}
+        >
+          {intention
+            ? t(`cobreathe.intention.${intention.key}`, { defaultValue: intention.text })
+            : t("cobreathe.settle", { defaultValue: "Everyone breathes to one shared pace, the same for all of us. Settle in — on the next breath, you'll join it." })}
+        </p>
+      </div>
 
       {/* Phase word — center, over the glow */}
       <div className="flex flex-col items-center" style={{ position: "relative" }}>

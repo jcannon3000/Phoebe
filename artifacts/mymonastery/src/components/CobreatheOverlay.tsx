@@ -101,6 +101,7 @@ export function CobreatheOverlay({
     return (
       <CobreatheBreath
         othersToday={liveOthers}
+        todayCount={liveState?.count ?? 0}
         onReachTarget={handleReachTarget}
         onEnd={handleEnd}
       />

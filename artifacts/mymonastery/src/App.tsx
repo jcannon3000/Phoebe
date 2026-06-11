@@ -235,6 +235,7 @@ const OfficesPage = lazy(() => import("./pages/offices"));
 const ExamenPage = lazy(() => import("./pages/examen"));
 const ContemplationPage = lazy(() => import("./pages/contemplation"));
 const CobreathePage = lazy(() => import("./pages/cobreathe"));
+const CobreatheAboutPage = lazy(() => import("./pages/cobreathe-about"));
 const SaintsIndex = lazy(() => import("./pages/Saints/SaintsIndex"));
 const CustomizeHomePage = lazy(() => import("./pages/customize-home"));
 const CustomizeHomeAddPage = lazy(() =>
@@ -515,6 +516,7 @@ function ParishGate({ children }: { children: ReactNode }) {
         // prayer surfaces open to every tier (offices-only + parish-only).
         location === "/contemplation" ||
         location === "/cobreathe" ||
+        location === "/cobreathe/about" ||
         location === "/examen" ||
         location === "/gratitude" ||
         location.startsWith("/moments/") ||
@@ -722,6 +724,7 @@ function Router() {
       <Route path="/offices" component={OfficesPage} />
       <Route path="/examen" component={ExamenPage} />
       <Route path="/contemplation" component={ContemplationPage} />
+      <Route path="/cobreathe/about" component={CobreatheAboutPage} />
       <Route path="/cobreathe" component={CobreathePage} />
       {/* Saints — a single browsable/searchable index (BCP-Prayers-style). */}
       <Route path="/saints" component={SaintsIndex} />
