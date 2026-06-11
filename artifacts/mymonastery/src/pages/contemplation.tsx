@@ -602,6 +602,10 @@ export default function ContemplationPage() {
   const { data: officePrefs } = useQuery<{ contemplationGoalMinutes: number }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs") as Promise<{ contemplationGoalMinutes: number }>,
+    // Always refetch on mount so the goal reflects a change just made in the
+    // Customize flow (otherwise a stale 0 from an earlier cache could show).
+    staleTime: 0,
+    refetchOnMount: "always",
   });
   const goalMinutes = officePrefs?.contemplationGoalMinutes ?? 0;
   const goalMutation = useMutation({

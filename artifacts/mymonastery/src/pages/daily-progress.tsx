@@ -147,7 +147,7 @@ function PracticeCard({
 
 export default function DailyProgressPage() {
   const { t } = useTranslation();
-  const { morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, doneCount } = useRhythmState();
+  const { morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, doneCount, totalAnchors, gratitudeActive, examenActive, gratitudeDone, examenDone } = useRhythmState();
   const hour = new Date().getHours();
   const kept = t("rhythm.kept", { defaultValue: "Kept today" });
   // Contemplation card sub-line: goal progress until the goal is met.
@@ -199,6 +199,20 @@ export default function DailyProgressPage() {
       // Evening isn't actionable until the afternoon (after noon).
       later: hour < 12,
     },
+    // Optional practices the user added from the Customize flow — each its own
+    // anchor with a checkmark. Omitted entirely when not added.
+    ...(gratitudeActive ? [{
+      key: "gratitude", emoji: "🙏", rgb: "182,140,90", done: gratitudeDone, href: "/gratitude",
+      title: t("rhythm.card_gratitude", { defaultValue: "Gratitude" }),
+      blurb: gratitudeDone ? kept : t("rhythm.blurb_gratitude", { defaultValue: "Name a gift from today" }),
+      cta: t("rhythm.write", { defaultValue: "Write" }), later: false,
+    }] : []),
+    ...(examenActive ? [{
+      key: "examen", emoji: "🌗", rgb: "150,120,180", done: examenDone, href: "/examen",
+      title: t("rhythm.card_examen", { defaultValue: "The Examen" }),
+      blurb: examenDone ? kept : t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }),
+      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+    }] : []),
   ];
 
   return (
@@ -229,7 +243,7 @@ export default function DailyProgressPage() {
             {t("daily_progress.practices_heading", { defaultValue: "Today's practices" })}
           </p>
           <p className="text-[11px] font-semibold" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
-            {t("daily_progress.kept_count", { count: doneCount, defaultValue: `${doneCount} of 4 kept` })}
+            {t("daily_progress.kept_count_n", { count: doneCount, total: totalAnchors, defaultValue: `${doneCount} of ${totalAnchors} kept` })}
           </p>
         </div>
         <div className="flex flex-col gap-2">

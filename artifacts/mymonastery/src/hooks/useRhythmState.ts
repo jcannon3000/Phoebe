@@ -5,7 +5,9 @@ import {
   hasReadCacToday, hasReadFddToday, hasReadSsjeToday,
   CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT,
 } from "@/lib/cacReadState";
+import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { getSideLevel } from "@/lib/officePrefs";
+import { useAuth } from "@/hooks/useAuth";
 
 // How the user has chosen to pray the daily office — drives whether the
 // Morning/Evening anchor reads "Prayer", "Devotion", or "Pray together".
@@ -45,7 +47,17 @@ export type RhythmState = {
   reflectDone: boolean;
   silenceDone: boolean;
   eveningDone: boolean;
-  /** How many of the four anchors are kept today (0–4). */
+  /** Optional practices the user added from the Customize flow (visible on the
+   *  home layout) — each adds a checkmark to Daily progress. */
+  gratitudeActive: boolean;
+  examenActive: boolean;
+  gratitudeDone: boolean;
+  examenDone: boolean;
+  /** How many anchors exist for this user — the four core ones plus any
+   *  active optional practices (gratitude / examen). The denominator of the
+   *  "N of X kept" header. */
+  totalAnchors: number;
+  /** How many anchors are kept today (out of totalAnchors). */
   doneCount: number;
   streak: number;
   last7: number;
@@ -61,8 +73,24 @@ export type RhythmState = {
   contemplationGoalMin: number;
 };
 
+// Is an optional-practice card surfaced on the user's home layout? A card
+// counts as active when it's in the saved order and NOT hidden — the same
+// rule visibleHomeReflection() applies to reflections. Cards absent from the
+// order are opt-in-hidden, so a user who never added gratitude/examen has no
+// extra anchor.
+function homeCardActive(
+  homeLayout: { order?: string[]; hidden?: string[] } | null | undefined,
+  key: string,
+): boolean {
+  if (!homeLayout) return false;
+  const order = homeLayout.order ?? [];
+  const hidden = new Set(homeLayout.hidden ?? []);
+  return order.includes(key) && !hidden.has(key);
+}
+
 export function useRhythmState(): RhythmState {
   const day = localDay();
+  const { user } = useAuth();
 
   // Reflection read-state. localStorage is per-device and flips instantly, but
   // doesn't sync across devices (read CAC on mobile → web wouldn't know). CAC
@@ -105,11 +133,58 @@ export function useRhythmState(): RhythmState {
     };
   }, []);
 
+  // Optional-practice completion (gratitude / examen). Instant local flags flip
+  // the anchor the moment the user finishes; we re-check on the shared event +
+  // return-to-app signals, and OR in the server rows below for cross-device.
+  const [practiceLocal, setPracticeLocal] = useState(() => ({
+    gratitude: hasPracticeDoneToday("gratitude"),
+    examen: hasPracticeDoneToday("examen"),
+  }));
+  useEffect(() => {
+    const recheck = () => setPracticeLocal({
+      gratitude: hasPracticeDoneToday("gratitude"),
+      examen: hasPracticeDoneToday("examen"),
+    });
+    window.addEventListener(PRACTICE_DONE_EVENT, recheck);
+    window.addEventListener("focus", recheck);
+    window.addEventListener("pageshow", recheck);
+    window.addEventListener("storage", recheck);
+    window.addEventListener("phoebe:appactive", recheck);
+    return () => {
+      window.removeEventListener(PRACTICE_DONE_EVENT, recheck);
+      window.removeEventListener("focus", recheck);
+      window.removeEventListener("pageshow", recheck);
+      window.removeEventListener("storage", recheck);
+      window.removeEventListener("phoebe:appactive", recheck);
+    };
+  }, []);
+
   const { data: officeHistory } = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean }> }>({
     queryKey: ["/api/me/office-history-week"],
     queryFn: () => apiRequest("GET", "/api/me/office-history-week"),
     staleTime: 30_000,
   });
+
+  // Server-backed completion rows for the optional practices (cross-device).
+  // Only fetched/used for the practices the user has actually added.
+  const gratitudeActive = homeCardActive(user?.homeLayout, "gratitude");
+  const examenActive = homeCardActive(user?.homeLayout, "examen");
+  const anyExtraActive = gratitudeActive || examenActive;
+  // Server filters rows on weekStart >= since, and today's row carries THIS
+  // week's Sunday as weekStart — so we ask from the week start, then match the
+  // exact localDate below. (Passing today would drop the row on any non-Sunday.)
+  const weekStartDay = useMemo(() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - d.getDay());
+    return d.toLocaleDateString("en-CA");
+  }, []);
+  const { data: completions } = useQuery<{ completions: Array<{ section: string; localDate: string }> }>({
+    queryKey: ["/api/practice-completion", weekStartDay],
+    queryFn: () => apiRequest("GET", `/api/practice-completion?since=${weekStartDay}`),
+    staleTime: 30_000,
+    enabled: anyExtraActive,
+  });
+  const serverDone = (section: string) =>
+    !!completions?.completions?.some((c) => c.section === section && c.localDate === day);
 
   const todaySince = useMemo(() => {
     const d = new Date(); d.setHours(0, 0, 0, 0); return d.toISOString();
@@ -183,13 +258,29 @@ export function useRhythmState(): RhythmState {
     ? contemplationMin >= contemplationGoalMin
     : contemplationMin > 0;
 
-  const doneCount = [morningDone, reflectDone, silenceDone, eveningDone].filter(Boolean).length;
+  const gratitudeDone = gratitudeActive && (practiceLocal.gratitude || serverDone("gratitude"));
+  const examenDone = examenActive && (practiceLocal.examen || serverDone("examen"));
+
+  // The four core anchors plus whichever optional practices the user added.
+  const coreFlags = [morningDone, reflectDone, silenceDone, eveningDone];
+  const extraFlags = [
+    ...(gratitudeActive ? [gratitudeDone] : []),
+    ...(examenActive ? [examenDone] : []),
+  ];
+  const allFlags = [...coreFlags, ...extraFlags];
+  const totalAnchors = allFlags.length;
+  const doneCount = allFlags.filter(Boolean).length;
 
   return {
     morningDone,
     reflectDone,
     silenceDone,
     eveningDone,
+    gratitudeActive,
+    examenActive,
+    gratitudeDone,
+    examenDone,
+    totalAnchors,
     doneCount,
     streak: rhythm?.streak ?? 0,
     last7: rhythm?.last7 ?? 0,

@@ -822,8 +822,8 @@ export default function RuleOfLifePage() {
     return (
       <Layout>
         <WayOfLoveRuleFlow
-          onBack={() => (result ? setPhase("result") : setLocation("/daily-practice"))}
-          onDone={() => setLocation("/daily-practice")}
+          onBack={() => (result ? setPhase("result") : setLocation("/daily-progress"))}
+          onDone={() => setLocation("/daily-progress")}
         />
       </Layout>
     );

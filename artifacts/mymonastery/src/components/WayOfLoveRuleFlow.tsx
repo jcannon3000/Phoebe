@@ -1,16 +1,17 @@
 /**
- * The Way of Love rule — a three-step flow: Return → Pray → Learn.
+ * Building your daily habit of prayer — a three-step Customize flow:
+ * Pray → Contemplation → Learn.
  *
- * St. Benedict's Rule calls us back to God, so the rule starts with Return: a few
- * minutes of silence a day. Then Pray (how you pray daily — community
- * intercessions, a Daily Devotion, or the full Offices), then Learn (the daily
- * newsletter; Scripture is already covered when you pray a devotion/office).
+ * Step 1 Pray: how you pray daily — community intercessions, a Daily Devotion,
+ * or the full Offices. Step 2 Contemplation: minutes of silence a day (the
+ * contemplation goal). Step 3 Learn: the daily reflections (multi-select;
+ * Scripture is already covered when you pray a devotion/office).
  *
- * Finishing applies the prayer prefs (silence goal, office level, reflection
- * source) AND rewrites the home to match — the rule is the source of truth:
- * prayer requests (pinned) → Return (contemplation) → Pray (the office card,
- * which adapts to the chosen level) → the chosen newsletter. Replaces the older
- * seven-practice WayOfLoveStep as the rule-of-life experience.
+ * Finishing applies the prayer prefs (contemplation goal, office level,
+ * reflection sources) AND rewrites the home + Daily progress to match — this
+ * flow is the source of truth: prayer requests (pinned) → contemplation → the
+ * office card (adapts to the chosen level) → every chosen reflection. Opens from
+ * the Daily progress "Customize" pill and returns there when done.
  */
 
 import { useState, useEffect, useRef, type ReactNode } from "react";
@@ -19,6 +20,7 @@ import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Check } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 import {
   setSideLevel,
   setSideReflection,
@@ -71,6 +73,18 @@ const PRAY_OPTION_ID: Record<PrayChoice, string> = {
   devotion: "pray-devotion",
   offices: "pray-office",
 };
+// Each Pray choice → the morning reminder pref the office-reminder cron reads
+// (parish_office_morning_pref). "office" deep-links the nudge to Morning
+// Prayer; "devotion" to the short form — community/devotion users get the
+// lighter nudge. This is the REMINDER target only; it's independent of the
+// default prayer level set above. A non-"none" value is what makes the daily
+// 7am push fire at all (see runParishOfficeReminderSender on the server).
+const PRAY_REMINDER_PREF: Record<PrayChoice, "office" | "devotion"> = {
+  community: "devotion",
+  devotion: "devotion",
+  offices: "office",
+};
+const DEFAULT_REMINDER_TIME = "07:00";
 
 const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   { id: "fdd", label: "Forward Day by Day", sub: "Forward Movement" },
@@ -87,7 +101,8 @@ export default function WayOfLoveRuleFlow({
 }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
-  const [step, setStep] = useState<Step>("listen");
+  const { user } = useAuth();
+  const [step, setStep] = useState<Step>("pray");
   // Preload from the user's current settings so Customize reflects what they
   // already chose, not the first-run defaults. localStorage per-side levels +
   // reflection + minutes are instant; the server office-prefs (the global
@@ -100,12 +115,32 @@ export default function WayOfLoveRuleFlow({
   const [pray, setPray] = useState<PrayChoice>(
     () => prayFromLevel(getSideLevel("morning")) ?? prayFromLevel(getSideLevel("evening")) ?? "community",
   );
-  const [newsletter, setNewsletter] = useState<ReflectionSource>(() => {
+  // Multiple daily reflections may be followed — each shows its own home card
+  // and counts toward the Reflect anchor. Seeded from the current single source.
+  const [newsletters, setNewsletters] = useState<ReflectionSource[]>(() => {
     const r = getReflectionSource();
-    return r && r !== "none" ? r : "fdd";
+    return r && r !== "none" ? [r] : ["fdd"];
   });
+  // When to nudge them to pray each morning. Persisted as the office-reminder
+  // time; finishing the flow also turns the morning reminder ON (pref !=
+  // "none") so the server's daily push actually fires — this is the piece a
+  // user who "isn't getting reminders" was missing.
+  const [reminderTime, setReminderTime] = useState<string>(DEFAULT_REMINDER_TIME);
+  // Optional daily practices — adding one surfaces its home card AND an extra
+  // Daily-progress checkmark. Seeded from whether the card is already on the
+  // user's home layout (in order, not hidden).
+  const [extras, setExtras] = useState<{ gratitude: boolean; examen: boolean }>(() => {
+    const hl = user?.homeLayout;
+    const active = (key: string) =>
+      !!hl && (hl.order ?? []).includes(key) && !new Set(hl.hidden ?? []).has(key);
+    return { gratitude: active("gratitude"), examen: active("examen") };
+  });
+  const toggleExtra = (k: "gratitude" | "examen") => {
+    touchedRef.current = true;
+    setExtras((prev) => ({ ...prev, [k]: !prev[k] }));
+  };
 
-  const { data: prefs } = useQuery<{ defaultPrayerLevel?: string; contemplationGoalMinutes?: number }>({
+  const { data: prefs } = useQuery<{ defaultPrayerLevel?: string; contemplationGoalMinutes?: number; morningTime?: string | null }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     staleTime: 60_000,
@@ -116,7 +151,15 @@ export default function WayOfLoveRuleFlow({
   const touchedRef = useRef(false);
   const choosePray = (p: PrayChoice) => { touchedRef.current = true; setPray(p); };
   const chooseGoal = (g: string) => { touchedRef.current = true; setGoal(g); };
-  const chooseNewsletter = (n: ReflectionSource) => { touchedRef.current = true; setNewsletter(n); };
+  const chooseReminder = (t: string) => { touchedRef.current = true; setReminderTime(t); };
+  // Toggle a reflection in/out; never let the list go empty.
+  const toggleNewsletter = (n: ReflectionSource) => {
+    touchedRef.current = true;
+    setNewsletters((prev) => {
+      if (prev.includes(n)) return prev.length > 1 ? prev.filter((x) => x !== n) : prev;
+      return [...prev, n];
+    });
+  };
   useEffect(() => {
     if (hydrated.current || touchedRef.current || !prefs) return;
     hydrated.current = true;
@@ -128,6 +171,9 @@ export default function WayOfLoveRuleFlow({
     if (getSideMinutes("morning") <= 0 && typeof prefs.contemplationGoalMinutes === "number" && prefs.contemplationGoalMinutes > 0) {
       setGoal(String(prefs.contemplationGoalMinutes));
     }
+    if (typeof prefs.morningTime === "string" && /^\d{2}:\d{2}$/.test(prefs.morningTime)) {
+      setReminderTime(prefs.morningTime);
+    }
   }, [prefs]);
 
   const goalMin = Math.max(0, Math.min(180, parseInt(goal, 10) || 0));
@@ -137,17 +183,29 @@ export default function WayOfLoveRuleFlow({
 
   const commit = () => {
     const level = PRAY_LEVEL[pray];
+    const primary = newsletters[0] ?? "fdd"; // single per-side source (close slide)
     for (const side of SIDES) {
       setSideLevel(side, level);
-      setSideReflection(side, newsletter);
+      setSideReflection(side, primary);
       if (goalMin > 0) setSideMinutes(side, goalMin);
     }
-    setReflectionSource(newsletter);
+    setReflectionSource(primary);
     apiRequest("PUT", "/api/me/office-prefs", {
       defaultPrayerLevel: level,
       contemplationGoalMinutes: goalMin,
       contemplationReminderEnabled: goalMin > 0,
+      // Turn the morning prayer reminder ON (a non-"none" pref is what makes
+      // the server's daily office-reminder push fire) and stamp the chosen
+      // time. Building the habit means setting up the nudge, not just the prefs.
+      morning: PRAY_REMINDER_PREF[pray],
+      morningTime: /^\d{2}:\d{2}$/.test(reminderTime) ? reminderTime : DEFAULT_REMINDER_TIME,
     }).catch(() => {/* best-effort */});
+    // Ask the native shell to register for push (request iOS permission if it
+    // hasn't been granted, or re-register a dropped token). No-op on web — no
+    // listener is attached there. Without an active device token the server's
+    // reminder push silently no-ops, which is the usual cause of "I set a
+    // reminder but never get notified."
+    try { window.dispatchEvent(new Event("phoebe:request-push-permission")); } catch { /* non-fatal */ }
     // Persist in the existing selections shape so the WoL drawer / weekly
     // review still read the commitment (Record<practiceId,{optionIds,custom}>).
     const selections: Record<string, { optionIds: string[]; custom: string }> = {
@@ -156,11 +214,15 @@ export default function WayOfLoveRuleFlow({
     };
     apiRequest("PUT", "/api/rule-of-life/wol", { selections }).catch(() => {/* ignore */});
     // Rewrite the home to match the rule (the rule is the source of truth):
-    // requests (pinned) → Return (contemplation) → Pray (the office card) → the
-    // chosen newsletter. Other newsletters + secondary panels hidden (addable).
-    const others = (["cac", "fdd", "ssje"] as const).filter((n) => n !== newsletter);
-    const order = ["requests", "office", "contemplation", newsletter, "feeds", "gratitude", "examen", "ncmp", "podcasts", ...others];
-    const hidden = ["feeds", "gratitude", "examen", "ncmp", "podcasts", ...others];
+    // requests (pinned) → Return (contemplation) → Pray (the office card) → ALL
+    // chosen reflections. Unselected reflections + secondary panels hidden.
+    const others = (["cac", "fdd", "ssje"] as const).filter((n) => !newsletters.includes(n));
+    // Added optional practices are surfaced (in order, not hidden); unselected
+    // ones go to the hidden tail like the other opt-in modules.
+    const extrasOn = [...(extras.gratitude ? ["gratitude"] : []), ...(extras.examen ? ["examen"] : [])];
+    const extrasOff = [...(extras.gratitude ? [] : ["gratitude"]), ...(extras.examen ? [] : ["examen"])];
+    const order = ["requests", "office", "contemplation", ...newsletters, ...extrasOn, "feeds", "ncmp", "podcasts", ...extrasOff, ...others];
+    const hidden = ["feeds", "ncmp", "podcasts", ...extrasOff, ...others];
     apiRequest("PUT", "/api/me/home-layout", { order, hidden, v: HOME_LAYOUT_VERSION })
       .then(() => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }))
       .catch(() => {/* ignore */});
@@ -193,7 +255,7 @@ export default function WayOfLoveRuleFlow({
         <div style={{ width: `${(n / 3) * 100}%`, height: "100%", background: SAGE, transition: "width 0.3s ease" }} />
       </div>
       <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.2px", margin: 0, fontFamily: FONT }}>
-        {t("wol_rule.walk", { defaultValue: "Your Way of Love" })} · {n}/3
+        {t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" })} · {n}/3
       </p>
       <p style={{ color: SAGE, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.9px", margin: "16px 0 0", fontFamily: FONT }}>{eyebrow}</p>
       <h1 style={{ color: CREAM, fontSize: 30, fontWeight: 700, fontFamily: FONT, margin: "6px 0 0" }}>{title}</h1>
@@ -229,12 +291,12 @@ export default function WayOfLoveRuleFlow({
     </button>
   );
 
-  // ── Step 1 — Return ──────────────────────────────────────────────────────
+  // ── Step 2 — Return (contemplation goal) ─────────────────────────────────
   if (step === "listen") {
     return shell(
       <>
-        {backRow(onBack)}
-        {stepHeader(1, t("wol_rule.listen_eyebrow", { defaultValue: "Return" }), t("wol_rule.listen_title", { defaultValue: "Return" }))}
+        {backRow(() => setStep("pray"))}
+        {stepHeader(2, t("wol_rule.listen_eyebrow", { defaultValue: "Return" }), t("wol_rule.listen_title", { defaultValue: "Contemplation" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 0" }}>
           {t("wol_rule.listen_body", { defaultValue: "St. Benedict's Rule calls us back to God — a daily return. Take a few minutes a day to sit in silence before God, open to what God might be speaking and to what's on your own heart. A return to God's love." })}
         </p>
@@ -264,17 +326,17 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
           {t("wol_rule.listen_goal_note", { defaultValue: "We'll gently remind you around 7pm on days you haven't reached it. Set 0 to keep the practice without a goal." })}
         </p>
-        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => setStep("pray"))}
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => setStep("learn"))}
       </>,
     );
   }
 
-  // ── Step 2 — Pray ──────────────────────────────────────────────────────────
+  // ── Step 1 — Pray (how you pray the daily office) ─────────────────────────
   if (step === "pray") {
     return shell(
       <>
-        {backRow(() => setStep("listen"))}
-        {stepHeader(2, t("wol_rule.pray_eyebrow", { defaultValue: "Pray" }), t("wol_rule.pray_title", { defaultValue: "Pray" }))}
+        {backRow(onBack)}
+        {stepHeader(1, t("wol_rule.pray_eyebrow", { defaultValue: "Pray" }), t("wol_rule.pray_title", { defaultValue: "Pray" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
           {t("wol_rule.pray_body", { defaultValue: "How will you pray each day?" })}
         </p>
@@ -283,16 +345,29 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(pray === "devotion", t("wol_rule.pray_devotion", { defaultValue: "Daily devotion" }), t("wol_rule.pray_devotion_sub", { defaultValue: "A short form of Morning or Evening Prayer." }), () => choosePray("devotion"))}
           {choiceRow(pray === "offices", t("wol_rule.pray_offices", { defaultValue: "The offices" }), t("wol_rule.pray_offices_sub", { defaultValue: "The full Daily Office — Morning & Evening Prayer." }), () => choosePray("offices"))}
         </div>
-        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => setStep("learn"))}
+        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
+          {t("wol_rule.reminder_label", { defaultValue: "Remind me to pray each morning" })}
+        </p>
+        <input
+          type="time"
+          value={reminderTime}
+          onChange={(e) => chooseReminder(e.target.value)}
+          aria-label={t("wol_rule.reminder_label", { defaultValue: "Remind me to pray each morning" })}
+          style={{ width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark" }}
+        />
+        <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
+          {t("wol_rule.reminder_note", { defaultValue: "We'll send a gentle notification. Change the time or turn it off anytime in Settings." })}
+        </p>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => setStep("listen"))}
       </>,
     );
   }
 
-  // ── Step 3 — Learn ───────────────────────────────────────────────────────
+  // ── Step 3 — Learn (daily reflections, multi-select) ─────────────────────
   if (step === "learn") {
     return shell(
       <>
-        {backRow(() => setStep("pray"))}
+        {backRow(() => setStep("listen"))}
         {stepHeader(3, t("wol_rule.learn_eyebrow", { defaultValue: "Learn" }), t("wol_rule.learn_title", { defaultValue: "Learn" }))}
         {scriptureCovered && (
           <div style={{ display: "flex", alignItems: "center", gap: 10, background: CARD_ACTIVE, border: `1px solid ${CARD_B_ACTIVE}`, borderRadius: 12, padding: "12px 14px", margin: "14px 0 0" }}>
@@ -304,13 +379,26 @@ export default function WayOfLoveRuleFlow({
             </span>
           </div>
         )}
-        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "16px 0 16px" }}>
-          {t("wol_rule.learn_body", { defaultValue: "Choose a daily reflection to read." })}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "16px 0 4px" }}>
+          {t("wol_rule.learn_body", { defaultValue: "Choose the daily reflections you'd like to read." })}
+        </p>
+        <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "0 0 16px" }}>
+          {t("wol_rule.learn_multi_note", { defaultValue: "Pick as many as you like — each gets its own card on your home." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {NEWSLETTERS.map((n) => choiceRow(newsletter === n.id, n.label, n.sub, () => chooseNewsletter(n.id)))}
+          {NEWSLETTERS.map((n) => choiceRow(newsletters.includes(n.id), n.label, n.sub, () => toggleNewsletter(n.id)))}
         </div>
-        {ctaButton(t("wol_rule.finish", { defaultValue: "Set my Way of Love" }), commit)}
+        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "28px 0 6px", fontFamily: FONT }}>
+          {t("wol_rule.extras_label", { defaultValue: "Add to your day" })}
+        </p>
+        <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "0 0 12px", lineHeight: 1.5 }}>
+          {t("wol_rule.extras_note", { defaultValue: "Optional practices — each adds a checkmark to your Daily progress." })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {choiceRow(extras.gratitude, t("wol_rule.extra_gratitude", { defaultValue: "Gratitude" }), t("wol_rule.extra_gratitude_sub", { defaultValue: "Name one gift from the day." }), () => toggleExtra("gratitude"))}
+          {choiceRow(extras.examen, t("wol_rule.extra_examen", { defaultValue: "The Examen" }), t("wol_rule.extra_examen_sub", { defaultValue: "St. Ignatius' end-of-day review of the day with God." }), () => toggleExtra("examen"))}
+        </div>
+        {ctaButton(t("wol_rule.finish", { defaultValue: "Save my daily rhythm" }), commit)}
       </>,
     );
   }
@@ -320,13 +408,16 @@ export default function WayOfLoveRuleFlow({
     <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center" }}>
       <span style={{ fontSize: 44 }} aria-hidden>🕊️</span>
       <h1 style={{ color: CREAM, fontSize: 26, fontWeight: 700, fontFamily: FONT, margin: "16px 0 0" }}>
-        {t("wol_rule.done_title", { defaultValue: "Your Way of Love is set" })}
+        {t("wol_rule.done_title", { defaultValue: "Your daily rhythm is set" })}
       </h1>
       <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "10px 0 0", maxWidth: 340 }}>
-        {t("wol_rule.done_sub", { defaultValue: "Your home now leads with Return, your prayer, and your reflection. Come back any time to change it." })}
+        {t("wol_rule.done_sub", { defaultValue: "Your home and Daily progress now lead with your prayer, your contemplation, and your reflections. Come back any time to change it." })}
       </p>
-      <button onClick={onDone} style={{ marginTop: 28, background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "14px 28px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-        {t("wol_rule.done_cta", { defaultValue: "Go to my home" })}
+      <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, lineHeight: 1.55, margin: "16px 0 0", maxWidth: 320 }}>
+        {t("wol_rule.done_reminder_hint", { defaultValue: "Not seeing reminders? Turn on notifications for Phoebe in your phone's Settings." })}
+      </p>
+      <button onClick={onDone} style={{ marginTop: 24, background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "14px 28px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+        {t("wol_rule.done_cta", { defaultValue: "Go to Daily progress" })}
       </button>
     </div>,
   );

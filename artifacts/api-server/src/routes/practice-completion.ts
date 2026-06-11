@@ -19,7 +19,10 @@ const router: IRouter = Router();
 // "weekly_review" is the Sunday weekly-examen marker — not a practice, but a
 // completion row so it (a) records that the week was reviewed and (b) credits
 // Turn for the day like any other engagement.
-const SECTIONS = new Set(["turn", "learn_pray", "learn", "pray", "worship", "bless", "go", "rest", "weekly_review"]);
+// "gratitude" and "examen" are the optional daily practices a user can add
+// from the Customize flow — completing one earns an extra Daily-progress
+// checkmark (see lib/practiceCompletion.ts on the client + useRhythmState).
+const SECTIONS = new Set(["turn", "learn_pray", "learn", "pray", "worship", "bless", "go", "rest", "weekly_review", "gratitude", "examen"]);
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
 function uid(req: Request): number | null {

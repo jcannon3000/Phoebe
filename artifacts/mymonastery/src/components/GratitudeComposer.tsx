@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
+import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 
 // Shared gratitude composer — "name what you're grateful for." Private by
 // default with an opt-in "share with the garden" toggle (the "both"
@@ -36,6 +37,9 @@ export function GratitudeComposer({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/gratitude/mine"] });
       queryClient.invalidateQueries({ queryKey: ["/api/gratitude/responses"] });
+      // Writing a gratitude = the optional "gratitude" practice is done today,
+      // so the Daily-progress anchor (when added) checks off immediately.
+      try { markPracticeDoneToday("gratitude"); } catch { /* non-fatal */ }
       setText("");
       setShared(false);
       onSubmitted?.();

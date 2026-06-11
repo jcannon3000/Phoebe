@@ -22,7 +22,7 @@ const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
 
 type Anchor = {
-  key: "morning" | "reflect" | "silence" | "evening";
+  key: "morning" | "reflect" | "silence" | "evening" | "gratitude" | "examen";
   label: string;
   icon: string;       // emoji glyph
   done: boolean;
@@ -39,6 +39,7 @@ export function TodaysRhythm() {
   const {
     morningDone, reflectDone, silenceDone, eveningDone,
     streak, last7, gardenCount, cobreatheCount, prayerKind,
+    gratitudeActive, examenActive, gratitudeDone, examenDone,
   } = useRhythmState();
 
   // The office word matches what the user prays: "Prayer" (office),
@@ -86,16 +87,35 @@ export function TodaysRhythm() {
           ? t("rhythm.blurb_evening_devotion", { defaultValue: "Mark the day's end with the devotion" })
           : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
     },
+    // Optional practices the user added from the Customize flow.
+    ...(gratitudeActive ? [{
+      key: "gratitude" as const, label: t("rhythm.gratitude", { defaultValue: "Gratitude" }), icon: "🙏",
+      done: gratitudeDone, href: "/gratitude",
+      cta: t("rhythm.cta_gratitude", { defaultValue: "Name a gift from today" }),
+      blurb: t("rhythm.blurb_gratitude", { defaultValue: "Name a gift from today" }),
+    }] : []),
+    ...(examenActive ? [{
+      key: "examen" as const, label: t("rhythm.examen", { defaultValue: "Examen" }), icon: "🌗",
+      done: examenDone, href: "/examen",
+      cta: t("rhythm.cta_examen", { defaultValue: "Review the day with God" }),
+      blurb: t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }),
+    }] : []),
   ];
 
   // Next step — the first undone anchor in a time-of-day order. Morning leads
   // before noon; the reflective middle leads through the afternoon; the
   // evening close leads after 8pm. All done → a benediction.
   const order: Anchor["key"][] = useMemo(() => {
-    if (hour < 12) return ["morning", "silence", "reflect", "evening"];
-    if (hour < 20) return ["silence", "reflect", "evening", "morning"];
-    return ["evening", "silence", "reflect", "morning"];
-  }, [hour]);
+    // Optional practices fall to the end of the next-step order — the core
+    // rhythm leads; gratitude/examen are surfaced once a user has added them.
+    const extras: Anchor["key"][] = [
+      ...(gratitudeActive ? ["gratitude" as const] : []),
+      ...(examenActive ? ["examen" as const] : []),
+    ];
+    if (hour < 12) return ["morning", "silence", "reflect", "evening", ...extras];
+    if (hour < 20) return ["silence", "reflect", "evening", "morning", ...extras];
+    return ["evening", "silence", "reflect", "morning", ...extras];
+  }, [hour, gratitudeActive, examenActive]);
 
   const byKey = (k: Anchor["key"]) => anchors.find((a) => a.key === k)!;
   const next = order.map(byKey).find((a) => !a.done) ?? null;

@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 import { playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
+import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 
 // ── The Daily Examen ────────────────────────────────────────────────────────
 // St. Ignatius of Loyola's end-of-day reflective prayer, as a guided
@@ -66,6 +67,9 @@ export default function ExamenPage() {
     // The closing gets the resolving submit feedback (swell + haptic).
     if (step === 6) {
       try { triggerSubmitFeedback(); } catch { /* non-fatal */ }
+      // Reaching the closing = the Examen is prayed today. Stamps the optional
+      // "examen" practice so the Daily-progress anchor (when added) checks off.
+      try { markPracticeDoneToday("examen"); } catch { /* non-fatal */ }
     }
   }, [step]);
 
