@@ -73,16 +73,21 @@ export type RhythmState = {
   contemplationGoalMin: number;
 };
 
+// Keep in sync with dashboard.tsx — only a current-version saved layout is
+// honored on the home screen, so the rhythm must use the same gate or it
+// would show an anchor the home doesn't render.
+const HOME_LAYOUT_VERSION = 2;
+
 // Is an optional-practice card surfaced on the user's home layout? A card
-// counts as active when it's in the saved order and NOT hidden — the same
-// rule visibleHomeReflection() applies to reflections. Cards absent from the
-// order are opt-in-hidden, so a user who never added gratitude/examen has no
-// extra anchor.
+// counts as active when the layout is the current version AND the key is in
+// the saved order and NOT hidden — the same rule the dashboard applies. Cards
+// absent from the order are opt-in-hidden, so a user who never added
+// gratitude/examen has no extra anchor.
 function homeCardActive(
-  homeLayout: { order?: string[]; hidden?: string[] } | null | undefined,
+  homeLayout: { order?: string[]; hidden?: string[]; v?: number } | null | undefined,
   key: string,
 ): boolean {
-  if (!homeLayout) return false;
+  if (!homeLayout || homeLayout.v !== HOME_LAYOUT_VERSION) return false;
   const order = homeLayout.order ?? [];
   const hidden = new Set(homeLayout.hidden ?? []);
   return order.includes(key) && !hidden.has(key);

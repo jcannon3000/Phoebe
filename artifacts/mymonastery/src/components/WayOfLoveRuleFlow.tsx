@@ -86,6 +86,17 @@ const PRAY_REMINDER_PREF: Record<PrayChoice, "office" | "devotion"> = {
 };
 const DEFAULT_REMINDER_TIME = "07:00";
 
+// Is a home module currently surfaced? Mirrors the dashboard's gate: only a
+// current-version layout counts, and the key must be in `order` and not
+// `hidden`. Used to seed the optional-practice toggles from the live home.
+function homeCardOn(
+  hl: { order?: string[]; hidden?: string[]; v?: number } | null | undefined,
+  key: string,
+): boolean {
+  if (!hl || hl.v !== HOME_LAYOUT_VERSION) return false;
+  return (hl.order ?? []).includes(key) && !new Set(hl.hidden ?? []).has(key);
+}
+
 const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
   { id: "fdd", label: "Forward Day by Day", sub: "Forward Movement" },
   { id: "ssje", label: "SSJE — Brother, Give Us a Word", sub: "Society of St. John the Evangelist" },
@@ -128,13 +139,23 @@ export default function WayOfLoveRuleFlow({
   const [reminderTime, setReminderTime] = useState<string>(DEFAULT_REMINDER_TIME);
   // Optional daily practices — adding one surfaces its home card AND an extra
   // Daily-progress checkmark. Seeded from whether the card is already on the
-  // user's home layout (in order, not hidden).
-  const [extras, setExtras] = useState<{ gratitude: boolean; examen: boolean }>(() => {
-    const hl = user?.homeLayout;
-    const active = (key: string) =>
-      !!hl && (hl.order ?? []).includes(key) && !new Set(hl.hidden ?? []).has(key);
-    return { gratitude: active("gratitude"), examen: active("examen") };
-  });
+  // user's (current-version) home layout (in order, not hidden).
+  const [extras, setExtras] = useState<{ gratitude: boolean; examen: boolean }>(() => ({
+    gratitude: homeCardOn(user?.homeLayout, "gratitude"),
+    examen: homeCardOn(user?.homeLayout, "examen"),
+  }));
+  // Re-seed once auth resolves — `user` is often null on the first render, so
+  // the initializer above can miss an existing selection. Guard on touchedRef
+  // so it never clobbers a toggle the user already made while auth loaded.
+  const extrasHydrated = useRef(false);
+  useEffect(() => {
+    if (extrasHydrated.current || touchedRef.current || !user?.homeLayout) return;
+    extrasHydrated.current = true;
+    setExtras({
+      gratitude: homeCardOn(user.homeLayout, "gratitude"),
+      examen: homeCardOn(user.homeLayout, "examen"),
+    });
+  }, [user]);
   const toggleExtra = (k: "gratitude" | "examen") => {
     touchedRef.current = true;
     setExtras((prev) => ({ ...prev, [k]: !prev[k] }));
