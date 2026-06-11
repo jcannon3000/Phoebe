@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { playOpeningSwell } from "@/lib/amenFeedback";
@@ -35,6 +36,7 @@ export function MenuHub({
   backLabel,
   backHref,
   groups,
+  headerSlot,
 }: {
   title: string;
   emoji?: string;
@@ -42,6 +44,9 @@ export function MenuHub({
   backLabel?: string;
   backHref?: string;
   groups: MenuHubGroup[];
+  /** Optional content rendered between the subtitle and the card groups
+   *  (e.g. El Jardín's "Today's reading" card). */
+  headerSlot?: ReactNode;
 }) {
   const [, setLocation] = useLocation();
   return (
@@ -63,6 +68,8 @@ export function MenuHub({
         {subtitle && (
           <p style={{ fontSize: 14, color: SAGE, margin: "0 0 20px", lineHeight: 1.5 }}>{subtitle}</p>
         )}
+
+        {headerSlot && <div style={{ marginBottom: 22 }}>{headerSlot}</div>}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 22, marginTop: subtitle ? 0 : 18 }}>
           {groups.map((g, gi) => (

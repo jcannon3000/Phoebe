@@ -621,6 +621,17 @@ export const es: Translations = {
     add: "Agregar",
     user_not_found: "Usuario no encontrado",
     streak_footnote: "La racha cuenta los registros diarios de oración. La tuya se actualiza automáticamente cuando oras.",
+    // Compartir un estudio con el foro de un grupo
+    share_to_group: "Compartir con un grupo",
+    pick_group: "Elige un grupo",
+    sharing: "Compartiendo…",
+    shared_ok: "Compartido ✓",
+    // Plan de lectura diaria
+    todays_reading: "Lectura de hoy",
+    reading_plan: "Plan de lectura",
+    reading_day: "Día {{day}}",
+    open_passage: "Abrir pasaje ↗",
+    reading_plan_note: "Un pasaje al día por el Nuevo Testamento — toca para leerlo en Bible.com.",
     // Compartido en las páginas de estudio
     back_studies: "Estudios",
     back_notes: "Notas",

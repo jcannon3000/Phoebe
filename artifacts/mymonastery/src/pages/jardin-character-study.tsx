@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { ShareStudyToGroup } from "@/components/ShareStudyToGroup";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -147,6 +148,18 @@ export default function JardinCharacterStudyPage() {
               opacity: (create.isPending || update.isPending) ? 0.6 : 1 }}>
             {t("common.save")}
           </button>
+          <ShareStudyToGroup
+            title={form.name || t("jardin.character_study")}
+            body={[
+              form.name_meaning && `${t("jardin.cs_name_meaning")}: ${form.name_meaning}`,
+              form.origin && `${t("jardin.cs_origin")}: ${form.origin}`,
+              form.time_period && `${t("jardin.cs_time_period")}: ${form.time_period}`,
+              form.strengths && `${t("jardin.cs_strengths")}: ${form.strengths}`,
+              form.weaknesses && `${t("jardin.cs_weaknesses")}: ${form.weaknesses}`,
+              form.key_events && `${t("jardin.cs_key_events")}: ${form.key_events}`,
+              form.lessons_learned && `${t("jardin.cs_lessons")}: ${form.lessons_learned}`,
+            ].filter(Boolean).join("\n\n")}
+          />
         </div>
       </Layout>
     );

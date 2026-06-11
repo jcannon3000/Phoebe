@@ -626,6 +626,17 @@ export const en = {
     add: "Add",
     user_not_found: "User not found",
     streak_footnote: "Streak counts daily prayer check-ins. Yours updates automatically when you pray.",
+    // Share a study to a group forum
+    share_to_group: "Share with a group",
+    pick_group: "Choose a group",
+    sharing: "Sharing…",
+    shared_ok: "Shared ✓",
+    // Daily reading plan
+    todays_reading: "Today's reading",
+    reading_plan: "Reading plan",
+    reading_day: "Day {{day}}",
+    open_passage: "Open passage ↗",
+    reading_plan_note: "A passage a day through the New Testament — tap to read it on Bible.com.",
     // Shared across the study pages
     back_studies: "Studies",
     back_notes: "Notes",

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { ShareStudyToGroup } from "@/components/ShareStudyToGroup";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -102,6 +103,16 @@ export default function JardinBibleStudyPage() {
               opacity: (create.isPending || update.isPending) ? 0.6 : 1 }}>
             {t("common.save")}
           </button>
+          <ShareStudyToGroup
+            title={form.book_chapter || t("jardin.bible_study")}
+            body={[
+              form.main_theme && `${t("jardin.bs_f_theme")}: ${form.main_theme}`,
+              form.key_verses && `${t("jardin.bs_f_verses")}: ${form.key_verses}`,
+              form.symbols_keywords && `${t("jardin.bs_f_symbols")}: ${form.symbols_keywords}`,
+              form.application && `${t("jardin.bs_f_app")}: ${form.application}`,
+              form.takeaways && `${t("jardin.bs_f_takeaways")}: ${form.takeaways}`,
+            ].filter(Boolean).join("\n\n")}
+          />
         </div>
       </Layout>
     );

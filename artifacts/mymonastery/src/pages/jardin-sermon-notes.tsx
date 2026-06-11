@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { ShareStudyToGroup } from "@/components/ShareStudyToGroup";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -111,6 +112,14 @@ export default function JardinSermonNotesPage() {
               opacity: (create.isPending || update.isPending) ? 0.6 : 1 }}>
             {t("common.save")}
           </button>
+          <ShareStudyToGroup
+            title={form.title || t("jardin.sermon_notes")}
+            body={[
+              form.preacher && `${t("jardin.sn_preacher")}: ${form.preacher}`,
+              form.scripture && `${t("jardin.scripture")}: ${form.scripture}`,
+              form.content && form.content,
+            ].filter(Boolean).join("\n\n")}
+          />
         </div>
       </Layout>
     );

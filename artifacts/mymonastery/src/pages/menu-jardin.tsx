@@ -1,6 +1,7 @@
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { MenuHub } from "@/components/MenuHub";
+import { JardinReadingCard } from "@/components/JardinReadingCard";
 
 export default function MenuJardinPage() {
   const [, setLocation] = useLocation();
@@ -13,6 +14,7 @@ export default function MenuJardinPage() {
       subtitle={t("jardin.subtitle")}
       backLabel={t("header.menu")}
       backHref="/menu"
+      headerSlot={<JardinReadingCard />}
       groups={[
         {
           header: t("jardin.study"),
