@@ -253,7 +253,18 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
     // touches SQL; fall back to UTC on anything unexpected. Bad zone
     // strings would otherwise throw at query time.
     const tzRaw = typeof req.query.tz === "string" ? req.query.tz : "";
-    const tz = /^[A-Za-z0-9_+\-/]{1,64}$/.test(tzRaw) ? tzRaw : "UTC";
+    let tz = /^[A-Za-z0-9_+\-/]{1,64}$/.test(tzRaw) ? tzRaw : "";
+    // When the caller didn't pass a valid ?tz, fall back to the user's STORED
+    // timezone — NOT UTC. The Apple Health minutes lookup below keys on
+    // "today" in this tz, and the iOS client uploads them under the device's
+    // LOCAL day. A UTC fallback rolls "today" to tomorrow in the evening for
+    // users west of UTC, so the synced minutes silently read as 0 ("lost").
+    if (!tz) {
+      const [u] = await db.select({ timezone: usersTable.timezone })
+        .from(usersTable).where(eq(usersTable.id, sessionUserId));
+      const userTz = u?.timezone ?? "";
+      tz = /^[A-Za-z0-9_+\-/]{1,64}$/.test(userTz) ? userTz : "UTC";
+    }
 
     const windowStats = async (since: Date | null): Promise<{ seconds: number; count: number; days: number }> => {
       const conds = [
