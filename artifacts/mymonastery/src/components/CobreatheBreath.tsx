@@ -131,6 +131,13 @@ export function CobreatheBreath({
   const startRef = useRef(Date.now());
   const countStartRef = useRef(Math.ceil(startRef.current / CYCLE_MS) * CYCLE_MS);
   const reachedRef = useRef(false);
+  // Presence gate: a breath only counts if the page/app stayed open and
+  // visible the whole time. If the tab is backgrounded / the app is
+  // sent to the background long enough that you couldn't have been
+  // breathing along, the session is invalidated — the clock keeps
+  // turning, but it won't record. `endedRef` guards a single onEnd.
+  const invalidRef = useRef(false);
+  const endedRef = useRef(false);
 
   // A rAF loop writes transforms straight to the DOM from the global clock —
   // no React re-render per frame, perfectly synced for everyone, and only
@@ -164,13 +171,46 @@ export function CobreatheBreath({
     const id = setInterval(() => {
       const since = Date.now() - countStartRef.current;
       const completed = since >= 0 ? Math.floor(since / CYCLE_MS) : 0;
-      if (!reachedRef.current && completed >= totalBreaths) {
+      // Only credit the breath if the session stayed visible — a backgrounded
+      // tab/app that "completed" the count while away doesn't count.
+      if (!reachedRef.current && !invalidRef.current && completed >= totalBreaths) {
         reachedRef.current = true;
         onReachTarget?.(Math.round((Date.now() - startRef.current) / 1000));
       }
       setTick((n) => n + 1);
     }, 150);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Presence: if the page is hidden (tab switched, app backgrounded) for more
+  // than a brief blip before the breath completes, the breath can't have been
+  // kept — invalidate it, and end the session without recording when the user
+  // returns. (A quick <1.2s flicker is tolerated.) Once the target is reached
+  // the breath is already credited, so later backgrounding is fine.
+  useEffect(() => {
+    let hiddenAt = 0;
+    const onVis = () => {
+      if (typeof document === "undefined") return;
+      if (document.hidden) {
+        hiddenAt = Date.now();
+      } else {
+        const away = hiddenAt ? Date.now() - hiddenAt : 0;
+        hiddenAt = 0;
+        if (away > 1200 && !reachedRef.current) invalidRef.current = true;
+        if (invalidRef.current && !reachedRef.current && !endedRef.current) {
+          endedRef.current = true;
+          onEnd(Math.round((Date.now() - startRef.current) / 1000), false);
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    // iOS Capacitor: the native shell also signals app resume/suspend.
+    window.addEventListener("phoebe:appactive", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("phoebe:appactive", onVis);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
