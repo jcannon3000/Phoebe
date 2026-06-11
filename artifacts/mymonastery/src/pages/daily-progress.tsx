@@ -40,7 +40,7 @@ function StreakCard() {
   const AMBER = "193,127,36";
   return (
     <div
-      className="relative flex rounded-2xl overflow-hidden mt-2"
+      className="relative flex rounded-2xl overflow-hidden mt-6"
       style={{ background: `rgba(${AMBER},0.08)`, border: `1px solid rgba(${AMBER},0.28)` }}
     >
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${AMBER},0.85)` }} />
