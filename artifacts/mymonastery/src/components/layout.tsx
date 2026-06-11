@@ -746,7 +746,6 @@ function DailyProgressPill() {
 export function Layout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [location] = useLocation();
   const { t } = useTranslation();
   // Beta testers get the "Way of Love" header pill (opens the progress
   // drawer) in place of the "Prayer list" pill; everyone else keeps Prayer
@@ -757,13 +756,6 @@ export function Layout({ children }: { children: ReactNode }) {
   // header "Prayer list" pill links into a surface they can't use, so
   // we hide it for that tier. Drawer filtering happens above.
   const officesOnly = user?.accessTier === "offices-only";
-  // On the communities surface (/communities + any /communities/...
-  // subpath like /communities/browse) the People pill swaps to "Home"
-  // and routes back to the dashboard. The reader is already inside
-  // navigation; giving them a one-tap exit beats sending them deeper
-  // into People-find.
-  const onCommunitiesPage =
-    location === "/communities" || location.startsWith("/communities/");
 
   // Best-effort sync of today's external Apple Health mindful minutes to the
   // server from the app shell (so it runs on nearly every page), giving the
@@ -812,25 +804,6 @@ export function Layout({ children }: { children: ReactNode }) {
 
         {user && (
           <div className="flex items-center gap-2">
-            {/* Home pill — only renders on the communities surface, where
-                it replaces the People slot. Sits to the LEFT of Prayer
-                list so it reads as the primary "back out" affordance.
-                Routes to /dashboard. */}
-            {!officesOnly && onCommunitiesPage && (
-              <Link
-                href="/dashboard"
-                className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
-                style={{
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  letterSpacing: "-0.01em",
-                  background: "rgba(200,212,192,0.08)",
-                  color: "#C8D4C0",
-                  border: "1px solid rgba(46,107,64,0.3)",
-                }}
-              >
-                {t("header.home")}
-              </Link>
-            )}
             {/* Daily-progress pill — sits just left of Menu, replacing the
                 old Prayer-list pill (which now lives in the Menu drawer). The
                 four dots reflect today's rhythm; tapping opens /daily-progress.

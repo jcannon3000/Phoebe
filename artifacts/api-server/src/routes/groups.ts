@@ -409,9 +409,10 @@ router.post("/groups", perUserRateLimit("groups_create", {
       isPrayerCircle: z.boolean().optional(),
       intention: z.string().max(500).optional(),
       circleDescription: z.string().max(2000).optional(),
-      // Contemplation community template (mutually exclusive with circle in
-      // the UI). When set, the Home swaps to a shared contemplation goal + CAC.
-      focus: z.enum(["contemplation"]).optional(),
+      // Group flavor. "contemplation" = shared contemplation goal + CAC Home.
+      // "jardin" = an El Jardín portal group (unlocks the group forum, which
+      // is a Jardín-only feature). null = a standard, office-shaped community.
+      focus: z.enum(["contemplation", "jardin"]).optional(),
       contemplationGoalMinutes: z.number().int().min(1).max(180).optional(),
     }).refine(
       (d) => !d.isPrayerCircle || (d.intention && d.intention.trim().length > 0),
@@ -445,7 +446,7 @@ router.post("/groups", perUserRateLimit("groups_create", {
         isPrayerCircle: isCircle,
         intention: isCircle ? (parsed.data.intention?.trim() ?? null) : null,
         circleDescription: isCircle ? (parsed.data.circleDescription?.trim() || null) : null,
-        focus: isContemplation ? "contemplation" : null,
+        focus: isContemplation ? "contemplation" : (parsed.data.focus === "jardin" ? "jardin" : null),
         contemplationGoalMinutes: isContemplation ? (parsed.data.contemplationGoalMinutes ?? 20) : null,
         createdByUserId: user.id,
       }).returning();

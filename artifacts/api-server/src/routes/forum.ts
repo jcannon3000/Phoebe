@@ -37,11 +37,14 @@ function isAdminRole(role: string): boolean {
   return role === "admin" || role === "hidden_admin";
 }
 
-// Resolve a group by slug + verify the caller is a fully-joined member.
+// Resolve a group by slug + verify (a) it's an El Jardín group and (b) the
+// caller is a fully-joined member. The forum is a Jardín-only feature — it
+// must NOT exist on ordinary Phoebe communities — so a non-jardin group
+// resolves to null here (the handlers then 403, i.e. "no forum here").
 // Returns { group, member } so callers can also inspect the role.
 async function requireMember(groupSlug: string, userId: number) {
   const [group] = await db.select().from(groupsTable).where(eq(groupsTable.slug, groupSlug));
-  if (!group) return null;
+  if (!group || group.focus !== "jardin") return null;
   const [member] = await db.select().from(groupMembersTable)
     .where(and(eq(groupMembersTable.groupId, group.id), eq(groupMembersTable.userId, userId)));
   if (!member || !member.joinedAt) return null;

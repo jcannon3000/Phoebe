@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { isJardinHost } from "@/lib/jardinMode";
 
 export default function CommunityNewPage() {
   const { t } = useTranslation();
@@ -57,7 +58,9 @@ export default function CommunityNewPage() {
       isPrayerCircle,
       intention: isPrayerCircle ? intention.trim() : undefined,
       circleDescription: isPrayerCircle && circleDescription.trim() ? circleDescription.trim() : undefined,
-      focus: isContemplation ? "contemplation" : undefined,
+      // Groups created in the El Jardín portal are tagged jardin so they get
+      // the forum (a Jardín-only feature); contemplation flavor wins if set.
+      focus: isContemplation ? "contemplation" : (isJardinHost() ? "jardin" : undefined),
       contemplationGoalMinutes: isContemplation ? contemplationGoalMinutes : undefined,
     }),
     onSuccess: (data: any) => {
