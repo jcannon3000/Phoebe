@@ -101,8 +101,12 @@ export function useWidgetSync(): void {
 
   useEffect(() => {
     if (!enabled) return;
+    // Push even before office-history lands (or if it's empty) so the widget
+    // always gets the full hero payload instead of being stuck on the bare
+    // "Time to pray" no-data fallback. With no days yet, both offices read as
+    // undone → the hero resolves to the morning office, which the next data
+    // tick corrects.
     const days = officeQ.data?.days ?? [];
-    if (days.length === 0) return;
 
     const today = days.find((d) => d.ymd === ymd(new Date())) ?? days[days.length - 1];
     const morningDone = !!today?.morning;
