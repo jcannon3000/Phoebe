@@ -307,7 +307,21 @@ const frontendDist = path.resolve(__dirname, "../../mymonastery/dist/public");
 if (fs.existsSync(frontendDist)) {
   // Hashed assets get long cache; everything else (index.html) must revalidate
   app.use("/assets", express.static(path.join(frontendDist, "assets"), { maxAge: "1y", immutable: true }));
-  app.use(express.static(frontendDist, { maxAge: 0 }));
+  app.use(express.static(frontendDist, {
+    maxAge: 0,
+    // `maxAge: 0` emits `Cache-Control: public, max-age=0`, which Railway's
+    // edge still caches — so a directory request for "/" (served as
+    // index.html here, before the SPA catch-all below) kept serving the
+    // PREVIOUS build's shell for minutes after a deploy, pinning users to
+    // stale hashed chunks. Force the shell HTML and the service worker to
+    // revalidate every time so a new build is picked up immediately. (Deep
+    // links like /dashboard already get this via the catch-all's header.)
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith(".html") || filePath.endsWith("service-worker.js")) {
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      }
+    },
+  }));
 
   // Route-specific OG meta for link previews (iMessage, Slack, etc.).
   // Preview crawlers don't run JS, so they only see whatever HTML we ship
