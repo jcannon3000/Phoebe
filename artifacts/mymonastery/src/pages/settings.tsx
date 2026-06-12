@@ -1699,64 +1699,56 @@ export default function SettingsPage() {
           </p>
         </div>
 
-        {/* ── Account ── */}
-        <SectionHeader label={t("settings.account")} />
-        <AccountSection />
+        {/* Each section is wrapped in a uniform mb-8 so the gaps between them
+            are even — no ad-hoc trailing spacers. */}
 
-        {/* ── Default prayer depth ──
-            Picker for which of the three depths the home-screen
-            "Begin prayer" CTA jumps into. Sits right above the
-            reminder settings since both groups read as "how you
-            engage with the office." */}
-        <DefaultPrayerLevelSettings />
+        {/* ── Account ── */}
+        <div className="mb-8">
+          <SectionHeader label={t("settings.account")} />
+          <AccountSection />
+        </div>
+
+        {/* ── Default prayer depth — what the home "Begin prayer" CTA opens. ── */}
+        <div className="mb-8">
+          <DefaultPrayerLevelSettings />
+        </div>
 
         {/* ── Office reminders ── */}
-        <OfficeReminderSettings />
-
-        {/* The office close-up extras (after-the-office reflection,
-            gratitude slide), the audio tradition, and News & Actions now
-            live in the office customizer ("customize slideshow") reached
-            from the pill above — not duplicated here. */}
+        <div className="mb-8">
+          <OfficeReminderSettings />
+        </div>
 
         {/* ── Language ── */}
-        <LanguageSettings />
+        <div className="mb-8">
+          <LanguageSettings />
+        </div>
 
-        {/* ── Offices-only extras ──
-            Two tier-specific toggles that only render for the
-            offices-only access tier:
-              • Daily feed reminder — opt-in once-a-day push
-                pointing at the user's subscribed prayer feed.
-              • Hide offices on home — collapses the Daily Office
-                card on the offices-only home so the screen reads
-                as "just my feed" for users who don't pray the
-                office. Both preferences are read by the offices-
-                only home (parish-dashboard) on next paint. */}
-        {user.accessTier === "offices-only" && <OfficesOnlyExtras />}
+        {/* ── Offices-only extras (tier-gated) ── */}
+        {user.accessTier === "offices-only" && (
+          <div className="mb-8">
+            <OfficesOnlyExtras />
+          </div>
+        )}
 
-        {/* ── Phone number — used for contact discovery so people who
-              already have you in their address book can find you on
-              Phoebe. Verification (SMS) isn't live yet, so the form
-              warns the user to enter their own real number only. Lives
-              lower in the page (below the prayer-related settings)
-              since it's a quieter, optional account detail. */}
+        {/* ── Phone number — quieter, optional account detail. ── */}
         <div className="mb-8">
           <PhoneSection />
         </div>
 
         {/* ── Muted People ── */}
-        <MutedPeople />
-        <div className="mb-8" />
+        <div className="mb-8">
+          <MutedPeople />
+        </div>
 
-        {/* ── Notifications master switch — the pause-everything toggle.
-            Kept at the bottom of the settings (below the other prefs,
-            above the account actions) per direction. ── */}
-        <NotificationsSettings />
-        <div className="mb-8" />
+        {/* ── Notifications master switch ── */}
+        <div className="mb-8">
+          <NotificationsSettings />
+        </div>
 
-        {/* ── Email opt-in/out — the email-channel twin of the notifications
-            switch + the Unsubscribe link in every bulk email. ── */}
-        <EmailSettings />
-        <div className="mb-8" />
+        {/* ── Email opt-in/out ── */}
+        <div className="mb-8">
+          <EmailSettings />
+        </div>
 
         {/* ── Sign out ── */}
         <button
