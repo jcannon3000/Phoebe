@@ -178,7 +178,10 @@ function PracticeCard({
   hero?: boolean;
 }) {
   const waiting = !!later && !done;
-  const useCycle = !!blurbCycle && blurbCycle.length > 1 && !done;
+  // Cycle the subtitle whenever a cycle is supplied — including on a DONE card
+  // (so the reflection keeps flipping its publication name ↔ today's title even
+  // after it's read). Cards that shouldn't cycle when done simply pass no cycle.
+  const useCycle = !!blurbCycle && blurbCycle.length > 1;
 
   // Hero layout — a bigger, more prominent card for the next anchor, whatever
   // practice it happens to be.
@@ -342,8 +345,10 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
       key: "reflect", emoji: "📖", rgb: "96,141,209", done: reflectDone, href: "/menu/reflections",
       title: t("rhythm.card_reflect", { defaultValue: "Today's reflection" }),
       blurb: reflectionSubtitle,
-      // CAC with a scraped title: flip between the publication name and today's title.
-      blurbCycle: (!reflectDone && reflectionSource === "cac" && cacTitle) ? [PUBLICATION_NAME.cac, cacTitle] : undefined,
+      // CAC with a scraped title: flip between the publication name and today's
+      // title — kept even once read, so the second line always carries the
+      // day's reflection title.
+      blurbCycle: (reflectionSource === "cac" && cacTitle) ? [PUBLICATION_NAME.cac, cacTitle] : undefined,
       // CAC opens the meditation straight in the in-app browser (it can't be
       // iframed), marking it read — rather than routing to the reflections list.
       onClick: reflectionSource === "cac"
@@ -442,7 +447,7 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
         // more breathing room.
         <div className={
           !(upcoming.length > 0 || officeHero) ? ""
-            : upcoming.length > 0 ? "mt-8" : "mt-20"
+            : upcoming.length > 0 ? "mt-4" : "mt-20"
         }>
           {sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}
           <div className="flex flex-col gap-2">{completed.map((c) => renderCard(c))}</div>

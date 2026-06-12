@@ -49,10 +49,10 @@ const HOME_LAYOUT_VERSION = 2;
 const SIDES = ["morning", "evening"] as const;
 
 type PrayChoice = "community" | "devotion" | "offices";
-type Step = "pray" | "listen" | "learn" | "extras" | "done";
+type Step = "when" | "pray" | "listen" | "learn" | "extras" | "done";
 
-// The flow's four input slides (Pray → Contemplation → Learn → Add to your day).
-const TOTAL_STEPS = 4;
+// The flow's input slides (When → Pray → Contemplation → Learn → Add to your day).
+const TOTAL_STEPS = 5;
 // Contemplation goal options — a single dropdown in 5-minute increments.
 const GOAL_OPTIONS = Array.from({ length: 18 }, (_, i) => (i + 1) * 5); // 5…90
 
@@ -118,7 +118,22 @@ export default function WayOfLoveRuleFlow({
   const { t } = useTranslation();
   const qc = useQueryClient();
   const { user } = useAuth();
-  const [step, setStep] = useState<Step>("pray");
+  const [step, setStep] = useState<Step>("when");
+  // When they want to pray — morning, evening, or both. Seeded from whichever
+  // sides already have a per-side level; defaults to both on first run. At least
+  // one side stays selected.
+  const [sides, setSides] = useState<{ morning: boolean; evening: boolean }>(() => {
+    const m = getSideLevel("morning");
+    const e = getSideLevel("evening");
+    if (m || e) return { morning: !!m, evening: !!e };
+    return { morning: true, evening: true };
+  });
+  const toggleSide = (s: "morning" | "evening") => {
+    setSides((prev) => {
+      const next = { ...prev, [s]: !prev[s] };
+      return next.morning || next.evening ? next : prev; // keep at least one
+    });
+  };
   // Preload from the user's current settings so Customize reflects what they
   // already chose, not the first-run defaults. localStorage per-side levels +
   // reflection + minutes are instant; the server office-prefs (the global
@@ -208,9 +223,15 @@ export default function WayOfLoveRuleFlow({
     const level = PRAY_LEVEL[pray];
     const primary = newsletters[0] ?? "fdd"; // single per-side source (close slide)
     for (const side of SIDES) {
-      setSideLevel(side, level);
-      setSideReflection(side, primary);
-      if (goalMin > 0) setSideMinutes(side, goalMin);
+      if (sides[side]) {
+        setSideLevel(side, level);
+        setSideReflection(side, primary);
+        if (goalMin > 0) setSideMinutes(side, goalMin);
+      } else {
+        // Not part of their chosen rhythm — clear the level so it isn't a
+        // programmed office for that side.
+        setSideLevel(side, "ask");
+      }
     }
     setReflectionSource(primary);
     apiRequest("PUT", "/api/me/office-prefs", {
@@ -220,7 +241,8 @@ export default function WayOfLoveRuleFlow({
       // Turn the morning prayer reminder ON (a non-"none" pref is what makes
       // the server's daily office-reminder push fire) and stamp the chosen
       // time. Building the habit means setting up the nudge, not just the prefs.
-      morning: PRAY_REMINDER_PREF[pray],
+      morning: sides.morning ? PRAY_REMINDER_PREF[pray] : "none",
+      evening: sides.evening ? PRAY_REMINDER_PREF[pray] : "none",
       morningTime: /^\d{2}:\d{2}$/.test(reminderTime) ? reminderTime : DEFAULT_REMINDER_TIME,
     }).catch(() => {/* best-effort */});
     // Ask the native shell to register for push (request iOS permission if it
@@ -329,7 +351,7 @@ export default function WayOfLoveRuleFlow({
     return shell(
       <>
         {backRow(() => setStep("pray"))}
-        {stepHeader(2, t("wol_rule.listen_eyebrow", { defaultValue: "Return" }), t("wol_rule.listen_title", { defaultValue: "Contemplation" }))}
+        {stepHeader(3, t("wol_rule.listen_eyebrow", { defaultValue: "Return" }), t("wol_rule.listen_title", { defaultValue: "Contemplation" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 0" }}>
           {t("wol_rule.listen_body", { defaultValue: "St. Benedict's Rule calls us back to God — a daily return. Take a few minutes a day to sit in silence before God, open to what God might be speaking and to what's on your own heart. A return to God's love." })}
         </p>
@@ -355,12 +377,30 @@ export default function WayOfLoveRuleFlow({
     );
   }
 
-  // ── Step 1 — Pray (how you pray the daily office) ─────────────────────────
-  if (step === "pray") {
+  // ── Step 1 — When (which offices: morning, evening, or both) ──────────────
+  if (step === "when") {
     return shell(
       <>
         {backRow(onBack)}
-        {stepHeader(1, t("wol_rule.pray_eyebrow", { defaultValue: "Pray" }), t("wol_rule.pray_title", { defaultValue: "Pray" }))}
+        {stepHeader(1, t("wol_rule.when_eyebrow", { defaultValue: "Pray" }), t("wol_rule.when_title", { defaultValue: "When" }))}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
+          {t("wol_rule.when_body", { defaultValue: "When would you like to pray? Choose one or both." })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {choiceRow(sides.morning, t("wol_rule.when_morning", { defaultValue: "Morning" }), t("wol_rule.when_morning_sub", { defaultValue: "Begin the day with prayer." }), () => toggleSide("morning"))}
+          {choiceRow(sides.evening, t("wol_rule.when_evening", { defaultValue: "Evening" }), t("wol_rule.when_evening_sub", { defaultValue: "Mark the day's end with prayer." }), () => toggleSide("evening"))}
+        </div>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => setStep("pray"))}
+      </>,
+    );
+  }
+
+  // ── Step 2 — Pray (how you pray the daily office) ─────────────────────────
+  if (step === "pray") {
+    return shell(
+      <>
+        {backRow(() => setStep("when"))}
+        {stepHeader(2, t("wol_rule.pray_eyebrow", { defaultValue: "Pray" }), t("wol_rule.pray_title", { defaultValue: "Pray" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
           {t("wol_rule.pray_body", { defaultValue: "How will you pray each day?" })}
         </p>
@@ -392,7 +432,7 @@ export default function WayOfLoveRuleFlow({
     return shell(
       <>
         {backRow(() => setStep("listen"))}
-        {stepHeader(3, t("wol_rule.learn_eyebrow", { defaultValue: "Learn" }), t("wol_rule.learn_title", { defaultValue: "Learn" }))}
+        {stepHeader(4, t("wol_rule.learn_eyebrow", { defaultValue: "Learn" }), t("wol_rule.learn_title", { defaultValue: "Learn" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "16px 0 4px" }}>
           {t("wol_rule.learn_body", { defaultValue: "Choose the daily reflections you'd like to read." })}
         </p>
@@ -412,7 +452,7 @@ export default function WayOfLoveRuleFlow({
     return shell(
       <>
         {backRow(() => setStep("learn"))}
-        {stepHeader(4, t("wol_rule.extras_eyebrow", { defaultValue: "Add to your day" }), t("wol_rule.extras_title", { defaultValue: "Add to your day" }))}
+        {stepHeader(5, t("wol_rule.extras_eyebrow", { defaultValue: "Add to your day" }), t("wol_rule.extras_title", { defaultValue: "Add to your day" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "16px 0 4px" }}>
           {t("wol_rule.extras_body", { defaultValue: "Optional practices you can keep each day." })}
         </p>

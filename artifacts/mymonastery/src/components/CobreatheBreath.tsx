@@ -275,45 +275,9 @@ export function CobreatheBreath({
         globeRef.current.style.transform = `translate(-50%, -50%) scale(${(0.9 + pAnim * 0.24).toFixed(4)})`;
         globeRef.current.style.opacity = String(0.6 + pAnim * 0.4);
       }
-      // The plant spiral blooms OUTWARD on the inhale and draws back IN on the
-      // exhale — radial only, centred on the globe.
-      if (plantsRef.current) {
-        plantsRef.current.style.transform = `translate(-50%, -50%) scale(${(0.56 + pAnim * 0.62).toFixed(4)})`;
-        // Fade the whole spiral fully to 0 at the bottom of each breath, with a
-        // small dead-zone around the cycle boundary where the cast is re-picked
-        // — so the emoji swap happens while invisible and never reads as a hard
-        // "switch". Below ~8% of the inhale the spiral is fully transparent.
-        plantsRef.current.style.opacity = (Math.max(0, pAnim - 0.08) * 0.92).toFixed(3);
-      }
-      // Per-particle keyframe roll: each particle holds its emoji, then near the
-      // start of its cycle flips through two keyframes (k1, k2) into its next
-      // landing emoji. Staggered periods/offsets keep the whole spiral rolling
-      // somewhere at all times, so it reads as fluid motion. The container
-      // opacity above still breathes the whole spiral in and out.
-      {
-        const KF = 120; // ms per keyframe — k1 [0,120), k2 [120,240), land 240+
-        const meta = partMeta.current;
-        for (let i = 0; i < meta.length; i++) {
-          const m = meta[i];
-          const lp = ((now + m.offset) % m.period) / m.period; // 0..1
-          // Cycle wrapped → choose this roll's two keyframes + landing emoji.
-          if (lp < m.lastPhase) {
-            m.k1 = pickOneEmoji();
-            m.k2 = pickOneEmoji();
-            let f = pickOneEmoji();
-            if (f === m.final) f = pickOneEmoji(); // avoid landing on a repeat
-            m.final = f;
-          }
-          m.lastPhase = lp;
-          const elapsed = lp * m.period;
-          const show = elapsed < KF ? m.k1 : elapsed < KF * 2 ? m.k2 : m.final;
-          if (show !== m.emoji) {
-            m.emoji = show;
-            const sp = partSpanRefs.current[i];
-            if (sp) sp.textContent = show;
-          }
-        }
-      }
+      // The emoji spiral itself stays STILL — per the design, only the gradient
+      // glow behind it breathes (the circle + halo above). The particles hold
+      // their positions and their emoji; nothing scales, fades, or rolls.
       // The phase word breathes a hair with the circle (only once synced).
       if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;
       raf = requestAnimationFrame(loop);
