@@ -1,5 +1,7 @@
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NetworkBanner } from "@/components/NetworkBanner";
@@ -342,6 +344,10 @@ const queryClient = new QueryClient({
       // immediately, and call sites that need real-time data set their own
       // shorter staleTime / refetchInterval (those override this default).
       staleTime: 30_000,
+      // Keep cached data around for a day so the persisted "daily progress"
+      // queries below can be restored on a cold boot (gcTime must outlive the
+      // persist maxAge or the restored entries get evicted immediately).
+      gcTime: 24 * 60 * 60 * 1000,
     },
     mutations: {
       // Don't auto-retry mutations — they can be non-idempotent. The
@@ -353,6 +359,37 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Persist a SMALL set of "daily progress" queries to localStorage so the home
+// renders the user's rhythm INSTANTLY on a cold boot (from the last session)
+// instead of a blank/loading state, then refreshes in the background. Scoped to
+// these light keys so we never bloat localStorage with large payloads (bible
+// text, feeds, etc.).
+const PERSISTED_QUERY_KEYS = [
+  "/api/me/office-history-week",
+  "/api/me/prayer-days",
+  "/api/me/contemplation-stats",
+  "/api/me/reflections-read",
+  "/api/me/office-prefs",
+  "/api/prayer-streak",
+  "/api/me/garden-week",
+  "/api/cac/today-meta",
+  "/api/prayer-requests",
+];
+const rqPersister = createSyncStoragePersister({
+  storage: window.localStorage,
+  key: "phoebe:rq-daily",
+  throttleTime: 1000,
+});
+const rqPersistOptions = {
+  persister: rqPersister,
+  maxAge: 24 * 60 * 60 * 1000,
+  dehydrateOptions: {
+    shouldDehydrateQuery: (q: { state: { status: string }; queryKey: readonly unknown[] }) =>
+      q.state.status === "success" &&
+      PERSISTED_QUERY_KEYS.some((k) => String(q.queryKey?.[0] ?? "").startsWith(k)),
+  },
+};
 
 // Invalidate every React Query cache when the user taps an iOS push
 // notification. The native shell fires `phoebe:notification-tap` from
@@ -912,7 +949,7 @@ function NativeJournalOpener() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <PersistQueryClientProvider client={queryClient} persistOptions={rqPersistOptions}>
       <TooltipProvider>
         <ErrorBoundary>
           <GlobalButtonHaptics />
@@ -955,7 +992,7 @@ function App() {
           <Toaster />
         </ErrorBoundary>
       </TooltipProvider>
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
 
