@@ -41,13 +41,17 @@ migrate()
       logger.info({ port }, "Server listening");
     });
 
-    // Scheduler ownership: see the matching comment in app.ts. The
-    // hourly goal-cleanup + 10-min prayer-held scanner now live in
-    // the worker service. We keep the in-web boot path for local dev
-    // (single-process) and as a safety hatch when the worker is down.
+    // Scheduler ownership: see the matching comment in app.ts. The hourly
+    // goal-cleanup + 10-min prayer-held scanner can also live in a worker
+    // service, but we now run them in the web process BY DEFAULT (opt-out via
+    // RUN_SCHEDULERS_IN_WEB="false") so they fire even when no worker service
+    // is deployed — which was silently dropping the "you've been held in
+    // prayer today" pushes. Double-running alongside a worker is safe: the
+    // scanner claims rows atomically (WHERE sent_at IS NULL) and the cleanup /
+    // sync jobs are idempotent.
     const runInWeb =
       process.env["DISABLE_BELL_SCHEDULER"] !== "true" &&
-      process.env["RUN_SCHEDULERS_IN_WEB"] === "true";
+      process.env["RUN_SCHEDULERS_IN_WEB"] !== "false";
     if (runInWeb) {
       // Hourly job: cancel recurring calendar events for practices whose
       // goal was reached more than 2 days ago and never renewed.
