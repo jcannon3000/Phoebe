@@ -3624,6 +3624,7 @@ export const es: Translations = {
     tab_home: "Inicio",
     tab_gatherings: "Encuentros",
     tab_members: "Miembros",
+    tab_prayer: "Muro de oración",
     tab_announcements: "Anuncios",
     // New-arrival popup.
     new_arrivals: "{{count}} nuevas llegadas",

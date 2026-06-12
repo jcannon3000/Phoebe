@@ -1462,16 +1462,29 @@ export default function CommunityDetailPage() {
     enabled: !!user && !!slug,
   });
 
+  // El Jardín groups are a sealed carve-out: they contain ONLY the Jardín
+  // group features — Forum + Streak Leaderboard (cards above the tabs), shared
+  // studies (posted into the forum), shared Prayer Requests (the "prayer"
+  // tab), and Members. Every general community surface (home feed, gatherings,
+  // announcements, prayer-circle intentions) is hidden. We constrain the active
+  // tab to the Jardín set and drive every "is this section active?" gate off
+  // `effectiveTab`, so the general queries never fire and the general content
+  // never renders for a Jardín group.
+  const isJardinGroup = groupData?.group?.focus === "jardin";
+  const effectiveTab = isJardinGroup
+    ? (activeTab === "prayer" || activeTab === "members" ? activeTab : "members")
+    : activeTab;
+
   const { data: prayerData } = useQuery<{ requests: PrayerRequest[] }>({
     queryKey: ["/api/groups", slug, "prayer-requests"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-requests`),
-    enabled: !!user && !!slug && activeTab === "prayer",
+    enabled: !!user && !!slug && effectiveTab === "prayer",
   });
 
   const { data: practicesData } = useQuery<{ practices: Practice[] }>({
     queryKey: ["/api/groups", slug, "practices"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/practices`),
-    enabled: !!user && !!slug && activeTab === "practices",
+    enabled: !!user && !!slug && effectiveTab === "practices",
   });
 
   const { data: gatheringsData } = useQuery<{ gatherings: Gathering[] }>({
@@ -1479,13 +1492,13 @@ export default function CommunityDetailPage() {
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/gatherings`),
     // Home tab surfaces a gatherings preview, so keep the fetch enabled
     // for both tabs so switching tabs stays instant.
-    enabled: !!user && !!slug && (activeTab === "gatherings" || activeTab === "home"),
+    enabled: !!user && !!slug && (effectiveTab === "gatherings" || effectiveTab === "home"),
   });
 
   const { data: announcementsData } = useQuery<{ announcements: Announcement[] }>({
     queryKey: ["/api/groups", slug, "announcements"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/announcements`),
-    enabled: !!user && !!slug && (activeTab === "announcements" || activeTab === "home"),
+    enabled: !!user && !!slug && (effectiveTab === "announcements" || effectiveTab === "home"),
   });
 
   // Prayer feeds bound to this community. Each row is one feed plus
@@ -1505,7 +1518,7 @@ export default function CommunityDetailPage() {
   }>({
     queryKey: ["/api/groups", slug, "prayer-feeds"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-feeds`),
-    enabled: !!user && !!slug && activeTab === "home",
+    enabled: !!user && !!slug && effectiveTab === "home",
   });
   const boundFeeds = feedsData?.feeds ?? [];
 
@@ -1515,7 +1528,7 @@ export default function CommunityDetailPage() {
   const { data: momentsData } = useQuery<{ moments: CommunityMoment[] }>({
     queryKey: ["/api/moments"],
     queryFn: () => apiRequest("GET", "/api/moments"),
-    enabled: !!user && activeTab === "home",
+    enabled: !!user && effectiveTab === "home",
   });
   // Community home is scoped to THIS community's members only — the
   // backend endpoint filters to (group_id = this group) OR (owner is a
@@ -1526,7 +1539,7 @@ export default function CommunityDetailPage() {
   const { data: homePrayerData } = useQuery<{ requests: PrayerRequest[] }>({
     queryKey: ["/api/groups", slug, "prayer-requests"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/prayer-requests`),
-    enabled: !!user && !!slug && activeTab === "home",
+    enabled: !!user && !!slug && effectiveTab === "home",
   });
 
   // Today's prayer focus — only fetched once we know this is a circle group.
@@ -1536,7 +1549,7 @@ export default function CommunityDetailPage() {
   const { data: focusData } = useQuery<{ date: string | null; focus: FocusEntry[] }>({
     queryKey: ["/api/groups", slug, "focus"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/focus`),
-    enabled: !!user && !!slug && isCircle && activeTab === "home",
+    enabled: !!user && !!slug && isCircle && effectiveTab === "home",
   });
 
   // Pull the service schedule at the parent level too (React Query
@@ -1548,7 +1561,7 @@ export default function CommunityDetailPage() {
   const { data: serviceScheduleData } = useQuery<{ schedule: ServiceScheduleRecord | null; canEdit: boolean }>({
     queryKey: ["/api/groups", slug, "service-schedule"],
     queryFn: () => apiRequest("GET", `/api/groups/${slug}/service-schedule`),
-    enabled: !!user && !!slug && activeTab === "home",
+    enabled: !!user && !!slug && effectiveTab === "home",
   });
   const hasServiceSchedule = !!serviceScheduleData?.schedule && serviceScheduleData.schedule.times.length > 0;
 
@@ -1633,6 +1646,9 @@ export default function CommunityDetailPage() {
     mutationFn: (memberId: number) => apiRequest("DELETE", `/api/groups/${slug}/members/${memberId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/groups", slug] });
+      // Leaving a Jardín group may lift the live Jardín seal — refetch /me so
+      // the app shell reverts to the full app once they leave their last one.
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     },
   });
 
@@ -1743,12 +1759,20 @@ export default function CommunityDetailPage() {
   // unlocks the direct-add form on the Members tab.
   const canInviteByEmail = isAdmin && isBeta;
 
-  const tabs = [
-    { key: "home" as const, label: t("community_detail.tab_home"), emoji: "🏡" },
-    { key: "gatherings" as const, label: t("community_detail.tab_gatherings"), emoji: "🤝🏽" },
-    { key: "members" as const, label: t("community_detail.tab_members"), emoji: "👥" },
-    { key: "announcements" as const, label: t("community_detail.tab_announcements"), emoji: "📮" },
-  ];
+  // Jardín groups carry only the Prayer Wall (shared prayer requests) + Members
+  // tabs — Forum + Leaderboard live as cards above, and the general community
+  // tabs (home / gatherings / announcements) don't apply.
+  const tabs = isJardinGroup
+    ? [
+        { key: "prayer" as const, label: t("community_detail.tab_prayer", { defaultValue: "Prayer Wall" }), emoji: "🙏🏽" },
+        { key: "members" as const, label: t("community_detail.tab_members"), emoji: "👥" },
+      ]
+    : [
+        { key: "home" as const, label: t("community_detail.tab_home"), emoji: "🏡" },
+        { key: "gatherings" as const, label: t("community_detail.tab_gatherings"), emoji: "🤝🏽" },
+        { key: "members" as const, label: t("community_detail.tab_members"), emoji: "👥" },
+        { key: "announcements" as const, label: t("community_detail.tab_announcements"), emoji: "📮" },
+      ];
 
   return (
     <Layout>
@@ -1812,7 +1836,7 @@ export default function CommunityDetailPage() {
         {/* Admin-only — "How can I pray for you?" community prompt.
             Sends a push + email to every joined member; rate-limited
             to once per 7 days server-side. Hidden for non-admins. */}
-        {isAdmin && <PrayerInviteCard slug={slug} />}
+        {!isJardinGroup && isAdmin && <PrayerInviteCard slug={slug} />}
 
         {/* Beta-only — daily reflection entry (CAC / Forward Day by
             Day). Renders for every joined member of a beta-gated
@@ -1821,11 +1845,11 @@ export default function CommunityDetailPage() {
             Hidden for admins, who manage these surfaces from settings
             and don't want the member-facing reflection cards cluttering
             their admin view. */}
-        {rawIsBeta && !isAdmin && <ReflectionEntryCard slug={slug} />}
+        {!isJardinGroup && rawIsBeta && !isAdmin && <ReflectionEntryCard slug={slug} />}
 
         {/* Beta-only — Sunday-service reflection entry. Mirrors the
             daily card pattern. Also hidden for admins (see above). */}
-        {rawIsBeta && !isAdmin && <SundayReflectionEntryCard slug={slug} />}
+        {!isJardinGroup && rawIsBeta && !isAdmin && <SundayReflectionEntryCard slug={slug} />}
 
         {/* Group forum — an El Jardín-only feature. Only El Jardín groups
             (focus === "jardin") get a forum; ordinary communities don't. */}
@@ -1876,7 +1900,7 @@ export default function CommunityDetailPage() {
             closing note marks the whole stack as circle-beta. Legacy circles
             whose intentions still live on groups.intention are rendered as
             one synthetic card (id=0 from the server fallback). */}
-        {group.isPrayerCircle && (groupData.intentions?.length ?? 0) > 0 && (
+        {!isJardinGroup && group.isPrayerCircle && (groupData.intentions?.length ?? 0) > 0 && (
           <div className="mb-5">
             <p
               className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2 px-1"
@@ -1922,7 +1946,7 @@ export default function CommunityDetailPage() {
             when someone has joined or posted a prayer request since the last
             time this admin visited. Dismissing acknowledges the events
             server-side so they won't reappear on any device. */}
-        {isAdmin && !notifsDismissed && adminNotifs &&
+        {!isJardinGroup && isAdmin && !notifsDismissed && adminNotifs &&
           (adminNotifs.newMembers.length > 0 || adminNotifs.newPrayers.length > 0) && (() => {
           const newMembers = adminNotifs.newMembers;
           const newPrayers = adminNotifs.newPrayers;
@@ -2207,9 +2231,9 @@ export default function CommunityDetailPage() {
                 onClick={() => setActiveTab(tab.key)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0"
                 style={{
-                  background: activeTab === tab.key ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.1)",
-                  color: activeTab === tab.key ? "#F0EDE6" : "#8FAF96",
-                  border: `1px solid ${activeTab === tab.key ? "rgba(46,107,64,0.55)" : "rgba(46,107,64,0.2)"}`,
+                  background: effectiveTab === tab.key ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.1)",
+                  color: effectiveTab === tab.key ? "#F0EDE6" : "#8FAF96",
+                  border: `1px solid ${effectiveTab === tab.key ? "rgba(46,107,64,0.55)" : "rgba(46,107,64,0.2)"}`,
                 }}
               >
                 <span>{tab.emoji}</span> {tab.label}
@@ -2226,7 +2250,7 @@ export default function CommunityDetailPage() {
              Before this filter was widened, adding a second community
              to an intercession silently failed to show up on that
              community's home tab. */}
-        {activeTab === "home" && (() => {
+        {effectiveTab === "home" && (() => {
           // Contemplation communities render a dedicated Home: a shared
           // contemplation goal + the CAC meditation the community reflects
           // on together — not the office/practice feed below.
@@ -2782,7 +2806,7 @@ export default function CommunityDetailPage() {
         })()}
 
         {/* ─── Prayer Wall ─── */}
-        {activeTab === "prayer" && (
+        {effectiveTab === "prayer" && (
           <div>
             {/* New prayer input */}
             <div className="flex gap-2 mb-5">
@@ -2869,7 +2893,7 @@ export default function CommunityDetailPage() {
         )}
 
         {/* ─── Practices ─── */}
-        {activeTab === "practices" && (
+        {effectiveTab === "practices" && (
           <div>
             {isAdmin && (
               <Link href="/moment/new" className="block mb-4">
@@ -2901,7 +2925,7 @@ export default function CommunityDetailPage() {
         )}
 
         {/* ─── Gatherings ─── */}
-        {activeTab === "gatherings" && (
+        {effectiveTab === "gatherings" && (
           <div>
             <ServicesSection slug={slug!} isAdmin={isAdmin} />
             {isAdmin && (
@@ -2926,7 +2950,7 @@ export default function CommunityDetailPage() {
         )}
 
         {/* ─── Announcements ─── */}
-        {activeTab === "announcements" && (
+        {effectiveTab === "announcements" && (
           <div>
             {isAdmin && !showAnnouncementForm && (
               <button
@@ -3049,7 +3073,7 @@ export default function CommunityDetailPage() {
         )}
 
         {/* ─── Members ─── */}
-        {activeTab === "members" && (() => {
+        {effectiveTab === "members" && (() => {
           // "Recently joined" = within the last 7 calendar days. We deliberately
           // use a calendar-day diff so the badge flips off at local midnight
           // on day 8, not 168 hours after the exact join timestamp.

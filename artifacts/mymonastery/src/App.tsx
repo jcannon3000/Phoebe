@@ -298,7 +298,7 @@ const ParishIntercessionsPage = lazy(() => import("./pages/parish-intercessions"
 import { useAuth as useAuthForGate } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { PHOEBE_PARISH_ENABLED } from "@/lib/parishFlag";
-import { isJardinHost, isJardinPath } from "@/lib/jardinMode";
+import { isJardinPath, isJardinSealed } from "@/lib/jardinMode";
 
 // Climate is now just a prayer feed (slug: phoebe-climate). The old
 // /climate*, /climate/admin, /climate/parish routes redirect to the
@@ -432,7 +432,7 @@ function JardinHostGate() {
   const [location, setLocation] = useLocation();
   const { user, isLoading } = useAuthForGate();
   useEffect(() => {
-    const portal = isJardinHost() || isJardinPath() || !!user?.jardinOnly;
+    const portal = isJardinPath() || isJardinSealed(user);
     if (!portal) return; // main app untouched
     if (isLoading) return;
     if (!user) {

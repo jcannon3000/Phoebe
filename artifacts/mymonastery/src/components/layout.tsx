@@ -12,7 +12,7 @@ import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
 import { useRhythmState } from "@/hooks/useRhythmState";
-import { isJardinHost } from "@/lib/jardinMode";
+import { isJardinSealed } from "@/lib/jardinMode";
 import { useHealthMindfulToday, useSyncHealthMinutes } from "@/lib/appleHealth";
 
 // ─── Drawer building blocks ─────────────────────────────────────────────────
@@ -171,12 +171,13 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   // The full app's content gates already block the routes server-side;
   // this is the visual mirror so the menu doesn't dangle dead links.
   const officesOnly = user?.accessTier === "offices-only";
-  // Sealed El Jardín shell: a jardinOnly account (or the eljardin subdomain)
-  // sees only the Jardín experience — the drawer hides every non-Jardín
-  // surface (Communities, Prayer list, BCP, Practices, Letters, Parish…),
-  // leaving El Jardín + Settings + Sign out. (A dual user who merely enrolled
-  // in Jardín keeps the full app, so we gate on jardinOnly, not jardinEnrolled.)
-  const jardinShell = isJardinHost() || !!user?.jardinOnly;
+  // Sealed El Jardín shell: the user sees only the Jardín experience — the
+  // drawer hides every non-Jardín surface (Communities, Prayer list, BCP,
+  // Practices, Letters, Parish…), leaving El Jardín + Settings + Sign out.
+  // Sealed for the eljardin subdomain, a jardinOnly account, OR a Jardín-origin
+  // (enrolled) account that has joined a Jardín group — that last seal is live
+  // and lifts when they leave. See isJardinSealed.
+  const jardinShell = isJardinSealed(user);
 
   // The drawer is organized into collapsible sections (Communities,
   // Offices, Practices, Resources) plus a footer. These flags gate the
@@ -778,7 +779,7 @@ export function Layout({ children }: { children: ReactNode }) {
   const officesOnly = user?.accessTier === "offices-only";
   // Jardín shell — hide Phoebe's daily-progress pill (the office/reflect/
   // silence rhythm) for portal accounts; it's not part of the Jardín day.
-  const headerJardinShell = isJardinHost() || !!user?.jardinOnly;
+  const headerJardinShell = isJardinSealed(user);
 
   // Best-effort sync of today's external Apple Health mindful minutes to the
   // server from the app shell (so it runs on nearly every page), giving the

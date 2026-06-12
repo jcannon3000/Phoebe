@@ -3709,6 +3709,7 @@ export const en = {
     tab_home: "Home",
     tab_gatherings: "Gatherings",
     tab_members: "Members",
+    tab_prayer: "Prayer Wall",
     tab_announcements: "Announcements",
     // New-arrival popup.
     new_arrivals: "{{count}} new arrivals",

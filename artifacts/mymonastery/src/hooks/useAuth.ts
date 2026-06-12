@@ -39,6 +39,9 @@ export interface AuthUser {
   // see only the Jardín experience; jardinEnrolled is any Jardín user.
   jardinEnrolled: boolean;
   jardinOnly: boolean;
+  // Derived server-side: member of at least one focus='jardin' group. Drives
+  // the live Jardín seal for jardinEnrolled accounts (see isJardinSealed).
+  inJardinGroup?: boolean;
   parishId: number | null;
   bellEnabled: boolean;
   // Phoebe Parish — see AccessTier comment above.

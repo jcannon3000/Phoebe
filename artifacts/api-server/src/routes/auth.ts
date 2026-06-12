@@ -256,6 +256,22 @@ router.get("/auth/me", async (req, res) => {
   const access = PHOEBE_PARISH_ENABLED
     ? await getUserAccessTier(u.id)
     : { tier: "full" as const, parishFeedId: null, parishSlug: null };
+  // Live El Jardín seal: a Jardín-origin account that has JOINED any
+  // focus='jardin' group is restricted to the Jardín experience app-wide.
+  // Derived here so every useAuth() consumer re-gates the shell the moment the
+  // membership changes — join/leave invalidates /api/auth/me. Reversible:
+  // leaving every Jardín group flips this back to false and restores the app.
+  const jardinGroupRows = await db
+    .select({ id: groupMembersTable.id })
+    .from(groupMembersTable)
+    .innerJoin(groupsTable, eq(groupMembersTable.groupId, groupsTable.id))
+    .where(and(
+      eq(groupMembersTable.userId, u.id),
+      sql`${groupMembersTable.joinedAt} IS NOT NULL`,
+      eq(groupsTable.focus, "jardin"),
+    ))
+    .limit(1);
+  const inJardinGroup = jardinGroupRows.length > 0;
   res.json({
     id: u.id,
     name: u.name,
@@ -281,6 +297,8 @@ router.get("/auth/me", async (req, res) => {
     climateOnly: u.climateOnly ?? false,
     jardinEnrolled: u.jardinEnrolled ?? false,
     jardinOnly: u.jardinOnly ?? false,
+    // Derived (not a column): member of at least one focus='jardin' group.
+    inJardinGroup,
     parishId: u.parishId ?? null,
     bellEnabled: u.bellEnabled ?? false,
     locale: u.locale ?? "en",

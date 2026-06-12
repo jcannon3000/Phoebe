@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -13,6 +13,7 @@ export default function CommunityNewPage() {
   const { user, isLoading } = useAuth();
   const { rawIsAdmin: isBuilder } = useBetaStatus();
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [emoji, setEmoji] = useState("🏘️");
@@ -67,6 +68,10 @@ export default function CommunityNewPage() {
       contemplationGoalMinutes: isContemplation ? contemplationGoalMinutes : undefined,
     }),
     onSuccess: (data: any) => {
+      // A Jardín-origin creator becomes a member of the new (jardin) group, so
+      // refetch /me to apply the live Jardín seal; refresh the groups list too.
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/groups"] });
       setLocation(`/communities/${data.group.slug}`);
     },
   });
