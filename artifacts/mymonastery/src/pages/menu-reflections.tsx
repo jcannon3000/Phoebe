@@ -1,21 +1,18 @@
-import { useLocation } from "wouter";
 import { MenuHub } from "@/components/MenuHub";
-import { openExternal } from "@/lib/openExternal";
-import { CAC_TODAY_URL, markCacRead } from "@/lib/cacReadState";
+import {
+  CAC_TODAY_URL, FDD_TODAY_URL, SSJE_TODAY_URL,
+  markCacRead, markFddRead, markSsjeRead,
+} from "@/lib/cacReadState";
 
-// Daily reflections from across the church. "View all" opens a reader that
-// flips through Forward Day by Day and SSJE inline, with a "Next" button that
-// walks Forward → SSJE → CAC; CAC is last and opens in a new page (the in-app
-// browser) since cac.org can't be embedded. The CAC card here opens that page
-// directly. The select sound is handled centrally by MenuHub (the highest
-// octave of the slideshow chime), matching the menu's pill → category → item
-// ladder.
+// Daily reflections from across the church. Each source opens in a NEW TAB —
+// no in-app inline reader and no return page (per request). We still mark the
+// source read so the Daily-progress "Reflect" anchor + home cards update.
+// The select sound is handled centrally by MenuHub.
 export default function MenuReflectionsPage() {
-  const [, setLocation] = useLocation();
-  const openReflection = (source: "fdd" | "ssje" | "all") =>
-    setLocation(`/menu/reflections/${source}`);
-  // CAC can't be embedded inline — open it in a new page (the in-app browser).
-  const openCac = () => { markCacRead(); openExternal(CAC_TODAY_URL); };
+  const openNewTab = (url: string) => window.open(url, "_blank", "noopener,noreferrer");
+  const openFdd = () => { markFddRead(); openNewTab(FDD_TODAY_URL); };
+  const openSsje = () => { markSsjeRead(); openNewTab(SSJE_TODAY_URL); };
+  const openCac = () => { markCacRead(); openNewTab(CAC_TODAY_URL); };
 
   return (
     <MenuHub
@@ -27,15 +24,8 @@ export default function MenuReflectionsPage() {
       groups={[
         {
           items: [
-            { emoji: "📖", label: "View all today's reflections", sub: "Flip through each of today's reflections in one place", onClick: () => openReflection("all") },
-          ],
-        },
-        {
-          header: "Or read one",
-          items: [
-            { emoji: "📔", label: "Forward Day by Day", sub: "Today's meditation from Forward Movement", onClick: () => openReflection("fdd") },
-            { emoji: "✍🏽", label: "SSJE Reflections", sub: "Today's Brother, Give Us a Word", onClick: () => openReflection("ssje") },
-            // CAC last — opens in a new page (can't be embedded inline).
+            { emoji: "📔", label: "Forward Day by Day", sub: "Today's meditation from Forward Movement", onClick: openFdd },
+            { emoji: "✍🏽", label: "SSJE Reflections", sub: "Today's Brother, Give Us a Word", onClick: openSsje },
             { emoji: "🌵", label: "CAC Daily Reflection", sub: "Center for Action & Contemplation", onClick: openCac },
           ],
         },

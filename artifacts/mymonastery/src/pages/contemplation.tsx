@@ -57,9 +57,6 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 
-// Quick-start lengths shown on the Begin card above the full picker.
-const QUICK_MINUTES = [5, 10, 20] as const;
-
 type Stats = {
   todaySeconds: number; todayCount: number; todayDays: number;
   weekSeconds: number; weekCount: number; weekDays: number;
@@ -438,6 +435,8 @@ export default function ContemplationPage() {
     setStartMinutes(minutes);
     setTimerOpen(true);
   };
+  // The length chosen in the Begin row's dropdown (5-minute increments).
+  const [chosenMin, setChosenMin] = useState<number>(10);
   // Which supporting section shows under the Begin card.
   const [tab, setTab] = useState<"history" | "stats" | "learn">("history");
   // Local midnight so the server can scope "today" to the user's
@@ -634,45 +633,47 @@ export default function ContemplationPage() {
           </div>
         </div>
 
-        {/* Begin card — leads the page. Quick-length buttons up top,
-            then the full picker via "Begin contemplation". */}
+        {/* Begin row — one row: a length dropdown (5-minute increments) on the
+            left, a Start pill on the right. */}
         <div
-          className="rounded-2xl p-4"
+          className="rounded-2xl p-3 flex items-center gap-3"
           style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.25)" }}
         >
-          <div className="grid grid-cols-3 gap-3 mb-3">
-            {QUICK_MINUTES.map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => start(m)}
-                className="rounded-xl py-3 transition-opacity hover:opacity-90 active:scale-[0.98]"
-                style={{
-                  background: "rgba(46,107,64,0.20)",
-                  border: "1px solid rgba(46,107,64,0.4)",
-                  color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600, cursor: "pointer",
-                }}
-              >
-                {m}
-                <span className="block text-[11px] font-normal mt-0.5" style={{ color: SAGE }}>{t("contemplation.min")}</span>
-              </button>
+          <select
+            value={String(chosenMin)}
+            onChange={(e) => setChosenMin(parseInt(e.target.value, 10))}
+            aria-label={t("contemplation.length_label", { defaultValue: "Length" })}
+            className="flex-1 min-w-0 rounded-xl"
+            style={{
+              background: "rgba(46,107,64,0.20)",
+              border: "1px solid rgba(46,107,64,0.4)",
+              color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
+              padding: "13px 14px", outline: "none", colorScheme: "dark",
+              appearance: "none", WebkitAppearance: "none", cursor: "pointer",
+            }}
+          >
+            {Array.from({ length: 12 }, (_, i) => (i + 1) * 5).map((m) => (
+              <option key={m} value={String(m)}>
+                {t("contemplation.length_minutes", { count: m, defaultValue: `${m} minutes` })}
+              </option>
             ))}
-          </div>
+          </select>
           <button
             type="button"
-            onClick={() => start(getSideMinutes(new Date().getHours() < 12 ? "morning" : "evening") || undefined)}
-            className="w-full rounded-xl py-3.5 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+            onClick={() => start(chosenMin)}
+            className="shrink-0 rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.98]"
             style={{
               background: "#2D5E3F",
               color: WARM,
               border: "1px solid rgba(46,107,64,0.7)",
               fontFamily: SPACE_GROTESK,
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: 600,
+              padding: "13px 26px",
               cursor: "pointer",
             }}
           >
-            {t("contemplation.begin")}
+            {t("contemplation.start", { defaultValue: "Start" })} <span aria-hidden>→</span>
           </button>
         </div>
 

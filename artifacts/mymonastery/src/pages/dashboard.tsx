@@ -14,7 +14,6 @@ import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
-import { preheatReflection } from "@/lib/reflectionPreheat";
 import { getNcmpState, getSideLevel, setSideLevel } from "@/lib/officePrefs";
 import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
@@ -2565,15 +2564,10 @@ export function CacHomeCard() {
   });
   const cacTitle = cacMeta?.title ?? "";
   const onClick = () => {
-    recordCacOpened({ flagReturn: true });
-    preheatReflection("cac"); // warm /reflect/cac while they read
-    // Open via the server redirect — NOT a prefetched permalink. We briefly
-    // preloaded cacMeta.url and then opened that exact URL; the in-app browser
-    // presented its prefetched view and dismissed instantly, dropping the
-    // reader straight onto the /reflect/cac return page (recordCacOpened's
-    // flagReturn) without ever showing the meditation. Opening CAC_TODAY_URL —
-    // a URL we don't prefetch — opens a fresh page and shows reliably.
-    openExternal(CAC_TODAY_URL);
+    // Mark read, then open the meditation in a NEW TAB — no in-app reader and
+    // no /reflect/cac return page (we don't flag a return, so Phoebe stays put).
+    recordCacOpened();
+    window.open(CAC_TODAY_URL, "_blank", "noopener,noreferrer");
   };
   return (
     <div
@@ -2781,12 +2775,9 @@ function FddHomeCard() {
     };
   }, []);
   const onClick = () => {
-    // Flag the return so coming back from the browser lands on the in-app
-    // reflection reader (see ReflectionReturnRedirect). Open fresh — no
-    // preloadExternal — or the native browser dismisses instantly (see CAC).
-    recordFddOpened({ flagReturn: true });
-    preheatReflection("fdd"); // warm /menu/reflections/fdd while they read
-    openExternal(FDD_TODAY_URL);
+    // Open in a NEW TAB — no in-app reader, no return page (no flagReturn).
+    recordFddOpened();
+    window.open(FDD_TODAY_URL, "_blank", "noopener,noreferrer");
   };
   return (
     <div
@@ -2847,12 +2838,9 @@ function SsjeHomeCard() {
     };
   }, []);
   const onClick = () => {
-    // Flag the return so coming back from the browser lands on the in-app
-    // reflection reader (see ReflectionReturnRedirect). Open fresh — no
-    // preloadExternal — or the native browser dismisses instantly (see CAC).
-    recordSsjeOpened({ flagReturn: true });
-    preheatReflection("ssje"); // warm /menu/reflections/ssje while they read
-    openExternal(SSJE_TODAY_URL);
+    // Open in a NEW TAB — no in-app reader, no return page (no flagReturn).
+    recordSsjeOpened();
+    window.open(SSJE_TODAY_URL, "_blank", "noopener,noreferrer");
   };
   return (
     <div
@@ -3298,7 +3286,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
                 confession, reflection). The only pill on the card now;
                 Prayer list lives in the header next to Menu. */}
             <Link
-              href="/bcp/daily-office/settings"
+              href="/rule-of-life"
               className="text-[11px] font-semibold px-2.5 py-1 rounded-full text-center shrink-0 transition-opacity hover:opacity-80"
               style={{
                 background: "rgba(46,107,64,0.22)",
@@ -3306,7 +3294,7 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
                 border: "1px solid rgba(46,107,64,0.4)",
                 fontFamily: "'Space Grotesk', sans-serif",
               }}
-              aria-label={t("dashboard.office_customize", { defaultValue: "Customize the Daily Office" })}
+              aria-label={t("dashboard.office_customize", { defaultValue: "Customize your daily prayer habit" })}
             >
               {t("dashboard.office_customize_short", { defaultValue: "Customize" })}
             </Link>

@@ -75,16 +75,18 @@ function phaseAt(pos: number): Phase {
   return "out";
 }
 
-// ── The circle ───────────────────────────────────────────────────────────────
-// A single solid-colour circle that swells on the inhale and contracts on the
-// exhale — no gradients, no bloom, nothing to band. Base diameter; the rAF
-// loop scales it by scaleAt() each frame (transform only, GPU-composited, so
-// the swell stays glass-smooth). A faint solid ring behind it breathes a touch
-// wider for a little depth.
-const CIRCLE_BASE = 170;
-const CIRCLE_FILL = "#5FA277";        // solid sage green — the breath
-const RING_FILL = "rgba(125,185,145,0.14)"; // solid, faintly translucent halo
-const FIELD = "#0A1C14";              // solid deep-green field (no gradient)
+// ── The breath ─────────────────────────────────────────────────────────────
+// A soft radial-gradient glow (no hard circle edge) that swells AND brightens
+// on the inhale and recedes on the exhale — bigger + stronger, then smaller.
+// The rAF loop drives transform scale + opacity each frame (GPU-composited, so
+// it stays glass-smooth). A larger, fainter gradient behind it gives depth and
+// the subtle colour difference.
+const CIRCLE_BASE = 300;
+// Centre brighter green fading out to nothing — a glow, not a disc.
+const GLOW = "radial-gradient(circle, rgba(130,196,150,0.95) 0%, rgba(95,162,119,0.55) 32%, rgba(46,107,64,0.18) 58%, rgba(46,107,64,0) 76%)";
+// Larger, cooler, fainter halo behind it for depth + a hint of colour shift.
+const HALO = "radial-gradient(circle, rgba(110,180,150,0.30) 0%, rgba(62,124,122,0.14) 45%, rgba(46,107,64,0) 72%)";
+const FIELD = "#0A1C14";              // solid deep-green field
 
 export function CobreatheBreath({
   onReachTarget,
@@ -144,14 +146,17 @@ export function CobreatheBreath({
       const s = scaleAt(pos);
       // 0 at rest (full exhale) → 1 at full inhale.
       const p = (s - SMALL) / (BIG - SMALL);
-      // Pure transform scale — GPU-composited, so the swell is glass-smooth.
+      // The glow grows AND strengthens on the inhale: scale + opacity both
+      // rise with the breath. GPU-composited (transform + opacity), so smooth.
       if (circleRef.current) {
-        circleRef.current.style.transform = `translate(-50%, -50%) scale(${s.toFixed(4)})`;
+        circleRef.current.style.transform = `translate(-50%, -50%) scale(${(0.62 + s * 0.42).toFixed(4)})`;
+        circleRef.current.style.opacity = String(0.45 + p * 0.5);
       }
-      // The halo breathes a touch wider, and brightens slightly as it fills.
+      // The halo breathes a touch wider and fainter, a beat behind — the subtle
+      // colour difference + depth.
       if (ringRef.current) {
-        ringRef.current.style.transform = `translate(-50%, -50%) scale(${(s * 1.16).toFixed(4)})`;
-        ringRef.current.style.opacity = String(0.55 + p * 0.45);
+        ringRef.current.style.transform = `translate(-50%, -50%) scale(${(0.85 + s * 0.5).toFixed(4)})`;
+        ringRef.current.style.opacity = String(0.3 + p * 0.35);
       }
       // The phase word breathes a hair with the circle.
       if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + p * 0.06})`;
@@ -255,19 +260,19 @@ export function CobreatheBreath({
         paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
       }}
     >
-      {/* The breath — a single solid-colour circle, centered, swelling on the
-          inhale and contracting on the exhale. Driven by the global clock, so
-          everyone breathing at this moment sees the same circle at the same
-          size. A faint solid halo behind it breathes a touch wider for depth.
-          Transform-only animation keeps it perfectly smooth. */}
+      {/* The breath — a soft radial-gradient glow (no hard edge) that swells
+          AND brightens on the inhale and recedes on the exhale. Driven by the
+          global clock, so everyone breathing at this moment sees the same glow
+          at the same size. A larger, fainter halo behind it gives depth and a
+          subtle colour shift. Transform + opacity only — perfectly smooth. */}
       <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
         <div
           ref={ringRef}
           style={{
             position: "absolute", top: "50%", left: "50%",
             width: CIRCLE_BASE, height: CIRCLE_BASE, borderRadius: "50%",
-            background: RING_FILL,
-            transform: "translate(-50%, -50%) scale(1.16)",
+            background: HALO,
+            transform: "translate(-50%, -50%) scale(1)",
             willChange: "transform, opacity",
           }}
         />
@@ -276,9 +281,9 @@ export function CobreatheBreath({
           style={{
             position: "absolute", top: "50%", left: "50%",
             width: CIRCLE_BASE, height: CIRCLE_BASE, borderRadius: "50%",
-            background: CIRCLE_FILL,
+            background: GLOW,
             transform: "translate(-50%, -50%) scale(1)",
-            willChange: "transform",
+            willChange: "transform, opacity",
           }}
         />
       </div>

@@ -463,7 +463,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   picker + dashboard end-to-end. Routes to
                   /parish/onboarding if the user hasn't subscribed
                   yet, else /parish. */}
-              {rawIsBeta && !jardinShell && (
+              {/* Phoebe Parish hidden from the menu per request. Restore by
+                  removing the `false &&` guard. */}
+              {false && rawIsBeta && !jardinShell && (
                 <MenuRow
                   emoji="🏛️"
                   label={t("menu.phoebe_parish")}
