@@ -173,15 +173,10 @@ export function CobreatheBreath({
   // loop), so each breath rises with a fresh set of emojis.
   const [particleEmojis, setParticleEmojis] = useState<string[]>(pickParticleEmojis);
 
-  // Smooth entrance: the whole field fades in over the first beat instead of
-  // snapping on (which flashed the glow/spiral at full strength before the rAF
-  // loop settled them — the "you see the edges at first" fumble). Also prime
-  // the audio subsystem now so the per-breath swell tones actually sound.
-  const [entered, setEntered] = useState(false);
+  // Prime the audio subsystem on mount so the per-breath swell tones sound. (No
+  // fade-in: the scene is held still at rest until synced, so nothing flashes.)
   useEffect(() => {
     primeAudio();
-    const r = requestAnimationFrame(() => setEntered(true));
-    return () => cancelAnimationFrame(r);
   }, []);
 
   // Anchor points (fixed at mount): when the user arrived, and the next clean
@@ -225,52 +220,44 @@ export function CobreatheBreath({
         try {
           window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } }));
         } catch { /* no native shell on web — silent */ }
-        // A swell tone at the top of each breath, rotating up through the
-        // octaves (0–4) like the prayer slideshow. Keyed to the global cycle
-        // index, so everyone breathing now hears the same octave together.
-        try { playOpeningSwell(((cyc % 5) + 5) % 5); } catch { /* audio locked — non-fatal */ }
-        // Swap in a fresh emoji cast for the breath that's beginning. The
-        // spiral is sunk + faded here (bottom of the exhale), so the new faces
-        // appear unseen and rise up on the inhale.
+        // A swell tone at the top of each breath, rotating through the SAME
+        // three octaves the prayer slideshow uses (0–2). Keyed to the global
+        // cycle index, so everyone breathing now hears the same octave together.
+        try { playOpeningSwell(((cyc % 3) + 3) % 3); } catch { /* audio locked — non-fatal */ }
+        // A fresh emoji cast for the breath that's beginning.
         setParticleEmojis(pickParticleEmojis());
       }
       const s = scaleAt(pos);
       // 0 at rest (full exhale) → 1 at full inhale.
       const p = (s - SMALL) / (BIG - SMALL);
-      // The glow grows AND strengthens on the inhale: scale + opacity both
-      // rise with the breath. GPU-composited (transform + opacity), so smooth.
-      // Pronounced swell: a wide scale range driven straight off breath
-      // progress, so the glow visibly shrinks on the exhale (~0.66) and blooms
-      // large on the inhale (~1.52) — a far more dramatic pulse than before.
+      // Don't breathe until synced — while "Syncing", hold the scene STILL at
+      // rest (p=0) so nothing pulses in/out. The count begins on a clean cycle
+      // boundary (p=0), so the breath starts from this exact rest state with no
+      // jump.
+      const isCounting = now - countStartRef.current >= 0;
+      const pAnim = isCounting ? p : 0;
+      // Everything below scales RADIALLY from the centre (translate -50%,-50%
+      // only) — purely in/out, no vertical drift, all centred on the globe.
       if (circleRef.current) {
-        circleRef.current.style.transform = `translate(-50%, -50%) scale(${(0.66 + p * 0.86).toFixed(4)})`;
-        circleRef.current.style.opacity = String(0.3 + p * 0.45);
+        circleRef.current.style.transform = `translate(-50%, -50%) scale(${(0.66 + pAnim * 0.86).toFixed(4)})`;
+        circleRef.current.style.opacity = String(0.3 + pAnim * 0.45);
       }
-      // The halo breathes wider and fainter, a beat behind — depth + the subtle
-      // colour shift, swinging across an even bigger range than the core.
       if (ringRef.current) {
-        ringRef.current.style.transform = `translate(-50%, -50%) scale(${(0.82 + p * 0.98).toFixed(4)})`;
-        ringRef.current.style.opacity = String(0.18 + p * 0.34);
+        ringRef.current.style.transform = `translate(-50%, -50%) scale(${(0.82 + pAnim * 0.98).toFixed(4)})`;
+        ringRef.current.style.opacity = String(0.18 + pAnim * 0.34);
       }
-      // The world at the centre breathes with the glow — a touch more now.
       if (globeRef.current) {
-        globeRef.current.style.transform = `translate(-50%, -50%) scale(${(0.9 + p * 0.24).toFixed(4)})`;
-        globeRef.current.style.opacity = String(0.6 + p * 0.4);
+        globeRef.current.style.transform = `translate(-50%, -50%) scale(${(0.9 + pAnim * 0.24).toFixed(4)})`;
+        globeRef.current.style.opacity = String(0.6 + pAnim * 0.4);
       }
-      // The plant spiral blooms OUTWARD on the inhale and draws back in on the
-      // exhale — the whole spiral scales radially with the breath, a wider swing
-      // than the globe so the spray opens and closes around it.
+      // The plant spiral blooms OUTWARD on the inhale and draws back IN on the
+      // exhale — radial only, centred on the globe.
       if (plantsRef.current) {
-        // Rise + bloom on the inhale, sink + fade to nothing on the exhale.
-        // At the bottom (p≈0) the whole spiral is sunk ~46px and nearly
-        // invisible — that's where we swap in a fresh emoji set, so the new
-        // faces appear unseen at the bottom and rise up on the next inhale.
-        const sink = ((1 - p) * 46).toFixed(1);
-        plantsRef.current.style.transform = `translate(-50%, calc(-50% + ${sink}px)) scale(${(0.56 + p * 0.62).toFixed(4)})`;
-        plantsRef.current.style.opacity = (0.04 + p * 0.85).toFixed(3);
+        plantsRef.current.style.transform = `translate(-50%, -50%) scale(${(0.56 + pAnim * 0.62).toFixed(4)})`;
+        plantsRef.current.style.opacity = (0.06 + pAnim * 0.78).toFixed(3);
       }
-      // The phase word breathes a hair with the circle.
-      if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + p * 0.06})`;
+      // The phase word breathes a hair with the circle (only once synced).
+      if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -364,6 +351,10 @@ export function CobreatheBreath({
   // so the count keeps climbing past the target while they keep breathing.
   const sinceCount = now - countStartRef.current;
   const counting = sinceCount >= 0;
+  // While syncing (before the count begins), the centre word reads "Syncing"
+  // with an animated ellipsis instead of "Breathe in / out".
+  const syncDots = ".".repeat(Math.floor(now / 450) % 4);
+  const centerLabel = counting ? phaseLabel : `${t("cobreathe.syncing", { defaultValue: "Syncing" })}${syncDots}`;
   const completed = counting ? Math.floor(sinceCount / CYCLE_MS) : 0;
   const breathNum = completed + 1;
   const reachedNow = counting && completed >= totalBreaths;
@@ -378,8 +369,7 @@ export function CobreatheBreath({
       style={{
         position: "fixed", inset: 0, zIndex: 50, overflow: "hidden",
         background: counting ? FIELD_LIVE : FIELD_DIM,
-        opacity: entered ? 1 : 0,
-        transition: "background-color 1.6s ease, opacity 0.6s ease",
+        transition: "background-color 1.6s ease",
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between",
         paddingTop: "calc(env(safe-area-inset-top) + 28px)",
         paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
@@ -519,7 +509,7 @@ export function CobreatheBreath({
               letterSpacing: "0.14em", textTransform: "uppercase", textShadow: "0 2px 18px rgba(8,30,18,0.6)",
             }}
           >
-            {phaseLabel}
+            {centerLabel}
           </span>
         </div>
         <p className="mt-6 text-[13px]" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK }}>
