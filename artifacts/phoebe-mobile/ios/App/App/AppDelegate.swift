@@ -57,6 +57,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+        // Re-arm Apple Health background delivery of mindful minutes. The
+        // HKObserverQuery doesn't survive process death, so it must be
+        // re-registered on every launch — including the background relaunches
+        // iOS performs to deliver HK updates. No-op unless the user enabled it
+        // (MindfulBackgroundSync persists that flag).
+        MindfulBackgroundSync.shared.registerObserverIfConfigured()
+
         // If the app was cold-launched by tapping a home-screen quick
         // action, capture the target path now and replay it once the
         // WebView is ready (see applicationDidBecomeActive). Returning

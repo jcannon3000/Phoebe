@@ -26,6 +26,7 @@ import Foundation
 import Capacitor
 import HealthKit
 import UIKit
+import WebKit
 
 @objc(MindfulHealthPlugin)
 public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -38,6 +39,7 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "mindfulSessionsToday", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "writeMindfulSession", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openApp", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "enableBackgroundDelivery", returnType: CAPPluginReturnPromise),
     ]
 
     private let healthStore = HKHealthStore()
@@ -205,6 +207,160 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
                 } else {
                     call.resolve(["opened": false, "usedFallback": false])
                 }
+            }
+        }
+    }
+
+    // Arm background delivery of mindful minutes so the contemplation
+    // goal-reached push fires even when the silence was kept ENTIRELY in
+    // another app (Calm, Insight Timer, Apple Mindfulness) with Phoebe closed.
+    // Idempotent — safe to call on every authenticated launch. The actual work
+    // lives in MindfulBackgroundSync (below); the optional apiBase lets the JS
+    // shell point us at a non-default origin (defaults to https://withphoebe.app,
+    // matching native-shell's API_BASE).
+    @objc func enableBackgroundDelivery(_ call: CAPPluginCall) {
+        MindfulBackgroundSync.shared.enable(apiBase: call.getString("apiBase"))
+        call.resolve(["enabled": true])
+    }
+}
+
+// MARK: - Background delivery
+//
+// The foreground sync (useSyncHealthMinutes in the web layer) only uploads
+// mindful minutes while Phoebe is open, so a goal crossed in another app is
+// never noticed until the next launch — and the goal-reached push (fired
+// server-side from /api/me/contemplation-health-minutes) never goes out.
+//
+// This wires an HKObserverQuery + enableBackgroundDelivery so iOS wakes the app
+// in the background whenever new mindful sessions land. We read today's EXTERNAL
+// minutes (excluding Phoebe's own sits, exactly like mindfulMinutesToday's
+// excludeOwn path) and PUT them to the same endpoint the web uses. The server
+// detects the goal crossing and sends the APNs push, delivered as a real banner
+// because the app is backgrounded.
+//
+// Auth: the endpoint is cookie-authenticated (connect.sid, httpOnly). The web
+// view persists that cookie in WKWebsiteDataStore, which native code can read
+// even in the background — so we pull it at fire time and attach it to a plain
+// URLSession PUT. We store no token of our own.
+final class MindfulBackgroundSync {
+    static let shared = MindfulBackgroundSync()
+
+    private let healthStore = HKHealthStore()
+    private var observerQuery: HKObserverQuery?
+
+    private let apiBaseKey = "phoebe.mindful.apiBase"
+    private let enabledKey = "phoebe.mindful.bgEnabled"
+    private let defaultApiBase = "https://withphoebe.app"
+
+    private var mindfulType: HKCategoryType? {
+        HKObjectType.categoryType(forIdentifier: .mindfulSession)
+    }
+
+    private var apiBase: String {
+        let stored = UserDefaults.standard.string(forKey: apiBaseKey) ?? ""
+        return stored.isEmpty ? defaultApiBase : stored
+    }
+
+    /// Called from the JS plugin once the user is authenticated. Persists the
+    /// API base + an "enabled" flag and arms delivery. Idempotent.
+    func enable(apiBase: String?) {
+        if let base = apiBase, !base.isEmpty {
+            UserDefaults.standard.set(base, forKey: apiBaseKey)
+        }
+        UserDefaults.standard.set(true, forKey: enabledKey)
+        arm()
+    }
+
+    /// Called from AppDelegate at every launch. An HKObserverQuery does not
+    /// survive process death, so it must be re-registered on each cold start —
+    /// including the background relaunches iOS performs to deliver HK updates.
+    /// Only arms if the user previously enabled it.
+    func registerObserverIfConfigured() {
+        guard UserDefaults.standard.bool(forKey: enabledKey) else { return }
+        arm()
+    }
+
+    private func arm() {
+        guard HKHealthStore.isHealthDataAvailable(), let type = mindfulType else { return }
+        // Persisted by the system; calling again is harmless. .immediate asks
+        // iOS to wake us as soon as new mindful samples are written.
+        healthStore.enableBackgroundDelivery(for: type, frequency: .immediate) { _, _ in }
+
+        if observerQuery != nil { return }   // don't stack observers this launch
+        let query = HKObserverQuery(sampleType: type, predicate: nil) { [weak self] _, completion, _ in
+            // ALWAYS call completion — iOS throttles (then stops) background HK
+            // delivery to apps that don't acknowledge updates.
+            self?.uploadTodayMinutes { completion() }
+        }
+        observerQuery = query
+        healthStore.execute(query)
+    }
+
+    /// Read today's EXTERNAL mindful minutes and PUT them to the server.
+    /// completion() always runs exactly once.
+    private func uploadTodayMinutes(completion: @escaping () -> Void) {
+        guard let type = mindfulType else { completion(); return }
+        let startOfDay = Calendar.current.startOfDay(for: Date())
+        let datePredicate = HKQuery.predicateForSamples(withStart: startOfDay, end: Date(), options: .strictStartDate)
+        let notFromPhoebe = NSCompoundPredicate(
+            notPredicateWithSubpredicate: HKQuery.predicateForObjects(from: [HKSource.default()])
+        )
+        let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [datePredicate, notFromPhoebe])
+        let q = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { [weak self] _, samples, _ in
+            guard let self = self else { completion(); return }
+            var seconds: TimeInterval = 0
+            for s in samples ?? [] { seconds += s.endDate.timeIntervalSince(s.startDate) }
+            let minutes = Int((seconds / 60.0).rounded())
+            // Nothing external today → don't bother the server. The endpoint is
+            // GREATEST-wins, so a 0 could never lower a real total anyway.
+            if minutes <= 0 { completion(); return }
+            self.put(minutes: minutes, day: self.localDayString(startOfDay), completion: completion)
+        }
+        healthStore.execute(q)
+    }
+
+    private func localDayString(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: date)
+    }
+
+    private func put(minutes: Int, day: String, completion: @escaping () -> Void) {
+        guard let url = URL(string: apiBase + "/api/me/contemplation-health-minutes") else { completion(); return }
+        let host = URL(string: apiBase)?.host ?? ""
+        // Reading the web view's cookie store must happen on the main thread.
+        DispatchQueue.main.async {
+            // Extend our background window for the (tiny) network round-trip;
+            // ended in the URLSession completion below.
+            var bgTask = UIBackgroundTaskIdentifier.invalid
+            bgTask = UIApplication.shared.beginBackgroundTask(withName: "mindful-upload") {
+                if bgTask != .invalid { UIApplication.shared.endBackgroundTask(bgTask); bgTask = .invalid }
+            }
+            let finish: () -> Void = {
+                if bgTask != .invalid { UIApplication.shared.endBackgroundTask(bgTask); bgTask = .invalid }
+                completion()
+            }
+            WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
+                // Keep only cookies that apply to the API host (handles both
+                // "withphoebe.app" and a leading-dot ".withphoebe.app" domain).
+                let header = cookies
+                    .filter { c in
+                        let d = c.domain.hasPrefix(".") ? String(c.domain.dropFirst()) : c.domain
+                        return host == d || host.hasSuffix("." + d)
+                    }
+                    .map { "\($0.name)=\($0.value)" }
+                    .joined(separator: "; ")
+                // No session cookie (logged out / never signed in) → nothing we
+                // can authenticate with; bail without hanging the task.
+                if header.isEmpty { finish(); return }
+                var req = URLRequest(url: url)
+                req.httpMethod = "PUT"
+                req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                req.setValue(header, forHTTPHeaderField: "Cookie")
+                req.httpBody = try? JSONSerialization.data(withJSONObject: ["minutes": minutes, "day": day])
+                URLSession.shared.dataTask(with: req) { _, _, _ in finish() }.resume()
             }
         }
     }

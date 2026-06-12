@@ -40,15 +40,30 @@ struct PhoebeStats {
         nextOffice: "Evening Prayer"
     )
 
+    // Before the app has ever pushed data (or if the App Group store can't be
+    // read), show a proper-looking hero for the time of day rather than a bare
+    // "Time to pray" — so the widget always reads as a real Phoebe card.
+    static func timeBasedFallback() -> PhoebeStats {
+        let hour = Calendar.current.component(.hour, from: Date())
+        let morning = hour < 14
+        return PhoebeStats(
+            kind: "office",
+            title: morning ? "Morning Prayer" : "Evening Prayer",
+            subtitle: morning ? "Begin the day with the office" : "Mark the day's end with the office",
+            cta: "Begin prayer",
+            deepLink: "https://withphoebe.app/",
+            streakDays: 0, prayedToday: false,
+            nextOffice: morning ? "Morning Prayer" : "Evening Prayer"
+        )
+    }
+
     static func load() -> PhoebeStats {
         guard let defaults = UserDefaults(suiteName: appGroup),
               let raw = defaults.string(forKey: dataKey),
               let data = raw.data(using: .utf8),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else {
-            return PhoebeStats(kind: "office", title: "Time to pray", subtitle: "",
-                               cta: "Begin prayer", deepLink: "https://withphoebe.app/",
-                               streakDays: 0, prayedToday: false, nextOffice: "")
+            return timeBasedFallback()
         }
         let streak = (obj["streakDays"] as? NSNumber)?.intValue ?? 0
         let prayed = (obj["prayedToday"] as? NSNumber)?.boolValue ?? false

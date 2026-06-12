@@ -542,6 +542,18 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // The "way to pray" chooser on the welcome slide — a dropdown (replacing the
+  // old alternate-route pills) that lets the reader switch between the short
+  // Devotion, the Community Intercessions feed, and the full Office. It opens
+  // on the user's saved preference for this side (getSideLevel), falling back
+  // to whatever they're already on.
+  type WayToPray = "devotion" | "intercessions" | "office";
+  const [wayToPray, setWayToPray] = useState<WayToPray>(() => {
+    const pref = getSideLevel(officeSide);
+    if (pref === "devotion" || pref === "intercessions" || pref === "office") return pref;
+    return isDevotion ? "devotion" : "office";
+  });
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -1010,6 +1022,127 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // consistent with the prior behaviour for the Amen path).
     setViewerLocation(`/prayer-mode?closingOnly=1&side=${officeSide}`);
   }
+
+  // Start whatever the reader chose in the way-to-pray dropdown. Staying on the
+  // form you're already viewing just advances into it (next()); switching
+  // routes to the other surface — the same destinations the old pills used.
+  const eveningSide = officeSide === "evening";
+  const launchWay = (way: WayToPray) => {
+    if (way === "intercessions") { setViewerLocation("/prayer-mode"); return; }
+    if (way === "devotion") {
+      if (isDevotion) { next(); return; }
+      setViewerLocation(`/bcp/daily-devotions?mode=${eveningSide ? "early-evening-devotion" : "morning-devotion"}`);
+      return;
+    }
+    // office
+    if (!isDevotion) { next(); return; }
+    setViewerLocation(`/bcp/daily-office?mode=${eveningSide ? "evening" : "morning"}`);
+  };
+
+  // The welcome-slide chooser: a "Start" primary that launches the selected
+  // way, with a dropdown above it (replacing the old alternate-route pills) so
+  // the reader can switch between Devotion / Community Intercessions / the full
+  // Office before they begin. The dropdown is hidden for offices-only and
+  // public (onComplete) viewers, and once the user came straight from the
+  // picker — they all just get Start. `canChoose` gates the dropdown only;
+  // Start always shows.
+  const renderWayChooser = () => {
+    const canChoose = !officesOnlyViewer && !cameFromPicker && !onComplete;
+    const officeLabel = eveningSide ? "Full Evening Prayer" : "Full Morning Prayer";
+    return (
+      <div
+        style={{
+          marginTop: 28,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 14,
+          paddingTop: 16,
+          borderTop: `1px solid ${BORDER}`,
+        }}
+      >
+        {canChoose && (
+          <div style={{ width: "100%", maxWidth: 420 }}>
+            <label
+              htmlFor="way-to-pray"
+              style={{
+                display: "block",
+                fontFamily: SPACE_GROTESK,
+                fontSize: 11,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+                color: FAINT_GREEN,
+                marginBottom: 7,
+              }}
+            >
+              I'd like to pray
+            </label>
+            <div style={{ position: "relative" }}>
+              <select
+                id="way-to-pray"
+                value={wayToPray}
+                onChange={(e) => setWayToPray(e.target.value as WayToPray)}
+                style={{
+                  width: "100%",
+                  appearance: "none",
+                  WebkitAppearance: "none",
+                  background: "rgba(46,107,64,0.10)",
+                  border: "1px solid rgba(46,107,64,0.32)",
+                  borderRadius: 999,
+                  color: WARM_TEXT,
+                  fontFamily: SPACE_GROTESK,
+                  fontSize: 14,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                  padding: "12px 40px 12px 18px",
+                }}
+              >
+                <option value="devotion">Daily Devotion</option>
+                <option value="intercessions">Community Intercessions</option>
+                <option value="office">{officeLabel}</option>
+              </select>
+              {/* Chevron — the native select arrow is suppressed (appearance:
+                  none) so it matches the dark pill aesthetic. */}
+              <span
+                aria-hidden
+                style={{
+                  position: "absolute",
+                  right: 18,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  color: "rgba(168,197,160,0.8)",
+                  fontSize: 12,
+                  pointerEvents: "none",
+                }}
+              >
+                ▾
+              </span>
+            </div>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => (canChoose ? launchWay(wayToPray) : next())}
+          style={{
+            width: "100%",
+            maxWidth: 420,
+            background: "#2D5E3F",
+            border: "1px solid rgba(46,107,64,0.7)",
+            borderRadius: 999,
+            color: WARM_TEXT,
+            fontFamily: SPACE_GROTESK,
+            fontSize: 15,
+            fontWeight: 600,
+            letterSpacing: "0.02em",
+            cursor: "pointer",
+            padding: "13px 24px",
+          }}
+        >
+          {i18n.language?.startsWith("es") ? "Comenzar" : "Start"}
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div
@@ -2390,103 +2523,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               /api/moments + /api/prayer-requests (both 403 for that
               tier). First slide only — once the reader is moving
               through the devotion they shouldn't keep seeing these. */}
-          {isDevotion && slideIdx === 0 && !onComplete && (
-            <div
-              style={{
-                marginTop: 28,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 14,
-                paddingTop: 16,
-                borderTop: `1px solid ${BORDER}`,
-              }}
-            >
-              {/* Start — primary, full width so it spans the same room
-                  as the two option pills below it. */}
-              <button
-                type="button"
-                onClick={next}
-                style={{
-                  width: "100%",
-                  maxWidth: 420,
-                  background: "#2D5E3F",
-                  border: "1px solid rgba(46,107,64,0.7)",
-                  borderRadius: 999,
-                  color: WARM_TEXT,
-                  fontFamily: SPACE_GROTESK,
-                  fontSize: 15,
-                  fontWeight: 600,
-                  letterSpacing: "0.02em",
-                  cursor: "pointer",
-                  padding: "13px 24px",
-                }}
-              >
-                {i18n.language?.startsWith("es") ? "Comenzar" : "Start"}
-              </button>
-
-              {/* Alternate routes — hidden when the user picked this
-                  devotion from a list (cameFromPicker) since they've
-                  already chosen, and for offices-only / public viewers
-                  per the prior gating. */}
-              {!officesOnlyViewer && !cameFromPicker && (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    flexWrap: "wrap",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setViewerLocation("/prayer-mode")}
-                    style={{
-                      background: "rgba(46,107,64,0.10)",
-                      border: "1px solid rgba(46,107,64,0.32)",
-                      borderRadius: 999,
-                      color: "rgba(168,197,160,0.95)",
-                      fontFamily: SPACE_GROTESK,
-                      fontSize: 12,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      padding: "7px 14px",
-                    }}
-                  >
-                    Community Intercessions
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      // Morning devotion → Morning Prayer; early-evening
-                      // devotion → Evening Prayer. Same time-of-day rule
-                      // the picker uses.
-                      const target =
-                        resolvedMode === "early-evening-devotion"
-                          ? "/bcp/daily-office?mode=evening"
-                          : "/bcp/daily-office?mode=morning";
-                      setViewerLocation(target);
-                    }}
-                    style={{
-                      background: "rgba(46,107,64,0.10)",
-                      border: "1px solid rgba(46,107,64,0.32)",
-                      borderRadius: 999,
-                      color: "rgba(168,197,160,0.95)",
-                      fontFamily: SPACE_GROTESK,
-                      fontSize: 12,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                      padding: "7px 14px",
-                    }}
-                  >
-                    Pray the full {resolvedMode === "early-evening-devotion" ? "Evening Prayer" : "Morning Prayer"}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+          {/* Devotion welcome slide — the way-to-pray chooser (Start + the
+              dropdown that replaced the old Intercessions / Full Office pills).
+              First slide only. */}
+          {isDevotion && slideIdx === 0 && !onComplete && renderWayChooser()}
+          {/* Office welcome slide — same chooser, defaulting to the full Office
+              (the reader can drop to a Devotion or the Intercessions feed). */}
+          {(resolvedMode === "morning" || resolvedMode === "evening") && slideIdx === 0 && !onComplete && renderWayChooser()}
           {/* Compline first-slide alternate. Compline is the after-8pm
               default, but a user who'd rather pray Evening Prayer (the
               Evening Devotion's broader option-set is the natural step

@@ -112,8 +112,13 @@ const GLOBES = ["🌍", "🌎", "🌏"] as const;
 // sessions wear the same faces.
 const PLANT_POOL = ["🌿", "🌱", "🍃", "🌾", "☘️", "🌻", "🍀"];
 const ANIMAL_POOL = ["🦋", "🐝", "🐦", "🐞", "🐢", "🐌", "🦔", "🐿️", "🐇", "🐠"];
-const PEOPLE_POOL = ["🧑🏻", "🧑🏽", "🧑🏿", "👩🏽", "👨🏿", "👩🏻", "👨🏼", "🧒🏾", "👵🏼", "🧓🏽", "👴🏿", "👩🏾", "👨🏽", "🧑🏼"];
-const CATEGORY_POOLS = [PLANT_POOL, PEOPLE_POOL, ANIMAL_POOL];
+// Ordinary people of many ages and skin tones — weighted toward darker and
+// medium tones so the spiral reads as the whole human family, not mostly light.
+const PEOPLE_POOL = ["🧑🏽", "🧑🏾", "🧑🏿", "👩🏽", "👩🏾", "👩🏿", "👨🏾", "👨🏿", "👨🏽", "🧒🏾", "🧒🏿", "👵🏽", "🧓🏾", "👴🏿", "👶🏽", "🧑🏻", "👩🏻", "🧑🏼"];
+// Vocations — people at their work and callings (the "vocational" set), again
+// across skin tones. Folds the breadth of human labor into the breath.
+const VOCATION_POOL = ["👩🏽‍⚕️", "👨🏿‍🏫", "👩🏾‍🌾", "🧑🏽‍🍳", "👨🏾‍🔧", "👩🏿‍🏭", "🧑🏾‍🎓", "👷🏽‍♀️", "🧑🏿‍🚒", "👩🏽‍🏫", "🧑🏾‍🔬", "👨🏾‍🍳", "👩🏿‍✈️", "🧑🏽‍🌾", "👨🏽‍⚕️", "👩🏾‍💻"];
+const CATEGORY_POOLS = [PLANT_POOL, PEOPLE_POOL, VOCATION_POOL, ANIMAL_POOL];
 const GOLDEN_ANGLE = 2.399963229728653; // radians (~137.5°)
 const PARTICLE_COUNT = 24;
 const PARTICLE_LAYOUT = Array.from({ length: PARTICLE_COUNT }, (_, i) => {
@@ -255,7 +260,11 @@ export function CobreatheBreath({
       // exhale — radial only, centred on the globe.
       if (plantsRef.current) {
         plantsRef.current.style.transform = `translate(-50%, -50%) scale(${(0.56 + pAnim * 0.62).toFixed(4)})`;
-        plantsRef.current.style.opacity = (0.06 + pAnim * 0.78).toFixed(3);
+        // Fade the whole spiral fully to 0 at the bottom of each breath, with a
+        // small dead-zone around the cycle boundary where the cast is re-picked
+        // — so the emoji swap happens while invisible and never reads as a hard
+        // "switch". Below ~8% of the inhale the spiral is fully transparent.
+        plantsRef.current.style.opacity = (Math.max(0, pAnim - 0.08) * 0.92).toFixed(3);
       }
       // The phase word breathes a hair with the circle (only once synced).
       if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;

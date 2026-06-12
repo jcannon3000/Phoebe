@@ -6201,7 +6201,7 @@ export default function Dashboard() {
               anchors split into Next / Done plus the streak — in place of the
               standard home modules. */}
           {filter === null && isBeta && (
-            <div className="mt-5 mb-8">
+            <div className="mt-5 mb-3">
               {/* A "prayer requests waiting" card leads when there's something
                   to respond to; then the office hero (the same full
                   PrayerOfficeCard all users get) leads the Next list, above

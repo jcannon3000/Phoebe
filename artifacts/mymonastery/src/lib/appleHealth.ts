@@ -37,6 +37,10 @@ interface MindfulHealthPlugin {
   mindfulSessionsToday: () => Promise<{ sessions: MindfulSession[] }>;
   writeMindfulSession: (opts: { startMs: number; endMs: number }) => Promise<{ written: boolean }>;
   openApp: (opts: { scheme: string; fallbackUrl?: string }) => Promise<{ opened: boolean; usedFallback: boolean }>;
+  // Arm background delivery of external mindful minutes so the contemplation
+  // goal-reached push fires even when silence is kept in another app with
+  // Phoebe closed. apiBase defaults native-side to https://withphoebe.app.
+  enableBackgroundDelivery?: (opts?: { apiBase?: string }) => Promise<{ enabled: boolean }>;
 }
 
 function getPlugin(): MindfulHealthPlugin | null {
@@ -174,6 +178,12 @@ export async function openHealthApp(): Promise<boolean> {
 // value on every route change). Reset implicitly on a full app reload.
 let lastHealthUpload = "";
 
+// Arm native background delivery once per app session. The native side is
+// idempotent (it persists an "enabled" flag and re-registers the observer on
+// every launch), so this single best-effort call per load is enough — it just
+// ensures a fresh install / freshly-authenticated user turns it on.
+let bgDeliveryArmed = false;
+
 /**
  * Side-effect hook: best-effort upload of today's EXTERNAL mindful minutes to
  * the server (PUT /api/me/contemplation-health-minutes), so the ~7pm goal
@@ -197,6 +207,17 @@ export function useSyncHealthMinutes(): void {
     enabled: appleHealthAvailable(),
     staleTime: 5 * 60_000,
   });
+  // Arm background delivery once HealthKit is available — so a goal crossed
+  // entirely in another app (Phoebe closed) still uploads and fires the
+  // goal-reached push. Independent of today's minutes: it must be armed before
+  // the crossing happens, not after.
+  useEffect(() => {
+    if (bgDeliveryArmed) return;
+    const p = getPlugin();
+    if (!p?.enableBackgroundDelivery) return;
+    bgDeliveryArmed = true;
+    void p.enableBackgroundDelivery().catch(() => { bgDeliveryArmed = false; });
+  }, []);
   const minutes = q.data?.minutes ?? 0;
   useEffect(() => {
     if (minutes <= 0) return;
