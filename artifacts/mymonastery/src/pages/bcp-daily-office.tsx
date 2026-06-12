@@ -3280,17 +3280,18 @@ function OfficeMethodCard(props: {
 
   return (
     <div
-      className="w-full rounded-2xl overflow-hidden"
+      className="w-full rounded-2xl overflow-hidden flex"
       style={{
-        // Match the home cards: a very slight vertical gradient (top a touch
-        // darker than the bottom), a tad lighter overall, and a slightly
-        // stronger border.
+        // Match the home cards: a colored left accent bar, a very slight
+        // vertical gradient, and a slightly stronger border.
         background: now
           ? "linear-gradient(180deg, rgba(46,107,64,0.14) 0%, rgba(46,107,64,0.24) 100%)"
           : "linear-gradient(180deg, rgba(46,107,64,0.08) 0%, rgba(46,107,64,0.17) 100%)",
         border: isDefault ? "2px solid #A8C5A0" : `1px solid ${now ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.30)"}`,
       }}
     >
+      <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
+      <div className="flex-1 min-w-0">
       <button
         type="button"
         onClick={() => onLaunch(method)}
@@ -3347,6 +3348,94 @@ function OfficeMethodCard(props: {
           ))}
         </select>
       </label>
+      </div>
+    </div>
+  );
+}
+
+// ── Devotion method card ─────────────────────────────────────────────────────
+// The short Daily Devotion sibling of OfficeMethodCard. Same chrome (home-style
+// left bar + "How to pray" dropdown), but the devotion's own methods: the
+// Digital Slideshow, the Physical BCP page, and (Morning only, weekdays) the
+// St. John's "Morning Devotion" video. No saved-default persistence — the
+// office method storage is per-side and belongs to the full office.
+const DEVOTION_METHOD_META: Record<"read" | "book" | "watch", { emoji: string; label: string; sub: string }> = {
+  read: { emoji: "📖", label: "Digital Slideshow", sub: "The short devotion, at your own pace" },
+  book: { emoji: "📕", label: "Physical BCP", sub: "Today's page in your physical Prayer Book" },
+  watch: { emoji: "📺", label: "Watch", sub: "St. John's · Morning Devotion with Dean Kate" },
+};
+
+function DevotionMethodCard(props: {
+  mode: "morning-devotion" | "early-evening-devotion";
+  emoji: string;
+  title: string;
+  page: string;          // "BCP p. 137"
+  weekday: boolean;
+  now: boolean;
+  isDefault: boolean;
+  onLaunch: (method: "read" | "book" | "watch") => void;
+}) {
+  const { mode, emoji, title, page, weekday, now, isDefault, onLaunch } = props;
+  const methods: Array<"read" | "book" | "watch"> = [
+    "read",
+    "book",
+    // Watch is the morning devotion only (St. John's posts weekdays).
+    ...(mode === "morning-devotion" && weekday ? (["watch"] as const) : []),
+  ];
+  const [method, setMethod] = useState<"read" | "book" | "watch">("read");
+  const meta = DEVOTION_METHOD_META[method];
+  const sub = method === "read" ? `A short devotion · ${page}` : meta.sub;
+
+  return (
+    <div
+      className="w-full rounded-2xl overflow-hidden flex"
+      style={{
+        background: now
+          ? "linear-gradient(180deg, rgba(46,107,64,0.14) 0%, rgba(46,107,64,0.24) 100%)"
+          : "linear-gradient(180deg, rgba(46,107,64,0.08) 0%, rgba(46,107,64,0.17) 100%)",
+        border: isDefault ? "2px solid #A8C5A0" : `1px solid ${now ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.30)"}`,
+      }}
+    >
+      <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
+      <div className="flex-1 min-w-0">
+        <button
+          type="button"
+          onClick={() => onLaunch(method)}
+          className="w-full text-left p-5 transition-all active:scale-[0.99]"
+        >
+          <div className="flex items-center gap-4">
+            <span className="text-3xl">{method === "read" ? emoji : meta.emoji}</span>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{title}</p>
+              <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>{sub}</p>
+              {isDefault
+                ? <p className="text-xs mt-1.5 font-semibold" style={{ color: "#A8C5A0" }}>Your default</p>
+                : now && <p className="text-xs mt-1.5 font-medium" style={{ color: "#6FAF85" }}>Available now</p>}
+            </div>
+            <span className="text-sm" style={{ color: "#8FAF96" }}>→</span>
+          </div>
+        </button>
+        <label
+          className="flex items-center justify-between gap-3 px-5 py-3 cursor-pointer"
+          style={{ borderTop: "1px solid rgba(46,107,64,0.22)", background: "rgba(9,26,16,0.25)" }}
+        >
+          <span className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+            How to pray
+          </span>
+          <select
+            value={method}
+            onChange={(e) => setMethod(e.target.value as "read" | "book" | "watch")}
+            className="text-sm font-semibold rounded-lg px-3 py-1.5"
+            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.45)", appearance: "auto" }}
+          >
+            {methods.map((m) => (
+              <option key={m} value={m}>
+                {DEVOTION_METHOD_META[m].emoji}  {DEVOTION_METHOD_META[m].label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
     </div>
   );
 }
@@ -3510,6 +3599,14 @@ export default function BcpDailyOfficePage() {
     setShowMode(side === "morning" ? "morning" : "evening");
   };
 
+  // Launch a short devotion the chosen way: the slideshow, the physical-BCP
+  // page guide, or (Morning only) St. John's daily devotion video.
+  const launchDevotion = (mode: "morning-devotion" | "early-evening-devotion", method: "read" | "book" | "watch") => {
+    if (method === "watch" && mode === "morning-devotion") { setLocation("/devotion/watch"); return; }
+    setShowBook(method === "book");
+    setShowMode(mode);
+  };
+
   const OptionButton = ({ opt }: { opt: OfficeOption }) => {
     const isDefault = optIsDefault(opt);
     return (
@@ -3520,7 +3617,7 @@ export default function BcpDailyOfficePage() {
           // full offices' book guide is reached via OfficeMethodCard).
           if (opt.mode) { setShowBook(false); setShowMode(opt.mode); }
         }}
-        className="w-full text-left p-5 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
+        className="w-full text-left rounded-2xl overflow-hidden flex transition-all hover:shadow-md active:scale-[0.99]"
         style={{
           background: opt.now ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.08)",
           border: isDefault
@@ -3528,18 +3625,21 @@ export default function BcpDailyOfficePage() {
             : `1px solid ${opt.now ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.18)"}`,
         }}
       >
-        <div className="flex items-center gap-4">
-          <span className="text-3xl">{opt.emoji}</span>
-          <div className="flex-1">
-            <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-              {opt.label}
-            </p>
-            <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>{opt.sub}</p>
-            {isDefault
-              ? <p className="text-xs mt-1.5 font-semibold" style={{ color: "#A8C5A0" }}>Your default</p>
-              : opt.now && <p className="text-xs mt-1.5 font-medium" style={{ color: "#6FAF85" }}>Available now</p>}
+        <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
+        <div className="flex-1 min-w-0 p-5">
+          <div className="flex items-center gap-4">
+            <span className="text-3xl">{opt.emoji}</span>
+            <div className="flex-1">
+              <p className="font-semibold text-base" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {opt.label}
+              </p>
+              <p className="text-sm mt-0.5" style={{ color: "#8FAF96" }}>{opt.sub}</p>
+              {isDefault
+                ? <p className="text-xs mt-1.5 font-semibold" style={{ color: "#A8C5A0" }}>Your default</p>
+                : opt.now && <p className="text-xs mt-1.5 font-medium" style={{ color: "#6FAF85" }}>Available now</p>}
+            </div>
+            <span className="text-sm" style={{ color: "#8FAF96" }}>→</span>
           </div>
-          <span className="text-sm" style={{ color: "#8FAF96" }}>→</span>
         </div>
       </button>
     );
@@ -3599,7 +3699,16 @@ export default function BcpDailyOfficePage() {
 
         <SectionLabel>Morning</SectionLabel>
         <div className="space-y-3">
-          <OptionButton opt={morningDevotion} />
+          <DevotionMethodCard
+            mode="morning-devotion"
+            emoji="🌿"
+            title="Morning Devotion"
+            page="BCP p. 137"
+            weekday={weekday}
+            now={isMorning}
+            isDefault={optIsDefault(morningDevotion)}
+            onLaunch={(m) => launchDevotion("morning-devotion", m)}
+          />
           <OfficeMethodCard
             side="morning"
             title="Morning Prayer"
@@ -3612,7 +3721,16 @@ export default function BcpDailyOfficePage() {
 
         <SectionLabel>Evening</SectionLabel>
         <div className="space-y-3">
-          <OptionButton opt={eveningDevotion} />
+          <DevotionMethodCard
+            mode="early-evening-devotion"
+            emoji="🌆"
+            title="Early Evening Devotion"
+            page="BCP p. 139"
+            weekday={weekday}
+            now={isEvening}
+            isDefault={optIsDefault(eveningDevotion)}
+            onLaunch={(m) => launchDevotion("early-evening-devotion", m)}
+          />
           <OfficeMethodCard
             side="evening"
             title="Evening Prayer"
