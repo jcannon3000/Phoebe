@@ -6518,13 +6518,13 @@ export default function Dashboard() {
             side menu (Audio → News & Actions, beta) and at /news. It was
             briefly shown here as a rail; removed per product direction. */}
 
-        {/* Customize pill — opens the home-screen customization page
-            (reorder / show-hide modules, pick what leads). Only on the
-            unfiltered home. */}
+        {/* Customize pill — opens the daily-prayer-habit customizer
+            (/rule-of-life: depth, way to pray, confession, closing reflection).
+            Only on the unfiltered home. */}
         {filter === null && (
           <div className="flex justify-center mt-10">
             <Link
-              href="/customize-home"
+              href="/rule-of-life"
               className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 transition-opacity hover:opacity-90"
               style={{
                 background: "rgba(46,107,64,0.10)",
