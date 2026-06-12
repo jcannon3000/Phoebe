@@ -109,6 +109,7 @@ export const es: Translations = {
     write: "Escribir",
     place_set_apart: "Un lugar apartado para la conexión",
     book_of_common_prayer: "Libro de Oración Común",
+    next_up: "A continuación",
     requests_count_one: "{{count}} petición",
     requests_count_other: "{{count}} peticiones",
     community_prayer: "Oración comunitaria",

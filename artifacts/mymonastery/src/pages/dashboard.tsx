@@ -3125,11 +3125,16 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   const requestCount = (officeReqData ?? []).filter(
     (r) => !r.isAnswered && !r.isOwnRequest && !r.closedAt && (!r.expiresAt || new Date(r.expiresAt) > new Date()),
   ).length;
-  const eyebrow = programmedOffice
-    ? t("dashboard.book_of_common_prayer")
-    : requestCount > 0
-      ? t("dashboard.requests_count", { count: requestCount })
-      : t("dashboard.community_prayer");
+  // When this card is the dynamic "what's next" hero (forceSide is set),
+  // the eyebrow reads "Next up" instead of naming the source — it's
+  // answering "what should I do now?", not "where is this from?".
+  const eyebrow = forceSide
+    ? t("dashboard.next_up", { defaultValue: "Next up" })
+    : programmedOffice
+      ? t("dashboard.book_of_common_prayer")
+      : requestCount > 0
+        ? t("dashboard.requests_count", { count: requestCount })
+        : t("dashboard.community_prayer");
 
   // Authoritative source for "did the user pray today's side?" — server
   // returns the last 7 days of office/devotion completions in the
