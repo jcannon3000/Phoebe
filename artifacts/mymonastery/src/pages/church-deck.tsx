@@ -29,6 +29,7 @@ type Slide =
         | "bcp"
         | "prayer-list"
         | "daily-office"
+        | "office-formats"
         | "prayer-rhythm"
         | "daily-reminder"
         | "prayer-streak"
@@ -41,7 +42,7 @@ type Slide =
       label: string;
       headline: string;
       body: string[];
-      mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "daily-reminder" | "prayer-streak" | "meat-fast" | "calendar" | "gatherings";
+      mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "office-formats" | "prayer-rhythm" | "daily-reminder" | "prayer-streak" | "meat-fast" | "calendar" | "gatherings";
       stacked?: boolean;
     }
   | { kind: "combo-mock"; mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "meat-fast" | "calendar" | "gatherings" }
@@ -134,6 +135,17 @@ function buildSlides(t: TFunction): Slide[] {
       t("church_deck.office_body"),
     ],
     mock: "daily-office",
+  },
+
+  // ── Feature 3a: One office, four ways to pray it ──
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: t("church_deck.formats_headline"),
+    body: [
+      t("church_deck.formats_body"),
+    ],
+    mock: "office-formats",
   },
 
   // ── Feature 3b: Prayer Rhythm — daily habit of prayer ──
@@ -1352,6 +1364,73 @@ function GatheringsMock() {
   );
 }
 
+/* ── Office Formats — one office, four ways to pray it ── */
+// Mirrors the offices page: the green Morning Prayer card + the format chips
+// below it, in the live app's palette (green for the in-app/BCP ways, gold for
+// the Forward Movement audio office, purple for the National Cathedral live
+// broadcast).
+function OfficeFormatsMock() {
+  const { t } = useTranslation();
+  const formats = [
+    { emoji: "🕯️", label: t("church_deck.mock_formats_guided"), sub: t("church_deck.mock_formats_guided_sub"), bg: "rgba(46,107,64,0.18)", border: "rgba(46,107,64,0.4)", color: C.text },
+    { emoji: "📖", label: t("church_deck.mock_formats_read"), sub: t("church_deck.mock_formats_read_sub"), bg: "rgba(46,107,64,0.18)", border: "rgba(46,107,64,0.4)", color: C.text },
+    { emoji: "🎧", label: t("church_deck.mock_formats_listen"), sub: t("church_deck.mock_formats_listen_sub"), bg: "rgba(212,160,70,0.14)", border: "rgba(212,160,70,0.38)", color: "#F0DCA8" },
+    { emoji: "📺", label: t("church_deck.mock_formats_watch"), sub: t("church_deck.mock_formats_watch_sub"), bg: "rgba(120,80,180,0.16)", border: "rgba(120,80,180,0.42)", color: "#E0D0F5" },
+  ];
+  return (
+    <MockPhone>
+      <p
+        className="text-[9px] uppercase tracking-[0.22em] font-semibold mb-2"
+        style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
+      >
+        {t("church_deck.mock_formats_section")}
+      </p>
+      {/* Office header card — matches the offices page OfficeOption. */}
+      <div
+        className="rounded-2xl p-3 mb-3 flex items-center gap-3"
+        style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.35)" }}
+      >
+        <span className="text-2xl">🌅</span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>
+            {t("church_deck.mock_formats_office")}
+          </p>
+          <p className="text-[10px] mt-0.5 font-medium" style={{ color: "#6FAF85" }}>
+            {t("church_deck.mock_formats_available")}
+          </p>
+        </div>
+        <span className="text-[12px]" style={{ color: C.sage }}>→</span>
+      </div>
+      <p
+        className="text-[9px] uppercase tracking-[0.18em] font-semibold mb-2"
+        style={{ color: "rgba(143,175,150,0.5)", fontFamily: C.font }}
+      >
+        {t("church_deck.mock_formats_ways")}
+      </p>
+      {/* Four format chips — the four ways to pray this office. */}
+      <div className="grid grid-cols-2 gap-2">
+        {formats.map((f, i) => (
+          <div
+            key={i}
+            className="rounded-xl px-2.5 py-2 flex items-center gap-2"
+            style={{ background: f.bg, border: `1px solid ${f.border}` }}
+          >
+            <span className="text-[15px] shrink-0">{f.emoji}</span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold leading-tight" style={{ color: f.color, fontFamily: C.font }}>
+                {f.label}
+              </p>
+              <p className="text-[8.5px] leading-tight mt-0.5 truncate" style={{ color: "rgba(200,212,192,0.5)" }}>
+                {f.sub}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </MockPhone>
+  );
+}
+
 /* ── Daily Reminder — the office reminder push (iOS-style notification) ── */
 // Mirrors PrayerNotificationMock's chrome exactly (real Phoebe app icon, the
 // SF Pro system font, the floating "now" timestamp) so it reads as a genuine
@@ -1456,6 +1535,7 @@ const MOCK_MAP: Record<string, () => ReactElement> = {
   bcp: BCPPrayerModeMock,
   "prayer-list": PrayerListMock,
   "daily-office": DailyOfficeMock,
+  "office-formats": OfficeFormatsMock,
   "prayer-rhythm": PrayerRhythmMock,
   "daily-reminder": DailyReminderMock,
   "prayer-streak": PrayerStreakMock,
