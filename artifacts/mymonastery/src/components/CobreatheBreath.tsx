@@ -212,6 +212,10 @@ export function CobreatheBreath({
         try {
           window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } }));
         } catch { /* no native shell on web — silent */ }
+        // A swell tone at the top of each breath, rotating up through the
+        // octaves (0–4) like the prayer slideshow. Keyed to the global cycle
+        // index, so everyone breathing now hears the same octave together.
+        try { playOpeningSwell(((cyc % 5) + 5) % 5); } catch { /* audio locked — non-fatal */ }
       }
       const s = scaleAt(pos);
       // 0 at rest (full exhale) → 1 at full inhale.
