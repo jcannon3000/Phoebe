@@ -406,8 +406,17 @@ export function CobreatheBreath({
 
       {/* Title + participation + intention — top */}
       <div className="flex flex-col items-center" style={{ position: "relative", maxWidth: 460 }}>
-        <p className="text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "rgba(182,210,188,0.55)", fontFamily: SPACE_GROTESK }}>
+        <p className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "rgba(182,210,188,0.55)", fontFamily: SPACE_GROTESK }}>
           🌬️ {t("cobreathe.title", { defaultValue: "Cobreathe" })}
+          {/* Live indicator — appears the moment the session joins the global
+              breath (counting), a small pulsing red dot + LIVE, like a live
+              broadcast badge. */}
+          {counting && (
+            <span className="inline-flex items-center gap-1">
+              <span className="rounded-full animate-pulse" style={{ width: 7, height: 7, background: "#E5484D", boxShadow: "0 0 6px rgba(229,72,77,0.8)" }} />
+              <span style={{ color: "#E58A8D", letterSpacing: "0.16em" }}>{t("cobreathe.live", { defaultValue: "Live" })}</span>
+            </span>
+          )}
         </p>
         {todayCount != null && todayCount > 0 && (
           <p className="text-[12px] mt-1" style={{ color: TEXT_FAINT, fontFamily: SPACE_GROTESK }}>
@@ -446,7 +455,7 @@ export function CobreatheBreath({
         </div>
         <p className="mt-6 text-[13px]" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK }}>
           {!counting
-            ? t("cobreathe.finding_rhythm", { defaultValue: "Waiting for the next breath to begin together…" })
+            ? t("cobreathe.finding_rhythm", { defaultValue: "Syncing with the global breath…" })
             : reachedNow
               ? t("cobreathe.kept_keep_going", { count: totalBreaths, defaultValue: `🌿 ${totalBreaths} breaths kept — keep going as long as you like` })
               : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `Breath ${breathNum} of ${totalBreaths}` })}
@@ -471,7 +480,7 @@ export function CobreatheBreath({
       >
         {reachedNow
           ? t("cobreathe.finish", { defaultValue: "Finish" })
-          : t("cobreathe.end_early", { defaultValue: "End early" })}
+          : t("common.cancel", { defaultValue: "Cancel" })}
       </button>
     </div>
   );
