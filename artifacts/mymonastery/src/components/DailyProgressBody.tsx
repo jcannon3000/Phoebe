@@ -431,7 +431,14 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
         </>
       )}
       {completed.length > 0 && (
-        <div className={(upcoming.length > 0 || officeHero) ? "mt-16" : ""}>
+        // Gap above Done: when the Next list has a card under the hero, that
+        // card already gives separation, so a smaller gap reads right; when the
+        // hero is the ONLY thing in Next, it jumps straight to Done and needs
+        // more breathing room.
+        <div className={
+          !(upcoming.length > 0 || officeHero) ? ""
+            : upcoming.length > 0 ? "mt-8" : "mt-20"
+        }>
           {sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}
           <div className="flex flex-col gap-2">{completed.map((c) => renderCard(c))}</div>
         </div>

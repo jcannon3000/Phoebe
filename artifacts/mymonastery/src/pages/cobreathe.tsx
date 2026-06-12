@@ -179,12 +179,12 @@ export default function CobreathePage() {
         .catch(() => { /* best-effort */ });
       void writeMindfulSession(startedAt, endedAt);
     }
-    // Reaching the full set records today's communal breath + shows the "done"
-    // screen; bailing early just slips back to the intro (the sit above is
-    // still logged).
+    // Reaching the full set records today's communal breath, then drops the
+    // user back on the main Contemplation page (where the just-logged sit +
+    // stats are waiting); bailing early just slips back to the intro.
     if (!reached) { setMode("intro"); return; }
-    setMode("done");
     record.mutate(secondsKept);
+    setLocation("/contemplation");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

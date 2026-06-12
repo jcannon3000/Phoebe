@@ -25,6 +25,7 @@ private let phoebeSage = Color(red: 0.561, green: 0.686, blue: 0.588)  // #8FAF9
 // ── Shared data ───────────────────────────────────────────────────────────
 struct PhoebeStats {
     var kind: String          // "office" | "reflect" | "summary"
+    var eyebrow: String       // the small label above the title (mirrors home hero)
     var title: String
     var subtitle: String
     var cta: String           // "" → no button
@@ -35,7 +36,7 @@ struct PhoebeStats {
     var newPrayers: Int        // prayer requests waiting for the viewer
 
     static let placeholder = PhoebeStats(
-        kind: "office", title: "Evening Prayer",
+        kind: "office", eyebrow: "Book of Common Prayer", title: "Evening Devotion",
         subtitle: "9 people prayed with you this week", cta: "Begin prayer",
         deepLink: "https://withphoebe.app/", streakDays: 4, prayedToday: false,
         nextOffice: "Evening Prayer", newPrayers: 0
@@ -49,6 +50,7 @@ struct PhoebeStats {
         let morning = hour < 14
         return PhoebeStats(
             kind: "office",
+            eyebrow: "Book of Common Prayer",
             title: morning ? "Morning Prayer" : "Evening Prayer",
             subtitle: morning ? "Begin the day with the office" : "Mark the day's end with the office",
             cta: "Begin prayer",
@@ -82,7 +84,8 @@ struct PhoebeStats {
         let cta = (obj["heroCta"] as? String) ?? (nextOffice.isEmpty ? "" : "Begin prayer")
         let deepLink = (obj["heroDeepLink"] as? String) ?? "https://withphoebe.app/"
         let newPrayers = (obj["newPrayersCount"] as? NSNumber)?.intValue ?? 0
-        return PhoebeStats(kind: kind, title: title, subtitle: subtitle, cta: cta,
+        let eyebrow = (obj["heroEyebrow"] as? String) ?? ""
+        return PhoebeStats(kind: kind, eyebrow: eyebrow, title: title, subtitle: subtitle, cta: cta,
                            deepLink: deepLink, streakDays: streak, prayedToday: prayed,
                            nextOffice: nextOffice, newPrayers: newPrayers)
     }
@@ -150,7 +153,12 @@ struct PhoebeWidgetView: View {
         return stats.title
     }
 
-    private var eyebrow: String { stats.kind == "summary" ? "THE DAY IS KEPT" : "NEXT UP" }
+    // Prefer the eyebrow the app sent (e.g. "Book of Common Prayer", uppercased
+    // to match the home hero); fall back to the kind-based default.
+    private var eyebrow: String {
+        if !stats.eyebrow.isEmpty { return stats.eyebrow.uppercased() }
+        return stats.kind == "summary" ? "THE DAY IS KEPT" : "NEXT UP"
+    }
 
     var body: some View {
         switch family {

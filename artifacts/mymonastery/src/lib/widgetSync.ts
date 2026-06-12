@@ -15,11 +15,14 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { useEffectiveReflectionSource, getSideLevel } from "@/lib/officePrefs";
 
 type WidgetState = {
   // Dynamic "what's next" hero — the medium widget's headline card.
   heroKind: "office" | "reflect" | "summary";
+  // The small eyebrow above the title — mirrors the home hero card ("Book of
+  // Common Prayer" for the office, the publication for the reflection).
+  heroEyebrow: string;
   heroTitle: string;
   heroSubtitle: string;
   heroCta: string;        // "" → no button (summary state)
@@ -110,6 +113,15 @@ export function useWidgetSync(): void {
     enabled,
     staleTime: 60_000,
   });
+  // Prayer level → so the office hero reads "Devotion"/"Prayer" exactly like the
+  // home PrayerOfficeCard (the user prefers a Devotion, so the widget should
+  // say "Evening Devotion", not "Evening Prayer").
+  const officePrefsQ = useQuery<{ defaultPrayerLevel?: "devotion" | "office" | "intercessions" }>({
+    queryKey: ["/api/me/office-prefs"],
+    queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
+    enabled,
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
     if (!enabled) return;
@@ -151,7 +163,18 @@ export function useWidgetSync(): void {
       (r) => !r.isAnswered && !r.isOwnRequest && !r.closedAt && !r.myAmenedEver,
     ).length;
 
+    // Whether the user prays a Devotion (vs the full Office) — global default
+    // OR either per-side level, same resolution the home card + useRhythmState
+    // use. Drives "Evening Devotion" vs "Evening Prayer" so the widget reads
+    // identically to the in-app hero.
+    const dpl = officePrefsQ.data?.defaultPrayerLevel;
+    const isDevotion = dpl === "devotion"
+      || getSideLevel("morning") === "devotion"
+      || getSideLevel("evening") === "devotion"
+      || (dpl !== "office" && getSideLevel("morning") !== "office" && getSideLevel("evening") !== "office");
+
     let heroKind: WidgetState["heroKind"];
+    let heroEyebrow: string;
     let heroTitle: string;
     let heroSubtitle: string;
     let heroCta: string;
@@ -160,7 +183,9 @@ export function useWidgetSync(): void {
     if (hero.kind === "office") {
       const isMorning = hero.side === "morning";
       heroKind = "office";
-      heroTitle = isMorning ? "Morning Prayer" : "Evening Prayer";
+      heroEyebrow = "Book of Common Prayer";
+      const word = isDevotion ? "Devotion" : "Prayer";
+      heroTitle = `${isMorning ? "Morning" : "Evening"} ${word}`;
       nextOffice = heroTitle;
       heroSubtitle = withYou > 0
         ? `${withYou} ${withYou === 1 ? "person" : "people"} prayed with you this week`
@@ -168,11 +193,13 @@ export function useWidgetSync(): void {
       heroCta = "Begin prayer";
     } else if (hero.kind === "reflect") {
       heroKind = "reflect";
-      heroTitle = REFLECTION_NAME[reflectionSource] ?? "Today's reflection";
-      heroSubtitle = (reflectionSource === "cac" ? cacMetaQ.data?.title : "") || "Today's reflection";
+      heroEyebrow = REFLECTION_NAME[reflectionSource] ?? "Today's reflection";
+      heroTitle = (reflectionSource === "cac" ? cacMetaQ.data?.title : "") || REFLECTION_NAME[reflectionSource] || "Today's reflection";
+      heroSubtitle = "A few minutes with the day's word";
       heroCta = "Read";
     } else {
       heroKind = "summary";
+      heroEyebrow = "The day is kept";
       heroTitle = "The day is kept";
       heroSubtitle = `${withYou} prayed with you · you prayed for ${youFor}`;
       heroCta = "";
@@ -181,6 +208,7 @@ export function useWidgetSync(): void {
     const bridge = (window as unknown as { PhoebeNative?: WidgetBridge }).PhoebeNative;
     bridge?.updateWidget?.({
       heroKind,
+      heroEyebrow,
       heroTitle,
       heroSubtitle,
       heroCta,
@@ -201,6 +229,7 @@ export function useWidgetSync(): void {
     prayedWithQ.data,
     coPrayersQ.data,
     prayerReqsQ.data,
+    officePrefsQ.data,
   ]);
 }
 

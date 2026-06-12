@@ -1255,6 +1255,7 @@ declare global {
         updatedAt?: string | null;
         // Dynamic "what's next" hero (medium widget) — mirrors the home hero.
         heroKind?: string | null;       // "office" | "reflect" | "summary"
+        heroEyebrow?: string | null;
         heroTitle?: string | null;
         heroSubtitle?: string | null;
         heroCta?: string | null;        // "" → no button
@@ -1338,6 +1339,7 @@ function exposePublicApi() {
           newPrayersCount: state.newPrayersCount ?? null,
           updatedAt: state.updatedAt ?? null,
           heroKind: state.heroKind ?? null,
+          heroEyebrow: state.heroEyebrow ?? null,
           heroTitle: state.heroTitle ?? null,
           heroSubtitle: state.heroSubtitle ?? null,
           heroCta: state.heroCta ?? null,
