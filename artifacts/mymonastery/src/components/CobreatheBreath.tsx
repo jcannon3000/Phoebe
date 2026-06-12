@@ -471,7 +471,7 @@ export function CobreatheBreath({
           {counting && (
             <span className="inline-flex items-center gap-1">
               <span className="rounded-full animate-pulse" style={{ width: 7, height: 7, background: "#E5484D", boxShadow: "0 0 6px rgba(229,72,77,0.8)" }} />
-              <span style={{ color: "#E58A8D", letterSpacing: "0.16em" }}>{t("cobreathe.live", { defaultValue: "Live" })}</span>
+              <span style={{ color: "#E58A8D", letterSpacing: "0.16em" }}>{t("cobreathe.synced", { defaultValue: "Synced" })}</span>
             </span>
           )}
         </p>
