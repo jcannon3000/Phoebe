@@ -124,13 +124,58 @@ function StreakCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 function PracticeCard({
-  href, emoji, title, blurb, cta, done, rgb, later, laterLabel, progress,
+  href, emoji, title, blurb, cta, done, rgb, later, laterLabel, progress, hero,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   later?: boolean; laterLabel?: string;
   progress?: { current: number; goal: number };
+  /** Render the larger "what's next" hero layout — big emoji + title and a
+   *  prominent CTA button. Used for the first card under Next. */
+  hero?: boolean;
 }) {
   const waiting = !!later && !done;
+
+  // Hero layout — a bigger, more prominent card for the next anchor, whatever
+  // practice it happens to be.
+  if (hero) {
+    const heroCta = waiting ? (
+      <span className="inline-flex rounded-full text-[13px] font-medium px-5 py-2.5" style={{ background: "transparent", color: "rgba(182,210,188,0.5)", border: "1px solid rgba(143,175,150,0.22)" }}>
+        {laterLabel}
+      </span>
+    ) : (
+      <span className="inline-flex items-center rounded-full text-[14px] font-semibold px-6 py-2.5" style={{ background: `rgba(${rgb},0.85)`, color: WARM, fontFamily: FONT }}>
+        {cta} <span aria-hidden className="ml-1">→</span>
+      </span>
+    );
+    const heroRow = (
+      <div
+        className={`relative flex rounded-2xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
+        style={{ background: `rgba(${rgb},0.12)`, border: `1px solid rgba(${rgb},0.42)`, opacity: waiting ? 0.8 : 1 }}
+      >
+        <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.9})` }} />
+        <div className="flex-1 px-5 py-5">
+          <div className="flex items-start gap-3.5">
+            <span className="text-[34px] leading-none flex-shrink-0">{emoji}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[22px] font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
+              <p className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }}>{blurb}</p>
+            </div>
+          </div>
+          {progress && progress.goal > 0 && !done && (
+            <div className="mt-3 rounded-full overflow-hidden" style={{ height: 5, background: "rgba(143,175,150,0.16)" }}>
+              <div
+                className="h-full rounded-full"
+                style={{ width: `${Math.min(100, Math.round((progress.current / progress.goal) * 100))}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }}
+              />
+            </div>
+          )}
+          <div className="mt-4">{heroCta}</div>
+        </div>
+      </div>
+    );
+    return waiting ? heroRow : <Link href={href} className="block">{heroRow}</Link>;
+  }
+
   const pill = done ? (
     <span
       className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
@@ -252,7 +297,7 @@ export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean 
       <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
     </div>
   );
-  const renderCard = (c: (typeof cards)[number]) => (
+  const renderCard = (c: (typeof cards)[number], hero = false) => (
     <PracticeCard
       key={c.key}
       href={c.href}
@@ -265,6 +310,7 @@ export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean 
       later={c.later}
       laterLabel={t("rhythm.later", { defaultValue: "Later" })}
       progress={"progress" in c ? c.progress : undefined}
+      hero={hero}
     />
   );
   return (
@@ -272,13 +318,14 @@ export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean 
       {upcoming.length > 0 && (
         <>
           {sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}
-          <div className="flex flex-col gap-2">{upcoming.map(renderCard)}</div>
+          {/* The top card under Next is the hero, whatever practice it is. */}
+          <div className="flex flex-col gap-2">{upcoming.map((c, idx) => renderCard(c, idx === 0))}</div>
         </>
       )}
       {completed.length > 0 && (
         <div className={upcoming.length > 0 ? "mt-6" : ""}>
           {sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}
-          <div className="flex flex-col gap-2">{completed.map(renderCard)}</div>
+          <div className="flex flex-col gap-2">{completed.map((c) => renderCard(c))}</div>
         </div>
       )}
       {showStreak && <StreakCard />}
