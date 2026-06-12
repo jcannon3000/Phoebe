@@ -43,14 +43,16 @@ function StreakCard() {
     queryFn: () => apiRequest("GET", `/api/me/prayer-days?tz=${encodeURIComponent(tz)}`),
     staleTime: 60_000,
   });
-  // Others in the user's garden(s) who have practiced this week — social proof
-  // that the rhythm is shared, not solitary.
-  const { data: gardenWeek } = useQuery<{ count: number }>({
+  // Others in the user's garden(s) who have prayed this week — social proof
+  // that the rhythm is shared, not solitary. Faces for the rail come with it.
+  const { data: gardenWeek } = useQuery<{ count: number; people: Array<{ id: number; name: string | null; avatarUrl: string | null }> }>({
     queryKey: ["/api/me/garden-week"],
     queryFn: () => apiRequest("GET", "/api/me/garden-week"),
     staleTime: 5 * 60_000,
   });
   const gardenWeekCount = gardenWeek?.count ?? 0;
+  const gardenFaces = (gardenWeek?.people ?? []).slice(0, 6);
+  const gardenOverflow = Math.max(0, gardenWeekCount - gardenFaces.length);
   if (!data) return null;
   const { days, streak, last7 } = data;
   const AMBER = "193,127,36";          // warm flame accent — left bar + the streak number only
@@ -101,9 +103,29 @@ function StreakCard() {
           {t("rhythm.last14_label", { defaultValue: "Last 14 days" })}
         </p>
         {gardenWeekCount > 0 && (
-          <p className="text-[12px] mt-3 pt-3" style={{ color: SAGE, fontFamily: FONT, fontStyle: "italic", borderTop: "1px solid rgba(46,107,64,0.18)" }}>
-            🌿 {t("rhythm.garden_week_line", { count: gardenWeekCount, defaultValue: `${gardenWeekCount} ${gardenWeekCount === 1 ? "other in your gardens has" : "others in your gardens have"} practiced this week` })}
-          </p>
+          <div className="mt-3 pt-3 flex items-center gap-2.5" style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}>
+            {gardenFaces.length > 0 && (
+              <div className="flex items-center -space-x-2 flex-shrink-0">
+                {gardenFaces.map((p) => (
+                  p.avatarUrl ? (
+                    <img key={p.id} src={p.avatarUrl} alt={p.name ?? ""} className="w-6 h-6 rounded-full object-cover" style={{ border: "1.5px solid #0C1F12" }} />
+                  ) : (
+                    <div key={p.id} className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid #0C1F12" }}>
+                      {(p.name ?? "?").trim().split(/\s+/).slice(0, 2).map((s) => s[0] ?? "").join("").toUpperCase().slice(0, 2) || "?"}
+                    </div>
+                  )
+                ))}
+                {gardenOverflow > 0 && (
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-semibold" style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", border: "1.5px solid #0C1F12" }}>
+                    +{gardenOverflow}
+                  </div>
+                )}
+              </div>
+            )}
+            <p className="text-[12px]" style={{ color: SAGE, fontFamily: FONT, fontStyle: "italic" }}>
+              {t("rhythm.garden_week_line", { count: gardenWeekCount, defaultValue: `${gardenWeekCount} ${gardenWeekCount === 1 ? "other in your gardens has" : "others in your gardens have"} prayed this week` })}
+            </p>
+          </div>
         )}
       </div>
     </div>

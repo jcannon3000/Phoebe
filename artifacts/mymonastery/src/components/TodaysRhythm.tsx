@@ -38,7 +38,7 @@ export function TodaysRhythm() {
 
   const {
     morningDone, reflectDone, silenceDone, eveningDone,
-    streak, last7, gardenCount, cobreatheCount, prayerKind,
+    gardenCount, cobreatheCount, prayerKind,
     gratitudeActive, examenActive, gratitudeDone, examenDone,
   } = useRhythmState();
 
@@ -165,14 +165,8 @@ export function TodaysRhythm() {
         ))}
       </div>
 
-      {/* Streak / grace line */}
-      {(streak > 0 || last7 > 0) && (
-        <p className="text-[11.5px] text-center mt-2.5" style={{ color: "rgba(110,180,130,0.85)", fontFamily: SPACE_GROTESK }}>
-          {streak > 0
-            ? t("rhythm.streak_line", { streak, last7, defaultValue: `🔥 Day ${streak} of your rhythm · kept ${last7} of the last 7` })
-            : t("rhythm.last7_line", { last7, defaultValue: `Kept ${last7} of the last 7 days` })}
-        </p>
-      )}
+      {/* The streak now lives only on the bottom rhythm card (daily-progress) —
+          removed from here so it isn't shown twice. */}
 
       {/* Next step prompt — or benediction when the day is fully kept */}
       <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}>

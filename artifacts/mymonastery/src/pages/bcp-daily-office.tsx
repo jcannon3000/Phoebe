@@ -3575,7 +3575,7 @@ export default function BcpDailyOfficePage() {
               </p>
             </div>
             <Link
-              href="/bcp/daily-office/settings"
+              href="/rule-of-life"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80 shrink-0 mt-1"
               style={{
                 fontFamily: "'Space Grotesk', sans-serif",
@@ -3584,10 +3584,10 @@ export default function BcpDailyOfficePage() {
                 color: "#C8D4C0",
                 border: "1px solid rgba(46,107,64,0.4)",
               }}
-              aria-label="Office settings"
+              aria-label="Customize your daily prayer habit"
             >
               <span aria-hidden style={{ fontSize: 13 }}>⚙️</span>
-              Settings
+              Customize
             </Link>
           </div>
         </div>

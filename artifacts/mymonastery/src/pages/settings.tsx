@@ -604,7 +604,7 @@ function DefaultPrayerLevelSettings() {
         Choose what "Begin prayer" opens, how the office reads, the confession, the closing reflection, and more.
       </p>
       <Link
-        href="/bcp/daily-office/settings"
+        href="/rule-of-life"
         className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-[14px] font-semibold transition-opacity hover:opacity-90"
         style={{
           background: "rgba(46,107,64,0.22)",
@@ -1664,6 +1664,14 @@ export default function SettingsPage() {
     },
   });
 
+  // The "Show when I'm here" presence feature was removed. Turn it off for any
+  // user who still has it on (once — onSuccess flips the cached flag false, so
+  // this won't re-fire).
+  useEffect(() => {
+    if (user?.showPresence) presenceToggle.mutate(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.showPresence]);
+
   if (isLoading || !user) return null;
 
   return (
@@ -1686,26 +1694,6 @@ export default function SettingsPage() {
         {/* ── Account ── */}
         <SectionHeader label={t("settings.account")} />
         <AccountSection />
-
-        {/* ── Presence ── */}
-        <div className="mb-8">
-          <SettingsCard>
-            <button
-              onClick={() => presenceToggle.mutate(!user.showPresence)}
-              className="w-full flex items-center justify-between"
-            >
-              <div className="text-left">
-                <p className="text-sm font-medium" style={{ color: "#F0EDE6" }}>Show when I'm here 🌿</p>
-                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>
-                  Let your people know you're present.
-                </p>
-              </div>
-              <div className={`w-10 h-[22px] rounded-full transition-colors relative flex-shrink-0 ml-3 ${user.showPresence ? "bg-[#2D5E3F]" : "bg-[#1A4A2E]"}`}>
-                <div className={`absolute top-[3px] w-[16px] h-[16px] rounded-full shadow-sm transition-transform ${user.showPresence ? "left-[21px]" : "left-[3px]"}`} style={{ background: "#F0EDE6" }} />
-              </div>
-            </button>
-          </SettingsCard>
-        </div>
 
         {/* ── Default prayer depth ──
             Picker for which of the three depths the home-screen

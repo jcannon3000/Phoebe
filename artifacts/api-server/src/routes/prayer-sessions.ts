@@ -157,10 +157,19 @@ router.get("/me/garden-week", async (req, res): Promise<void> => {
     const practiced = new Set<number>();
     for (const r of sessionRows) practiced.add(r.userId);
     for (const r of breathRows) practiced.add(r.userId);
-    res.json({ count: practiced.size });
+
+    // Faces for the rail — name + avatar of those who prayed this week.
+    const ids = Array.from(practiced);
+    const people = ids.length
+      ? await db
+          .select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+          .from(usersTable)
+          .where(inArray(usersTable.id, ids))
+      : [];
+    res.json({ count: practiced.size, people });
   } catch (err) {
     console.error("[/me/garden-week] failed:", err);
-    res.json({ count: 0 });
+    res.json({ count: 0, people: [] });
   }
 });
 
