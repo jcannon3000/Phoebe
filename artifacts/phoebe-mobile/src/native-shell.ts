@@ -1252,6 +1252,12 @@ declare global {
         prayedToday?: boolean | null;
         nextOffice?: string | null;
         updatedAt?: string | null;
+        // Dynamic "what's next" hero (medium widget) — mirrors the home hero.
+        heroKind?: string | null;       // "office" | "reflect" | "summary"
+        heroTitle?: string | null;
+        heroSubtitle?: string | null;
+        heroCta?: string | null;        // "" → no button
+        heroDeepLink?: string | null;
       }) => void;
       isNative: () => boolean;
       // Synchronous front door for Browser.open. The previous bridge
@@ -1329,6 +1335,11 @@ function exposePublicApi() {
           prayedToday: state.prayedToday ?? null,
           nextOffice: state.nextOffice ?? null,
           updatedAt: state.updatedAt ?? null,
+          heroKind: state.heroKind ?? null,
+          heroTitle: state.heroTitle ?? null,
+          heroSubtitle: state.heroSubtitle ?? null,
+          heroCta: state.heroCta ?? null,
+          heroDeepLink: state.heroDeepLink ?? null,
         });
         window.localStorage.setItem("phoebe:persist:widget", payload);
         // Belt-and-suspenders: also write directly to Preferences in case
