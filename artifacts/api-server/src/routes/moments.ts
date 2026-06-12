@@ -64,9 +64,10 @@ async function createAllDayCalendarEvent(userId: number, opts: Parameters<typeof
 //     This is the rule the user spec'd for community intercessions:
 //     once an admin schedules one in their parish, every other admin
 //     of that parish can edit or delete it.
-//   - Admins of SECONDARY (junction) groups do NOT inherit edit/delete.
-//     They can only detach their own group via
-//     DELETE /moments/:id/groups/:groupId.
+//   - Any admin / hidden-admin of ANY group the practice is attached to
+//     (primary OR a junction group) can also manage/delete it — every admin
+//     of a group can delete a lectio practice from their group. (They can
+//     still just detach via DELETE /moments/:id/groups/:groupId instead.)
 //
 // Used by PATCH /moments/:id, PATCH /moments/:id/goal,
 // PATCH /moments/:id/archive, PATCH /moments/:id/unarchive,
@@ -100,6 +101,22 @@ async function canManageMoment(opts: {
       .limit(1);
     if (adminRow) return true;
   }
+  // Admin of ANY group this practice is attached to (via the junction) can
+  // manage it too — per the user spec, every admin of a group can delete a
+  // lectio practice from their group, not only the creator or the primary
+  // group's admins. This also covers practices whose group link lives only in
+  // the junction table (primaryGroupId null above).
+  const [attachedAdmin] = await db
+    .select({ id: groupMembersTable.id })
+    .from(momentGroupsTable)
+    .innerJoin(groupMembersTable, eq(groupMembersTable.groupId, momentGroupsTable.groupId))
+    .where(and(
+      eq(momentGroupsTable.momentId, opts.momentId),
+      eq(groupMembersTable.userId, opts.userId),
+      sql`${groupMembersTable.role} IN ('admin', 'hidden_admin')`,
+    ))
+    .limit(1);
+  if (attachedAdmin) return true;
   return false;
 }
 

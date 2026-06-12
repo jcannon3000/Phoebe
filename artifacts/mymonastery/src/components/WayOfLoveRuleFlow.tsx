@@ -209,7 +209,11 @@ export default function WayOfLoveRuleFlow({
     const local = prayFromLevel(getSideLevel("morning")) ?? prayFromLevel(getSideLevel("evening"));
     const fromServer = prayFromLevel(prefs.defaultPrayerLevel);
     if (!local && fromServer) setPray(fromServer);
-    if (getSideMinutes("morning") <= 0 && typeof prefs.contemplationGoalMinutes === "number" && prefs.contemplationGoalMinutes > 0) {
+    // The server's contemplationGoalMinutes is the authoritative current goal —
+    // prefill from it so Customize opens on what they actually have set (a stale
+    // local per-side minutes value must not win, which is why it showed 15 when
+    // the real goal was 60).
+    if (typeof prefs.contemplationGoalMinutes === "number" && prefs.contemplationGoalMinutes > 0) {
       setGoal(String(prefs.contemplationGoalMinutes));
     }
     if (typeof prefs.morningTime === "string" && /^\d{2}:\d{2}$/.test(prefs.morningTime)) {
@@ -358,17 +362,20 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
           {t("wol_rule.listen_goal_label", { defaultValue: "Minutes of silence a day" })}
         </p>
-        <select
-          value={GOAL_OPTIONS.includes(goalMin) || goalMin === 0 ? String(goalMin) : "5"}
-          onChange={(e) => chooseGoal(e.target.value)}
-          aria-label={t("wol_rule.listen_goal_label", { defaultValue: "Minutes of silence a day" })}
-          style={{ width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
-        >
-          <option value="0">{t("wol_rule.goal_none", { defaultValue: "No goal" })}</option>
-          {GOAL_OPTIONS.map((m) => (
-            <option key={m} value={String(m)}>{t("wol_rule.goal_minutes", { mins: m, defaultValue: `${m} minutes` })}</option>
-          ))}
-        </select>
+        <div style={{ position: "relative" }}>
+          <select
+            value={GOAL_OPTIONS.includes(goalMin) || goalMin === 0 ? String(goalMin) : "5"}
+            onChange={(e) => chooseGoal(e.target.value)}
+            aria-label={t("wol_rule.listen_goal_label", { defaultValue: "Minutes of silence a day" })}
+            style={{ width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+          >
+            <option value="0">{t("wol_rule.goal_none", { defaultValue: "No goal" })}</option>
+            {GOAL_OPTIONS.map((m) => (
+              <option key={m} value={String(m)}>{t("wol_rule.goal_minutes", { mins: m, defaultValue: `${m} minutes` })}</option>
+            ))}
+          </select>
+          <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+        </div>
         <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
           {t("wol_rule.listen_goal_note", { defaultValue: "We'll gently remind you around 7pm on days you haven't reached it. Choose “No goal” to keep the practice without one." })}
         </p>
@@ -417,7 +424,7 @@ export default function WayOfLoveRuleFlow({
           value={reminderTime}
           onChange={(e) => chooseReminder(e.target.value)}
           aria-label={t("wol_rule.reminder_label", { defaultValue: "Remind me to pray each morning" })}
-          style={{ width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark" }}
+          style={{ width: "100%", maxWidth: 200, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark" }}
         />
         <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
           {t("wol_rule.reminder_note", { defaultValue: "We'll send a gentle notification. Change the time or turn it off anytime in Settings." })}
