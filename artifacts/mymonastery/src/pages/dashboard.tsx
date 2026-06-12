@@ -2414,13 +2414,14 @@ export function ContemplationHomeCard() {
         style={{ background: "rgba(62,124,122,0.12)", border: `1px solid rgba(62,124,122,0.35)` }}
       >
         <div className="w-1 flex-shrink-0" style={{ background: `rgba(62,124,122,0.85)` }} />
-        <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
-          <div className="min-w-0">
+        <div className="flex-1 px-4 py-[14px] flex items-center gap-3">
+          <span className="text-xl flex-shrink-0" aria-hidden>🕯️</span>
+          <div className="flex-1 min-w-0">
             <p
               className="font-semibold min-w-0 truncate"
               style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
             >
-              Contemplation 🕯️
+              Contemplation
             </p>
             {progressLabel && (
               <p
@@ -2430,11 +2431,21 @@ export function ContemplationHomeCard() {
                 {progressLabel}
               </p>
             )}
+            {/* Goal progress bar — matches the Daily Progress page's
+                contemplation card so the two views feel of a piece. */}
+            {goalMin > 0 && !met && (
+              <div className="mt-2 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${Math.min(100, Math.round((doneMin / goalMin) * 100))}%`, background: "rgba(62,124,122,0.85)", transition: "width 0.3s" }}
+                />
+              </div>
+            )}
           </div>
           <div
             className="rounded-full text-center shrink-0"
             style={{
-              background: "rgba(62,124,122,0.28)",
+              background: "rgba(62,124,122,0.85)",
               color: "#F0EDE6",
               fontFamily: "'Space Grotesk', sans-serif",
               fontSize: 13,
