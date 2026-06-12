@@ -3282,8 +3282,13 @@ function OfficeMethodCard(props: {
     <div
       className="w-full rounded-2xl overflow-hidden"
       style={{
-        background: now ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.08)",
-        border: isDefault ? "2px solid #A8C5A0" : `1px solid ${now ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.18)"}`,
+        // Match the home cards: a very slight vertical gradient (top a touch
+        // darker than the bottom), a tad lighter overall, and a slightly
+        // stronger border.
+        background: now
+          ? "linear-gradient(180deg, rgba(46,107,64,0.14) 0%, rgba(46,107,64,0.24) 100%)"
+          : "linear-gradient(180deg, rgba(46,107,64,0.08) 0%, rgba(46,107,64,0.17) 100%)",
+        border: isDefault ? "2px solid #A8C5A0" : `1px solid ${now ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.30)"}`,
       }}
     >
       <button

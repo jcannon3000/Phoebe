@@ -2469,7 +2469,10 @@ function PracticeHomeCard({
         role="button"
         tabIndex={0}
         className="relative flex rounded-xl overflow-hidden cursor-pointer"
-        style={{ background: tintBg, border: `1px solid ${tintBorder}` }}
+        // A very slight vertical gradient — the top a touch darker than the
+        // bottom — layered over the card's tint, plus a slightly stronger
+        // border. Generic over any tint color.
+        style={{ background: `linear-gradient(180deg, rgba(0,0,0,0.13) 0%, rgba(0,0,0,0) 100%), ${tintBg}`, border: `1px solid ${tintBorder}` }}
       >
         <div className="w-1 flex-shrink-0" style={{ background: accentBar }} />
         <div className="flex-1 px-4 py-[14px] flex items-center justify-between gap-3">
