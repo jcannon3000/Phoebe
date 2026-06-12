@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { playOpeningSwell } from "@/lib/amenFeedback";
 
 // ── CobreatheBreath ─────────────────────────────────────────────────────────
 //
@@ -274,11 +275,13 @@ export function CobreatheBreath({
       // time — a backgrounded tab/app that "completed" the count doesn't count.
       if (!reachedRef.current && !invalidRef.current && completed >= totalBreaths) {
         reachedRef.current = true;
-        // One big, long, sustained haptic when all twelve breaths are kept —
-        // the payoff, distinct from the soft per-breath taps.
+        // The payoff when all twelve breaths are kept: a big celebration swell
+        // haptic (crescendo → hold → fade) paired with Phoebe's swell tone — a
+        // richer moment than the soft per-breath taps.
         try {
-          window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "sustained" } }));
+          window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "celebration" } }));
         } catch { /* no native shell on web — silent */ }
+        try { playOpeningSwell(); } catch { /* audio locked — non-fatal */ }
         onReachTarget?.(Math.round((now - startRef.current) / 1000));
       }
       setTick((n) => n + 1);
