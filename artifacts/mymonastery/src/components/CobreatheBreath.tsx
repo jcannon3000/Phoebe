@@ -246,10 +246,11 @@ export function CobreatheBreath({
   const now = Date.now();
   const pos = now % CYCLE_MS;
   const phase = phaseAt(pos);
-  // The globe turns once per breath cycle — 🌍 → 🌎 → 🌏 → 🌍. It changes at the
-  // cycle boundary (full exhale), the calmest, dimmest moment, so the swap reads
-  // as a gentle turn rather than a jump.
-  const globe = GLOBES[Math.floor(now / CYCLE_MS) % GLOBES.length];
+  // The globe turns once a second — 🌍 → 🌎 → 🌏 → 🌍 — so the world keeps
+  // visibly spinning. Anchored to wall-clock time, so everyone breathing at
+  // this moment sees the same face. (The ~150ms tick re-render below picks up
+  // each second's change.)
+  const globe = GLOBES[Math.floor(now / 1000) % GLOBES.length];
   const phaseLabel =
     phase === "in" ? t("cobreathe.phase_in", { defaultValue: "Breathe in" })
     : phase === "hold" ? t("cobreathe.phase_hold", { defaultValue: "Hold" })
