@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 
@@ -169,7 +169,9 @@ export function CobreatheBreath({
   const labelRef = useRef<HTMLDivElement>(null);
   // A fresh spiral cast for this session — different emojis every time the
   // breath opens. Computed once per mount.
-  const particleEmojis = useMemo(pickParticleEmojis, []);
+  // The spiral cast — re-picked at the bottom of every breath (see the rAF
+  // loop), so each breath rises with a fresh set of emojis.
+  const [particleEmojis, setParticleEmojis] = useState<string[]>(pickParticleEmojis);
 
   // Anchor points (fixed at mount): when the user arrived, and the next clean
   // cycle boundary where the count begins. There is NO end anchor — the rhythm
@@ -216,6 +218,10 @@ export function CobreatheBreath({
         // octaves (0–4) like the prayer slideshow. Keyed to the global cycle
         // index, so everyone breathing now hears the same octave together.
         try { playOpeningSwell(((cyc % 5) + 5) % 5); } catch { /* audio locked — non-fatal */ }
+        // Swap in a fresh emoji cast for the breath that's beginning. The
+        // spiral is sunk + faded here (bottom of the exhale), so the new faces
+        // appear unseen and rise up on the inhale.
+        setParticleEmojis(pickParticleEmojis());
       }
       const s = scaleAt(pos);
       // 0 at rest (full exhale) → 1 at full inhale.
@@ -244,8 +250,13 @@ export function CobreatheBreath({
       // exhale — the whole spiral scales radially with the breath, a wider swing
       // than the globe so the spray opens and closes around it.
       if (plantsRef.current) {
-        plantsRef.current.style.transform = `translate(-50%, -50%) scale(${(0.56 + p * 0.62).toFixed(4)})`;
-        plantsRef.current.style.opacity = String(0.5 + p * 0.45);
+        // Rise + bloom on the inhale, sink + fade to nothing on the exhale.
+        // At the bottom (p≈0) the whole spiral is sunk ~46px and nearly
+        // invisible — that's where we swap in a fresh emoji set, so the new
+        // faces appear unseen at the bottom and rise up on the next inhale.
+        const sink = ((1 - p) * 46).toFixed(1);
+        plantsRef.current.style.transform = `translate(-50%, calc(-50% + ${sink}px)) scale(${(0.56 + p * 0.62).toFixed(4)})`;
+        plantsRef.current.style.opacity = (0.04 + p * 0.85).toFixed(3);
       }
       // The phase word breathes a hair with the circle.
       if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + p * 0.06})`;
