@@ -1514,48 +1514,78 @@ function DailyReminderMock() {
   );
 }
 
-/* ── Prayer Streak — the "rhythm complete" celebration (Duolingo-style) ── */
-// Mirrors the real DailyCompleteCelebration screen: the radial green wash, the
-// "Rhythm complete" eyebrow, the big streak number + 🔥, the streak label, and
-// the encouragement line — the payoff that makes the daily habit stick.
-function PrayerStreakMock() {
+/* ── Daily Progress — the real rhythm/streak screen ── */
+// Mirrors the live Daily Progress page (daily-progress.tsx): the Next/Done
+// practice rows and, the focus of this slide, the StreakCard — amber left bar,
+// 🔥 + the day-rhythm count, "Kept N of the last 7 days", the 14-day strip, and
+// the "others in your gardens" rail.
+function DailyProgressMock() {
   const { t } = useTranslation();
-  const streak = 14;
+  const GREEN_BRIGHT = "110,180,130";
+  const days = [true, true, true, true, true, true, true, true, true, true, true, true, true, false];
+  const row = (emoji: string, title: string, sub: string, rgb: string, done: boolean) => (
+    <div
+      className="rounded-2xl overflow-hidden flex mb-2"
+      style={{ background: `rgba(${rgb},0.10)`, border: `1px solid rgba(${rgb},${done ? 0.42 : 0.18})` }}
+    >
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},0.85)` }} />
+      <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[16px]">{emoji}</span>
+          <div className="min-w-0">
+            <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>{title}</p>
+            <p className="text-[9px] mt-0.5" style={{ color: C.sage }}>{sub}</p>
+          </div>
+        </div>
+        {done ? (
+          <span className="text-[11px] font-semibold rounded-full px-2.5 py-1 shrink-0" style={{ background: `rgba(${rgb},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${rgb},0.45)` }}>✓</span>
+        ) : (
+          <span className="text-[10px] font-semibold rounded-full px-2.5 py-1 shrink-0" style={{ background: `rgba(${rgb},0.85)`, color: C.text, fontFamily: C.font }}>{t("church_deck.mock_progress_begin")} →</span>
+        )}
+      </div>
+    </div>
+  );
   return (
     <MockPhone>
-      <div className="flex items-center justify-end mb-1">
-        <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "rgba(200,212,192,0.08)" }}>
-          <span className="text-[10px]" style={{ color: "rgba(200,212,192,0.5)" }}>×</span>
+      <p className="text-[15px] font-bold" style={{ color: C.text, fontFamily: C.font }}>{t("church_deck.mock_progress_title")}</p>
+      <p className="text-[9px] mb-3 mt-0.5" style={{ color: C.sage, fontFamily: C.font }}>{t("church_deck.mock_progress_subtitle")}</p>
+
+      <p className="text-[8px] uppercase tracking-[0.18em] font-semibold mb-1.5" style={{ color: "rgba(143,175,150,0.5)", fontFamily: C.font }}>{t("church_deck.mock_progress_next")}</p>
+      {row("🕯️", t("church_deck.mock_progress_contemplation"), t("church_deck.mock_progress_contemplation_sub"), "62,124,122", false)}
+
+      <p className="text-[8px] uppercase tracking-[0.18em] font-semibold mb-1.5 mt-2" style={{ color: "rgba(143,175,150,0.5)", fontFamily: C.font }}>{t("church_deck.mock_progress_done")}</p>
+      {row("🌅", t("church_deck.mock_progress_morning"), t("church_deck.mock_progress_prayed"), "46,107,64", true)}
+
+      {/* StreakCard — the rhythm taking hold (amber accent). */}
+      <div className="rounded-2xl overflow-hidden flex mt-3" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.24)" }}>
+        <div className="w-1 flex-shrink-0" style={{ background: "rgba(193,127,36,0.85)" }} />
+        <div className="flex-1 px-3 py-3">
+          <div className="flex items-center gap-2">
+            <span className="text-[16px] flex-shrink-0">🔥</span>
+            <p className="flex-1 leading-none" style={{ color: "#E8B45E", fontFamily: C.font, fontSize: 20, fontWeight: 700 }}>
+              37 <span className="text-[10px] font-semibold ml-1" style={{ color: "#D9A45B" }}>{t("church_deck.mock_progress_streak_unit")}</span>
+            </p>
+            <p className="text-[9px] text-right flex-shrink-0" style={{ color: C.sage, fontFamily: C.font }}>{t("church_deck.mock_progress_last7")}</p>
+          </div>
+          <div className="flex items-center gap-1 mt-2.5">
+            {days.map((kept, i) => (
+              <span
+                key={i}
+                className="flex-1 rounded-full"
+                style={{ height: 6, maxWidth: 16, background: kept ? `rgba(${GREEN_BRIGHT},0.85)` : "rgba(143,175,150,0.16)", border: i === days.length - 1 ? "1.5px solid rgba(240,237,230,0.75)" : "1px solid transparent" }}
+              />
+            ))}
+          </div>
+          <p className="text-[8.5px] mt-1.5" style={{ color: "rgba(143,175,150,0.5)", fontFamily: C.font }}>{t("church_deck.mock_progress_last14")}</p>
+          <div className="mt-2.5 pt-2.5 flex items-center gap-2" style={{ borderTop: "1px solid rgba(46,107,64,0.18)" }}>
+            <div className="flex -space-x-1.5 flex-shrink-0">
+              {["#8B6F4E", "#5A7A8B", "#6B8B5A", "#7A5A6B"].map((bg, i) => (
+                <div key={i} className="w-5 h-5 rounded-full" style={{ background: bg, border: "1.5px solid #0C1F12" }} />
+              ))}
+            </div>
+            <p className="text-[9.5px] italic" style={{ color: C.sage, fontFamily: C.font }}>{t("church_deck.mock_progress_garden")}</p>
+          </div>
         </div>
-      </div>
-      <div
-        className="rounded-2xl flex flex-col items-center text-center px-5 py-8"
-        style={{ background: "radial-gradient(120% 120% at 50% 35%, rgba(28,46,32,0.95) 0%, rgba(11,15,11,0.92) 70%)" }}
-      >
-        <p
-          className="text-[9px] uppercase tracking-[0.22em] font-semibold mb-3"
-          style={{ color: C.sage, fontFamily: C.font }}
-        >
-          {t("church_deck.mock_streak_eyebrow")}
-        </p>
-        <div className="flex items-end justify-center gap-1.5">
-          <span style={{ fontFamily: C.font, fontSize: 64, fontWeight: 700, color: C.text, lineHeight: 1, letterSpacing: "-0.03em" }}>
-            {streak}
-          </span>
-          <span style={{ fontSize: 34, lineHeight: 1 }}>🔥</span>
-        </div>
-        <p
-          className="text-[10px] uppercase tracking-[0.18em] font-semibold mt-3"
-          style={{ color: C.sage, fontFamily: C.font }}
-        >
-          {t("church_deck.mock_streak_label")}
-        </p>
-        <p
-          className="text-[11px] leading-relaxed mt-3"
-          style={{ color: C.text, fontFamily: C.font, maxWidth: 220 }}
-        >
-          {t("church_deck.mock_streak_note")}
-        </p>
       </div>
     </MockPhone>
   );
@@ -1571,7 +1601,7 @@ const MOCK_MAP: Record<string, () => ReactElement> = {
   "office-formats": OfficeFormatsMock,
   "prayer-rhythm": PrayerRhythmMock,
   "daily-reminder": DailyReminderMock,
-  "prayer-streak": PrayerStreakMock,
+  "prayer-streak": DailyProgressMock,
   "meat-fast": MeatFastMock,
   calendar: CalendarMock,
   gatherings: GatheringsMock,
