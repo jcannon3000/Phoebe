@@ -178,26 +178,27 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Scheduler ownership: by default in production the schedulers run
-// in the dedicated worker process (src/worker.ts → Railway "worker"
-// service) so the web service can scale horizontally without every
-// replica firing the same 15-min ticks. For local dev — and as a
-// safety hatch if the worker service is ever down — we keep the
-// in-web boot path available, gated by RUN_SCHEDULERS_IN_WEB=true.
+// Scheduler ownership. This deploy runs ONLY the web process (index.mjs) —
+// there is no separate worker service (see nixpacks.toml). So the schedulers
+// (the 15-min bell tick that sends office reminders, contemplation nudges,
+// etc.) MUST run here, in the web process, or they never run at all — which
+// is exactly the bug behind "I never get my morning reminder" (real-time
+// pushes worked; nothing cron-based did).
 //
-//   • Production with the worker service deployed: leave
-//     RUN_SCHEDULERS_IN_WEB unset on the WEB service. Schedulers run
-//     only in the worker.
-//   • Local dev (single process): set RUN_SCHEDULERS_IN_WEB=true
-//     (or just run `pnpm dev`, which sets it for you).
-//   • Disable everything: DISABLE_BELL_SCHEDULER=true (legacy flag,
-//     overrides RUN_SCHEDULERS_IN_WEB).
+// Default: run in the web process. Opt out only when:
+//   • DISABLE_BELL_SCHEDULER=true — global kill switch, or
+//   • RUN_SCHEDULERS_IN_WORKER=true — a dedicated worker service has been
+//     added and owns the schedulers, so the web copy must stand down to avoid
+//     double-sending.
+// (RUN_SCHEDULERS_IN_WEB is still honored as a force-on for parity with dev,
+// but it's no longer REQUIRED — relying on it left the env unset in prod and
+// the scheduler silent.)
 const runInWeb =
   process.env["DISABLE_BELL_SCHEDULER"] !== "true" &&
-  process.env["RUN_SCHEDULERS_IN_WEB"] === "true";
+  process.env["RUN_SCHEDULERS_IN_WORKER"] !== "true";
 if (runInWeb) {
   logger.warn(
-    "[bell-scheduler] running INSIDE web process (RUN_SCHEDULERS_IN_WEB=true). Disable this in prod once the worker service is live."
+    "[bell-scheduler] running in the web process (default — no dedicated worker). Set RUN_SCHEDULERS_IN_WORKER=true if you add a worker service."
   );
   // Lazy imports so importing app.ts in tests doesn't start the
   // scheduler.

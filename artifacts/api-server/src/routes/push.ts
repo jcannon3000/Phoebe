@@ -162,7 +162,18 @@ router.post("/push/test", async (req, res): Promise<void> => {
       threadId: "test",
       data: { path: "/daily-progress" },
     });
-    res.json({ tokenCount: liveTokens.length, ...result });
+    // Is the 15-min cron scheduler actually running? Office reminders come from
+    // it (not the real-time path), so a stale/missing last-run here is the
+    // smoking gun for "I get other notifications but not my morning reminder".
+    let schedulerLastRunAgoMin: number | null = null;
+    try {
+      const rows = await db.execute<{ ago_seconds: number }>(
+        sql`SELECT EXTRACT(EPOCH FROM (NOW() - MAX(started_at)))::int AS ago_seconds FROM scheduler_runs`,
+      );
+      const agoSeconds = rows.rows?.[0]?.ago_seconds;
+      if (typeof agoSeconds === "number") schedulerLastRunAgoMin = Math.round(agoSeconds / 60);
+    } catch { /* table may not exist yet — leave null */ }
+    res.json({ tokenCount: liveTokens.length, ...result, schedulerLastRunAgoMin });
   } catch (err) {
     console.error("[push] test send failed:", err);
     res.status(500).json({ error: "test_failed" });

@@ -16,12 +16,11 @@ cmds = ["rm -rf artifacts/mymonastery/dist artifacts/letters-app/dist", "pnpm --
 # `drizzle-kit push --force` here: with devDeps installed it actually executes,
 # applying the schema destructively (can DROP columns) against prod every deploy.
 #
-# RUN_SCHEDULERS_IN_WEB=true makes this single web process also run the bell
-# scheduler (app.ts) — the source of the daily office reminders, contemplation
-# nudges, and every other cron-based push. This deploy runs ONLY index.mjs
-# (there is no separate worker service), so WITHOUT this flag those scheduled
-# pushes never fire — only real-time pushes ("prayed for you", words of
-# comfort) do. If a dedicated worker service is ever added, remove this flag
-# (or set DISABLE_BELL_SCHEDULER=true) so the scheduler doesn't run in both and
-# double-send.
-cmd = "RUN_SCHEDULERS_IN_WEB=true node ./artifacts/api-server/dist/index.mjs"
+# The bell scheduler (daily office reminders, contemplation nudges, every
+# cron-based push) runs in THIS web process by default — app.ts boots it unless
+# DISABLE_BELL_SCHEDULER=true or RUN_SCHEDULERS_IN_WORKER=true. We no longer
+# pass an env prefix here: a `VAR=value cmd` prefix isn't guaranteed to be
+# honored by the runner, and relying on it left the scheduler silent in prod
+# (the original "no morning reminders" bug). If a dedicated worker service is
+# ever added, set RUN_SCHEDULERS_IN_WORKER=true on this web service.
+cmd = "node ./artifacts/api-server/dist/index.mjs"
