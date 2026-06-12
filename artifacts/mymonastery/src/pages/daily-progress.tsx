@@ -15,7 +15,6 @@ import { ChevronLeft, Sliders } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/officePrefs";
 
@@ -194,7 +193,7 @@ function PracticeCard({
 
 export default function DailyProgressPage() {
   const { t } = useTranslation();
-  const { morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, doneCount, totalAnchors, gratitudeActive, examenActive, gratitudeDone, examenDone } = useRhythmState();
+  const { morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone } = useRhythmState();
   const hour = new Date().getHours();
   const kept = t("rhythm.kept", { defaultValue: "Kept today" });
   // Offices are "prayed", not "kept".
@@ -290,28 +289,22 @@ export default function DailyProgressPage() {
           {t("daily_progress.subtitle", { defaultValue: "Where you are in today's rhythm — and what's next." })}
         </p>
 
-        {/* Today's Rhythm — the at-a-glance card: the anchor circles that fill
-            as you keep each practice, the next step, and the streak. Restored
-            here as the page's top overview (it also lives on the header pill +
-            slideshow closing slide). Its anchor order matches the practice
-            cards below, including any added gratitude/examen anchors. */}
-        <TodaysRhythm />
-
-        {/* The four practices, each its own actionable card (done state +
-            progress + CTA). This list is the page's heart — the compact
-            "Today's Rhythm" dot card lives on the header pill + slideshow
-            closing slide; repeating it here was redundant. The header carries
-            the at-a-glance count the dots used to. */}
-        <div className="flex items-baseline justify-between mb-2">
-          <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
-            {t("daily_progress.practices_heading", { defaultValue: "Today's practices" })}
-          </p>
-          <p className="text-[11px] font-semibold" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
-            {t("daily_progress.kept_count_n", { count: doneCount, total: totalAnchors, defaultValue: `${doneCount} of ${totalAnchors} kept` })}
-          </p>
-        </div>
-        <div className="flex flex-col gap-2">
-          {cards.map((c) => (
+        {/* Practices split into Next + Done. The progress dots in the header
+            pill already carry the at-a-glance count, so the old Today's Rhythm
+            card (which repeated it) was removed. As a practice is kept it drops
+            from Next into Done; the first card in Next is what's up next. */}
+        {(() => {
+          const upcoming = cards.filter((c) => !c.done);
+          const completed = cards.filter((c) => c.done);
+          const sectionHeader = (label: string) => (
+            <div className="flex items-center gap-3 mb-2">
+              <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
+                {label}
+              </p>
+              <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+            </div>
+          );
+          const renderCard = (c: (typeof cards)[number]) => (
             <PracticeCard
               key={c.key}
               href={c.href}
@@ -325,8 +318,24 @@ export default function DailyProgressPage() {
               laterLabel={t("rhythm.later", { defaultValue: "Later" })}
               progress={"progress" in c ? c.progress : undefined}
             />
-          ))}
-        </div>
+          );
+          return (
+            <>
+              {upcoming.length > 0 && (
+                <>
+                  {sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}
+                  <div className="flex flex-col gap-2">{upcoming.map(renderCard)}</div>
+                </>
+              )}
+              {completed.length > 0 && (
+                <div className={upcoming.length > 0 ? "mt-6" : ""}>
+                  {sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}
+                  <div className="flex flex-col gap-2">{completed.map(renderCard)}</div>
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* Streak — the unified days-of-prayer run + last-14-days strip. */}
         <StreakCard />
