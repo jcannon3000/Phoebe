@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
@@ -114,6 +115,7 @@ export function ContemplationTimer({
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [phase, setPhase] = useState<Phase>("picker");
   const [customMode, setCustomMode] = useState(false);
   // Listen defaults to a 5-minute sit (St. Benedict's "Listen" — a few
@@ -648,10 +650,14 @@ export function ContemplationTimer({
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0 }}
+        // Appear INSTANTLY (no opacity fade-in) so the solid background covers
+        // the page immediately — fading the whole overlay in revealed the
+        // contemplation page behind it for ~0.25s, which read as a clumsy load.
+        // Still fades out cleanly on close.
+        initial={false}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.25 }}
+        transition={{ duration: 0.2 }}
         className="fixed inset-0 z-[60] flex flex-col items-center"
         style={{ background: BG, isolation: "isolate" }}
       >
@@ -907,6 +913,16 @@ export function ContemplationTimer({
                         style={{ color: "rgba(143,175,150,0.8)", background: "none", border: "none", cursor: "pointer", fontFamily: SPACE_GROTESK }}
                       >
                         {t("contemplation_timer.custom_length")}
+                      </button>
+                      {/* Cobreathe — the guided communal breath as a way to keep
+                          the silence. Closes the picker and opens the breath. */}
+                      <button
+                        type="button"
+                        onClick={() => { primeAudio(); onClose({ completed: false }); setLocation("/cobreathe?start=1"); }}
+                        className="mt-5 w-full rounded-2xl py-3.5 transition-opacity hover:opacity-90 active:scale-[0.98] flex items-center justify-center gap-2"
+                        style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.32)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+                      >
+                        🫧 {t("contemplation_timer.cobreathe", { defaultValue: "Cobreathe" })}
                       </button>
                     </>
                   ) : (
