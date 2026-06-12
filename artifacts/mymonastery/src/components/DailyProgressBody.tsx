@@ -270,7 +270,7 @@ function PracticeCard({
   return waiting ? row : <Link href={href} className="block">{row}</Link>;
 }
 
-export function DailyProgressBody({ showStreak = true, renderOfficeHero }: { showStreak?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode }) {
+export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCard }: { showStreak?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode }) {
   const { t } = useTranslation();
   const { morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone } = useRhythmState();
   const hour = new Date().getHours();
@@ -399,13 +399,16 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero }: { sho
   );
   return (
     <>
+      {/* A prayer-requests card leads the whole thing when there's something
+          waiting. */}
+      {leadCard && <div className="mb-3">{leadCard}</div>}
       {(upcoming.length > 0 || officeHero) && (
         <>
           {sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}
           <div className="flex flex-col gap-2">
-            {upcoming.map((c) => renderCard(c))}
-            {/* The office shows as the full hero, under the other Next cards. */}
+            {/* The office hero leads the Next list — above Contemplation. */}
             {officeHero}
+            {upcoming.map((c) => renderCard(c))}
           </div>
         </>
       )}

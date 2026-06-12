@@ -6202,9 +6202,15 @@ export default function Dashboard() {
               standard home modules. */}
           {filter === null && isBeta && (
             <div className="mt-5">
-              {/* The office shows as the same full PrayerOfficeCard hero all
-                  users get, under the compact Next cards (e.g. Contemplation). */}
-              <DailyProgressBody showStreak={false} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} />
+              {/* A "prayer requests waiting" card leads when there's something
+                  to respond to; then the office hero (the same full
+                  PrayerOfficeCard all users get) leads the Next list, above
+                  Contemplation. */}
+              <DailyProgressBody
+                showStreak={false}
+                leadCard={newPrayersCount > 0 ? <NewPrayerRequestsCard count={newPrayersCount} faces={homeFaces} /> : null}
+                renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />}
+              />
             </div>
           )}
           {filter === null && !isBeta && (() => {
