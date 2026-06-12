@@ -69,7 +69,9 @@ export function BetaHomeHeader() {
             <motion.p
               key="prayed"
               {...fade}
-              style={{ color: "#8FAF96", fontSize: 13, fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+              // Same format as the feast line (FeastTicker): uppercase, small,
+              // wide-tracked, faint sage.
+              style={{ color: "rgba(143,175,150,0.5)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
             >
               {count === 1 ? "1 person prayed with you this week" : `${count} people prayed with you this week`}
             </motion.p>

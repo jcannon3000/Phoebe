@@ -8,8 +8,10 @@
  * is just the cards + streak.
  */
 
+import { useState, useEffect, type CSSProperties } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
@@ -24,6 +26,40 @@ const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
+
+// A card subtitle that gently cross-fades between a few values (opacity only,
+// no movement — the same crossfade the worship card uses). An invisible spacer
+// of the longest value reserves the height, so the swap never nudges the
+// content below.
+function CardSubtitleCycle({ values, className, style }: { values: string[]; className?: string; style?: CSSProperties }) {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    if (values.length <= 1) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % values.length), 5000);
+    return () => clearInterval(t);
+  }, [values.length]);
+  const current = values[idx % values.length] ?? "";
+  const longest = values.reduce((a, b) => (b.length > a.length ? b : a), values[0] ?? "");
+  return (
+    <span className={className} style={{ position: "relative", display: "block", ...style }}>
+      <span aria-hidden style={{ visibility: "hidden" }}>{longest}</span>
+      <span style={{ position: "absolute", inset: 0 }}>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span
+            key={current}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.55, ease: "easeInOut" }}
+            style={{ display: "block" }}
+          >
+            {current}
+          </motion.span>
+        </AnimatePresence>
+      </span>
+    </span>
+  );
+}
 
 // Streak card — the unified days-of-prayer run, with a dot for each of the last
 // 14 days (filled = kept, ringed = today), plus the "others in your gardens"
@@ -124,16 +160,20 @@ function StreakCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 function PracticeCard({
-  href, emoji, title, blurb, cta, done, rgb, later, laterLabel, progress, hero,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   later?: boolean; laterLabel?: string;
   progress?: { current: number; goal: number };
+  /** When set (and not done), the subtitle cross-fades between these values
+   *  instead of showing the static blurb. */
+  blurbCycle?: string[];
   /** Render the larger "what's next" hero layout — big emoji + title and a
    *  prominent CTA button. Used for the first card under Next. */
   hero?: boolean;
 }) {
   const waiting = !!later && !done;
+  const useCycle = !!blurbCycle && blurbCycle.length > 1 && !done;
 
   // Hero layout — a bigger, more prominent card for the next anchor, whatever
   // practice it happens to be.
@@ -158,7 +198,9 @@ function PracticeCard({
             <span className="text-[34px] leading-none flex-shrink-0">{emoji}</span>
             <div className="flex-1 min-w-0">
               <p className="text-[22px] font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
-              <p className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }}>{blurb}</p>
+              {useCycle
+                ? <CardSubtitleCycle values={blurbCycle!} className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }} />
+                : <p className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }}>{blurb}</p>}
             </div>
           </div>
           {progress && progress.goal > 0 && !done && (
@@ -202,7 +244,9 @@ function PracticeCard({
         <span className="text-xl flex-shrink-0">{emoji}</span>
         <div className="flex-1 min-w-0">
           <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
-          <p className="text-[12px] mt-0.5 leading-snug" style={{ color: SAGE }}>{blurb}</p>
+          {useCycle
+            ? <CardSubtitleCycle values={blurbCycle!} className="text-[12px] mt-0.5 leading-snug" style={{ color: SAGE }} />
+            : <p className="text-[12px] mt-0.5 leading-snug" style={{ color: SAGE }}>{blurb}</p>}
           {progress && progress.goal > 0 && !done && (
             <div className="mt-2 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
               <div
@@ -231,6 +275,20 @@ export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean 
     reflectionSource && reflectionSource !== "none"
       ? PUBLICATION_NAME[reflectionSource]
       : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" });
+  // Today's CAC meditation title (scraped) — so the reflection card can flip
+  // between "CAC Daily Meditation" and the day's title.
+  const { data: cacMeta } = useQuery<{ title?: string }>({
+    queryKey: ["/api/cac/today-meta"],
+    queryFn: () => apiRequest("GET", "/api/cac/today-meta"),
+    staleTime: 60 * 60_000,
+    enabled: reflectionSource === "cac",
+  });
+  const cacTitle = (cacMeta?.title ?? "").trim();
+  // Office/devotion subtitle flips between the two things you carry in.
+  const officeCycle = [
+    t("rhythm.with_intercessions", { defaultValue: "with community intercessions" }),
+    t("rhythm.with_requests", { defaultValue: "with community prayer requests" }),
+  ];
   const contemplationBlurb = silenceDone
     ? kept
     : contemplationGoalMin > 0
@@ -249,6 +307,7 @@ export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean 
       key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer",
       title: officeTitle("Morning"),
       blurb: morningDone ? prayed : t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" }),
+      blurbCycle: morningDone ? undefined : officeCycle,
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     },
     {
@@ -262,6 +321,8 @@ export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean 
       key: "reflect", emoji: "📖", rgb: "96,141,209", done: reflectDone, href: "/menu/reflections",
       title: t("rhythm.card_reflect", { defaultValue: "Today's reflection" }),
       blurb: reflectionSubtitle,
+      // CAC with a scraped title: flip between the publication name and today's title.
+      blurbCycle: (!reflectDone && reflectionSource === "cac" && cacTitle) ? [PUBLICATION_NAME.cac, cacTitle] : undefined,
       cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
     },
     {
@@ -270,6 +331,9 @@ export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean 
       blurb: eveningDone
         ? prayed
         : hour >= 20 ? t("rhythm.blurb_compline", { defaultValue: "Examine the day and rest" }) : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
+      // The evening office (before 8 PM) carries the same community intercessions /
+      // requests; after 8 PM the card is the Examen, so no cycle.
+      blurbCycle: (eveningDone || hour >= 20) ? undefined : officeCycle,
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
       later: hour < 12,
     },
@@ -310,6 +374,7 @@ export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean 
       later={c.later}
       laterLabel={t("rhythm.later", { defaultValue: "Later" })}
       progress={"progress" in c ? c.progress : undefined}
+      blurbCycle={"blurbCycle" in c ? c.blurbCycle : undefined}
       hero={hero}
     />
   );
