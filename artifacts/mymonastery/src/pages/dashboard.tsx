@@ -12,7 +12,6 @@ import { PodcastsRail } from "@/components/PodcastsRail";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
-import { BetaHomeHeader } from "@/components/BetaHomeHeader";
 import { DailyProgressBody } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
@@ -6152,34 +6151,24 @@ export default function Dashboard() {
             not the day-of-week, so we want the in-app date visible
             there too). */}
         <div className="mb-4">
-          {/* Beta home: date with the faces of people you've prayed with on the
-              right, and a subtitle that flip-fades between the feast and "N
-              people prayed with you this week." Everyone else keeps the plain
-              date + feast line. */}
-          {isBeta ? (
-            <BetaHomeHeader />
-          ) : (
-            <>
-              <p
-                className="mb-1"
-                style={{
-                  color: "#F0EDE6",
-                  fontSize: 22,
-                  fontWeight: 600,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.2,
-                  fontFamily: "'Space Grotesk', sans-serif",
-                }}
-              >
-                {format(new Date(), "EEEE, d MMMM")}
-              </p>
-              {/* Show the feast/Sunday/commemoration when there is one;
-                  otherwise fall back to the brand tagline. */}
-              <div style={{ marginBottom: 20 }}>
-                <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
-              </div>
-            </>
-          )}
+          <p
+            className="mb-1"
+            style={{
+              color: "#F0EDE6",
+              fontSize: 22,
+              fontWeight: 600,
+              letterSpacing: "-0.02em",
+              lineHeight: 1.2,
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            {format(new Date(), "EEEE, d MMMM")}
+          </p>
+          {/* Show the feast/Sunday/commemoration when there is one;
+              otherwise fall back to the brand tagline. */}
+          <div style={{ marginBottom: 20 }}>
+            <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
+          </div>
 
           {/* Today's Rhythm card moved off the home top: it now lives on the
               slideshow closing slide and on the /daily-progress page (reached
@@ -6215,7 +6204,7 @@ export default function Dashboard() {
             <div className="mt-5">
               {/* The office shows as the same full PrayerOfficeCard hero all
                   users get, under the compact Next cards (e.g. Contemplation). */}
-              <DailyProgressBody showStreak={false} officeHero={<PrayerOfficeCard />} />
+              <DailyProgressBody showStreak={false} renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />} />
             </div>
           )}
           {filter === null && !isBeta && (() => {

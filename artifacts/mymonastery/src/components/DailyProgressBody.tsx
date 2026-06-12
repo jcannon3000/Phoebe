@@ -266,7 +266,7 @@ function PracticeCard({
   return waiting ? row : <Link href={href} className="block">{row}</Link>;
 }
 
-export function DailyProgressBody({ showStreak = true, officeHero }: { showStreak?: boolean; officeHero?: ReactNode }) {
+export function DailyProgressBody({ showStreak = true, renderOfficeHero }: { showStreak?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode }) {
   const { t } = useTranslation();
   const { morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone } = useRhythmState();
   const hour = new Date().getHours();
@@ -357,12 +357,14 @@ export function DailyProgressBody({ showStreak = true, officeHero }: { showStrea
     }] : []),
   ];
 
-  // When a dedicated office hero is supplied (the beta home), the office is
-  // shown as that full hero instead of a practice row — so drop the side it
-  // represents (the time-appropriate office: morning before noon, else
-  // evening). The other side's row stays (e.g. a done Morning Devotion).
-  const heroSide = hour < 12 ? "morning" : "evening";
-  const visibleCards = officeHero
+  // When a dedicated office hero is supplied (the beta home), the office shows
+  // as that full hero instead of a practice row. The hero is the next office to
+  // pray: morning while it's still undone, otherwise evening. We drop the hero's
+  // side from the rows; the OTHER side stays as a small row (e.g. evening drops
+  // small in the list when morning isn't done yet).
+  const heroSide: "morning" | "evening" = morningDone ? "evening" : "morning";
+  const officeHero = renderOfficeHero ? renderOfficeHero(heroSide) : null;
+  const visibleCards = renderOfficeHero
     ? cards.filter((c) => c.key !== heroSide)
     : cards;
   const upcoming = visibleCards.filter((c) => !c.done);
