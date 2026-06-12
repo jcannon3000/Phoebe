@@ -211,70 +211,77 @@ function buildSlides(t: TFunction): Slide[] {
 
 // ─── Slide renderers ─────────────────────────────────────────────────────────
 
-/* ── Dashboard Mock (compact) ── */
+/* ── Dashboard Mock — the current home screen ── */
+// Rebuilt to match today's dashboard: the app header (Phoebe · Daily progress ·
+// Menu), the date + liturgical tagline, then the module cards in their real
+// order and palette — the "prayer requests waiting" card, the Book-of-Common-
+// Prayer office hero ("Begin prayer"), and the teal Contemplation card.
 function DashboardMock() {
   const { t } = useTranslation();
+  const avatar = (bg: string, key: number) => (
+    <div key={key} className="w-5 h-5 rounded-full" style={{ background: bg, border: "1.5px solid #091A10" }} />
+  );
+  const dot = (filled: boolean, key: number) => (
+    <span
+      key={key}
+      className="w-1 h-1 rounded-full"
+      style={filled ? { background: "#7FA98A" } : { border: "1px solid rgba(127,169,138,0.4)" }}
+    />
+  );
   return (
     <MockPhone>
-      {/* Header */}
-      <div className="flex items-center justify-between mb-1.5">
-        <h2 className="text-base font-bold" style={{ color: C.text, fontFamily: C.font }}>Phoebe</h2>
-        <div className="flex gap-1.5">
-          <span className="text-[9px] px-2.5 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>🕯️ {t("church_deck.mock_dashboard_prayer_list")}</span>
-          <span className="text-[9px] px-2.5 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage }}>{t("church_deck.mock_dashboard_menu")}</span>
+      {/* App header — Phoebe · Daily progress · Menu */}
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-[15px] font-bold" style={{ color: C.text, fontFamily: C.font }}>Phoebe</span>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 text-[8px] px-2 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage, fontFamily: C.font }}>
+            {t("church_deck.mock_home_progress")}
+            <span className="inline-flex gap-0.5 ml-0.5 items-center">{[true, true, false, false].map((f, i) => dot(f, i))}</span>
+          </span>
+          <span className="text-[8px] px-2 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.25)", color: C.sage, fontFamily: C.font }}>{t("church_deck.mock_home_menu")}</span>
         </div>
       </div>
-      <p className="text-[8px] uppercase tracking-[0.15em] mb-1" style={{ color: "rgba(143,175,150,0.4)" }}>{t("church_deck.mock_dashboard_eyebrow")}</p>
-      <p className="text-[13px] font-semibold mb-3" style={{ color: C.text, fontFamily: C.font }}>{t("church_deck.mock_dashboard_date")}</p>
 
-      {/* This week */}
-      <div className="flex items-center gap-2 mb-2">
-        <p className="text-[11px] font-bold" style={{ color: C.text }}>{t("church_deck.mock_dashboard_this_week")}</p>
-        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
-      </div>
-      <div className="space-y-2">
-        {/* Daily Office card */}
-        <div className="flex rounded-xl overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}>
-          <div className="w-1 shrink-0" style={{ background: "#5C8A5F" }} />
-          <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>🌅 {t("church_deck.mock_dashboard_morning_prayer")}</p>
-              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>{t("church_deck.mock_dashboard_office_bcp")}</p>
-            </div>
-            <div className="text-right shrink-0 flex flex-col items-end gap-1">
-              <p className="text-[8px] uppercase tracking-wider font-semibold" style={{ color: "#C8D4C0" }}>{t("church_deck.mock_dashboard_this_morning")}</p>
-              <span className="text-[9px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "#2D5E3F", color: C.text }}>{t("church_deck.mock_dashboard_pray")}</span>
-            </div>
+      {/* Date + liturgical tagline */}
+      <p className="text-[14px] font-semibold leading-tight" style={{ color: C.text, fontFamily: C.font }}>{t("church_deck.mock_home_date")}</p>
+      <p className="text-[7.5px] uppercase tracking-[0.14em] mb-3 mt-0.5" style={{ color: "rgba(143,175,150,0.45)", fontFamily: C.font }}>{t("church_deck.mock_home_tagline")}</p>
+
+      {/* Prayer requests waiting */}
+      <div className="rounded-xl overflow-hidden flex mb-2" style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(111,175,133,0.35)" }}>
+        <div className="w-1 flex-shrink-0" style={{ background: "#2E6B40" }} />
+        <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[11.5px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>{t("church_deck.mock_home_requests")} 🙏🏽</p>
+            <div className="flex -space-x-1.5 mt-1.5">{avatar("#8B6F4E", 1)}{avatar("#5A7A8B", 2)}{avatar("#7A5A6B", 3)}</div>
           </div>
+          <div className="text-[10px] font-semibold px-2.5 py-1 rounded-full shrink-0" style={{ background: "#4A7A5B", color: C.text, border: "1px solid rgba(111,175,133,0.45)", fontFamily: C.font }}>{t("church_deck.mock_home_respond")} →</div>
         </div>
-        {/* Intercession card */}
-        <div className="flex rounded-xl overflow-hidden" style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}>
-          <div className="w-1 shrink-0" style={{ background: "#5C8A5F" }} />
-          <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <p className="text-[12px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>🙏🏽 {t("church_deck.mock_dashboard_prayers_healing")}</p>
-              <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>{t("church_deck.mock_dashboard_with_margaret_anna")}</p>
-            </div>
-            <div className="text-right shrink-0 flex flex-col items-end gap-1">
-              <p className="text-[8px] uppercase tracking-wider font-semibold" style={{ color: "#C8D4C0" }}>🔥 2</p>
-              <span className="text-[9px] px-2.5 py-1 rounded-full font-semibold" style={{ background: "rgba(46,107,64,0.18)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.35)" }}>{t("church_deck.mock_dashboard_view")}</span>
-            </div>
+      </div>
+
+      {/* Office hero — Book of Common Prayer */}
+      <div className="rounded-xl overflow-hidden flex mb-2" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.4)" }}>
+        <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
+        <div className="flex-1 px-3 py-3">
+          <p className="text-[8px] font-semibold uppercase tracking-[0.14em]" style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}>{t("church_deck.mock_home_office_eyebrow")}</p>
+          <p className="text-[17px] font-semibold mt-0.5" style={{ color: C.text, fontFamily: C.font }}>{t("church_deck.mock_home_office_title")} 🌅</p>
+          <p className="text-[9.5px] mt-0.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: C.font }}>{t("church_deck.mock_home_office_sub")}</p>
+          <div className="flex items-center justify-between mt-2.5">
+            <div className="flex -space-x-1.5">{avatar("#6B8B5A", 4)}{avatar("#8B7A4E", 5)}{avatar("#5A8B7A", 6)}</div>
+            <div className="text-[10px] font-semibold px-3 py-1 rounded-full" style={{ background: "rgba(46,107,64,0.22)", color: C.text, border: "1px solid rgba(46,107,64,0.45)", fontFamily: C.font }}>{t("church_deck.mock_home_office_cta")} →</div>
           </div>
         </div>
       </div>
 
-      {/* Prayer requests — just one card */}
-      <div className="flex items-center gap-2 mt-3 mb-2">
-        <p className="text-[11px] font-bold" style={{ color: C.text }}>{t("church_deck.mock_dashboard_prayer_requests")}</p>
-        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
-      </div>
-      <div
-        className="rounded-xl px-3 py-2.5"
-        style={{ background: "#0F2818", border: "1px solid rgba(92,138,95,0.28)" }}
-      >
-        <p className="text-[10px] font-semibold mb-0.5" style={{ color: C.sage }}>{t("church_deck.mock_dashboard_margaret_w")}</p>
-        <p className="text-[11px] leading-snug" style={{ color: C.text }}>{t("church_deck.mock_dashboard_margaret_request")}</p>
-        <p className="text-[9px] mt-1" style={{ color: "rgba(143,175,150,0.35)" }}>🙏 {t("church_deck.mock_dashboard_praying_count", { count: 4 })}</p>
+      {/* Contemplation — teal */}
+      <div className="rounded-xl overflow-hidden flex" style={{ background: "rgba(62,124,122,0.12)", border: "1px solid rgba(62,124,122,0.35)" }}>
+        <div className="w-1 flex-shrink-0" style={{ background: "rgba(62,124,122,0.85)" }} />
+        <div className="flex-1 px-3 py-2.5 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[11.5px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>{t("church_deck.mock_home_contemplation")} 🕯️</p>
+            <p className="text-[9px] mt-0.5" style={{ color: "rgba(143,175,150,0.8)", fontFamily: C.font }}>{t("church_deck.mock_home_contemplation_sub")}</p>
+          </div>
+          <div className="text-[10px] font-semibold px-3 py-1 rounded-full shrink-0" style={{ background: "rgba(62,124,122,0.28)", color: C.text, border: "1px solid rgba(62,124,122,0.45)", fontFamily: C.font }}>{t("church_deck.mock_home_begin")} →</div>
+        </div>
       </div>
     </MockPhone>
   );
