@@ -12,6 +12,8 @@ import { PodcastsRail } from "@/components/PodcastsRail";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
+import { BetaHomeHeader } from "@/components/BetaHomeHeader";
+import { DailyProgressBody } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
@@ -6150,27 +6152,34 @@ export default function Dashboard() {
             not the day-of-week, so we want the in-app date visible
             there too). */}
         <div className="mb-4">
-          <p
-            className="mb-1"
-            style={{
-              color: "#F0EDE6",
-              fontSize: 22,
-              fontWeight: 600,
-              letterSpacing: "-0.02em",
-              lineHeight: 1.2,
-              fontFamily: "'Space Grotesk', sans-serif",
-            }}
-          >
-            {format(new Date(), "EEEE, d MMMM")}
-          </p>
-          {/* Show the feast/Sunday/commemoration when there is one;
-              otherwise fall back to the brand tagline. Plain ferial
-              seasonal labels ("The Fourth Week of Easter") are
-              suppressed in favor of the tagline. Extra bottom space
-              so the feast line breathes above the cards below it. */}
-          <div style={{ marginBottom: 20 }}>
-            <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
-          </div>
+          {/* Beta home: date with the faces of people you've prayed with on the
+              right, and a subtitle that flip-fades between the feast and "N
+              people prayed with you this week." Everyone else keeps the plain
+              date + feast line. */}
+          {isBeta ? (
+            <BetaHomeHeader />
+          ) : (
+            <>
+              <p
+                className="mb-1"
+                style={{
+                  color: "#F0EDE6",
+                  fontSize: 22,
+                  fontWeight: 600,
+                  letterSpacing: "-0.02em",
+                  lineHeight: 1.2,
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              >
+                {format(new Date(), "EEEE, d MMMM")}
+              </p>
+              {/* Show the feast/Sunday/commemoration when there is one;
+                  otherwise fall back to the brand tagline. */}
+              <div style={{ marginBottom: 20 }}>
+                <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
+              </div>
+            </>
+          )}
 
           {/* Today's Rhythm card moved off the home top: it now lives on the
               slideshow closing slide and on the /daily-progress page (reached
@@ -6199,7 +6208,15 @@ export default function Dashboard() {
                    that wasn't working — the daily rhythm is now
                    "respond to your community + pray the office,"
                    not "walk through the slideshow every day." */}
-          {filter === null && (() => {
+          {/* Beta home: the cards become the daily-progress view — the four
+              anchors split into Next / Done plus the streak — in place of the
+              standard home modules. */}
+          {filter === null && isBeta && (
+            <div className="mt-5">
+              <DailyProgressBody />
+            </div>
+          )}
+          {filter === null && !isBeta && (() => {
             // Render the home modules in the user's chosen order, skipping
             // hidden ones. Each module returns its content (or null when it
             // has nothing to show); the first non-null gets mt-5, the rest
