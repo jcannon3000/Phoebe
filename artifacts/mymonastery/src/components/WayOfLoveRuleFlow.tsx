@@ -262,7 +262,9 @@ export default function WayOfLoveRuleFlow({
       {/* No fadeTop: rendered under <Layout>'s opaque header. */}
       <AnimatedBackground base={BG} variant="subtle" />
       <div className="px-4 sm:px-6 md:px-8" style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", paddingTop: 24, paddingBottom: 40 }}>
-        <div style={{ flex: 1, maxWidth: 480, margin: "0 auto", width: "100%", display: "flex", flexDirection: "column" }}>
+        {/* Full width on mobile; capped + centered only on larger screens so the
+            elements aren't squeezed into a narrow column on a phone. */}
+        <div className="w-full sm:max-w-[480px] sm:mx-auto" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
           {children}
         </div>
       </div>
