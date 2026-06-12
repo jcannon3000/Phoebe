@@ -274,6 +274,11 @@ export function CobreatheBreath({
       // time — a backgrounded tab/app that "completed" the count doesn't count.
       if (!reachedRef.current && !invalidRef.current && completed >= totalBreaths) {
         reachedRef.current = true;
+        // One big, long, sustained haptic when all twelve breaths are kept —
+        // the payoff, distinct from the soft per-breath taps.
+        try {
+          window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "sustained" } }));
+        } catch { /* no native shell on web — silent */ }
         onReachTarget?.(Math.round((now - startRef.current) / 1000));
       }
       setTick((n) => n + 1);

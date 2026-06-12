@@ -568,6 +568,35 @@ function fireCelebrationRumble() {
   celebrationInterval = window.setInterval(tick, TICK_MS);
 }
 
+// One long SUSTAINED rumble — a steady Heavy buzz held for ~1.5s with no swell
+// (distinct from `celebration`, which crescendos and fades). iOS has no true
+// continuous haptic, so we fire Heavy impacts close together; felt as one long
+// buzz. Used for the Cobreathe "you kept all twelve breaths" payoff.
+let sustainedInterval: number | null = null;
+function fireSustainedRumble() {
+  if (sustainedInterval !== null) {
+    window.clearInterval(sustainedInterval);
+    sustainedInterval = null;
+  }
+  const TOTAL_MS = 1500;
+  const TICK_MS = 45;
+  const startedAt = Date.now();
+  // Open with a success notification so the buzz lands with a clear "done."
+  try { Haptics.notification({ type: NotificationType.Success }); } catch { /* non-fatal */ }
+  const tick = () => {
+    if (Date.now() - startedAt >= TOTAL_MS) {
+      if (sustainedInterval !== null) {
+        window.clearInterval(sustainedInterval);
+        sustainedInterval = null;
+      }
+      return;
+    }
+    Haptics.impact({ style: ImpactStyle.Heavy }).catch(() => {});
+  };
+  tick();
+  sustainedInterval = window.setInterval(tick, TICK_MS);
+}
+
 function wireHaptics() {
   window.addEventListener("phoebe:haptic", e => {
     const detail = (e as CustomEvent).detail as { style?: string } | undefined;
@@ -576,6 +605,9 @@ function wireHaptics() {
       switch (s) {
         case "celebration":
           fireCelebrationRumble();
+          break;
+        case "sustained":
+          fireSustainedRumble();
           break;
         case "heavy":
           Haptics.impact({ style: ImpactStyle.Heavy });
