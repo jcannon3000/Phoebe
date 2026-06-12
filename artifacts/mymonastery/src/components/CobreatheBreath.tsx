@@ -86,30 +86,39 @@ const CIRCLE_BASE = 300;
 // gradual stops + a fully-transparent outer edge so there is no hard ring and
 // no banding: the alpha steps down a little at a time and reaches 0 well inside
 // the element box (so the blur below never clips a visible edge).
-const GLOW = "radial-gradient(circle, rgba(130,196,150,0.85) 0%, rgba(118,186,142,0.62) 20%, rgba(100,168,124,0.42) 38%, rgba(78,142,98,0.26) 54%, rgba(58,120,76,0.13) 70%, rgba(46,107,64,0.05) 84%, rgba(46,107,64,0) 94%)";
+const GLOW = "radial-gradient(circle, rgba(130,196,150,0.52) 0%, rgba(118,186,142,0.38) 20%, rgba(100,168,124,0.25) 38%, rgba(78,142,98,0.15) 54%, rgba(58,120,76,0.08) 70%, rgba(46,107,64,0.03) 84%, rgba(46,107,64,0) 94%)";
 // Larger, cooler, fainter halo behind it for depth + a hint of colour shift.
-const HALO = "radial-gradient(circle, rgba(110,180,150,0.22) 0%, rgba(92,158,138,0.15) 30%, rgba(74,140,128,0.09) 52%, rgba(58,120,96,0.04) 72%, rgba(46,107,64,0) 88%)";
+const HALO = "radial-gradient(circle, rgba(110,180,150,0.13) 0%, rgba(92,158,138,0.08) 30%, rgba(74,140,128,0.05) 52%, rgba(58,120,96,0.02) 72%, rgba(46,107,64,0) 88%)";
 const FIELD = "#0A1C14";              // solid deep-green field
 // The world turns between these three globes — one per breath cycle.
 const GLOBES = ["🌍", "🌎", "🌏"] as const;
 
-// A soft "radial gradient" of small plant emojis spiralling out from the globe
+// A soft "radial gradient" of small emojis spiralling out from the globe
 // (Apple-style emoji burst). Laid out on a phyllotaxis spiral — the golden
 // angle, the same spacing leaves take around a stem — so it reads as a living
-// spray of green, not a rigid ring. Smaller + fainter toward the rim. The whole
-// spiral scales with the breath (computed once here; animated in the rAF loop).
-const PLANTS = ["🌿", "🌱", "🍃", "🌾", "☘️"] as const;
+// spray, not a rigid ring. Smaller + fainter toward the rim. The whole spiral
+// scales with the breath (computed once here; animated in the rAF loop).
+//
+// The cast is all of breathing life: plants, small animals, and people of many
+// skin tones at prayer / breathing — "the air in your lungs has passed through
+// every living thing." Interleaved so categories and tones alternate around
+// the spiral rather than clustering.
+const PARTICLE_EMOJIS = [
+  "🌿", "🧘🏽", "🦋", "🙏🏿", "🌱", "🐝", "🧘🏻", "🍃",
+  "🐦", "🙏🏼", "🌾", "🧘🏿", "🐞", "☘️", "🙏🏾", "🐢",
+  "🧘🏼", "🌿", "🐌", "🙏🏻", "🌱", "🦔", "🧘🏾", "🍃",
+] as const;
 const GOLDEN_ANGLE = 2.399963229728653; // radians (~137.5°)
-const PLANT_PARTICLES = Array.from({ length: 22 }, (_, i) => {
-  const f = i / 22;
+const PLANT_PARTICLES = Array.from({ length: PARTICLE_EMOJIS.length }, (_, i) => {
+  const f = i / PARTICLE_EMOJIS.length;
   const angle = i * GOLDEN_ANGLE;
-  const radius = 64 + 110 * Math.sqrt(f); // px from centre — even spiral spread
+  const radius = 64 + 112 * Math.sqrt(f); // px from centre — even spiral spread
   return {
     x: Math.cos(angle) * radius,
     y: Math.sin(angle) * radius,
     size: 20 - f * 9,        // ~20px near the globe → ~11px at the rim
     opacity: 0.82 - f * 0.58, // fade outward, like a radial gradient
-    emoji: PLANTS[i % PLANTS.length],
+    emoji: PARTICLE_EMOJIS[i],
   };
 });
 
@@ -180,13 +189,13 @@ export function CobreatheBreath({
       // large on the inhale (~1.52) — a far more dramatic pulse than before.
       if (circleRef.current) {
         circleRef.current.style.transform = `translate(-50%, -50%) scale(${(0.66 + p * 0.86).toFixed(4)})`;
-        circleRef.current.style.opacity = String(0.4 + p * 0.58);
+        circleRef.current.style.opacity = String(0.3 + p * 0.45);
       }
       // The halo breathes wider and fainter, a beat behind — depth + the subtle
       // colour shift, swinging across an even bigger range than the core.
       if (ringRef.current) {
         ringRef.current.style.transform = `translate(-50%, -50%) scale(${(0.82 + p * 0.98).toFixed(4)})`;
-        ringRef.current.style.opacity = String(0.26 + p * 0.46);
+        ringRef.current.style.opacity = String(0.18 + p * 0.34);
       }
       // The world at the centre breathes with the glow — a touch more now.
       if (globeRef.current) {
