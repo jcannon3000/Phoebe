@@ -8,7 +8,7 @@
  * is just the cards + streak.
  */
 
-import { useState, useEffect, type CSSProperties } from "react";
+import { useState, useEffect, type CSSProperties, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -266,7 +266,7 @@ function PracticeCard({
   return waiting ? row : <Link href={href} className="block">{row}</Link>;
 }
 
-export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean }) {
+export function DailyProgressBody({ showStreak = true, officeHero }: { showStreak?: boolean; officeHero?: ReactNode }) {
   const { t } = useTranslation();
   const { morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone } = useRhythmState();
   const hour = new Date().getHours();
@@ -286,7 +286,10 @@ export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean 
     enabled: reflectionSource === "cac",
   });
   const cacTitle = (cacMeta?.title ?? "").trim();
-  // Office/devotion subtitle flips between the two things you carry in.
+  // Office/devotion subtitle leads with the descriptive line, then flips
+  // between the two things you carry in.
+  const morningBlurb = t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" });
+  const eveningBlurb = t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" });
   const officeCycle = [
     t("rhythm.with_intercessions", { defaultValue: "with community intercessions" }),
     t("rhythm.with_requests", { defaultValue: "with community prayer requests" }),
@@ -308,8 +311,8 @@ export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean 
     {
       key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer",
       title: officeTitle("Morning"),
-      blurb: morningDone ? prayed : t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" }),
-      blurbCycle: morningDone ? undefined : officeCycle,
+      blurb: morningDone ? prayed : morningBlurb,
+      blurbCycle: morningDone ? undefined : [morningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     },
     {
@@ -333,9 +336,10 @@ export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean 
       blurb: eveningDone
         ? prayed
         : hour >= 20 ? t("rhythm.blurb_compline", { defaultValue: "Examine the day and rest" }) : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
-      // The evening office (before 8 PM) carries the same community intercessions /
-      // requests; after 8 PM the card is the Examen, so no cycle.
-      blurbCycle: (eveningDone || hour >= 20) ? undefined : officeCycle,
+      // The evening office (before 8 PM) leads with "Mark the day's end with the
+      // office", then carries the community intercessions / requests; after 8 PM
+      // the card is the Examen, so no cycle.
+      blurbCycle: (eveningDone || hour >= 20) ? undefined : [eveningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
       later: hour < 12,
     },
@@ -353,8 +357,16 @@ export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean 
     }] : []),
   ];
 
-  const upcoming = cards.filter((c) => !c.done);
-  const completed = cards.filter((c) => c.done);
+  // When a dedicated office hero is supplied (the beta home), the office is
+  // shown as that full hero instead of a practice row — so drop the side it
+  // represents (the time-appropriate office: morning before noon, else
+  // evening). The other side's row stays (e.g. a done Morning Devotion).
+  const heroSide = hour < 12 ? "morning" : "evening";
+  const visibleCards = officeHero
+    ? cards.filter((c) => c.key !== heroSide)
+    : cards;
+  const upcoming = visibleCards.filter((c) => !c.done);
+  const completed = visibleCards.filter((c) => c.done);
   const sectionHeader = (label: string) => (
     <div className="flex items-center gap-3 mb-2">
       <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
@@ -363,7 +375,7 @@ export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean 
       <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
     </div>
   );
-  const renderCard = (c: (typeof cards)[number], hero = false) => (
+  const renderCard = (c: (typeof cards)[number]) => (
     <PracticeCard
       key={c.key}
       href={c.href}
@@ -377,16 +389,18 @@ export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean 
       laterLabel={t("rhythm.later", { defaultValue: "Later" })}
       progress={"progress" in c ? c.progress : undefined}
       blurbCycle={"blurbCycle" in c ? c.blurbCycle : undefined}
-      hero={hero}
     />
   );
   return (
     <>
-      {upcoming.length > 0 && (
+      {(upcoming.length > 0 || officeHero) && (
         <>
           {sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}
-          {/* The top card under Next is the hero, whatever practice it is. */}
-          <div className="flex flex-col gap-2">{upcoming.map((c, idx) => renderCard(c, idx === 0))}</div>
+          <div className="flex flex-col gap-2">
+            {upcoming.map((c) => renderCard(c))}
+            {/* The office shows as the full hero, under the other Next cards. */}
+            {officeHero}
+          </div>
         </>
       )}
       {completed.length > 0 && (

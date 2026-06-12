@@ -6213,7 +6213,9 @@ export default function Dashboard() {
               standard home modules. */}
           {filter === null && isBeta && (
             <div className="mt-5">
-              <DailyProgressBody showStreak={false} />
+              {/* The office shows as the same full PrayerOfficeCard hero all
+                  users get, under the compact Next cards (e.g. Contemplation). */}
+              <DailyProgressBody showStreak={false} officeHero={<PrayerOfficeCard />} />
             </div>
           )}
           {filter === null && !isBeta && (() => {

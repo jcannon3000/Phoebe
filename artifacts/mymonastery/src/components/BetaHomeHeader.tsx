@@ -60,10 +60,10 @@ export function BetaHomeHeader() {
         )}
       </div>
 
-      {/* Subtitle — cross-fades between feast and the prayed-with line. A fixed
-          minHeight that both lines fit under keeps the cards below from
-          shifting while it fades. */}
-      <div style={{ marginBottom: 20, minHeight: 20 }}>
+      {/* Subtitle — cross-fades between feast and the prayed-with line. Both are
+          absolutely positioned in a fixed-height box, so the swap never changes
+          the box height and the cards below never move. */}
+      <div style={{ position: "relative", height: 15, marginTop: 4, marginBottom: 20 }}>
         <AnimatePresence mode="wait" initial={false}>
           {showPrayed && count > 0 ? (
             <motion.p
@@ -71,12 +71,12 @@ export function BetaHomeHeader() {
               {...fade}
               // Same format as the feast line (FeastTicker): uppercase, small,
               // wide-tracked, faint sage.
-              style={{ color: "rgba(143,175,150,0.5)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}
+              style={{ position: "absolute", top: 0, left: 0, right: 0, color: "rgba(143,175,150,0.5)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: "15px" }}
             >
               {count === 1 ? "1 person prayed with you this week" : `${count} people prayed with you this week`}
             </motion.p>
           ) : (
-            <motion.div key="feast" {...fade}>
+            <motion.div key="feast" {...fade} style={{ position: "absolute", top: 0, left: 0, right: 0 }}>
               <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
             </motion.div>
           )}
