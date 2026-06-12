@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { NetworkBanner } from "@/components/NetworkBanner";
 import { ServerDownScreen } from "@/components/ServerDownScreen";
 import { GlobalButtonHaptics } from "@/components/GlobalButtonHaptics";
+import { DailyCompleteCelebration } from "@/components/DailyCompleteCelebration";
 import { LocaleSync } from "@/components/LocaleSync";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { WebPushPermissionPrompt } from "@/components/WebPushPermissionPrompt";
@@ -913,6 +914,7 @@ function App() {
       <TooltipProvider>
         <ErrorBoundary>
           <GlobalButtonHaptics />
+          <DailyCompleteCelebration />
           <LocaleSync />
           <AppOpenTracker />
           <WidgetSync />

@@ -588,6 +588,19 @@ export const es: Translations = {
     practices_heading: "Prácticas de hoy",
   },
 
+  // ── Celebración de ritmo completo (todas las prácticas) ──────────────────
+  daily_complete: {
+    title: "Ritmo completo",
+    kept_count_one: "{{count}} de {{total}} práctica cumplida hoy",
+    kept_count_other: "{{count}} de {{total}} prácticas cumplidas hoy",
+    day_one: "Día uno",
+    streak_one: "racha de 1 día",
+    streak_other: "racha de {{count}} días",
+    encouragement: "Hoy cumpliste todo tu ritmo. 🌿",
+    encouragement_streak: "Llevas {{count}} días seguidos cumpliendo el ritmo. 🌿",
+    continue: "Continuar",
+  },
+
   // ── Portal El Jardín ─────────────────────────────────────────────────────
   jardin: {
     title: "El Jardín",

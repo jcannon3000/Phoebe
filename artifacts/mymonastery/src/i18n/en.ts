@@ -593,6 +593,19 @@ export const en = {
     practices_heading: "Today's practices",
   },
 
+  // ── Daily-complete celebration (all practices kept) ──────────────────────
+  daily_complete: {
+    title: "Rhythm complete",
+    kept_count_one: "{{count}} of {{total}} practice kept today",
+    kept_count_other: "{{count}} of {{total}} practices kept today",
+    day_one: "Day one",
+    streak_one: "1-day streak",
+    streak_other: "{{count}}-day streak",
+    encouragement: "You showed up for your whole rhythm today. 🌿",
+    encouragement_streak: "You've kept the rhythm {{count}} days running. 🌿",
+    continue: "Continue",
+  },
+
   // ── El Jardín portal hub ─────────────────────────────────────────────────
   jardin: {
     title: "El Jardín",
