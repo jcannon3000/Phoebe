@@ -253,11 +253,15 @@ export default function WayOfLoveRuleFlow({
   };
 
   // ── Shared chrome ──────────────────────────────────────────────────────────
+  // The negative margins cancel <Layout>'s main px-4/sm:px-6/md:px-8 so the flow
+  // goes full-bleed to the screen edges; a small inner padding keeps the cards
+  // off the very edge. Without this the content was inset twice (Layout's
+  // padding + the flow's own), leaving it narrow on mobile.
   const shell = (children: ReactNode) => (
-    <div style={{ flex: 1, minHeight: 0, background: BG, position: "relative", display: "flex", flexDirection: "column" }}>
+    <div className="-mx-4 sm:-mx-6 md:-mx-8" style={{ flex: 1, minHeight: 0, background: BG, position: "relative", display: "flex", flexDirection: "column" }}>
       {/* No fadeTop: rendered under <Layout>'s opaque header. */}
       <AnimatedBackground base={BG} variant="subtle" />
-      <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
+      <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 14px 40px" }}>
         <div style={{ flex: 1, maxWidth: 480, margin: "0 auto", width: "100%", display: "flex", flexDirection: "column" }}>
           {children}
         </div>
