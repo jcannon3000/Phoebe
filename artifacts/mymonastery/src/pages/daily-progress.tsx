@@ -15,6 +15,7 @@ import { ChevronLeft, Sliders } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { useRhythmState } from "@/hooks/useRhythmState";
 
 const WARM = "#F0EDE6";
@@ -232,6 +233,13 @@ export default function DailyProgressPage() {
         <p className="text-sm mb-5" style={{ color: SAGE }}>
           {t("daily_progress.subtitle", { defaultValue: "Where you are in today's rhythm — and what's next." })}
         </p>
+
+        {/* Today's Rhythm — the at-a-glance card: the anchor circles that fill
+            as you keep each practice, the next step, and the streak. Restored
+            here as the page's top overview (it also lives on the header pill +
+            slideshow closing slide). Its anchor order matches the practice
+            cards below, including any added gratitude/examen anchors. */}
+        <TodaysRhythm />
 
         {/* The four practices, each its own actionable card (done state +
             progress + CTA). This list is the page's heart — the compact
