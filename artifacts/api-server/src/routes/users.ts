@@ -329,9 +329,10 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
       FROM prayer_sessions
       WHERE user_id = ${sessionUserId}
         AND (
-          surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
+          -- Office/devotion counts only when the slideshow was finished
+          -- (completed = TRUE); national-cathedral stays an attestation tap.
+          (surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion') AND completed = TRUE)
           OR (surface = 'national-cathedral' AND duration_seconds >= 180)
-          OR (surface IN ('morning-office-podcast', 'evening-office-podcast') AND duration_seconds >= 180)
         )
     `);
     const officeDaySet = new Set(dayRows.rows.map((r) => r.day));
@@ -457,15 +458,17 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
       SELECT DISTINCT
         to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day,
         CASE
-          WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral', 'morning-office-podcast') THEN 'morning'
-          WHEN surface IN ('evening-prayer', 'early-evening-devotion', 'evening-office-podcast') THEN 'evening'
+          WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral') THEN 'morning'
+          WHEN surface IN ('evening-prayer', 'early-evening-devotion') THEN 'evening'
         END AS side
       FROM prayer_sessions
       WHERE user_id = ${sessionUserId}
         AND (
-          surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion')
+          -- The office/devotion only counts once the slideshow is finished
+          -- (closing Amen/Done or the book attestation set completed=TRUE).
+          -- A partial sit that auto-commits on unmount has completed=FALSE.
+          (surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion') AND completed = TRUE)
           OR (surface = 'national-cathedral' AND duration_seconds >= 180)
-          OR (surface IN ('morning-office-podcast', 'evening-office-podcast') AND duration_seconds >= 180)
         )
         AND ended_at >= NOW() - INTERVAL '8 days'
     `);

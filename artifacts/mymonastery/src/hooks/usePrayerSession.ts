@@ -61,6 +61,12 @@ export function usePrayerSession(
    *  this office" button POSTs a deliberate session row, and the
    *  automatic unmount commit here would double-count it. */
   suppressPostRef?: React.MutableRefObject<boolean>,
+  /** Optional ref the parent flips to true once the office/devotion
+   *  slideshow was actually finished (closing Amen/Done). The unmount
+   *  commit stamps the session `completed` from this, so the server's
+   *  office-history only counts a finished office — a partial sit that
+   *  auto-commits here stays completed:false and doesn't credit it. */
+  completedRef?: React.MutableRefObject<boolean>,
 ) {
   // Refs so the visibility / unload handlers always read the live
   // accumulator without needing surface as a dep — the hook can be
@@ -137,6 +143,7 @@ export function usePrayerSession(
           surface: surfaceAtCleanup,
           durationSeconds: total,
           slidesCompleted: slidesRef?.current,
+          completed: completedRef?.current ?? false,
           startedAt: startedAt.toISOString(),
           endedAt: endedAt.toISOString(),
         }).catch(() => { /* best-effort */ });

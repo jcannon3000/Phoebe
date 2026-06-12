@@ -161,16 +161,12 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         startedAt: startedAt.toISOString(),
         endedAt: new Date().toISOString(),
       }).catch(() => { /* best-effort */ });
-      // Office credit: a session >= 180s counts as having prayed that
-      // office — stamp the local flag the dashboard reads so it reflects
-      // immediately (users.ts also credits the >=180s row server-side).
-      if (creditMode && total >= 180) {
-        try {
-          const now = new Date();
-          const dateKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-          localStorage.setItem(`phoebe:office-completed:${creditMode}:${dateKey}`, "1");
-        } catch { /* private mode / quota — non-fatal */ }
-      }
+      // NB: listening to the office podcast no longer credits the office in the
+      // daily-progress / streak rollups — that now requires finishing the
+      // slideshow (completed=TRUE). The session row above still records the
+      // listening time for community metrics; it just doesn't mark the office
+      // "prayed today". (creditMode retained for any future use.)
+      void creditMode;
     }
   }, [closeSeg, user]);
 

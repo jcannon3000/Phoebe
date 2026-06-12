@@ -207,6 +207,11 @@ const schema = z.object({
   // endpoint behaves today; the contemplation summary toggle is the
   // only caller that sets it.
   isPrivate: z.boolean().optional(),
+  // Optional: true only when the office/devotion slideshow was actually
+  // finished (closing Amen/Done or the book attestation). The office-history
+  // rollups require this for the four office surfaces, so a partial sit that
+  // auto-commits on unmount doesn't count the office. Omitted = false.
+  completed: z.boolean().optional(),
 });
 
 router.post("/prayer-sessions", async (req, res): Promise<void> => {
@@ -215,7 +220,7 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
 
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
-  const { surface, durationSeconds, startedAt, endedAt, slidesCompleted, isPrivate } = parsed.data;
+  const { surface, durationSeconds, startedAt, endedAt, slidesCompleted, isPrivate, completed } = parsed.data;
 
   if (!SURFACE_SET.has(surface)) {
     res.status(400).json({ error: "Unknown surface" });
@@ -268,6 +273,7 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
     startedAt: startedAtDate,
     endedAt: endedAtDate,
     isPrivate: isPrivate === true,
+    completed: completed === true,
   }).returning({ id: prayerSessionsTable.id });
 
   // Return the new row id so the client can PATCH it later (e.g. the

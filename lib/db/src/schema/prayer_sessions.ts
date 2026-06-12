@@ -79,6 +79,12 @@ export const prayerSessionsTable = pgTable(
     // column don't have to be backfilled — the metrics query
     // treats NULL as "trust it" so old data still counts.
     slidesCompleted: integer("slides_completed"),
+    // True only when the user finished the office/devotion slideshow (reached
+    // the closing Amen/Done, or attested "I prayed this" from the book). The
+    // office-history / "prayed today" rollups require this for the four office
+    // surfaces, so a partial sit that auto-commits on unmount no longer counts
+    // the office. Default false; non-office surfaces ignore it.
+    completed: boolean("completed").notNull().default(false),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     endedAt: timestamp("ended_at", { withTimezone: true }).notNull(),
     // Per-session visibility. When true, the session is hidden from

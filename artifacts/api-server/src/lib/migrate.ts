@@ -1577,6 +1577,32 @@ export async function migrate() {
     // so existing rows behave as before; the contemplation summary
     // toggle is the only surface that flips this today.
     await run(client, `ALTER TABLE prayer_sessions ADD COLUMN IF NOT EXISTS is_private BOOLEAN NOT NULL DEFAULT FALSE`);
+    // completed: true only when the user finished the office/devotion slideshow
+    // (closing Amen/Done) or attested it from the book. The office-history /
+    // "prayed today" rollups require this for the four office surfaces, so a
+    // partial sit that auto-commits on unmount no longer counts the office.
+    //
+    // Adding + backfilling happen together inside a DO guard that only runs
+    // when the column doesn't yet exist — so the one-time grandfather (mark all
+    // EXISTING office/cathedral/podcast sessions completed, so historical
+    // streaks + office-history don't retroactively drop) runs exactly once and
+    // never re-flips the partial sessions written after this ships.
+    await run(client, `
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'prayer_sessions' AND column_name = 'completed'
+        ) THEN
+          ALTER TABLE prayer_sessions ADD COLUMN completed BOOLEAN NOT NULL DEFAULT FALSE;
+          UPDATE prayer_sessions SET completed = TRUE
+          WHERE surface IN (
+            'morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion',
+            'national-cathedral', 'morning-office-podcast', 'evening-office-podcast'
+          );
+        END IF;
+      END $$;
+    `);
 
     // ── contemplation_health_minutes ──────────────────────────────────────────
     // External mindful minutes (Calm, Insight Timer, Apple Mindfulness — NOT

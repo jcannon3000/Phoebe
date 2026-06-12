@@ -441,6 +441,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // session row, so usePrayerSession's automatic unmount commit doesn't
   // double-count the same office.
   const suppressSessionPostRef = useRef(false);
+  // Flipped true only when the office/devotion slideshow is actually finished
+  // (closing Amen/Done, or the book "I prayed this" attestation). The unmount
+  // session commit stamps `completed` from this, so the server office-history
+  // counts a finished office but not a partial sit. See usePrayerSession.
+  const completedRef = useRef(false);
 
   // Phoebe Parish — when the user is in the parish-only tier we
   // route them to the parish celebration screen on Amen instead of
@@ -467,7 +472,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     resolvedMode === "morning" ? "morning-prayer"
     : resolvedMode === "evening" ? "evening-prayer"
     : (resolvedMode as PrayerSurface);
-  usePrayerSession(officeSurface, slidesReachedRef, suppressSessionPostRef);
+  usePrayerSession(officeSurface, slidesReachedRef, suppressSessionPostRef, completedRef);
   // The Daily Devotions are explicitly the personal short forms
   // (BCP pp. 137 / 139). The full Daily Office's missal-page layout
   // (top-aligned, left-aligned, role-labelled) reads as overkill
@@ -773,10 +778,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // one-hour cap applied client-side too.
     const durationSeconds = Math.min(Math.max(wallSeconds, 60), 3600);
     suppressSessionPostRef.current = true;
+    completedRef.current = true;
     apiRequest("POST", "/api/prayer-sessions", {
       surface: officeSurface,
       durationSeconds,
       slidesCompleted: slides.length,
+      completed: true,
       startedAt: new Date(openedAt).toISOString(),
       endedAt: endedAt.toISOString(),
     })
@@ -1006,6 +1013,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // the day. We also clear the in-progress key — the office isn't
     // resumable anymore (they just finished it), but a fresh open will
     // still see the completed flag and decide what copy to show.
+    completedRef.current = true;
     try {
       localStorage.setItem(officeCompletedKey(resolvedMode), "1");
       localStorage.removeItem(officeProgressKey(resolvedMode));
@@ -2659,6 +2667,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               // stamp the Amen-path uses in amen() above — kept in both
               // places because either button can be the final tap (Amen
               // for prayer-shaped closings, Done for non-prayer ones).
+              completedRef.current = true;
               try {
                 localStorage.setItem(officeCompletedKey(resolvedMode), "1");
                 localStorage.removeItem(officeProgressKey(resolvedMode));

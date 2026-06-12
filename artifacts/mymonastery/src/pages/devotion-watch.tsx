@@ -81,6 +81,10 @@ export default function DevotionWatchPage() {
       apiRequest("POST", "/api/prayer-sessions", {
         surface: "morning-devotion",
         durationSeconds: total,
+        // A full (>=180s) watch is a deliberate "I prayed the devotion" act —
+        // like the book attestation — so it counts as completed for the
+        // office-history rollup (which now requires completed for offices).
+        completed: true,
         startedAt: startedAt.toISOString(),
         endedAt: new Date().toISOString(),
       }).catch(() => { /* best-effort */ });
