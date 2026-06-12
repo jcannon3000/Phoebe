@@ -295,6 +295,11 @@ app.get("/.well-known/apple-app-site-association", (_req, res) => {
 const lettersDist = path.resolve(__dirname, "../../letters-app/dist/public");
 if (fs.existsSync(lettersDist)) {
   app.use("/mail/assets", express.static(path.join(lettersDist, "assets"), { maxAge: "1y", immutable: true }));
+  // Missing hashed assets must 404, not fall through to the /mail catch-all
+  // as index.html — see the matching guard on the main app's /assets below.
+  app.use("/mail/assets", (_req, res) => {
+    res.status(404).type("text").send("Not found");
+  });
   app.use("/mail", express.static(lettersDist, { maxAge: 0 }));
   app.get("/mail/{*path}", (_req, res) => {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -307,6 +312,17 @@ const frontendDist = path.resolve(__dirname, "../../mymonastery/dist/public");
 if (fs.existsSync(frontendDist)) {
   // Hashed assets get long cache; everything else (index.html) must revalidate
   app.use("/assets", express.static(path.join(frontendDist, "assets"), { maxAge: "1y", immutable: true }));
+  // A hashed asset that isn't on disk MUST 404 — without this, the request
+  // falls through to the SPA catch-all and returns index.html with HTTP 200.
+  // Browsers (and the service worker's stale-while-revalidate cache.put)
+  // then store HTML under a .js URL: the page breaks with a module-parse
+  // error, or worse, the SW serves the poisoned entry forever. This happens
+  // in practice right after a deploy, when a client's cached index.html
+  // references the PREVIOUS build's chunks, which the fresh container no
+  // longer has.
+  app.use("/assets", (_req, res) => {
+    res.status(404).type("text").send("Not found");
+  });
   app.use(express.static(frontendDist, {
     maxAge: 0,
     // `maxAge: 0` emits `Cache-Control: public, max-age=0`, which Railway's
