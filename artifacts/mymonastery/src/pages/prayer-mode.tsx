@@ -1369,6 +1369,92 @@ function StreakCelebration({ streak }: { streak: number }) {
 }
 
 // ─── Office habit slide ───────────────────────────────────────────────────
+// The community recap — "you prayed for N people this week" + a rail of up to
+// five faces. Extracted so it can render on the final habit slide (under the
+// daily-progress rhythm) as well as on the closing slide.
+function CommunityPrayedRecap({ coPrayers }: { coPrayers: Array<{ id: number; name: string | null; avatarUrl: string | null }> }) {
+  const { t } = useTranslation();
+  const visibleAvatars = coPrayers.slice(0, 5);
+  const overflow = Math.max(0, coPrayers.length - visibleAvatars.length);
+  const peopleCount = coPrayers.length;
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="flex flex-col items-center"
+      >
+        <p
+          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+          style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
+        >
+          {t("prayer_mode.you_prayed_for")}
+        </p>
+        {peopleCount > 0 ? (
+          <>
+            <p
+              className="font-bold leading-none"
+              style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#C8D4C0", fontSize: 88, letterSpacing: "-0.04em", marginTop: 6 }}
+            >
+              {peopleCount}
+            </p>
+            <p className="text-sm mt-1" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+              {peopleCount === 1 ? "person this week" : "people this week"}
+            </p>
+          </>
+        ) : (
+          <p
+            className="text-[22px] mt-3 italic"
+            style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif" }}
+          >
+            You held the world in prayer.
+          </p>
+        )}
+      </motion.div>
+
+      {visibleAvatars.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.15 }}
+          className="flex flex-col items-center"
+        >
+          <div className="flex items-center justify-center -space-x-2">
+            {visibleAvatars.map((p) => (
+              p.avatarUrl ? (
+                <img
+                  key={p.id}
+                  src={p.avatarUrl}
+                  alt={p.name ?? ""}
+                  className="w-11 h-11 rounded-full object-cover"
+                  style={{ border: "2px solid #0C1F12" }}
+                />
+              ) : (
+                <div
+                  key={p.id}
+                  className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-semibold"
+                  style={{ background: "#1A4A2E", color: "#A8C5A0", border: "2px solid #0C1F12" }}
+                >
+                  {(p.name ?? "?").trim().split(/\s+/).slice(0, 2).map(s => s[0] ?? "").join("").toUpperCase().slice(0, 2) || "?"}
+                </div>
+              )
+            ))}
+            {overflow > 0 && (
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center text-[11px] font-semibold"
+                style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", border: "2px solid #0C1F12" }}
+              >
+                +{overflow}
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </>
+  );
+}
+
 // Shown ONLY when the user finished an office (closingOnly=1 path),
 // after the "you prayed for N people this week" closing slide. Surfaces
 // today's morning/evening office status as two checkbox-style rows and
@@ -1385,12 +1471,16 @@ function HabitSlide({
   onDone,
   visible,
   isEvening = false,
+  coPrayers = [],
 }: {
   onDone: () => void;
   visible: boolean;
   /** True when the office just finished was an evening one. Gates the
    *  "Ignatian Examen" pill — the Examen is an end-of-day practice. */
   isEvening?: boolean;
+  /** People the viewer prayed for this week — surfaced as the
+   *  "you prayed for N people" recap under the rhythm card. */
+  coPrayers?: Array<{ id: number; name: string | null; avatarUrl: string | null }>;
 }) {
   // The Examen is pilot-only, so the pill only shows for pilot users
   // with pilot view on — same gate as the menu entry.
@@ -1501,46 +1591,56 @@ function HabitSlide({
         <TodaysRhythm />
       </motion.div>
 
-      {/* Give-thanks pill — a gratitude beat the office close offers
-          before you go. Opens the GratitudeNudge overlay (name one
-          thing, optionally share to the garden). Open to everyone. */}
-      <button
-        type="button"
-        onClick={() => setThanksOpen(true)}
-        className="text-[12px] font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-90"
-        style={{
-          background: "rgba(46,107,64,0.22)",
-          color: "#A8C5A0",
-          border: "1px solid rgba(46,107,64,0.45)",
-          fontFamily: "'Space Grotesk', sans-serif",
-          cursor: "pointer",
-        }}
+      {/* "You prayed for N people this week" — the community recap, moved here
+          from the prior closing slide so it sits under the daily-progress
+          rhythm. */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.18 }}
+        className="w-full flex flex-col items-center"
+        style={{ gap: 16 }}
       >
-        🌾 Give thanks
-      </button>
-      <GratitudeNudge open={thanksOpen} onClose={() => setThanksOpen(false)} />
+        <CommunityPrayedRecap coPrayers={coPrayers} />
+      </motion.div>
 
-      {/* Ignatian Examen pill — evening only (the Examen is an
-          end-of-day prayer), and pilot-only (same gate as the menu
-          entry). A gentle invitation to close the day reflectively
-          after Evening Prayer / Devotion. */}
-      {isEvening && isBeta && (
-        <Link href="/examen">
-          <button
-            type="button"
-            className="text-[12px] font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-90"
-            style={{
-              background: "rgba(46,107,64,0.22)",
-              color: "#A8C5A0",
-              border: "1px solid rgba(46,107,64,0.45)",
-              fontFamily: "'Space Grotesk', sans-serif",
-              cursor: "pointer",
-            }}
-          >
-            🕯️ Ignatian Examen →
-          </button>
-        </Link>
-      )}
+      {/* Give-thanks (gratitude) + Ignatian Examen — on the same level. The
+          Examen is evening-only (end-of-day prayer) and pilot-only; gratitude
+          is open to everyone. */}
+      <div className="flex items-center justify-center flex-wrap" style={{ gap: 10 }}>
+        <button
+          type="button"
+          onClick={() => setThanksOpen(true)}
+          className="text-[12px] font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-90"
+          style={{
+            background: "rgba(46,107,64,0.22)",
+            color: "#A8C5A0",
+            border: "1px solid rgba(46,107,64,0.45)",
+            fontFamily: "'Space Grotesk', sans-serif",
+            cursor: "pointer",
+          }}
+        >
+          🌾 Give thanks
+        </button>
+        {isEvening && isBeta && (
+          <Link href="/examen">
+            <button
+              type="button"
+              className="text-[12px] font-semibold px-4 py-2 rounded-full transition-opacity hover:opacity-90"
+              style={{
+                background: "rgba(46,107,64,0.22)",
+                color: "#A8C5A0",
+                border: "1px solid rgba(46,107,64,0.45)",
+                fontFamily: "'Space Grotesk', sans-serif",
+                cursor: "pointer",
+              }}
+            >
+              🕯️ Ignatian Examen →
+            </button>
+          </Link>
+        )}
+      </div>
+      <GratitudeNudge open={thanksOpen} onClose={() => setThanksOpen(false)} />
 
       <button
         onClick={onDone}
@@ -1886,6 +1986,7 @@ function ClosingSlide({
   reminderSide = "morning",
   doneLabel,
   officesOnly = false,
+  hideCommunityRecap = false,
 }: {
   celebration: { streak: number } | null;
   /** Still accepted for symmetry with the celebration animation, but no
@@ -1909,12 +2010,13 @@ function ClosingSlide({
    *  doesn't fit them. We swap to feed-rhythm copy when this is
    *  true (and there are no co-prayers to acknowledge). */
   officesOnly?: boolean;
+  /** When a habit slide follows (the office-finish / offices-only paths), the
+   *  "you prayed for N people" recap is moved there (under the daily-progress
+   *  rhythm), so we hide it here to avoid showing it twice. */
+  hideCommunityRecap?: boolean;
 }) {
   const { t } = useTranslation();
   void _streak;
-  const visibleAvatars = coPrayers.slice(0, 5);
-  const overflow = Math.max(0, coPrayers.length - visibleAvatars.length);
-  const peopleCount = coPrayers.length;
   const effectiveDoneLabel = doneLabel ?? t("common.done");
 
   return (
@@ -1926,97 +2028,10 @@ function ClosingSlide({
         gap: 28,
       }}
     >
-      {/* Headline: people-prayed-for count. The streak-celebration
-          burst that used to overlay this on firstToday was retired
-          per user direction — the closing slide is meant to
-          highlight community ("you prayed alongside N people"), not
-          a personal streak. The count below now ALWAYS renders;
-          firstToday-only behavior moves to the streak-pill in the
-          chrome (out of the closing slide's focal area). */}
-      <motion.div
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="flex flex-col items-center"
-      >
-        <p
-          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-          style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          {t("prayer_mode.you_prayed_for")}
-        </p>
-        {peopleCount > 0 ? (
-          <>
-            <p
-              className="font-bold leading-none"
-              style={{
-                fontFamily: "'Space Grotesk', sans-serif",
-                color: "#C8D4C0",
-                fontSize: 88,
-                letterSpacing: "-0.04em",
-                marginTop: 6,
-              }}
-            >
-              {peopleCount}
-            </p>
-            <p
-              className="text-sm mt-1"
-              style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              {peopleCount === 1 ? "person this week" : "people this week"}
-            </p>
-          </>
-        ) : (
-          <p
-            className="text-[22px] mt-3 italic"
-            style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif" }}
-          >
-            You held the world in prayer.
-          </p>
-        )}
-      </motion.div>
-
-      {/* Avatar rail — up to 5 + tail. Hidden if no co-prayers (e.g.
-          first-ever session, or a quiet week with only the user's own
-          intercessions). */}
-      {visibleAvatars.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.15 }}
-          className="flex flex-col items-center"
-        >
-          <div className="flex items-center justify-center -space-x-2">
-            {visibleAvatars.map((p) => (
-              p.avatarUrl ? (
-                <img
-                  key={p.id}
-                  src={p.avatarUrl}
-                  alt={p.name ?? ""}
-                  className="w-11 h-11 rounded-full object-cover"
-                  style={{ border: "2px solid #0C1F12" }}
-                />
-              ) : (
-                <div
-                  key={p.id}
-                  className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-semibold"
-                  style={{ background: "#1A4A2E", color: "#A8C5A0", border: "2px solid #0C1F12" }}
-                >
-                  {(p.name ?? "?").trim().split(/\s+/).slice(0, 2).map(s => s[0] ?? "").join("").toUpperCase().slice(0, 2) || "?"}
-                </div>
-              )
-            ))}
-            {overflow > 0 && (
-              <div
-                className="w-11 h-11 rounded-full flex items-center justify-center text-[11px] font-semibold"
-                style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", border: "2px solid #0C1F12" }}
-              >
-                +{overflow}
-              </div>
-            )}
-          </div>
-        </motion.div>
-      )}
+      {/* People-prayed-for count + avatar rail. Moved to the following habit
+          slide (under the daily-progress rhythm) on the office-finish paths —
+          hidden here when that slide follows so it isn't shown twice. */}
+      {!hideCommunityRecap && <CommunityPrayedRecap coPrayers={coPrayers} />}
 
       {/* Habit invite — relational framing, no streak language so it
           doesn't compete with the number above. */}
@@ -4005,6 +4020,9 @@ export default function PrayerModePage() {
             showSetReminder={showSetReminder}
             reminderSide={reminderSide}
             doneLabel={closingOnly || officesOnly || afterOffice ? t("common.continue") : t("common.done")}
+            // When a habit slide follows, the "you prayed for N people" recap
+            // moves there (under the rhythm), so hide it on this slide.
+            hideCommunityRecap={closingOnly || officesOnly || afterOffice}
           />
         )}
         {/* Optional "As you go" news slide — only when a followed source
@@ -4015,7 +4033,7 @@ export default function PrayerModePage() {
           <NewsClosingSlide onDone={() => setPhase("habit")} visible={slideVisible} />
         )}
         {phase === "habit" && (
-          <HabitSlide onDone={handleDone} visible={slideVisible} isEvening={closingIsEvening} />
+          <HabitSlide onDone={handleDone} visible={slideVisible} isEvening={closingIsEvening} coPrayers={coPrayersData?.people ?? []} />
         )}
       </div>
 
