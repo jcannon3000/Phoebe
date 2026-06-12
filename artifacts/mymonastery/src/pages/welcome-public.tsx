@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { primeAudio } from "@/lib/amenFeedback";
 
 // ── First-open chooser ───────────────────────────────────────────────────────
 //
@@ -126,6 +127,7 @@ export default function WelcomePublicPage() {
             title={t("welcome_public.cobreathe_title", { defaultValue: "Cobreathe" })}
             blurb={t("welcome_public.cobreathe_blurb", { defaultValue: "Twelve slow breaths, in one shared rhythm — a prayer for justice." })}
             delay={0.09}
+            onClick={() => primeAudio()}
           />
 
           {/* Card 2 — sign in (or sign up via the same form) */}
@@ -189,6 +191,7 @@ function ChoiceCard({
   delay,
   primary,
   muted,
+  onClick,
 }: {
   href: string;
   emoji: string;
@@ -197,6 +200,8 @@ function ChoiceCard({
   delay: number;
   primary?: boolean;
   muted?: boolean;
+  /** Fires on tap, before navigation (e.g. to prime audio for the breath). */
+  onClick?: () => void;
 }) {
   const bg = primary
     ? "rgba(46,107,64,0.18)"
@@ -244,11 +249,11 @@ function ChoiceCard({
       transition={{ duration: 0.4, delay }}
     >
       {isExternal ? (
-        <a href={href} target="_blank" rel="noopener noreferrer" className={cls} style={{ background: bg, border }}>
+        <a href={href} target="_blank" rel="noopener noreferrer" onClick={onClick} className={cls} style={{ background: bg, border }}>
           {inner}
         </a>
       ) : (
-        <Link href={href} className={cls} style={{ background: bg, border }}>
+        <Link href={href} onClick={onClick} className={cls} style={{ background: bg, border }}>
           {inner}
         </Link>
       )}

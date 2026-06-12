@@ -9,7 +9,7 @@ import { usePeople } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
 import { amenWithLocation } from "@/lib/prayLocation";
 import { findBcpPrayer, localizeBcpPrayer } from "@/lib/bcp-prayers";
-import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback } from "@/lib/amenFeedback";
+import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback, primeAudio } from "@/lib/amenFeedback";
 import { openExternal } from "@/lib/openExternal";
 import { isNativeShell } from "@/lib/isNativeShell";
 import FddJournalSheet from "@/components/FddJournalSheet";
@@ -3935,7 +3935,7 @@ export default function PrayerModePage() {
                 setContemplationStartMinutes(minutes);
                 setContemplationOpen(true);
               }}
-              onStartCobreathe={() => setCobreatheOpen(true)}
+              onStartCobreathe={() => { primeAudio(); setCobreatheOpen(true); }}
             />
             {/* "Pray a liturgy" fork — opening slide only, directly beneath
                 the Amen button: Amen to continue the quick prayer flow, or

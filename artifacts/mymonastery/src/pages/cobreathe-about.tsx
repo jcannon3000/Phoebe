@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { openExternal } from "@/lib/openExternal";
+import { primeAudio } from "@/lib/amenFeedback";
 
 // Learn more about Cobreathing — the opening of Laurel Kearns' essay as a
 // slideshow (like the offices), one paragraph per slide, then a final slide
@@ -35,6 +36,7 @@ export default function CobreatheAboutPage() {
   const onOverview = i === overviewIndex;
 
   const beginPractice = () => {
+    primeAudio(); // unlock audio during this tap so the breath's swell tones sound
     try { localStorage.setItem(COBREATHE_INTRO_SEEN_KEY, "1"); } catch { /* private mode */ }
     setLocation("/cobreathe?start=1");
   };

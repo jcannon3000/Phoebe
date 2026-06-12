@@ -8,6 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { getSideMinutes } from "@/lib/officePrefs";
 import { openExternal } from "@/lib/openExternal";
+import { primeAudio } from "@/lib/amenFeedback";
 import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday, getMindfulSessionsToday, writeMindfulSession, type MindfulSession } from "@/lib/appleHealth";
 
 // Curated "Learn" resources — talks, videos, and guides on contemplative /
@@ -689,7 +690,7 @@ export default function ContemplationPage() {
 
         {/* Cobreathe — daily communal breath for justice. Goes straight
             into the breath (?start=1); the stats show when it's done. */}
-        <Link href="/cobreathe?start=1">
+        <Link href="/cobreathe?start=1" onClick={() => primeAudio()}>
           <div
             className="rounded-2xl overflow-hidden mt-4 flex cursor-pointer transition-opacity hover:opacity-90 active:scale-[0.99]"
             style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.13) 0%, rgba(0,0,0,0) 100%), rgba(62,124,122,0.10)", border: `1px solid rgba(62,124,122,${cobreathe?.done ? 0.45 : 0.34})` }}

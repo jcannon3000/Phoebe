@@ -175,7 +175,7 @@ function PracticeCard({
   return waiting ? row : <Link href={href} className="block">{row}</Link>;
 }
 
-export function DailyProgressBody() {
+export function DailyProgressBody({ showStreak = true }: { showStreak?: boolean }) {
   const { t } = useTranslation();
   const { morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone } = useRhythmState();
   const hour = new Date().getHours();
@@ -281,7 +281,7 @@ export function DailyProgressBody() {
           <div className="flex flex-col gap-2">{completed.map(renderCard)}</div>
         </div>
       )}
-      <StreakCard />
+      {showStreak && <StreakCard />}
     </>
   );
 }

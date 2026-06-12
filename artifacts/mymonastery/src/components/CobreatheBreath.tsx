@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { playOpeningSwell } from "@/lib/amenFeedback";
+import { playOpeningSwell, primeAudio } from "@/lib/amenFeedback";
 
 // ── CobreatheBreath ─────────────────────────────────────────────────────────
 //
@@ -172,6 +172,17 @@ export function CobreatheBreath({
   // The spiral cast — re-picked at the bottom of every breath (see the rAF
   // loop), so each breath rises with a fresh set of emojis.
   const [particleEmojis, setParticleEmojis] = useState<string[]>(pickParticleEmojis);
+
+  // Smooth entrance: the whole field fades in over the first beat instead of
+  // snapping on (which flashed the glow/spiral at full strength before the rAF
+  // loop settled them — the "you see the edges at first" fumble). Also prime
+  // the audio subsystem now so the per-breath swell tones actually sound.
+  const [entered, setEntered] = useState(false);
+  useEffect(() => {
+    primeAudio();
+    const r = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(r);
+  }, []);
 
   // Anchor points (fixed at mount): when the user arrived, and the next clean
   // cycle boundary where the count begins. There is NO end anchor — the rhythm
@@ -367,7 +378,8 @@ export function CobreatheBreath({
       style={{
         position: "fixed", inset: 0, zIndex: 50, overflow: "hidden",
         background: counting ? FIELD_LIVE : FIELD_DIM,
-        transition: "background-color 1.6s ease",
+        opacity: entered ? 1 : 0,
+        transition: "background-color 1.6s ease, opacity 0.6s ease",
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between",
         paddingTop: "calc(env(safe-area-inset-top) + 28px)",
         paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",

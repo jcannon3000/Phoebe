@@ -6213,7 +6213,7 @@ export default function Dashboard() {
               standard home modules. */}
           {filter === null && isBeta && (
             <div className="mt-5">
-              <DailyProgressBody />
+              <DailyProgressBody showStreak={false} />
             </div>
           )}
           {filter === null && !isBeta && (() => {
