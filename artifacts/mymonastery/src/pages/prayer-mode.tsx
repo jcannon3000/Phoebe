@@ -2028,41 +2028,35 @@ function ClosingSlide({
         gap: 28,
       }}
     >
-      {/* People-prayed-for count + avatar rail. Moved to the following habit
-          slide (under the daily-progress rhythm) on the office-finish paths —
-          hidden here when that slide follows so it isn't shown twice. */}
-      {!hideCommunityRecap && <CommunityPrayedRecap coPrayers={coPrayers} />}
+      {/* The whole close, simplified to this: who you prayed for this week —
+          the count + their faces — and one pill to add a prayer request of
+          your own. (The gratitude / Examen pills and the rhythm grid that
+          used to follow on a second slide were removed.) */}
+      <CommunityPrayedRecap coPrayers={coPrayers} />
 
-      {/* Habit invite — relational framing, no streak language so it
-          doesn't compete with the number above. */}
+      {/* Add a prayer request — opens the prayer-request composer feed. */}
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.25 }}
-        className="flex flex-col items-center"
-        style={{ maxWidth: 380 }}
+        className="w-full flex justify-center"
       >
-        <p
-          className="text-[13px] leading-relaxed"
-          style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          {officesOnly
-            ? "Come back tomorrow — the world keeps turning, and your prayers shape the day."
-            : "Come back tomorrow — your friends will be carrying things, and so will you."}
-        </p>
+        <Link href="/pray-request/new">
+          <button
+            type="button"
+            className="text-[13px] font-semibold px-5 py-2.5 rounded-full transition-opacity hover:opacity-90 active:scale-[0.98]"
+            style={{
+              background: "rgba(46,107,64,0.22)",
+              color: "#A8C5A0",
+              border: "1px solid rgba(46,107,64,0.45)",
+              fontFamily: "'Space Grotesk', sans-serif",
+              cursor: "pointer",
+            }}
+          >
+            ＋ {t("prayer_mode.add_prayer_request", { defaultValue: "Add prayer request" })}
+          </button>
+        </Link>
       </motion.div>
-
-      {/* Ask for prayer right where you just prayed for others. */}
-      {!officesOnly && (
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.35 }}
-          className="w-full flex justify-center"
-        >
-          <HoldMeComposer />
-        </motion.div>
-      )}
 
       <button
         onClick={onDone}
@@ -2072,30 +2066,6 @@ function ClosingSlide({
         {effectiveDoneLabel}
       </button>
 
-      {/* "Set reminder" CTA — fires when the user just finished an
-          office and hasn't enabled the daily reminder for that side
-          yet. Routes to /settings where the OfficeReminderSettings
-          card lets them pick None / Office / Devotion + a time. */}
-      {showSetReminder && (
-        <Link href="/settings">
-          <button
-            type="button"
-            className="text-[13px] font-medium underline transition-opacity hover:opacity-80"
-            style={{
-              color: "rgba(168,197,160,0.8)",
-              textDecorationColor: "rgba(168,197,160,0.4)",
-              textUnderlineOffset: 4,
-              background: "transparent",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-              fontFamily: "'Space Grotesk', sans-serif",
-            }}
-          >
-            Set a daily reminder for {reminderSide === "morning" ? "Morning" : "Evening"} Prayer →
-          </button>
-        </Link>
-      )}
     </div>
   );
 }
@@ -3312,10 +3282,9 @@ export default function PrayerModePage() {
   // of the whole liturgy.
   useEffect(() => {
     // Functional setPhase: only transition "prayer" → "closing". Once the
-    // user advances to "habit" from the closing slide's Continue button,
-    // a background query refetch (coPrayers, streak, etc.) re-fires this
-    // effect — without the guard, it'd reset phase back to "closing" and
-    // flash the user out of the habit slide they just opened.
+    // user advances past "closing" (to "news", or out via Done), a background
+    // query refetch (coPrayers, streak, etc.) re-fires this effect — without
+    // the guard, it'd reset phase back to "closing" and flash them backward.
     const toClosing = () => setPhase((p) => (p === "prayer" ? "closing" : p));
     if (closingOnly) {
       toClosing();
@@ -4011,18 +3980,22 @@ export default function PrayerModePage() {
             //   • offices-only — feed walkers also land on their
             //     habit page so they can see today's rhythm
             // Otherwise it exits to the home screen.
+            // The closing slide is now the END of the office close (the habit /
+            // rhythm slide was consolidated away). It only advances when there's
+            // unseen "As you go" news to show; otherwise Done exits.
             onDone={
-              closingOnly || officesOnly || afterOffice
-                ? () => setPhase(unseenNews.hasUnseen ? "news" : "habit")
+              (closingOnly || officesOnly || afterOffice) && unseenNews.hasUnseen
+                ? () => setPhase("news")
                 : handleDone
             }
             visible={slideVisible}
             showSetReminder={showSetReminder}
             reminderSide={reminderSide}
-            doneLabel={closingOnly || officesOnly || afterOffice ? t("common.continue") : t("common.done")}
-            // When a habit slide follows, the "you prayed for N people" recap
-            // moves there (under the rhythm), so hide it on this slide.
-            hideCommunityRecap={closingOnly || officesOnly || afterOffice}
+            doneLabel={
+              (closingOnly || officesOnly || afterOffice) && unseenNews.hasUnseen
+                ? t("common.continue")
+                : t("common.done")
+            }
           />
         )}
         {/* Optional "As you go" news slide — only when a followed source
@@ -4030,7 +4003,7 @@ export default function PrayerModePage() {
             this phase from the closing slide). Continue marks seen + lands
             on the habit rhythm screen. */}
         {phase === "news" && (
-          <NewsClosingSlide onDone={() => setPhase("habit")} visible={slideVisible} />
+          <NewsClosingSlide onDone={handleDone} visible={slideVisible} />
         )}
         {phase === "habit" && (
           <HabitSlide onDone={handleDone} visible={slideVisible} isEvening={closingIsEvening} coPrayers={coPrayersData?.people ?? []} />

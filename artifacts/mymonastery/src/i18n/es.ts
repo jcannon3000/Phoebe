@@ -4323,6 +4323,7 @@ export const es: Translations = {
   },
   prayer_mode: {
     you_prayed_for: "Oraste por",
+    add_prayer_request: "Añadir petición de oración",
     not_today: "Hoy no",
     amen: "Amén",
   },

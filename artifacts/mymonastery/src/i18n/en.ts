@@ -4434,6 +4434,7 @@ export const en = {
   // Prayer mode slideshow chrome (pages/prayer-mode.tsx).
   prayer_mode: {
     you_prayed_for: "You prayed for",
+    add_prayer_request: "Add prayer request",
     not_today: "Not today",
     amen: "Amen",
   },
