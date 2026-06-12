@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { playOpeningSwell, primeAudio } from "@/lib/amenFeedback";
 
@@ -364,10 +365,14 @@ export function CobreatheBreath({
   const TEXT_DIM = "rgba(182,210,188,0.72)";
   const TEXT_FAINT = "rgba(182,210,188,0.48)";
 
-  return (
+  // Portal to <body> so the full-screen overlay escapes any transformed
+  // ancestor (page transitions, etc.) that would otherwise trap its fixed
+  // positioning and let the app header show through at the top — the "edge of
+  // the darkness." At body level it truly covers the whole screen.
+  return createPortal(
     <div
       style={{
-        position: "fixed", inset: 0, zIndex: 50, overflow: "hidden",
+        position: "fixed", inset: 0, zIndex: 80, overflow: "hidden",
         background: counting ? FIELD_LIVE : FIELD_DIM,
         transition: "background-color 1.6s ease",
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between",
@@ -541,6 +546,7 @@ export function CobreatheBreath({
           ? t("cobreathe.finish", { defaultValue: "Finish" })
           : t("common.cancel", { defaultValue: "Cancel" })}
       </button>
-    </div>
+    </div>,
+    document.body,
   );
 }
