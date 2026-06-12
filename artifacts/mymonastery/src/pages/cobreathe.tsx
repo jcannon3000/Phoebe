@@ -1,11 +1,20 @@
-import { useState, useCallback } from "react";
-import { Link } from "wouter";
+import { useState, useCallback, useEffect } from "react";
+import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { writeMindfulSession } from "@/lib/appleHealth";
 import { CobreatheBreath } from "@/components/CobreatheBreath";
+import { COBREATHE_INTRO_SEEN_KEY } from "@/pages/cobreathe-about";
+
+// True once the user has been through the intro slideshow at least once.
+function introSeen(): boolean {
+  try { return localStorage.getItem(COBREATHE_INTRO_SEEN_KEY) === "1"; } catch { return false; }
+}
+function wantsStart(): boolean {
+  try { return new URLSearchParams(window.location.search).get("start") === "1"; } catch { return false; }
+}
 
 // Cobreathe (beta) — from "conspire", con + spirare, to breathe together.
 // A short daily guided breath held as embodied prayer for justice: not
@@ -110,15 +119,17 @@ export default function CobreathePage() {
   const day = localDay();
   const focus = WEEKLY_FOCI[weekOfYear(new Date()) % WEEKLY_FOCI.length];
 
-  // Opened from the Contemplation card with ?start=1 → go straight into the
-  // breath; the intro/stats screen shows afterward (on done / early end).
-  const [mode, setMode] = useState<"intro" | "breathing" | "done">(() => {
-    try {
-      return new URLSearchParams(window.location.search).get("start") === "1" ? "breathing" : "intro";
-    } catch {
-      return "intro";
-    }
-  });
+  const [, setLocation] = useLocation();
+  // Opened with ?start=1 → go straight into the breath, BUT only once the user
+  // has been through the intro slideshow. First-timers are sent through the
+  // slideshow first (the effect below), which begins the breath at its end.
+  const [mode, setMode] = useState<"intro" | "breathing" | "done">(() =>
+    wantsStart() && introSeen() ? "breathing" : "intro",
+  );
+  useEffect(() => {
+    if (wantsStart() && !introSeen()) setLocation("/cobreathe-about");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // State returned by the POST — fresher than the GET cache on the done screen.
   const [doneState, setDoneState] = useState<BreathState | null>(null);
 
