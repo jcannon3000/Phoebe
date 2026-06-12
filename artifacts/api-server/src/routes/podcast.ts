@@ -204,6 +204,15 @@ export const SHOWS: Record<string, Show> = {
     feedUrl: "https://feeds.megaphone.fm/FDMV2784874884",
     artwork: null,
   },
+  // ── El Jardín — Spanish daily Morning Prayer (Forward Movement) ─────
+  "jardin-oracion-matutina": {
+    slug: "jardin-oracion-matutina",
+    title: "Oración Matutina del Día",
+    artist: "Forward Movement",
+    publisher: "forward-movement",
+    feedUrl: "https://feeds.megaphone.fm/FDMV8783604316",
+    artwork: "https://megaphone.imgix.net/podcasts/a0a45c32-3ca8-11f0-bef2-b304239f72d0/image/a2ef016902ab0d79cd82cbf113bd6228.jpg?ixlib=rails-4.3.1&max-w=600&max-h=600&fit=crop&auto=format,compress",
+  },
   // ── Center for Action and Contemplation ─────────────────────────────
   "cac-everything-belongs": {
     slug: "cac-everything-belongs",

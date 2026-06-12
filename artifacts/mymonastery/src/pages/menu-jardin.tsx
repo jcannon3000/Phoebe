@@ -32,6 +32,12 @@ export default function MenuJardinPage() {
           ],
         },
         {
+          header: t("jardin.listen"),
+          items: [
+            { emoji: "🎧", label: t("jardin.podcast"), sub: t("jardin.podcast_sub"), onClick: () => go("/podcasts/show/jardin-oracion-matutina") },
+          ],
+        },
+        {
           header: t("jardin.community"),
           items: [
             { emoji: "👥", label: t("jardin.groups"), sub: t("jardin.groups_sub"), onClick: () => go("/communities") },

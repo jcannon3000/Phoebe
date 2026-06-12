@@ -622,6 +622,9 @@ export const es: Translations = {
     bible_lookup_sub: "Abre cualquier pasaje en Bible.com",
     leaderboard: "Tabla de rachas",
     leaderboard_sub: "Rachas de oración con amigos",
+    listen: "Escuchar",
+    podcast: "Pódcast de Oración Matutina",
+    podcast_sub: "Oración Matutina diaria en español",
     // Leaderboard page
     streak_none: "Aún sin racha",
     streak_one: "1 día",

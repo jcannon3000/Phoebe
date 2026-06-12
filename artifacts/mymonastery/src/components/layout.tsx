@@ -441,11 +441,27 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   )}
                 </>
               )}
-              {/* El Jardín — always visible to a Jardín account (the portal's
-                  home); otherwise a beta entry into the experience. */}
-              {(rawIsBeta || jardinShell) && (
-                <MenuRow emoji="🌿" label="El Jardín" badge={jardinShell ? undefined : t("menu.beta")} onClick={() => navigate("/menu/jardin")} />
-              )}
+              {/* El Jardín. For a SEALED Jardín account the drawer IS the El
+                  Jardín experience — every Jardín feature is listed directly
+                  (the hub, study tools, the Spanish Morning Prayer podcast,
+                  groups, Bible lookup, leaderboard), since these are the only
+                  surfaces a sealed account can use. A non-sealed beta user just
+                  gets the single entry into the hub. */}
+              {jardinShell ? (
+                <>
+                  <MenuRow emoji="🌿" label={t("jardin.title")} onClick={() => navigate("/menu/jardin")} />
+                  <MenuRow emoji="📖" label={t("jardin.bible_study")} onClick={() => navigate("/jardin/bible-study")} />
+                  <MenuRow emoji="👤" label={t("jardin.character_study")} onClick={() => navigate("/jardin/character-study")} />
+                  <MenuRow emoji="🎤" label={t("jardin.sermon_notes")} onClick={() => navigate("/jardin/sermon-notes")} />
+                  <MenuRow emoji="📅" label={t("jardin.next_sunday")} onClick={() => navigate("/jardin/next-sunday")} />
+                  <MenuRow emoji="🎧" label={t("jardin.podcast")} onClick={() => navigate("/podcasts/show/jardin-oracion-matutina")} />
+                  <MenuRow emoji="👥" label={t("jardin.groups")} onClick={() => navigate("/communities")} />
+                  <MenuRow emoji="🔍" label={t("jardin.bible_lookup")} onClick={() => navigate("/jardin/bible")} />
+                  <MenuRow emoji="🏆" label={t("jardin.leaderboard")} onClick={() => navigate("/jardin/leaderboard")} />
+                </>
+              ) : rawIsBeta ? (
+                <MenuRow emoji="🌿" label="El Jardín" badge={t("menu.beta")} onClick={() => navigate("/menu/jardin")} />
+              ) : null}
             </div>
 
             {/* ── Account + info footer ── */}

@@ -627,6 +627,9 @@ export const en = {
     bible_lookup_sub: "Open any passage on Bible.com",
     leaderboard: "Streak Leaderboard",
     leaderboard_sub: "Prayer streaks with friends",
+    listen: "Listen",
+    podcast: "Morning Prayer Podcast",
+    podcast_sub: "Daily Morning Prayer in Spanish",
     // Leaderboard page
     streak_none: "No streak yet",
     streak_one: "1 day",
