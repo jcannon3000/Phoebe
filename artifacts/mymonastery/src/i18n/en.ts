@@ -103,7 +103,6 @@ export const en = {
     write: "Write",
     place_set_apart: "A place set apart for connection",
     book_of_common_prayer: "Book of Common Prayer",
-    next_up: "Next up",
     requests_count_one: "{{count}} Request",
     requests_count_other: "{{count}} Requests",
     community_prayer: "Community prayer",
