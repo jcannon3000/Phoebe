@@ -82,11 +82,13 @@ function phaseAt(pos: number): Phase {
 // it stays glass-smooth). A larger, fainter gradient behind it gives depth and
 // the subtle colour difference.
 const CIRCLE_BASE = 300;
-// Centre brighter green fading out to nothing — a glow, not a disc. Softer,
-// more gradual stops than before so the falloff reads smooth, not banded.
-const GLOW = "radial-gradient(circle, rgba(130,196,150,0.88) 0%, rgba(95,162,119,0.48) 40%, rgba(46,107,64,0.14) 66%, rgba(46,107,64,0) 86%)";
+// Centre brighter green fading out to nothing — a glow, not a disc. Many
+// gradual stops + a fully-transparent outer edge so there is no hard ring and
+// no banding: the alpha steps down a little at a time and reaches 0 well inside
+// the element box (so the blur below never clips a visible edge).
+const GLOW = "radial-gradient(circle, rgba(130,196,150,0.85) 0%, rgba(118,186,142,0.62) 20%, rgba(100,168,124,0.42) 38%, rgba(78,142,98,0.26) 54%, rgba(58,120,76,0.13) 70%, rgba(46,107,64,0.05) 84%, rgba(46,107,64,0) 94%)";
 // Larger, cooler, fainter halo behind it for depth + a hint of colour shift.
-const HALO = "radial-gradient(circle, rgba(110,180,150,0.24) 0%, rgba(62,124,122,0.11) 48%, rgba(46,107,64,0) 78%)";
+const HALO = "radial-gradient(circle, rgba(110,180,150,0.22) 0%, rgba(92,158,138,0.15) 30%, rgba(74,140,128,0.09) 52%, rgba(58,120,96,0.04) 72%, rgba(46,107,64,0) 88%)";
 const FIELD = "#0A1C14";              // solid deep-green field
 // The world turns between these three globes — one per breath cycle.
 const GLOBES = ["🌍", "🌎", "🌏"] as const;
@@ -289,7 +291,7 @@ export function CobreatheBreath({
             width: CIRCLE_BASE, height: CIRCLE_BASE, borderRadius: "50%",
             background: HALO,
             transform: "translate(-50%, -50%) scale(1)",
-            filter: "blur(12px)",
+            filter: "blur(20px)",
             willChange: "transform, opacity",
           }}
         />
@@ -300,7 +302,7 @@ export function CobreatheBreath({
             width: CIRCLE_BASE, height: CIRCLE_BASE, borderRadius: "50%",
             background: GLOW,
             transform: "translate(-50%, -50%) scale(1)",
-            filter: "blur(7px)",
+            filter: "blur(14px)",
             willChange: "transform, opacity",
           }}
         />
