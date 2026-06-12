@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { z } from "zod/v4";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, sql, isNull } from "drizzle-orm";
 import { db, deviceTokensTable, webPushSubscriptionsTable } from "@workspace/db";
+import { sendPushToUser } from "../lib/pushSender";
 
 const router: IRouter = Router();
 
@@ -135,6 +136,36 @@ router.delete("/push/device-token", async (req, res): Promise<void> => {
   } catch (err) {
     console.error("[push] device-token delete failed:", err);
     res.status(500).json({ error: "Failed to unregister device" });
+  }
+});
+
+// ─── POST /api/push/test ─────────────────────────────────────────────────────
+// Sends a test notification to the caller's own devices, bypassing the cron
+// timing and "already prayed" gates. The response localizes a "I'm not getting
+// notifications" problem:
+//   • tokenCount 0           → no device registered (iOS permission not granted,
+//                              or the token never reached us) — fix on-device.
+//   • attempted 0, tokens>0  → master switch off OR creds missing (server side).
+//   • attempted>0, succeeded 0 → APNs rejected every token (bad env / keys).
+//   • succeeded>0            → delivered; the pipeline works.
+router.post("/push/test", async (req, res): Promise<void> => {
+  const user = getUser(req);
+  if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const liveTokens = await db
+      .select({ id: deviceTokensTable.id })
+      .from(deviceTokensTable)
+      .where(and(eq(deviceTokensTable.userId, user.id), isNull(deviceTokensTable.invalidatedAt)));
+    const result = await sendPushToUser(user.id, {
+      title: "Phoebe",
+      body: "Test notification — if you can see this, your reminders will arrive too.",
+      threadId: "test",
+      data: { path: "/daily-progress" },
+    });
+    res.json({ tokenCount: liveTokens.length, ...result });
+  } catch (err) {
+    console.error("[push] test send failed:", err);
+    res.status(500).json({ error: "test_failed" });
   }
 });
 

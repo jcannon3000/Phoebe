@@ -413,6 +413,33 @@ function NotificationsSettings() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }),
   });
   const enabled = user?.pushEnabled ?? true;
+
+  // "Send a test notification" — the fastest way to tell whether reminders will
+  // actually arrive. It registers the device first (the native shell handles
+  // the event; no-op on web), then asks the server to push to this user's
+  // tokens and reports back exactly where the chain breaks.
+  const [testing, setTesting] = useState(false);
+  const [testMsg, setTestMsg] = useState<string | null>(null);
+  const sendTest = async () => {
+    setTesting(true);
+    setTestMsg(null);
+    try {
+      try { window.dispatchEvent(new Event("phoebe:request-push-permission")); } catch { /* web no-op */ }
+      await new Promise((r) => setTimeout(r, 1200)); // let registration land
+      const res = (await apiRequest("POST", "/api/push/test")) as { tokenCount: number; attempted: number; succeeded: number } | null;
+      if (!res || res.tokenCount === 0) {
+        setTestMsg(t("settings.notif_test_no_device", { defaultValue: "No device is registered yet. Allow notifications for Phoebe in your phone's Settings, reopen the app, then try again." }));
+      } else if (res.succeeded > 0) {
+        setTestMsg(t("settings.notif_test_sent", { defaultValue: "Sent — check your lock screen. Your reminders will arrive the same way." }));
+      } else {
+        setTestMsg(t("settings.notif_test_failed", { defaultValue: "Your device is registered, but delivery failed. The notification server may still need its push keys configured." }));
+      }
+    } catch {
+      setTestMsg(t("settings.notif_test_error", { defaultValue: "Couldn't send a test just now — try again in a moment." }));
+    } finally {
+      setTesting(false);
+    }
+  };
   const options: Array<{ value: boolean; label: string; sub: string }> = [
     { value: true, label: t("settings.notif_on"), sub: t("settings.notif_on_sub") },
     { value: false, label: t("settings.notif_off"), sub: t("settings.notif_off_sub") },
@@ -459,6 +486,36 @@ function NotificationsSettings() {
           );
         })}
       </SettingsCard>
+
+      {/* Test notification — verify the whole pipeline (token + APNs) in one tap. */}
+      <button
+        type="button"
+        onClick={sendTest}
+        disabled={testing || !enabled}
+        className="w-full mt-3 py-2.5 rounded-xl text-[14px]"
+        style={{
+          background: "rgba(46,107,64,0.18)",
+          border: "1px solid rgba(46,107,64,0.4)",
+          color: enabled ? "#F0EDE6" : "rgba(143,175,150,0.5)",
+          fontFamily: "'Space Grotesk', sans-serif",
+          cursor: testing || !enabled ? "default" : "pointer",
+          opacity: testing ? 0.7 : 1,
+        }}
+      >
+        {testing
+          ? t("settings.notif_test_sending", { defaultValue: "Sending…" })
+          : t("settings.notif_test_button", { defaultValue: "Send a test notification" })}
+      </button>
+      {!enabled && (
+        <p className="text-[12px] mt-2" style={{ color: "rgba(143,175,150,0.6)" }}>
+          {t("settings.notif_test_off_hint", { defaultValue: "Turn notifications on above to send a test." })}
+        </p>
+      )}
+      {testMsg && (
+        <p className="text-[12.5px] mt-2" style={{ color: "#8FAF96", lineHeight: 1.5 }}>
+          {testMsg}
+        </p>
+      )}
     </>
   );
 }
