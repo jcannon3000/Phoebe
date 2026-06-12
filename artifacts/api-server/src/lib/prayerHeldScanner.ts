@@ -10,6 +10,14 @@ import { logger } from "./logger";
 // scanner claims the row and sends.
 const BATCH_WINDOW_MS = 2 * 60 * 60 * 1000;
 
+// Upper bound on how old a row may be and still be worth sending. The push is
+// a "you've been held in prayer TODAY" digest, so a row older than this is
+// stale — e.g. a backlog that built up while the scanner wasn't running. Stale
+// rows are still CLAIMED (sent_at stamped) so they never fire and never
+// re-process, but no (wrong, days-old) push goes out and no old request gets
+// deep-linked. 26h covers a late "today" + the 2h window + timezone spread.
+const STALE_AFTER_MS = 26 * 60 * 60 * 1000;
+
 // Run interval — every 10 minutes. The 2-hour window is coarse enough
 // that 10 minutes of jitter on the "send" side is invisible to the
 // user; ticking more often would just spin the DB for nothing.
@@ -92,10 +100,19 @@ export async function runPrayerHeldScan(): Promise<void> {
 
       if (claimed.length === 0) continue;
 
+      // Only send for rows that are still fresh enough to be "today's"
+      // prayers. Older rows were claimed above (so they never fire again) but
+      // we don't ping with a days-old digest or deep-link to a stale request —
+      // the case the user hit when a backlog flushed after the scanner came
+      // back up.
+      const staleBefore = new Date(Date.now() - STALE_AFTER_MS);
+      const freshRows = rows.filter((r) => r.firstAmenAt >= staleBefore);
+      if (freshRows.length === 0) continue;
+
       // The "first" pray-er is the one whose amen kicked off the
       // earliest row of the batch — feels chronologically true and
       // lets the subtitle name a real person rather than a count.
-      const sortedByFirstAmen = [...rows].sort(
+      const sortedByFirstAmen = [...freshRows].sort(
         (a, b) => a.firstAmenAt.getTime() - b.firstAmenAt.getTime(),
       );
       const earliest = sortedByFirstAmen[0];
@@ -104,8 +121,8 @@ export async function runPrayerHeldScan(): Promise<void> {
         .from(usersTable)
         .where(eq(usersTable.id, earliest.firstAmenUserId));
 
-      const totalAmens = rows.reduce((sum, r) => sum + r.amenCount, 0);
-      const requestCount = rows.length;
+      const totalAmens = freshRows.reduce((sum, r) => sum + r.amenCount, 0);
+      const requestCount = freshRows.length;
       // dayKey is the same across all rows (we claimed by recipient on
       // the same scanner tick, and the upsert is keyed by day in the
       // recipient's tz). Use any row's dayKey for collapseId.
@@ -116,7 +133,7 @@ export async function runPrayerHeldScan(): Promise<void> {
       // prayer-request card. When the batch spans several requests we
       // land on the one with the most amens (the richest "who prayed"
       // wall); ties break to the earliest-prayed request.
-      const deepLinkRequest = [...rows].sort(
+      const deepLinkRequest = [...freshRows].sort(
         (a, b) =>
           b.amenCount - a.amenCount ||
           a.firstAmenAt.getTime() - b.firstAmenAt.getTime(),
