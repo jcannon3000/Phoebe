@@ -53,19 +53,20 @@ function StreakCard() {
     >
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${AMBER},0.85)` }} />
       <div className="flex-1 px-4 py-4">
+        {/* Header balanced across the width: streak on the left, the
+            last-7 count aligned right, so the row fills the card instead of
+            clustering top-left. */}
         <div className="flex items-center gap-3">
-          <span className="text-2xl">🔥</span>
-          <div className="flex-1 min-w-0">
-            <p className="leading-none" style={{ color: WARM, fontFamily: FONT, fontSize: 26, fontWeight: 700 }}>
-              {streak}
-              <span className="text-[13px] font-semibold ml-2" style={{ color: "#D9A45B" }}>
-                {t("rhythm.streak_unit", { count: streak, defaultValue: streak === 1 ? "day rhythm" : "day rhythm" })}
-              </span>
-            </p>
-            <p className="text-[12px] mt-1.5" style={{ color: SAGE, fontFamily: FONT }}>
-              {t("rhythm.last7_line", { last7, defaultValue: `Kept ${last7} of the last 7 days` })}
-            </p>
-          </div>
+          <span className="text-2xl flex-shrink-0">🔥</span>
+          <p className="flex-1 min-w-0 leading-none" style={{ color: WARM, fontFamily: FONT, fontSize: 26, fontWeight: 700 }}>
+            {streak}
+            <span className="text-[13px] font-semibold ml-2" style={{ color: "#D9A45B" }}>
+              {t("rhythm.streak_unit", { count: streak, defaultValue: streak === 1 ? "day rhythm" : "day rhythm" })}
+            </span>
+          </p>
+          <p className="text-[12px] text-right flex-shrink-0" style={{ color: SAGE, fontFamily: FONT }}>
+            {t("rhythm.last7_line", { last7, defaultValue: `Kept ${last7} of the last 7 days` })}
+          </p>
         </div>
         {/* Last-14-days strip — oldest left, today right (ringed). */}
         <div className="flex items-center gap-1.5 mt-3.5">
