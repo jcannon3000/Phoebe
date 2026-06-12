@@ -118,6 +118,16 @@ export default function WelcomePublicPage() {
             primary
           />
 
+          {/* Card 1b — Cobreathe: anyone can try the shared breath without an
+              account, the way the climate feed used to be reachable here. */}
+          <ChoiceCard
+            href="/cobreathe?start=1"
+            emoji="🌬️"
+            title={t("welcome_public.cobreathe_title", { defaultValue: "Cobreathe" })}
+            blurb={t("welcome_public.cobreathe_blurb", { defaultValue: "Twelve slow breaths, in one shared rhythm — a prayer for justice." })}
+            delay={0.09}
+          />
+
           {/* Card 2 — sign in (or sign up via the same form) */}
           <ChoiceCard
             href="/signin"

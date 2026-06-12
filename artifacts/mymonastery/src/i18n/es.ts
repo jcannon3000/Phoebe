@@ -1446,6 +1446,8 @@ export const es: Translations = {
     office_blurb_evening: "Cierra el día con los salmos, lecturas y oraciones del Libro de Oración Común.",
     climate_title: "Oración por el clima",
     climate_blurb: "Ora la intercesión de hoy junto con la comunidad que cuida la creación.",
+    cobreathe_title: "Cobreathe",
+    cobreathe_blurb: "Doce respiraciones lentas, en un mismo ritmo compartido — una oración por la justicia.",
     sign_in_blurb: "¿Ya estás en Phoebe? Continúa donde lo dejaste.",
     learn_title: "Conoce Phoebe",
     learn_blurb: "Un recorrido breve de cómo Phoebe te ayuda a orar y mantenerte en conexión.",

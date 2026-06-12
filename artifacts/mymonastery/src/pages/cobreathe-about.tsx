@@ -77,12 +77,20 @@ export default function CobreatheAboutPage() {
               </button>
             </div>
           ) : (
-            <p
-              className="text-center"
-              style={{ color: "rgba(240,237,230,0.94)", fontFamily: SPACE_GROTESK, fontSize: 18.5, lineHeight: 1.55, maxWidth: 480 }}
-            >
-              {ESSAY_SLIDES[i]}
-            </p>
+            <div className="w-full flex flex-col items-center" style={{ maxWidth: 480 }}>
+              <p
+                className="text-center"
+                style={{ color: "rgba(240,237,230,0.94)", fontFamily: SPACE_GROTESK, fontSize: 18.5, lineHeight: 1.55 }}
+              >
+                “{ESSAY_SLIDES[i]}”
+              </p>
+              <p
+                className="text-center mt-4 text-[12.5px] italic"
+                style={{ color: "rgba(143,175,150,0.75)", fontFamily: SPACE_GROTESK }}
+              >
+                from “Con-spiring Together”
+              </p>
+            </div>
           )}
         </div>
 
