@@ -242,23 +242,27 @@ function PracticeCard({
       style={{ background: `rgba(${rgb},0.10)`, border: `1px solid rgba(${rgb},${done ? 0.42 : 0.18})`, opacity: waiting ? 0.72 : 1 }}
     >
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.85})` }} />
-      <div className="flex-1 px-4 py-3.5 flex items-center gap-3">
-        <span className="text-xl flex-shrink-0">{emoji}</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
-          {useCycle
-            ? <CardSubtitleCycle values={blurbCycle!} className="text-[12px] mt-0.5 leading-snug" style={{ color: SAGE }} />
-            : <p className="text-[12px] mt-0.5 leading-snug" style={{ color: SAGE }}>{blurb}</p>}
-          {progress && progress.goal > 0 && !done && (
-            <div className="mt-2 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
-              <div
-                className="h-full rounded-full"
-                style={{ width: `${Math.min(100, Math.round((progress.current / progress.goal) * 100))}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }}
-              />
-            </div>
-          )}
+      <div className="flex-1 px-4 py-3.5">
+        <div className="flex items-center gap-3">
+          <span className="text-xl flex-shrink-0">{emoji}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
+            {useCycle
+              ? <CardSubtitleCycle values={blurbCycle!} className="text-[12px] mt-0.5 leading-snug" style={{ color: SAGE }} />
+              : <p className="text-[12px] mt-0.5 leading-snug" style={{ color: SAGE }}>{blurb}</p>}
+          </div>
+          {pill}
         </div>
-        {pill}
+        {/* Progress bar spans the full width below the row — so "Begin" sits
+            above it rather than beside it. */}
+        {progress && progress.goal > 0 && !done && (
+          <div className="mt-3 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
+            <div
+              className="h-full rounded-full"
+              style={{ width: `${Math.min(100, Math.round((progress.current / progress.goal) * 100))}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
