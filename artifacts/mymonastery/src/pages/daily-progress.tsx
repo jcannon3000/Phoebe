@@ -53,11 +53,13 @@ function StreakCard() {
   const gardenWeekCount = gardenWeek?.count ?? 0;
   if (!data) return null;
   const { days, streak, last7 } = data;
-  const AMBER = "193,127,36";
+  const AMBER = "193,127,36";          // warm flame accent — left bar + the streak number only
+  const GREEN = "46,107,64";           // card body, matching the home / practice cards
+  const GREEN_BRIGHT = "110,180,130";  // kept-day marks in the 14-day strip
   return (
     <div
       className="relative flex rounded-2xl overflow-hidden mt-6"
-      style={{ background: `rgba(${AMBER},0.08)`, border: `1px solid rgba(${AMBER},0.28)` }}
+      style={{ background: `rgba(${GREEN},0.10)`, border: `1px solid rgba(${GREEN},0.24)` }}
     >
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${AMBER},0.85)` }} />
       <div className="flex-1 px-4 py-4">
@@ -66,7 +68,7 @@ function StreakCard() {
             clustering top-left. */}
         <div className="flex items-center gap-3">
           <span className="text-2xl flex-shrink-0">🔥</span>
-          <p className="flex-1 min-w-0 leading-none" style={{ color: WARM, fontFamily: FONT, fontSize: 26, fontWeight: 700 }}>
+          <p className="flex-1 min-w-0 leading-none" style={{ color: "#E8B45E", fontFamily: FONT, fontSize: 26, fontWeight: 700 }}>
             {streak}
             <span className="text-[13px] font-semibold ml-2" style={{ color: "#D9A45B" }}>
               {t("rhythm.streak_unit", { count: streak, defaultValue: streak === 1 ? "day rhythm" : "day rhythm" })}
@@ -88,7 +90,7 @@ function StreakCard() {
                 style={{
                   height: 8,
                   maxWidth: 22,
-                  background: d.kept ? `rgba(${AMBER},0.85)` : "rgba(143,175,150,0.16)",
+                  background: d.kept ? `rgba(${GREEN_BRIGHT},0.85)` : "rgba(143,175,150,0.16)",
                   border: isToday ? "1.5px solid rgba(240,237,230,0.75)" : "1px solid transparent",
                 }}
               />
@@ -99,7 +101,7 @@ function StreakCard() {
           {t("rhythm.last14_label", { defaultValue: "Last 14 days" })}
         </p>
         {gardenWeekCount > 0 && (
-          <p className="text-[12px] mt-3 pt-3" style={{ color: SAGE, fontFamily: FONT, fontStyle: "italic", borderTop: "1px solid rgba(193,127,36,0.18)" }}>
+          <p className="text-[12px] mt-3 pt-3" style={{ color: SAGE, fontFamily: FONT, fontStyle: "italic", borderTop: "1px solid rgba(46,107,64,0.18)" }}>
             🌿 {t("rhythm.garden_week_line", { count: gardenWeekCount, defaultValue: `${gardenWeekCount} ${gardenWeekCount === 1 ? "other in your gardens has" : "others in your gardens have"} practiced this week` })}
           </p>
         )}

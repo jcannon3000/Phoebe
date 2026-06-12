@@ -253,15 +253,15 @@ export default function WayOfLoveRuleFlow({
   };
 
   // ── Shared chrome ──────────────────────────────────────────────────────────
-  // The negative margins cancel <Layout>'s main px-4/sm:px-6/md:px-8 so the flow
-  // goes full-bleed to the screen edges; a small inner padding keeps the cards
-  // off the very edge. Without this the content was inset twice (Layout's
-  // padding + the flow's own), leaving it narrow on mobile.
+  // Full-bleed (negative margins cancel <Layout>'s main px-4/sm:px-6/md:px-8),
+  // then the inner block re-adds the SAME small padding the home screen uses so
+  // the cards sit at the same margin as the home cards — not inset twice (which
+  // left it narrow), not jammed to the edge.
   const shell = (children: ReactNode) => (
     <div className="-mx-4 sm:-mx-6 md:-mx-8" style={{ flex: 1, minHeight: 0, background: BG, position: "relative", display: "flex", flexDirection: "column" }}>
       {/* No fadeTop: rendered under <Layout>'s opaque header. */}
       <AnimatedBackground base={BG} variant="subtle" />
-      <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 14px 40px" }}>
+      <div className="px-4 sm:px-6 md:px-8" style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", paddingTop: 24, paddingBottom: 40 }}>
         <div style={{ flex: 1, maxWidth: 480, margin: "0 auto", width: "100%", display: "flex", flexDirection: "column" }}>
           {children}
         </div>
@@ -295,7 +295,8 @@ export default function WayOfLoveRuleFlow({
     </button>
   );
 
-  // A radio-style choice row (single-select).
+  // A radio-style choice row (single-select), with the home cards' left accent
+  // bar — brighter when selected.
   const choiceRow = (on: boolean, label: string, sub: string, onClick: () => void) => (
     <button
       key={label}
@@ -303,17 +304,20 @@ export default function WayOfLoveRuleFlow({
       style={{
         background: on ? CARD_ACTIVE : CARD,
         border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
-        color: CREAM, borderRadius: 14, padding: "14px 16px", textAlign: "left",
-        display: "flex", alignItems: "flex-start", gap: 10, cursor: "pointer",
+        color: CREAM, borderRadius: 14, padding: 0, overflow: "hidden", textAlign: "left",
+        display: "flex", alignItems: "stretch", cursor: "pointer",
         transition: "background 0.15s, border-color 0.15s",
       }}
     >
+      <span style={{ width: 4, flexShrink: 0, background: on ? "#A8C5A0" : CARD_B }} aria-hidden />
+      <span style={{ flex: 1, minWidth: 0, padding: "14px 16px", display: "flex", alignItems: "flex-start", gap: 10 }}>
       <span style={{ width: 18, height: 18, borderRadius: 999, flexShrink: 0, marginTop: 2, display: "inline-flex", alignItems: "center", justifyContent: "center", background: on ? "#A8C5A0" : "transparent", border: on ? "none" : `1.5px solid ${CARD_B}` }}>
         {on && <Check size={12} strokeWidth={3} color="#0C1F12" />}
       </span>
       <span style={{ minWidth: 0 }}>
         <span style={{ display: "block", fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{label}</span>
         <span style={{ display: "block", color: SAGE, fontSize: 13, fontFamily: FONT, marginTop: 2, lineHeight: 1.4 }}>{sub}</span>
+      </span>
       </span>
     </button>
   );
