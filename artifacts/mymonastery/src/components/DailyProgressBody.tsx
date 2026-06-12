@@ -298,10 +298,13 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
     t("rhythm.with_intercessions", { defaultValue: "with community intercessions" }),
     t("rhythm.with_requests", { defaultValue: "with community prayer requests" }),
   ];
-  const contemplationBlurb = silenceDone
-    ? kept
-    : contemplationGoalMin > 0
-      ? t("rhythm.contemplation_progress", { current: contemplationMin, goal: contemplationGoalMin, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min today` })
+  // Whenever there's a minute goal, show progress toward it ("12 of 20 min
+  // today") — even once it's met — so the card always reads as minutes-of-goal.
+  // Only with no goal set does it fall back to "Kept today" / the blurb.
+  const contemplationBlurb = contemplationGoalMin > 0
+    ? t("rhythm.contemplation_progress", { current: contemplationMin, goal: contemplationGoalMin, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min today` })
+    : silenceDone
+      ? kept
       : t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" });
 
   const officeTitle = (side: "Morning" | "Evening") =>
@@ -413,7 +416,7 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
         </>
       )}
       {completed.length > 0 && (
-        <div className={upcoming.length > 0 ? "mt-6" : ""}>
+        <div className={upcoming.length > 0 ? "mt-10" : ""}>
           {sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}
           <div className="flex flex-col gap-2">{completed.map((c) => renderCard(c))}</div>
         </div>
