@@ -81,7 +81,7 @@ function phaseAt(pos: number): Phase {
 // The rAF loop drives transform scale + opacity each frame (GPU-composited, so
 // it stays glass-smooth). A larger, fainter gradient behind it gives depth and
 // the subtle colour difference.
-const CIRCLE_BASE = 220;
+const CIRCLE_BASE = 300;
 // Centre brighter green fading out to nothing — a glow, not a disc. Softer,
 // more gradual stops than before so the falloff reads smooth, not banded.
 const GLOW = "radial-gradient(circle, rgba(130,196,150,0.88) 0%, rgba(95,162,119,0.48) 40%, rgba(46,107,64,0.14) 66%, rgba(46,107,64,0) 86%)";
@@ -152,20 +152,23 @@ export function CobreatheBreath({
       const p = (s - SMALL) / (BIG - SMALL);
       // The glow grows AND strengthens on the inhale: scale + opacity both
       // rise with the breath. GPU-composited (transform + opacity), so smooth.
+      // Pronounced swell: a wide scale range driven straight off breath
+      // progress, so the glow visibly shrinks on the exhale (~0.66) and blooms
+      // large on the inhale (~1.52) — a far more dramatic pulse than before.
       if (circleRef.current) {
-        circleRef.current.style.transform = `translate(-50%, -50%) scale(${(0.62 + s * 0.42).toFixed(4)})`;
-        circleRef.current.style.opacity = String(0.45 + p * 0.5);
+        circleRef.current.style.transform = `translate(-50%, -50%) scale(${(0.66 + p * 0.86).toFixed(4)})`;
+        circleRef.current.style.opacity = String(0.4 + p * 0.58);
       }
-      // The halo breathes a touch wider and fainter, a beat behind — the subtle
-      // colour difference + depth.
+      // The halo breathes wider and fainter, a beat behind — depth + the subtle
+      // colour shift, swinging across an even bigger range than the core.
       if (ringRef.current) {
-        ringRef.current.style.transform = `translate(-50%, -50%) scale(${(0.85 + s * 0.5).toFixed(4)})`;
-        ringRef.current.style.opacity = String(0.3 + p * 0.35);
+        ringRef.current.style.transform = `translate(-50%, -50%) scale(${(0.82 + p * 0.98).toFixed(4)})`;
+        ringRef.current.style.opacity = String(0.26 + p * 0.46);
       }
-      // The world at the centre breathes gently with the glow.
+      // The world at the centre breathes with the glow — a touch more now.
       if (globeRef.current) {
-        globeRef.current.style.transform = `translate(-50%, -50%) scale(${(0.92 + p * 0.16).toFixed(4)})`;
-        globeRef.current.style.opacity = String(0.62 + p * 0.38);
+        globeRef.current.style.transform = `translate(-50%, -50%) scale(${(0.9 + p * 0.24).toFixed(4)})`;
+        globeRef.current.style.opacity = String(0.6 + p * 0.4);
       }
       // The phase word breathes a hair with the circle.
       if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + p * 0.06})`;
@@ -362,7 +365,7 @@ export function CobreatheBreath({
         style={{
           position: "absolute", left: "50%", top: "50%",
           transform: "translate(-50%, 0)",
-          marginTop: CIRCLE_BASE * 0.72, zIndex: 2,
+          marginTop: CIRCLE_BASE * 0.78, zIndex: 2,
         }}
       >
         <div ref={labelRef} style={{ willChange: "transform" }}>
