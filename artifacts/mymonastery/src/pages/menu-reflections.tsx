@@ -1,18 +1,18 @@
 import { MenuHub } from "@/components/MenuHub";
+import { openExternal } from "@/lib/openExternal";
 import {
   CAC_TODAY_URL, FDD_TODAY_URL, SSJE_TODAY_URL,
   markCacRead, markFddRead, markSsjeRead,
 } from "@/lib/cacReadState";
 
-// Daily reflections from across the church. Each source opens in a NEW TAB —
-// no in-app inline reader and no return page (per request). We still mark the
-// source read so the Daily-progress "Reflect" anchor + home cards update.
-// The select sound is handled centrally by MenuHub.
+// Daily reflections from across the church. Each source opens via openExternal
+// — the in-app browser on iOS, a new tab on web — with no inline reader and no
+// return page. We still mark the source read so the Daily-progress "Reflect"
+// anchor + home cards update. Select sound handled centrally by MenuHub.
 export default function MenuReflectionsPage() {
-  const openNewTab = (url: string) => window.open(url, "_blank", "noopener,noreferrer");
-  const openFdd = () => { markFddRead(); openNewTab(FDD_TODAY_URL); };
-  const openSsje = () => { markSsjeRead(); openNewTab(SSJE_TODAY_URL); };
-  const openCac = () => { markCacRead(); openNewTab(CAC_TODAY_URL); };
+  const openFdd = () => { markFddRead(); openExternal(FDD_TODAY_URL); };
+  const openSsje = () => { markSsjeRead(); openExternal(SSJE_TODAY_URL); };
+  const openCac = () => { markCacRead(); openExternal(CAC_TODAY_URL); };
 
   return (
     <MenuHub

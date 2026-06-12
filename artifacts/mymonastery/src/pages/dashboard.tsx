@@ -2564,10 +2564,11 @@ export function CacHomeCard() {
   });
   const cacTitle = cacMeta?.title ?? "";
   const onClick = () => {
-    // Mark read, then open the meditation in a NEW TAB — no in-app reader and
-    // no /reflect/cac return page (we don't flag a return, so Phoebe stays put).
+    // Mark read, then open the meditation — in-app browser on iOS, new tab on
+    // web (openExternal). No /reflect/cac return page (no flagReturn), so
+    // Phoebe stays on the current page when the reader is dismissed.
     recordCacOpened();
-    window.open(CAC_TODAY_URL, "_blank", "noopener,noreferrer");
+    openExternal(CAC_TODAY_URL);
   };
   return (
     <div
@@ -2775,9 +2776,9 @@ function FddHomeCard() {
     };
   }, []);
   const onClick = () => {
-    // Open in a NEW TAB — no in-app reader, no return page (no flagReturn).
+    // In-app browser on iOS, new tab on web. No return page (no flagReturn).
     recordFddOpened();
-    window.open(FDD_TODAY_URL, "_blank", "noopener,noreferrer");
+    openExternal(FDD_TODAY_URL);
   };
   return (
     <div
@@ -2838,9 +2839,9 @@ function SsjeHomeCard() {
     };
   }, []);
   const onClick = () => {
-    // Open in a NEW TAB — no in-app reader, no return page (no flagReturn).
+    // In-app browser on iOS, new tab on web. No return page (no flagReturn).
     recordSsjeOpened();
-    window.open(SSJE_TODAY_URL, "_blank", "noopener,noreferrer");
+    openExternal(SSJE_TODAY_URL);
   };
   return (
     <div
