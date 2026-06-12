@@ -5294,8 +5294,11 @@ export default function Dashboard() {
   const heroKey: HomeModule | null =
     homeHero?.kind === "office" ? "office" : homeHero?.kind === "reflect" ? homeHero.key : null;
   const heroOfficeSide = homeHero?.kind === "office" ? homeHero.side : undefined;
-  // After 3pm, the reflection is hidden everywhere until evening prayer is done.
-  const hideReflectionsNow = dynamicHero && heroAfternoon && !rhythm.eveningDone;
+  // In dynamic-hero mode the reflection only ever appears AS the hero —
+  // it never lingers as a list card before it's up or after it's read.
+  // (This also covers the 3pm rule: the hero is the office then, so the
+  // reflection is hidden until evening prayer is done.)
+  const reflectionIsHero = (key: HomeModule) => !dynamicHero || heroKey === key;
   // Whether the office card renders as the big hero (vs the compact one-liner).
   const officeIsHero = dynamicHero ? heroKey === "office" : primaryAnchor === "office";
 
@@ -6232,11 +6235,11 @@ export default function Dashboard() {
                 case "examen":
                   return <ExamenHomeCard />;
                 case "cac":
-                  return hideReflectionsNow ? null : <CacHomeCard />;
+                  return reflectionIsHero("cac") ? <CacHomeCard /> : null;
                 case "fdd":
-                  return hideReflectionsNow ? null : <FddHomeCard />;
+                  return reflectionIsHero("fdd") ? <FddHomeCard /> : null;
                 case "ssje":
-                  return hideReflectionsNow ? null : <SsjeHomeCard />;
+                  return reflectionIsHero("ssje") ? <SsjeHomeCard /> : null;
                 case "ncmp":
                   // Self-hides on weekends + outside the broadcast
                   // window; returns null in those cases so the
@@ -6269,8 +6272,9 @@ export default function Dashboard() {
             const rendered = displayOrder
               .map((k) => ({ k, node: renderModule(k) }))
               .filter((m) => m.node != null);
-            // All kept → a community summary leads; the office / reflection
-            // cards still render below so the user can pray or read again.
+            // All kept → a community summary leads; the office card still
+            // renders below (compact) so the user can pray again, but the
+            // read reflection stays hidden.
             const summaryFirst = dynamicHero && homeHero?.kind === "summary";
             return (
               <>
