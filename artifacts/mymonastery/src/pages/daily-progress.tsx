@@ -43,6 +43,14 @@ function StreakCard() {
     queryFn: () => apiRequest("GET", `/api/me/prayer-days?tz=${encodeURIComponent(tz)}`),
     staleTime: 60_000,
   });
+  // Others in the user's garden(s) who have practiced this week — social proof
+  // that the rhythm is shared, not solitary.
+  const { data: gardenWeek } = useQuery<{ count: number }>({
+    queryKey: ["/api/me/garden-week"],
+    queryFn: () => apiRequest("GET", "/api/me/garden-week"),
+    staleTime: 5 * 60_000,
+  });
+  const gardenWeekCount = gardenWeek?.count ?? 0;
   if (!data) return null;
   const { days, streak, last7 } = data;
   const AMBER = "193,127,36";
@@ -90,6 +98,11 @@ function StreakCard() {
         <p className="text-[10.5px] mt-1.5" style={{ color: "rgba(143,175,150,0.5)", fontFamily: FONT }}>
           {t("rhythm.last14_label", { defaultValue: "Last 14 days" })}
         </p>
+        {gardenWeekCount > 0 && (
+          <p className="text-[12px] mt-3 pt-3" style={{ color: SAGE, fontFamily: FONT, fontStyle: "italic", borderTop: "1px solid rgba(193,127,36,0.18)" }}>
+            🌿 {t("rhythm.garden_week_line", { count: gardenWeekCount, defaultValue: `${gardenWeekCount} ${gardenWeekCount === 1 ? "other in your gardens has" : "others in your gardens have"} practiced this week` })}
+          </p>
+        )}
       </div>
     </div>
   );

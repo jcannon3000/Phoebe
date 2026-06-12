@@ -125,6 +125,45 @@ router.get("/me/prayer-days", async (req, res): Promise<void> => {
   }
 });
 
+// GET /api/me/garden-week — how many OTHERS in the user's garden(s) have
+// practiced in the last 7 days. "Practiced" = any prayer_session (offices,
+// contemplation, the slideshow, examen) OR a Cobreathe breath — the same
+// union that backs the streak, so it reads as "kept their rhythm this week."
+// Powers the social-proof line on the Daily-progress streak card. Returns a
+// plain count (no identities) and never throws — a 0 just hides the line.
+router.get("/me/garden-week", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const gardenIds = (await getGardenUserIds(sessionUserId)).filter((id) => id !== sessionUserId);
+    if (gardenIds.length === 0) { res.json({ count: 0 }); return; }
+
+    // Rolling 7-day window. prayer_sessions are timestamped (ended_at);
+    // breath_sessions store a local-day string, which sorts correctly as ISO.
+    const sinceUtc = new Date(Date.now() - 7 * 86_400_000);
+    const sinceDay = sinceUtc.toISOString().slice(0, 10);
+
+    const [sessionRows, breathRows] = await Promise.all([
+      db
+        .select({ userId: prayerSessionsTable.userId })
+        .from(prayerSessionsTable)
+        .where(and(inArray(prayerSessionsTable.userId, gardenIds), gte(prayerSessionsTable.endedAt, sinceUtc))),
+      db
+        .select({ userId: breathSessionsTable.userId })
+        .from(breathSessionsTable)
+        .where(and(inArray(breathSessionsTable.userId, gardenIds), gte(breathSessionsTable.day, sinceDay))),
+    ]);
+
+    const practiced = new Set<number>();
+    for (const r of sessionRows) practiced.add(r.userId);
+    for (const r of breathRows) practiced.add(r.userId);
+    res.json({ count: practiced.size });
+  } catch (err) {
+    console.error("[/me/garden-week] failed:", err);
+    res.json({ count: 0 });
+  }
+});
+
 // Per-user prayer-time ledger. Client posts a finished session; the
 // metrics page reads the rolled-up totals via /api/groups/:slug/metrics.
 //
