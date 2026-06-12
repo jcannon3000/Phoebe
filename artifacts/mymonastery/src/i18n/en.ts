@@ -1404,6 +1404,14 @@ export const en = {
     loading: "Loading today's broadcast…",
     blurb: "Live every weekday at 7 AM ET from the Washington National Cathedral. Today's recording stays available until tomorrow's broadcast.",
   },
+  // Morning Devotion video — St. John's Cathedral (pages/devotion-watch.tsx).
+  devotion_watch: {
+    title: "Morning Devotion",
+    watch: "Watch Morning Devotion",
+    loading: "Loading today's devotion…",
+    opens_in_browser: "Opens in your browser",
+    blurb: "Join Dean Kate for a daily morning devotion from St. John's Cathedral — scripture from the Daily Office, sacred art, and quiet prayer to begin the day. Watching counts toward your Morning Devotion.",
+  },
   // Daily Prayer picker (pages/offices.tsx).
   offices: {
     at_night: "At night",
@@ -1415,6 +1423,7 @@ export const en = {
     read_now: "Read now →",
     todays_reflection: "Today's reflection",
     watch_ncmp: "Watch · Nat'l Cathedral",
+    watch_devotion: "Watch · St. John's",
     back_home: "← Home",
     title: "Daily Prayer",
     subtitle: "The 1979 Book of Common Prayer, full and short forms.",

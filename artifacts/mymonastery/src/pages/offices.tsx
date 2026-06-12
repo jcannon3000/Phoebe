@@ -140,7 +140,24 @@ export default function OfficesPage() {
               ]}
             />
           </div>
-          <OfficeOption spec={morningDevotion} />
+          <div>
+            <OfficeOption spec={morningDevotion} />
+            {/* Watch St. John's Cathedral's daily "Morning Devotion with Dean
+                Kate" — a video devotion that logs the morning office, same as
+                reading it. Weekday-only, like the broadcast. */}
+            {weekday && (
+              <OfficeFormatPills
+                items={[
+                  {
+                    variant: "green",
+                    emoji: "📺",
+                    label: t("offices.watch_devotion", { defaultValue: "Watch · St. John's" }),
+                    href: "/devotion/watch",
+                  },
+                ]}
+              />
+            )}
+          </div>
         </div>
 
         <SectionLabel>{t("offices.in_the_evening")}</SectionLabel>
@@ -227,11 +244,12 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function OfficeFormatPills({
   items,
 }: {
-  items: Array<{ variant: "gold" | "purple"; emoji: string; label: string; href: string; onClick?: () => void }>;
+  items: Array<{ variant: "gold" | "purple" | "green"; emoji: string; label: string; href: string; onClick?: () => void }>;
 }) {
   const palette = {
     gold: { bg: "rgba(212,160,70,0.14)", border: "rgba(212,160,70,0.38)", color: "#F0DCA8" },
     purple: { bg: "rgba(120,80,180,0.16)", border: "rgba(120,80,180,0.42)", color: "#E0D0F5" },
+    green: { bg: "rgba(46,107,64,0.18)", border: "rgba(46,107,64,0.45)", color: "#A8C5A0" },
   } as const;
   return (
     <div className="flex flex-wrap gap-2 mt-2 ml-1">

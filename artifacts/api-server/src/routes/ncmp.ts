@@ -29,10 +29,17 @@ import { logger } from "../lib/logger";
 
 const router: IRouter = Router();
 
-// Washington National Cathedral · Morning Prayer playlist (public).
-const PLAYLIST_ID = "PL1nLVw6M_fPisN8Gfk_tRsjTXqSexemlK";
-const FEED_URL = `https://www.youtube.com/feeds/videos.xml?playlist_id=${PLAYLIST_ID}`;
-const PLAYLIST_FALLBACK_URL = `https://www.youtube.com/playlist?list=${PLAYLIST_ID}`;
+// Two daily weekday YouTube series, resolved identically: Washington National
+// Cathedral's Morning Prayer (ncmp) and St. John's Cathedral's "Morning
+// Devotion with Dean Kate" (devotion). Both post each day's recording to a
+// public playlist, newest-first.
+const PLAYLISTS = {
+  ncmp: "PL1nLVw6M_fPisN8Gfk_tRsjTXqSexemlK",
+  devotion: "PLwOcNu4HOzu777pJge4KXVocRLLaNq0Eh",
+} as const;
+type PlaylistKey = keyof typeof PLAYLISTS;
+const feedUrlFor = (id: string) => `https://www.youtube.com/feeds/videos.xml?playlist_id=${id}`;
+const playlistUrlFor = (id: string) => `https://www.youtube.com/playlist?list=${id}`;
 
 // Safari UA — YouTube serves the same HTML to bots, but we still
 // match a real browser to keep behavior predictable if Google ever
@@ -50,7 +57,7 @@ type NcmpMeta = {
   publishedAt: string | null;
   durationSeconds: number | null;
 };
-let cached: Cached | null = null;
+const caches: Record<PlaylistKey, Cached | null> = { ncmp: null, devotion: null };
 
 // Publish-day key in ET, with a 9 AM rollover (same heuristic the CAC
 // route uses). Before 9 AM ET the key is YESTERDAY's date — that's
@@ -105,10 +112,11 @@ function parseLengthSeconds(html: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-async function resolveTodaysMeta(): Promise<NcmpMeta> {
+async function resolveTodaysMeta(key: PlaylistKey, playlistId: string): Promise<NcmpMeta> {
   const today = publishDayKey();
-  if (cached && cached.day === today) {
-    return cached.data;
+  const hit = caches[key];
+  if (hit && hit.day === today) {
+    return hit.data;
   }
 
   // 5-second timeout per request — YouTube is normally instant; bail
@@ -117,7 +125,7 @@ async function resolveTodaysMeta(): Promise<NcmpMeta> {
   const timeout = setTimeout(() => controller.abort(), 5_000);
 
   const fallback: NcmpMeta = {
-    url: PLAYLIST_FALLBACK_URL,
+    url: playlistUrlFor(playlistId),
     videoId: null,
     title: null,
     publishedAt: null,
@@ -125,7 +133,7 @@ async function resolveTodaysMeta(): Promise<NcmpMeta> {
   };
 
   try {
-    const feedRes = await fetch(FEED_URL, {
+    const feedRes = await fetch(feedUrlFor(playlistId), {
       headers: { "User-Agent": UA, "Accept": "application/atom+xml, application/xml, */*" },
       signal: controller.signal,
     });
@@ -166,7 +174,7 @@ async function resolveTodaysMeta(): Promise<NcmpMeta> {
     }
 
     const data: NcmpMeta = { url: watchUrl, videoId, title, publishedAt, durationSeconds };
-    cached = { day: today, data };
+    caches[key] = { day: today, data };
     return data;
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, "[ncmp] feed fetch failed");
@@ -181,11 +189,19 @@ async function resolveTodaysMeta(): Promise<NcmpMeta> {
 // resolver's own cache. Falls back to the playlist landing URL on any
 // failure so the client always gets a usable link.
 router.get("/ncmp/today-meta", async (_req: Request, res: Response): Promise<void> => {
-  const meta = await resolveTodaysMeta();
+  const meta = await resolveTodaysMeta("ncmp", PLAYLISTS.ncmp);
   // 1-hour CDN cache mirrors the in-process cache rollover cadence so
   // intermediaries don't pin yesterday's metadata into tomorrow's
   // chooser, and YouTube only sees ~1 request per server-instance per
   // day under the partial index.
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.json(meta);
+});
+
+// St. John's Cathedral · "Morning Devotion with Dean Kate" — same daily
+// resolution, surfaced as the Watch option on Morning Devotion.
+router.get("/devotion-watch/today-meta", async (_req: Request, res: Response): Promise<void> => {
+  const meta = await resolveTodaysMeta("devotion", PLAYLISTS.devotion);
   res.setHeader("Cache-Control", "public, max-age=3600");
   res.json(meta);
 });

@@ -165,6 +165,7 @@ const ForgotPassword = lazy(() => import("./pages/forgot-password"));
 const ResetPassword = lazy(() => import("./pages/reset-password"));
 const PrayerChooserPage = lazy(() => import("./pages/prayer-chooser"));
 const NcmpWatchPage = lazy(() => import("./pages/ncmp-watch"));
+const DevotionWatchPage = lazy(() => import("./pages/devotion-watch"));
 const OfficePodcastPage = lazy(() => import("./pages/office-podcast"));
 const MenuPage = lazy(() => import("./pages/menu"));
 const MenuJardinPage = lazy(() => import("./pages/menu-jardin"));
@@ -610,6 +611,7 @@ function Router() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/prayer-chooser" component={PrayerChooserPage} />
       <Route path="/ncmp/watch" component={NcmpWatchPage} />
+      <Route path="/devotion/watch" component={DevotionWatchPage} />
       <Route path="/podcast/morning-office" component={OfficePodcastPage} />
       <Route path="/podcast/evening-office" component={OfficePodcastPage} />
       <Route path="/menu" component={MenuPage} />

@@ -1398,6 +1398,14 @@ export const es: Translations = {
     loading: "Cargando la transmisión de hoy…",
     blurb: "En vivo cada día de semana a las 7 a. m. (hora del Este) desde la Catedral Nacional de Washington. La grabación de hoy queda disponible hasta la transmisión de mañana.",
   },
+  // Video de Devoción matutina — Catedral de St. John (pages/devotion-watch.tsx).
+  devotion_watch: {
+    title: "Devoción matutina",
+    watch: "Ver la Devoción matutina",
+    loading: "Cargando la devoción de hoy…",
+    opens_in_browser: "Se abre en tu navegador",
+    blurb: "Acompaña a la Deana Kate en una devoción matutina diaria de la Catedral de St. John — Escritura del Oficio Diario, arte sacro y oración serena para comenzar el día. Verla cuenta para tu Devoción matutina.",
+  },
   offices: {
     at_night: "Por la noche",
     listen_forward: "Escuchar · Forward",
@@ -1408,6 +1416,7 @@ export const es: Translations = {
     read_now: "Leer ahora →",
     todays_reflection: "La reflexión de hoy",
     watch_ncmp: "Ver · Catedral Nacional",
+    watch_devotion: "Ver · St. John's",
     back_home: "← Inicio",
     title: "Oración diaria",
     subtitle: "El Libro de Oración Común de 1979, formas completa y breve.",
