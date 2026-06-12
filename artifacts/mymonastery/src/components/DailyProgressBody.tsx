@@ -16,6 +16,8 @@ import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/officePrefs";
+import { CAC_TODAY_URL, markCacRead } from "@/lib/cacReadState";
+import { openExternal } from "@/lib/openExternal";
 
 const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
@@ -160,11 +162,14 @@ function StreakCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   later?: boolean; laterLabel?: string;
   progress?: { current: number; goal: number };
+  /** When set, the card runs this instead of navigating to `href` — e.g. the
+   *  CAC reflection opens the meditation directly in the in-app browser. */
+  onClick?: () => void;
   /** When set (and not done), the subtitle cross-fades between these values
    *  instead of showing the static blurb. */
   blurbCycle?: string[];
@@ -217,7 +222,9 @@ function PracticeCard({
         </div>
       </div>
     );
-    return waiting ? heroRow : <Link href={href} className="block">{heroRow}</Link>;
+    if (waiting) return heroRow;
+    if (onClick) return <button type="button" onClick={onClick} className="block w-full text-left">{heroRow}</button>;
+    return <Link href={href} className="block">{heroRow}</Link>;
   }
 
   const pill = done ? (
@@ -267,7 +274,9 @@ function PracticeCard({
     </div>
   );
 
-  return waiting ? row : <Link href={href} className="block">{row}</Link>;
+  if (waiting) return row;
+  if (onClick) return <button type="button" onClick={onClick} className="block w-full text-left">{row}</button>;
+  return <Link href={href} className="block">{row}</Link>;
 }
 
 export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCard }: { showStreak?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode }) {
@@ -335,6 +344,11 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
       blurb: reflectionSubtitle,
       // CAC with a scraped title: flip between the publication name and today's title.
       blurbCycle: (!reflectDone && reflectionSource === "cac" && cacTitle) ? [PUBLICATION_NAME.cac, cacTitle] : undefined,
+      // CAC opens the meditation straight in the in-app browser (it can't be
+      // iframed), marking it read — rather than routing to the reflections list.
+      onClick: reflectionSource === "cac"
+        ? () => { markCacRead(); openExternal(CAC_TODAY_URL); }
+        : undefined,
       cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
     },
     {
@@ -398,6 +412,7 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
       laterLabel={t("rhythm.later", { defaultValue: "Later" })}
       progress={"progress" in c ? c.progress : undefined}
       blurbCycle={"blurbCycle" in c ? c.blurbCycle : undefined}
+      onClick={"onClick" in c ? c.onClick : undefined}
     />
   );
   return (
@@ -416,7 +431,7 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
         </>
       )}
       {completed.length > 0 && (
-        <div className={upcoming.length > 0 ? "mt-16" : ""}>
+        <div className={(upcoming.length > 0 || officeHero) ? "mt-16" : ""}>
           {sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}
           <div className="flex flex-col gap-2">{completed.map((c) => renderCard(c))}</div>
         </div>

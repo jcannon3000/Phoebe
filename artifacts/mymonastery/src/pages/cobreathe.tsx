@@ -159,12 +159,12 @@ export default function CobreathePage() {
   // the intro, nothing logged. Finished → record (idempotent) and log the
   // time as a contemplation sit (daily goal, history, companions + Health).
   const handleEnd = useCallback((secondsKept: number, reached: boolean) => {
-    if (!reached) { setMode("intro"); return; }
-    setMode("done");
-    record.mutate(secondsKept);
-    const endedAt = new Date();
-    const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
-    if (secondsKept >= 5) {
+    // Log the time as a contemplation sit whenever a real amount was breathed
+    // (>=30s), so every Cobreathe shows up in contemplation history + counts
+    // toward the daily goal — even if they ended before the full guided set.
+    if (secondsKept >= 30) {
+      const endedAt = new Date();
+      const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
       void apiRequest("POST", "/api/prayer-sessions", {
         surface: "contemplation",
         durationSeconds: secondsKept,
@@ -179,6 +179,12 @@ export default function CobreathePage() {
         .catch(() => { /* best-effort */ });
       void writeMindfulSession(startedAt, endedAt);
     }
+    // Reaching the full set records today's communal breath + shows the "done"
+    // screen; bailing early just slips back to the intro (the sit above is
+    // still logged).
+    if (!reached) { setMode("intro"); return; }
+    setMode("done");
+    record.mutate(secondsKept);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
