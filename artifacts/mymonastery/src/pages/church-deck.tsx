@@ -1364,55 +1364,95 @@ function GatheringsMock() {
   );
 }
 
-/* ── Office Formats — one office, the four ways to pray it ── */
-// Mirrors the offices page 1:1, using the SAME app strings (offices.*): the
-// green Morning Prayer card with its "Full Daily Office · BCP p. 75" subtitle
-// and "Available now", the Listen·Forward (gold) + Watch·Nat'l Cathedral
-// (purple) format pills, and the Morning Devotion card below — exactly what a
-// user sees on the Offices screen.
+/* ── Office Formats — the "How to pray" picker (4 ways to pray an office) ── */
+// Mirrors the real OfficeMethodCard (bcp-daily-office.tsx): the green Morning
+// Prayer card ("Rite II · The full text, at your own pace" · Available now)
+// with the "How to pray" footer, plus the open native-style dropdown showing
+// the four methods — 📖 Digital Slideshow (selected) · 📕 Physical BCP · 🎧
+// Listen · 📺 Watch — exactly as the screen presents them.
 function OfficeFormatsMock() {
   const { t } = useTranslation();
-  const card = (emoji: string, title: string, sub: string, available: boolean) => (
-    <div
-      className="rounded-2xl p-3 flex items-center gap-3"
-      style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.35)" }}
-    >
-      <span className="text-2xl">{emoji}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>{title}</p>
-        <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>{sub}</p>
-        {available && (
-          <p className="text-[9px] mt-1 font-medium" style={{ color: "#6FAF85" }}>{t("offices.available_now")}</p>
-        )}
-      </div>
-      <span className="text-[12px]" style={{ color: C.sage }}>→</span>
-    </div>
-  );
-  const pill = (emoji: string, label: string, bg: string, border: string, color: string) => (
-    <div
-      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5"
-      style={{ background: bg, border: `1px solid ${border}`, color, fontSize: 11, fontWeight: 600, fontFamily: C.font }}
-    >
-      <span>{emoji}</span>
-      <span>{label}</span>
-    </div>
-  );
+  const options = [
+    { emoji: "📖", label: t("church_deck.mock_formats_digital"), selected: true },
+    { emoji: "📕", label: t("church_deck.mock_formats_physical"), selected: false },
+    { emoji: "🎧", label: t("church_deck.mock_formats_listen"), selected: false },
+    { emoji: "📺", label: t("church_deck.mock_formats_watch"), selected: false },
+  ];
   return (
     <MockPhone>
       <p
         className="text-[9px] uppercase tracking-[0.22em] font-semibold mb-2"
         style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
       >
-        {t("offices.in_the_morning")}
+        {t("church_deck.mock_formats_morning")}
       </p>
-      {card("🌅", t("offices.morning_prayer"), t("offices.full_office_75"), true)}
-      {/* Alternate formats of the same office — gold = Forward audio, purple =
-          National Cathedral live, matching the real OfficeFormatPills. */}
-      <div className="flex flex-wrap gap-2 mt-2 mb-3 ml-1">
-        {pill("🎧", t("offices.listen_forward"), "rgba(212,160,70,0.14)", "rgba(212,160,70,0.38)", "#F0DCA8")}
-        {pill("📺", t("offices.watch_ncmp"), "rgba(120,80,180,0.16)", "rgba(120,80,180,0.42)", "#E0D0F5")}
+      <div>
+        {/* Office method card — matches OfficeMethodCard's chrome. */}
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{ background: "linear-gradient(180deg, rgba(46,107,64,0.14) 0%, rgba(46,107,64,0.24) 100%)", border: "1px solid rgba(46,107,64,0.45)" }}
+        >
+          <div className="p-4 flex items-center gap-3">
+            <span className="text-2xl">📖</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[14px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>
+                {t("church_deck.mock_formats_office")}
+              </p>
+              <p className="text-[10.5px] mt-0.5" style={{ color: C.sage }}>
+                {t("church_deck.mock_formats_sub")}
+              </p>
+              <p className="text-[9px] mt-1 font-medium" style={{ color: "#6FAF85" }}>
+                {t("church_deck.mock_formats_available")}
+              </p>
+            </div>
+            <span className="text-[12px]" style={{ color: C.sage }}>→</span>
+          </div>
+          {/* "How to pray" footer row with the select chip. */}
+          <div
+            className="flex items-center justify-between gap-3 px-4 py-2.5"
+            style={{ borderTop: "1px solid rgba(46,107,64,0.22)", background: "rgba(9,26,16,0.25)" }}
+          >
+            <span
+              className="text-[9px] font-semibold uppercase tracking-[0.12em]"
+              style={{ color: "rgba(143,175,150,0.7)", fontFamily: C.font }}
+            >
+              {t("church_deck.mock_formats_how")}
+            </span>
+            <span
+              className="inline-flex items-center gap-1 text-[11px] font-semibold rounded-md px-2 py-1"
+              style={{ color: C.text, background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.45)", fontFamily: C.font }}
+            >
+              📖 {t("church_deck.mock_formats_digital")} <span style={{ opacity: 0.55 }}>⌄</span>
+            </span>
+          </div>
+        </div>
+        {/* The open picker — native-select style, the four ways to pray, with
+            the current choice highlighted (matches the OS dropdown). Rendered
+            just under the card, right-aligned, as if the select just opened. */}
+        <div className="flex justify-end" style={{ marginTop: 6 }}>
+          <div
+            className="rounded-lg overflow-hidden"
+            style={{ width: 172, background: "#ECEAE4", boxShadow: "0 14px 36px rgba(0,0,0,0.55)", border: "1px solid rgba(0,0,0,0.12)" }}
+          >
+            {options.map((o, i) => (
+              <div
+                key={i}
+                className="flex items-center gap-1.5 px-2.5 py-1.5"
+                style={{ background: o.selected ? "#E0701F" : "transparent" }}
+              >
+                <span className="text-[9px]" style={{ width: 9, color: o.selected ? "#fff" : "transparent" }}>✓</span>
+                <span className="text-[12px]">{o.emoji}</span>
+                <span
+                  className="text-[12px] font-medium"
+                  style={{ color: o.selected ? "#fff" : "#1A1A1A", fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif" }}
+                >
+                  {o.label}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
-      {card("🌿", t("offices.morning_devotion"), t("offices.short_form_137"), false)}
     </MockPhone>
   );
 }
