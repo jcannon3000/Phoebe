@@ -127,7 +127,7 @@ export default function CobreathePage() {
     wantsStart() && introSeen() ? "breathing" : "intro",
   );
   useEffect(() => {
-    if (wantsStart() && !introSeen()) setLocation("/cobreathe-about");
+    if (wantsStart() && !introSeen()) setLocation("/cobreathe/about");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // State returned by the POST — fresher than the GET cache on the done screen.
