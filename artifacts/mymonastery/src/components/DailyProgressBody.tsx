@@ -202,16 +202,18 @@ function PracticeCard({
                 ? <CardSubtitleCycle values={blurbCycle!} className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }} />
                 : <p className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }}>{blurb}</p>}
             </div>
+            {/* CTA on the top-right, aligned with the title — same placement as
+                the compact cards. */}
+            <div className="flex-shrink-0">{heroCta}</div>
           </div>
           {progress && progress.goal > 0 && !done && (
-            <div className="mt-3 rounded-full overflow-hidden" style={{ height: 5, background: "rgba(143,175,150,0.16)" }}>
+            <div className="mt-3.5 rounded-full overflow-hidden" style={{ height: 5, background: "rgba(143,175,150,0.16)" }}>
               <div
                 className="h-full rounded-full"
                 style={{ width: `${Math.min(100, Math.round((progress.current / progress.goal) * 100))}%`, background: `rgba(${rgb},0.85)`, transition: "width 0.3s" }}
               />
             </div>
           )}
-          <div className="mt-4">{heroCta}</div>
         </div>
       </div>
     );
