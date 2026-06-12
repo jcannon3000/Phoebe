@@ -1364,69 +1364,55 @@ function GatheringsMock() {
   );
 }
 
-/* ── Office Formats — one office, four ways to pray it ── */
-// Mirrors the offices page: the green Morning Prayer card + the format chips
-// below it, in the live app's palette (green for the in-app/BCP ways, gold for
-// the Forward Movement audio office, purple for the National Cathedral live
-// broadcast).
+/* ── Office Formats — one office, the four ways to pray it ── */
+// Mirrors the offices page 1:1, using the SAME app strings (offices.*): the
+// green Morning Prayer card with its "Full Daily Office · BCP p. 75" subtitle
+// and "Available now", the Listen·Forward (gold) + Watch·Nat'l Cathedral
+// (purple) format pills, and the Morning Devotion card below — exactly what a
+// user sees on the Offices screen.
 function OfficeFormatsMock() {
   const { t } = useTranslation();
-  const formats = [
-    { emoji: "🕯️", label: t("church_deck.mock_formats_guided"), sub: t("church_deck.mock_formats_guided_sub"), bg: "rgba(46,107,64,0.18)", border: "rgba(46,107,64,0.4)", color: C.text },
-    { emoji: "📖", label: t("church_deck.mock_formats_read"), sub: t("church_deck.mock_formats_read_sub"), bg: "rgba(46,107,64,0.18)", border: "rgba(46,107,64,0.4)", color: C.text },
-    { emoji: "🎧", label: t("church_deck.mock_formats_listen"), sub: t("church_deck.mock_formats_listen_sub"), bg: "rgba(212,160,70,0.14)", border: "rgba(212,160,70,0.38)", color: "#F0DCA8" },
-    { emoji: "📺", label: t("church_deck.mock_formats_watch"), sub: t("church_deck.mock_formats_watch_sub"), bg: "rgba(120,80,180,0.16)", border: "rgba(120,80,180,0.42)", color: "#E0D0F5" },
-  ];
+  const card = (emoji: string, title: string, sub: string, available: boolean) => (
+    <div
+      className="rounded-2xl p-3 flex items-center gap-3"
+      style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.35)" }}
+    >
+      <span className="text-2xl">{emoji}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>{title}</p>
+        <p className="text-[10px] mt-0.5" style={{ color: C.sage }}>{sub}</p>
+        {available && (
+          <p className="text-[9px] mt-1 font-medium" style={{ color: "#6FAF85" }}>{t("offices.available_now")}</p>
+        )}
+      </div>
+      <span className="text-[12px]" style={{ color: C.sage }}>→</span>
+    </div>
+  );
+  const pill = (emoji: string, label: string, bg: string, border: string, color: string) => (
+    <div
+      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5"
+      style={{ background: bg, border: `1px solid ${border}`, color, fontSize: 11, fontWeight: 600, fontFamily: C.font }}
+    >
+      <span>{emoji}</span>
+      <span>{label}</span>
+    </div>
+  );
   return (
     <MockPhone>
       <p
         className="text-[9px] uppercase tracking-[0.22em] font-semibold mb-2"
         style={{ color: "rgba(143,175,150,0.55)", fontFamily: C.font }}
       >
-        {t("church_deck.mock_formats_section")}
+        {t("offices.in_the_morning")}
       </p>
-      {/* Office header card — matches the offices page OfficeOption. */}
-      <div
-        className="rounded-2xl p-3 mb-3 flex items-center gap-3"
-        style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.35)" }}
-      >
-        <span className="text-2xl">🌅</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-semibold" style={{ color: C.text, fontFamily: C.font }}>
-            {t("church_deck.mock_formats_office")}
-          </p>
-          <p className="text-[10px] mt-0.5 font-medium" style={{ color: "#6FAF85" }}>
-            {t("church_deck.mock_formats_available")}
-          </p>
-        </div>
-        <span className="text-[12px]" style={{ color: C.sage }}>→</span>
+      {card("🌅", t("offices.morning_prayer"), t("offices.full_office_75"), true)}
+      {/* Alternate formats of the same office — gold = Forward audio, purple =
+          National Cathedral live, matching the real OfficeFormatPills. */}
+      <div className="flex flex-wrap gap-2 mt-2 mb-3 ml-1">
+        {pill("🎧", t("offices.listen_forward"), "rgba(212,160,70,0.14)", "rgba(212,160,70,0.38)", "#F0DCA8")}
+        {pill("📺", t("offices.watch_ncmp"), "rgba(120,80,180,0.16)", "rgba(120,80,180,0.42)", "#E0D0F5")}
       </div>
-      <p
-        className="text-[9px] uppercase tracking-[0.18em] font-semibold mb-2"
-        style={{ color: "rgba(143,175,150,0.5)", fontFamily: C.font }}
-      >
-        {t("church_deck.mock_formats_ways")}
-      </p>
-      {/* Four format chips — the four ways to pray this office. */}
-      <div className="grid grid-cols-2 gap-2">
-        {formats.map((f, i) => (
-          <div
-            key={i}
-            className="rounded-xl px-2.5 py-2 flex items-center gap-2"
-            style={{ background: f.bg, border: `1px solid ${f.border}` }}
-          >
-            <span className="text-[15px] shrink-0">{f.emoji}</span>
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold leading-tight" style={{ color: f.color, fontFamily: C.font }}>
-                {f.label}
-              </p>
-              <p className="text-[8.5px] leading-tight mt-0.5 truncate" style={{ color: "rgba(200,212,192,0.5)" }}>
-                {f.sub}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
+      {card("🌿", t("offices.morning_devotion"), t("offices.short_form_137"), false)}
     </MockPhone>
   );
 }
