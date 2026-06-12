@@ -93,6 +93,26 @@ const FIELD = "#0A1C14";              // solid deep-green field
 // The world turns between these three globes — one per breath cycle.
 const GLOBES = ["🌍", "🌎", "🌏"] as const;
 
+// A soft "radial gradient" of small plant emojis spiralling out from the globe
+// (Apple-style emoji burst). Laid out on a phyllotaxis spiral — the golden
+// angle, the same spacing leaves take around a stem — so it reads as a living
+// spray of green, not a rigid ring. Smaller + fainter toward the rim. The whole
+// spiral scales with the breath (computed once here; animated in the rAF loop).
+const PLANTS = ["🌿", "🌱", "🍃", "🌾", "☘️"] as const;
+const GOLDEN_ANGLE = 2.399963229728653; // radians (~137.5°)
+const PLANT_PARTICLES = Array.from({ length: 22 }, (_, i) => {
+  const f = i / 22;
+  const angle = i * GOLDEN_ANGLE;
+  const radius = 64 + 110 * Math.sqrt(f); // px from centre — even spiral spread
+  return {
+    x: Math.cos(angle) * radius,
+    y: Math.sin(angle) * radius,
+    size: 20 - f * 9,        // ~20px near the globe → ~11px at the rim
+    opacity: 0.82 - f * 0.58, // fade outward, like a radial gradient
+    emoji: PLANTS[i % PLANTS.length],
+  };
+});
+
 export function CobreatheBreath({
   onReachTarget,
   onEnd,
@@ -121,6 +141,7 @@ export function CobreatheBreath({
   const circleRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<HTMLDivElement>(null);
+  const plantsRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
 
   // Anchor points (fixed at mount): when the user arrived, and the next clean
@@ -171,6 +192,13 @@ export function CobreatheBreath({
       if (globeRef.current) {
         globeRef.current.style.transform = `translate(-50%, -50%) scale(${(0.9 + p * 0.24).toFixed(4)})`;
         globeRef.current.style.opacity = String(0.6 + p * 0.4);
+      }
+      // The plant spiral blooms OUTWARD on the inhale and draws back in on the
+      // exhale — the whole spiral scales radially with the breath, a wider swing
+      // than the globe so the spray opens and closes around it.
+      if (plantsRef.current) {
+        plantsRef.current.style.transform = `translate(-50%, -50%) scale(${(0.56 + p * 0.62).toFixed(4)})`;
+        plantsRef.current.style.opacity = String(0.5 + p * 0.45);
       }
       // The phase word breathes a hair with the circle.
       if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + p * 0.06})`;
@@ -309,17 +337,43 @@ export function CobreatheBreath({
         />
       </div>
 
+      {/* Radial plant spiral — small leaves spraying out from the globe,
+          blooming on the inhale and contracting on the exhale. Sits beneath
+          the globe so the world stays the centrepiece. */}
+      <div
+        ref={plantsRef}
+        aria-hidden="true"
+        style={{
+          position: "absolute", top: "50%", left: "50%",
+          transform: "translate(-50%, -50%) scale(1)",
+          pointerEvents: "none", zIndex: 1, willChange: "transform, opacity",
+        }}
+      >
+        {PLANT_PARTICLES.map((pt, i) => (
+          <span
+            key={i}
+            style={{
+              position: "absolute", left: pt.x, top: pt.y,
+              transform: "translate(-50%, -50%)",
+              fontSize: pt.size, opacity: pt.opacity, lineHeight: 1,
+            }}
+          >
+            {pt.emoji}
+          </span>
+        ))}
+      </div>
+
       {/* The world at the centre of the breath — turning between the three
-          globes (one per cycle), sitting in the middle of the gradient and
-          breathing gently with it. */}
+          globes (one per second), sitting in the middle of the gradient and
+          breathing gently with it. A little larger now, on top of the spiral. */}
       <div
         ref={globeRef}
         aria-hidden="true"
         style={{
           position: "absolute", top: "50%", left: "50%",
           transform: "translate(-50%, -50%) scale(1)",
-          fontSize: 58, lineHeight: 1, pointerEvents: "none", zIndex: 1,
-          filter: "drop-shadow(0 3px 12px rgba(8,30,18,0.55))",
+          fontSize: 72, lineHeight: 1, pointerEvents: "none", zIndex: 2,
+          filter: "drop-shadow(0 3px 14px rgba(8,30,18,0.6))",
           willChange: "transform, opacity",
         }}
       >
