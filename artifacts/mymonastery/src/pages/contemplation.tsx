@@ -457,7 +457,7 @@ export default function ContemplationPage() {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; }
     catch { return "UTC"; }
   })();
-  // Cobreathe (beta) — today's communal-breath count for the teaser card.
+  // Cobreathe — today's communal-breath count for the teaser card.
   const cobreatheDay = new Date().toLocaleDateString("en-CA");
   const { data: cobreathe } = useQuery<{ done: boolean; count: number }>({
     queryKey: ["/api/breath/today", cobreatheDay],
@@ -687,7 +687,7 @@ export default function ContemplationPage() {
           </div>
         </div>
 
-        {/* Cobreathe (beta) — daily communal breath for justice. Goes straight
+        {/* Cobreathe — daily communal breath for justice. Goes straight
             into the breath (?start=1); the stats show when it's done. */}
         <Link href="/cobreathe?start=1">
           <div

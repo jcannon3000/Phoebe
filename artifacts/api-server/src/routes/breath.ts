@@ -3,7 +3,7 @@ import { db, breathSessionsTable, usersTable } from "@workspace/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { getGardenUserIds } from "../lib/garden";
 
-// ── Cobreathe (beta) ────────────────────────────────────────────────────────
+// ── Cobreathe ────────────────────────────────────────────────────────
 //
 //   GET  /api/breath/today?day=YYYY-MM-DD  — today's breath state
 //   POST /api/breath/today { day, seconds? } — record today's breath

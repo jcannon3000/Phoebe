@@ -16,7 +16,7 @@ function wantsStart(): boolean {
   try { return new URLSearchParams(window.location.search).get("start") === "1"; } catch { return false; }
 }
 
-// Cobreathe (beta) — from "conspire", con + spirare, to breathe together.
+// Cobreathe — from "conspire", con + spirare, to breathe together.
 // A short daily guided breath held as embodied prayer for justice: not
 // synchronized in time, but everyone who keeps the practice on a given day
 // shares one count, and the closing screen tells you how many people you
