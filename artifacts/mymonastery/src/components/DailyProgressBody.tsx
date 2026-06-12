@@ -416,7 +416,7 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
         </>
       )}
       {completed.length > 0 && (
-        <div className={upcoming.length > 0 ? "mt-10" : ""}>
+        <div className={upcoming.length > 0 ? "mt-16" : ""}>
           {sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}
           <div className="flex flex-col gap-2">{completed.map((c) => renderCard(c))}</div>
         </div>
