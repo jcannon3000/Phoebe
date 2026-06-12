@@ -180,18 +180,19 @@ export function CobreatheBreath({
   const globeRef = useRef<HTMLDivElement>(null);
   const plantsRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
-  // Per-particle emoji + an independent, staggered fade cycle. Instead of the
-  // whole cast swapping at once at the bottom of each breath (which read as a
-  // hard "switch"), every particle crossfades on its OWN clock — fading down to
-  // nothing, swapping its emoji while invisible, then fading back up. Varied
-  // periods + offsets mean the spiral shimmers continuously and fluidly, with a
-  // fade-out → fade-in (two steps) between each emoji and the next.
+  // Per-particle emoji on an independent, staggered cycle. Rather than the
+  // whole cast swapping at once at the bottom of each breath (a hard "switch"),
+  // each particle holds its emoji, then does a quick flip through TWO emoji
+  // keyframes (k1 → k2) before landing on its next one. Varied periods +
+  // offsets mean the spiral is always rolling somewhere, so it reads as fluid
+  // motion rather than a single cut.
   const partSpanRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const partMeta = useRef(
     (() => {
       const init = pickParticleEmojis();
       return PARTICLE_LAYOUT.map((_, i) => ({
-        emoji: init[i],
+        emoji: init[i],                    // currently-rendered emoji
+        k1: init[i], k2: init[i], final: init[i], // the roll's two keyframes + landing
         period: 2400 + ((i * 257) % 2200), // 2.4s–4.6s, varied per particle
         offset: (i * 911) % 3000,          // staggered so they never sync up
         lastPhase: 0,
@@ -284,29 +285,33 @@ export function CobreatheBreath({
         // "switch". Below ~8% of the inhale the spiral is fully transparent.
         plantsRef.current.style.opacity = (Math.max(0, pAnim - 0.08) * 0.92).toFixed(3);
       }
-      // Per-particle shimmer: each emoji crossfades on its own staggered cycle
-      // (fade out → swap while invisible → fade in), so the spiral flows rather
-      // than switching all at once. The container opacity above multiplies on
-      // top, so this still breathes with the inhale/exhale.
+      // Per-particle keyframe roll: each particle holds its emoji, then near the
+      // start of its cycle flips through two keyframes (k1, k2) into its next
+      // landing emoji. Staggered periods/offsets keep the whole spiral rolling
+      // somewhere at all times, so it reads as fluid motion. The container
+      // opacity above still breathes the whole spiral in and out.
       {
+        const KF = 120; // ms per keyframe — k1 [0,120), k2 [120,240), land 240+
         const meta = partMeta.current;
         for (let i = 0; i < meta.length; i++) {
           const m = meta[i];
           const lp = ((now + m.offset) % m.period) / m.period; // 0..1
-          // Cycle wrapped (lp dropped) → this particle is invisible right now,
-          // so swap to a fresh emoji without it ever being seen mid-change.
+          // Cycle wrapped → choose this roll's two keyframes + landing emoji.
           if (lp < m.lastPhase) {
-            let e = pickOneEmoji();
-            if (e === m.emoji) e = pickOneEmoji(); // avoid an immediate repeat
-            m.emoji = e;
-            const sp = partSpanRefs.current[i];
-            if (sp) sp.textContent = e;
+            m.k1 = pickOneEmoji();
+            m.k2 = pickOneEmoji();
+            let f = pickOneEmoji();
+            if (f === m.final) f = pickOneEmoji(); // avoid landing on a repeat
+            m.final = f;
           }
           m.lastPhase = lp;
-          // Smooth fade: 0 at the cycle edges (the swap point), 1 in the middle.
-          const fade = (1 - Math.cos(2 * Math.PI * lp)) / 2;
-          const sp = partSpanRefs.current[i];
-          if (sp) sp.style.opacity = (PARTICLE_LAYOUT[i].opacity * fade).toFixed(3);
+          const elapsed = lp * m.period;
+          const show = elapsed < KF ? m.k1 : elapsed < KF * 2 ? m.k2 : m.final;
+          if (show !== m.emoji) {
+            m.emoji = show;
+            const sp = partSpanRefs.current[i];
+            if (sp) sp.textContent = show;
+          }
         }
       }
       // The phase word breathes a hair with the circle (only once synced).
