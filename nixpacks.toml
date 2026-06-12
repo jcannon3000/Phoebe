@@ -15,4 +15,13 @@ cmds = ["rm -rf artifacts/mymonastery/dist artifacts/letters-app/dist", "pnpm --
 # Drizzle table has a CREATE (scripts/check-migrate-schema.mjs). Do NOT run
 # `drizzle-kit push --force` here: with devDeps installed it actually executes,
 # applying the schema destructively (can DROP columns) against prod every deploy.
-cmd = "node ./artifacts/api-server/dist/index.mjs"
+#
+# RUN_SCHEDULERS_IN_WEB=true makes this single web process also run the bell
+# scheduler (app.ts) — the source of the daily office reminders, contemplation
+# nudges, and every other cron-based push. This deploy runs ONLY index.mjs
+# (there is no separate worker service), so WITHOUT this flag those scheduled
+# pushes never fire — only real-time pushes ("prayed for you", words of
+# comfort) do. If a dedicated worker service is ever added, remove this flag
+# (or set DISABLE_BELL_SCHEDULER=true) so the scheduler doesn't run in both and
+# double-send.
+cmd = "RUN_SCHEDULERS_IN_WEB=true node ./artifacts/api-server/dist/index.mjs"
