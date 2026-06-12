@@ -17,7 +17,7 @@
  * is simpler and adequate for the "network degraded" scenario.
  */
 
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const SHELL_CACHE = `phoebe-shell-${CACHE_VERSION}`;
 const ASSET_CACHE = `phoebe-assets-${CACHE_VERSION}`;
 const SHELL_URLS = ["/", "/index.html", "/favicon.svg"];
