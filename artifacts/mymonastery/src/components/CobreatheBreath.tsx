@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 
 // ── CobreatheBreath ─────────────────────────────────────────────────────────
@@ -97,20 +97,21 @@ const GLOBES = ["🌍", "🌎", "🌏"] as const;
 // (Apple-style emoji burst). Laid out on a phyllotaxis spiral — the golden
 // angle, the same spacing leaves take around a stem — so it reads as a living
 // spray, not a rigid ring. Smaller + fainter toward the rim. The whole spiral
-// scales with the breath (computed once here; animated in the rAF loop).
+// scales with the breath (positions computed once; animated in the rAF loop).
 //
-// The cast is all of breathing life: plants, small animals, and people of many
-// skin tones at prayer / breathing — "the air in your lungs has passed through
-// every living thing." Interleaved so categories and tones alternate around
-// the spiral rather than clustering.
-const PARTICLE_EMOJIS = [
-  "🌿", "🧘🏽", "🦋", "🙏🏿", "🌱", "🐝", "🧘🏻", "🍃",
-  "🐦", "🙏🏼", "🌾", "🧘🏿", "🐞", "☘️", "🙏🏾", "🐢",
-  "🧘🏼", "🌿", "🐌", "🙏🏻", "🌱", "🦔", "🧘🏾", "🍃",
-] as const;
+// The cast is all of breathing life: plants, ordinary people of many skin tones
+// and ages, and small animals — "the air in your lungs has passed through every
+// living thing." The emojis are RE-PICKED on every mount (random within each
+// category, random starting category, interleaved for balance), so no two
+// sessions wear the same faces.
+const PLANT_POOL = ["🌿", "🌱", "🍃", "🌾", "☘️", "🌻", "🍀"];
+const ANIMAL_POOL = ["🦋", "🐝", "🐦", "🐞", "🐢", "🐌", "🦔", "🐿️", "🐇", "🐠"];
+const PEOPLE_POOL = ["🧑🏻", "🧑🏽", "🧑🏿", "👩🏽", "👨🏿", "👩🏻", "👨🏼", "🧒🏾", "👵🏼", "🧓🏽", "👴🏿", "👩🏾", "👨🏽", "🧑🏼"];
+const CATEGORY_POOLS = [PLANT_POOL, PEOPLE_POOL, ANIMAL_POOL];
 const GOLDEN_ANGLE = 2.399963229728653; // radians (~137.5°)
-const PLANT_PARTICLES = Array.from({ length: PARTICLE_EMOJIS.length }, (_, i) => {
-  const f = i / PARTICLE_EMOJIS.length;
+const PARTICLE_COUNT = 24;
+const PARTICLE_LAYOUT = Array.from({ length: PARTICLE_COUNT }, (_, i) => {
+  const f = i / PARTICLE_COUNT;
   const angle = i * GOLDEN_ANGLE;
   const radius = 64 + 112 * Math.sqrt(f); // px from centre — even spiral spread
   return {
@@ -118,9 +119,18 @@ const PLANT_PARTICLES = Array.from({ length: PARTICLE_EMOJIS.length }, (_, i) =>
     y: Math.sin(angle) * radius,
     size: 20 - f * 9,        // ~20px near the globe → ~11px at the rim
     opacity: 0.82 - f * 0.58, // fade outward, like a radial gradient
-    emoji: PARTICLE_EMOJIS[i],
   };
 });
+// Build a fresh, balanced-but-varied cast: walk the categories in order from a
+// random start (plant → people → animal → …) and pick a random emoji within
+// each, so every breath opens with a different spiral.
+function pickParticleEmojis(): string[] {
+  const start = Math.floor(Math.random() * CATEGORY_POOLS.length);
+  return Array.from({ length: PARTICLE_COUNT }, (_, i) => {
+    const pool = CATEGORY_POOLS[(start + i) % CATEGORY_POOLS.length];
+    return pool[Math.floor(Math.random() * pool.length)];
+  });
+}
 
 export function CobreatheBreath({
   onReachTarget,
@@ -152,6 +162,9 @@ export function CobreatheBreath({
   const globeRef = useRef<HTMLDivElement>(null);
   const plantsRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
+  // A fresh spiral cast for this session — different emojis every time the
+  // breath opens. Computed once per mount.
+  const particleEmojis = useMemo(pickParticleEmojis, []);
 
   // Anchor points (fixed at mount): when the user arrived, and the next clean
   // cycle boundary where the count begins. There is NO end anchor — the rhythm
@@ -358,7 +371,7 @@ export function CobreatheBreath({
           pointerEvents: "none", zIndex: 1, willChange: "transform, opacity",
         }}
       >
-        {PLANT_PARTICLES.map((pt, i) => (
+        {PARTICLE_LAYOUT.map((pt, i) => (
           <span
             key={i}
             style={{
@@ -367,7 +380,7 @@ export function CobreatheBreath({
               fontSize: pt.size, opacity: pt.opacity, lineHeight: 1,
             }}
           >
-            {pt.emoji}
+            {particleEmojis[i]}
           </span>
         ))}
       </div>
