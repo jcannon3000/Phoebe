@@ -30,6 +30,8 @@ type Slide =
         | "prayer-list"
         | "daily-office"
         | "prayer-rhythm"
+        | "daily-reminder"
+        | "prayer-streak"
         | "meat-fast"
         | "calendar"
         | "gatherings";
@@ -39,7 +41,7 @@ type Slide =
       label: string;
       headline: string;
       body: string[];
-      mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "meat-fast" | "calendar" | "gatherings";
+      mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "daily-reminder" | "prayer-streak" | "meat-fast" | "calendar" | "gatherings";
       stacked?: boolean;
     }
   | { kind: "combo-mock"; mock: "prayer-requests" | "prayer-notification" | "community-intercession" | "bcp" | "prayer-list" | "daily-office" | "prayer-rhythm" | "meat-fast" | "calendar" | "gatherings" }
@@ -144,6 +146,29 @@ function buildSlides(t: TFunction): Slide[] {
       t("church_deck.rhythm_body"),
     ],
     mock: "prayer-rhythm",
+  },
+
+  // ── Daily habit 1: a gentle reminder calls you back each day ──
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: t("church_deck.habit_remind_headline"),
+    body: [
+      t("church_deck.habit_remind_body"),
+    ],
+    mock: "daily-reminder",
+    stacked: true,
+  },
+
+  // ── Daily habit 2: the streak that forms as you keep returning ──
+  {
+    kind: "feature-combo",
+    label: "",
+    headline: t("church_deck.habit_streak_headline"),
+    body: [
+      t("church_deck.habit_streak_body"),
+    ],
+    mock: "prayer-streak",
   },
 
   // 17 — Gatherings (text + mock on one slide)
@@ -1327,6 +1352,103 @@ function GatheringsMock() {
   );
 }
 
+/* ── Daily Reminder — the office reminder push (iOS-style notification) ── */
+// Mirrors PrayerNotificationMock's chrome exactly (real Phoebe app icon, the
+// SF Pro system font, the floating "now" timestamp) so it reads as a genuine
+// OS notification — here carrying the daily call back to prayer.
+function DailyReminderMock() {
+  const { t } = useTranslation();
+  const iosFont =
+    "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro', Helvetica, Arial, sans-serif";
+  return (
+    <div
+      className="relative rounded-[18px] md:rounded-[22px] px-4 md:px-5 py-3.5 md:py-4 flex gap-3 md:gap-3.5 items-start w-full max-w-[560px] mx-auto"
+      style={{
+        background: "rgba(44,46,49,0.92)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: "1px solid rgba(255,255,255,0.06)",
+        boxShadow:
+          "0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)",
+      }}
+    >
+      <img
+        src="/phoebe-app-icon.png"
+        alt="Phoebe"
+        className="w-[44px] h-[44px] md:w-[52px] md:h-[52px] rounded-[10px] md:rounded-[12px] shrink-0"
+        style={{ objectFit: "cover" }}
+      />
+      <p
+        className="absolute text-[12px] md:text-[13px]"
+        style={{ top: "0.95rem", right: "1rem", color: "rgba(220,230,235,0.55)", fontFamily: iosFont }}
+      >
+        {t("church_deck.mock_reminder_now")}
+      </p>
+      <div className="flex-1 min-w-0 text-left pr-8 md:pr-10">
+        <p
+          className="text-[15px] md:text-[17px] font-semibold leading-snug mb-1"
+          style={{ color: "#F5F5F5", fontFamily: iosFont, letterSpacing: "-0.01em" }}
+        >
+          {t("church_deck.mock_reminder_title")}
+        </p>
+        <p
+          className="text-[14px] md:text-[16px] leading-snug"
+          style={{ color: "rgba(230,235,240,0.92)", fontFamily: iosFont, letterSpacing: "-0.005em" }}
+        >
+          {t("church_deck.mock_reminder_body")}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Prayer Streak — the "rhythm complete" celebration (Duolingo-style) ── */
+// Mirrors the real DailyCompleteCelebration screen: the radial green wash, the
+// "Rhythm complete" eyebrow, the big streak number + 🔥, the streak label, and
+// the encouragement line — the payoff that makes the daily habit stick.
+function PrayerStreakMock() {
+  const { t } = useTranslation();
+  const streak = 14;
+  return (
+    <MockPhone>
+      <div className="flex items-center justify-end mb-1">
+        <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "rgba(200,212,192,0.08)" }}>
+          <span className="text-[10px]" style={{ color: "rgba(200,212,192,0.5)" }}>×</span>
+        </div>
+      </div>
+      <div
+        className="rounded-2xl flex flex-col items-center text-center px-5 py-8"
+        style={{ background: "radial-gradient(120% 120% at 50% 35%, rgba(28,46,32,0.95) 0%, rgba(11,15,11,0.92) 70%)" }}
+      >
+        <p
+          className="text-[9px] uppercase tracking-[0.22em] font-semibold mb-3"
+          style={{ color: C.sage, fontFamily: C.font }}
+        >
+          {t("church_deck.mock_streak_eyebrow")}
+        </p>
+        <div className="flex items-end justify-center gap-1.5">
+          <span style={{ fontFamily: C.font, fontSize: 64, fontWeight: 700, color: C.text, lineHeight: 1, letterSpacing: "-0.03em" }}>
+            {streak}
+          </span>
+          <span style={{ fontSize: 34, lineHeight: 1 }}>🔥</span>
+        </div>
+        <p
+          className="text-[10px] uppercase tracking-[0.18em] font-semibold mt-3"
+          style={{ color: C.sage, fontFamily: C.font }}
+        >
+          {t("church_deck.mock_streak_label")}
+        </p>
+        <p
+          className="text-[11px] leading-relaxed mt-3"
+          style={{ color: C.text, fontFamily: C.font, maxWidth: 220 }}
+        >
+          {t("church_deck.mock_streak_note")}
+        </p>
+      </div>
+    </MockPhone>
+  );
+}
+
 const MOCK_MAP: Record<string, () => ReactElement> = {
   "prayer-requests": PrayerRequestsMock,
   "prayer-notification": PrayerNotificationMock,
@@ -1335,6 +1457,8 @@ const MOCK_MAP: Record<string, () => ReactElement> = {
   "prayer-list": PrayerListMock,
   "daily-office": DailyOfficeMock,
   "prayer-rhythm": PrayerRhythmMock,
+  "daily-reminder": DailyReminderMock,
+  "prayer-streak": PrayerStreakMock,
   "meat-fast": MeatFastMock,
   calendar: CalendarMock,
   gatherings: GatheringsMock,
