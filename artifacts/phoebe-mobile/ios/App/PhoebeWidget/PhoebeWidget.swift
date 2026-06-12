@@ -32,12 +32,13 @@ struct PhoebeStats {
     var streakDays: Int
     var prayedToday: Bool
     var nextOffice: String
+    var newPrayers: Int        // prayer requests waiting for the viewer
 
     static let placeholder = PhoebeStats(
         kind: "office", title: "Evening Prayer",
         subtitle: "9 people prayed with you this week", cta: "Begin prayer",
         deepLink: "https://withphoebe.app/", streakDays: 4, prayedToday: false,
-        nextOffice: "Evening Prayer"
+        nextOffice: "Evening Prayer", newPrayers: 0
     )
 
     // Before the app has ever pushed data (or if the App Group store can't be
@@ -53,7 +54,8 @@ struct PhoebeStats {
             cta: "Begin prayer",
             deepLink: "https://withphoebe.app/",
             streakDays: 0, prayedToday: false,
-            nextOffice: morning ? "Morning Prayer" : "Evening Prayer"
+            nextOffice: morning ? "Morning Prayer" : "Evening Prayer",
+            newPrayers: 0
         )
     }
 
@@ -79,9 +81,10 @@ struct PhoebeStats {
         let subtitle = (obj["heroSubtitle"] as? String) ?? ""
         let cta = (obj["heroCta"] as? String) ?? (nextOffice.isEmpty ? "" : "Begin prayer")
         let deepLink = (obj["heroDeepLink"] as? String) ?? "https://withphoebe.app/"
+        let newPrayers = (obj["newPrayersCount"] as? NSNumber)?.intValue ?? 0
         return PhoebeStats(kind: kind, title: title, subtitle: subtitle, cta: cta,
                            deepLink: deepLink, streakDays: streak, prayedToday: prayed,
-                           nextOffice: nextOffice)
+                           nextOffice: nextOffice, newPrayers: newPrayers)
     }
 
     var streakText: String { streakDays > 0 ? "\(streakDays)-day streak" : "Begin a streak" }
@@ -113,14 +116,29 @@ struct PhoebeWidgetView: View {
     @Environment(\.widgetFamily) var family
     let stats: PhoebeStats
 
+    // When there are new prayer requests, the hero leads with them instead of
+    // the next office — friends asking for prayer takes precedence.
+    private var hasPrayers: Bool { stats.newPrayers > 0 }
+
     // Left accent + CTA color, tuned per hero kind to echo the home cards.
     private var accentColor: Color {
+        if hasPrayers { return Color(red: 0.76, green: 0.55, blue: 0.35) } // warm amber
         switch stats.kind {
         case "reflect": return Color(red: 0.30, green: 0.55, blue: 0.52) // teal
         case "summary": return Color(red: 0.43, green: 0.71, blue: 0.51) // soft green
         default:        return Color(red: 0.22, green: 0.50, blue: 0.30) // office green
         }
     }
+
+    // Hero copy — overridden by the prayer-requests lead when there are new
+    // ones, otherwise the next office / reflection / summary.
+    private var heroEyebrow: String { hasPrayers ? "WAITING" : eyebrow }
+    private var heroTitle: String {
+        if hasPrayers { return stats.newPrayers == 1 ? "1 prayer request 🙏" : "\(stats.newPrayers) prayer requests 🙏" }
+        return displayTitle
+    }
+    private var heroSubtitle: String { hasPrayers ? "Friends are waiting for your prayers" : stats.subtitle }
+    private var heroCta: String { hasPrayers ? "Pray now" : stats.cta }
 
     private var displayTitle: String {
         if stats.kind == "office" {
@@ -144,11 +162,27 @@ struct PhoebeWidgetView: View {
                 Text("\(stats.streakDays)").font(.system(size: 17, weight: .bold))
             }
         case .accessoryRectangular:
-            HStack(spacing: 8) {
-                Image(systemName: "flame.fill").font(.system(size: 22))
+            // Leads with "N prayer requests waiting" when there are new ones,
+            // otherwise "NEXT UP / <the next office or reflection>".
+            if stats.newPrayers > 0 {
+                HStack(spacing: 8) {
+                    Image(systemName: "hands.and.sparkles.fill").font(.system(size: 20))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("\(stats.newPrayers) prayer request\(stats.newPrayers == 1 ? "" : "s")")
+                            .font(.system(size: 15, weight: .semibold))
+                            .lineLimit(1).minimumScaleFactor(0.7)
+                        Text("waiting").font(.system(size: 13)).opacity(0.8)
+                    }
+                }
+            } else {
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(stats.streakText).font(.system(size: 15, weight: .semibold))
-                    Text(stats.todayLine).font(.system(size: 13)).opacity(0.8)
+                    Text("NEXT UP")
+                        .font(.system(size: 11, weight: .semibold))
+                        .tracking(1.2)
+                        .opacity(0.6)
+                    Text(stats.todayLine)
+                        .font(.system(size: 16, weight: .semibold))
+                        .lineLimit(1).minimumScaleFactor(0.6)
                 }
             }
         case .systemMedium:
@@ -164,26 +198,26 @@ struct PhoebeWidgetView: View {
         HStack(spacing: 0) {
             Rectangle().fill(accentColor).frame(width: 4)
             VStack(alignment: .leading, spacing: 5) {
-                Text(eyebrow)
+                Text(heroEyebrow)
                     .font(.system(size: 11, weight: .semibold))
                     .tracking(1.6)
                     .foregroundColor(phoebeSage.opacity(0.65))
-                Text(displayTitle)
+                Text(heroTitle)
                     .font(.system(size: 23, weight: .bold))
                     .foregroundColor(phoebeWarm)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
-                if !stats.subtitle.isEmpty {
-                    Text(stats.subtitle)
+                if !heroSubtitle.isEmpty {
+                    Text(heroSubtitle)
                         .font(.system(size: 13))
                         .foregroundColor(phoebeSage)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 4)
-                if !stats.cta.isEmpty {
+                if !heroCta.isEmpty {
                     HStack(spacing: 4) {
-                        Text(stats.cta).font(.system(size: 13, weight: .semibold))
+                        Text(heroCta).font(.system(size: 13, weight: .semibold))
                         Image(systemName: "arrow.right").font(.system(size: 11, weight: .semibold))
                     }
                     .foregroundColor(phoebeWarm)

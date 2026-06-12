@@ -28,6 +28,9 @@ type WidgetState = {
   streakDays: number;
   prayedToday: boolean;
   nextOffice: string;
+  // New prayer requests waiting for the viewer — the lock-screen rectangular
+  // widget leads with "N prayer requests waiting" when this is > 0.
+  newPrayersCount: number;
   updatedAt: string;
 };
 type WidgetBridge = { updateWidget?: (s: Partial<WidgetState>) => void };
@@ -98,6 +101,15 @@ export function useWidgetSync(): void {
     enabled,
     staleTime: 5 * 60_000,
   });
+  // New prayer requests waiting — same source + filter the dashboard's
+  // "N prayer requests waiting" card uses (requests only, not own, not yet
+  // amened/answered/closed). React Query dedupes with the dashboard fetch.
+  const prayerReqsQ = useQuery<Array<{ isAnswered?: boolean; isOwnRequest?: boolean; closedAt?: string | null; myAmenedEver?: boolean }>>({
+    queryKey: ["/api/prayer-requests"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests"),
+    enabled,
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
     if (!enabled) return;
@@ -135,6 +147,9 @@ export function useWidgetSync(): void {
 
     const withYou = prayedWithQ.data?.total ?? prayedWithQ.data?.people?.length ?? 0;
     const youFor = coPrayersQ.data?.people?.length ?? 0;
+    const newPrayersCount = (prayerReqsQ.data ?? []).filter(
+      (r) => !r.isAnswered && !r.isOwnRequest && !r.closedAt && !r.myAmenedEver,
+    ).length;
 
     let heroKind: WidgetState["heroKind"];
     let heroTitle: string;
@@ -173,6 +188,7 @@ export function useWidgetSync(): void {
       streakDays: streakQ.data?.streak ?? 0,
       prayedToday: morningDone || eveningDone,
       nextOffice,
+      newPrayersCount,
       updatedAt: new Date().toISOString(),
     });
   }, [
@@ -184,6 +200,7 @@ export function useWidgetSync(): void {
     cacMetaQ.data,
     prayedWithQ.data,
     coPrayersQ.data,
+    prayerReqsQ.data,
   ]);
 }
 

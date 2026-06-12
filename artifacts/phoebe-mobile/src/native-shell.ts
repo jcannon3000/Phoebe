@@ -1251,6 +1251,7 @@ declare global {
         streakDays?: number | null;
         prayedToday?: boolean | null;
         nextOffice?: string | null;
+        newPrayersCount?: number | null;
         updatedAt?: string | null;
         // Dynamic "what's next" hero (medium widget) — mirrors the home hero.
         heroKind?: string | null;       // "office" | "reflect" | "summary"
@@ -1334,6 +1335,7 @@ function exposePublicApi() {
           streakDays: state.streakDays ?? null,
           prayedToday: state.prayedToday ?? null,
           nextOffice: state.nextOffice ?? null,
+          newPrayersCount: state.newPrayersCount ?? null,
           updatedAt: state.updatedAt ?? null,
           heroKind: state.heroKind ?? null,
           heroTitle: state.heroTitle ?? null,
