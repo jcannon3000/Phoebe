@@ -81,12 +81,15 @@ function phaseAt(pos: number): Phase {
 // The rAF loop drives transform scale + opacity each frame (GPU-composited, so
 // it stays glass-smooth). A larger, fainter gradient behind it gives depth and
 // the subtle colour difference.
-const CIRCLE_BASE = 300;
-// Centre brighter green fading out to nothing — a glow, not a disc.
-const GLOW = "radial-gradient(circle, rgba(130,196,150,0.95) 0%, rgba(95,162,119,0.55) 32%, rgba(46,107,64,0.18) 58%, rgba(46,107,64,0) 76%)";
+const CIRCLE_BASE = 220;
+// Centre brighter green fading out to nothing — a glow, not a disc. Softer,
+// more gradual stops than before so the falloff reads smooth, not banded.
+const GLOW = "radial-gradient(circle, rgba(130,196,150,0.88) 0%, rgba(95,162,119,0.48) 40%, rgba(46,107,64,0.14) 66%, rgba(46,107,64,0) 86%)";
 // Larger, cooler, fainter halo behind it for depth + a hint of colour shift.
-const HALO = "radial-gradient(circle, rgba(110,180,150,0.30) 0%, rgba(62,124,122,0.14) 45%, rgba(46,107,64,0) 72%)";
+const HALO = "radial-gradient(circle, rgba(110,180,150,0.24) 0%, rgba(62,124,122,0.11) 48%, rgba(46,107,64,0) 78%)";
 const FIELD = "#0A1C14";              // solid deep-green field
+// The world turns between these three globes — one per breath cycle.
+const GLOBES = ["🌍", "🌎", "🌏"] as const;
 
 export function CobreatheBreath({
   onReachTarget,
@@ -115,6 +118,7 @@ export function CobreatheBreath({
   // behind it for depth.
   const circleRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
+  const globeRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
 
   // Anchor points (fixed at mount): when the user arrived, and the next clean
@@ -157,6 +161,11 @@ export function CobreatheBreath({
       if (ringRef.current) {
         ringRef.current.style.transform = `translate(-50%, -50%) scale(${(0.85 + s * 0.5).toFixed(4)})`;
         ringRef.current.style.opacity = String(0.3 + p * 0.35);
+      }
+      // The world at the centre breathes gently with the glow.
+      if (globeRef.current) {
+        globeRef.current.style.transform = `translate(-50%, -50%) scale(${(0.92 + p * 0.16).toFixed(4)})`;
+        globeRef.current.style.opacity = String(0.62 + p * 0.38);
       }
       // The phase word breathes a hair with the circle.
       if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + p * 0.06})`;
@@ -232,6 +241,10 @@ export function CobreatheBreath({
   const now = Date.now();
   const pos = now % CYCLE_MS;
   const phase = phaseAt(pos);
+  // The globe turns once per breath cycle — 🌍 → 🌎 → 🌏 → 🌍. It changes at the
+  // cycle boundary (full exhale), the calmest, dimmest moment, so the swap reads
+  // as a gentle turn rather than a jump.
+  const globe = GLOBES[Math.floor(now / CYCLE_MS) % GLOBES.length];
   const phaseLabel =
     phase === "in" ? t("cobreathe.phase_in", { defaultValue: "Breathe in" })
     : phase === "hold" ? t("cobreathe.phase_hold", { defaultValue: "Hold" })
@@ -273,6 +286,7 @@ export function CobreatheBreath({
             width: CIRCLE_BASE, height: CIRCLE_BASE, borderRadius: "50%",
             background: HALO,
             transform: "translate(-50%, -50%) scale(1)",
+            filter: "blur(12px)",
             willChange: "transform, opacity",
           }}
         />
@@ -283,9 +297,27 @@ export function CobreatheBreath({
             width: CIRCLE_BASE, height: CIRCLE_BASE, borderRadius: "50%",
             background: GLOW,
             transform: "translate(-50%, -50%) scale(1)",
+            filter: "blur(7px)",
             willChange: "transform, opacity",
           }}
         />
+      </div>
+
+      {/* The world at the centre of the breath — turning between the three
+          globes (one per cycle), sitting in the middle of the gradient and
+          breathing gently with it. */}
+      <div
+        ref={globeRef}
+        aria-hidden="true"
+        style={{
+          position: "absolute", top: "50%", left: "50%",
+          transform: "translate(-50%, -50%) scale(1)",
+          fontSize: 58, lineHeight: 1, pointerEvents: "none", zIndex: 1,
+          filter: "drop-shadow(0 3px 12px rgba(8,30,18,0.55))",
+          willChange: "transform, opacity",
+        }}
+      >
+        {globe}
       </div>
 
       {/* Cancel — top-right, exits the breath (no count unless already kept). */}
@@ -323,8 +355,16 @@ export function CobreatheBreath({
         </p>
       </div>
 
-      {/* Phase word — center, over the glow */}
-      <div className="flex flex-col items-center" style={{ position: "relative" }}>
+      {/* Phase word + counter — BELOW the gradient now (it used to sit centred
+          over the glow), clearing the globe that now holds the middle. */}
+      <div
+        className="flex flex-col items-center"
+        style={{
+          position: "absolute", left: "50%", top: "50%",
+          transform: "translate(-50%, 0)",
+          marginTop: CIRCLE_BASE * 0.72, zIndex: 2,
+        }}
+      >
         <div ref={labelRef} style={{ willChange: "transform" }}>
           <span
             style={{
