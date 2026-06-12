@@ -332,7 +332,7 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     },
     {
-      key: "silence", emoji: "🕯️", rgb: "62,124,122", done: silenceDone, href: "/contemplation",
+      key: "silence", emoji: "🕯️", rgb: "62,124,122", done: silenceDone, href: "/contemplation?begin=1",
       title: t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
       blurb: contemplationBlurb,
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,

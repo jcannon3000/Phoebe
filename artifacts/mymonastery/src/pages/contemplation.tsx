@@ -439,6 +439,14 @@ export default function ContemplationPage() {
     setStartMinutes(minutes);
     setTimerOpen(true);
   };
+  // Arriving from the home "Begin" (contemplation card) with ?begin=1 jumps
+  // straight to the timer's length picker — pick a length, then start — rather
+  // than landing on the page chrome first.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("begin") === "1") setTimerOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // The length chosen in the Begin row's dropdown (5-minute increments).
   const [chosenMin, setChosenMin] = useState<number>(10);
   // Which supporting section shows under the Begin card.
