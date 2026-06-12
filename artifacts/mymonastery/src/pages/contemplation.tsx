@@ -237,7 +237,9 @@ function DailyGoalCard({
 
 
   return (
-    <div className="rounded-2xl p-4 mt-4" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
+    <div className="rounded-2xl overflow-hidden mt-4 flex" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.13) 0%, rgba(0,0,0,0) 100%), rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.30)" }}>
+      <div className="w-1 flex-shrink-0" style={{ background: "rgba(110,180,130,0.85)" }} />
+      <div className="flex-1 p-4">
       <div className="flex items-center justify-between mb-2">
         <p className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
           {t("contemplation.goal_title", { defaultValue: "Daily goal" })}
@@ -312,6 +314,7 @@ function DailyGoalCard({
         </button>
       )}
 
+      </div>
     </div>
   );
 }
@@ -633,62 +636,66 @@ export default function ContemplationPage() {
           </div>
         </div>
 
-        {/* Begin row — one row: a length dropdown (5-minute increments) on the
-            left, a Start pill on the right. */}
+        {/* Begin row — home-card style with a left accent bar: a length
+            dropdown (5-minute increments, with a caret) on the left, a Start
+            pill on the right. */}
         <div
-          className="rounded-2xl p-3 flex items-center gap-3"
-          style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.25)" }}
+          className="rounded-2xl overflow-hidden flex"
+          style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.13) 0%, rgba(0,0,0,0) 100%), rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.30)" }}
         >
-          <select
-            value={String(chosenMin)}
-            onChange={(e) => setChosenMin(parseInt(e.target.value, 10))}
-            aria-label={t("contemplation.length_label", { defaultValue: "Length" })}
-            className="flex-1 min-w-0 rounded-xl"
-            style={{
-              background: "rgba(46,107,64,0.20)",
-              border: "1px solid rgba(46,107,64,0.4)",
-              color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
-              padding: "13px 14px", outline: "none", colorScheme: "dark",
-              appearance: "none", WebkitAppearance: "none", cursor: "pointer",
-            }}
-          >
-            {Array.from({ length: 12 }, (_, i) => (i + 1) * 5).map((m) => (
-              <option key={m} value={String(m)}>
-                {t("contemplation.length_minutes", { count: m, defaultValue: `${m} minutes` })}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => start(chosenMin)}
-            className="shrink-0 rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.98]"
-            style={{
-              background: "#2D5E3F",
-              color: WARM,
-              border: "1px solid rgba(46,107,64,0.7)",
-              fontFamily: SPACE_GROTESK,
-              fontSize: 15,
-              fontWeight: 600,
-              padding: "13px 26px",
-              cursor: "pointer",
-            }}
-          >
-            {t("contemplation.start", { defaultValue: "Start" })} <span aria-hidden>→</span>
-          </button>
+          <div className="w-1 flex-shrink-0" style={{ background: "rgba(110,180,130,0.85)" }} />
+          <div className="flex-1 p-3 flex items-center gap-3">
+            <div className="relative flex-1 min-w-0">
+              <select
+                value={String(chosenMin)}
+                onChange={(e) => setChosenMin(parseInt(e.target.value, 10))}
+                aria-label={t("contemplation.length_label", { defaultValue: "Length" })}
+                className="w-full rounded-xl"
+                style={{
+                  background: "rgba(46,107,64,0.20)",
+                  border: "1px solid rgba(46,107,64,0.4)",
+                  color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
+                  padding: "13px 36px 13px 14px", outline: "none", colorScheme: "dark",
+                  appearance: "none", WebkitAppearance: "none", cursor: "pointer",
+                }}
+              >
+                {Array.from({ length: 12 }, (_, i) => (i + 1) * 5).map((m) => (
+                  <option key={m} value={String(m)}>
+                    {t("contemplation.length_minutes", { count: m, defaultValue: `${m} minutes` })}
+                  </option>
+                ))}
+              </select>
+              <span aria-hidden style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: SAGE, fontSize: 12 }}>▾</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => start(chosenMin)}
+              className="shrink-0 rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.98]"
+              style={{
+                background: "#2D5E3F",
+                color: WARM,
+                border: "1px solid rgba(46,107,64,0.7)",
+                fontFamily: SPACE_GROTESK,
+                fontSize: 15,
+                fontWeight: 600,
+                padding: "13px 26px",
+                cursor: "pointer",
+              }}
+            >
+              {t("contemplation.start", { defaultValue: "Start" })} <span aria-hidden>→</span>
+            </button>
+          </div>
         </div>
 
-        <p className="text-[12px] mt-4 text-center" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-          {t("contemplation.caption")}
-        </p>
-
-        {/* Cobreathe (beta) — daily communal breath for justice. The card
-            shows today's count so the invitation is concrete: join your
-            breath to the N already held. */}
-        <Link href="/cobreathe">
+        {/* Cobreathe (beta) — daily communal breath for justice. Goes straight
+            into the breath (?start=1); the stats show when it's done. */}
+        <Link href="/cobreathe?start=1">
           <div
-            className="rounded-2xl p-4 mt-4 flex items-center gap-3 cursor-pointer transition-opacity hover:opacity-90 active:scale-[0.99]"
-            style={{ background: "rgba(62,124,122,0.10)", border: `1px solid rgba(62,124,122,${cobreathe?.done ? 0.38 : 0.24})` }}
+            className="rounded-2xl overflow-hidden mt-4 flex cursor-pointer transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.13) 0%, rgba(0,0,0,0) 100%), rgba(62,124,122,0.10)", border: `1px solid rgba(62,124,122,${cobreathe?.done ? 0.45 : 0.34})` }}
           >
+            <div className="w-1 flex-shrink-0" style={{ background: "rgba(110,180,150,0.85)" }} />
+            <div className="flex-1 p-4 flex items-center gap-3">
             <span className="text-2xl">🌬️</span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -711,6 +718,7 @@ export default function ContemplationPage() {
               </p>
             </div>
             <span style={{ color: SAGE, fontSize: 18 }}>›</span>
+            </div>
           </div>
         </Link>
 

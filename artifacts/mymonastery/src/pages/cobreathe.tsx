@@ -110,7 +110,15 @@ export default function CobreathePage() {
   const day = localDay();
   const focus = WEEKLY_FOCI[weekOfYear(new Date()) % WEEKLY_FOCI.length];
 
-  const [mode, setMode] = useState<"intro" | "breathing" | "done">("intro");
+  // Opened from the Contemplation card with ?start=1 → go straight into the
+  // breath; the intro/stats screen shows afterward (on done / early end).
+  const [mode, setMode] = useState<"intro" | "breathing" | "done">(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("start") === "1" ? "breathing" : "intro";
+    } catch {
+      return "intro";
+    }
+  });
   // State returned by the POST — fresher than the GET cache on the done screen.
   const [doneState, setDoneState] = useState<BreathState | null>(null);
 
