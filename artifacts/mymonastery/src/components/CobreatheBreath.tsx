@@ -89,7 +89,11 @@ const CIRCLE_BASE = 300;
 const GLOW = "radial-gradient(circle, rgba(130,196,150,0.52) 0%, rgba(118,186,142,0.38) 20%, rgba(100,168,124,0.25) 38%, rgba(78,142,98,0.15) 54%, rgba(58,120,76,0.08) 70%, rgba(46,107,64,0.03) 84%, rgba(46,107,64,0) 94%)";
 // Larger, cooler, fainter halo behind it for depth + a hint of colour shift.
 const HALO = "radial-gradient(circle, rgba(110,180,150,0.13) 0%, rgba(92,158,138,0.08) 30%, rgba(74,140,128,0.05) 52%, rgba(58,120,96,0.02) 72%, rgba(46,107,64,0) 88%)";
-const FIELD = "#0A1C14";              // solid deep-green field
+// The field starts darker (settling in, before sync) and warms a touch greener
+// once the session goes live — a quiet swell that marks joining the global
+// breath. CSS-transitioned between the two.
+const FIELD_DIM = "#040D08";          // before sync — near-black green
+const FIELD_LIVE = "#0B2014";         // live — a touch lighter/greener
 // The world turns between these three globes — one per breath cycle.
 const GLOBES = ["🌍", "🌎", "🌏"] as const;
 
@@ -183,6 +187,10 @@ export function CobreatheBreath({
   // suspended (app/tab backgrounded), even if visibilitychange hasn't fired
   // its handler yet on resume. Used to invalidate before the reach check.
   const lastTickRef = useRef(0);
+  // Cycle index at the previous frame — used to fire one gentle haptic at the
+  // top of every breath (the start of each inhale). null until the first frame
+  // so we don't buzz mid-cycle on mount.
+  const lastCycleRef = useRef<number | null>(null);
 
   // A rAF loop writes transforms straight to the DOM from the global clock —
   // no React re-render per frame, perfectly synced for everyone, and only
@@ -192,6 +200,18 @@ export function CobreatheBreath({
     const loop = () => {
       const now = Date.now();
       const pos = now % CYCLE_MS;
+      // Top of each breath — a single soft tap as a new inhale begins, so the
+      // body can feel the global rhythm without watching. Fires on the
+      // wall-clock cycle boundary (same for everyone breathing now).
+      const cyc = Math.floor(now / CYCLE_MS);
+      if (lastCycleRef.current === null) {
+        lastCycleRef.current = cyc;
+      } else if (cyc !== lastCycleRef.current) {
+        lastCycleRef.current = cyc;
+        try {
+          window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } }));
+        } catch { /* no native shell on web — silent */ }
+      }
       const s = scaleAt(pos);
       // 0 at rest (full exhale) → 1 at full inhale.
       const p = (s - SMALL) / (BIG - SMALL);
@@ -323,7 +343,8 @@ export function CobreatheBreath({
     <div
       style={{
         position: "fixed", inset: 0, zIndex: 50, overflow: "hidden",
-        background: FIELD,
+        background: counting ? FIELD_LIVE : FIELD_DIM,
+        transition: "background-color 1.6s ease",
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between",
         paddingTop: "calc(env(safe-area-inset-top) + 28px)",
         paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
