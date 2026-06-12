@@ -49,7 +49,12 @@ const HOME_LAYOUT_VERSION = 2;
 const SIDES = ["morning", "evening"] as const;
 
 type PrayChoice = "community" | "devotion" | "offices";
-type Step = "listen" | "pray" | "learn" | "done";
+type Step = "pray" | "listen" | "learn" | "extras" | "done";
+
+// The flow's four input slides (Pray → Contemplation → Learn → Add to your day).
+const TOTAL_STEPS = 4;
+// Contemplation goal options — a single dropdown in 5-minute increments.
+const GOAL_OPTIONS = Array.from({ length: 18 }, (_, i) => (i + 1) * 5); // 5…90
 
 // Each Pray choice → the office level it commits the day to. Community keeps no
 // office (the home shows "Pray Together"); devotion/offices set the office card.
@@ -198,9 +203,6 @@ export default function WayOfLoveRuleFlow({
   }, [prefs]);
 
   const goalMin = Math.max(0, Math.min(180, parseInt(goal, 10) || 0));
-  // Picking a devotion / the offices already includes the day's Scripture, so
-  // Learn's reading is covered — Community prayers does not, so we don't claim it.
-  const scriptureCovered = pray !== "community";
 
   const commit = () => {
     const level = PRAY_LEVEL[pray];
@@ -273,10 +275,10 @@ export default function WayOfLoveRuleFlow({
   const stepHeader = (n: number, eyebrow: string, title: string) => (
     <>
       <div style={{ height: 3, background: CARD_B, borderRadius: 2, overflow: "hidden", marginBottom: 16 }}>
-        <div style={{ width: `${(n / 3) * 100}%`, height: "100%", background: SAGE, transition: "width 0.3s ease" }} />
+        <div style={{ width: `${(n / TOTAL_STEPS) * 100}%`, height: "100%", background: SAGE, transition: "width 0.3s ease" }} />
       </div>
       <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.2px", margin: 0, fontFamily: FONT }}>
-        {t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" })} · {n}/3
+        {t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" })} · {n}/{TOTAL_STEPS}
       </p>
       <p style={{ color: SAGE, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.9px", margin: "16px 0 0", fontFamily: FONT }}>{eyebrow}</p>
       <h1 style={{ color: CREAM, fontSize: 30, fontWeight: 700, fontFamily: FONT, margin: "6px 0 0" }}>{title}</h1>
@@ -324,28 +326,19 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
           {t("wol_rule.listen_goal_label", { defaultValue: "Minutes of silence a day" })}
         </p>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {["5", "10", "20"].map((m) => {
-            const on = goal === m;
-            return (
-              <button key={m} onClick={() => chooseGoal(m)} style={{ background: on ? CARD_ACTIVE : CARD, border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`, color: CREAM, borderRadius: 12, padding: "12px 0", flex: 1, fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-                {m}
-              </button>
-            );
-          })}
-          <input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={180}
-            value={goal}
-            onChange={(e) => chooseGoal(e.target.value)}
-            aria-label={t("wol_rule.listen_goal_label", { defaultValue: "Minutes of silence a day" })}
-            style={{ width: 72, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 10px", color: CREAM, fontSize: 15, fontFamily: FONT, textAlign: "center", outline: "none" }}
-          />
-        </div>
+        <select
+          value={GOAL_OPTIONS.includes(goalMin) || goalMin === 0 ? String(goalMin) : "5"}
+          onChange={(e) => chooseGoal(e.target.value)}
+          aria-label={t("wol_rule.listen_goal_label", { defaultValue: "Minutes of silence a day" })}
+          style={{ width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+        >
+          <option value="0">{t("wol_rule.goal_none", { defaultValue: "No goal" })}</option>
+          {GOAL_OPTIONS.map((m) => (
+            <option key={m} value={String(m)}>{t("wol_rule.goal_minutes", { mins: m, defaultValue: `${m} minutes` })}</option>
+          ))}
+        </select>
         <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
-          {t("wol_rule.listen_goal_note", { defaultValue: "We'll gently remind you around 7pm on days you haven't reached it. Set 0 to keep the practice without a goal." })}
+          {t("wol_rule.listen_goal_note", { defaultValue: "We'll gently remind you around 7pm on days you haven't reached it. Choose “No goal” to keep the practice without one." })}
         </p>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => setStep("learn"))}
       </>,
@@ -390,16 +383,6 @@ export default function WayOfLoveRuleFlow({
       <>
         {backRow(() => setStep("listen"))}
         {stepHeader(3, t("wol_rule.learn_eyebrow", { defaultValue: "Learn" }), t("wol_rule.learn_title", { defaultValue: "Learn" }))}
-        {scriptureCovered && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, background: CARD_ACTIVE, border: `1px solid ${CARD_B_ACTIVE}`, borderRadius: 12, padding: "12px 14px", margin: "14px 0 0" }}>
-            <span style={{ width: 20, height: 20, borderRadius: 999, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "#A8C5A0" }}>
-              <Check size={13} strokeWidth={3} color="#0C1F12" />
-            </span>
-            <span style={{ color: CREAM, fontSize: 14, fontFamily: FONT, lineHeight: 1.45 }}>
-              {t("wol_rule.learn_scripture_done", { defaultValue: "Scripture — already covered by the office you pray." })}
-            </span>
-          </div>
-        )}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "16px 0 4px" }}>
           {t("wol_rule.learn_body", { defaultValue: "Choose the daily reflections you'd like to read." })}
         </p>
@@ -409,11 +392,22 @@ export default function WayOfLoveRuleFlow({
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {NEWSLETTERS.map((n) => choiceRow(newsletters.includes(n.id), n.label, n.sub, () => toggleNewsletter(n.id)))}
         </div>
-        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "28px 0 6px", fontFamily: FONT }}>
-          {t("wol_rule.extras_label", { defaultValue: "Add to your day" })}
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), () => setStep("extras"))}
+      </>,
+    );
+  }
+
+  // ── Step 4 — Add to your day (optional practices) ─────────────────────────
+  if (step === "extras") {
+    return shell(
+      <>
+        {backRow(() => setStep("learn"))}
+        {stepHeader(4, t("wol_rule.extras_eyebrow", { defaultValue: "Add to your day" }), t("wol_rule.extras_title", { defaultValue: "Add to your day" }))}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "16px 0 4px" }}>
+          {t("wol_rule.extras_body", { defaultValue: "Optional practices you can keep each day." })}
         </p>
-        <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "0 0 12px", lineHeight: 1.5 }}>
-          {t("wol_rule.extras_note", { defaultValue: "Optional practices — each adds a checkmark to your Daily progress." })}
+        <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "0 0 16px", lineHeight: 1.5 }}>
+          {t("wol_rule.extras_note", { defaultValue: "Each adds a card on your home and a checkmark to your Daily progress." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(extras.gratitude, t("wol_rule.extra_gratitude", { defaultValue: "Gratitude" }), t("wol_rule.extra_gratitude_sub", { defaultValue: "Name one gift from the day." }), () => toggleExtra("gratitude"))}

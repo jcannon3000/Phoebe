@@ -17,6 +17,14 @@ import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { useRhythmState } from "@/hooks/useRhythmState";
+import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/officePrefs";
+
+// The publication name shown as the reflection card's subtitle.
+const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
+  fdd: "Forward Day by Day",
+  ssje: "Brother, Give Us a Word",
+  cac: "CAC Daily Meditation",
+};
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -151,6 +159,16 @@ export default function DailyProgressPage() {
   const { morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, doneCount, totalAnchors, gratitudeActive, examenActive, gratitudeDone, examenDone } = useRhythmState();
   const hour = new Date().getHours();
   const kept = t("rhythm.kept", { defaultValue: "Kept today" });
+  // Offices are "prayed", not "kept".
+  const prayed = t("rhythm.prayed", { defaultValue: "Prayed today" });
+  // The reflection card's subtitle is the publication the user follows (plus
+  // today's title when we have one — external publications usually don't expose
+  // it, so it's just the name). Falls back to the generic blurb if none chosen.
+  const reflectionSource = useEffectiveReflectionSource();
+  const reflectionSubtitle =
+    reflectionSource && reflectionSource !== "none"
+      ? PUBLICATION_NAME[reflectionSource]
+      : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" });
   // Contemplation card sub-line: goal progress until the goal is met.
   const contemplationBlurb = silenceDone
     ? kept
@@ -174,7 +192,7 @@ export default function DailyProgressPage() {
     {
       key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer",
       title: officeTitle("Morning"),
-      blurb: morningDone ? kept : t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" }),
+      blurb: morningDone ? prayed : t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" }),
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     },
     {
@@ -187,14 +205,14 @@ export default function DailyProgressPage() {
     {
       key: "reflect", emoji: "📖", rgb: "96,141,209", done: reflectDone, href: "/menu/reflections",
       title: t("rhythm.card_reflect", { defaultValue: "Today's reflection" }),
-      blurb: reflectDone ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" }),
+      blurb: reflectionSubtitle,
       cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
     },
     {
       key: "evening", emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: hour >= 20 ? "/examen" : "/begin-prayer",
       title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
       blurb: eveningDone
-        ? kept
+        ? prayed
         : hour >= 20 ? t("rhythm.blurb_compline", { defaultValue: "Examine the day and rest" }) : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
       // Evening isn't actionable until the afternoon (after noon).
