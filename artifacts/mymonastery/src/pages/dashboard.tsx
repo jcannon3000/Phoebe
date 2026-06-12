@@ -14,7 +14,8 @@ import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { apiRequest } from "@/lib/queryClient";
 import { openExternal } from "@/lib/openExternal";
-import { getNcmpState, getSideLevel, setSideLevel } from "@/lib/officePrefs";
+import { getNcmpState, getSideLevel, setSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { useRhythmState } from "@/hooks/useRhythmState";
 import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
   FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, recordFddOpened,
@@ -2953,6 +2954,52 @@ function NcmpHomeCard() {
   );
 }
 
+// ── HomeDoneSummaryCard — the all-kept hero ──────────────────────────────────
+// Shown as the home hero once the day's rhythm is fully kept (morning +
+// reflection + evening). A quiet benediction over a community summary: how many
+// people prayed with you this week, and how many you prayed for.
+function HomeDoneSummaryCard() {
+  const { data: prayedWith } = useQuery<{ people: { id: number; name: string; avatarUrl: string | null }[]; total?: number }>({
+    queryKey: ["/api/prayer-streak/community-prayed-week"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-week"),
+    staleTime: 5 * 60_000,
+  });
+  const { data: youPrayed } = useQuery<{ people: Array<{ id: number; name: string | null; avatarUrl: string | null }> }>({
+    queryKey: ["/api/prayer-streak/co-prayers-week"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak/co-prayers-week"),
+    staleTime: 5 * 60_000,
+  });
+  const withYou = prayedWith?.total ?? prayedWith?.people?.length ?? 0;
+  const youFor = youPrayed?.people?.length ?? 0;
+  return (
+    <div
+      className="relative flex rounded-xl overflow-hidden"
+      style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.13) 0%, rgba(0,0,0,0) 100%), rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.4)" }}
+    >
+      <div className="w-1 flex-shrink-0" style={{ background: "rgba(110,180,130,0.9)" }} />
+      <div className="flex-1 px-5 py-5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}>
+          The day is kept 🌿
+        </p>
+        <p className="text-[15px] leading-relaxed mt-1.5 mb-4" style={{ color: "#F0EDE6", fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic" }}>
+          Rest now — the work and the prayer will keep till morning.
+        </p>
+        <div className="flex gap-3">
+          {[
+            { n: withYou, label: withYou === 1 ? "prayed with you this week" : "prayed with you this week" },
+            { n: youFor, label: youFor === 1 ? "you prayed for this week" : "you prayed for this week" },
+          ].map((s, idx) => (
+            <div key={idx} className="flex-1 rounded-lg px-3 py-2.5" style={{ background: "rgba(46,107,64,0.16)" }}>
+              <p className="font-bold leading-none" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 26 }}>{s.n}</p>
+              <p className="text-[11.5px] mt-1 leading-snug" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── PrayerOfficeCard — always-visible "pray with your community" anchor ──
 //
 // The home-screen invitation to pray the appropriate office for the
@@ -2960,7 +3007,7 @@ function NcmpHomeCard() {
 // with a small "or pray full Morning/Evening Prayer →" link as
 // alternate. Time threshold is noon — same threshold the Daily
 // Office picker uses for "today's office."
-export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}) {
+export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boolean; forceSide?: "morning" | "evening" } = {}) {
   const { t } = useTranslation();
   // Three time-of-day buckets:
   //   • < 12 → morning  → Morning Devotion (default depth)
@@ -2969,7 +3016,10 @@ export function PrayerOfficeCard({ compact = false }: { compact?: boolean } = {}
   // The user's Settings → Default prayer picker still overrides which
   // depth they land on, but the *which-side* split is time-based.
   const hourNow = new Date().getHours();
-  const isMorning = hourNow < 12;
+  // The "what's next" home hero can force which side this card shows (so a
+  // morning-prayer hero stays Morning even past noon, until it's done). Falls
+  // back to the noon split when unforced.
+  const isMorning = forceSide ? forceSide === "morning" : hourNow < 12;
   // Office-streak pill above the CTA. Same data source as before,
   // just the prefs lookup — no longer used to pick a "big" CTA.
   const { data: officePrefs } = useQuery<{
@@ -5207,6 +5257,48 @@ export default function Dashboard() {
     (k) => (k === "office" || k === "feeds") && !homeHidden.has(k),
   );
 
+  // ── Dynamic "what's next" hero ─────────────────────────────────────────────
+  // For office-led users (not feed-first), the top card follows the day's
+  // rhythm instead of always being the office: Morning Prayer → the primary
+  // reflection → Evening Prayer, with contemplation always a SEPARATE card.
+  //   • before 3pm: morning prayer, then (once prayed) the reflection
+  //   • 3pm+:       evening prayer leads — the reflection is hidden until
+  //                 evening prayer is done, then it becomes the hero
+  //   • all kept:   a community summary (who you prayed with / who prayed
+  //                 with you)
+  const rhythm = useRhythmState();
+  const heroReflectionSource = useEffectiveReflectionSource();
+  const dynamicHero = !featuredFeed;
+  const reflectKey: HomeModule | null =
+    heroReflectionSource === "cac" || heroReflectionSource === "fdd" || heroReflectionSource === "ssje"
+      ? (heroReflectionSource as HomeModule)
+      : null;
+  const reflectAvailable = reflectKey != null && homeOrder.includes(reflectKey) && !homeHidden.has(reflectKey);
+  const heroNowHour = new Date().getHours();
+  const heroAfternoon = heroNowHour >= 15;
+  type HomeHero =
+    | { kind: "office"; side: "morning" | "evening" }
+    | { kind: "reflect"; key: HomeModule }
+    | { kind: "summary" };
+  const homeHero: HomeHero | null = !dynamicHero ? null : (() => {
+    if (rhythm.morningDone && rhythm.reflectDone && rhythm.eveningDone) return { kind: "summary" };
+    if (!heroAfternoon) {
+      if (!rhythm.morningDone) return { kind: "office", side: "morning" };
+      if (!rhythm.reflectDone && reflectAvailable) return { kind: "reflect", key: reflectKey! };
+      return { kind: "office", side: "evening" };
+    }
+    if (!rhythm.eveningDone) return { kind: "office", side: "evening" };
+    if (!rhythm.reflectDone && reflectAvailable) return { kind: "reflect", key: reflectKey! };
+    return { kind: "office", side: "evening" };
+  })();
+  const heroKey: HomeModule | null =
+    homeHero?.kind === "office" ? "office" : homeHero?.kind === "reflect" ? homeHero.key : null;
+  const heroOfficeSide = homeHero?.kind === "office" ? homeHero.side : undefined;
+  // After 3pm, the reflection is hidden everywhere until evening prayer is done.
+  const hideReflectionsNow = dynamicHero && heroAfternoon && !rhythm.eveningDone;
+  // Whether the office card renders as the big hero (vs the compact one-liner).
+  const officeIsHero = dynamicHero ? heroKey === "office" : primaryAnchor === "office";
+
   // Podcast shows the user has added to home (localStorage-backed). The
   // "podcasts" module expands to one PodcastHomeCard per followed show,
   // mirroring how "feeds" expands to one card per subscribed feed.
@@ -6108,9 +6200,9 @@ export default function Dashboard() {
                     ? <NewPrayerRequestsCard count={newPrayersCount} faces={homeFaces} />
                     : null;
                 case "office":
-                  // Full card when it's the primary anchor; compact
-                  // one-liner when something else leads.
-                  return <PrayerOfficeCard compact={primaryAnchor !== "office"} />;
+                  // Hero when it's the "what's next" office (with the forced
+                  // side); compact one-liner when something else leads.
+                  return <PrayerOfficeCard compact={!officeIsHero} forceSide={officeIsHero ? heroOfficeSide : undefined} />;
                 case "feeds": {
                   if (subscribedFeeds.length === 0) return null;
                   // Feed hero only when feeds is the primary anchor AND a
@@ -6140,11 +6232,11 @@ export default function Dashboard() {
                 case "examen":
                   return <ExamenHomeCard />;
                 case "cac":
-                  return <CacHomeCard />;
+                  return hideReflectionsNow ? null : <CacHomeCard />;
                 case "fdd":
-                  return <FddHomeCard />;
+                  return hideReflectionsNow ? null : <FddHomeCard />;
                 case "ssje":
-                  return <SsjeHomeCard />;
+                  return hideReflectionsNow ? null : <SsjeHomeCard />;
                 case "ncmp":
                   // Self-hides on weekends + outside the broadcast
                   // window; returns null in those cases so the
@@ -6165,13 +6257,30 @@ export default function Dashboard() {
                   return null;
               }
             };
-            const rendered = homeOrder
+            // Lead with the dynamic hero module (right after "requests").
+            const displayOrder: HomeModule[] = (!dynamicHero || !heroKey)
+              ? homeOrder
+              : (() => {
+                  const rest = homeOrder.filter((k) => k !== heroKey && k !== "requests");
+                  return homeOrder.includes("requests")
+                    ? (["requests", heroKey, ...rest] as HomeModule[])
+                    : ([heroKey, ...rest] as HomeModule[]);
+                })();
+            const rendered = displayOrder
               .map((k) => ({ k, node: renderModule(k) }))
               .filter((m) => m.node != null);
+            // All kept → a community summary leads; the office / reflection
+            // cards still render below so the user can pray or read again.
+            const summaryFirst = dynamicHero && homeHero?.kind === "summary";
             return (
               <>
+                {summaryFirst && (
+                  <div className="mt-5">
+                    <HomeDoneSummaryCard />
+                  </div>
+                )}
                 {rendered.map((m, i) => (
-                  <div key={m.k} className={i === 0 ? "mt-5" : "mt-3"}>
+                  <div key={m.k} className={(i === 0 && !summaryFirst) ? "mt-5" : "mt-3"}>
                     {m.node}
                   </div>
                 ))}
