@@ -6509,10 +6509,8 @@ export default function Dashboard() {
             pages remain reachable from the side menu and from the
             "View list" pill on the Daily Prayer List card. */}
 
-        {/* Podcasts — a Hallow-style horizontal cover-art slider of the
-            available shows, near the bottom of the home. Taps open the
-            show's episode list + player; "See all" → /podcasts. */}
-        {filter === null && <PodcastsRail />}
+        {/* Podcasts rail removed from the home per product direction — shows
+            still live at /podcasts and in the side menu. */}
 
         {/* News is intentionally NOT on the home screen — it lives in the
             side menu (Audio → News & Actions, beta) and at /news. It was
