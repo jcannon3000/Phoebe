@@ -52,7 +52,7 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 const HOME_LAYOUT_VERSION = 2;
 const SIDES = ["morning", "evening"] as const;
 
-type PrayChoice = "community" | "devotion" | "offices";
+type PrayChoice = "community" | "devotion" | "offices" | "contemplation";
 type Step =
   | "when"
   | "morning-way" | "morning-config"
@@ -63,10 +63,14 @@ const GOAL_OPTIONS = Array.from({ length: 18 }, (_, i) => (i + 1) * 5); // 5…9
 
 // Each Pray choice → the office level it commits the day to. Community keeps no
 // office (the home shows "Pray Together"); devotion/offices set the office card.
-const PRAY_LEVEL: Record<PrayChoice, "intercessions" | "devotion" | "office"> = {
+const PRAY_LEVEL: Record<PrayChoice, "intercessions" | "devotion" | "office" | "reflect-sit"> = {
   community: "intercessions",
   devotion: "devotion",
   offices: "office",
+  // Contemplation as the primary form of prayer for this side — "reflect-sit"
+  // is the handled office level for a contemplative sit (begin-prayer routes it
+  // to the silence timer).
+  contemplation: "reflect-sit",
 };
 // Inverse of PRAY_LEVEL — read an existing office level back into a Pray
 // choice so Customize opens with the user's current pick selected.
@@ -74,6 +78,7 @@ function prayFromLevel(level: string | null | undefined): PrayChoice | null {
   if (level === "office") return "offices";
   if (level === "devotion") return "devotion";
   if (level === "intercessions") return "community";
+  if (level === "reflect-sit") return "contemplation";
   return null;
 }
 // …and the existing PRACTICES option id, so the saved selections stay readable
@@ -82,6 +87,7 @@ const PRAY_OPTION_ID: Record<PrayChoice, string> = {
   community: "pray-intercessions",
   devotion: "pray-devotion",
   offices: "pray-office",
+  contemplation: "pray-reflect-sit",
 };
 // Each Pray choice → the morning reminder pref the office-reminder cron reads
 // (parish_office_morning_pref). "office" deep-links the nudge to Morning
@@ -93,6 +99,7 @@ const PRAY_REMINDER_PREF: Record<PrayChoice, "office" | "devotion"> = {
   community: "devotion",
   devotion: "devotion",
   offices: "office",
+  contemplation: "devotion",
 };
 const DEFAULT_REMINDER_TIME = "07:00";
 
@@ -454,6 +461,7 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(prayBySide[side] === "community", t("wol_rule.pray_community", { defaultValue: "Community prayers" }), t("wol_rule.pray_community_sub", { defaultValue: "Pray with your community through the day's intercessions." }), () => choosePrayBySide(side, "community"))}
           {choiceRow(prayBySide[side] === "devotion", t("wol_rule.pray_devotion", { defaultValue: "Daily devotion" }), t("wol_rule.pray_devotion_sub", { defaultValue: "A short form of Morning or Evening Prayer." }), () => choosePrayBySide(side, "devotion"))}
           {choiceRow(prayBySide[side] === "offices", t("wol_rule.pray_offices", { defaultValue: "The offices" }), t("wol_rule.pray_offices_sub", { defaultValue: "The full Daily Office — Morning & Evening Prayer." }), () => choosePrayBySide(side, "offices"))}
+          {choiceRow(prayBySide[side] === "contemplation", t("wol_rule.pray_contemplation", { defaultValue: "Contemplation" }), t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => choosePrayBySide(side, "contemplation"))}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
@@ -465,37 +473,46 @@ export default function WayOfLoveRuleFlow({
     const side: OfficeSide = step === "morning-config" ? "morning" : "evening";
     const cap = side === "morning" ? "Morning" : "Evening";
     const isIntercessions = prayBySide[side] === "community";
+    const isContemplation = prayBySide[side] === "contemplation";
     const method = isIntercessions ? "read" : methodBySide[side];
     return shell(
       <>
         {backRow(goPrev)}
         {stepHeader(cap, cap)}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 22px" }}>
-          {t("wol_rule.side_config_body", { side: cap.toLowerCase(), defaultValue: `How and when would you like to pray in the ${cap.toLowerCase()}?` })}
+          {isContemplation
+            ? t("wol_rule.side_config_contemplation_body", { side: cap.toLowerCase(), defaultValue: `When would you like a reminder to sit in the ${cap.toLowerCase()}?` })
+            : t("wol_rule.side_config_body", { side: cap.toLowerCase(), defaultValue: `How and when would you like to pray in the ${cap.toLowerCase()}?` })}
         </p>
-        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
-          {t("wol_rule.method_label", { defaultValue: "Default way to pray" })}
-        </p>
-        <div style={{ position: "relative" }}>
-          <select
-            value={method}
-            onChange={(e) => chooseMethodBySide(side, e.target.value as DefaultOfficeEntry)}
-            disabled={isIntercessions}
-            aria-label={t("wol_rule.method_label", { defaultValue: "Default way to pray" })}
-            style={{ width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none", opacity: isIntercessions ? 0.6 : 1 }}
-          >
-            {isIntercessions ? (
-              <option value="read">{t("wol_rule.method_screen", { defaultValue: "On screen" })}</option>
-            ) : (
-              <>
-                <option value="read">{t("wol_rule.method_screen", { defaultValue: "On screen" })}</option>
-                <option value="listen">{t("wol_rule.method_listen", { defaultValue: "Listen" })}</option>
-                <option value="book">{t("wol_rule.method_book", { defaultValue: "In your book" })}</option>
-              </>
-            )}
-          </select>
-          <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
-        </div>
+        {/* Contemplation has no on-screen/listen/book method — it's a silent
+            sit — so the method picker is hidden for it. */}
+        {!isContemplation && (
+          <>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
+              {t("wol_rule.method_label", { defaultValue: "Default way to pray" })}
+            </p>
+            <div style={{ position: "relative" }}>
+              <select
+                value={method}
+                onChange={(e) => chooseMethodBySide(side, e.target.value as DefaultOfficeEntry)}
+                disabled={isIntercessions}
+                aria-label={t("wol_rule.method_label", { defaultValue: "Default way to pray" })}
+                style={{ width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none", opacity: isIntercessions ? 0.6 : 1 }}
+              >
+                {isIntercessions ? (
+                  <option value="read">{t("wol_rule.method_screen", { defaultValue: "On screen" })}</option>
+                ) : (
+                  <>
+                    <option value="read">{t("wol_rule.method_screen", { defaultValue: "On screen" })}</option>
+                    <option value="listen">{t("wol_rule.method_listen", { defaultValue: "Listen" })}</option>
+                    <option value="book">{t("wol_rule.method_book", { defaultValue: "In your book" })}</option>
+                  </>
+                )}
+              </select>
+              <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+            </div>
+          </>
+        )}
         <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
           {t("wol_rule.reminder_side_label", { side: cap.toLowerCase(), defaultValue: `Remind me each ${cap.toLowerCase()}` })}
         </p>
@@ -567,13 +584,14 @@ export default function WayOfLoveRuleFlow({
     const cap = side === "morning" ? "Morning" : "Evening";
     return prayBySide[side] === "community" ? "Community Intercessions"
       : prayBySide[side] === "offices" ? `${cap} Prayer`
+      : prayBySide[side] === "contemplation" ? `${cap} Contemplation`
       : `${cap} Devotion`;
   };
   const reviewRows: Array<{ emoji: string; label: string; sub: string; step: Step }> = [
     ...SIDES.filter((s) => sides[s]).map((s) => ({
       emoji: s === "morning" ? "🌅" : "🌙",
       label: sideWayLabel(s),
-      sub: `${prayBySide[s] === "community" ? "On screen" : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
+      sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "contemplation" ? "Silent sit" : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
       step: (s === "morning" ? "morning-way" : "evening-way") as Step,
     })),
     { emoji: "🕯️", label: "Contemplation", sub: goalMin > 0 ? `${goalMin} min of silence a day` : "No goal", step: "listen" },
