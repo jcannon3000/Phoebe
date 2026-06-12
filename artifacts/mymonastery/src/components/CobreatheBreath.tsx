@@ -142,6 +142,13 @@ function pickParticleEmojis(): string[] {
     return pool[Math.floor(Math.random() * pool.length)];
   });
 }
+// One random emoji from a random category — used when a single particle
+// crossfades to its next emoji (so the cast keeps mixing plants, people,
+// vocations and animals as it shimmers).
+function pickOneEmoji(): string {
+  const pool = CATEGORY_POOLS[Math.floor(Math.random() * CATEGORY_POOLS.length)];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 
 export function CobreatheBreath({
   onReachTarget,
@@ -173,11 +180,24 @@ export function CobreatheBreath({
   const globeRef = useRef<HTMLDivElement>(null);
   const plantsRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
-  // A fresh spiral cast for this session — different emojis every time the
-  // breath opens. Computed once per mount.
-  // The spiral cast — re-picked at the bottom of every breath (see the rAF
-  // loop), so each breath rises with a fresh set of emojis.
-  const [particleEmojis, setParticleEmojis] = useState<string[]>(pickParticleEmojis);
+  // Per-particle emoji + an independent, staggered fade cycle. Instead of the
+  // whole cast swapping at once at the bottom of each breath (which read as a
+  // hard "switch"), every particle crossfades on its OWN clock — fading down to
+  // nothing, swapping its emoji while invisible, then fading back up. Varied
+  // periods + offsets mean the spiral shimmers continuously and fluidly, with a
+  // fade-out → fade-in (two steps) between each emoji and the next.
+  const partSpanRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const partMeta = useRef(
+    (() => {
+      const init = pickParticleEmojis();
+      return PARTICLE_LAYOUT.map((_, i) => ({
+        emoji: init[i],
+        period: 2400 + ((i * 257) % 2200), // 2.4s–4.6s, varied per particle
+        offset: (i * 911) % 3000,          // staggered so they never sync up
+        lastPhase: 0,
+      }));
+    })(),
+  );
 
   // Prime the audio subsystem on mount so the per-breath swell tones sound. (No
   // fade-in: the scene is held still at rest until synced, so nothing flashes.)
@@ -230,8 +250,6 @@ export function CobreatheBreath({
         // three octaves the prayer slideshow uses (0–2). Keyed to the global
         // cycle index, so everyone breathing now hears the same octave together.
         try { playOpeningSwell(((cyc % 3) + 3) % 3); } catch { /* audio locked — non-fatal */ }
-        // A fresh emoji cast for the breath that's beginning.
-        setParticleEmojis(pickParticleEmojis());
       }
       const s = scaleAt(pos);
       // 0 at rest (full exhale) → 1 at full inhale.
@@ -265,6 +283,31 @@ export function CobreatheBreath({
         // — so the emoji swap happens while invisible and never reads as a hard
         // "switch". Below ~8% of the inhale the spiral is fully transparent.
         plantsRef.current.style.opacity = (Math.max(0, pAnim - 0.08) * 0.92).toFixed(3);
+      }
+      // Per-particle shimmer: each emoji crossfades on its own staggered cycle
+      // (fade out → swap while invisible → fade in), so the spiral flows rather
+      // than switching all at once. The container opacity above multiplies on
+      // top, so this still breathes with the inhale/exhale.
+      {
+        const meta = partMeta.current;
+        for (let i = 0; i < meta.length; i++) {
+          const m = meta[i];
+          const lp = ((now + m.offset) % m.period) / m.period; // 0..1
+          // Cycle wrapped (lp dropped) → this particle is invisible right now,
+          // so swap to a fresh emoji without it ever being seen mid-change.
+          if (lp < m.lastPhase) {
+            let e = pickOneEmoji();
+            if (e === m.emoji) e = pickOneEmoji(); // avoid an immediate repeat
+            m.emoji = e;
+            const sp = partSpanRefs.current[i];
+            if (sp) sp.textContent = e;
+          }
+          m.lastPhase = lp;
+          // Smooth fade: 0 at the cycle edges (the swap point), 1 in the middle.
+          const fade = (1 - Math.cos(2 * Math.PI * lp)) / 2;
+          const sp = partSpanRefs.current[i];
+          if (sp) sp.style.opacity = (PARTICLE_LAYOUT[i].opacity * fade).toFixed(3);
+        }
       }
       // The phase word breathes a hair with the circle (only once synced).
       if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;
@@ -434,13 +477,14 @@ export function CobreatheBreath({
         {PARTICLE_LAYOUT.map((pt, i) => (
           <span
             key={i}
+            ref={(el) => { partSpanRefs.current[i] = el; }}
             style={{
               position: "absolute", left: pt.x, top: pt.y,
               transform: "translate(-50%, -50%)",
               fontSize: pt.size, opacity: pt.opacity, lineHeight: 1,
             }}
           >
-            {particleEmojis[i]}
+            {partMeta.current[i].emoji}
           </span>
         ))}
       </div>
