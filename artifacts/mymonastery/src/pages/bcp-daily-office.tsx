@@ -558,6 +558,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     if (pref === "devotion" || pref === "intercessions" || pref === "office") return pref;
     return isDevotion ? "devotion" : "office";
   });
+  // How they want to pray it — the second row of the welcome chooser. Depends
+  // on the way above: Community Intercessions is on-screen only. "watch" is a
+  // morning-weekday-only option (the National Cathedral broadcast).
+  type PrayMethod = "screen" | "listen" | "book" | "watch";
+  const [prayMethod, setPrayMethod] = useState<PrayMethod>("screen");
 
   useEffect(() => {
     let cancelled = false;
@@ -923,7 +928,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // the control's own handler runs instead of paging.
   function handleTapNavigate(e: React.MouseEvent) {
     const target = e.target as HTMLElement | null;
-    if (target?.closest("button, a, input, textarea")) return;
+    if (target?.closest("button, a, input, textarea, select, label")) return;
     if (e.clientX < window.innerWidth / 2) prev();
     else next();
   }
@@ -1035,28 +1040,76 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // form you're already viewing just advances into it (next()); switching
   // routes to the other surface — the same destinations the old pills used.
   const eveningSide = officeSide === "evening";
-  const launchWay = (way: WayToPray) => {
+  // Launch the reader's chosen way + method. Intercessions is always on-screen
+  // (digital). For a devotion/office: "listen" → the spoken-office podcast,
+  // "watch" → the Cathedral broadcast, "book" → the physical-book guide,
+  // "screen" → the slideshow. Staying on the surface you're already viewing
+  // just advances (next()); switching routes to the other surface.
+  const launchWay = (way: WayToPray, method: PrayMethod) => {
     if (way === "intercessions") { setViewerLocation("/prayer-mode"); return; }
-    if (way === "devotion") {
-      if (isDevotion) { next(); return; }
-      setViewerLocation(`/bcp/daily-devotions?mode=${eveningSide ? "early-evening-devotion" : "morning-devotion"}`);
+    if (method === "listen") { setViewerLocation(`/podcast/${officeSide}-office`); return; }
+    if (method === "watch") { setViewerLocation("/ncmp/watch"); return; }
+    const onThisSurface = (way === "devotion" && isDevotion) || (way === "office" && !isDevotion);
+    if (onThisSurface) {
+      if (method === "book") { setBookOpen(true); return; }
+      next();
       return;
     }
-    // office
-    if (!isDevotion) { next(); return; }
-    setViewerLocation(`/bcp/daily-office?mode=${eveningSide ? "evening" : "morning"}`);
+    // A different surface than the one loaded — route there (it opens on its
+    // own welcome with the same book / on-screen options).
+    setViewerLocation(
+      way === "devotion"
+        ? `/bcp/daily-devotions?mode=${eveningSide ? "early-evening-devotion" : "morning-devotion"}`
+        : `/bcp/daily-office?mode=${eveningSide ? "evening" : "morning"}`,
+    );
   };
 
-  // The welcome-slide chooser: a "Start" primary that launches the selected
-  // way, with a dropdown above it (replacing the old alternate-route pills) so
-  // the reader can switch between Devotion / Community Intercessions / the full
-  // Office before they begin. The dropdown is hidden for offices-only and
-  // public (onComplete) viewers, and once the user came straight from the
-  // picker — they all just get Start. `canChoose` gates the dropdown only;
-  // Start always shows.
+  // The welcome-slide chooser — three same-width rows:
+  //   1. the WAY (Community Intercessions / this-side Devotion / this-side
+  //      Prayer), defaulting to the user's saved preference;
+  //   2. the METHOD, dependent on the way — Intercessions is on-screen only;
+  //      a Devotion/Office offers On screen / Listen / In your book (+ Watch on
+  //      the morning weekday side);
+  //   3. Begin, which launches the selected way + method.
+  // The way + method dropdowns are hidden for offices-only / public / from-the-
+  // picker viewers, who just get Begin.
   const renderWayChooser = () => {
     const canChoose = !officesOnlyViewer && !cameFromPicker && !onComplete;
-    const officeLabel = eveningSide ? "Full Evening Prayer" : "Full Morning Prayer";
+    const sideWord = eveningSide ? "Evening" : "Morning";
+    const isIntercessions = wayToPray === "intercessions";
+    const showWatch = officeSide === "morning" && isWeekday;
+    // A shared, full-width styled <select> with the chevron, matching the pill
+    // look. A plain render helper (NOT a component) so it inlines and the native
+    // select never remounts mid-selection. Stops propagation so a tap can't
+    // bubble to the slide tap-nav.
+    const dropdown = (id: string, value: string, onChange: (v: string) => void, options: React.ReactNode) => (
+      <div style={{ position: "relative", width: "100%", maxWidth: 420 }}>
+        <select
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: "100%",
+            appearance: "none",
+            WebkitAppearance: "none",
+            background: "rgba(46,107,64,0.10)",
+            border: "1px solid rgba(46,107,64,0.32)",
+            borderRadius: 999,
+            color: WARM_TEXT,
+            fontFamily: SPACE_GROTESK,
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: "pointer",
+            padding: "13px 40px 13px 18px",
+            textAlign: "center",
+          }}
+        >
+          {options}
+        </select>
+        <span aria-hidden style={{ position: "absolute", right: 18, top: "50%", transform: "translateY(-50%)", color: "rgba(168,197,160,0.8)", fontSize: 12, pointerEvents: "none" }}>▾</span>
+      </div>
+    );
     return (
       <div
         style={{
@@ -1064,73 +1117,45 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: 14,
+          gap: 12,
           paddingTop: 16,
           borderTop: `1px solid ${BORDER}`,
         }}
       >
         {canChoose && (
-          <div style={{ width: "100%", maxWidth: 420 }}>
-            <label
-              htmlFor="way-to-pray"
-              style={{
-                display: "block",
-                fontFamily: SPACE_GROTESK,
-                fontSize: 11,
-                letterSpacing: "0.14em",
-                textTransform: "uppercase",
-                color: FAINT_GREEN,
-                marginBottom: 7,
-              }}
-            >
-              I'd like to pray
-            </label>
-            <div style={{ position: "relative" }}>
-              <select
-                id="way-to-pray"
-                value={wayToPray}
-                onChange={(e) => setWayToPray(e.target.value as WayToPray)}
-                style={{
-                  width: "100%",
-                  appearance: "none",
-                  WebkitAppearance: "none",
-                  background: "rgba(46,107,64,0.10)",
-                  border: "1px solid rgba(46,107,64,0.32)",
-                  borderRadius: 999,
-                  color: WARM_TEXT,
-                  fontFamily: SPACE_GROTESK,
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: "pointer",
-                  padding: "12px 40px 12px 18px",
-                }}
-              >
-                <option value="devotion">Daily Devotion</option>
+          <>
+            {/* Row 1 — the way to pray. */}
+            {dropdown("way-to-pray", wayToPray, (v) => {
+              const w = v as WayToPray;
+              setWayToPray(w);
+              // Intercessions is on-screen only — snap the method back.
+              if (w === "intercessions") setPrayMethod("screen");
+            }, (
+              <>
                 <option value="intercessions">Community Intercessions</option>
-                <option value="office">{officeLabel}</option>
-              </select>
-              {/* Chevron — the native select arrow is suppressed (appearance:
-                  none) so it matches the dark pill aesthetic. */}
-              <span
-                aria-hidden
-                style={{
-                  position: "absolute",
-                  right: 18,
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "rgba(168,197,160,0.8)",
-                  fontSize: 12,
-                  pointerEvents: "none",
-                }}
-              >
-                ▾
-              </span>
-            </div>
-          </div>
+                <option value="devotion">{sideWord} Devotion</option>
+                <option value="office">{sideWord} Prayer</option>
+              </>
+            ))}
+            {/* Row 2 — the method, based on the way. Intercessions = digital only. */}
+            {dropdown("pray-method", isIntercessions ? "screen" : prayMethod, (v) => setPrayMethod(v as PrayMethod), (
+              isIntercessions ? (
+                <option value="screen">On screen</option>
+              ) : (
+                <>
+                  <option value="screen">On screen</option>
+                  <option value="listen">Listen</option>
+                  {showWatch && <option value="watch">Watch (Cathedral)</option>}
+                  <option value="book">In your book</option>
+                </>
+              )
+            ))}
+          </>
         )}
+        {/* Row 3 — Begin. */}
         <button
           type="button"
-          onClick={() => (canChoose ? launchWay(wayToPray) : next())}
+          onClick={(e) => { e.stopPropagation(); canChoose ? launchWay(wayToPray, isIntercessions ? "screen" : prayMethod) : next(); }}
           style={{
             width: "100%",
             maxWidth: 420,
@@ -1146,7 +1171,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             padding: "13px 24px",
           }}
         >
-          {i18n.language?.startsWith("es") ? "Comenzar" : "Start"}
+          {i18n.language?.startsWith("es") ? "Comenzar" : "Begin"}
         </button>
       </div>
     );
@@ -1320,7 +1345,11 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   morning side. Both navigate away from the slideshow
                   into the dedicated player / watch surfaces. "Book" →
                   the in-page physical-BCP guide: today's page numbers,
-                  psalms, and readings for praying from a paper book. */}
+                  psalms, and readings for praying from a paper book. Hidden on
+                  the welcome slides that show the way/method chooser (devotion +
+                  morning/evening office) — there the method lives in the
+                  chooser's second dropdown instead. */}
+              {!(isDevotion || resolvedMode === "morning" || resolvedMode === "evening") && (
               <div
                 style={{
                   display: "flex",
@@ -1397,6 +1426,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   📕 {bcpGuideText("In your book")}
                 </button>
               </div>
+              )}
             </div>
           ) : currentSlide.type === "intercessions_portal" ? (
             // Intro chord for the prayer-mode handoff. The title
