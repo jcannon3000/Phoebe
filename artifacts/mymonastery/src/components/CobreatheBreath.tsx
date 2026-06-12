@@ -504,7 +504,7 @@ export function CobreatheBreath({
           <span
             style={{
               color: WARM, fontFamily: SPACE_GROTESK, fontSize: 26, fontWeight: 600,
-              letterSpacing: "0.04em", textShadow: "0 2px 18px rgba(8,30,18,0.6)",
+              letterSpacing: "0.14em", textTransform: "uppercase", textShadow: "0 2px 18px rgba(8,30,18,0.6)",
             }}
           >
             {phaseLabel}
