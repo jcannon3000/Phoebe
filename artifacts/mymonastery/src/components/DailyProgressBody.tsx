@@ -384,8 +384,13 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
   // side from the rows; the OTHER side stays as a small row (e.g. evening drops
   // small in the list when morning isn't done yet).
   const heroSide: "morning" | "evening" = morningDone ? "evening" : "morning";
-  const officeHero = renderOfficeHero ? renderOfficeHero(heroSide) : null;
-  const visibleCards = renderOfficeHero
+  const heroSideDone = heroSide === "morning" ? morningDone : eveningDone;
+  // Only lead with the office hero while that office is still to pray. Once it's
+  // actually done it drops into the Done list like any other anchor — it
+  // shouldn't keep sitting in Next as a big "completed" hero.
+  const showOfficeHero = !!renderOfficeHero && !heroSideDone;
+  const officeHero = showOfficeHero ? renderOfficeHero!(heroSide) : null;
+  const visibleCards = showOfficeHero
     ? cards.filter((c) => c.key !== heroSide)
     : cards;
   const upcoming = visibleCards.filter((c) => !c.done);

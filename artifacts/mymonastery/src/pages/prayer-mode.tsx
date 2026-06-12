@@ -3937,27 +3937,6 @@ export default function PrayerModePage() {
               }}
               onStartCobreathe={() => { primeAudio(); setCobreatheOpen(true); }}
             />
-            {/* "Pray a liturgy" fork — opening slide only, directly beneath
-                the Amen button: Amen to continue the quick prayer flow, or
-                tap here to pray a full BCP office (the chooser). Hidden on
-                every later slide — and hidden entirely when the community
-                prayers are already embedded in an office flow (the seamless
-                mid-office intercessions handoff, after-office, or the office
-                closing), where the user is mid-liturgy and the fork is
-                redundant. */}
-            {index === 0 && !seamlessFlow && !afterOffice && !closingOnly && (
-              <div className="mt-4 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => setLocation("/prayer-chooser")}
-                  aria-label="Pray a liturgy"
-                  className="inline-flex items-center rounded-full transition-opacity hover:opacity-90 active:scale-[0.98]"
-                  style={{ padding: "7px 13px", fontSize: 12.5, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", color: "#A8C5A0", background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.5)", cursor: "pointer" }}
-                >
-                  Pray a liturgy →
-                </button>
-              </div>
-            )}
           </div>
         )}
 
