@@ -4507,6 +4507,28 @@ export const en = {
     section_waiting: "Waiting for Response",
   },
   // Prayer list page (pages/prayer-list.tsx) — page chrome + section labels.
+  // Fellows manual-add surface (FellowsConnect, on the People page).
+  fellows_c: {
+    fellows: "Fellows",
+    add: "Add",
+    requested: "Requested",
+    accept: "Accept",
+    decline: "Decline",
+    remove: "Remove",
+    remove_confirm: "Remove this fellow?",
+    search_placeholder: "Add a fellow — search by name or email…",
+    searching: "Searching…",
+    no_results: "No one found.",
+    requests: "Requests",
+    your_fellows: "Your fellows",
+    from_contacts: "Find from your contacts",
+    from_contacts_header: "From your contacts",
+    contacts_working: "Looking through your contacts…",
+    contacts_denied: "Contacts access is off — enable it in Settings to find fellows this way.",
+    contacts_error: "Couldn't read your contacts. Try again.",
+    contacts_none: "None of your contacts are on Phoebe yet.",
+    streak_title: "Prayer rhythm",
+  },
   prayer_list: {
     title: "Prayer List",
     subtitle: "Carrying what your community is carrying.",
