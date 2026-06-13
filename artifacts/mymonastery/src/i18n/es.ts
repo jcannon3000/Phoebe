@@ -1598,11 +1598,6 @@ export const es: Translations = {
     your_request: "Tu petición",
     from_name: "De {{name}}",
   },
-  prayer_card: {
-    amen: "Amén",
-    amened: "Oraste",
-    comment: "Comentar",
-  },
   letter_card: {
     wrote_to_you: "{{name}} escribió 🌿",
     opens_today: "Se abre hoy 🖋️",
