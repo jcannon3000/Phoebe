@@ -8,7 +8,6 @@ import { X, LogOut, ChevronRight, ChevronDown } from "lucide-react";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { CommunityPrayedRecap } from "@/components/CommunityPrayedRecap";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
@@ -814,9 +813,9 @@ function OpeningSplash() {
     if (typeof window === "undefined") return "gone";
     try { return sessionStorage.getItem("phoebe:splash-shown") ? "gone" : "in"; } catch { return "in"; }
   });
-  const { data } = useQuery<{ people?: Array<{ id: number; name: string | null; avatarUrl: string | null }> }>({
-    queryKey: ["/api/prayer-streak/co-prayers-week"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak/co-prayers-week"),
+  const { data } = useQuery<{ people?: Array<{ id: number; name: string | null; avatarUrl: string | null; count: number }> }>({
+    queryKey: ["/api/prayer-streak/prayed-for-me-month"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak/prayed-for-me-month"),
     staleTime: 5 * 60_000,
     enabled: phase !== "gone" && !!user && native,
   });
@@ -872,7 +871,41 @@ function OpeningSplash() {
       >
         {firstName ? `${greeting}, ${firstName}` : greeting}
       </p>
-      <CommunityPrayedRecap coPrayers={data?.people ?? []} />
+      {(() => {
+        const people = data?.people ?? [];
+        const fn = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "Someone";
+        if (people.length === 0) {
+          return (
+            <p className="text-[22px] italic text-center px-10" style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif" }}>
+              {t("splash.held", { defaultValue: "You are held in prayer." })}
+            </p>
+          );
+        }
+        return (
+          <div className="flex flex-col items-center px-6" style={{ maxWidth: 400 }}>
+            <p className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-5" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}>
+              {t("splash.prayed_for_you_month", { defaultValue: "Prayed for you this month" })}
+            </p>
+            <div className="flex flex-wrap items-start justify-center gap-x-5 gap-y-6">
+              {people.slice(0, 6).map((p) => (
+                <div key={p.id} className="flex flex-col items-center" style={{ width: 88 }}>
+                  {p.avatarUrl ? (
+                    <img src={p.avatarUrl} alt={fn(p.name)} className="w-14 h-14 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-14 h-14 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
+                      {(p.name ?? "?").trim().split(/\s+/).slice(0, 2).map((s) => s[0] ?? "").join("").toUpperCase().slice(0, 2) || "?"}
+                    </div>
+                  )}
+                  <p className="text-[13px] font-medium mt-2 truncate w-full text-center" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{fn(p.name)}</p>
+                  <p className="text-[11px] mt-0.5 leading-tight text-center" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    {t("splash.prayed_n_times", { count: p.count, defaultValue: `prayed for you ${p.count}×` })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); dismiss(); }}

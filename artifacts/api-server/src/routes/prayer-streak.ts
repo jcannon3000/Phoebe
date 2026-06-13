@@ -293,4 +293,61 @@ router.get("/prayer-streak/co-prayers-week", async (req: Request, res: Response)
   }
 });
 
+// GET /prayer-streak/prayed-for-me-month — the people who have prayed for the
+// caller in the last ~30 days, with HOW MANY times each prayed (distinct
+// request-days they amened one of the caller's requests). Drives the app-open
+// splash: avatars + "prayed for you N times". Sorted by most prayers first.
+router.get("/prayer-streak/prayed-for-me-month", async (req: Request, res: Response): Promise<void> => {
+  const sessionUser = req.user as { id: number } | undefined;
+  if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    // The caller's own requests.
+    const myReqs = await db
+      .select({ id: prayerRequestsTable.id })
+      .from(prayerRequestsTable)
+      .where(eq(prayerRequestsTable.ownerId, sessionUser.id));
+    const myReqIds = myReqs.map((r) => r.id);
+    if (myReqIds.length === 0) { res.json({ people: [], total: 0 }); return; }
+
+    // Every amen on those requests in the window — one row per (user, request,
+    // day) thanks to the daily cap, so a row count == "times prayed".
+    const rows = await db
+      .select({ userId: prayerRequestAmensTable.userId, prayedAt: prayerRequestAmensTable.prayedAt })
+      .from(prayerRequestAmensTable)
+      .where(and(
+        inArray(prayerRequestAmensTable.requestId, myReqIds),
+        gte(prayerRequestAmensTable.prayedAt, monthAgo),
+      ));
+
+    const byUser = new Map<number, { count: number; last: Date }>();
+    for (const r of rows) {
+      if (r.userId === sessionUser.id) continue; // your own amens don't count
+      const prev = byUser.get(r.userId) ?? { count: 0, last: new Date(0) };
+      prev.count += 1;
+      const stamp = r.prayedAt ?? new Date(0);
+      if (stamp > prev.last) prev.last = stamp;
+      byUser.set(r.userId, prev);
+    }
+    const ids = Array.from(byUser.keys());
+    if (ids.length === 0) { res.json({ people: [], total: 0 }); return; }
+
+    const users = await db
+      .select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+      .from(usersTable)
+      .where(inArray(usersTable.id, ids));
+
+    const people = users
+      .map((u) => ({ id: u.id, name: u.name, avatarUrl: u.avatarUrl, count: byUser.get(u.id)?.count ?? 0, _last: byUser.get(u.id)?.last ?? new Date(0) }))
+      .sort((a, b) => b.count - a.count || b._last.getTime() - a._last.getTime())
+      .slice(0, 12)
+      .map(({ _last, ...p }) => p);
+
+    res.json({ people, total: people.length });
+  } catch (err) {
+    console.error("[prayer-streak:prayed-for-me-month] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 export default router;
