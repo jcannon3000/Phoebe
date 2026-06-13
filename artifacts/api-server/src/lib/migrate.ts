@@ -2902,25 +2902,11 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS reflection_reads_user_source_ymd_uk ON reflection_reads (user_id, source, ymd)`);
 
-    // ── friendships (1:1 prayer friends + requests, beta) ────────────────────
-    // A directional row models both the pending request and the accepted
-    // friendship: friends iff a row between two users is 'accepted' (either
-    // direction). Unique (requester, addressee) stops duplicate requests; the
-    // app layer auto-accepts a reverse-pending collision. Indexed by addressee
-    // (incoming requests / badge count) and requester.
-    await run(client, `
-      CREATE TABLE IF NOT EXISTS friendships (
-        id SERIAL PRIMARY KEY,
-        requester_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        addressee_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        status TEXT NOT NULL DEFAULT 'pending',
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        responded_at TIMESTAMPTZ
-      )
-    `);
-    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS friendships_requester_addressee_uk ON friendships (requester_id, addressee_id)`);
-    await run(client, `CREATE INDEX IF NOT EXISTS idx_friendships_addressee_status ON friendships (addressee_id, status)`);
-    await run(client, `CREATE INDEX IF NOT EXISTS idx_friendships_requester_status ON friendships (requester_id, status)`);
+    // Fellows manual-add (beta) reuses the existing fellows + fellow_invites
+    // tables — no new table. fellow_invites carries pending requests; the two
+    // symmetric fellows rows are the accepted link (already in the garden /
+    // prayer-request visibility). An index on the request lookups:
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_fellow_invites_recipient_status ON fellow_invites (recipient_id, status)`);
 
     // ── forum_posts / forum_replies (group forum) ────────────────────────────
     // A message board scoped to a group: members post threads, any member

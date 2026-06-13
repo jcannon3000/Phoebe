@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, asc, desc, inArray, notInArray, and, isNull, isNotNull, or, gt, lt } from "drizzle-orm";
-import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, fellowsTable, prayerRequestTagsTable, prayerFeedSubscriptionsTable, friendshipsTable } from "@workspace/db";
+import { db, prayerRequestsTable, prayerWordsTable, prayerRequestAmensTable, prayerHeldNotificationsTable, usersTable, userMutesTable, groupMembersTable, anonymousAmensTable, fellowsTable, prayerRequestTagsTable, prayerFeedSubscriptionsTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sql } from "drizzle-orm";
 import crypto from "crypto";
@@ -324,21 +324,9 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   const gardenIds = await getGardenUserIds(sessionUserId);
-
-  // Accepted prayer friends (beta) surface in your list like a garden peer —
-  // their requests show up even with no shared community. An accepted row in
-  // either direction; the "other" id is the friend. Non-beta users can't form
-  // friendships, so this is empty for them (no gating needed here).
-  const friendRows = await db
-    .select({ requesterId: friendshipsTable.requesterId, addresseeId: friendshipsTable.addresseeId })
-    .from(friendshipsTable)
-    .where(and(
-      eq(friendshipsTable.status, "accepted"),
-      or(eq(friendshipsTable.requesterId, sessionUserId), eq(friendshipsTable.addresseeId, sessionUserId)),
-    ));
-  const friendIds = friendRows.map((r) => (r.requesterId === sessionUserId ? r.addresseeId : r.requesterId));
-
-  const visibleOwnerIds = [sessionUserId, ...gardenIds, ...friendIds];
+  // Fellows are already folded into getGardenUserIds (garden.ts → getFellowUserIds),
+  // so an accepted fellow's requests surface here automatically.
+  const visibleOwnerIds = [sessionUserId, ...gardenIds];
 
   // Requests the viewer has been TAGGED in by someone else. Tag is
   // a per-request visibility grant — the viewer sees that specific

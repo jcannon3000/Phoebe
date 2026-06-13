@@ -147,15 +147,15 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   });
   const myFeeds = myFeedsData?.feeds ?? [];
 
-  // Incoming prayer-friend requests → a count badge on the Friends menu row.
-  // Beta-only feature, so gated on rawIsBeta to skip the 403 for everyone else.
-  const { data: friendReqData } = useQuery<{ count: number }>({
-    queryKey: ["/api/friends/requests/count"],
-    queryFn: () => apiRequest("GET", "/api/friends/requests/count"),
+  // Incoming fellow requests → a count badge on the People menu row.
+  // Beta-only capability, so gated on rawIsBeta to skip the 403 for everyone else.
+  const { data: fellowReqData } = useQuery<{ count: number }>({
+    queryKey: ["/api/fellows/requests/count"],
+    queryFn: () => apiRequest("GET", "/api/fellows/requests/count"),
     enabled: open && !!user && rawIsBeta,
     staleTime: 30_000,
   });
-  const friendRequestCount = friendReqData?.count ?? 0;
+  const fellowRequestCount = fellowReqData?.count ?? 0;
 
   function navigate(path: string) {
     onClose();
@@ -410,24 +410,15 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     </MenuSection>
                   );
                 })()}
-                {/* People — find and connect with people. Moved here from the
-                    former header pill; lives under the user's communities. */}
+                {/* People — find and connect with people, incl. Fellows
+                    (1:1 connections + requests). The count badge shows incoming
+                    fellow requests for beta users. */}
                 <MenuRow
                   emoji="👥"
                   label={t("header.people")}
+                  count={fellowRequestCount}
                   onClick={() => navigate("/people")}
                 />
-                {/* Prayer friends — 1:1 connections + requests (beta). The
-                    count badge shows incoming friend requests. */}
-                {rawIsBeta && (
-                  <MenuRow
-                    emoji="🤝"
-                    label={t("menu.friends", { defaultValue: "Prayer friends" })}
-                    badge={t("menu.beta")}
-                    count={friendRequestCount}
-                    onClick={() => navigate("/friends")}
-                  />
-                )}
                 {/* Events — the upcoming schedule (services, gatherings,
                     practices), its own page now that it's off the home. */}
                 <MenuRow

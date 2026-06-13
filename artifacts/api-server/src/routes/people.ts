@@ -837,12 +837,17 @@ router.get("/fellows", async (req, res): Promise<void> => {
         name: usersTable.name,
         email: usersTable.email,
         avatarUrl: usersTable.avatarUrl,
+        streakCount: usersTable.prayerStreakCount,
+        streakLast: usersTable.prayerStreakLastDate,
       })
       .from(fellowsTable)
       .innerJoin(usersTable, eq(usersTable.id, fellowsTable.fellowUserId))
       .where(eq(fellowsTable.userId, sessionUserId))
       .orderBy(desc(fellowsTable.createdAt));
 
+    // A fellow's stored streak counts only when still live (prayed today /
+    // yesterday) so we never surface a stale number.
+    const yesterdayUtc = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
     res.json({
       fellows: rows.map(r => ({
         userId: r.fellowUserId,
@@ -851,6 +856,7 @@ router.get("/fellows", async (req, res): Promise<void> => {
         avatarUrl: r.avatarUrl,
         source: r.source,
         createdAt: r.createdAt?.toISOString() ?? null,
+        streak: r.streakLast && r.streakLast >= yesterdayUtc ? (r.streakCount ?? 0) : 0,
       })),
     });
   } catch (err) {
