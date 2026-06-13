@@ -6382,7 +6382,7 @@ export default function Dashboard() {
                       ownerAvatarUrl: r.ownerAvatarUrl ?? null,
                     }));
                   return (
-                    <div style={{ marginTop: 24 }}>
+                    <div style={{ marginTop: 8 }}>
                       <PrayerListCarousel
                         requests={carouselRows}
                         viewerName={userName || null}
