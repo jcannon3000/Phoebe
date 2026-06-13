@@ -6401,8 +6401,10 @@ export default function Dashboard() {
                   );
                 })()}
 
-                {/* Events — the upcoming schedule, below the prayer list. */}
-                {(<>
+                {/* Events — the upcoming schedule. Off the default home now;
+                    it lives in the menu (Events → gatherings). Only shown when a
+                    category filter is active. */}
+                {filter !== null && (<>
                 {/* 1. Today. The daily-prayer anchor card now lives
                     under the feast line up top, so the Today section
                     no longer carries a trailing PrayerListCard — it's
