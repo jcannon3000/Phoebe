@@ -4010,10 +4010,10 @@ function PrayerListCarousel({
                             type="button"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/prayer-mode?reset=1&focus=${req.id}`); }}
                             aria-label={t("prayer_card.pray", { defaultValue: "Pray" })}
-                            className="flex-shrink-0 rounded-full px-3.5 py-1.5 flex items-center justify-center transition-opacity hover:opacity-90 active:scale-95"
+                            className="flex-shrink-0 rounded-full px-3 py-1.5 flex items-center justify-center transition-opacity hover:opacity-90 active:scale-95"
                             style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)" }}
                           >
-                            <span className="text-[13px] leading-none">🙏🏾</span>
+                            <span className="text-[11px] leading-none">🙏🏾</span>
                           </button>
                         )
                       )}
