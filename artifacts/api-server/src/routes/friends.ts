@@ -245,4 +245,32 @@ router.get("/friends/search", requireBeta, async (req, res): Promise<void> => {
   res.json({ users });
 });
 
+// ─── POST /api/friends/status { userIds } — relationship of each id to me ────
+// Used by contacts-discovery: feed the matched user ids, get back each one's
+// status so the row can show Add / Requested / Accept / Friends.
+const statusSchema = z.object({ userIds: z.array(z.number().int().positive()).max(2000) });
+router.post("/friends/status", requireBeta, async (req, res): Promise<void> => {
+  const me = getUserId(req)!;
+  const parsed = statusSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid body" }); return; }
+  const ids = Array.from(new Set(parsed.data.userIds)).filter((id) => id !== me);
+  if (ids.length === 0) { res.json({ statuses: {} }); return; }
+  const rels = await db.select().from(friendshipsTable).where(or(
+    and(eq(friendshipsTable.requesterId, me), inArray(friendshipsTable.addresseeId, ids)),
+    and(eq(friendshipsTable.addresseeId, me), inArray(friendshipsTable.requesterId, ids)),
+  ));
+  const statuses: Record<number, "none" | "friends" | "requested" | "incoming"> = {};
+  for (const id of ids) {
+    const r = rels.find((x) =>
+      (x.requesterId === me && x.addresseeId === id) || (x.addresseeId === me && x.requesterId === id));
+    let s: "none" | "friends" | "requested" | "incoming" = "none";
+    if (r) {
+      if (r.status === "accepted") s = "friends";
+      else if (r.status === "pending") s = r.requesterId === me ? "requested" : "incoming";
+    }
+    statuses[id] = s;
+  }
+  res.json({ statuses });
+});
+
 export default router;

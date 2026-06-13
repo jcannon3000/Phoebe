@@ -4525,6 +4525,12 @@ export const en = {
     friends: "Friends",
     remove: "Remove",
     remove_confirm: "Remove this prayer friend?",
+    from_contacts: "Find from your contacts",
+    from_contacts_header: "From your contacts",
+    contacts_working: "Looking through your contacts…",
+    contacts_denied: "Contacts access is off — enable it in Settings to find friends this way.",
+    contacts_error: "Couldn't read your contacts. Try again.",
+    contacts_none: "None of your contacts are on Phoebe yet.",
   },
   prayer_list: {
     title: "Prayer List",

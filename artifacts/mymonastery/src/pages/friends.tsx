@@ -6,12 +6,30 @@
  * scoping yet (that's Phase 2).
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
+import { isNativeShell } from "@/lib/isNativeShell";
+
+// Client-side phone normalize + SHA-256, matching find-friends.tsx and the
+// server normalizer — raw numbers never leave the device, only hashes.
+function normalizePhoneClient(raw: string): string | null {
+  const trimmed = (raw ?? "").trim();
+  if (!trimmed) return null;
+  const hasPlus = trimmed.startsWith("+");
+  const digits = trimmed.replace(/[^\d]/g, "");
+  if (hasPlus) return digits.length >= 8 && digits.length <= 15 ? "+" + digits : null;
+  if (digits.length === 10) return "+1" + digits;
+  if (digits.length === 11 && digits.startsWith("1")) return "+" + digits;
+  return null;
+}
+async function sha256Hex(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -118,6 +136,57 @@ export default function FriendsPage() {
     </div>
   );
 
+  // Tapped-Add ids flip to "Requested" immediately, before the query refetches —
+  // shared by both search and contacts rows so either reflects the tap at once.
+  const [optReq, setOptReq] = useState<Set<number>>(() => new Set());
+  const addFriend = (id: number) => { sendReq.mutate(id); setOptReq((s) => new Set(s).add(id)); };
+
+  // One status-aware row for a searched OR contact-matched user.
+  const renderUserRow = (u: SearchUser, keyPrefix: string) => {
+    const status = optReq.has(u.id) ? "requested" : u.status;
+    const pill =
+      status === "friends" ? <Pill label={t("friends.friends", { defaultValue: "Friends" })} kind="muted" disabled />
+      : status === "requested" ? <Pill label={t("friends.requested", { defaultValue: "Requested" })} kind="muted" disabled />
+      : status === "incoming" ? <Pill label={t("friends.accept", { defaultValue: "Accept" })} kind="solid" onClick={() => { const r = requests.find((x) => x.userId === u.id); if (r) accept.mutate(r.id); else addFriend(u.id); }} />
+      : <Pill label={t("friends.add", { defaultValue: "Add" })} kind="solid" onClick={() => addFriend(u.id)} />;
+    return row(u.name, u.avatarUrl, pill, `${keyPrefix}-${u.id}`);
+  };
+
+  // ── Contacts discovery (native only) ─────────────────────────────────────
+  const native = isNativeShell();
+  const [contactsStage, setContactsStage] = useState<"idle" | "working" | "done" | "denied" | "error">("idle");
+  const [contactMatches, setContactMatches] = useState<SearchUser[]>([]);
+  useEffect(() => {
+    async function onReady(e: Event) {
+      const contacts = (((e as CustomEvent).detail?.contacts ?? []) as Array<{ phones?: string[] }>);
+      setContactsStage("working");
+      try {
+        const phones = new Set<string>();
+        for (const c of contacts) for (const p of c.phones ?? []) { const n = normalizePhoneClient(p); if (n) phones.add(n); }
+        if (phones.size === 0) { setContactMatches([]); setContactsStage("done"); return; }
+        const hashes = await Promise.all(Array.from(phones).map(sha256Hex));
+        const m = (await apiRequest("POST", "/api/contacts/match", { hashes })) as { matches: Array<{ userId: number; name: string | null; avatarUrl: string | null }> };
+        const seen = new Set<number>();
+        const uniq = m.matches.filter((x) => { if (seen.has(x.userId)) return false; seen.add(x.userId); return true; });
+        if (uniq.length === 0) { setContactMatches([]); setContactsStage("done"); return; }
+        const s = (await apiRequest("POST", "/api/friends/status", { userIds: uniq.map((x) => x.userId) })) as { statuses: Record<number, SearchUser["status"]> };
+        setContactMatches(uniq.map((x) => ({ id: x.userId, name: x.name ?? "Someone", avatarUrl: x.avatarUrl, status: s.statuses[x.userId] ?? "none" })));
+        setContactsStage("done");
+      } catch { setContactsStage("error"); }
+    }
+    const onDenied = () => setContactsStage("denied");
+    const onError = () => setContactsStage("error");
+    window.addEventListener("phoebe:contacts-ready", onReady as EventListener);
+    window.addEventListener("phoebe:contacts-denied", onDenied);
+    window.addEventListener("phoebe:contacts-error", onError as EventListener);
+    return () => {
+      window.removeEventListener("phoebe:contacts-ready", onReady as EventListener);
+      window.removeEventListener("phoebe:contacts-denied", onDenied);
+      window.removeEventListener("phoebe:contacts-error", onError as EventListener);
+    };
+  }, []);
+  const startContacts = () => { setContactsStage("working"); window.dispatchEvent(new Event("phoebe:request-contacts")); };
+
   return (
     <div className="dash-shell flex flex-col w-full pb-36">
       <button type="button" onClick={() => navigate("/dashboard")}
@@ -148,14 +217,33 @@ export default function FriendsPage() {
             ) : results.length === 0 ? (
               <p className="text-[13px] px-1 py-2" style={{ color: SAGE, fontFamily: FONT }}>{t("friends.no_results", { defaultValue: "No one found." })}</p>
             ) : (
-              results.map((u) =>
-                row(u.name, u.avatarUrl,
-                  u.status === "friends" ? <Pill label={t("friends.friends", { defaultValue: "Friends" })} kind="muted" disabled />
-                  : u.status === "requested" ? <Pill label={t("friends.requested", { defaultValue: "Requested" })} kind="muted" disabled />
-                  : u.status === "incoming" ? <Pill label={t("friends.accept", { defaultValue: "Accept" })} kind="solid" onClick={() => { const r = requests.find((x) => x.userId === u.id); if (r) accept.mutate(r.id); else sendReq.mutate(u.id); }} />
-                  : <Pill label={t("friends.add", { defaultValue: "Add" })} kind="solid" onClick={() => sendReq.mutate(u.id)} disabled={sendReq.isPending} />,
-                  `s-${u.id}`)
-              )
+              results.map((u) => renderUserRow(u, "s"))
+            )}
+          </div>
+        )}
+
+        {/* Find from your contacts (native only) */}
+        {native && q.trim().length < 2 && (
+          <div className="mt-3">
+            {contactsStage === "idle" ? (
+              <button type="button" onClick={startContacts}
+                className="w-full rounded-full px-4 py-3 text-[14px] font-semibold transition-opacity active:scale-[0.99]"
+                style={{ background: "rgba(200,212,192,0.08)", border: `1px solid ${CARD_B}`, color: "#C8D4C0", fontFamily: FONT }}>
+                {t("friends.from_contacts", { defaultValue: "Find from your contacts" })}
+              </button>
+            ) : contactsStage === "working" ? (
+              <p className="text-[13px] px-1 py-2" style={{ color: SAGE, fontFamily: FONT }}>{t("friends.contacts_working", { defaultValue: "Looking through your contacts…" })}</p>
+            ) : contactsStage === "denied" ? (
+              <p className="text-[13px] px-1 py-2" style={{ color: "#C47A65", fontFamily: FONT }}>{t("friends.contacts_denied", { defaultValue: "Contacts access is off — enable it in Settings to find friends this way." })}</p>
+            ) : contactsStage === "error" ? (
+              <p className="text-[13px] px-1 py-2" style={{ color: "#C47A65", fontFamily: FONT }}>{t("friends.contacts_error", { defaultValue: "Couldn't read your contacts. Try again." })}</p>
+            ) : contactMatches.length === 0 ? (
+              <p className="text-[13px] px-1 py-2" style={{ color: SAGE, fontFamily: FONT }}>{t("friends.contacts_none", { defaultValue: "None of your contacts are on Phoebe yet." })}</p>
+            ) : (
+              <>
+                {sectionHeader(t("friends.from_contacts_header", { defaultValue: "From your contacts" }))}
+                {contactMatches.map((u) => renderUserRow(u, "c"))}
+              </>
             )}
           </div>
         )}

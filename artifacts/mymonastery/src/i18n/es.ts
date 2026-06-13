@@ -4412,6 +4412,12 @@ export const es: Translations = {
     friends: "Amigos",
     remove: "Quitar",
     remove_confirm: "¿Quitar a este amigo de oración?",
+    from_contacts: "Buscar en tus contactos",
+    from_contacts_header: "De tus contactos",
+    contacts_working: "Revisando tus contactos…",
+    contacts_denied: "El acceso a contactos está desactivado — actívalo en Ajustes para buscar amigos así.",
+    contacts_error: "No se pudieron leer tus contactos. Inténtalo de nuevo.",
+    contacts_none: "Ninguno de tus contactos está en Phoebe todavía.",
   },
   prayer_list: {
     title: "Lista de oración",
