@@ -26,20 +26,21 @@ const WARM = "#F0EDE6";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
 
-// Breath pacing — 4s in, 2s hold, 6s out. The long exhale is the calming
-// half; twelve cycles ≈ 2.4 minutes, short enough to keep daily.
-const INHALE_MS = 4000;
-const HOLD_MS = 2000;
-const EXHALE_MS = 6000;
-export const CYCLE_MS = INHALE_MS + HOLD_MS + EXHALE_MS;
+// Breath pacing — box breathing: equal in / hold-top / out / hold-bottom,
+// 5s each, a calm, even square. ~20s per cycle; twelve cycles ≈ 4 minutes.
+const INHALE_MS = 5000;
+const HOLD_TOP_MS = 5000;
+const EXHALE_MS = 5000;
+const HOLD_BOTTOM_MS = 5000;
+export const CYCLE_MS = INHALE_MS + HOLD_TOP_MS + EXHALE_MS + HOLD_BOTTOM_MS;
 export const DEFAULT_TOTAL_BREATHS = 12;
 
-// Circle scale endpoints (relative to its 150px base): collapsed at rest /
-// full exhale, expanded at full inhale / hold.
+// Circle scale endpoints (relative to its 150px base): collapsed at the bottom
+// hold / full exhale, expanded at full inhale / top hold.
 const SMALL = 0.82;
 const BIG = 1.42;
 
-type Phase = "in" | "hold" | "out";
+type Phase = "in" | "hold-top" | "out" | "hold-bottom";
 
 // One line per breath, shown as the cycle begins. A small arc through Kearns'
 // essay: etymology → interconnection → planetary + ruach → justice → communion.
@@ -65,16 +66,20 @@ function easeInOut(p: number): number {
 }
 
 // Continuous scale for a position within the global cycle [0, CYCLE_MS).
+// Box breathing: rise (in) → hold expanded (top) → fall (out) → hold collapsed
+// (bottom).
 function scaleAt(pos: number): number {
   if (pos < INHALE_MS) return SMALL + (BIG - SMALL) * easeInOut(pos / INHALE_MS);
-  if (pos < INHALE_MS + HOLD_MS) return BIG;
-  return BIG - (BIG - SMALL) * easeInOut((pos - INHALE_MS - HOLD_MS) / EXHALE_MS);
+  if (pos < INHALE_MS + HOLD_TOP_MS) return BIG;
+  if (pos < INHALE_MS + HOLD_TOP_MS + EXHALE_MS) return BIG - (BIG - SMALL) * easeInOut((pos - INHALE_MS - HOLD_TOP_MS) / EXHALE_MS);
+  return SMALL;
 }
 
 function phaseAt(pos: number): Phase {
   if (pos < INHALE_MS) return "in";
-  if (pos < INHALE_MS + HOLD_MS) return "hold";
-  return "out";
+  if (pos < INHALE_MS + HOLD_TOP_MS) return "hold-top";
+  if (pos < INHALE_MS + HOLD_TOP_MS + EXHALE_MS) return "out";
+  return "hold-bottom";
 }
 
 // ── The breath ─────────────────────────────────────────────────────────────
@@ -223,10 +228,10 @@ export function CobreatheBreath({
   // suspended (app/tab backgrounded), even if visibilitychange hasn't fired
   // its handler yet on resume. Used to invalidate before the reach check.
   const lastTickRef = useRef(0);
-  // Cycle index at the previous frame — used to fire one gentle haptic at the
-  // top of every breath (the start of each inhale). null until the first frame
-  // so we don't buzz mid-cycle on mount.
-  const lastCycleRef = useRef<number | null>(null);
+  // Phase at the previous frame — used to fire a soft haptic + tone at the
+  // start of each of the four box-breathing phases. null until the first frame
+  // so we don't buzz mid-phase on mount.
+  const lastPhaseRef = useRef<Phase | null>(null);
 
   // A rAF loop writes transforms straight to the DOM from the global clock —
   // no React re-render per frame, perfectly synced for everyone, and only
@@ -236,30 +241,31 @@ export function CobreatheBreath({
     const loop = () => {
       const now = Date.now();
       const pos = now % CYCLE_MS;
-      // Top of each breath — a single soft tap as a new inhale begins, so the
-      // body can feel the global rhythm without watching. Fires on the
-      // wall-clock cycle boundary (same for everyone breathing now).
-      const cyc = Math.floor(now / CYCLE_MS);
-      if (lastCycleRef.current === null) {
-        lastCycleRef.current = cyc;
-      } else if (cyc !== lastCycleRef.current) {
-        lastCycleRef.current = cyc;
-        try {
-          window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } }));
-        } catch { /* no native shell on web — silent */ }
-        // A swell tone at the top of each breath, rotating through the SAME
-        // three octaves the prayer slideshow uses (0–2). Keyed to the global
-        // cycle index, so everyone breathing now hears the same octave together.
-        try { playOpeningSwell(((cyc % 3) + 3) % 3); } catch { /* audio locked — non-fatal */ }
+      const isCounting = now - countStartRef.current >= 0;
+      // Box-breathing phase transitions: a soft haptic + a swell tone at the
+      // start of each of the four phases (only once synced). The tone climbs
+      // with the breath — lowest octave on the inhale, middle on the top hold,
+      // highest on the exhale — and the bottom hold is silent (the rest).
+      const phase = phaseAt(pos);
+      if (lastPhaseRef.current === null) {
+        lastPhaseRef.current = phase;
+      } else if (phase !== lastPhaseRef.current) {
+        lastPhaseRef.current = phase;
+        if (isCounting) {
+          try {
+            window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } }));
+          } catch { /* no native shell on web — silent */ }
+          const octave = phase === "in" ? 0 : phase === "hold-top" ? 1 : phase === "out" ? 2 : -1;
+          if (octave >= 0) { try { playOpeningSwell(octave); } catch { /* audio locked — non-fatal */ } }
+        }
       }
       const s = scaleAt(pos);
-      // 0 at rest (full exhale) → 1 at full inhale.
+      // 0 at rest (full exhale / bottom hold) → 1 at full inhale / top hold.
       const p = (s - SMALL) / (BIG - SMALL);
       // Don't breathe until synced — while "Syncing", hold the scene STILL at
       // rest (p=0) so nothing pulses in/out. The count begins on a clean cycle
       // boundary (p=0), so the breath starts from this exact rest state with no
       // jump.
-      const isCounting = now - countStartRef.current >= 0;
       const pAnim = isCounting ? p : 0;
       // Everything below scales RADIALLY from the centre (translate -50%,-50%
       // only) — purely in/out, no vertical drift, all centred on the globe.
@@ -366,8 +372,9 @@ export function CobreatheBreath({
   const globe = GLOBES[Math.floor(now / 1000) % GLOBES.length];
   const phaseLabel =
     phase === "in" ? t("cobreathe.phase_in", { defaultValue: "Breathe in" })
-    : phase === "hold" ? t("cobreathe.phase_hold", { defaultValue: "Hold" })
-    : t("cobreathe.phase_out", { defaultValue: "Breathe out" });
+    : phase === "hold-top" ? t("cobreathe.phase_hold", { defaultValue: "Hold" })
+    : phase === "out" ? t("cobreathe.phase_out", { defaultValue: "Breathe out" })
+    : t("cobreathe.phase_rest", { defaultValue: "Rest" });
 
   // Where are we in the count? Negative during the pre-roll; uncapped after,
   // so the count keeps climbing past the target while they keep breathing.

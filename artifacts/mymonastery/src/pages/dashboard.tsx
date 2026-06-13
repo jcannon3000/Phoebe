@@ -3867,6 +3867,7 @@ function PrayerListCarousel({
   viewerName,
   viewerAvatarUrl,
   tight = false,
+  hideTitle = false,
 }: {
   requests: PrayerListCarouselRow[];
   viewerName: string | null;
@@ -3875,6 +3876,9 @@ function PrayerListCarousel({
    *  Set by the dashboard when no upcoming events are rendering so
    *  the carousel doesn't drift to the bottom of an empty page. */
   tight?: boolean;
+  /** Hide the "Prayer List" title row — used under the home tab, which
+   *  already labels the section, so the title isn't repeated. */
+  hideTitle?: boolean;
 }) {
   const { t } = useTranslation();
   if (requests.length === 0) return null;
@@ -3890,30 +3894,43 @@ function PrayerListCarousel({
     name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
 
   return (
-    <div className={tight ? "mt-3" : "mt-8"}>
+    <div className={tight ? "mt-3" : "mt-6"}>
       {/* Title row mirrors SectionShell on /prayer-list: title +
-          horizontal divider + "View all" pill on the right, so the
-          row reads as a peer of the manage-prayer-list sections. */}
-      <div className="flex items-center gap-3 mb-2">
-        <h3
-          className="text-lg font-semibold"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          {t("prayer_list.title")}
-        </h3>
-        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-        <Link
-          href="/prayer-list"
-          className="text-[10px] font-semibold uppercase transition-opacity hover:opacity-80"
-          style={{
-            color: "rgba(143,175,150,0.55)",
-            letterSpacing: "0.12em",
-            fontFamily: "'Space Grotesk', sans-serif",
-          }}
-        >
-          {t("prayer_list_carousel.view_all")}
-        </Link>
-      </div>
+          horizontal divider + "View all" pill on the right. Under the home
+          tab the title is hidden (the tab already names it) — just the
+          right-aligned "View all" remains. */}
+      {hideTitle ? (
+        <div className="flex justify-end mb-3">
+          <Link
+            href="/prayer-list"
+            className="text-[10px] font-semibold uppercase transition-opacity hover:opacity-80"
+            style={{ color: "rgba(143,175,150,0.55)", letterSpacing: "0.12em", fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            {t("prayer_list_carousel.view_all")}
+          </Link>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3 mb-2">
+          <h3
+            className="text-lg font-semibold"
+            style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            {t("prayer_list.title")}
+          </h3>
+          <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+          <Link
+            href="/prayer-list"
+            className="text-[10px] font-semibold uppercase transition-opacity hover:opacity-80"
+            style={{
+              color: "rgba(143,175,150,0.55)",
+              letterSpacing: "0.12em",
+              fontFamily: "'Space Grotesk', sans-serif",
+            }}
+          >
+            {t("prayer_list_carousel.view_all")}
+          </Link>
+        </div>
+      )}
 
       <div style={{ position: "relative" }}>
         <div
@@ -6455,11 +6472,12 @@ export default function Dashboard() {
                         viewerName={userName || null}
                         viewerAvatarUrl={user?.avatarUrl ?? null}
                         tight
+                        hideTitle
                       />
                       <Link href="/pray-request/new" className="block mt-4">
                         <div
                           className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-                          style={{ padding: "15px 20px", background: "#2D5E3F", border: "1px solid rgba(46,107,64,0.7)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600 }}
+                          style={{ padding: "11px 20px", background: "#2D5E3F", border: "1px solid rgba(46,107,64,0.7)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600 }}
                         >
                           ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
                         </div>
