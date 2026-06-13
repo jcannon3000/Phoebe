@@ -3886,6 +3886,7 @@ function PrayerListCarousel({
   hideTitle?: boolean;
 }) {
   const { t } = useTranslation();
+  const [, navigate] = useLocation();
   if (requests.length === 0) return null;
 
   // ~3.5 card rows. Each card is roughly 72-80px tall with vertical
@@ -3991,6 +3992,17 @@ function PrayerListCarousel({
                           {req.body}
                         </p>
                       </div>
+                      {/* Prayer-hands — opens the slideshow at this request, then
+                          continues through the rest of the list. */}
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/prayer-mode?reset=1&focus=${req.id}`); }}
+                        aria-label={t("prayer_card.pray", { defaultValue: "Pray" })}
+                        className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-opacity hover:opacity-90 active:scale-95"
+                        style={{ background: "rgba(46,107,64,0.85)", border: "1px solid rgba(46,107,64,0.55)" }}
+                      >
+                        <span className="text-[17px]">🙏</span>
+                      </button>
                     </div>
                   </div>
                 </motion.div>
@@ -6189,7 +6201,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               this for a short subtitle. */}
           <div style={{ marginBottom: 20 }}>
             {eventsOnly
-              ? <p style={{ color: "rgba(143,175,150,0.6)", fontSize: 13, fontFamily: "'Space Grotesk', sans-serif", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("dashboard.events_subtitle", { defaultValue: "Services, gatherings & practices" })}</p>
+              ? null
               : <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />}
           </div>
 

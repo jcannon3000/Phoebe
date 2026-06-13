@@ -3010,6 +3010,16 @@ export default function PrayerModePage() {
     // The user can renew from the profile page if they want to continue.
   ];
 
+  // ?focus=<requestId> — the prayer-hands button on a prayer-list card opens
+  // the walk at that request, then continues through the rest of the list.
+  if (focusId != null) {
+    const fi = slides.findIndex((s) => s.kind === "request" && s.requestId === focusId);
+    if (fi > 0) {
+      const [hit] = slides.splice(fi, 1);
+      if (hit) slides.unshift(hit);
+    }
+  }
+
   // Final slide logic:
   //   - No active own request → "How can the community pray for you?"
   //     (the existing ask-request slide). Drives both this trailing
