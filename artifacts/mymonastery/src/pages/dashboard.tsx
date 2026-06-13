@@ -5295,6 +5295,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   //   • all kept:   a community summary (who you prayed with / who prayed
   //                 with you)
   const rhythm = useRhythmState();
+  // Once every daily prayer anchor is done, the routine drops off the home and
+  // the upcoming-events schedule takes its place (the cards still live on the
+  // /daily-progress page). Only flips after the rhythm queries settle.
+  const allHabitsDone = rhythm.ready && rhythm.totalAnchors > 0 && rhythm.doneCount >= rhythm.totalAnchors;
   const heroReflectionSource = useEffectiveReflectionSource();
   const dynamicHero = !featuredFeed;
   const reflectKey: HomeModule | null =
@@ -6221,15 +6225,54 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               standard home modules. */}
           {filter === null && (newHomeForEveryone || isBeta) && !eventsOnly && (
             <div className="mt-5 mb-3">
-              {/* A "prayer requests waiting" card leads when there's something
-                  to respond to; then the office hero (the same full
-                  PrayerOfficeCard all users get) leads the Next list, above
-                  Contemplation. */}
-              <DailyProgressBody
-                showStreak={false}
-                leadCard={newPrayersCount > 0 ? <NewPrayerRequestsCard count={newPrayersCount} faces={homeFaces} /> : null}
-                renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />}
-              />
+              {allHabitsDone ? (() => {
+                // Day's rhythm is complete — hand the home over to the upcoming
+                // schedule. The full Next/Done cards still live on /daily-progress.
+                const noEvents = todayItems.length === 0 && tomorrowItems.length === 0 && weekItems.length === 0 && monthItems.length === 0;
+                const evtProps = {
+                  userEmail, userName,
+                  onOpenService: (schedule: ServiceSchedule, nextDate: Date) => setOpenService({ schedule, nextDate }),
+                  onOpenConsolidatedServices: (schedules: ServiceSchedule[], nextDate: Date) => setOpenConsolidatedServices({ schedules, nextDate }),
+                  onOpenGathering: (r: any) => setOpenGathering(r),
+                };
+                return (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
+                    <div className="mb-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                        🌿 {t("dashboard.day_kept_eyebrow", { defaultValue: "The day is kept" })}
+                      </p>
+                      <p className="text-[15px]" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+                        {t("dashboard.day_kept_events_line", { defaultValue: "Here's what's coming up." })}
+                      </p>
+                    </div>
+                    {noEvents ? (
+                      <div className="py-10 text-center">
+                        <p className="text-3xl mb-2">🕊️</p>
+                        <p className="text-sm" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+                          {t("dashboard.day_kept_no_events", { defaultValue: "Nothing on the calendar — rest easy." })}
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <TimeSection label={t("dashboard.today_section")} items={todayItems} {...evtProps} />
+                        <TimeSection label={t("dashboard.tomorrow_section")} items={tomorrowItems} {...evtProps} />
+                        <TimeSection label={t("dashboard.this_week_section")} items={weekItems} {...evtProps} />
+                        <TimeSection label={t("dashboard.upcoming_section")} items={monthItems} {...evtProps} />
+                      </>
+                    )}
+                  </motion.div>
+                );
+              })() : (
+                /* A "prayer requests waiting" card leads when there's something
+                   to respond to; then the office hero (the same full
+                   PrayerOfficeCard all users get) leads the Next list, above
+                   Contemplation. */
+                <DailyProgressBody
+                  showStreak={false}
+                  leadCard={newPrayersCount > 0 ? <NewPrayerRequestsCard count={newPrayersCount} faces={homeFaces} /> : null}
+                  renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />}
+                />
+              )}
             </div>
           )}
           {filter === null && !newHomeForEveryone && !isBeta && !betaLoading && !eventsOnly && (() => {
@@ -6400,7 +6443,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       myAmenedToday: r.myAmenedToday,
                     }));
                   return (
-                    <div style={{ marginTop: 10 }}>
+                    <div style={{ marginTop: 4 }}>
                       <PrayerListCarousel
                         requests={carouselRows}
                         viewerName={userName || null}

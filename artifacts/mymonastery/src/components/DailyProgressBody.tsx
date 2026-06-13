@@ -29,6 +29,14 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
+// Staggered fade-up for the daily cards — each card rises in just after the one
+// above it, instead of the whole block flashing on as one opacity step.
+const fadeContainer = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.02 } } };
+const fadeItem = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.34, ease: [0.22, 1, 0.36, 1] as const } },
+};
+
 // A card subtitle that gently cross-fades between a few values (opacity only,
 // no movement — the same crossfade the worship card uses). An invisible spacer
 // of the longest value reserves the height, so the swap never nudges the
@@ -315,7 +323,7 @@ function PracticeCard({
                 the compact cards. */}
             <div className="flex-shrink-0">{heroCta}</div>
           </div>
-          {progress && progress.goal > 0 && !done && (
+          {progress && progress.goal > 0 && (
             <div className="mt-3.5 rounded-full overflow-hidden" style={{ height: 5, background: "rgba(143,175,150,0.16)" }}>
               <div
                 className="h-full rounded-full"
@@ -366,7 +374,7 @@ function PracticeCard({
         </div>
         {/* Progress bar spans the full width below the row — so "Begin" sits
             above it rather than beside it. */}
-        {progress && progress.goal > 0 && !done && (
+        {progress && progress.goal > 0 && (
           <div className="mt-3 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
             <div
               className="h-full rounded-full"
@@ -529,27 +537,21 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
   // Hold the first paint until the rhythm queries have settled, then fade the
   // finished Next/Done split in as one piece — otherwise the cards render all
   // under "Next" and visibly jump into "Done" as each query lands.
+  // Hold the first paint until the rhythm queries have settled (so cards don't
+  // jump from Next to Done as data lands), then fade each card up in turn.
+  if (!ready) return null;
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: ready ? 1 : 0 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-    >
-      {ready && (<>
-      {/* The weekly practice grid leads the daily-progress page (it's the
-          headline "where am I this week" view). Hidden on the home, where
-          showStreak is false. */}
-      {showStreak && <div className="mb-4"><WeeklyGridCard /></div>}
+    <motion.div variants={fadeContainer} initial="hidden" animate="show">
       {/* A prayer-requests card leads the whole thing when there's something
           waiting. */}
-      {leadCard && <div className="mb-3">{leadCard}</div>}
+      {leadCard && <motion.div variants={fadeItem} className="mb-3">{leadCard}</motion.div>}
       {(upcoming.length > 0 || officeHero) && (
         <>
-          {sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}
+          <motion.div variants={fadeItem}>{sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}</motion.div>
           <div className="flex flex-col gap-2">
             {/* The office hero leads the Next list — above Contemplation. */}
-            {officeHero}
-            {upcoming.map((c) => renderCard(c))}
+            {officeHero && <motion.div variants={fadeItem}>{officeHero}</motion.div>}
+            {upcoming.map((c) => <motion.div key={c.key} variants={fadeItem}>{renderCard(c)}</motion.div>)}
           </div>
         </>
       )}
@@ -562,11 +564,13 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
           !(upcoming.length > 0 || officeHero) ? ""
             : upcoming.length > 0 ? "mt-4" : "mt-20"
         }>
-          {sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}
-          <div className="flex flex-col gap-2">{completed.map((c) => renderCard(c))}</div>
+          <motion.div variants={fadeItem}>{sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}</motion.div>
+          <div className="flex flex-col gap-2">{completed.map((c) => <motion.div key={c.key} variants={fadeItem}>{renderCard(c)}</motion.div>)}</div>
         </div>
       )}
-      </>)}
+      {/* The weekly practice grid sits under the daily cards on the daily-
+          progress page. Hidden on the home, where showStreak is false. */}
+      {showStreak && <motion.div variants={fadeItem} className="mt-6"><WeeklyGridCard /></motion.div>}
     </motion.div>
   );
 }
