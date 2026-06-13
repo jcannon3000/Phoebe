@@ -142,6 +142,7 @@ import Onboarding from "./pages/onboarding";
 // stays lazy. (dashboard.tsx's named exports were already pulled in by other
 // lazy routes; the default being static just keeps the whole module in entry.)
 import Dashboard from "./pages/dashboard";
+const EventsPage = lazy(() => import("./pages/events"));
 const RitualDetail = lazy(() => import("./pages/ritual-detail"));
 const RitualSchedule = lazy(() => import("./pages/ritual-schedule"));
 const GuestSchedule = lazy(() => import("./pages/guest-schedule"));
@@ -677,7 +678,8 @@ function Router() {
       <Route path="/news" component={NewsPage} />
       <Route path="/building-faith" component={BuildingFaithPage} />
       <Route path="/podcasts/:publisher" component={PodcastPublisherPage} />
-      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/dashboard"><Dashboard /></Route>
+      <Route path="/events" component={EventsPage} />
       {/* BETA: Way of Love. The DAILY half folded back into /dashboard (Turn
           streak + the existing office / Contemplation / reflection cards); the
           WEEKLY half lives on /this-week. The combined /home-beta home is

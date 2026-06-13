@@ -77,7 +77,7 @@ export default function MenuPage() {
   const explore: MenuHubGroup = { header: t("menu.hdr_explore"), items: [] };
   if (!officesOnly) {
     explore.items.push({ emoji: "🏘️", label: t("menu.communities"), sub: t("menu.communities_sub"), onClick: () => go("/communities") });
-    explore.items.push({ emoji: "📅", label: t("menu.events", { defaultValue: "Events" }), sub: t("menu.events_sub", { defaultValue: "Gatherings, services, and your calendar" }), onClick: () => go("/gatherings") });
+    explore.items.push({ emoji: "📅", label: t("menu.events", { defaultValue: "Events" }), sub: t("menu.events_sub", { defaultValue: "Services, gatherings & practices" }), onClick: () => go("/events") });
   }
   explore.items.push({ emoji: "📚", label: t("menu.resources"), sub: t("menu.resources_sub"), onClick: () => go("/menu/resources") });
   if (showLetters) explore.items.push({ emoji: "📮", label: t("menu.letters"), badge: t("menu.beta_badge"), onClick: () => go("/letters") });

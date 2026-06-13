@@ -4929,7 +4929,7 @@ function GoalReachedModal({
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
-export default function Dashboard() {
+export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean } = {}) {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
@@ -6167,12 +6167,15 @@ export default function Dashboard() {
               fontFamily: "'Space Grotesk', sans-serif",
             }}
           >
-            {format(new Date(), "EEEE, d MMMM")}
+            {eventsOnly ? t("dashboard.events_title", { defaultValue: "Events" }) : format(new Date(), "EEEE, d MMMM")}
           </p>
           {/* Show the feast/Sunday/commemoration when there is one;
-              otherwise fall back to the brand tagline. */}
+              otherwise fall back to the brand tagline. The events page swaps
+              this for a short subtitle. */}
           <div style={{ marginBottom: 20 }}>
-            <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
+            {eventsOnly
+              ? <p style={{ color: "rgba(143,175,150,0.6)", fontSize: 13, fontFamily: "'Space Grotesk', sans-serif", textTransform: "uppercase", letterSpacing: "0.06em" }}>{t("dashboard.events_subtitle", { defaultValue: "Services, gatherings & practices" })}</p>
+              : <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />}
           </div>
 
           {/* Today's Rhythm card moved off the home top: it now lives on the
@@ -6205,7 +6208,7 @@ export default function Dashboard() {
           {/* Beta home: the cards become the daily-progress view — the four
               anchors split into Next / Done plus the streak — in place of the
               standard home modules. */}
-          {filter === null && isBeta && (
+          {filter === null && isBeta && !eventsOnly && (
             <div className="mt-5 mb-3">
               {/* A "prayer requests waiting" card leads when there's something
                   to respond to; then the office hero (the same full
@@ -6218,7 +6221,7 @@ export default function Dashboard() {
               />
             </div>
           )}
-          {filter === null && !isBeta && (() => {
+          {filter === null && !isBeta && !eventsOnly && (() => {
             // Render the home modules in the user's chosen order, skipping
             // hidden ones. Each module returns its content (or null when it
             // has nothing to show); the first non-null gets mt-5, the rest
@@ -6364,7 +6367,7 @@ export default function Dashboard() {
                     "View all", "Pray through the whole list" at its foot), then
                     a wide "New prayer request" CTA. Leads the home, above the
                     events schedule. */}
-                {filter === null && (() => {
+                {filter === null && !eventsOnly && (() => {
                   const carouselRows: PrayerListCarouselRow[] = (dashPrayerRequests ?? [])
                     .filter((r) => {
                       if (r.isAnswered) return false;
@@ -6402,9 +6405,9 @@ export default function Dashboard() {
                 })()}
 
                 {/* Events — the upcoming schedule. Off the default home now;
-                    it lives in the menu (Events → gatherings). Only shown when a
-                    category filter is active. */}
-                {filter !== null && (<>
+                    it lives on its own /events page (Menu → Events). Shown when
+                    a category filter is active, or in events-only mode. */}
+                {(filter !== null || eventsOnly) && (<>
                 {/* 1. Today. The daily-prayer anchor card now lives
                     under the feast line up top, so the Today section
                     no longer carries a trailing PrayerListCard — it's
@@ -6444,6 +6447,16 @@ export default function Dashboard() {
                 <TimeSection label={t("dashboard.upcoming_section")} items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
                 </>)}
 
+                {/* Events-only empty state — nothing on the calendar. */}
+                {eventsOnly && fToday.length === 0 && fTomorrow.length === 0 && fWeek.length === 0 && fMonth.length === 0 && (
+                  <div className="py-16 text-center">
+                    <p className="text-4xl mb-3">📅</p>
+                    <p className="text-sm" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      {t("dashboard.events_empty", { defaultValue: "Nothing on the calendar right now." })}
+                    </p>
+                  </div>
+                )}
+
                 {/* Filtered empty state */}
                 {filteredEmpty && (() => {
                   const emptyConfig = {
@@ -6477,6 +6490,7 @@ export default function Dashboard() {
                     signal. The "Join a community" path stays for
                     genuinely brand-new users with no context. */}
                 {filter === null
+                  && !eventsOnly
                   && totalCount === 0
                   && pendingPrayerCount === 0
                   && (dashGroups?.groups?.length ?? 0) === 0 && (
