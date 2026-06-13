@@ -955,7 +955,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
 // timezone, if today's logged contemplation minutes are still below the goal,
 // send one gentle nudge. Deduped per local day via contemplation_goal_sent_date
 // (stamped on a successful send, or when the goal is already met).
-const CONTEMPLATION_GOAL_TIME = "19:00";
+const CONTEMPLATION_GOAL_TIME = "20:30";
 
 export async function runContemplationGoalSender(opts: { forceNow?: boolean } = {}): Promise<void> {
   try {
