@@ -346,11 +346,11 @@ function PracticeCard({
     >✓</span>
   ) : waiting ? (
     <span
-      className="flex-shrink-0 rounded-full text-[12px] font-medium px-3.5 py-1.5"
-      style={{ background: "transparent", color: "rgba(182,210,188,0.5)", border: "1px solid rgba(143,175,150,0.22)" }}
+      className="flex-shrink-0 rounded-full text-[12px] font-medium px-3.5 py-1.5 text-center"
+      style={{ minWidth: 84, background: "transparent", color: "rgba(182,210,188,0.5)", border: "1px solid rgba(143,175,150,0.22)" }}
     >{laterLabel}</span>
   ) : (
-    <span className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5" style={{ background: `rgba(${rgb},0.85)`, color: WARM }}>
+    <span className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center" style={{ minWidth: 84, background: `rgba(${rgb},0.85)`, color: WARM }}>
       {cta} <span aria-hidden>→</span>
     </span>
   );
@@ -561,7 +561,9 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
           </div>
         </>
       )}
-      {completed.length > 0 && (
+      {/* The "Done" list only belongs on the Daily Progress page (showStreak);
+          the home stays focused on what's Next. */}
+      {showStreak && completed.length > 0 && (
         // Gap above Done: when the Next list has a card under the hero, that
         // card already gives separation, so a smaller gap reads right; when the
         // hero is the ONLY thing in Next, it jumps straight to Done and needs
