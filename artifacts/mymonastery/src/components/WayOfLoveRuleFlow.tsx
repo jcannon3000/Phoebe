@@ -115,9 +115,9 @@ function homeCardOn(
 }
 
 const NEWSLETTERS: { id: ReflectionSource; label: string; sub: string }[] = [
-  { id: "fdd", label: "Forward Day by Day", sub: "Forward Movement" },
-  { id: "ssje", label: "SSJE — Brother, Give Us a Word", sub: "Society of St. John the Evangelist" },
-  { id: "cac", label: "CAC Daily Meditation", sub: "Center for Action & Contemplation" },
+  { id: "fdd", label: "📖 Forward Day by Day", sub: "Forward Movement" },
+  { id: "ssje", label: "✍🏽 SSJE — Brother, Give Us a Word", sub: "Society of St. John the Evangelist" },
+  { id: "cac", label: "🌅 CAC Daily Meditation", sub: "Center for Action & Contemplation" },
 ];
 
 export default function WayOfLoveRuleFlow({
@@ -336,12 +336,11 @@ export default function WayOfLoveRuleFlow({
   const goNext = () => { const i = orderedSteps.indexOf(step); if (i >= 0 && i < orderedSteps.length - 1) setStep(orderedSteps[i + 1]); };
   const goPrev = () => { const i = orderedSteps.indexOf(step); if (i > 0) setStep(orderedSteps[i - 1]); else onBack(); };
 
-  const backRow = (onClick: () => void) => (
-    <button onClick={onClick} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "8px 0", display: "flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
-      <ChevronLeft size={18} />
-      <span style={{ fontSize: 14, fontFamily: FONT }}>{t("ruleOfLife.back", { defaultValue: "Back" })}</span>
-    </button>
-  );
+  // The top "Back" row is intentionally NOT rendered (per design — the flow
+  // leads with the progress bar and the content sits higher). Kept as a no-op so
+  // the per-step call sites don't each need editing; navigation still happens
+  // via the bottom Continue / the editable review screen.
+  const backRow = (_onClick: () => void): ReactNode => null;
 
   // Header for the current step — the N/M and progress fill come from the step's
   // position in the (dynamic) ordered list.
@@ -362,7 +361,7 @@ export default function WayOfLoveRuleFlow({
   };
 
   const ctaButton = (label: string, onClick: () => void) => (
-    <button onClick={onClick} style={{ marginTop: "auto", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+    <button onClick={onClick} style={{ marginTop: 32, background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
       {label}
     </button>
   );
@@ -438,8 +437,8 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.when_body", { defaultValue: "When would you like to pray? Choose one or both." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {choiceRow(sides.morning, t("wol_rule.when_morning", { defaultValue: "Morning" }), t("wol_rule.when_morning_sub", { defaultValue: "Begin the day with prayer." }), () => toggleSide("morning"))}
-          {choiceRow(sides.evening, t("wol_rule.when_evening", { defaultValue: "Evening" }), t("wol_rule.when_evening_sub", { defaultValue: "Mark the day's end with prayer." }), () => toggleSide("evening"))}
+          {choiceRow(sides.morning, `🌅 ${t("wol_rule.when_morning", { defaultValue: "Morning" })}`, t("wol_rule.when_morning_sub", { defaultValue: "Begin the day with prayer." }), () => toggleSide("morning"))}
+          {choiceRow(sides.evening, `🌙 ${t("wol_rule.when_evening", { defaultValue: "Evening" })}`, t("wol_rule.when_evening_sub", { defaultValue: "Mark the day's end with prayer." }), () => toggleSide("evening"))}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
@@ -458,10 +457,10 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.side_way_body", { side: cap.toLowerCase(), defaultValue: `How will you pray in the ${cap.toLowerCase()}?` })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {choiceRow(prayBySide[side] === "community", t("wol_rule.pray_community", { defaultValue: "Community prayers" }), t("wol_rule.pray_community_sub", { defaultValue: "Pray with your community through the day's intercessions." }), () => choosePrayBySide(side, "community"))}
-          {choiceRow(prayBySide[side] === "devotion", t("wol_rule.pray_devotion", { defaultValue: "Daily devotion" }), t("wol_rule.pray_devotion_sub", { defaultValue: "A short form of Morning or Evening Prayer." }), () => choosePrayBySide(side, "devotion"))}
-          {choiceRow(prayBySide[side] === "offices", t("wol_rule.pray_offices", { defaultValue: "The offices" }), t("wol_rule.pray_offices_sub", { defaultValue: "The full Daily Office — Morning & Evening Prayer." }), () => choosePrayBySide(side, "offices"))}
-          {choiceRow(prayBySide[side] === "contemplation", t("wol_rule.pray_contemplation", { defaultValue: "Contemplation" }), t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => choosePrayBySide(side, "contemplation"))}
+          {choiceRow(prayBySide[side] === "community", `🙏 ${t("wol_rule.pray_community", { defaultValue: "Community prayers" })}`, t("wol_rule.pray_community_sub", { defaultValue: "Pray with your community through the day's intercessions." }), () => choosePrayBySide(side, "community"))}
+          {choiceRow(prayBySide[side] === "devotion", `🌿 ${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`, t("wol_rule.pray_devotion_sub", { defaultValue: "A short form of the office — a few unhurried minutes." }), () => choosePrayBySide(side, "devotion"))}
+          {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, t("wol_rule.pray_offices_sub", { defaultValue: "The full Daily Office, prayed at your own pace." }), () => choosePrayBySide(side, "offices"))}
+          {choiceRow(prayBySide[side] === "contemplation", `🕯️ ${cap} ${t("wol_rule.contemplation_word", { defaultValue: "Contemplation" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => choosePrayBySide(side, "contemplation"))}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
@@ -500,12 +499,13 @@ export default function WayOfLoveRuleFlow({
                 style={{ width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none", opacity: isIntercessions ? 0.6 : 1 }}
               >
                 {isIntercessions ? (
-                  <option value="read">{t("wol_rule.method_screen", { defaultValue: "On screen" })}</option>
+                  <option value="read">📖 {t("wol_rule.method_screen", { defaultValue: "Digital Slideshow" })}</option>
                 ) : (
                   <>
-                    <option value="read">{t("wol_rule.method_screen", { defaultValue: "On screen" })}</option>
-                    <option value="listen">{t("wol_rule.method_listen", { defaultValue: "Listen" })}</option>
-                    <option value="book">{t("wol_rule.method_book", { defaultValue: "In your book" })}</option>
+                    <option value="read">📖 {t("wol_rule.method_screen", { defaultValue: "Digital Slideshow" })}</option>
+                    <option value="listen">🎧 {t("wol_rule.method_listen", { defaultValue: "Listen" })}</option>
+                    {side === "morning" && <option value="watch">📺 {t("wol_rule.method_watch", { defaultValue: "Watch" })}</option>}
+                    <option value="book">📕 {t("wol_rule.method_book", { defaultValue: "Physical BCP" })}</option>
                   </>
                 )}
               </select>
@@ -543,7 +543,7 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "0 0 16px" }}>
           {t("wol_rule.learn_multi_note", { defaultValue: "Pick as many as you like — each gets its own card on your home." })}
         </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 32 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {NEWSLETTERS.map((n) => choiceRow(newsletters.includes(n.id), n.label, n.sub, () => toggleNewsletter(n.id)))}
           {choiceRow(noReflection, t("wol_rule.learn_none", { defaultValue: "None" }), t("wol_rule.learn_none_sub", { defaultValue: "No daily reflection — one fewer step in your rhythm." }), chooseNoReflection)}
         </div>
@@ -565,8 +565,8 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.extras_note", { defaultValue: "Each adds a card on your home and a checkmark to your Daily progress." })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {choiceRow(extras.gratitude, t("wol_rule.extra_gratitude", { defaultValue: "Gratitude" }), t("wol_rule.extra_gratitude_sub", { defaultValue: "Name one gift from the day." }), () => toggleExtra("gratitude"))}
-          {choiceRow(extras.examen, t("wol_rule.extra_examen", { defaultValue: "The Examen" }), t("wol_rule.extra_examen_sub", { defaultValue: "St. Ignatius' end-of-day review of the day with God." }), () => toggleExtra("examen"))}
+          {choiceRow(extras.gratitude, `🙏 ${t("wol_rule.extra_gratitude", { defaultValue: "Gratitude" })}`, t("wol_rule.extra_gratitude_sub", { defaultValue: "Name one gift from the day." }), () => toggleExtra("gratitude"))}
+          {choiceRow(extras.examen, `🌗 ${t("wol_rule.extra_examen", { defaultValue: "The Examen" })}`, t("wol_rule.extra_examen_sub", { defaultValue: "St. Ignatius' end-of-day review of the day with God." }), () => toggleExtra("examen"))}
         </div>
         {ctaButton(t("wol_rule.finish", { defaultValue: "Save my daily rhythm" }), commit)}
       </>,
@@ -576,10 +576,10 @@ export default function WayOfLoveRuleFlow({
   // ── Done / review — the practices they set, each tappable to jump back and
   // edit that part of the flow ───────────────────────────────────────────────
   const methodLabel = (m: DefaultOfficeEntry): string =>
-    m === "listen" ? t("wol_rule.method_listen", { defaultValue: "Listen" })
-    : m === "book" ? t("wol_rule.method_book", { defaultValue: "In your book" })
-    : m === "watch" ? "Watch"
-    : t("wol_rule.method_screen", { defaultValue: "On screen" });
+    m === "listen" ? `🎧 ${t("wol_rule.method_listen", { defaultValue: "Listen" })}`
+    : m === "book" ? `📕 ${t("wol_rule.method_book", { defaultValue: "Physical BCP" })}`
+    : m === "watch" ? "📺 Watch"
+    : `📖 ${t("wol_rule.method_screen", { defaultValue: "Digital Slideshow" })}`;
   const sideWayLabel = (side: OfficeSide): string => {
     const cap = side === "morning" ? "Morning" : "Evening";
     return prayBySide[side] === "community" ? "Community Intercessions"
