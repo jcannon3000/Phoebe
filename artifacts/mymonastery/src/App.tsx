@@ -1,8 +1,10 @@
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { QueryClient, QueryClientProvider, QueryCache } from "@tanstack/react-query";
+import { PersistQueryClientProvider, removeOldestQuery } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { hydrateIdbCache, attachIdbPersistence } from "@/lib/idbCache";
+import { ApiError } from "@/lib/queryClient";
+import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NetworkBanner } from "@/components/NetworkBanner";
@@ -322,7 +324,33 @@ function RedirectTo({ to }: { to: string }) {
 // errors with jittered exponential backoff but stay hands-off on 4xx
 // responses — those are real answers from the server, not transport
 // hiccups, so retrying just wastes time and risks double-submits.
+// Contextual "you're offline" notice — no persistent banner. We only speak up
+// when the user actually hits a wall: a query they're looking at failed on the
+// network (not an HTTP error from a reachable server) AND we have nothing cached
+// to show them. Then a single throttled toast tells them it'll load once
+// they're back online. Queries that fall back to cached data stay silent.
+let lastOfflineToastAt = 0;
 const queryClient = new QueryClient({
+  queryCache: new QueryCache({
+    onError: (error, query) => {
+      // ApiError = the server replied with a non-2xx (it's reachable) — that's
+      // a real error, not "offline", so don't mislabel it.
+      if (error instanceof ApiError) return;
+      // We have cached data on screen — the failed refetch is invisible to the
+      // user, so there's nothing to tell them.
+      if (query.state.data !== undefined) return;
+      // Nothing is actually observing this query (a background prefetch) — no
+      // one is staring at a blank screen waiting for it.
+      if (query.getObserversCount() === 0) return;
+      const now = Date.now();
+      if (now - lastOfflineToastAt < 8000) return;
+      lastOfflineToastAt = now;
+      toast({
+        title: navigator.onLine ? "Couldn't load that" : "You're offline",
+        description: "This needs a connection — it'll load once you're back online.",
+      });
+    },
+  }),
   defaultOptions: {
     queries: {
       retry: (failureCount, error) => {
@@ -406,6 +434,11 @@ const rqPersister = createSyncStoragePersister({
 const rqPersistOptions = {
   persister: rqPersister,
   maxAge: 24 * 60 * 60 * 1000,
+  // Quota guard: if the dehydrated blob ever exceeds the ~5MB localStorage cap,
+  // drop the oldest query and retry instead of silently failing to persist (so
+  // the home would cold-boot blank). The big content already lives in the
+  // IndexedDB layer, so this should rarely trigger — it's belt-and-suspenders.
+  retry: removeOldestQuery,
   dehydrateOptions: {
     shouldDehydrateQuery: (q: { state: { status: string }; queryKey: readonly unknown[] }) =>
       q.state.status === "success" &&
