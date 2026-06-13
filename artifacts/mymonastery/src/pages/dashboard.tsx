@@ -4000,8 +4000,8 @@ function PrayerListCarousel({
                         req.myAmenedToday ? (
                           <span
                             aria-label={t("prayer_card.amened", { defaultValue: "Amened" })}
-                            className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
-                            style={{ background: "rgba(46,107,64,0.18)", color: "rgba(240,237,230,0.85)", border: "1px solid rgba(46,107,64,0.45)" }}
+                            className="flex-shrink-0 rounded-full flex items-center justify-center text-[13px] font-semibold"
+                            style={{ width: 40, height: 28, background: "rgba(46,107,64,0.18)", color: "rgba(240,237,230,0.85)", border: "1px solid rgba(46,107,64,0.45)" }}
                           >
                             ✓
                           </span>
@@ -4010,10 +4010,10 @@ function PrayerListCarousel({
                             type="button"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/prayer-mode?reset=1&focus=${req.id}`); }}
                             aria-label={t("prayer_card.pray", { defaultValue: "Pray" })}
-                            className="flex-shrink-0 rounded-full px-3 py-1.5 flex items-center justify-center transition-opacity hover:opacity-90 active:scale-95"
-                            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)" }}
+                            className="flex-shrink-0 rounded-full flex items-center justify-center transition-opacity hover:opacity-90 active:scale-95"
+                            style={{ width: 40, height: 28, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)" }}
                           >
-                            <span className="text-[11px] leading-none">🙏🏾</span>
+                            <span className="text-[12px] leading-none">🙏🏾</span>
                           </button>
                         )
                       )}
@@ -5176,6 +5176,24 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
+  // Belt-and-suspenders: the home can be restored from the back/forward cache
+  // without remounting (Safari bfcache, native back-swipe), which skips
+  // refetchOnMount. Re-pull the prayer list whenever the page becomes visible
+  // again so amens made elsewhere always show as checked.
+  useEffect(() => {
+    const refresh = () => { queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] }); };
+    const onVis = () => { if (document.visibilityState === "visible") refresh(); };
+    window.addEventListener("pageshow", refresh);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("phoebe:appactive", refresh);
+    return () => {
+      window.removeEventListener("pageshow", refresh);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("phoebe:appactive", refresh);
+    };
+  }, [queryClient]);
   const { data: dashPrayersFor } = useQuery<DashPrayerFor[]>({
     queryKey: ["/api/prayers-for/mine"],
     queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
