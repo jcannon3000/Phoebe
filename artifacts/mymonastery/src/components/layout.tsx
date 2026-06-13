@@ -796,6 +796,11 @@ export function Layout({ children }: { children: ReactNode }) {
   // Jardín shell — hide Phoebe's daily-progress pill (the office/reflect/
   // silence rhythm) for portal accounts; it's not part of the Jardín day.
   const headerJardinShell = isJardinSealed(user);
+  // The home screen promotes the daily-progress pill to its headline (the
+  // date's old spot, scaled up), so the small header copy hides there —
+  // the pill should never appear twice on one screen.
+  const [headerLocation] = useLocation();
+  const onHome = headerLocation === "/dashboard";
 
   // Best-effort sync of today's external Apple Health mindful minutes to the
   // server from the app shell (so it runs on nearly every page), giving the
@@ -848,7 +853,7 @@ export function Layout({ children }: { children: ReactNode }) {
                 old Prayer-list pill (which now lives in the Menu drawer). The
                 four dots reflect today's rhythm; tapping opens /daily-progress.
                 Hidden for the offices-only tier to match the prior pill. */}
-            {!officesOnly && !headerJardinShell && <DailyProgressPill />}
+            {!officesOnly && !headerJardinShell && !onHome && <DailyProgressPill />}
             <button
               onClick={() => { playOpeningSwell(0); setDrawerOpen(true); }}
               className="flex items-center justify-center transition-colors"

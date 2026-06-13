@@ -2966,6 +2966,55 @@ function NcmpHomeCard() {
   );
 }
 
+// The home headline: the daily-progress pill, promoted from the header to
+// the date's old top spot and scaled up — the day's rhythm is the first
+// thing you see and tap. Mirrors DailyProgressPill (layout.tsx), which
+// hides itself on the dashboard so the pill never shows twice.
+function HomeDailyProgressHeadline() {
+  const { t } = useTranslation();
+  const { morningDone, reflectDone, silenceDone, eveningDone, gratitudeActive, examenActive, gratitudeDone, examenDone } = useRhythmState();
+  const dots = [
+    morningDone, reflectDone, silenceDone, eveningDone,
+    ...(gratitudeActive ? [gratitudeDone] : []),
+    ...(examenActive ? [examenDone] : []),
+  ];
+  return (
+    <Link
+      href="/daily-progress"
+      className="inline-flex items-center gap-3 rounded-full transition-opacity hover:opacity-80 active:scale-[0.99]"
+      style={{
+        fontFamily: "'Space Grotesk', sans-serif",
+        background: "rgba(200,212,192,0.08)",
+        border: "1px solid rgba(46,107,64,0.35)",
+        padding: "11px 18px",
+      }}
+      aria-label={t("header.daily_progress", { defaultValue: "Daily progress" })}
+    >
+      <span style={{ color: "#F0EDE6", fontSize: 17, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1 }}>
+        {t("header.daily_progress", { defaultValue: "Daily progress" })}
+      </span>
+      <span className="inline-flex items-center gap-[5px]" aria-hidden>
+        {dots.map((done, i) => (
+          <span
+            key={i}
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: 999,
+              display: "inline-block",
+              background: done ? "rgba(110,180,130,0.95)" : "transparent",
+              border: done ? "none" : "1px solid rgba(143,175,150,0.5)",
+            }}
+          />
+        ))}
+      </span>
+      <span aria-hidden style={{ color: "rgba(143,175,150,0.7)", fontSize: 15, lineHeight: 1, marginLeft: -2 }}>
+        ›
+      </span>
+    </Link>
+  );
+}
+
 // ── HomeDoneSummaryCard — the all-kept hero ──────────────────────────────────
 // Shown as the home hero once the day's rhythm is fully kept (morning +
 // reflection + evening). A quiet benediction over a community summary: how many
@@ -6160,22 +6209,28 @@ export default function Dashboard() {
             not the day-of-week, so we want the in-app date visible
             there too). */}
         <div className="mb-4">
+          {/* The day's progress is the headline now (the pill promoted from
+              the header, scaled up); the calendar date drops to a small
+              eyebrow above it and the feast line keeps its spot below. */}
           <p
-            className="mb-1"
+            className="mb-2"
             style={{
-              color: "#F0EDE6",
-              fontSize: 22,
+              color: "rgba(143,175,150,0.6)",
+              fontSize: 11.5,
               fontWeight: 600,
-              letterSpacing: "-0.02em",
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
               lineHeight: 1.2,
               fontFamily: "'Space Grotesk', sans-serif",
+              margin: 0,
             }}
           >
             {format(new Date(), "EEEE, d MMMM")}
           </p>
+          <HomeDailyProgressHeadline />
           {/* Show the feast/Sunday/commemoration when there is one;
               otherwise fall back to the brand tagline. */}
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginTop: 10, marginBottom: 20 }}>
             <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />
           </div>
 
