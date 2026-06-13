@@ -183,6 +183,17 @@ export default function WayOfLoveRuleFlow({
     morning: true,
     evening: true,
   }));
+  // For a contemplation side: sit in silence, or Cobreathe (breathe to one
+  // shared global pace). Stored locally; the home/daily-progress Contemplation
+  // card's "Begin" opens Cobreathe directly when this is set.
+  const [contemplationStyle, setContemplationStyle] = useState<"silent" | "cobreathe">(() => {
+    try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { return "silent"; }
+  });
+  const chooseContemplationStyle = (s: "silent" | "cobreathe") => {
+    touchedRef.current = true;
+    setContemplationStyle(s);
+    try { localStorage.setItem("phoebe:contemplation-style", s); } catch { /* ignore */ }
+  };
   // Optional daily practices — adding one surfaces its home card AND an extra
   // Daily-progress checkmark. Seeded from whether the card is already on the
   // user's (current-version) home layout (in order, not hidden).
@@ -541,6 +552,18 @@ export default function WayOfLoveRuleFlow({
                 )}
               </select>
               <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+            </div>
+          </>
+        )}
+        {/* Contemplation: silent sit or Cobreathe (a shared global breath). */}
+        {isContemplation && (
+          <>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
+              {t("wol_rule.contemplation_style_label", { defaultValue: "How would you like to sit?" })}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {choiceRow(contemplationStyle === "silent", `🕯️ ${t("wol_rule.style_silent", { defaultValue: "Silent sit" })}`, t("wol_rule.style_silent_sub", { defaultValue: "Just you and a quiet timer." }), () => chooseContemplationStyle("silent"))}
+              {choiceRow(contemplationStyle === "cobreathe", `🌍 ${t("wol_rule.style_cobreathe", { defaultValue: "Cobreathe" })}`, t("wol_rule.style_cobreathe_sub", { defaultValue: "Breathe to one shared pace for climate justice." }), () => chooseContemplationStyle("cobreathe"))}
             </div>
           </>
         )}
