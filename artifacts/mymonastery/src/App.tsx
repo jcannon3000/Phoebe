@@ -2,6 +2,7 @@ import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
+import { hydrateIdbCache, attachIdbPersistence } from "@/lib/idbCache";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { NetworkBanner } from "@/components/NetworkBanner";
@@ -411,6 +412,16 @@ const rqPersistOptions = {
       PERSISTED_QUERY_KEYS.some((k) => String(q.queryKey?.[0] ?? "").startsWith(k)),
   },
 };
+
+// Second, LARGER offline layer (IndexedDB) for heavy content the ~5MB
+// localStorage persister above can't hold — prayer feeds + the daily-office
+// scripture/BCP text. Additive and async: the localStorage persister keeps the
+// home's instant cold-boot paint untouched, while this restores + persists the
+// big keys in the background. Both calls are best-effort and no-op if IndexedDB
+// is unavailable (private mode, old webview). attachIdbPersistence subscribes
+// for the app's whole life, so we don't keep its unsubscribe handle.
+attachIdbPersistence(queryClient);
+void hydrateIdbCache(queryClient);
 
 // Invalidate every React Query cache when the user taps an iOS push
 // notification. The native shell fires `phoebe:notification-tap` from
