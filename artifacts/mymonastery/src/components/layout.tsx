@@ -851,15 +851,16 @@ function OpeningSplash() {
   return (
     <motion.div
       onClick={dismiss}
-      initial={{ opacity: 0 }}
+      // The backdrop is opaque from the very first frame — so the recap is the
+      // first thing shown (no flash of the home behind it). Only the fade-OUT
+      // animates; the recap's own content gently rises in on top.
+      initial={{ opacity: 1 }}
       animate={{ opacity: phase === "out" ? 0 : 1 }}
-      transition={{ duration: phase === "out" ? 0.9 : 1.4, ease: "easeInOut" }}
-      className="fixed inset-0 flex flex-col items-center justify-center"
+      transition={{ duration: phase === "out" ? 0.9 : 0, ease: "easeInOut" }}
+      className="fixed inset-0 flex flex-col items-center justify-center gap-6 px-10"
       style={{ background: "#0C1F12", zIndex: 200, pointerEvents: phase === "out" ? "none" : "auto" }}
     >
-      <div className="flex flex-col items-center gap-6 px-10">
-        <CommunityPrayedRecap coPrayers={data?.people ?? []} />
-      </div>
+      <CommunityPrayedRecap coPrayers={data?.people ?? []} />
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); dismiss(); }}
