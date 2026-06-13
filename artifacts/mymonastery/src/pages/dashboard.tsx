@@ -4000,8 +4000,8 @@ function PrayerListCarousel({
                         req.myAmenedToday ? (
                           <span
                             aria-label={t("prayer_card.amened", { defaultValue: "Amened" })}
-                            className="flex-shrink-0 rounded-full flex items-center justify-center text-[13px] font-semibold"
-                            style={{ width: 40, height: 28, background: "rgba(46,107,64,0.18)", color: "rgba(240,237,230,0.85)", border: "1px solid rgba(46,107,64,0.45)" }}
+                            className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
+                            style={{ background: "rgba(46,107,64,0.18)", color: "rgba(240,237,230,0.85)", border: "1px solid rgba(46,107,64,0.45)" }}
                           >
                             ✓
                           </span>
@@ -4010,10 +4010,10 @@ function PrayerListCarousel({
                             type="button"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/prayer-mode?reset=1&focus=${req.id}`); }}
                             aria-label={t("prayer_card.pray", { defaultValue: "Pray" })}
-                            className="flex-shrink-0 rounded-full flex items-center justify-center transition-opacity hover:opacity-90 active:scale-95"
-                            style={{ width: 40, height: 28, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)" }}
+                            className="flex-shrink-0 rounded-full text-[12px] px-3.5 py-1.5 leading-none transition-opacity hover:opacity-90 active:scale-95"
+                            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)" }}
                           >
-                            <span className="text-[12px] leading-none">🙏🏾</span>
+                            🙏🏾
                           </button>
                         )
                       )}
@@ -5360,7 +5360,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
       : null;
   const reflectAvailable = reflectKey != null && homeOrder.includes(reflectKey) && !homeHidden.has(reflectKey);
   const heroNowHour = new Date().getHours();
-  const heroAfternoon = heroNowHour >= 15;
+  // Evening Prayer only takes over as the hero from 5pm on — before then the
+  // afternoon hero stays on the morning office / today's reflection. (Earlier
+  // this was 3pm, which surfaced Evening Prayer too early in the day.)
+  const heroAfternoon = heroNowHour >= 17;
   type HomeHero =
     | { kind: "office"; side: "morning" | "evening" }
     | { kind: "reflect"; key: HomeModule }
@@ -5381,7 +5384,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   const heroOfficeSide = homeHero?.kind === "office" ? homeHero.side : undefined;
   // In dynamic-hero mode the reflection only ever appears AS the hero —
   // it never lingers as a list card before it's up or after it's read.
-  // (This also covers the 3pm rule: the hero is the office then, so the
+  // (This also covers the 5pm rule: the hero is the office then, so the
   // reflection is hidden until evening prayer is done.)
   const reflectionIsHero = (key: HomeModule) => !dynamicHero || heroKey === key;
   // Whether the office card renders as the big hero (vs the compact one-liner).

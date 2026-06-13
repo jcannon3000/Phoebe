@@ -3483,6 +3483,20 @@ export default function PrayerModePage() {
           new CustomEvent("phoebe:clear-notifications", { detail: { threadId: `prayer-request-${rid}` } })
         );
       } catch { /* non-fatal */ }
+      // Optimistically flip myAmenedToday / myAmenedEver on the cached
+      // prayer-list right now, before the network call resolves. The home
+      // check then shows the instant the user returns — even on a slow or
+      // offline connection, and even if the subsequent refetch is served
+      // from the persisted (pre-amen) snapshot first. Without this the list
+      // could keep showing the un-checked state until a fresh fetch landed,
+      // which reads as "I held Amen but it never checked."
+      queryClient.setQueryData<any[]>(["/api/prayer-requests"], (old) =>
+        Array.isArray(old)
+          ? old.map((r) =>
+              r && r.id === rid ? { ...r, myAmenedToday: true, myAmenedEver: true } : r,
+            )
+          : old,
+      );
       amenWithLocation(rid)
         .then(() => {
           // Two invalidations:
