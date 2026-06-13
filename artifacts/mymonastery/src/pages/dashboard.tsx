@@ -4929,6 +4929,10 @@ export default function Dashboard() {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const [filter, setFilter] = useState<"practices" | null>(null);
+  // Home sub-tabs under the daily section: "Prayer List" (prayer requests, the
+  // default) vs "Events" (the upcoming schedule). Only shown on the unfiltered
+  // home.
+  const [homeTab, setHomeTab] = useState<"prayers" | "events">("prayers");
   // Native vs. web detection. The iOS shell injects `window.PhoebeNative`
   // before the JS bundle runs, so reading it once at mount is safe and
   // avoids a first-paint flash. We use this to show the calendar date
@@ -6355,16 +6359,36 @@ export default function Dashboard() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
-                {/* Prayer request compose — leads ABOVE the events sections so
-                    the user starts with "what I'm carrying" before their
-                    schedule. (The "X prayer requests waiting" count card still
-                    sits at the very top, above the office card.) */}
+                {/* Two equal-width tabs under the daily section: Prayer List
+                    (requests, the default) vs Events (the upcoming schedule). */}
                 {filter === null && (
-                  <div className="mb-6">
-                    <ActiveRequestsCard activeCount={ownActiveCount} />
+                  <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                    {([["prayers", t("dashboard.tab_prayer_list", { defaultValue: "Prayer List" })], ["events", t("dashboard.tab_events", { defaultValue: "Events" })]] as const).map(([key, label]) => {
+                      const on = homeTab === key;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setHomeTab(key as "prayers" | "events")}
+                          className="flex-1 rounded-full transition-opacity hover:opacity-90"
+                          style={{
+                            padding: "10px 16px",
+                            fontFamily: "'Space Grotesk', sans-serif",
+                            fontSize: 14, fontWeight: 600, cursor: "pointer",
+                            color: on ? "#F0EDE6" : "#8FAF96",
+                            background: on ? "rgba(46,107,64,0.30)" : "rgba(46,107,64,0.10)",
+                            border: `1px solid ${on ? "rgba(168,197,160,0.55)" : "rgba(46,107,64,0.28)"}`,
+                          }}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
 
+                {/* Events tab (also shown when a category filter is active). */}
+                {(filter !== null || homeTab === "events") && (<>
                 {/* 1. Today. The daily-prayer anchor card now lives
                     under the feast line up top, so the Today section
                     no longer carries a trailing PrayerListCard — it's
@@ -6402,14 +6426,12 @@ export default function Dashboard() {
 
                 {/* 4. Upcoming — everything past the upcoming Sunday. */}
                 <TimeSection label={t("dashboard.upcoming_section")} items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
+                </>)}
 
-                {/* Prayer List carousel — sits AFTER Upcoming so it
-                    reads as a peek into a different surface (the
-                    management list) rather than as a daily-action
-                    bucket. Only renders when the unfiltered ("all")
-                    view is active; a category filter would make it
-                    off-topic. */}
-                {filter === null && (() => {
+                {/* Prayer List tab — the requests carousel ("Pray through the
+                    whole list" lives at its foot), then a wide "New prayer
+                    request" CTA beneath it. */}
+                {filter === null && homeTab === "prayers" && (() => {
                   const carouselRows: PrayerListCarouselRow[] = (dashPrayerRequests ?? [])
                     .filter((r) => {
                       if (r.isAnswered) return false;
@@ -6426,23 +6448,23 @@ export default function Dashboard() {
                       ownerName: r.ownerName ?? null,
                       ownerAvatarUrl: r.ownerAvatarUrl ?? null,
                     }));
-                  // When the four time sections (Today / Tomorrow /
-                  // This week / Upcoming) all render empty, there's
-                  // a stretch of nothing between the compose bar and
-                  // the Prayer List section. Pull the carousel up so
-                  // it lands closer to the compose bar in that case.
-                  const noEvents =
-                    fToday.length === 0 &&
-                    fTomorrow.length === 0 &&
-                    fWeek.length === 0 &&
-                    fMonth.length === 0;
                   return (
-                    <PrayerListCarousel
-                      requests={carouselRows}
-                      viewerName={userName || null}
-                      viewerAvatarUrl={user?.avatarUrl ?? null}
-                      tight={noEvents}
-                    />
+                    <>
+                      <PrayerListCarousel
+                        requests={carouselRows}
+                        viewerName={userName || null}
+                        viewerAvatarUrl={user?.avatarUrl ?? null}
+                        tight
+                      />
+                      <Link href="/pray-request/new" className="block mt-4">
+                        <div
+                          className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+                          style={{ padding: "15px 20px", background: "#2D5E3F", border: "1px solid rgba(46,107,64,0.7)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600 }}
+                        >
+                          ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
+                        </div>
+                      </Link>
+                    </>
                   );
                 })()}
 
