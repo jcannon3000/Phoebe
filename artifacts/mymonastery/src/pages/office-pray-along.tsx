@@ -53,13 +53,22 @@ const TYPE_LABEL: Record<string, string> = {
   collect: "The Collect", prayer_for_mission: "Prayer for Mission",
   general_thanksgiving: "General Thanksgiving", closing: "Closing Prayer",
 };
+// Minor words stay lowercase except as the first word — so eyebrows like
+// "CONFESSION OF SIN" / "PRAYER FOR MISSION" read "Confession of Sin" /
+// "Prayer for Mission", not "Of"/"For".
+const MINOR_WORDS = new Set(["of", "for", "the", "a", "an", "and", "to", "in", "on", "with", "at", "by", "from", "or"]);
 function titleCase(s: string): string {
-  return s.toLowerCase().replace(/\b([a-z])/g, (_, c) => c.toUpperCase());
+  return s.toLowerCase().split(/\s+/).map((w, i) =>
+    i > 0 && MINOR_WORDS.has(w) ? w : w.replace(/^[a-z]/, (c) => c.toUpperCase()),
+  ).join(" ");
 }
 // The name of the liturgical part, the way the office book lists it. Prefer the
 // slide's eyebrow ("First Lesson", "Psalm 27"), nicely cased; fall back to a
 // type label.
 function sectionLabel(row: Row): string {
+  // The Gloria slide carries the psalm's eyebrow ("Venite · Psalm 95"); name
+  // the doxology itself rather than repeating the psalm.
+  if (row.sec.type === "psalm_gloria") return TYPE_LABEL.psalm_gloria;
   const eb = row.slide?.eyebrow?.trim();
   if (eb) return titleCase(eb.replace(/\s+/g, " "));
   return TYPE_LABEL[row.sec.type] ?? titleCase(row.sec.type.replace(/_/g, " "));
