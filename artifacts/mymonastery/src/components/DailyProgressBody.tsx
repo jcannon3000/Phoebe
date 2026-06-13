@@ -509,11 +509,13 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
     : cards;
   const upcoming = visibleCards.filter((c) => !c.done);
   const completed = visibleCards.filter((c) => c.done);
+  // Matches the Prayer List title row — a larger mixed-case heading with a
+  // divider line trailing off to the right.
   const sectionHeader = (label: string) => (
     <div className="flex items-center gap-3 mb-2">
-      <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
+      <h3 className="text-lg font-semibold" style={{ color: WARM, fontFamily: FONT }}>
         {label}
-      </p>
+      </h3>
       <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
     </div>
   );

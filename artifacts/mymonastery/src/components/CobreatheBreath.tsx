@@ -550,7 +550,7 @@ export function CobreatheBreath({
           {!counting
             ? t("cobreathe.finding_rhythm", { defaultValue: "Syncing with the global breath…" })
             : reachedNow
-              ? t("cobreathe.kept_keep_going", { count: totalBreaths, defaultValue: `🌿 ${totalBreaths} breaths kept — keep going as long as you like` })
+              ? t("cobreathe.breath_counter_past", { current: breathNum, defaultValue: `🌿 Breath ${breathNum} — keep going as long as you like` })
               : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `Breath ${breathNum} of ${totalBreaths}` })}
         </p>
         {othersToday != null && othersToday > 0 && (
