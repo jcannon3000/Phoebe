@@ -26,21 +26,22 @@ const WARM = "#F0EDE6";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
 
-// Breath pacing — box breathing: equal in / hold-top / out / hold-bottom,
-// 5s each, a calm, even square. ~20s per cycle; twelve cycles ≈ 4 minutes.
-const INHALE_MS = 5000;
-const HOLD_TOP_MS = 2500;
-const EXHALE_MS = 5000;
-const HOLD_BOTTOM_MS = 2500;
-export const CYCLE_MS = INHALE_MS + HOLD_TOP_MS + EXHALE_MS + HOLD_BOTTOM_MS;
+// Breath pacing — a simple in / out breath, 7s each: a long, calm inhale
+// and an equally long exhale, no holds. 14s per cycle; twelve cycles ≈ 2:48.
+const INHALE_MS = 7000;
+const EXHALE_MS = 7000;
+// Each phase (in, out) is one PHASE_MS slice of the cycle — used to derive a
+// globally-synced octave that rotates 0→1→2→3 across phases.
+const PHASE_MS = INHALE_MS;
+export const CYCLE_MS = INHALE_MS + EXHALE_MS;
 export const DEFAULT_TOTAL_BREATHS = 12;
 
-// Circle scale endpoints (relative to its 150px base): collapsed at the bottom
-// hold / full exhale, expanded at full inhale / top hold.
+// Glow scale endpoints (relative to its base): collapsed at full exhale,
+// expanded at full inhale.
 const SMALL = 0.82;
 const BIG = 1.42;
 
-type Phase = "in" | "hold-top" | "out" | "hold-bottom";
+type Phase = "in" | "out";
 
 // One line per breath, shown as the cycle begins. A small arc through Kearns'
 // essay: etymology → interconnection → planetary + ruach → justice → communion.
@@ -66,20 +67,14 @@ function easeInOut(p: number): number {
 }
 
 // Continuous scale for a position within the global cycle [0, CYCLE_MS).
-// Box breathing: rise (in) → hold expanded (top) → fall (out) → hold collapsed
-// (bottom).
+// Simple breath: rise (in) → fall (out), no holds.
 function scaleAt(pos: number): number {
   if (pos < INHALE_MS) return SMALL + (BIG - SMALL) * easeInOut(pos / INHALE_MS);
-  if (pos < INHALE_MS + HOLD_TOP_MS) return BIG;
-  if (pos < INHALE_MS + HOLD_TOP_MS + EXHALE_MS) return BIG - (BIG - SMALL) * easeInOut((pos - INHALE_MS - HOLD_TOP_MS) / EXHALE_MS);
-  return SMALL;
+  return BIG - (BIG - SMALL) * easeInOut((pos - INHALE_MS) / EXHALE_MS);
 }
 
 function phaseAt(pos: number): Phase {
-  if (pos < INHALE_MS) return "in";
-  if (pos < INHALE_MS + HOLD_TOP_MS) return "hold-top";
-  if (pos < INHALE_MS + HOLD_TOP_MS + EXHALE_MS) return "out";
-  return "hold-bottom";
+  return pos < INHALE_MS ? "in" : "out";
 }
 
 // ── The breath ─────────────────────────────────────────────────────────────
@@ -125,16 +120,16 @@ const PEOPLE_POOL = ["🧑🏽", "🧑🏾", "🧑🏿", "👩🏽", "👩🏾",
 const VOCATION_POOL = ["👩🏽‍⚕️", "👨🏿‍🏫", "👩🏾‍🌾", "🧑🏽‍🍳", "👨🏾‍🔧", "👩🏿‍🏭", "🧑🏾‍🎓", "👷🏽‍♀️", "🧑🏿‍🚒", "👩🏽‍🏫", "🧑🏾‍🔬", "👨🏾‍🍳", "👩🏿‍✈️", "🧑🏽‍🌾", "👨🏽‍⚕️", "👩🏾‍💻"];
 const CATEGORY_POOLS = [PLANT_POOL, PEOPLE_POOL, VOCATION_POOL, ANIMAL_POOL];
 const GOLDEN_ANGLE = 2.399963229728653; // radians (~137.5°)
-const PARTICLE_COUNT = 24;
+const PARTICLE_COUNT = 60;
 const PARTICLE_LAYOUT = Array.from({ length: PARTICLE_COUNT }, (_, i) => {
   const f = i / PARTICLE_COUNT;
   const angle = i * GOLDEN_ANGLE;
-  const radius = 64 + 112 * Math.sqrt(f); // px from centre — even spiral spread
+  const radius = 64 + 248 * Math.sqrt(f); // px from centre — spreads well past the old rim
   return {
     x: Math.cos(angle) * radius,
     y: Math.sin(angle) * radius,
-    size: 20 - f * 9,        // ~20px near the globe → ~11px at the rim
-    opacity: 0.82 - f * 0.58, // fade outward, like a radial gradient
+    size: 20 - f * 11,        // ~20px near the globe → ~9px at the rim
+    opacity: 0.82 - f * 0.62, // fade outward, like a radial gradient
   };
 });
 // Build a fresh, balanced-but-varied cast: walk the categories in order from a
@@ -242,10 +237,11 @@ export function CobreatheBreath({
       const now = Date.now();
       const pos = now % CYCLE_MS;
       const isCounting = now - countStartRef.current >= 0;
-      // Box-breathing phase transitions: a soft haptic + a swell tone at the
-      // start of each of the four phases (only once synced). The tone climbs
-      // with the breath — lowest octave on the inhale, middle on the top hold,
-      // highest on the exhale — and the bottom hold is silent (the rest).
+      // Phase transitions (inhale ↔ exhale): a soft haptic + a swell tone at
+      // the start of each phase (only once synced). The octave ROTATES through
+      // four octaves, one per 7s phase — and because it's derived from the
+      // global clock (floor(now / PHASE_MS) % 4), everyone breathing at this
+      // instant hears the same octave, so the tones stay in unison too.
       const phase = phaseAt(pos);
       if (lastPhaseRef.current === null) {
         lastPhaseRef.current = phase;
@@ -255,8 +251,8 @@ export function CobreatheBreath({
           try {
             window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } }));
           } catch { /* no native shell on web — silent */ }
-          const octave = phase === "in" ? 0 : phase === "hold-top" ? 1 : phase === "out" ? 2 : -1;
-          if (octave >= 0) { try { playOpeningSwell(octave); } catch { /* audio locked — non-fatal */ } }
+          const octave = Math.floor(now / PHASE_MS) % 4;
+          try { playOpeningSwell(octave); } catch { /* audio locked — non-fatal */ }
         }
       }
       const s = scaleAt(pos);
@@ -277,10 +273,9 @@ export function CobreatheBreath({
         ringRef.current.style.transform = `translate(-50%, -50%) scale(${(0.82 + pAnim * 0.98).toFixed(4)})`;
         ringRef.current.style.opacity = String(0.18 + pAnim * 0.34);
       }
-      if (globeRef.current) {
-        globeRef.current.style.transform = `translate(-50%, -50%) scale(${(0.9 + pAnim * 0.24).toFixed(4)})`;
-        globeRef.current.style.opacity = String(0.6 + pAnim * 0.4);
-      }
+      // The globe stays a STEADY size — it no longer swells with the breath
+      // (only the glow behind it breathes). Left untouched here so it holds at
+      // its base scale/opacity.
       // The emoji spiral itself stays STILL — per the design, only the gradient
       // glow behind it breathes (the circle + halo above). The particles hold
       // their positions and their emoji; nothing scales, fades, or rolls.
@@ -371,10 +366,9 @@ export function CobreatheBreath({
   // each second's change.)
   const globe = GLOBES[Math.floor(now / 1000) % GLOBES.length];
   const phaseLabel =
-    phase === "in" ? t("cobreathe.phase_in", { defaultValue: "Breathe in" })
-    : phase === "hold-top" ? t("cobreathe.phase_hold", { defaultValue: "Hold" })
-    : phase === "out" ? t("cobreathe.phase_out", { defaultValue: "Breathe out" })
-    : t("cobreathe.phase_rest", { defaultValue: "Rest" });
+    phase === "in"
+      ? t("cobreathe.phase_in", { defaultValue: "Breathe in" })
+      : t("cobreathe.phase_out", { defaultValue: "Breathe out" });
 
   // Where are we in the count? Negative during the pre-roll; uncapped after,
   // so the count keeps climbing past the target while they keep breathing.
