@@ -29,9 +29,9 @@ const SERIF = "Georgia, serif";
 // Breath pacing — box breathing: equal in / hold-top / out / hold-bottom,
 // 5s each, a calm, even square. ~20s per cycle; twelve cycles ≈ 4 minutes.
 const INHALE_MS = 5000;
-const HOLD_TOP_MS = 5000;
+const HOLD_TOP_MS = 2500;
 const EXHALE_MS = 5000;
-const HOLD_BOTTOM_MS = 5000;
+const HOLD_BOTTOM_MS = 2500;
 export const CYCLE_MS = INHALE_MS + HOLD_TOP_MS + EXHALE_MS + HOLD_BOTTOM_MS;
 export const DEFAULT_TOTAL_BREATHS = 12;
 
