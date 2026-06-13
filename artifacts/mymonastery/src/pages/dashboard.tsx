@@ -3994,17 +3994,28 @@ function PrayerListCarousel({
                       </div>
                       {/* Prayer-hands — opens the slideshow at this request, then
                           continues through the rest of the list. Not on your own
-                          request (you don't pray for yourself in the walk). */}
+                          request (you don't pray for yourself in the walk). Once
+                          you've prayed it today, it becomes a check. */}
                       {!req.isOwnRequest && (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/prayer-mode?reset=1&focus=${req.id}`); }}
-                          aria-label={t("prayer_card.pray", { defaultValue: "Pray" })}
-                          className="flex-shrink-0 flex items-center justify-center transition-opacity hover:opacity-90 active:scale-95"
-                          style={{ background: "none", border: "none", padding: 4 }}
-                        >
-                          <span className="text-[24px] leading-none">🙏🏾</span>
-                        </button>
+                        req.myAmenedToday ? (
+                          <span
+                            aria-label={t("prayer_card.amened", { defaultValue: "Amened" })}
+                            className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-[15px] font-semibold"
+                            style={{ background: "rgba(46,107,64,0.2)", color: "rgba(240,237,230,0.9)", border: "1px solid rgba(46,107,64,0.5)" }}
+                          >
+                            ✓
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/prayer-mode?reset=1&focus=${req.id}`); }}
+                            aria-label={t("prayer_card.pray", { defaultValue: "Pray" })}
+                            className="flex-shrink-0 flex items-center justify-center transition-opacity hover:opacity-90 active:scale-95"
+                            style={{ background: "none", border: "none", padding: 4 }}
+                          >
+                            <span className="text-[24px] leading-none">🙏🏾</span>
+                          </button>
+                        )
                       )}
                     </div>
                   </div>
@@ -5187,12 +5198,17 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // Communities the viewer is in. One pill per community renders in the
   // category strip above — tapping a pill routes straight to that
   // community's detail page. Replaces the old generic "Communities" pill.
-  type DashGroup = { id: number; name: string; slug: string; emoji: string | null };
+  type DashGroup = { id: number; name: string; slug: string; emoji: string | null; myRole?: string };
   const { data: dashGroups } = useQuery<{ groups: DashGroup[] }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
     enabled: !!user,
   });
+  // Admin of any community → the "New prayer request" pill opens a chooser
+  // (request for yourself vs. community intercession) instead of going straight
+  // to the personal request composer.
+  const isAdminOfAny = (dashGroups?.groups ?? []).some((g) => g.myRole === "admin" || g.myRole === "hidden_admin");
+  const [showNewPrayerChoice, setShowNewPrayerChoice] = useState(false);
 
   // The daily prayer-invite popup logic and its supporting effect were
   // removed at the user's request. dashCircleIntentions / dashPrayersFor /
@@ -6465,14 +6481,25 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                         viewerAvatarUrl={user?.avatarUrl ?? null}
                         tight
                       />
-                      <Link href="/pray-request/new" className="block mt-4">
-                        <div
-                          className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+                      {isAdminOfAny ? (
+                        <button
+                          type="button"
+                          onClick={() => setShowNewPrayerChoice(true)}
+                          className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] mt-4"
                           style={{ padding: "11px 20px", background: "#2D5E3F", border: "1px solid rgba(46,107,64,0.7)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600 }}
                         >
                           ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
-                        </div>
-                      </Link>
+                        </button>
+                      ) : (
+                        <Link href="/pray-request/new" className="block mt-4">
+                          <div
+                            className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+                            style={{ padding: "11px 20px", background: "#2D5E3F", border: "1px solid rgba(46,107,64,0.7)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600 }}
+                          >
+                            ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
+                          </div>
+                        </Link>
+                      )}
                     </div>
                   );
                 })()}
@@ -6642,6 +6669,55 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
             for community-scoped authoring lives on the community
             detail page now, not here. */}
       </div>
+
+      {/* New-prayer chooser (admins) — request for yourself vs. a community
+          intercession. */}
+      <AnimatePresence>
+        {showNewPrayerChoice && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-5 pb-8 sm:pb-0"
+            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+            onClick={() => setShowNewPrayerChoice(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 16, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.98 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-sm rounded-2xl p-5"
+              style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {t("dashboard.new_prayer_choice_title", { defaultValue: "What would you like to add?" })}
+              </p>
+              <div className="flex flex-col gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => { setShowNewPrayerChoice(false); setLocation("/pray-request/new?kind=request"); }}
+                  className="text-left rounded-xl px-4 py-3.5 transition-opacity hover:opacity-90 active:scale-[0.99]"
+                  style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)" }}
+                >
+                  <p className="text-[15px] font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>🙏🏽 {t("dashboard.choice_personal", { defaultValue: "Prayer request" })}</p>
+                  <p className="text-[12.5px] mt-0.5" style={{ color: "#8FAF96" }}>{t("dashboard.choice_personal_sub", { defaultValue: "Ask your community to pray for you." })}</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowNewPrayerChoice(false); setLocation("/moment/new?template=intercession"); }}
+                  className="text-left rounded-xl px-4 py-3.5 transition-opacity hover:opacity-90 active:scale-[0.99]"
+                  style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)" }}
+                >
+                  <p className="text-[15px] font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>🕯️ {t("dashboard.choice_intercession", { defaultValue: "Community intercession" })}</p>
+                  <p className="text-[12.5px] mt-0.5" style={{ color: "#8FAF96" }}>{t("dashboard.choice_intercession_sub", { defaultValue: "A prayer the whole community carries together." })}</p>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Goal-reached celebration popup */}
       <AnimatePresence>
