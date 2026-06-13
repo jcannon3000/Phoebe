@@ -209,7 +209,6 @@ function WeeklyGridCard() {
           day-of-week initials sit exactly over their dots. */}
       {(() => {
         const COLS = `${LABEL_W}px repeat(7, 1fr)`;
-        const DOT = 15;
         return (
           <>
             {/* Day-initial header. */}
@@ -225,7 +224,7 @@ function WeeklyGridCard() {
                 </span>
               ))}
             </div>
-            <div className="flex flex-col" style={{ gap: 16 }}>
+            <div className="flex flex-col" style={{ gap: 13 }}>
               {rows.map((row) => (
                 <div key={row.key} style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
                   <div className="flex items-center gap-1.5" style={{ minWidth: 0 }}>
@@ -235,17 +234,17 @@ function WeeklyGridCard() {
                   {days.map((d, i) => {
                     const done = !!d[row.key];
                     const isToday = i === days.length - 1;
+                    // Wide capsule pills, short and filling the column.
                     return (
-                      <span key={d.ymd} className="flex items-center justify-center">
+                      <span key={d.ymd} style={{ padding: "0 3px" }}>
                         <span
                           title={`${row.label} · ${d.ymd}`}
                           style={{
-                            width: DOT,
-                            height: DOT,
-                            borderRadius: "50%",
+                            display: "block",
+                            height: 8,
+                            borderRadius: 999,
                             background: done ? `rgba(${row.rgb},0.95)` : "rgba(143,175,150,0.13)",
-                            border: isToday ? "1.5px solid rgba(240,237,230,0.65)" : "1px solid transparent",
-                            boxShadow: done ? `0 0 0 1px rgba(${row.rgb},0.35)` : "none",
+                            border: isToday ? "1.5px solid rgba(240,237,230,0.6)" : "1px solid transparent",
                           }}
                         />
                       </span>

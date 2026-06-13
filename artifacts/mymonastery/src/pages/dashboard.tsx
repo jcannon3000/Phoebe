@@ -4987,7 +4987,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
 
   const queryClient = useQueryClient();
 
-  const { isBeta } = useBetaStatus();
+  const { isBeta, isLoading: betaLoading } = useBetaStatus();
   const [betaWelcomeVisible, setBetaWelcomeVisible] = useState(false);
   const betaWelcomeShownRef = useRef(false);
 
@@ -6226,7 +6226,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               />
             </div>
           )}
-          {filter === null && !isBeta && !eventsOnly && (() => {
+          {filter === null && !isBeta && !betaLoading && !eventsOnly && (() => {
             // Render the home modules in the user's chosen order, skipping
             // hidden ones. Each module returns its content (or null when it
             // has nothing to show); the first non-null gets mt-5, the rest
