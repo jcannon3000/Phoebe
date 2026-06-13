@@ -352,7 +352,15 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
     try { localDay = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date()); }
     catch { localDay = new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" }).format(new Date()); }
 
-    const [today, week, all, healthRow] = await Promise.all([
+    // Apple Health mindful minutes (external apps like Insight Timer / Calm /
+    // Apple Mindfulness) for the week + all-time, summed from the per-day table
+    // — so the Stats tiles can fold them in alongside in-app sits. `day` is the
+    // tz-local YYYY-MM-DD string, so a lexical >= bound is a valid date range.
+    let sevenAgoYmd = localDay;
+    try { sevenAgoYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)); } catch { /* keep localDay */ }
+    const healthSum = sql<number>`COALESCE(SUM(${contemplationHealthMinutesTable.minutes}), 0)::int`;
+
+    const [today, week, all, healthRow, healthWeekRow, healthTotalRow] = await Promise.all([
       windowStats(todaySince),
       windowStats(weekAgo),
       windowStats(null),
@@ -364,6 +372,19 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
           eq(contemplationHealthMinutesTable.day, localDay),
         ))
         .then((r) => r[0]),
+      db
+        .select({ m: healthSum })
+        .from(contemplationHealthMinutesTable)
+        .where(and(
+          eq(contemplationHealthMinutesTable.userId, sessionUserId),
+          gte(contemplationHealthMinutesTable.day, sevenAgoYmd),
+        ))
+        .then((r) => r[0]),
+      db
+        .select({ m: healthSum })
+        .from(contemplationHealthMinutesTable)
+        .where(eq(contemplationHealthMinutesTable.userId, sessionUserId))
+        .then((r) => r[0]),
     ]);
 
     res.json({
@@ -371,6 +392,9 @@ router.get("/me/contemplation-stats", async (req, res): Promise<void> => {
       todayCount: today.count,
       // External mindful minutes synced from Apple Health for today (0 if none).
       healthMinutesToday: healthRow?.minutes ?? 0,
+      // …and for the week + all-time, so the Stats tiles can include them.
+      healthMinutesWeek: healthWeekRow?.m ?? 0,
+      healthMinutesTotal: healthTotalRow?.m ?? 0,
       // Today is one local day — a sit means 1 day, not the UTC-split
       // count, so the per-day average == today's total.
       todayDays: today.count > 0 ? 1 : 0,

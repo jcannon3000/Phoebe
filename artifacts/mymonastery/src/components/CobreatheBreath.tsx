@@ -532,7 +532,7 @@ export function CobreatheBreath({
             {centerLabel}
           </span>
         </div>
-        <p className="mt-6 text-[13px]" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK }}>
+        <p className="mt-6 text-[13px] text-center" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, maxWidth: 300 }}>
           {!counting
             ? t("cobreathe.finding_rhythm", { defaultValue: "Syncing with the global breath…" })
             : reachedNow
@@ -540,7 +540,7 @@ export function CobreatheBreath({
               : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `Breath ${breathNum} of ${totalBreaths}` })}
         </p>
         {othersToday != null && othersToday > 0 && (
-          <p className="mt-1.5 text-[12px]" style={{ color: TEXT_FAINT, fontFamily: SERIF, fontStyle: "italic" }}>
+          <p className="mt-1.5 text-[12px] text-center" style={{ color: TEXT_FAINT, fontFamily: SERIF, fontStyle: "italic", maxWidth: 300 }}>
             {t("cobreathe.breathing_with_you", { count: othersToday, defaultValue: `${othersToday} ${othersToday === 1 ? "person is" : "people are"} breathing with you today` })}
           </p>
         )}

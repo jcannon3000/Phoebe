@@ -70,6 +70,10 @@ type Stats = {
   // (uploaded by the iOS client). Prayer-only todaySeconds stays separate so
   // the Stats tiles don't double-count; "done" consumers add this on top.
   healthMinutesToday: number;
+  // …and for the week + all-time, folded into the cumulative Stats tiles so
+  // Insight Timer / Calm / Apple Mindfulness minutes count too.
+  healthMinutesWeek: number;
+  healthMinutesTotal: number;
 };
 
 // Someone in your garden whose contemplative prayer overlapped yours.
@@ -786,9 +790,11 @@ export default function ContemplationPage() {
           <div>
             <RowLabel>{t("contemplation.cumulative")}</RowLabel>
             <div className="flex gap-3 mb-4">
-              <StatTile label={t("contemplation.label_today")} value={humanMinutes(stats?.todaySeconds ?? 0)} />
-              <StatTile label={t("contemplation.label_this_week")} value={humanMinutes(stats?.weekSeconds ?? 0)} />
-              <StatTile label={t("contemplation.label_all_time")} value={humanMinutes(stats?.totalSeconds ?? 0)} />
+              {/* Cumulative time = in-app sits (incl. Cobreathe) + external
+                  Apple Health mindful minutes for each window. */}
+              <StatTile label={t("contemplation.label_today")} value={humanMinutes((stats?.todaySeconds ?? 0) + (stats?.healthMinutesToday ?? 0) * 60)} />
+              <StatTile label={t("contemplation.label_this_week")} value={humanMinutes((stats?.weekSeconds ?? 0) + (stats?.healthMinutesWeek ?? 0) * 60)} />
+              <StatTile label={t("contemplation.label_all_time")} value={humanMinutes((stats?.totalSeconds ?? 0) + (stats?.healthMinutesTotal ?? 0) * 60)} />
             </div>
             <RowLabel>{t("contemplation.average_per_day")}</RowLabel>
             <div className="flex gap-3">

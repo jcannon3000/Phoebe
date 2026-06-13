@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -147,41 +147,46 @@ export default function CobreathePage() {
     },
   });
 
-  // Reaching the 12th breath records the day's breath right away — so the
-  // count climbs and companions appear while they keep breathing. The breath
-  // itself keeps going; nothing stops here.
-  const handleReachTarget = useCallback((secondsKept: number) => {
-    record.mutate(secondsKept);
+  // Log the breathed time as a contemplation sit — exactly once — so it lands
+  // in history, stats, the daily goal, and Apple Health. Called both when the
+  // set completes (so a finished Cobreathe counts even if they never tap
+  // Finish) and on an early end (>=30s). Guarded so the two paths don't double.
+  const sitLoggedRef = useRef(false);
+  const logSit = useCallback((secondsKept: number) => {
+    if (sitLoggedRef.current || secondsKept < 30) return;
+    sitLoggedRef.current = true;
+    const endedAt = new Date();
+    const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
+    void apiRequest("POST", "/api/prayer-sessions", {
+      surface: "contemplation",
+      durationSeconds: secondsKept,
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      isPrivate: false,
+    })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+      })
+      .catch(() => { /* best-effort */ });
+    void writeMindfulSession(startedAt, endedAt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Finishing (or backing out). Bailed before the target → straight back to
-  // the intro, nothing logged. Finished → record (idempotent) and log the
-  // time as a contemplation sit (daily goal, history, companions + Health).
+  // Reaching the 12th breath records the day's communal breath AND logs the sit
+  // right away — so a completed Cobreathe always lands in history/stats, even
+  // if the user wanders off without tapping Finish. The breath keeps going.
+  const handleReachTarget = useCallback((secondsKept: number) => {
+    record.mutate(secondsKept);
+    logSit(secondsKept);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Finishing (or backing out). Either way, log the sit (no-op if already
+  // logged at the target). Finished → record the communal breath + return to
+  // Contemplation; bailed early → slip back to the intro.
   const handleEnd = useCallback((secondsKept: number, reached: boolean) => {
-    // Log the time as a contemplation sit whenever a real amount was breathed
-    // (>=30s), so every Cobreathe shows up in contemplation history + counts
-    // toward the daily goal — even if they ended before the full guided set.
-    if (secondsKept >= 30) {
-      const endedAt = new Date();
-      const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
-      void apiRequest("POST", "/api/prayer-sessions", {
-        surface: "contemplation",
-        durationSeconds: secondsKept,
-        startedAt: startedAt.toISOString(),
-        endedAt: endedAt.toISOString(),
-        isPrivate: false,
-      })
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
-        })
-        .catch(() => { /* best-effort */ });
-      void writeMindfulSession(startedAt, endedAt);
-    }
-    // Reaching the full set records today's communal breath, then drops the
-    // user back on the main Contemplation page (where the just-logged sit +
-    // stats are waiting); bailing early just slips back to the intro.
+    logSit(secondsKept);
     if (!reached) { setMode("intro"); return; }
     record.mutate(secondsKept);
     setLocation("/contemplation");

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
@@ -44,9 +44,34 @@ export function CobreatheOverlay({
   // The overlay stays mounted (prayer-mode toggles `open`), so reset to a fresh
   // breath each time it opens — otherwise reopening after a finished breath
   // lands straight on the stale "you cobreathed with N" done screen.
+  const sitLoggedRef = useRef(false);
   useEffect(() => {
-    if (open) { setPhase("breathing"); setResp(null); }
+    if (open) { setPhase("breathing"); setResp(null); sitLoggedRef.current = false; }
   }, [open]);
+
+  // Log the breathed time as a contemplation sit — exactly once per open — so a
+  // cobreathe from the prayer-mode pause lands in history/stats/Health whether
+  // they complete the set or end early (>=30s).
+  const logSit = useCallback((secondsKept: number) => {
+    if (sitLoggedRef.current || secondsKept < 30) return;
+    sitLoggedRef.current = true;
+    const endedAt = new Date();
+    const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
+    void apiRequest("POST", "/api/prayer-sessions", {
+      surface: "contemplation",
+      durationSeconds: secondsKept,
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      isPrivate: false,
+    })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
+      })
+      .catch(() => { /* best-effort */ });
+    void writeMindfulSession(startedAt, endedAt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Today's count, so "N breathing with you today" can show during the breath
   // even before this user has recorded theirs. Only fetched while open.
@@ -70,33 +95,17 @@ export function CobreatheOverlay({
         queryClient.invalidateQueries({ queryKey: ["/api/breath/today", d] });
       })
       .catch(() => { /* best-effort — the breath still happened */ });
+    // Completing the set logs the contemplation sit right away, even if they
+    // never tap Finish.
+    logSit(secondsKept);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleEnd = useCallback((secondsKept: number, reached: boolean) => {
     const d = localDay();
-    // Log the time as a contemplation sit whenever a real amount was breathed
-    // (>=30s) — even if they ended before the full set, same as the /cobreathe
-    // page. Previously an early exit returned here and recorded nothing, so
-    // breaths done from the prayer-mode pause never reached contemplation
-    // history.
-    if (secondsKept >= 30) {
-      const endedAt = new Date();
-      const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
-      void apiRequest("POST", "/api/prayer-sessions", {
-        surface: "contemplation",
-        durationSeconds: secondsKept,
-        startedAt: startedAt.toISOString(),
-        endedAt: endedAt.toISOString(),
-        isPrivate: false,
-      })
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-stats"] });
-          queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
-        })
-        .catch(() => { /* best-effort */ });
-      void writeMindfulSession(startedAt, endedAt);
-    }
+    // Log the sit on any end (>=30s, no-op if already logged at the target) —
+    // even an early exit, which previously returned here recording nothing.
+    logSit(secondsKept);
     if (!reached) { onClose(); return; }
     setPhase("done");
     // Completing the set records today's communal breath.
