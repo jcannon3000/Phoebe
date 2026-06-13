@@ -22,9 +22,9 @@ type Blob = {
 };
 
 const SUBTLE: Blob[] = [
-  { rgb: "46,107,64", alpha: 0.26, size: "82vmax", top: "-24%", left: "-20%", n: 1, dur: "58s" },
-  { rgb: "22,74,48", alpha: 0.3, size: "70vmax", top: "28%", left: "38%", n: 2, dur: "70s" },
-  { rgb: "60,116,80", alpha: 0.16, size: "62vmax", top: "60%", left: "-12%", n: 3, dur: "64s" },
+  { rgb: "46,107,64", alpha: 0.26, size: "82vmax", top: "-24%", left: "-20%", n: 1, dur: "40s" },
+  { rgb: "22,74,48", alpha: 0.3, size: "70vmax", top: "28%", left: "38%", n: 2, dur: "48s" },
+  { rgb: "60,116,80", alpha: 0.16, size: "62vmax", top: "60%", left: "-12%", n: 3, dur: "44s" },
 ];
 
 const PRONOUNCED: Blob[] = [

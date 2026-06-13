@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, type ReactNode } from "react";
+import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -645,7 +646,12 @@ export default function ContemplationPage() {
 
   return (
     <Layout>
-      <div className="max-w-xl mx-auto w-full">
+      <motion.div
+        className="max-w-xl mx-auto w-full"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      >
         <div className="flex items-start gap-3 mb-5">
           <div
             className="text-3xl w-12 h-12 flex items-center justify-center rounded-2xl flex-shrink-0"
@@ -985,7 +991,7 @@ export default function ContemplationPage() {
           )}
         </div>
         )}
-      </div>
+      </motion.div>
 
       <ContemplationTimer
         open={timerOpen}
