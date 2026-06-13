@@ -4000,8 +4000,8 @@ function PrayerListCarousel({
                         req.myAmenedToday ? (
                           <span
                             aria-label={t("prayer_card.amened", { defaultValue: "Amened" })}
-                            className="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-[15px] font-semibold"
-                            style={{ background: "rgba(46,107,64,0.2)", color: "rgba(240,237,230,0.9)", border: "1px solid rgba(46,107,64,0.5)" }}
+                            className="flex-shrink-0 rounded-full text-[13px] font-semibold px-3.5 py-1.5 flex items-center justify-center"
+                            style={{ background: "rgba(46,107,64,0.18)", color: "rgba(240,237,230,0.85)", border: "1px solid rgba(46,107,64,0.45)" }}
                           >
                             ✓
                           </span>
@@ -4010,10 +4010,10 @@ function PrayerListCarousel({
                             type="button"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/prayer-mode?reset=1&focus=${req.id}`); }}
                             aria-label={t("prayer_card.pray", { defaultValue: "Pray" })}
-                            className="flex-shrink-0 flex items-center justify-center transition-opacity hover:opacity-90 active:scale-95"
-                            style={{ background: "none", border: "none", padding: 4 }}
+                            className="flex-shrink-0 rounded-full px-3.5 py-1.5 flex items-center justify-center transition-opacity hover:opacity-90 active:scale-95"
+                            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)" }}
                           >
-                            <span className="text-[24px] leading-none">🙏🏾</span>
+                            <span className="text-[15px] leading-none">🙏🏾</span>
                           </button>
                         )
                       )}
