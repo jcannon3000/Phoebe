@@ -6355,6 +6355,16 @@ export default function Dashboard() {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
+                {/* Prayer request compose — leads ABOVE the events sections so
+                    the user starts with "what I'm carrying" before their
+                    schedule. (The "X prayer requests waiting" count card still
+                    sits at the very top, above the office card.) */}
+                {filter === null && (
+                  <div className="mb-6">
+                    <ActiveRequestsCard activeCount={ownActiveCount} />
+                  </div>
+                )}
+
                 {/* 1. Today. The daily-prayer anchor card now lives
                     under the feast line up top, so the Today section
                     no longer carries a trailing PrayerListCard — it's
@@ -6392,18 +6402,6 @@ export default function Dashboard() {
 
                 {/* 4. Upcoming — everything past the upcoming Sunday. */}
                 <TimeSection label={t("dashboard.upcoming_section")} items={fMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
-
-                {/* Prayer request compose — only the field moves
-                    down here, below the events sections. The count
-                    card "X prayer requests waiting" stays at the
-                    top of the page (above the office card). The
-                    compose field reads as "what I'm carrying" once
-                    the user has scrolled past their schedule. */}
-                {filter === null && (
-                  <div className="mt-6">
-                    <ActiveRequestsCard activeCount={ownActiveCount} />
-                  </div>
-                )}
 
                 {/* Prayer List carousel — sits AFTER Upcoming so it
                     reads as a peek into a different surface (the
