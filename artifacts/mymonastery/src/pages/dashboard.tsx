@@ -14,6 +14,8 @@ import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { DailyProgressBody } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
+import { amenWithLocation } from "@/lib/prayLocation";
+import { triggerAmenFeedback } from "@/lib/amenFeedback";
 import { openExternal } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { useRhythmState } from "@/hooks/useRhythmState";
@@ -3860,6 +3862,9 @@ type PrayerListCarouselRow = {
   isAnonymous?: boolean;
   ownerName?: string | null;
   ownerAvatarUrl?: string | null;
+  // Whether THIS viewer has already amened this request today (their tz).
+  // Drives the inline "Amen" → "Amened" button state; resets next day.
+  myAmenedToday?: boolean;
 };
 
 function PrayerListCarousel({
@@ -6334,8 +6339,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
 
         </div>
 
-        {/* ── Loading skeleton ── */}
-        {isLoading && (
+        {/* ── Loading skeleton ── only where the main content area is the
+            point (a category filter or the Events page). On the default home
+            the daily cards + prayer list handle their own loading, so these
+            placeholders just flashed empty cards on every load. */}
+        {isLoading && (filter !== null || eventsOnly) && (
           <div className="space-y-6 mb-8">
             {[1, 2, 3].map(i => (
               <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
@@ -6383,9 +6391,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       isAnonymous: r.isAnonymous,
                       ownerName: r.ownerName ?? null,
                       ownerAvatarUrl: r.ownerAvatarUrl ?? null,
+                      myAmenedToday: r.myAmenedToday,
                     }));
                   return (
-                    <div style={{ marginTop: 8 }}>
+                    <div style={{ marginTop: 19 }}>
                       <PrayerListCarousel
                         requests={carouselRows}
                         viewerName={userName || null}

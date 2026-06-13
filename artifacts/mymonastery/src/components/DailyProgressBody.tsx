@@ -205,50 +205,58 @@ function WeeklyGridCard() {
       <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
         {t("rhythm.week_grid_title", { defaultValue: "This week" })}
       </p>
-      {/* Day-initial header, aligned over the dot columns. */}
-      <div className="flex items-center mb-2.5">
-        <div style={{ width: LABEL_W, flexShrink: 0 }} />
-        <div className="flex-1 flex items-center gap-1.5">
-          {dayInitials.map((ch, i) => (
-            <span
-              key={i}
-              className="flex-1 text-center text-[10px] font-semibold"
-              style={{ color: i === dayInitials.length - 1 ? "rgba(240,237,230,0.7)" : "rgba(143,175,150,0.45)", fontFamily: FONT }}
-            >
-              {ch}
-            </span>
-          ))}
-        </div>
-      </div>
-      <div className="flex flex-col gap-2.5">
-        {rows.map((row) => (
-          <div key={row.key} className="flex items-center">
-            <div className="flex items-center gap-1.5" style={{ width: LABEL_W, flexShrink: 0 }}>
-              <span className="text-[13px] leading-none flex-shrink-0">{row.emoji}</span>
-              <span className="text-[12.5px] font-medium truncate" style={{ color: WARM, fontFamily: FONT }}>{row.label}</span>
+      {/* One shared 7-column grid for the header and every row, so the
+          day-of-week initials sit exactly over their dots. */}
+      {(() => {
+        const COLS = `${LABEL_W}px repeat(7, 1fr)`;
+        const DOT = 15;
+        return (
+          <>
+            {/* Day-initial header. */}
+            <div className="mb-3" style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
+              <div />
+              {dayInitials.map((ch, i) => (
+                <span
+                  key={i}
+                  className="text-center text-[10.5px] font-semibold"
+                  style={{ color: i === dayInitials.length - 1 ? "rgba(240,237,230,0.7)" : "rgba(143,175,150,0.45)", fontFamily: FONT }}
+                >
+                  {ch}
+                </span>
+              ))}
             </div>
-            <div className="flex-1 flex items-center gap-1.5">
-              {days.map((d, i) => {
-                const done = !!d[row.key];
-                const isToday = i === days.length - 1;
-                return (
-                  <span
-                    key={d.ymd}
-                    title={`${row.label} · ${d.ymd}`}
-                    className="flex-1 rounded-full"
-                    style={{
-                      height: 9,
-                      maxWidth: 22,
-                      background: done ? `rgba(${row.rgb},0.9)` : "rgba(143,175,150,0.14)",
-                      border: isToday ? "1.5px solid rgba(240,237,230,0.6)" : "1px solid transparent",
-                    }}
-                  />
-                );
-              })}
+            <div className="flex flex-col" style={{ gap: 16 }}>
+              {rows.map((row) => (
+                <div key={row.key} style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
+                  <div className="flex items-center gap-1.5" style={{ minWidth: 0 }}>
+                    <span className="text-[13px] leading-none flex-shrink-0">{row.emoji}</span>
+                    <span className="text-[12.5px] font-medium truncate" style={{ color: WARM, fontFamily: FONT }}>{row.label}</span>
+                  </div>
+                  {days.map((d, i) => {
+                    const done = !!d[row.key];
+                    const isToday = i === days.length - 1;
+                    return (
+                      <span key={d.ymd} className="flex items-center justify-center">
+                        <span
+                          title={`${row.label} · ${d.ymd}`}
+                          style={{
+                            width: DOT,
+                            height: DOT,
+                            borderRadius: "50%",
+                            background: done ? `rgba(${row.rgb},0.95)` : "rgba(143,175,150,0.13)",
+                            border: isToday ? "1.5px solid rgba(240,237,230,0.65)" : "1px solid transparent",
+                            boxShadow: done ? `0 0 0 1px rgba(${row.rgb},0.35)` : "none",
+                          }}
+                        />
+                      </span>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
-          </div>
-        ))}
-      </div>
+          </>
+        );
+      })()}
     </div>
   );
 }
@@ -529,6 +537,10 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
       transition={{ duration: 0.3, ease: "easeOut" }}
     >
       {ready && (<>
+      {/* The weekly practice grid leads the daily-progress page (it's the
+          headline "where am I this week" view). Hidden on the home, where
+          showStreak is false. */}
+      {showStreak && <div className="mb-4"><WeeklyGridCard /></div>}
       {/* A prayer-requests card leads the whole thing when there's something
           waiting. */}
       {leadCard && <div className="mb-3">{leadCard}</div>}
@@ -555,8 +567,6 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
           <div className="flex flex-col gap-2">{completed.map((c) => renderCard(c))}</div>
         </div>
       )}
-      {showStreak && <StreakCard />}
-      {showStreak && <WeeklyGridCard />}
       </>)}
     </motion.div>
   );

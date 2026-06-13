@@ -405,6 +405,13 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   label={t("header.people")}
                   onClick={() => navigate("/people")}
                 />
+                {/* Events — the upcoming schedule (services, gatherings,
+                    practices), its own page now that it's off the home. */}
+                <MenuRow
+                  emoji="📅"
+                  label={t("menu.events", { defaultValue: "Events" })}
+                  onClick={() => navigate("/events")}
+                />
               </div>
             )}
 
@@ -758,9 +765,9 @@ function DailyProgressPill() {
         color: "#C8D4C0",
         border: "1px solid rgba(46,107,64,0.3)",
       }}
-      aria-label={t("header.daily_progress", { defaultValue: "Daily progress" })}
+      aria-label={t("header.daily_progress", { defaultValue: "Daily Progress" })}
     >
-      {t("header.daily_progress", { defaultValue: "Daily progress" })}
+      {t("header.daily_progress", { defaultValue: "Daily Progress" })}
       <span className="inline-flex items-center gap-[3px]" aria-hidden>
         {dots.map((done, i) => (
           <span
