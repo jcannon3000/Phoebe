@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
@@ -787,6 +787,87 @@ function DailyProgressPill() {
   );
 }
 
+// A few gentle lines for the opening splash — varies by day, stable within it.
+const SPLASH_LINES = [
+  "Be still, and know.",
+  "The day is held.",
+  "Come, let us pray.",
+  "Grace meets you here.",
+  "Rest in the rhythm.",
+];
+
+// OpeningSplash — an Insight-Timer-style greeting on app open. Gently fades up
+// the Phoebe wordmark, how many people prayed with you this week, and a quiet
+// line, then fades out after 5s (or when you tap the arrow / anywhere). Shows
+// once per app launch, and never for logged-out visitors.
+function OpeningSplash() {
+  const { user } = useAuth();
+  const [phase, setPhase] = useState<"in" | "out" | "gone">(() => {
+    if (typeof window === "undefined") return "gone";
+    try { return sessionStorage.getItem("phoebe:splash-shown") ? "gone" : "in"; } catch { return "in"; }
+  });
+  const { data } = useQuery<{ total?: number; people?: unknown[] }>({
+    queryKey: ["/api/prayer-streak/community-prayed-week"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-week"),
+    staleTime: 5 * 60_000,
+    enabled: phase !== "gone" && !!user,
+  });
+  // Start the 5s auto-dismiss once, on mount. Stamp the session flag so an
+  // in-app navigation (which re-mounts Layout) doesn't replay the splash.
+  useEffect(() => {
+    if (phase === "gone") return;
+    try { sessionStorage.setItem("phoebe:splash-shown", "1"); } catch { /* ignore */ }
+    const id = setTimeout(() => setPhase("out"), 5000);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // After the fade-out animation, unmount.
+  useEffect(() => {
+    if (phase !== "out") return;
+    const id = setTimeout(() => setPhase("gone"), 950);
+    return () => clearTimeout(id);
+  }, [phase]);
+
+  if (!user || phase === "gone") return null;
+
+  const count = data?.total ?? data?.people?.length ?? 0;
+  const line = SPLASH_LINES[Math.floor(Date.now() / 86_400_000) % SPLASH_LINES.length];
+  const dismiss = () => setPhase("out");
+
+  return (
+    <motion.div
+      onClick={dismiss}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: phase === "out" ? 0 : 1 }}
+      transition={{ duration: phase === "out" ? 0.9 : 1.4, ease: "easeInOut" }}
+      className="fixed inset-0 flex flex-col items-center"
+      style={{ background: "#091A10", zIndex: 200, pointerEvents: phase === "out" ? "none" : "auto" }}
+    >
+      <div className="text-center px-8" style={{ marginTop: "16vh" }}>
+        <p style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 30, fontWeight: 700, letterSpacing: "-0.01em" }}>Phoebe</p>
+        {count > 0 && (
+          <p style={{ color: "rgba(143,175,150,0.72)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, marginTop: 8 }}>
+            {count === 1 ? "1 prayed with you this week" : `${count} prayed with you this week`}
+          </p>
+        )}
+      </div>
+      <div className="flex-1 flex items-center px-10">
+        <p style={{ color: "#F0EDE6", fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 26, lineHeight: 1.35, textAlign: "center" }}>
+          {line}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); dismiss(); }}
+        aria-label="Continue"
+        style={{ marginBottom: "11vh", background: "none", border: "none", cursor: "pointer", padding: 16 }}
+      >
+        <span style={{ color: "#8FAF96", fontSize: 30, lineHeight: 1 }}>→</span>
+      </button>
+    </motion.div>
+  );
+}
+
 export function Layout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -812,6 +893,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10" }}>
+      <OpeningSplash />
       <header
         className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pb-2 md:pb-5 flex justify-between items-center"
         style={{
