@@ -124,6 +124,11 @@ export function useLogout() {
     clearPersistentToken();
     queryClient.setQueryData(["/api/auth/me"], null);
     queryClient.clear();
+    // Wipe the persisted React Query blob too — clear() + an immediate reload
+    // can race the persister's throttle, which would otherwise leave the
+    // previous account's cached home (incl. the persisted /api/auth/me user)
+    // on disk for the next person to sign in on this device.
+    try { window.localStorage.removeItem("phoebe:rq-daily"); } catch { /* ignore */ }
     window.location.href = "/";
   };
 }

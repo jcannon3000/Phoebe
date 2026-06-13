@@ -367,6 +367,13 @@ const queryClient = new QueryClient({
 // these light keys so we never bloat localStorage with large payloads (bible
 // text, feeds, etc.).
 const PERSISTED_QUERY_KEYS = [
+  // Auth — persisting the signed-in user is the biggest cold-boot win: the
+  // home renders from the last session instead of blocking on the
+  // /api/auth/me round-trip, then revalidates in the background (and logs out
+  // if the session is gone). Logout clears the persisted blob (see useLogout),
+  // so a previous account's data never leaks to the next.
+  "/api/auth/me",
+  // Daily rhythm
   "/api/me/office-history-week",
   "/api/me/prayer-days",
   "/api/me/contemplation-stats",
@@ -375,7 +382,19 @@ const PERSISTED_QUERY_KEYS = [
   "/api/prayer-streak",
   "/api/me/garden-week",
   "/api/cac/today-meta",
+  // Home content — so the WHOLE home (not just the rhythm) paints from cache
+  // on a slow/cold launch: prayer requests, community intercessions, your
+  // gatherings, worship times, prayers-for, circle intentions, action items.
+  // Still scoped to lightweight keys — feeds/bible text stay out on purpose
+  // (they can be large and would risk the localStorage quota).
   "/api/prayer-requests",
+  "/api/moments",
+  "/api/rituals",
+  "/api/me/service-schedules",
+  "/api/prayers-for/mine",
+  "/api/prayers-for/for-me",
+  "/api/groups/me/circle-intentions",
+  "/api/me/actions",
 ];
 const rqPersister = createSyncStoragePersister({
   storage: window.localStorage,
