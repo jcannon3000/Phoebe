@@ -37,7 +37,7 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 const CARD_BG = "rgba(46,107,64,0.12)";
 const CARD_B = "rgba(46,107,64,0.3)";
 
-type Friend = { friendshipId: number; userId: number; name: string; avatarUrl: string | null; since: string };
+type Friend = { friendshipId: number; userId: number; name: string; avatarUrl: string | null; since: string; streak: number };
 type Request = { id: number; userId: number; name: string; avatarUrl: string | null; requestedAt: string };
 type SearchUser = { id: number; name: string; avatarUrl: string | null; status: "none" | "friends" | "requested" | "incoming" };
 
@@ -273,7 +273,12 @@ export default function FriendsPage() {
       ) : (
         friends.map((f) =>
           row(f.name, f.avatarUrl,
-            <Pill label={t("friends.remove", { defaultValue: "Remove" })} kind="muted" onClick={() => { if (window.confirm(t("friends.remove_confirm", { defaultValue: "Remove this prayer friend?" }))) remove.mutate(f.userId); }} />,
+            <div className="flex items-center gap-2.5 shrink-0">
+              {f.streak > 0 && (
+                <span className="text-[13px] font-semibold" style={{ color: "#E8B45E", fontFamily: FONT }} title={t("friends.streak_title", { defaultValue: "Prayer rhythm" })}>🔥 {f.streak}</span>
+              )}
+              <Pill label={t("friends.remove", { defaultValue: "Remove" })} kind="muted" onClick={() => { if (window.confirm(t("friends.remove_confirm", { defaultValue: "Remove this prayer friend?" }))) remove.mutate(f.userId); }} />
+            </div>,
             `f-${f.userId}`)
         )
       )}

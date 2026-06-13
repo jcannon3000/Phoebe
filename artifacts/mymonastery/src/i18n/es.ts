@@ -4418,6 +4418,7 @@ export const es: Translations = {
     contacts_denied: "El acceso a contactos está desactivado — actívalo en Ajustes para buscar amigos así.",
     contacts_error: "No se pudieron leer tus contactos. Inténtalo de nuevo.",
     contacts_none: "Ninguno de tus contactos está en Phoebe todavía.",
+    streak_title: "Ritmo de oración",
   },
   prayer_list: {
     title: "Lista de oración",

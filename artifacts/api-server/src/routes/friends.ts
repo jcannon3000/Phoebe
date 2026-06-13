@@ -62,15 +62,22 @@ router.get("/friends", requireBeta, async (req, res): Promise<void> => {
   ));
   const otherIds = rows.map((r) => (r.requesterId === me ? r.addresseeId : r.requesterId));
   if (otherIds.length === 0) { res.json({ friends: [] }); return; }
-  const users = await db.select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
-    .from(usersTable).where(inArray(usersTable.id, otherIds));
+  const users = await db.select({
+    id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl,
+    streakCount: usersTable.prayerStreakCount, streakLast: usersTable.prayerStreakLastDate,
+  }).from(usersTable).where(inArray(usersTable.id, otherIds));
+  // A friend's stored streak is "live" only if they prayed today or yesterday
+  // (the count doesn't auto-decay). String compare of YYYY-MM-DD with a 1-day
+  // window is tz-robust enough for a friendly encouragement number.
+  const yesterdayUtc = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
   const byId = new Map(users.map((u) => [u.id, u]));
   const friends = rows
     .map((r) => {
       const oid = r.requesterId === me ? r.addresseeId : r.requesterId;
       const u = byId.get(oid);
       if (!u) return null;
-      return { friendshipId: r.id, userId: oid, name: u.name, avatarUrl: u.avatarUrl, since: r.createdAt };
+      const streak = u.streakLast && u.streakLast >= yesterdayUtc ? (u.streakCount ?? 0) : 0;
+      return { friendshipId: r.id, userId: oid, name: u.name, avatarUrl: u.avatarUrl, since: r.createdAt, streak };
     })
     .filter((f): f is NonNullable<typeof f> => f !== null);
   res.json({ friends });
