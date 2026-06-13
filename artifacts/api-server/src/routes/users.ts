@@ -506,8 +506,9 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
 //   morning / evening — a finished office on that side (same gate as
 //     office-history-week: completed office/devotion, or >=3 min of the
 //     National Cathedral morning stream).
-//   contemplation     — any logged sit (prayer_sessions surface) OR external
-//     Apple Health mindful minutes synced for that local day.
+//   contemplation     — the day's total contemplative time (in-app sits +
+//     external Apple Health mindful minutes) meets the user's daily goal. With
+//     no goal set, any logged minute fills the day.
 //   reflection        — opened the day's reflection (CAC, Forward, or SSJE).
 //   gratitude / examen — the optional practices, from practice_completion.
 // The CLIENT decides which rows to render from the user's rule of life; the
@@ -517,10 +518,14 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const [meTz] = await db
-      .select({ timezone: usersTable.timezone })
+      .select({ timezone: usersTable.timezone, contemplationGoalMinutes: usersTable.contemplationGoalMinutes })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
     const tz = meTz?.timezone || "UTC";
+    // Daily contemplation goal (minutes; 0 = none). The weekly grid only fills
+    // a day's contemplation dot once the day's total contemplative time meets
+    // this goal — not on any logged minute. With no goal set, any sit counts.
+    const contemplationGoalMin = meTz?.contemplationGoalMinutes ?? 0;
 
     // Build the 7-day window in user-tz, oldest first, up front — we need the
     // oldest ymd to bound the text-keyed (YYYY-MM-DD) tables below.
@@ -552,18 +557,23 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
           )
           AND ended_at >= NOW() - INTERVAL '8 days'
       `),
-      // Contemplation sits logged in-app.
-      db.execute<{ day: string }>(sql`
-        SELECT DISTINCT to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day
+      // Contemplation sits logged in-app — summed per local day so we can
+      // measure each day's total against the daily goal (not just presence).
+      db.execute<{ day: string; secs: number }>(sql`
+        SELECT to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day,
+               COALESCE(SUM(duration_seconds), 0) AS secs
         FROM prayer_sessions
         WHERE user_id = ${sessionUserId}
           AND surface = 'contemplation'
           AND ended_at >= NOW() - INTERVAL '8 days'
+        GROUP BY 1
       `),
-      // External Apple Health mindful minutes (day is already a tz-local ymd).
-      db.execute<{ day: string }>(sql`
-        SELECT day FROM contemplation_health_minutes
+      // External Apple Health mindful minutes (day is already a tz-local ymd),
+      // summed per day to fold into the day's contemplative total.
+      db.execute<{ day: string; minutes: number }>(sql`
+        SELECT day, COALESCE(SUM(minutes), 0) AS minutes FROM contemplation_health_minutes
         WHERE user_id = ${sessionUserId} AND minutes > 0 AND day >= ${oldestYmd}
+        GROUP BY day
       `),
       // Reflection reads — Forward / SSJE.
       db.execute<{ ymd: string }>(sql`
@@ -588,9 +598,21 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       if (r.side === "morning") morning.add(r.day);
       if (r.side === "evening") evening.add(r.day);
     }
+    // Total contemplative minutes per local day (in-app sits + Apple Health),
+    // then fill the day only when it meets the daily goal. No goal set → any
+    // logged minute counts, preserving the old behaviour for goal-less users.
+    const contemplationMinByDay = new Map<string, number>();
+    for (const r of contRows.rows) {
+      contemplationMinByDay.set(r.day, (contemplationMinByDay.get(r.day) ?? 0) + (Number(r.secs) || 0) / 60);
+    }
+    for (const r of healthRows.rows) {
+      contemplationMinByDay.set(r.day, (contemplationMinByDay.get(r.day) ?? 0) + (Number(r.minutes) || 0));
+    }
     const contemplation = new Set<string>();
-    for (const r of contRows.rows) contemplation.add(r.day);
-    for (const r of healthRows.rows) contemplation.add(r.day);
+    for (const [day, mins] of contemplationMinByDay) {
+      const met = contemplationGoalMin > 0 ? mins >= contemplationGoalMin : mins > 0;
+      if (met) contemplation.add(day);
+    }
     const reflection = new Set<string>();
     for (const r of reflRows.rows) reflection.add(r.ymd);
     for (const r of cacRows.rows) reflection.add(r.ymd);

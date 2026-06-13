@@ -6499,7 +6499,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       myAmenedToday: r.myAmenedToday,
                     }));
                   return (
-                    <div style={{ marginTop: 4 }}>
+                    <div style={{ marginTop: 0 }}>
                       <PrayerListCarousel
                         requests={carouselRows}
                         viewerName={userName || null}

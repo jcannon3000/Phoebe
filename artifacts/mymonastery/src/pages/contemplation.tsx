@@ -58,6 +58,9 @@ const LEARN_RESOURCES: LearnResource[] = [
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
+// Remembers the last sit length chosen in the Begin dropdown so it
+// defaults back to it on the next visit.
+const LAST_MIN_KEY = "phoebe:contemplation-last-min";
 
 type Stats = {
   todaySeconds: number; todayCount: number; todayDays: number;
@@ -450,24 +453,28 @@ export default function ContemplationPage() {
       .then(() => { try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* private mode */ } })
       .catch(() => { /* user may decline */ });
   }, []);
-  // Set by a quick button (5/10/20) to start that length immediately;
-  // left undefined by "Begin contemplation" so the timer shows its
-  // full picker.
+  // Always launched with an explicit length now (the Begin pill passes the
+  // chosen minutes), so the timer skips its own picker and starts straight
+  // into the sit. The six-box picker phase is reserved for the prayer-
+  // slideshow caller.
   const [startMinutes, setStartMinutes] = useState<number | undefined>(undefined);
   const start = (minutes?: number) => {
+    // Remember the last length chosen so the dropdown defaults to it next time.
+    if (typeof minutes === "number") {
+      try { localStorage.setItem(LAST_MIN_KEY, String(minutes)); } catch { /* private mode */ }
+    }
     setStartMinutes(minutes);
     setTimerOpen(true);
   };
-  // Arriving from the home "Begin" (contemplation card) with ?begin=1 jumps
-  // straight to the timer's length picker — pick a length, then start — rather
-  // than landing on the page chrome first.
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("begin") === "1") setTimerOpen(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  // The length chosen in the Begin row's dropdown (5-minute increments).
-  const [chosenMin, setChosenMin] = useState<number>(10);
+  // The length chosen in the Begin dropdown (5-minute increments), seeded
+  // from the last length the user chose so it persists across visits.
+  const [chosenMin, setChosenMin] = useState<number>(() => {
+    try {
+      const v = parseInt(localStorage.getItem(LAST_MIN_KEY) ?? "", 10);
+      if (Number.isFinite(v) && v >= 5 && v <= 60 && v % 5 === 0) return v;
+    } catch { /* private mode */ }
+    return 10;
+  });
   // Which supporting section shows under the Begin card.
   const [tab, setTab] = useState<"history" | "stats" | "learn">("history");
   // Local midnight so the server can scope "today" to the user's
@@ -669,88 +676,72 @@ export default function ContemplationPage() {
           </div>
         </div>
 
-        {/* Begin row — a length dropdown (5-minute increments, with a caret)
-            on the left, a Start pill on the right. */}
-        <div
-          className="rounded-2xl"
-          style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.13) 0%, rgba(0,0,0,0) 100%), rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.30)" }}
-        >
-          <div className="p-3 flex items-center gap-3">
-            <div className="relative flex-1 min-w-0">
-              <select
-                value={String(chosenMin)}
-                onChange={(e) => setChosenMin(parseInt(e.target.value, 10))}
-                aria-label={t("contemplation.length_label", { defaultValue: "Length" })}
-                className="w-full rounded-xl"
-                style={{
-                  background: "rgba(46,107,64,0.20)",
-                  border: "1px solid rgba(46,107,64,0.4)",
-                  color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
-                  padding: "13px 36px 13px 14px", outline: "none", colorScheme: "dark",
-                  appearance: "none", WebkitAppearance: "none", cursor: "pointer",
-                }}
-              >
-                {Array.from({ length: 12 }, (_, i) => (i + 1) * 5).map((m) => (
-                  <option key={m} value={String(m)}>
-                    {t("contemplation.length_minutes", { count: m, defaultValue: `${m} minutes` })}
-                  </option>
-                ))}
-              </select>
-              <span aria-hidden style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: SAGE, fontSize: 12 }}>▾</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => start(chosenMin)}
-              className="shrink-0 rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.98]"
+        {/* Begin — three stacked, equal-width pills: a length dropdown
+            (5-minute increments, remembers the last length), a Begin pill
+            that starts a silent sit of that length, and a Cobreathe pill
+            that drops into today's communal breath. */}
+        <div className="space-y-2.5">
+          {/* Length dropdown pill */}
+          <div className="relative">
+            <select
+              value={String(chosenMin)}
+              onChange={(e) => setChosenMin(parseInt(e.target.value, 10))}
+              aria-label={t("contemplation.length_label", { defaultValue: "Length" })}
+              className="w-full rounded-full"
               style={{
-                background: "#2D5E3F",
-                color: WARM,
-                border: "1px solid rgba(46,107,64,0.7)",
-                fontFamily: SPACE_GROTESK,
-                fontSize: 15,
-                fontWeight: 600,
-                padding: "13px 26px",
-                cursor: "pointer",
+                background: "rgba(46,107,64,0.18)",
+                border: "1px solid rgba(46,107,64,0.4)",
+                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
+                padding: "15px 40px", outline: "none", colorScheme: "dark",
+                appearance: "none", WebkitAppearance: "none", cursor: "pointer",
+                textAlign: "center", textAlignLast: "center",
               }}
             >
-              {t("contemplation.start", { defaultValue: "Start" })} <span aria-hidden>→</span>
-            </button>
+              {Array.from({ length: 12 }, (_, i) => (i + 1) * 5).map((m) => (
+                <option key={m} value={String(m)}>
+                  {t("contemplation.length_minutes", { count: m, defaultValue: `${m} minutes` })}
+                </option>
+              ))}
+            </select>
+            <span aria-hidden style={{ position: "absolute", right: 18, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: SAGE, fontSize: 12 }}>▾</span>
           </div>
-        </div>
 
-        {/* Cobreathe — daily communal breath for justice. Goes straight
-            into the breath (?start=1); the stats show when it's done. */}
-        <Link href="/cobreathe?start=1" onClick={() => primeAudio()}>
-          <div
-            className="rounded-2xl mt-4 cursor-pointer transition-opacity hover:opacity-90 active:scale-[0.99]"
-            style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.13) 0%, rgba(0,0,0,0) 100%), rgba(62,124,122,0.10)", border: `1px solid rgba(62,124,122,${cobreathe?.done ? 0.45 : 0.34})` }}
+          {/* Begin pill */}
+          <button
+            type="button"
+            onClick={() => start(chosenMin)}
+            className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{
+              background: "#2D5E3F",
+              color: WARM,
+              border: "1px solid rgba(46,107,64,0.7)",
+              fontFamily: SPACE_GROTESK,
+              fontSize: 16,
+              fontWeight: 600,
+              padding: "15px",
+              cursor: "pointer",
+            }}
           >
-            <div className="p-4 flex items-center gap-3">
-            <span className="text-2xl">🌬️</span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-[14.5px]" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                  {t("cobreathe.title", { defaultValue: "Cobreathe" })}
-                </span>
-                <span
-                  className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
-                  style={{ background: "rgba(193,127,36,0.18)", border: "1px solid rgba(193,127,36,0.45)", color: "#D9A45B", fontFamily: SPACE_GROTESK }}
-                >
-                  {t("common.beta", { defaultValue: "Beta" })}
-                </span>
-              </div>
-              <p className="text-[12px] mt-0.5 leading-snug" style={{ color: SAGE }}>
-                {cobreathe?.done
-                  ? t("cobreathe.card_done", { defaultValue: "Today's breath is held 🌿" })
-                  : (cobreathe?.count ?? 0) > 0
-                    ? t("cobreathe.card_count", { count: cobreathe?.count ?? 0, defaultValue: `${cobreathe?.count} ${cobreathe?.count === 1 ? "person has" : "people have"} breathed for justice today` })
-                    : t("cobreathe.card_blurb", { defaultValue: "Twelve slow breaths, once a day, in one shared rhythm" })}
-              </p>
+            {t("contemplation.begin", { defaultValue: "Begin" })} <span aria-hidden>→</span>
+          </button>
+
+          {/* Cobreathe pill — straight into today's communal breath (?start=1). */}
+          <Link href="/cobreathe?start=1" onClick={() => primeAudio()} className="block">
+            <div
+              className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
+              style={{
+                background: `rgba(62,124,122,${cobreathe?.done ? 0.2 : 0.14})`,
+                border: `1px solid rgba(62,124,122,${cobreathe?.done ? 0.5 : 0.4})`,
+                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
+                padding: "15px", cursor: "pointer",
+              }}
+            >
+              <span aria-hidden>🌬️</span>
+              <span>{t("cobreathe.title", { defaultValue: "Cobreathe" })}</span>
+              {cobreathe?.done && <span aria-hidden>🌿</span>}
             </div>
-            <span style={{ color: SAGE, fontSize: 18 }}>›</span>
-            </div>
-          </div>
-        </Link>
+          </Link>
+        </div>
 
         <DailyGoalCard
           goalMinutes={goalMinutes}
