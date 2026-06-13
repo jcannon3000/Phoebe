@@ -156,6 +156,7 @@ export function CobreatheBreath({
   totalBreaths = DEFAULT_TOTAL_BREATHS,
   othersToday,
   todayCount,
+  backgroundImage,
 }: {
   // Fired ONCE, when the target number of breaths has been kept. The breath
   // does NOT stop here — people can keep breathing as long as they like.
@@ -170,6 +171,9 @@ export function CobreatheBreath({
   // Everyone who has breathed today (incl. the caller once recorded) — shown
   // as the participation detail under the title.
   todayCount?: number;
+  // Optional photo behind the breath (e.g. the /cobreathe page). A dark green
+  // wash sits over it so the glow, globe, and text stay legible.
+  backgroundImage?: string;
 }) {
   const { t } = useTranslation();
   // The breath is a single solid green circle that swells on the inhale and
@@ -395,8 +399,20 @@ export function CobreatheBreath({
     <div
       style={{
         position: "fixed", inset: 0, zIndex: 80, overflow: "hidden",
-        background: counting ? FIELD_LIVE : FIELD_DIM,
-        transition: "background-color 1.6s ease",
+        // With a photo, a deep-green wash sits over it (a touch lighter once the
+        // session goes live); otherwise the solid breath field as before.
+        ...(backgroundImage
+          ? {
+              backgroundColor: FIELD_DIM,
+              backgroundImage: `linear-gradient(${counting ? "rgba(8,32,20,0.62), rgba(4,13,8,0.72)" : "rgba(4,13,8,0.74), rgba(4,13,8,0.82)"}), url(${backgroundImage})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              transition: "background-image 1.6s ease",
+            }
+          : {
+              background: counting ? FIELD_LIVE : FIELD_DIM,
+              transition: "background-color 1.6s ease",
+            }),
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between",
         paddingTop: "calc(env(safe-area-inset-top) + 28px)",
         paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",

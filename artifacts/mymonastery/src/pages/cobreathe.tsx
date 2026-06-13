@@ -235,6 +235,7 @@ export default function CobreathePage() {
             todayCount={state?.count ?? 0}
             onReachTarget={handleReachTarget}
             onEnd={handleEnd}
+            backgroundImage="/images/cobreathe-bg.avif"
           />
         )}
 
