@@ -8,7 +8,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
-import { HomeAuthoringFAB } from "@/pages/dashboard";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
 import type { PrayerForMe, MyActivePrayerFor } from "@/components/pray-for-them";
 
@@ -1754,7 +1753,6 @@ export default function PrayerListPage() {
           </motion.div>
         )}
       </AnimatePresence>
-      <HomeAuthoringFAB />
     </Layout>
   );
 }

@@ -6641,7 +6641,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
             the existing pray-for-other authoring flow. The admin FAB
             for community-scoped authoring lives on the community
             detail page now, not here. */}
-        <HomeAuthoringFAB />
       </div>
 
       {/* Goal-reached celebration popup */}
