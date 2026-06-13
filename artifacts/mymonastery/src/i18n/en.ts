@@ -1639,6 +1639,12 @@ export const en = {
     your_request: "Your request",
     from_name: "From {{name}}",
   },
+  // Inline Amen / Comment buttons on each home Prayer List card.
+  prayer_card: {
+    amen: "Amen",
+    amened: "Amened",
+    comment: "Comment",
+  },
   // Home-screen LetterCard (pages/dashboard.tsx) — per-correspondence row
   // on the home letters section. Reuses keys from `letters.*` for shared
   // bits (overdue, your_turn, dialogue_with, etc.).

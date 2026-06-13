@@ -3848,6 +3848,72 @@ function ActiveRequestsCard({
   );
 }
 
+// Inline Amen + Comment actions on each home Prayer List card.
+//   • Amen records a prayer (POST /prayer-requests/:id/amen) — capped to one
+//     per person per request per day and reset the next morning (server scopes
+//     it to the owner's tz). The server fires the "your community is praying" /
+//     "3 people are praying today" pushes and rolls the tap into the owner's
+//     count; the button just reflects today's amened state optimistically.
+//   • Comment opens the request detail, where the word-of-comfort composer lives.
+function PrayerCardActions({ requestId, amenedToday }: { requestId: number; amenedToday: boolean }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const [, navigate] = useLocation();
+  const [amened, setAmened] = useState(amenedToday);
+  const [busy, setBusy] = useState(false);
+  // Stay in sync with the underlying query — daily reset or a cross-device
+  // amen refetch flips amenedToday, and the button should follow.
+  useEffect(() => { setAmened(amenedToday); }, [amenedToday]);
+
+  const doAmen = () => {
+    if (amened || busy) return;
+    setAmened(true); // optimistic; the server caps repeats so this is safe
+    setBusy(true);
+    triggerAmenFeedback();
+    amenWithLocation(requestId)
+      .then(() => qc.invalidateQueries({ queryKey: ["/api/prayer-requests"] }))
+      .catch(() => setAmened(false))
+      .finally(() => setBusy(false));
+  };
+
+  const btnClass = "flex-1 inline-flex items-center justify-center gap-1.5 rounded-full text-[12.5px] font-semibold transition-opacity active:scale-[0.97]";
+  return (
+    <div className="flex items-center gap-2 mt-2.5" style={{ paddingLeft: 48 }}>
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); doAmen(); }}
+        disabled={busy}
+        aria-pressed={amened}
+        className={btnClass}
+        style={{
+          padding: "7px 0",
+          fontFamily: "'Space Grotesk', sans-serif",
+          background: amened ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.85)",
+          color: "#F0EDE6",
+          border: amened ? "1px solid rgba(168,197,160,0.7)" : "1px solid rgba(46,107,64,0.6)",
+          opacity: busy ? 0.85 : 1,
+        }}
+      >
+        {amened ? t("prayer_card.amened", { defaultValue: "Amened" }) : t("prayer_card.amen", { defaultValue: "Amen" })} 🙏
+      </button>
+      <button
+        type="button"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/prayer-requests/${requestId}`); }}
+        className={btnClass}
+        style={{
+          padding: "7px 0",
+          fontFamily: "'Space Grotesk', sans-serif",
+          background: "rgba(200,212,192,0.08)",
+          color: "#C8D4C0",
+          border: "1px solid rgba(46,107,64,0.4)",
+        }}
+      >
+        {t("prayer_card.comment", { defaultValue: "Comment" })} 💬
+      </button>
+    </div>
+  );
+}
+
 // ── PrayerListCarousel — vertical Prayer List peek ──────────────────────
 //
 // Vertical stack of full-width cards, identical layout to RequestCard
@@ -3886,6 +3952,7 @@ function PrayerListCarousel({
   hideTitle?: boolean;
 }) {
   const { t } = useTranslation();
+  const [, navigate] = useLocation();
   if (requests.length === 0) return null;
 
   // ~3.5 card rows. Each card is roughly 72-80px tall with vertical
@@ -3948,53 +4015,61 @@ function PrayerListCarousel({
               : (req.isOwnRequest ? viewerAvatarUrl : (req.ownerAvatarUrl ?? null));
             const eyebrow = req.isOwnRequest ? t("prayer_list_carousel.your_request") : t("prayer_list_carousel.from_name", { name: displayName });
             return (
-              <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="relative flex rounded-xl overflow-hidden"
-                  style={{
-                    background: "rgba(46,107,64,0.15)",
-                    border: "1px solid rgba(46,107,64,0.28)",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
-                  }}
-                >
-                  <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
-                  <div className="flex-1 px-4 pt-3 pb-3">
-                    <div className="flex items-center gap-3">
-                      {displayAvatar ? (
-                        <img
-                          src={displayAvatar}
-                          alt={displayName}
-                          className="w-9 h-9 rounded-full object-cover shrink-0"
-                          style={{ border: "1px solid rgba(46,107,64,0.3)" }}
-                        />
-                      ) : (
-                        <div
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
-                          style={{ background: "#1A4A2E", color: "#A8C5A0" }}
-                        >
-                          {initials(displayName)}
-                        </div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate"
-                          style={{ color: "rgba(143,175,150,0.55)" }}
-                        >
-                          {eyebrow}
-                        </p>
-                        <p
-                          className="text-sm leading-snug line-clamp-2"
-                          style={{ color: "#F0EDE6" }}
-                        >
-                          {req.body}
-                        </p>
+              <motion.div
+                key={req.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/prayer-requests/${req.id}`)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); navigate(`/prayer-requests/${req.id}`); } }}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="relative flex rounded-xl overflow-hidden cursor-pointer"
+                style={{
+                  background: "rgba(46,107,64,0.15)",
+                  border: "1px solid rgba(46,107,64,0.28)",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+                }}
+              >
+                <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
+                <div className="flex-1 px-4 pt-3 pb-3">
+                  <div className="flex items-center gap-3">
+                    {displayAvatar ? (
+                      <img
+                        src={displayAvatar}
+                        alt={displayName}
+                        className="w-9 h-9 rounded-full object-cover shrink-0"
+                        style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+                      />
+                    ) : (
+                      <div
+                        className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+                        style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                      >
+                        {initials(displayName)}
                       </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate"
+                        style={{ color: "rgba(143,175,150,0.55)" }}
+                      >
+                        {eyebrow}
+                      </p>
+                      <p
+                        className="text-sm leading-snug line-clamp-2"
+                        style={{ color: "#F0EDE6" }}
+                      >
+                        {req.body}
+                      </p>
                     </div>
                   </div>
-                </motion.div>
-              </Link>
+                  {/* Amen + Comment — only on others' requests; your own card
+                      stays a quiet preview (no praying for yourself). */}
+                  {!req.isOwnRequest && (
+                    <PrayerCardActions requestId={req.id} amenedToday={!!req.myAmenedToday} />
+                  )}
+                </div>
+              </motion.div>
             );
           })}
         </div>
