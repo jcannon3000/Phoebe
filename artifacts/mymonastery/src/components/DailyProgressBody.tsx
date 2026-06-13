@@ -378,7 +378,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCard }: { showStreak?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode }) {
   const { t } = useTranslation();
-  const { morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone } = useRhythmState();
   const hour = new Date().getHours();
   const kept = t("rhythm.kept", { defaultValue: "Kept today" });
   const prayed = t("rhythm.prayed", { defaultValue: "Prayed today" });
@@ -519,8 +519,16 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
       onClick={"onClick" in c ? c.onClick : undefined}
     />
   );
+  // Hold the first paint until the rhythm queries have settled, then fade the
+  // finished Next/Done split in as one piece — otherwise the cards render all
+  // under "Next" and visibly jump into "Done" as each query lands.
   return (
-    <>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: ready ? 1 : 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+    >
+      {ready && (<>
       {/* A prayer-requests card leads the whole thing when there's something
           waiting. */}
       {leadCard && <div className="mb-3">{leadCard}</div>}
@@ -549,6 +557,7 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
       )}
       {showStreak && <StreakCard />}
       {showStreak && <WeeklyGridCard />}
-    </>
+      </>)}
+    </motion.div>
   );
 }

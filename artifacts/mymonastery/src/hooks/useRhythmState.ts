@@ -43,6 +43,9 @@ function officeLocalDone(sides: string[]): boolean {
 }
 
 export type RhythmState = {
+  /** Have the done-state queries settled? Consumers fade in their first paint
+   *  on this so the Next/Done split doesn't visibly reshuffle as data lands. */
+  ready: boolean;
   morningDone: boolean;
   reflectDone: boolean;
   silenceDone: boolean;
@@ -276,7 +279,21 @@ export function useRhythmState(): RhythmState {
   const totalAnchors = allFlags.length;
   const doneCount = allFlags.filter(Boolean).length;
 
+  // Have the queries that determine each card's done-state resolved? Until
+  // they have, every "*Done" flag reads false, so the cards would all render
+  // under "Next" and then visibly jump into "Done" as the data lands. Consumers
+  // gate their first paint on this to fade in the settled split instead of
+  // animating that reshuffle. (Cached navigations resolve synchronously, so
+  // this is true on the first render and the fade just plays once.)
+  const ready =
+    officeHistory !== undefined &&
+    contStats !== undefined &&
+    reflRead !== undefined &&
+    officePrefs !== undefined &&
+    (!anyExtraActive || completions !== undefined);
+
   return {
+    ready,
     morningDone,
     reflectDone,
     silenceDone,
