@@ -159,6 +159,100 @@ function StreakCard() {
   );
 }
 
+// Weekly practice grid — one row per practice the user keeps, seven dots
+// across (the days of the week, today last). A filled dot in the practice's
+// own accent color = completed that day; faint = missed; today's column is
+// ringed. Echoes the old slideshow's "two rows of seven dots" card, but a row
+// per practice. Data: /api/me/practice-week (one unified matrix); which rows
+// to render mirrors the practice cards above (four core + active extras).
+function WeeklyGridCard() {
+  const { t } = useTranslation();
+  const { gratitudeActive, examenActive } = useRhythmState();
+  const tz = (() => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
+  })();
+  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; gratitude: boolean; examen: boolean };
+  const { data } = useQuery<{ days: Day[] }>({
+    queryKey: ["/api/me/practice-week", tz],
+    queryFn: () => apiRequest("GET", "/api/me/practice-week"),
+    staleTime: 60_000,
+  });
+  if (!data || !data.days?.length) return null;
+  const { days } = data;
+
+  const rows: Array<{ key: keyof Day; emoji: string; label: string; rgb: string }> = [
+    { key: "morning", emoji: "🌅", label: t("rhythm.row_morning", { defaultValue: "Morning" }), rgb: "46,107,64" },
+    { key: "contemplation", emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122" },
+    { key: "reflection", emoji: "📖", label: t("rhythm.row_reflection", { defaultValue: "Reflection" }), rgb: "96,141,209" },
+    { key: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "124,116,196" },
+    ...(gratitudeActive ? [{ key: "gratitude" as const, emoji: "🙏", label: t("rhythm.row_gratitude", { defaultValue: "Gratitude" }), rgb: "182,140,90" }] : []),
+    ...(examenActive ? [{ key: "examen" as const, emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180" }] : []),
+  ];
+
+  // Single-letter weekday initials under each column (noon avoids any tz/DST
+  // edge rolling the day). Today is the last column.
+  const dayInitials = days.map((d) => {
+    const wd = new Date(`${d.ymd}T12:00:00`).getDay();
+    return ["S", "M", "T", "W", "T", "F", "S"][wd];
+  });
+  const LABEL_W = 104;
+
+  return (
+    <div
+      className="rounded-2xl mt-3 px-4 py-4"
+      style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(200,212,192,0.13)" }}
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
+        {t("rhythm.week_grid_title", { defaultValue: "This week" })}
+      </p>
+      {/* Day-initial header, aligned over the dot columns. */}
+      <div className="flex items-center mb-2.5">
+        <div style={{ width: LABEL_W, flexShrink: 0 }} />
+        <div className="flex-1 flex items-center gap-1.5">
+          {dayInitials.map((ch, i) => (
+            <span
+              key={i}
+              className="flex-1 text-center text-[10px] font-semibold"
+              style={{ color: i === dayInitials.length - 1 ? "rgba(240,237,230,0.7)" : "rgba(143,175,150,0.45)", fontFamily: FONT }}
+            >
+              {ch}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col gap-2.5">
+        {rows.map((row) => (
+          <div key={row.key} className="flex items-center">
+            <div className="flex items-center gap-1.5" style={{ width: LABEL_W, flexShrink: 0 }}>
+              <span className="text-[13px] leading-none flex-shrink-0">{row.emoji}</span>
+              <span className="text-[12.5px] font-medium truncate" style={{ color: WARM, fontFamily: FONT }}>{row.label}</span>
+            </div>
+            <div className="flex-1 flex items-center gap-1.5">
+              {days.map((d, i) => {
+                const done = !!d[row.key];
+                const isToday = i === days.length - 1;
+                return (
+                  <span
+                    key={d.ymd}
+                    title={`${row.label} · ${d.ymd}`}
+                    className="flex-1 rounded-full"
+                    style={{
+                      height: 9,
+                      maxWidth: 22,
+                      background: done ? `rgba(${row.rgb},0.9)` : "rgba(143,175,150,0.14)",
+                      border: isToday ? "1.5px solid rgba(240,237,230,0.6)" : "1px solid transparent",
+                    }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 function PracticeCard({
@@ -454,6 +548,7 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
         </div>
       )}
       {showStreak && <StreakCard />}
+      {showStreak && <WeeklyGridCard />}
     </>
   );
 }

@@ -497,4 +497,124 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
   }
 });
 
+// GET /me/practice-week — the last 7 days (today inclusive), and for each day
+// which of the trackable practices the user completed. Drives the weekly
+// practice grid on Daily Progress (one row per practice the user keeps, seven
+// dots across). One unified matrix so the card doesn't have to stitch four
+// endpoints together client-side. Day strings are user-tz YYYY-MM-DD; today
+// sits at index 6 (last). Per-practice keys:
+//   morning / evening — a finished office on that side (same gate as
+//     office-history-week: completed office/devotion, or >=3 min of the
+//     National Cathedral morning stream).
+//   contemplation     — any logged sit (prayer_sessions surface) OR external
+//     Apple Health mindful minutes synced for that local day.
+//   reflection        — opened the day's reflection (CAC, Forward, or SSJE).
+//   gratitude / examen — the optional practices, from practice_completion.
+// The CLIENT decides which rows to render from the user's rule of life; the
+// server just reports completion for every practice it can see.
+router.get("/me/practice-week", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const [meTz] = await db
+      .select({ timezone: usersTable.timezone })
+      .from(usersTable)
+      .where(eq(usersTable.id, sessionUserId));
+    const tz = meTz?.timezone || "UTC";
+
+    // Build the 7-day window in user-tz, oldest first, up front — we need the
+    // oldest ymd to bound the text-keyed (YYYY-MM-DD) tables below.
+    const todayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date());
+    const [ty, tm, td] = todayYmd.split("-").map((n) => parseInt(n, 10));
+    const ymds: string[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const dt = new Date(Date.UTC(ty, tm - 1, td));
+      dt.setUTCDate(dt.getUTCDate() - i);
+      ymds.push(dt.toISOString().slice(0, 10));
+    }
+    const oldestYmd = ymds[0];
+
+    // Each query returns the set of local days a practice was completed.
+    const [officeRows, contRows, healthRows, reflRows, cacRows, pcRows] = await Promise.all([
+      // Office, by side — same surfaces + completed gate as office-history-week.
+      db.execute<{ day: string; side: string }>(sql`
+        SELECT DISTINCT
+          to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day,
+          CASE
+            WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral') THEN 'morning'
+            WHEN surface IN ('evening-prayer', 'early-evening-devotion') THEN 'evening'
+          END AS side
+        FROM prayer_sessions
+        WHERE user_id = ${sessionUserId}
+          AND (
+            (surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion') AND completed = TRUE)
+            OR (surface = 'national-cathedral' AND duration_seconds >= 180)
+          )
+          AND ended_at >= NOW() - INTERVAL '8 days'
+      `),
+      // Contemplation sits logged in-app.
+      db.execute<{ day: string }>(sql`
+        SELECT DISTINCT to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day
+        FROM prayer_sessions
+        WHERE user_id = ${sessionUserId}
+          AND surface = 'contemplation'
+          AND ended_at >= NOW() - INTERVAL '8 days'
+      `),
+      // External Apple Health mindful minutes (day is already a tz-local ymd).
+      db.execute<{ day: string }>(sql`
+        SELECT day FROM contemplation_health_minutes
+        WHERE user_id = ${sessionUserId} AND minutes > 0 AND day >= ${oldestYmd}
+      `),
+      // Reflection reads — Forward / SSJE.
+      db.execute<{ ymd: string }>(sql`
+        SELECT DISTINCT ymd FROM reflection_reads
+        WHERE user_id = ${sessionUserId} AND source IN ('fdd', 'ssje') AND ymd >= ${oldestYmd}
+      `),
+      // CAC reads — its own table.
+      db.execute<{ ymd: string }>(sql`
+        SELECT DISTINCT ymd FROM cac_reads
+        WHERE user_id = ${sessionUserId} AND ymd >= ${oldestYmd}
+      `),
+      // Optional practices.
+      db.execute<{ section: string; local_date: string }>(sql`
+        SELECT DISTINCT section, local_date FROM practice_completion
+        WHERE user_id = ${sessionUserId} AND section IN ('gratitude', 'examen') AND local_date >= ${oldestYmd}
+      `),
+    ]);
+
+    const morning = new Set<string>();
+    const evening = new Set<string>();
+    for (const r of officeRows.rows) {
+      if (r.side === "morning") morning.add(r.day);
+      if (r.side === "evening") evening.add(r.day);
+    }
+    const contemplation = new Set<string>();
+    for (const r of contRows.rows) contemplation.add(r.day);
+    for (const r of healthRows.rows) contemplation.add(r.day);
+    const reflection = new Set<string>();
+    for (const r of reflRows.rows) reflection.add(r.ymd);
+    for (const r of cacRows.rows) reflection.add(r.ymd);
+    const gratitude = new Set<string>();
+    const examen = new Set<string>();
+    for (const r of pcRows.rows) {
+      if (r.section === "gratitude") gratitude.add(r.local_date);
+      if (r.section === "examen") examen.add(r.local_date);
+    }
+
+    const days = ymds.map((ymd) => ({
+      ymd,
+      morning: morning.has(ymd),
+      evening: evening.has(ymd),
+      contemplation: contemplation.has(ymd),
+      reflection: reflection.has(ymd),
+      gratitude: gratitude.has(ymd),
+      examen: examen.has(ymd),
+    }));
+    res.json({ days });
+  } catch (err) {
+    console.error("[practice-week] failed:", err);
+    res.status(500).json({ error: "Failed to load practice week" });
+  }
+});
+
 export default router;
