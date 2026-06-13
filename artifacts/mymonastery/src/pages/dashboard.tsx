@@ -3894,22 +3894,10 @@ function PrayerListCarousel({
     name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
 
   return (
-    <div className={tight ? "mt-3" : "mt-6"}>
-      {/* Title row mirrors SectionShell on /prayer-list: title +
-          horizontal divider + "View all" pill on the right. Under the home
-          tab the title is hidden (the tab already names it) — just the
-          right-aligned "View all" remains. */}
-      {hideTitle ? (
-        <div className="flex justify-end mb-3">
-          <Link
-            href="/prayer-list"
-            className="text-[10px] font-semibold uppercase transition-opacity hover:opacity-80"
-            style={{ color: "rgba(143,175,150,0.55)", letterSpacing: "0.12em", fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            {t("prayer_list_carousel.view_all")}
-          </Link>
-        </div>
-      ) : (
+    <div className={hideTitle ? "mt-1" : tight ? "mt-3" : "mt-6"}>
+      {/* Title row mirrors SectionShell on /prayer-list. Under the home tab
+          the title is hidden entirely (the tab already names the section). */}
+      {hideTitle ? null : (
         <div className="flex items-center gap-3 mb-2">
           <h3
             className="text-lg font-semibold"
@@ -6379,7 +6367,7 @@ export default function Dashboard() {
                 {/* Two equal-width tabs under the daily section: Prayer List
                     (requests, the default) vs Events (the upcoming schedule). */}
                 {filter === null && (
-                  <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+                  <div style={{ display: "flex", gap: 8, marginTop: 24, marginBottom: 8 }}>
                     {([["prayers", t("dashboard.tab_prayer_list", { defaultValue: "Prayer List" })], ["events", t("dashboard.tab_events", { defaultValue: "Events" })]] as const).map(([key, label]) => {
                       const on = homeTab === key;
                       return (

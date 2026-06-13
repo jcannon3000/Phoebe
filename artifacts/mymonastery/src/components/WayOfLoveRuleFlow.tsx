@@ -472,9 +472,9 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.side_way_body", { side: cap.toLowerCase(), defaultValue: `How will you pray in the ${cap.toLowerCase()}?` })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {choiceRow(prayBySide[side] === "community", `🙏 ${t("wol_rule.pray_community", { defaultValue: "Community prayers" })}`, t("wol_rule.pray_community_sub", { defaultValue: "Pray with your community through the day's intercessions." }), () => choosePrayBySide(side, "community"))}
-          {choiceRow(prayBySide[side] === "devotion", `🌿 ${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`, t("wol_rule.pray_devotion_sub", { defaultValue: "A short form of the office — a few unhurried minutes." }), () => choosePrayBySide(side, "devotion"))}
-          {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, t("wol_rule.pray_offices_sub", { defaultValue: "The full Daily Office, prayed at your own pace." }), () => choosePrayBySide(side, "offices"))}
+          {choiceRow(prayBySide[side] === "community", `🙏 ${t("wol_rule.pray_community", { defaultValue: "Community Prayers" })}`, t("wol_rule.pray_community_sub", { defaultValue: "Pray with your community through the day's intercessions." }), () => choosePrayBySide(side, "community"))}
+          {choiceRow(prayBySide[side] === "devotion", `🌿 ${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`, t("wol_rule.pray_devotion_sub", { defaultValue: "A short liturgy with your community's prayers included." }), () => choosePrayBySide(side, "devotion"))}
+          {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, t("wol_rule.pray_offices_sub", { defaultValue: "The full liturgy with your community's prayers included." }), () => choosePrayBySide(side, "offices"))}
           {choiceRow(prayBySide[side] === "contemplation", `🕯️ ${cap} ${t("wol_rule.contemplation_word", { defaultValue: "Contemplation" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => choosePrayBySide(side, "contemplation"))}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
@@ -518,9 +518,9 @@ export default function WayOfLoveRuleFlow({
                 ) : (
                   <>
                     <option value="read">📖 {t("wol_rule.method_screen", { defaultValue: "Digital Slideshow" })}</option>
+                    <option value="book">📕 {t("wol_rule.method_book", { defaultValue: "Physical BCP" })}</option>
                     <option value="listen">🎧 {t("wol_rule.method_listen", { defaultValue: "Listen" })}</option>
                     {side === "morning" && <option value="watch">📺 {t("wol_rule.method_watch", { defaultValue: "Watch" })}</option>}
-                    <option value="book">📕 {t("wol_rule.method_book", { defaultValue: "Physical BCP" })}</option>
                   </>
                 )}
               </select>
