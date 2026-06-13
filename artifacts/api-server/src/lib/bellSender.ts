@@ -895,7 +895,18 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
       // Evening side
       if (r.eveningPref !== "none" && r.eveningSentDate !== today) {
         const eveningTarget = r.eveningTime || FIXED_EVENING_TIME;
-        if (opts.forceNow || isWithinTickWindow(tz, eveningTarget)) {
+        const eveningInWindow = opts.forceNow || isWithinTickWindow(tz, eveningTarget);
+        // Diagnostic: on the tick where the evening window matches, record the
+        // state so "why didn't my evening reminder fire?" is answerable from
+        // the logs (pref, target time, already-prayed). Only when in-window so
+        // we don't log every user every 15 min.
+        if (eveningInWindow) {
+          logger.info(
+            { userId: r.userId, side: "evening", pref: r.eveningPref, target: eveningTarget, tz },
+            "[office-reminder] evening in-window — evaluating",
+          );
+        }
+        if (eveningInWindow) {
           const eveningSessions = await db
             .select({ endedAt: prayerSessionsTable.endedAt })
             .from(prayerSessionsTable)
@@ -916,6 +927,7 @@ export async function runParishOfficeReminderSender(opts: { forceNow?: boolean }
                 side: "evening",
                 parishTitle: r.parishTitle,
               });
+              logger.info({ userId: r.userId, pref: r.eveningPref }, "[office-reminder] evening push sent");
               await db
                 .update(usersTable)
                 .set({ parishOfficeEveningSentDate: today })
