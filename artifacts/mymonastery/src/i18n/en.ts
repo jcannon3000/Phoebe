@@ -758,6 +758,7 @@ export const en = {
   // Hamburger drawer (Layout > DrawerMenu).
   menu: {
     bcp: "Book of Common Prayer",
+    friends: "Prayer friends",
     messages: "Messages",
     reflections: "Reflections",
     daily_practice: "Your Way of Love",
@@ -4507,6 +4508,24 @@ export const en = {
     section_waiting: "Waiting for Response",
   },
   // Prayer list page (pages/prayer-list.tsx) — page chrome + section labels.
+  friends: {
+    home: "Home",
+    title: "Prayer friends",
+    subtitle: "Pray with people one-to-one, beyond your communities.",
+    search_placeholder: "Search by name or email…",
+    searching: "Searching…",
+    no_results: "No one found.",
+    requests: "Requests",
+    your_friends: "Your friends",
+    empty: "No friends yet — search above to send your first request.",
+    add: "Add",
+    requested: "Requested",
+    accept: "Accept",
+    decline: "Decline",
+    friends: "Friends",
+    remove: "Remove",
+    remove_confirm: "Remove this prayer friend?",
+  },
   prayer_list: {
     title: "Prayer List",
     subtitle: "Carrying what your community is carrying.",

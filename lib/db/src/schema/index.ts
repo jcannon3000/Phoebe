@@ -30,6 +30,7 @@ export * from "./journal_entries";
 export * from "./practice_completion";
 export * from "./office_audio_alignments";
 export * from "./fellow_invites";
+export * from "./friendships";
 export * from "./prayers_for";
 export * from "./waitlist";
 export * from "./prayer_feeds";

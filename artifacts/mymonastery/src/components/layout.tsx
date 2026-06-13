@@ -146,6 +146,16 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   });
   const myFeeds = myFeedsData?.feeds ?? [];
 
+  // Incoming prayer-friend requests → a count badge on the Friends menu row.
+  // Beta-only feature, so gated on rawIsBeta to skip the 403 for everyone else.
+  const { data: friendReqData } = useQuery<{ count: number }>({
+    queryKey: ["/api/friends/requests/count"],
+    queryFn: () => apiRequest("GET", "/api/friends/requests/count"),
+    enabled: open && !!user && rawIsBeta,
+    staleTime: 30_000,
+  });
+  const friendRequestCount = friendReqData?.count ?? 0;
+
   function navigate(path: string) {
     onClose();
     setLocation(path);
@@ -406,6 +416,17 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   label={t("header.people")}
                   onClick={() => navigate("/people")}
                 />
+                {/* Prayer friends — 1:1 connections + requests (beta). The
+                    count badge shows incoming friend requests. */}
+                {rawIsBeta && (
+                  <MenuRow
+                    emoji="🤝"
+                    label={t("menu.friends", { defaultValue: "Prayer friends" })}
+                    badge={t("menu.beta")}
+                    count={friendRequestCount}
+                    onClick={() => navigate("/friends")}
+                  />
+                )}
                 {/* Events — the upcoming schedule (services, gatherings,
                     practices), its own page now that it's off the home. */}
                 <MenuRow
