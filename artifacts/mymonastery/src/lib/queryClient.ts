@@ -16,17 +16,36 @@ export class ApiError extends Error {
   }
 }
 
+// A hung GET on a flaky / captive-portal network should fail FAST so the
+// caller falls back to cached (persisted) data and a background retry, instead
+// of spinning for the OS default (60s+). We bound only GETs: writes
+// (POST/PATCH/DELETE) may legitimately run long — uploads, large letters — and
+// must never be aborted mid-flight, which could drop the user's data.
+const GET_TIMEOUT_MS = 12_000;
+
 export async function apiRequest<T = unknown>(
   method: string,
   url: string,
   body?: unknown
 ): Promise<T> {
-  const res = await fetch(url, {
-    method,
-    credentials: "include",
-    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  const isGet = method.toUpperCase() === "GET";
+  const controller = isGet && typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeoutId = controller
+    ? setTimeout(() => controller.abort(), GET_TIMEOUT_MS)
+    : null;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      credentials: "include",
+      headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+      signal: controller?.signal,
+    });
+  } finally {
+    if (timeoutId !== null) clearTimeout(timeoutId);
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
