@@ -176,6 +176,13 @@ export default function WayOfLoveRuleFlow({
     morning: DEFAULT_REMINDER_TIME,
     evening: "18:00",
   }));
+  // Whether to nudge at all on each side. "No reminder" sets the side's pref to
+  // "none" so the server's daily push doesn't fire — the practice still counts
+  // toward the rhythm, it just goes un-prompted. Default on.
+  const [reminderOnBySide, setReminderOnBySide] = useState<Record<OfficeSide, boolean>>(() => ({
+    morning: true,
+    evening: true,
+  }));
   // Optional daily practices — adding one surfaces its home card AND an extra
   // Daily-progress checkmark. Seeded from whether the card is already on the
   // user's (current-version) home layout (in order, not hidden).
@@ -200,7 +207,7 @@ export default function WayOfLoveRuleFlow({
     setExtras((prev) => ({ ...prev, [k]: !prev[k] }));
   };
 
-  const { data: prefs } = useQuery<{ defaultPrayerLevel?: string; contemplationGoalMinutes?: number; morningTime?: string | null; eveningTime?: string | null }>({
+  const { data: prefs } = useQuery<{ defaultPrayerLevel?: string; contemplationGoalMinutes?: number; morningTime?: string | null; eveningTime?: string | null; morning?: string | null; evening?: string | null }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     staleTime: 60_000,
@@ -211,7 +218,8 @@ export default function WayOfLoveRuleFlow({
   const touchedRef = useRef(false);
   const choosePrayBySide = (side: OfficeSide, p: PrayChoice) => { touchedRef.current = true; setPrayBySide((prev) => ({ ...prev, [side]: p })); };
   const chooseMethodBySide = (side: OfficeSide, m: DefaultOfficeEntry) => { touchedRef.current = true; setMethodBySide((prev) => ({ ...prev, [side]: m })); };
-  const chooseTimeBySide = (side: OfficeSide, tm: string) => { touchedRef.current = true; setTimeBySide((prev) => ({ ...prev, [side]: tm })); };
+  const chooseTimeBySide = (side: OfficeSide, tm: string) => { touchedRef.current = true; setReminderOnBySide((prev) => ({ ...prev, [side]: true })); setTimeBySide((prev) => ({ ...prev, [side]: tm })); };
+  const chooseReminderOn = (side: OfficeSide, on: boolean) => { touchedRef.current = true; setReminderOnBySide((prev) => ({ ...prev, [side]: on })); };
   const chooseGoal = (g: string) => { touchedRef.current = true; setGoal(g); };
   // Toggle a reflection in/out. "None" clears the list (no reflection card, one
   // fewer Daily-progress dot); picking a real source clears None.
@@ -242,6 +250,12 @@ export default function WayOfLoveRuleFlow({
       morning: typeof prefs.morningTime === "string" && /^\d{2}:\d{2}$/.test(prefs.morningTime) ? prefs.morningTime : prev.morning,
       evening: typeof prefs.eveningTime === "string" && /^\d{2}:\d{2}$/.test(prefs.eveningTime) ? prefs.eveningTime : prev.evening,
     }));
+    // A saved side pref of "none" means they'd previously turned that reminder
+    // off — reflect it so reopening Customize shows "No reminder" selected.
+    setReminderOnBySide({
+      morning: prefs.morning !== "none",
+      evening: prefs.evening !== "none",
+    });
   }, [prefs]);
 
   const goalMin = Math.max(0, Math.min(180, parseInt(goal, 10) || 0));
@@ -271,10 +285,12 @@ export default function WayOfLoveRuleFlow({
       contemplationReminderEnabled: goalMin > 0,
       // Each chosen side turns its reminder ON (a non-"none" pref is what makes
       // the server's daily office-reminder push fire) at its chosen time.
-      morning: sides.morning ? PRAY_REMINDER_PREF[prayBySide.morning] : "none",
-      evening: sides.evening ? PRAY_REMINDER_PREF[prayBySide.evening] : "none",
-      morningTime: /^\d{2}:\d{2}$/.test(timeBySide.morning) ? timeBySide.morning : DEFAULT_REMINDER_TIME,
-      eveningTime: /^\d{2}:\d{2}$/.test(timeBySide.evening) ? timeBySide.evening : "18:00",
+      // A side reminds only when it's part of the rhythm AND they didn't pick
+      // "No reminder"; otherwise "none" keeps the daily push silent.
+      morning: sides.morning && reminderOnBySide.morning ? PRAY_REMINDER_PREF[prayBySide.morning] : "none",
+      evening: sides.evening && reminderOnBySide.evening ? PRAY_REMINDER_PREF[prayBySide.evening] : "none",
+      morningTime: reminderOnBySide.morning ? (/^\d{2}:\d{2}$/.test(timeBySide.morning) ? timeBySide.morning : DEFAULT_REMINDER_TIME) : null,
+      eveningTime: reminderOnBySide.evening ? (/^\d{2}:\d{2}$/.test(timeBySide.evening) ? timeBySide.evening : "18:00") : null,
     }).catch(() => {/* best-effort */});
     // Ask the native shell to register for push (request iOS permission if it
     // hasn't been granted, or re-register a dropped token). No-op on web — no
@@ -531,15 +547,45 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
           {t("wol_rule.reminder_side_label", { side: cap.toLowerCase(), defaultValue: `Remind me each ${cap.toLowerCase()}` })}
         </p>
-        <input
-          type="time"
-          value={timeBySide[side]}
-          onChange={(e) => chooseTimeBySide(side, e.target.value)}
-          aria-label={t("wol_rule.reminder_side_label", { side: cap.toLowerCase(), defaultValue: `Remind me each ${cap.toLowerCase()}` })}
-          style={{ width: "100%", maxWidth: 200, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark" }}
-        />
+        {/* Pick between a reminder time and no reminder at all. Tapping the time
+            field (or its value) selects the reminder; the pill on the right
+            selects silence. The selected one carries the active border. */}
+        <div style={{ display: "flex", alignItems: "stretch", gap: 10 }}>
+          <input
+            type="time"
+            value={timeBySide[side]}
+            onChange={(e) => chooseTimeBySide(side, e.target.value)}
+            onFocus={() => chooseReminderOn(side, true)}
+            aria-label={t("wol_rule.reminder_side_label", { side: cap.toLowerCase(), defaultValue: `Remind me each ${cap.toLowerCase()}` })}
+            style={{
+              flex: 1, maxWidth: 200,
+              background: reminderOnBySide[side] ? CARD_ACTIVE : CARD,
+              border: `1px solid ${reminderOnBySide[side] ? CARD_B_ACTIVE : CARD_B}`,
+              borderRadius: 12, padding: "13px 14px",
+              color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark",
+              opacity: reminderOnBySide[side] ? 1 : 0.5,
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => chooseReminderOn(side, false)}
+            style={{
+              flex: 1, maxWidth: 200,
+              background: !reminderOnBySide[side] ? CARD_ACTIVE : CARD,
+              border: `1px solid ${!reminderOnBySide[side] ? CARD_B_ACTIVE : CARD_B}`,
+              borderRadius: 12, padding: "13px 14px",
+              color: !reminderOnBySide[side] ? CREAM : SAGE,
+              fontSize: 14.5, fontFamily: FONT, fontWeight: 600, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+            }}
+          >
+            🔕 {t("wol_rule.reminder_none", { defaultValue: "No reminder" })}
+          </button>
+        </div>
         <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
-          {t("wol_rule.reminder_note", { defaultValue: "We'll send a gentle notification. Change the time or turn it off anytime in Settings." })}
+          {reminderOnBySide[side]
+            ? t("wol_rule.reminder_note", { defaultValue: "We'll send a gentle notification. Change the time or turn it off anytime in Settings." })
+            : t("wol_rule.reminder_note_off", { side: cap.toLowerCase(), defaultValue: `No ${cap.toLowerCase()} reminder — this practice still counts toward your rhythm.` })}
         </p>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
