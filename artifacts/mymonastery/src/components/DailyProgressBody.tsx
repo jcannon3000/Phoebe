@@ -367,8 +367,8 @@ function PracticeCard({
           <div className="flex-1 min-w-0">
             <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
             {useCycle
-              ? <CardSubtitleCycle values={blurbCycle!} className="text-[12px] mt-0.5 leading-snug" style={{ color: SAGE }} />
-              : <p className="text-[12px] mt-0.5 leading-snug" style={{ color: SAGE }}>{blurb}</p>}
+              ? <CardSubtitleCycle values={blurbCycle!} className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE }} />
+              : <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE }}>{blurb}</p>}
           </div>
           {pill}
         </div>
@@ -444,15 +444,6 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     },
     {
-      key: "silence", emoji: "🕯️", rgb: "62,124,122", done: silenceDone,
-      // Cobreathe straight away if that's their chosen contemplation style.
-      href: (() => { try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "/cobreathe?start=1" : "/contemplation?begin=1"; } catch { return "/contemplation?begin=1"; } })(),
-      title: t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
-      blurb: contemplationBlurb,
-      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-      progress: { current: contemplationMin, goal: contemplationGoalMin },
-    },
-    {
       key: "reflect", emoji: "📖", rgb: "96,141,209", done: reflectDone, href: "/menu/reflections",
       title: t("rhythm.card_reflect", { defaultValue: "Today's reflection" }),
       blurb: reflectionSubtitle,
@@ -468,17 +459,13 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
       cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
     },
     {
-      key: "evening", emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: hour >= 20 ? "/examen" : "/begin-prayer",
-      title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
-      blurb: eveningDone
-        ? prayed
-        : hour >= 20 ? t("rhythm.blurb_compline", { defaultValue: "Examine the day and rest" }) : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
-      // The evening office (before 8 PM) leads with "Mark the day's end with the
-      // office", then carries the community intercessions / requests; after 8 PM
-      // the card is the Examen, so no cycle.
-      blurbCycle: (eveningDone || hour >= 20) ? undefined : [eveningBlurb, ...officeCycle],
-      cta: t("rhythm.begin", { defaultValue: "Begin" }),
-      later: hour < 12,
+      key: "silence", emoji: "🕯️", rgb: "62,124,122", done: silenceDone,
+      // Cobreathe straight away if that's their chosen contemplation style.
+      href: (() => { try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "/cobreathe?start=1" : "/contemplation?begin=1"; } catch { return "/contemplation?begin=1"; } })(),
+      title: t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
+      blurb: contemplationBlurb,
+      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+      progress: { current: contemplationMin, goal: contemplationGoalMin },
     },
     ...(gratitudeActive ? [{
       key: "gratitude", emoji: "🙏", rgb: "182,140,90", done: gratitudeDone, href: "/gratitude",
@@ -492,6 +479,19 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
       blurb: examenDone ? kept : t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }),
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
+    {
+      // Evening sits last and stays a quiet "later" card until 3 PM, so the
+      // morning rhythm (reflection → contemplation) leads the day; from 3 PM on
+      // it becomes the office hero.
+      key: "evening", emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: hour >= 20 ? "/examen" : "/begin-prayer",
+      title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
+      blurb: eveningDone
+        ? prayed
+        : hour >= 20 ? t("rhythm.blurb_compline", { defaultValue: "Examine the day and rest" }) : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
+      blurbCycle: (eveningDone || hour >= 20) ? undefined : [eveningBlurb, ...officeCycle],
+      cta: t("rhythm.begin", { defaultValue: "Begin" }),
+      later: hour < 15,
+    },
   ];
 
   // When a dedicated office hero is supplied (the beta home), the office shows
@@ -499,13 +499,15 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
   // pray: morning while it's still undone, otherwise evening. We drop the hero's
   // side from the rows; the OTHER side stays as a small row (e.g. evening drops
   // small in the list when morning isn't done yet).
-  const heroSide: "morning" | "evening" = morningDone ? "evening" : "morning";
-  const heroSideDone = heroSide === "morning" ? morningDone : eveningDone;
-  // Only lead with the office hero while that office is still to pray. Once it's
-  // actually done it drops into the Done list like any other anchor — it
-  // shouldn't keep sitting in Next as a big "completed" hero.
-  const showOfficeHero = !!renderOfficeHero && !heroSideDone;
-  const officeHero = showOfficeHero ? renderOfficeHero!(heroSide) : null;
+  // Morning leads as the office hero until it's prayed. After morning, the day
+  // belongs to reflection → contemplation (small cards); the evening office
+  // stays a quiet "later" card and only becomes the hero from 3 PM on.
+  const heroSide: "morning" | "evening" | null =
+    !morningDone ? "morning"
+    : (hour >= 15 && !eveningDone) ? "evening"
+    : null;
+  const showOfficeHero = !!renderOfficeHero && heroSide !== null;
+  const officeHero = showOfficeHero ? renderOfficeHero!(heroSide!) : null;
   const visibleCards = showOfficeHero
     ? cards.filter((c) => c.key !== heroSide)
     : cards;
