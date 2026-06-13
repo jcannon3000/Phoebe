@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
@@ -820,15 +820,20 @@ function OpeningSplash() {
     staleTime: 5 * 60_000,
     enabled: phase !== "gone" && !!user && native,
   });
-  // Start the 5s auto-dismiss once, on mount. Stamp the session flag so an
-  // in-app navigation (which re-mounts Layout) doesn't replay the splash.
+  // Start the 5s auto-dismiss once auth has resolved (user present) — NOT on a
+  // bare mount. On a native cold start `user` is null while /api/auth/me loads;
+  // stamping the once-per-launch flag then would burn the splash before it ever
+  // renders (the render guard needs `user`). startedRef makes it fire exactly
+  // once, the moment user first appears.
+  const startedRef = useRef(false);
   useEffect(() => {
-    if (phase === "gone" || !native) return;
+    if (startedRef.current || phase === "gone" || !native || !user) return;
+    startedRef.current = true;
     try { sessionStorage.setItem("phoebe:splash-shown", "1"); } catch { /* ignore */ }
     const id = setTimeout(() => setPhase("out"), 5000);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user]);
   // After the fade-out animation, unmount.
   useEffect(() => {
     if (phase !== "out") return;
