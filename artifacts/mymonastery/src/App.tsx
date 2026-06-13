@@ -170,6 +170,7 @@ const PrayerChooserPage = lazy(() => import("./pages/prayer-chooser"));
 const NcmpWatchPage = lazy(() => import("./pages/ncmp-watch"));
 const DevotionWatchPage = lazy(() => import("./pages/devotion-watch"));
 const OfficePodcastPage = lazy(() => import("./pages/office-podcast"));
+const OfficePrayAlongPage = lazy(() => import("./pages/office-pray-along"));
 const MenuPage = lazy(() => import("./pages/menu"));
 const MenuJardinPage = lazy(() => import("./pages/menu-jardin"));
 const JardinSignupPage = lazy(() => import("./pages/jardin-signup"));
@@ -671,6 +672,8 @@ function Router() {
       <Route path="/devotion/watch" component={DevotionWatchPage} />
       <Route path="/podcast/morning-office" component={OfficePodcastPage} />
       <Route path="/podcast/evening-office" component={OfficePodcastPage} />
+      {/* Beta: the follow-along office (glowing liturgy-part title + podcast bar) */}
+      <Route path="/office/:side/pray-along" component={OfficePrayAlongPage} />
       <Route path="/menu" component={MenuPage} />
       <Route path="/menu/jardin" component={MenuJardinPage} />
       <Route path="/jardin/bible" component={JardinBiblePage} />
