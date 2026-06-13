@@ -4988,6 +4988,12 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   const queryClient = useQueryClient();
 
   const { isBeta, isLoading: betaLoading } = useBetaStatus();
+  // Daily prayer routine is rolled out to everyone: the new home (daily cards
+  // split into Next/Done + the prayer list) is now the home for ALL users, not
+  // just beta. The Daily Progress page, its header pill, and the rule-of-life
+  // Customizer were already open to all. Flip this to false to restore the
+  // legacy module home for non-beta users.
+  const newHomeForEveryone = true;
   const [betaWelcomeVisible, setBetaWelcomeVisible] = useState(false);
   const betaWelcomeShownRef = useRef(false);
 
@@ -6213,7 +6219,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
           {/* Beta home: the cards become the daily-progress view — the four
               anchors split into Next / Done plus the streak — in place of the
               standard home modules. */}
-          {filter === null && isBeta && !eventsOnly && (
+          {filter === null && (newHomeForEveryone || isBeta) && !eventsOnly && (
             <div className="mt-5 mb-3">
               {/* A "prayer requests waiting" card leads when there's something
                   to respond to; then the office hero (the same full
@@ -6226,7 +6232,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               />
             </div>
           )}
-          {filter === null && !isBeta && !betaLoading && !eventsOnly && (() => {
+          {filter === null && !newHomeForEveryone && !isBeta && !betaLoading && !eventsOnly && (() => {
             // Render the home modules in the user's chosen order, skipping
             // hidden ones. Each module returns its content (or null when it
             // has nothing to show); the first non-null gets mt-5, the rest
