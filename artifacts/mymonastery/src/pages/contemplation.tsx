@@ -235,12 +235,15 @@ function DailyGoalCard({
   // field accepts up to 600 only to have the server silently store 180.
   const parsed = Math.min(180, Math.max(0, Math.floor(Number(draft))));
   const canSet = !saving && Number.isFinite(parsed) && parsed > 0 && parsed !== goalMinutes;
+  // When a goal is set, the card just shows it + an "Adjust" pill; tapping
+  // Adjust reveals the editor (input + Set + Turn off). No goal yet → start in
+  // the editor so they can set one.
+  const [editing, setEditing] = useState(false);
 
 
+  const showEditor = !hasGoal || editing;
   return (
-    <div className="rounded-2xl overflow-hidden mt-4 flex" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.13) 0%, rgba(0,0,0,0) 100%), rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.30)" }}>
-      <div className="w-1 flex-shrink-0" style={{ background: "rgba(110,180,130,0.85)" }} />
-      <div className="flex-1 p-4">
+    <div className="rounded-2xl mt-4 p-4" style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.13) 0%, rgba(0,0,0,0) 100%), rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.30)" }}>
       <div className="flex items-center justify-between mb-2">
         <p className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
           {t("contemplation.goal_title", { defaultValue: "Daily goal" })}
@@ -254,18 +257,13 @@ function DailyGoalCard({
         )}
       </div>
 
-      {hasGoal ? (
+      {hasGoal && (
         <div className="rounded-full overflow-hidden mb-3" style={{ height: 6, background: "rgba(46,107,64,0.20)" }}>
           <div style={{ width: `${pct}%`, height: "100%", background: met ? "#6FAF85" : "#2D5E3F", transition: "width 0.3s" }} />
         </div>
-      ) : (
-        <p className="text-[12px]" style={{ color: SAGE, margin: "0 0 12px" }}>
-          {t("contemplation.goal_prompt", { defaultValue: "Set a daily minutes goal — we'll nudge you around 7pm on days you haven't reached it." })}
-        </p>
       )}
 
-      {/* Synced from Apple Health — meditation kept in other apps, folded into
-          today's progress above. Only shown when there's something to count. */}
+      {/* Synced from Apple Health — folded into today's progress above. */}
       {healthMin > 0 && (
         <p className="text-[12px] flex items-center gap-1.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK, margin: "0 0 12px" }}>
           <span aria-hidden>🍎</span>
@@ -273,49 +271,69 @@ function DailyGoalCard({
         </p>
       )}
 
-      {/* Minutes target — a free field, no presets. */}
-      <div className="flex items-center gap-2">
-        <input
-          type="number"
-          inputMode="numeric"
-          min={1}
-          max={180}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && canSet) onSet(parsed); }}
-          placeholder={t("contemplation.goal_placeholder", { defaultValue: "Minutes" })}
-          aria-label={t("contemplation.goal_field_label", { defaultValue: "Daily goal in minutes" })}
-          disabled={saving}
-          className="rounded-xl px-3 py-2 text-sm"
-          style={{ width: 96, background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.35)", color: WARM, fontFamily: SPACE_GROTESK, outline: "none" }}
-        />
-        <span className="text-[13px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-          {t("contemplation.goal_unit", { defaultValue: "min / day" })}
-        </span>
-        <button
-          type="button"
-          onClick={() => onSet(parsed)}
-          disabled={!canSet}
-          className="rounded-full px-4 py-2 text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-40 ml-auto"
-          style={{ background: "#2D5E3F", color: WARM, fontFamily: SPACE_GROTESK, cursor: canSet ? "pointer" : "default" }}
-        >
-          {t("common.set", { defaultValue: "Set" })}
-        </button>
-      </div>
-
-      {hasGoal && (
-        <button
-          type="button"
-          onClick={() => onSet(0)}
-          disabled={saving}
-          className="text-[12px] mt-2 transition-opacity hover:opacity-80 disabled:opacity-50"
-          style={{ background: "none", border: "none", padding: 0, color: SAGE, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
-        >
-          {t("contemplation.goal_turn_off", { defaultValue: "Turn off goal" })}
-        </button>
+      {showEditor ? (
+        <>
+          {!hasGoal && (
+            <p className="text-[12px]" style={{ color: SAGE, margin: "0 0 12px" }}>
+              {t("contemplation.goal_prompt", { defaultValue: "Set a daily minutes goal — we'll nudge you around 7pm on days you haven't reached it." })}
+            </p>
+          )}
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={180}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && canSet) { onSet(parsed); setEditing(false); } }}
+              placeholder={t("contemplation.goal_placeholder", { defaultValue: "Minutes" })}
+              aria-label={t("contemplation.goal_field_label", { defaultValue: "Daily goal in minutes" })}
+              disabled={saving}
+              className="rounded-xl px-3 py-2 text-sm"
+              style={{ width: 96, background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.35)", color: WARM, fontFamily: SPACE_GROTESK, outline: "none" }}
+            />
+            <span className="text-[13px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+              {t("contemplation.goal_unit", { defaultValue: "min / day" })}
+            </span>
+            <button
+              type="button"
+              onClick={() => { onSet(parsed); setEditing(false); }}
+              disabled={!canSet}
+              className="rounded-full px-4 py-2 text-[13px] font-semibold transition-opacity hover:opacity-90 disabled:opacity-40 ml-auto"
+              style={{ background: "#2D5E3F", color: WARM, fontFamily: SPACE_GROTESK, cursor: canSet ? "pointer" : "default" }}
+            >
+              {t("common.set", { defaultValue: "Set" })}
+            </button>
+          </div>
+          {hasGoal && (
+            <button
+              type="button"
+              onClick={() => { onSet(0); setEditing(false); }}
+              disabled={saving}
+              className="text-[12px] mt-2 transition-opacity hover:opacity-80 disabled:opacity-50"
+              style={{ background: "none", border: "none", padding: 0, color: SAGE, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
+            >
+              {t("contemplation.goal_turn_off", { defaultValue: "Turn off goal" })}
+            </button>
+          )}
+        </>
+      ) : (
+        // Set → just the goal + an Adjust pill.
+        <div className="flex items-center justify-between">
+          <p style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 600, margin: 0 }}>
+            {t("contemplation.goal_value", { goal: goalMinutes, defaultValue: `${goalMinutes} min / day` })}
+          </p>
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="rounded-full px-4 py-2 text-[13px] font-semibold transition-opacity hover:opacity-90"
+            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "#A8C5A0", fontFamily: SPACE_GROTESK, cursor: "pointer" }}
+          >
+            {t("contemplation.goal_adjust", { defaultValue: "Adjust" })}
+          </button>
+        </div>
       )}
-
-      </div>
     </div>
   );
 }
@@ -645,15 +663,13 @@ export default function ContemplationPage() {
           </div>
         </div>
 
-        {/* Begin row — home-card style with a left accent bar: a length
-            dropdown (5-minute increments, with a caret) on the left, a Start
-            pill on the right. */}
+        {/* Begin row — a length dropdown (5-minute increments, with a caret)
+            on the left, a Start pill on the right. */}
         <div
-          className="rounded-2xl overflow-hidden flex"
+          className="rounded-2xl"
           style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.13) 0%, rgba(0,0,0,0) 100%), rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.30)" }}
         >
-          <div className="w-1 flex-shrink-0" style={{ background: "rgba(110,180,130,0.85)" }} />
-          <div className="flex-1 p-3 flex items-center gap-3">
+          <div className="p-3 flex items-center gap-3">
             <div className="relative flex-1 min-w-0">
               <select
                 value={String(chosenMin)}
@@ -700,11 +716,10 @@ export default function ContemplationPage() {
             into the breath (?start=1); the stats show when it's done. */}
         <Link href="/cobreathe?start=1" onClick={() => primeAudio()}>
           <div
-            className="rounded-2xl overflow-hidden mt-4 flex cursor-pointer transition-opacity hover:opacity-90 active:scale-[0.99]"
+            className="rounded-2xl mt-4 cursor-pointer transition-opacity hover:opacity-90 active:scale-[0.99]"
             style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.13) 0%, rgba(0,0,0,0) 100%), rgba(62,124,122,0.10)", border: `1px solid rgba(62,124,122,${cobreathe?.done ? 0.45 : 0.34})` }}
           >
-            <div className="w-1 flex-shrink-0" style={{ background: "rgba(110,180,150,0.85)" }} />
-            <div className="flex-1 p-4 flex items-center gap-3">
+            <div className="p-4 flex items-center gap-3">
             <span className="text-2xl">🌬️</span>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">

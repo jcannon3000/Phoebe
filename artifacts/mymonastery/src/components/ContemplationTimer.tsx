@@ -650,14 +650,13 @@ export function ContemplationTimer({
   return (
     <AnimatePresence>
       <motion.div
-        // Appear INSTANTLY (no opacity fade-in) so the solid background covers
-        // the page immediately — fading the whole overlay in revealed the
-        // contemplation page behind it for ~0.25s, which read as a clumsy load.
-        // Still fades out cleanly on close.
-        initial={false}
-        animate={{ opacity: 1 }}
+        // Gentle fade + slight rise so the picker eases in (the instant pop read
+        // as a glitch). The solid background rises with it, so the page behind
+        // isn't revealed mid-transition.
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
+        transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
         className="fixed inset-0 z-[60] flex flex-col items-center"
         style={{ background: BG, isolation: "isolate" }}
       >
@@ -919,10 +918,11 @@ export function ContemplationTimer({
                       <button
                         type="button"
                         onClick={() => { primeAudio(); onClose({ completed: false }); setLocation("/cobreathe?start=1"); }}
-                        className="mt-5 w-full rounded-2xl py-3.5 transition-opacity hover:opacity-90 active:scale-[0.98] flex items-center justify-center gap-2"
-                        style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.32)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600, cursor: "pointer" }}
+                        className="mt-5 w-full rounded-2xl py-3 transition-opacity hover:opacity-90 active:scale-[0.98] flex flex-col items-center"
+                        style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.32)", color: WARM, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
                       >
-                        🫧 {t("contemplation_timer.cobreathe", { defaultValue: "Cobreathe" })}
+                        <span style={{ fontSize: 15, fontWeight: 600 }}>🌍 {t("contemplation_timer.cobreathe", { defaultValue: "Cobreathe" })}</span>
+                        <span style={{ fontSize: 12, color: SAGE, marginTop: 2 }}>{t("contemplation_timer.cobreathe_sub", { defaultValue: "Breathing together for climate justice" })}</span>
                       </button>
                     </>
                   ) : (

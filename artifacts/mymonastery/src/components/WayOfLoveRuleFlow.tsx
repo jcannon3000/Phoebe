@@ -14,7 +14,7 @@
  * the Daily progress "Customize" pill and returns there when done.
  */
 
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Check } from "lucide-react";
@@ -310,8 +310,15 @@ export default function WayOfLoveRuleFlow({
   // then the inner block re-adds the SAME small padding the home screen uses so
   // the cards sit at the same margin as the home cards — not inset twice (which
   // left it narrow), not jammed to the edge.
+  // Tap the RIGHT side of the screen (not on a control) to go back — a quick
+  // gesture alternative to the bottom Back button.
+  const onTapBack = (e: ReactMouseEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (target?.closest("button, a, input, select, textarea, label")) return;
+    if (e.clientX > window.innerWidth * 0.6) goPrev();
+  };
   const shell = (children: ReactNode) => (
-    <div className="-mx-4 sm:-mx-6 md:-mx-8" style={{ flex: 1, minHeight: 0, background: BG, position: "relative", display: "flex", flexDirection: "column" }}>
+    <div onClick={onTapBack} className="-mx-4 sm:-mx-6 md:-mx-8" style={{ flex: 1, minHeight: 0, background: BG, position: "relative", display: "flex", flexDirection: "column" }}>
       {/* No fadeTop: rendered under <Layout>'s opaque header. */}
       <AnimatedBackground base={BG} variant="subtle" />
       <div className="px-4 sm:px-6 md:px-8" style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", paddingTop: 24, paddingBottom: 40 }}>
@@ -360,10 +367,18 @@ export default function WayOfLoveRuleFlow({
     );
   };
 
+  // Continue + a bottom Back bar (the top Back row was removed). Back uses
+  // goPrev, which steps back through the dynamic flow (or exits on the first
+  // step). Tapping the right side of the screen also goes back (see shell).
   const ctaButton = (label: string, onClick: () => void) => (
-    <button onClick={onClick} style={{ marginTop: 32, background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-      {label}
-    </button>
+    <div style={{ marginTop: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+      <button onClick={onClick} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+        {label}
+      </button>
+      <button onClick={goPrev} style={{ marginTop: 4, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
+        <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
+      </button>
+    </div>
   );
 
   // A radio-style choice row (single-select), with the home cards' left accent
