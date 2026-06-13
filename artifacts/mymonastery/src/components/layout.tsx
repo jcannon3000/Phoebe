@@ -9,6 +9,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { CommunityPrayedRecap } from "@/components/CommunityPrayedRecap";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
@@ -816,6 +817,7 @@ function DailyProgressPill() {
 // only once per app launch, never for logged-out visitors.
 function OpeningSplash() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const native = isNativeShell();
   const [phase, setPhase] = useState<"in" | "out" | "gone">(() => {
     if (typeof window === "undefined") return "gone";
@@ -847,6 +849,13 @@ function OpeningSplash() {
   if (!native || !user || phase === "gone") return null;
 
   const dismiss = () => setPhase("out");
+  const hour = new Date().getHours();
+  const greeting = hour < 12
+    ? t("splash.morning", { defaultValue: "Good morning" })
+    : hour < 17
+      ? t("splash.afternoon", { defaultValue: "Good afternoon" })
+      : t("splash.evening", { defaultValue: "Good evening" });
+  const firstName = (user.name ?? "").trim().split(/\s+/)[0] || "";
 
   return (
     <motion.div
@@ -858,8 +867,15 @@ function OpeningSplash() {
       animate={{ opacity: phase === "out" ? 0 : 1 }}
       transition={{ duration: phase === "out" ? 0.9 : 0, ease: "easeInOut" }}
       className="fixed inset-0 flex flex-col items-center justify-center gap-6 px-10"
-      style={{ background: "#0C1F12", zIndex: 200, pointerEvents: phase === "out" ? "none" : "auto" }}
+      style={{ background: "#0C1F12", zIndex: 200, isolation: "isolate", pointerEvents: phase === "out" ? "none" : "auto" }}
     >
+      <AnimatedBackground base="#0C1F12" variant="pronounced" />
+      <p
+        className="absolute text-center px-8"
+        style={{ top: "13vh", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}
+      >
+        {firstName ? `${greeting}, ${firstName}` : greeting}
+      </p>
       <CommunityPrayedRecap coPrayers={data?.people ?? []} />
       <button
         type="button"

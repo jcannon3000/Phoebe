@@ -516,14 +516,6 @@ export function CobreatheBreath({
             {t("cobreathe.breathed_today_count", { count: todayCount, defaultValue: `${todayCount} ${todayCount === 1 ? "person has" : "people have"} breathed today` })}
           </p>
         )}
-        <p
-          className="text-center text-[15px] px-10 leading-relaxed mt-5"
-          style={{ color: TEXT_DIM, fontFamily: SERIF, fontStyle: "italic", minHeight: 48 }}
-        >
-          {intention
-            ? t(`cobreathe.intention.${intention.key}`, { defaultValue: intention.text })
-            : t("cobreathe.settle", { defaultValue: "Everyone breathes to one shared pace, the same for all of us. Settle in — on the next breath, you'll join it." })}
-        </p>
       </div>
 
       {/* Phase word + counter — BELOW the gradient now (it used to sit centred

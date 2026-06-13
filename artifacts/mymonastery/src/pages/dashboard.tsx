@@ -3993,16 +3993,19 @@ function PrayerListCarousel({
                         </p>
                       </div>
                       {/* Prayer-hands — opens the slideshow at this request, then
-                          continues through the rest of the list. */}
-                      <button
-                        type="button"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/prayer-mode?reset=1&focus=${req.id}`); }}
-                        aria-label={t("prayer_card.pray", { defaultValue: "Pray" })}
-                        className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-opacity hover:opacity-90 active:scale-95"
-                        style={{ background: "rgba(46,107,64,0.85)", border: "1px solid rgba(46,107,64,0.55)" }}
-                      >
-                        <span className="text-[17px]">🙏</span>
-                      </button>
+                          continues through the rest of the list. Not on your own
+                          request (you don't pray for yourself in the walk). */}
+                      {!req.isOwnRequest && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/prayer-mode?reset=1&focus=${req.id}`); }}
+                          aria-label={t("prayer_card.pray", { defaultValue: "Pray" })}
+                          className="flex-shrink-0 flex items-center justify-center transition-opacity hover:opacity-90 active:scale-95"
+                          style={{ background: "none", border: "none", padding: 4 }}
+                        >
+                          <span className="text-[24px] leading-none">🙏🏾</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </motion.div>
