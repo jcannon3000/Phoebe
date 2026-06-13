@@ -610,7 +610,14 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     }
     const contemplation = new Set<string>();
     for (const [day, mins] of contemplationMinByDay) {
-      const met = contemplationGoalMin > 0 ? mins >= contemplationGoalMin : mins > 0;
+      // TODAY reflects the CURRENT goal (so the dot tracks today's progress).
+      // PAST days are never re-judged against a goal you raised later — a day
+      // you already sat stands as kept, even if it wouldn't meet today's higher
+      // goal. (We don't store the goal that was in effect on each past day, so
+      // "any sit that day" is the stable, non-retroactive rule.)
+      const met = day === todayYmd
+        ? (contemplationGoalMin > 0 ? mins >= contemplationGoalMin : mins > 0)
+        : mins > 0;
       if (met) contemplation.add(day);
     }
     const reflection = new Set<string>();

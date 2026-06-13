@@ -1060,7 +1060,7 @@ export function sendContemplationGoalReminderPush(
     ? `${remaining} more min to reach your ${opts.goalMinutes}-minute goal today.`
     : `A few quiet minutes to reach your ${opts.goalMinutes}-minute goal today.`;
   return sendPushToUser(userId, {
-    title: "Time to be still",
+    title: "Still time to hit your goal",
     body,
     path: "/contemplation",
     threadId: "contemplation-goal",
