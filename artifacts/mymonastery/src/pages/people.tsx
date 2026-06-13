@@ -630,18 +630,19 @@ export default function People() {
           )}
         </div>
 
-        {/* Fellows — your 1:1 prayer connections. Add (search / contacts),
-            accept incoming requests, and your fellows with their rhythm.
-            Beta capability; backed by /api/fellows (the accepted link already
-            feeds the garden + your prayer list). Replaces the old read-only
-            fellows strip. */}
-        {rawIsBeta && (
+        {/* Fellows — your 1:1 prayer connections. Beta users can add (search /
+            contacts) + accept requests; everyone sees their fellows list (fellows
+            also form via shared-prayer signup). Backed by /api/fellows (the
+            accepted link already feeds the garden + your prayer list). Shown when
+            the viewer is beta OR already has fellows, so non-beta with none see
+            nothing rather than an empty header. */}
+        {(rawIsBeta || (fellowsData?.fellows?.length ?? 0) > 0) && (
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
               <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>{t("people.fellows")}</p>
               <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
             </div>
-            <FellowsConnect />
+            <FellowsConnect canManage={rawIsBeta} />
           </div>
         )}
 

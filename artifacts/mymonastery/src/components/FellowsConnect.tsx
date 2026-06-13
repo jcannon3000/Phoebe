@@ -54,17 +54,20 @@ async function sha256Hex(text: string): Promise<string> {
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export function FellowsConnect() {
+// `canManage` (beta) gates the add / search / contacts / requests surface;
+// the fellows list itself is read-only and shown to everyone (fellows can be
+// created via shared-prayer signup for non-beta users too).
+export function FellowsConnect({ canManage = false }: { canManage?: boolean }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
 
   const fellowsQ = useQuery<{ fellows: Fellow[] }>({ queryKey: ["/api/fellows"], queryFn: () => apiRequest("GET", "/api/fellows") });
-  const requestsQ = useQuery<{ requests: Request[] }>({ queryKey: ["/api/fellows/requests"], queryFn: () => apiRequest("GET", "/api/fellows/requests") });
+  const requestsQ = useQuery<{ requests: Request[] }>({ queryKey: ["/api/fellows/requests"], queryFn: () => apiRequest("GET", "/api/fellows/requests"), enabled: canManage });
   const searchQ = useQuery<{ users: SearchUser[] }>({
     queryKey: ["/api/fellows/search", q.trim()],
     queryFn: () => apiRequest("GET", `/api/fellows/search?q=${encodeURIComponent(q.trim())}`),
-    enabled: q.trim().length >= 2,
+    enabled: canManage && q.trim().length >= 2,
   });
 
   const invalidate = () => {
@@ -146,7 +149,8 @@ export function FellowsConnect() {
 
   return (
     <div className="mb-2">
-      {/* Add a fellow — search + contacts */}
+      {/* Add a fellow — search + contacts (beta only) */}
+      {canManage && (
       <div className="rounded-2xl p-3" style={{ background: CARD_BG, border: `1px solid ${CARD_B}` }}>
         <div className="relative">
           <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2" color="rgba(143,175,150,0.6)" />
@@ -182,9 +186,10 @@ export function FellowsConnect() {
           )
         )}
       </div>
+      )}
 
       {/* Incoming requests */}
-      {requests.length > 0 && (
+      {canManage && requests.length > 0 && (
         <>
           {sectionHeader(t("fellows_c.requests", { defaultValue: "Requests" }))}
           {requests.map((r) => row(r.name ?? "Someone", r.avatarUrl,

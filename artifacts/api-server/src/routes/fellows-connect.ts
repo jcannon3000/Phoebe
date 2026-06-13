@@ -55,6 +55,15 @@ async function createFellowPair(a: number, b: number): Promise<void> {
     { userId: a, fellowUserId: b, source: "manual" },
     { userId: b, fellowUserId: a, source: "manual" },
   ]).onConflictDoNothing();
+  // Resolve ANY pending invite in either direction so no stale "wants to be
+  // fellows" request lingers once the link exists (e.g. both had sent one).
+  await db.update(fellowInvitesTable).set({ status: "accepted" }).where(and(
+    eq(fellowInvitesTable.status, "pending"),
+    or(
+      and(eq(fellowInvitesTable.senderId, a), eq(fellowInvitesTable.recipientId, b)),
+      and(eq(fellowInvitesTable.senderId, b), eq(fellowInvitesTable.recipientId, a)),
+    ),
+  ));
 }
 async function areFellows(a: number, b: number): Promise<boolean> {
   const rows = await db.select({ id: fellowsTable.id }).from(fellowsTable).where(or(
