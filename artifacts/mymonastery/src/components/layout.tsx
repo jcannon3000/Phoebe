@@ -10,7 +10,6 @@ import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { WeeklyGridCard } from "@/components/DailyProgressBody";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
@@ -886,10 +885,10 @@ function OpeningSplash() {
       animate={{ opacity: phase === "out" ? 0 : 1 }}
       transition={{ duration: phase === "out" ? 0.9 : 0, ease: "easeInOut" }}
       onAnimationComplete={() => { if (phase === "out") setPhase("gone"); }}
-      className="fixed inset-0 flex flex-col items-center px-6"
+      className="fixed inset-0 flex flex-col items-center justify-center px-6"
       style={{
         background: "#0C1F12", zIndex: 200, isolation: "isolate", pointerEvents: phase === "out" ? "none" : "auto",
-        paddingTop: "calc(env(safe-area-inset-top) + 8vh)", paddingBottom: "16vh", overflowY: "auto",
+        paddingTop: "calc(env(safe-area-inset-top) + 24px)", paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)", overflowY: "auto",
       }}
     >
       <AnimatedBackground base="#0C1F12" variant="pronounced" />
@@ -945,11 +944,6 @@ function OpeningSplash() {
                 defaultValue: `${people.length} ${people.length === 1 ? "person" : "people"} prayed for you this month`,
               })}
             </p>
-            {/* This week's rhythm grid, under the faces — cached/persisted so it's
-                ready on the next open, not lagging in. */}
-            <div className="w-full mt-7">
-              <WeeklyGridCard />
-            </div>
           </motion.div>
         );
       })()}
