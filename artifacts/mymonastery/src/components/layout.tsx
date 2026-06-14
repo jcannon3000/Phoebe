@@ -8,6 +8,7 @@ import { X, LogOut, ChevronRight, ChevronDown } from "lucide-react";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { WeeklyGridCard } from "@/components/DailyProgressBody";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
@@ -197,9 +198,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const isCommunityAdmin = (groupsData?.groups ?? []).some(
     (g) => g.myRole === "admin" || g.myRole === "hidden_admin",
   );
-  // Letters — community admins only. (Previously also surfaced to
-  // offices-only users; turned off for non-admins per product direction.)
-  const showLetters = isCommunityAdmin;
+  // Letters & Messages are turned OFF as a feature (LETTERS_MESSAGES_ENABLED).
+  // When the flag is false the menu rows never show, regardless of admin/beta.
+  const showLetters = isCommunityAdmin && LETTERS_MESSAGES_ENABLED;
   // Admin Tools — beta users, community admins, feed creators, beta admins.
   const showAdminTools = rawIsBeta || rawIsAdmin || myFeeds.length > 0 || isCommunityAdmin;
 
@@ -456,8 +457,8 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
                   )}
                   {/* Beta Messages — unlimited 1:1 messaging between beta
-                      users. Beta-gated (the server 403s non-beta anyway). */}
-                  {rawIsBeta && (
+                      users. Off while LETTERS_MESSAGES_ENABLED is false. */}
+                  {LETTERS_MESSAGES_ENABLED && rawIsBeta && (
                     <MenuRow emoji="✉️" label={t("menu.messages", { defaultValue: "Messages" })} badge={t("menu.beta")} onClick={() => navigate("/messages")} />
                   )}
                 </>

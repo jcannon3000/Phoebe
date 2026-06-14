@@ -23,6 +23,7 @@ import { SignJWT, importPKCS8, type KeyLike } from "jose";
 import webpush from "web-push";
 import { db, deviceTokensTable, webPushSubscriptionsTable, prayerFeedSubscriptionsTable, usersTable } from "@workspace/db";
 import { logger } from "./logger";
+import { LETTERS_MESSAGES_ENABLED } from "./lettersFlag";
 
 // VAPID config for browser Web Push (Android Chrome / Firefox / Edge,
 // desktop too). Subject is required by the spec — must be either a
@@ -689,6 +690,7 @@ export function sendNewLetterPush(
     authorName: string;
   }
 ) {
+  if (!LETTERS_MESSAGES_ENABLED) return Promise.resolve();
   return sendPushToUser(userId, {
     title: `${opts.authorName} wrote you a letter`,
     body: `Open “${opts.correspondenceName}” to read.`,
@@ -710,6 +712,7 @@ export function sendLetterRespondReminderPush(
   userId: number,
   opts: { correspondenceId: number; correspondenceName: string; authorName: string },
 ) {
+  if (!LETTERS_MESSAGES_ENABLED) return Promise.resolve();
   return sendPushToUser(userId, {
     title: `${opts.authorName} is waiting for you`,
     body: `Your reply window is still open in “${opts.correspondenceName}.”`,
@@ -980,6 +983,7 @@ export function sendBetaMessagePush(
   recipientUserId: number,
   opts: { senderName: string; conversationId: number; preview: string },
 ) {
+  if (!LETTERS_MESSAGES_ENABLED) return Promise.resolve();
   const firstName = (opts.senderName || "Someone").split(/\s+/)[0] || "Someone";
   const preview = opts.preview.length > 140 ? opts.preview.slice(0, 139) + "…" : opts.preview;
   return sendPushToUser(recipientUserId, {

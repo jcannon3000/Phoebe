@@ -18,6 +18,7 @@ import { amenWithLocation } from "@/lib/prayLocation";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
 import { openExternal } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
+import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
@@ -5243,10 +5244,13 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
 
   // Correspondences — drives both the "you have a new letter" popup and
   // the letter cards mixed into the Today / This week / This month buckets.
+  // Gated on LETTERS_MESSAGES_ENABLED: with letters turned off the query never
+  // runs, so the home letter cards + the "you have a new letter" popup never
+  // appear (all downstream letter rendering reads from this one query).
   const { data: dashCorrespondences, isLoading: dashCorrespondencesLoading } = useQuery<Correspondence[]>({
     queryKey: ["/api/phoebe/correspondences"],
     queryFn: () => apiRequest("GET", "/api/phoebe/correspondences"),
-    enabled: !!user,
+    enabled: !!user && LETTERS_MESSAGES_ENABLED,
   });
 
   // Service schedules — one card per schedule on the dashboard; each schedule
@@ -6555,49 +6559,54 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                         viewerAvatarUrl={user?.avatarUrl ?? null}
                         tight
                       />
-                      {isAdminOfAny ? (
-                        <button
-                          type="button"
-                          onClick={() => setShowNewPrayerChoice(true)}
-                          className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99] mt-4"
-                          style={{ padding: "12px 16px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
-                        >
-                          ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
-                        </button>
-                      ) : (
-                        <Link href="/pray-request/new" className="block mt-4">
-                          <div
-                            className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-                            style={{ padding: "12px 16px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
-                          >
-                            ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
-                          </div>
-                        </Link>
-                      )}
+                      {/* "New prayer request" CTA moved into the "Your prayer
+                          requests" section below. */}
                     </div>
                   );
                 })()}
 
                 {/* Your prayer requests — the viewer's OWN open requests, with an
                     overlapped stack of the people who've prayed for them lately on
-                    the right. Hidden entirely when you have no open request. */}
+                    the right, plus the "New prayer request" CTA. The header + cards
+                    only show when you HAVE an open request; the CTA always shows so
+                    you can always start one. */}
                 {filter === null && !eventsOnly && (() => {
                   const ownReqs = (dashPrayerRequests ?? []).filter(
                     (r) => r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0,
                   );
-                  if (ownReqs.length === 0) return null;
                   const faces = (prayedForMe?.people ?? []).filter(Boolean).slice(0, 3);
                   const total = prayedForMe?.total ?? 0;
                   const facesInitials = (name: string | null) =>
                     (name ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
-                  return (
-                    <div style={{ marginTop: 28 }}>
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                          {t("dashboard.your_requests_title", { defaultValue: "Your prayer requests" })}
-                        </h3>
-                        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+                  const newRequestBtn = isAdminOfAny ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPrayerChoice(true)}
+                      className={`w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99] ${ownReqs.length > 0 ? "mt-3" : ""}`}
+                      style={{ padding: "12px 16px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
+                    >
+                      ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
+                    </button>
+                  ) : (
+                    <Link href="/pray-request/new" className={`block ${ownReqs.length > 0 ? "mt-3" : ""}`}>
+                      <div
+                        className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+                        style={{ padding: "12px 16px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
+                      >
+                        ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
                       </div>
+                    </Link>
+                  );
+                  return (
+                    <div style={{ marginTop: ownReqs.length > 0 ? 28 : 16 }}>
+                      {ownReqs.length > 0 && (
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                            {t("dashboard.your_requests_title", { defaultValue: "Your prayer requests" })}
+                          </h3>
+                          <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+                        </div>
+                      )}
                       <div className="flex flex-col gap-2">
                         {ownReqs.map((req) => (
                           <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
@@ -6643,6 +6652,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           </Link>
                         ))}
                       </div>
+                      {newRequestBtn}
                     </div>
                   );
                 })()}

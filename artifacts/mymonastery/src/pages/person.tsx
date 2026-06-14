@@ -7,6 +7,7 @@ import { usePersonProfile } from "@/hooks/usePeople";
 import { Layout } from "@/components/layout";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
 import { Settings } from "lucide-react";
 import { PrayForThemButton } from "@/components/pray-for-them";
 import { useTranslation } from "react-i18next";
@@ -143,10 +144,14 @@ export default function PersonProfile() {
   // it's either a stale row from the old "create then write" flow or
   // a group setup the creator hasn't opened. Dropping them here means
   // the "Write a letter" CTA still shows (and no empty card appears).
-  const sharedLetters = (correspondencesData ?? []).filter(c =>
-    c.letterCount > 0 &&
-    c.members.some(m => m.email.toLowerCase() === (email ?? "").toLowerCase())
-  );
+  // Letters feature off (LETTERS_MESSAGES_ENABLED) → no shared letters, which
+  // hides the "Letters with …" section and zeroes its contribution to counts.
+  const sharedLetters = LETTERS_MESSAGES_ENABLED
+    ? (correspondencesData ?? []).filter(c =>
+        c.letterCount > 0 &&
+        c.members.some(m => m.email.toLowerCase() === (email ?? "").toLowerCase())
+      )
+    : [];
 
   const muteMutation = useMutation({
     mutationFn: () => apiRequest("POST", `/api/mutes/${(person as any)?.userId}`),
@@ -728,7 +733,7 @@ export default function PersonProfile() {
                 Goes straight to composing — the recipient is known, so
                 /letters/compose skips the type + who pickers entirely.
                 The dialogue is created when this first letter sends. */}
-            {sharedLetters.length === 0 && email && (
+            {LETTERS_MESSAGES_ENABLED && sharedLetters.length === 0 && email && (
               <div className="mt-8 pt-5" style={{ borderTop: "1px solid rgba(46,107,64,0.15)" }}>
                 <Link
                   href={`/letters/compose?to=${encodeURIComponent(email)}${person?.name ? `&toName=${encodeURIComponent(person.name)}` : ""}`}
