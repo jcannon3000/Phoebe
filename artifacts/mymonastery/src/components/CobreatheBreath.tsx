@@ -27,9 +27,9 @@ const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
 
 // Breath pacing — a simple in / out breath, 12s each: a long, slow inhale
-// and an equally long exhale, no holds. 16s per cycle; twelve cycles ≈ 3:12.
-const INHALE_MS = 8000;
-const EXHALE_MS = 8000;
+// and an equally long exhale, no holds. 20s per cycle; twelve cycles ≈ 4:00.
+const INHALE_MS = 10000;
+const EXHALE_MS = 10000;
 // Each phase (in, out) is one PHASE_MS slice of the cycle — used to derive a
 // globally-synced octave that rotates 0→1→2→3 across phases.
 const PHASE_MS = INHALE_MS;
@@ -266,7 +266,6 @@ export function CobreatheBreath({
       const order = photoOrderRef.current;
       if (order.length > 0) {
         const ZOOM = 0.10;          // total scale push per photo while shown
-        const CROSSFADE_MS = 3500;  // how long the incoming photo takes to arrive
         const idx = isCounting
           ? Math.max(0, Math.floor((now - countStartRef.current) / CYCLE_MS))
           : 0;
@@ -285,17 +284,17 @@ export function CobreatheBreath({
         const activeEl = activeIsA ? a : b;
         const prevEl = activeIsA ? b : a;
         const zoomP = pos / CYCLE_MS;                                  // 0→1 across the breath
-        const cross = idx === 0 ? 1 : Math.min(1, pos / CROSSFADE_MS); // incoming fade-in weight
+        // No crossfade: the swap to the next photo happens at the cycle
+        // boundary, where the whole group has faded to 0 (bottom of the breath),
+        // so the cut is invisible and the OLD photo is fully gone before the new
+        // one rises. The active layer shows alone; the previous one is hidden.
         if (activeEl) {
-          activeEl.style.opacity = cross.toFixed(4);
+          activeEl.style.opacity = "1";
           activeEl.style.transform = `scale(${(1 + zoomP * ZOOM).toFixed(4)})`;
           activeEl.style.zIndex = "2";
         }
         if (prevEl) {
-          // Sits underneath at full opacity, continuing its zoom from where the
-          // active layer left off so the push reads as one continuous motion.
-          prevEl.style.opacity = "1";
-          prevEl.style.transform = `scale(${(1 + ZOOM + zoomP * ZOOM).toFixed(4)})`;
+          prevEl.style.opacity = "0";
           prevEl.style.zIndex = "1";
         }
         // The group breathes with the lungs: fully faded DOWN at the bottom of
@@ -303,9 +302,9 @@ export function CobreatheBreath({
         // the top of the inhale — so each photo dips all the way out each cycle
         // but never blasts to full brightness.
         if (photoGroupRef.current) photoGroupRef.current.style.opacity = (pAnim * 0.72).toFixed(4);
-        // Once the crossfade is done (incoming fully covers the old), preload the
-        // NEXT photo onto the now-hidden layer so it's decoded before its turn.
-        if (cross >= 1 && photoPreloadedRef.current !== idx && prevEl) {
+        // Preload the NEXT photo onto the now-hidden previous layer so it's
+        // decoded before its turn (it becomes the active layer next breath).
+        if (photoPreloadedRef.current !== idx && prevEl) {
           const nextUrl = order[(idx + 1) % order.length];
           if (prevEl.getAttribute("src") !== nextUrl) prevEl.src = nextUrl;
           photoPreloadedRef.current = idx;
