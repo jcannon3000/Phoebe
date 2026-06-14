@@ -99,6 +99,10 @@ const FIELD_LIVE = "#0B2014";         // live — a touch lighter/greener
 // The world turns between these three globes — one per breath cycle.
 const GLOBES = ["🌍", "🌎", "🌏"] as const;
 
+// The breath always opens on this one calm image (the rest of the library is
+// shuffled in behind it). Matched by filename stem so it survives Vite hashing.
+const FIRST_PHOTO_KEY = "photo-1589648751789";
+
 // Fisher–Yates shuffle — used to put the photo library in a fresh order each
 // session so the same faces and places don't arrive in the same sequence twice.
 function shuffle<T>(input: readonly T[]): T[] {
@@ -167,7 +171,11 @@ export function CobreatheBreath({
   // photo up on the inhale and down on the exhale.
   const photoOrderRef = useRef<string[]>([]);
   if (photoOrderRef.current.length === 0 && photos && photos.length > 0) {
-    photoOrderRef.current = shuffle(photos);
+    const shuffled = shuffle(photos);
+    // Pin the opening image to the front; the rest stay shuffled behind it.
+    const firstIdx = shuffled.findIndex((u) => u.includes(FIRST_PHOTO_KEY));
+    if (firstIdx > 0) shuffled.unshift(shuffled.splice(firstIdx, 1)[0]);
+    photoOrderRef.current = shuffled;
   }
   const photoOrder = photoOrderRef.current;
 
