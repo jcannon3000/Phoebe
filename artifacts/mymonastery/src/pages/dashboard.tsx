@@ -3995,13 +3995,17 @@ function PrayerListCarousel({
                       {/* Prayer-hands — opens the slideshow at this request, then
                           continues through the rest of the list. Not on your own
                           request (you don't pray for yourself in the walk). Once
-                          you've prayed it today, it becomes a check. */}
+                          you've prayed it today, it becomes a check. Both states
+                          share ONE fixed-size pill (width + height set, content
+                          centered) so the oval is identical whether it holds a
+                          thin ✓ or the wide 🙏🏾 emoji — padding-based sizing
+                          would make the emoji pill bigger than the check. */}
                       {!req.isOwnRequest && (
                         req.myAmenedToday ? (
                           <span
                             aria-label={t("prayer_card.amened", { defaultValue: "Amened" })}
-                            className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
-                            style={{ background: "rgba(46,107,64,0.18)", color: "rgba(240,237,230,0.85)", border: "1px solid rgba(46,107,64,0.45)" }}
+                            className="flex-shrink-0 inline-flex items-center justify-center rounded-full"
+                            style={{ width: 46, height: 30, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "rgba(240,237,230,0.85)", fontSize: 13, fontWeight: 600, lineHeight: 1 }}
                           >
                             ✓
                           </span>
@@ -4010,8 +4014,8 @@ function PrayerListCarousel({
                             type="button"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/prayer-mode?reset=1&focus=${req.id}`); }}
                             aria-label={t("prayer_card.pray", { defaultValue: "Pray" })}
-                            className="flex-shrink-0 rounded-full text-[12px] px-3.5 py-1.5 leading-none transition-opacity hover:opacity-90 active:scale-95"
-                            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)" }}
+                            className="flex-shrink-0 inline-flex items-center justify-center rounded-full transition-opacity hover:opacity-90 active:scale-95"
+                            style={{ width: 46, height: 30, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", fontSize: 14, lineHeight: 1 }}
                           >
                             🙏🏾
                           </button>

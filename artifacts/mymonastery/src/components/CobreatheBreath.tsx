@@ -241,7 +241,10 @@ export function CobreatheBreath({
       // field at the bottom (where it's swapped for the next one, so the change
       // is never seen). A gentle ease via pAnim, capped so the glow/globe/text
       // stay legible over it.
-      if (photoRef.current) photoRef.current.style.opacity = (pAnim * 0.72).toFixed(4);
+      // Always-present baseline so the photo is visible from the first moment
+      // (incl. the sync pre-roll and every exhale), brightening toward the top
+      // of the inhale rather than vanishing to nothing.
+      if (photoRef.current) photoRef.current.style.opacity = (0.34 + pAnim * 0.58).toFixed(4);
       // The phase word breathes a hair with the circle (only once synced).
       if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;
       raf = requestAnimationFrame(loop);
@@ -427,14 +430,16 @@ export function CobreatheBreath({
             alt=""
             style={{
               position: "absolute", inset: 0, width: "100%", height: "100%",
-              objectFit: "cover", opacity: 0, willChange: "opacity",
+              objectFit: "cover", opacity: 0.34, willChange: "opacity",
             }}
           />
-          {/* Legibility wash — a deep green-to-black veil over the photo. */}
+          {/* Legibility wash — a deep green-to-black veil over the photo. Kept
+              darker toward the bottom (behind the counter text) but lighter up
+              top so the image actually reads. */}
           <div
             style={{
               position: "absolute", inset: 0,
-              background: "linear-gradient(180deg, rgba(6,24,16,0.42) 0%, rgba(5,18,12,0.5) 45%, rgba(4,13,8,0.66) 100%)",
+              background: "linear-gradient(180deg, rgba(6,24,16,0.30) 0%, rgba(5,18,12,0.40) 45%, rgba(4,13,8,0.62) 100%)",
             }}
           />
           {/* Decode the next photo off-screen so it's ready before it fades up. */}
