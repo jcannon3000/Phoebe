@@ -8,10 +8,10 @@
  * is just the cards + streak.
  */
 
-import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
+import { useState, useEffect, type CSSProperties, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
@@ -28,13 +28,6 @@ const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
-
-// The set of practice keys that were "done" the last time the home rendered the
-// rhythm. We diff against it on the next mount to find what was just completed,
-// so we can replay that card sliding from Next into Done. Per-day-agnostic (the
-// keys reset each day as cards flip back to undone), localStorage-backed so it
-// survives the unmount that happens when the user leaves to pray and returns.
-const HOME_DONE_KEY = "phoebe:home-rhythm-done";
 
 // A card subtitle that gently cross-fades between a few values (opacity only,
 // no movement — the same crossfade the worship card uses). An invisible spacer
@@ -517,45 +510,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     ? cards.filter((c) => c.key !== heroSide)
     : cards;
 
-  // ── Return-to-home completion replay ──────────────────────────────────────
-  // When the user comes back to the home after finishing a practice, the card
-  // they just completed should animate from Next into Done: it fades down out
-  // of the Next list, the cards below slide up to fill the gap, and the card
-  // fades up into the Done list with its ✓. We detect "newly done since the
-  // last home view" by diffing the done-keys we persisted last time, briefly
-  // HOLD those cards in the Next list (rendered as if still to-do), then release
-  // them — framer-motion's layout + AnimatePresence plays the move. A normal
-  // refresh (nothing newly done) skips the hold and renders the final split.
-  const doneKeysCsv = visibleCards.filter((c) => c.done).map((c) => c.key).join(",");
-  const [holding, setHolding] = useState<Set<string>>(new Set());
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (!ready) return;
-    const current = doneKeysCsv ? doneKeysCsv.split(",") : [];
-    if (!seededRef.current) {
-      seededRef.current = true;
-      let prev: string[] = [];
-      try { prev = JSON.parse(localStorage.getItem(HOME_DONE_KEY) || "[]"); } catch { /* ignore */ }
-      const prevSet = new Set(prev);
-      const newly = current.filter((k) => !prevSet.has(k));
-      const reduce = typeof window !== "undefined"
-        && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-      if (newly.length > 0 && !reduce) {
-        setHolding(new Set(newly));
-        const id = setTimeout(() => setHolding(new Set()), 640);
-        // Persist now so a fast second mount doesn't replay the same card.
-        try { localStorage.setItem(HOME_DONE_KEY, JSON.stringify(current)); } catch { /* ignore */ }
-        return () => clearTimeout(id);
-      }
-    }
-    try { localStorage.setItem(HOME_DONE_KEY, JSON.stringify(current)); } catch { /* ignore */ }
-    return undefined;
-  }, [ready, doneKeysCsv]);
-
-  // A held card stays in Next (shown as not-yet-done) until released, then moves
-  // to Done. Everything else splits on its real done state.
-  const upcomingDisplay = visibleCards.filter((c) => !c.done || holding.has(c.key));
-  const completedDisplay = visibleCards.filter((c) => c.done && !holding.has(c.key));
+  // Split into Next (to-do) and Done, then fade each card up in a gentle
+  // stagger on mount. (The earlier "fly the card from Next into Done" replay —
+  // built on framer-motion layout + popLayout — glitched, so it's gone: on
+  // return the finished card simply renders in Done with the same clean fade.)
+  const upcomingDisplay = visibleCards.filter((c) => !c.done);
+  const completedDisplay = visibleCards.filter((c) => c.done);
   const showDoneSection = (showStreak || showDone) && completedDisplay.length > 0;
 
   // Matches the Prayer List title row — a larger mixed-case heading with a
@@ -568,17 +528,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
     </div>
   );
-  // `displayDone` lets a held card render in Next with its CTA (not the ✓) while
-  // it waits to slide over — so the move reads as "to-do → done", not "done →
-  // done".
-  const renderCard = (c: (typeof cards)[number], displayDone: boolean) => (
+  const renderCard = (c: (typeof cards)[number]) => (
     <PracticeCard
       href={c.href}
       emoji={c.emoji}
       title={c.title}
       blurb={c.blurb}
       cta={c.cta}
-      done={displayDone}
+      done={c.done}
       rgb={c.rgb}
       later={c.later}
       laterLabel={t("rhythm.later", { defaultValue: "Later" })}
@@ -588,14 +545,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     />
   );
 
-  // Per-card entrance (stagger on first paint; a single late card just fades up)
-  // and the "fade down" exit used when a card leaves the Next list.
+  // Gentle staggered fade-up — each card rises in just after the one above it.
   const enterUp = (i: number) => ({
-    initial: { opacity: 0, y: 12 },
+    initial: { opacity: 0, y: 10 },
     animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.34, ease: [0.22, 1, 0.36, 1] as const, delay: Math.min(i * 0.05, 0.25) },
+    transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const, delay: Math.min(i * 0.05, 0.3) },
   });
-  const exitDown = { opacity: 0, y: 20, transition: { duration: 0.32, ease: [0.4, 0, 1, 1] as const } };
 
   // Hold the first paint until the rhythm queries have settled (so cards don't
   // jump from Next to Done as data lands), then fade each card up in turn.
@@ -614,38 +569,30 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       {(upcomingDisplay.length > 0 || officeHero) && (
         <>
           {sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}
-          <motion.div layout className="flex flex-col gap-2">
-            {/* popLayout pops an exiting card out of flow immediately, so the
-                cards below slide up to fill the gap as it fades down. */}
-            <AnimatePresence mode="popLayout">
-              {/* The office hero leads the Next list — above Contemplation. */}
-              {officeHero && (
-                <motion.div key="__office_hero" layout {...enterUp(0)} exit={exitDown}>{officeHero}</motion.div>
-              )}
-              {upcomingDisplay.map((c, i) => (
-                <motion.div key={c.key} layout {...enterUp(i + (officeHero ? 1 : 0))} exit={exitDown}>
-                  {renderCard(c, false)}
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
+          <div className="flex flex-col gap-2">
+            {/* The office hero leads the Next list — above Contemplation. */}
+            {officeHero && <motion.div {...enterUp(0)}>{officeHero}</motion.div>}
+            {upcomingDisplay.map((c, i) => (
+              <motion.div key={c.key} {...enterUp(i + (officeHero ? 1 : 0))}>
+                {renderCard(c)}
+              </motion.div>
+            ))}
+          </div>
         </>
       )}
       {/* The "Done" list lives on the Daily Progress page (showStreak) and on the
-          home (showDone). A card fades UP into it as it arrives from Next. */}
+          home (showDone). */}
       {showDoneSection && (
-        <motion.div layout className={doneGapCls}>
+        <div className={doneGapCls}>
           {sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}
-          <motion.div layout className="flex flex-col gap-2">
-            <AnimatePresence>
-              {completedDisplay.map((c, i) => (
-                <motion.div key={c.key} layout {...enterUp(i)}>
-                  {renderCard(c, true)}
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
-        </motion.div>
+          <div className="flex flex-col gap-2">
+            {completedDisplay.map((c, i) => (
+              <motion.div key={c.key} {...enterUp(i)}>
+                {renderCard(c)}
+              </motion.div>
+            ))}
+          </div>
+        </div>
       )}
       {/* The weekly practice grid sits under the daily cards on the daily-
           progress page. Hidden on the home, where showStreak is false. */}

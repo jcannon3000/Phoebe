@@ -5991,6 +5991,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     for (const [dow, list] of schedulesByDow.entries()) {
       const next = nextOccurrenceDate(dow);
       const nextMs = next.getTime();
+      // Sunday worship doesn't surface until Thursday — i.e. only within ~3 days
+      // of the service. Otherwise the upcoming Sunday sits on the home all week.
+      if (dow === 0 && nextMs - todayStart > 3 * 24 * 60 * 60 * 1000) continue;
       const isOnDate = nextMs === todayStart;
       const item: DashboardItem = list.length === 1
         ? { kind: "service", data: list[0]!, nextDate: next, isOnDate }
@@ -6332,6 +6335,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // Day's rhythm is complete — hand the home over to the upcoming
                 // schedule. The full Next/Done cards still live on /daily-progress.
                 const noEvents = todayItems.length === 0 && tomorrowItems.length === 0 && weekItems.length === 0 && monthItems.length === 0;
+                // If there's nothing coming up, don't show the events section at
+                // all (no empty-state card).
+                if (noEvents) return null;
                 const evtProps = {
                   userEmail, userName,
                   onOpenService: (schedule: ServiceSchedule, nextDate: Date) => setOpenService({ schedule, nextDate }),
@@ -6348,21 +6354,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                         {t("dashboard.day_kept_events_line", { defaultValue: "Here's what's coming up." })}
                       </p>
                     </div>
-                    {noEvents ? (
-                      <div className="py-10 text-center">
-                        <p className="text-3xl mb-2">🕊️</p>
-                        <p className="text-sm" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
-                          {t("dashboard.day_kept_no_events", { defaultValue: "Nothing on the calendar — rest easy." })}
-                        </p>
-                      </div>
-                    ) : (
-                      <>
-                        <TimeSection label={t("dashboard.today_section")} items={todayItems} {...evtProps} />
-                        <TimeSection label={t("dashboard.tomorrow_section")} items={tomorrowItems} {...evtProps} />
-                        <TimeSection label={t("dashboard.this_week_section")} items={weekItems} {...evtProps} />
-                        <TimeSection label={t("dashboard.upcoming_section")} items={monthItems} {...evtProps} />
-                      </>
-                    )}
+                    <TimeSection label={t("dashboard.today_section")} items={todayItems} {...evtProps} />
+                    <TimeSection label={t("dashboard.tomorrow_section")} items={tomorrowItems} {...evtProps} />
+                    <TimeSection label={t("dashboard.this_week_section")} items={weekItems} {...evtProps} />
+                    <TimeSection label={t("dashboard.upcoming_section")} items={monthItems} {...evtProps} />
                   </motion.div>
                 );
               })() : (

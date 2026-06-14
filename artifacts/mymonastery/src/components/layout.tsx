@@ -451,7 +451,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   <MenuRow emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })} onClick={() => goCategory("/menu/bcp")} />
                   <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
                   <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
-                  <MenuRow emoji="🎧" label={t("menu.audio", { defaultValue: "Audio" })} onClick={() => goCategory("/menu/audio")} />
+                  <MenuRow emoji="🎧" label={t("menu.podcasts", { defaultValue: "Podcasts" })} onClick={() => navigate("/podcasts")} />
                   {showLetters && (
                     <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
                   )}
