@@ -1055,13 +1055,17 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       next();
       return;
     }
-    // A different surface than the one loaded — route there (it opens on its
-    // own welcome with the same book / on-screen options).
-    setViewerLocation(
+    // A different surface than the one loaded — route there. The reader has
+    // ALREADY chosen their way + method and tapped Begin, so we must NOT drop
+    // them on the destination's welcome chooser to tap Begin a second time.
+    // "book" opens the physical-book guide directly (?book=1); "screen" opens
+    // ON the first content slide (?slide=1 skips the office_intro welcome). Both
+    // params are consumed and cleared from the URL on load.
+    const base =
       way === "devotion"
         ? `/bcp/daily-devotions?mode=${eveningSide ? "early-evening-devotion" : "morning-devotion"}`
-        : `/bcp/daily-office?mode=${eveningSide ? "evening" : "morning"}`,
-    );
+        : `/bcp/daily-office?mode=${eveningSide ? "evening" : "morning"}`;
+    setViewerLocation(`${base}${method === "book" ? "&book=1" : "&slide=1"}`);
   };
 
   // The welcome-slide chooser — three same-width rows:
@@ -1145,8 +1149,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 <>
                   <option value="screen">On screen</option>
                   <option value="listen">Listen</option>
-                  {showWatch && <option value="watch">Watch (Cathedral)</option>}
-                  <option value="book">In your book</option>
+                  {showWatch && <option value="watch">Watch</option>}
+                  <option value="book">Physical BCP</option>
                 </>
               )
             ))}
@@ -1423,7 +1427,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     cursor: "pointer",
                   }}
                 >
-                  📕 {bcpGuideText("In your book")}
+                  📕 {bcpGuideText("Physical BCP")}
                 </button>
               </div>
               )}
@@ -3011,7 +3015,7 @@ const BCP_GUIDE_ES: Record<string, string> = {
   "The Closing": "La Conclusión",
   "A Concluding Blessing": "Una Bendición Final",
   // Chrome
-  "In your book": "En tu libro",
+  "Physical BCP": "BCP físico",
   "1979 Book of Common Prayer · Rite II": "Libro de Oración Común de 1979 · Rito II",
   "1979 Book of Common Prayer": "Libro de Oración Común de 1979",
   "Begin at {page}": "Comienza en {page}",
@@ -3170,7 +3174,7 @@ function PhysicalBookGuide(props: {
         <div className="max-w-2xl w-full mx-auto" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ textAlign: "center", marginBottom: 6 }}>
             <p style={{ color: FAINT_GREEN, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>
-              {bcpGuideText("In your book")}
+              {bcpGuideText("Physical BCP")}
             </p>
             <h1
               style={{

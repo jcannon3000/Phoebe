@@ -8,7 +8,7 @@
  * is just the cards + streak.
  */
 
-import { useState, useEffect, type CSSProperties, type ReactNode } from "react";
+import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,13 +29,12 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
-// Staggered fade-up for the daily cards — each card rises in just after the one
-// above it, instead of the whole block flashing on as one opacity step.
-const fadeContainer = { hidden: {}, show: { transition: { staggerChildren: 0.06, delayChildren: 0.02 } } };
-const fadeItem = {
-  hidden: { opacity: 0, y: 10 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.34, ease: [0.22, 1, 0.36, 1] as const } },
-};
+// The set of practice keys that were "done" the last time the home rendered the
+// rhythm. We diff against it on the next mount to find what was just completed,
+// so we can replay that card sliding from Next into Done. Per-day-agnostic (the
+// keys reset each day as cards flip back to undone), localStorage-backed so it
+// survives the unmount that happens when the user leaves to pray and returns.
+const HOME_DONE_KEY = "phoebe:home-rhythm-done";
 
 // A card subtitle that gently cross-fades between a few values (opacity only,
 // no movement — the same crossfade the worship card uses). An invisible spacer
@@ -49,25 +48,17 @@ function CardSubtitleCycle({ values, className, style }: { values: string[]; cla
     return () => clearInterval(t);
   }, [values.length]);
   const current = values[idx % values.length] ?? "";
-  const longest = values.reduce((a, b) => (b.length > a.length ? b : a), values[0] ?? "");
+  // Dead simple: a plain truncating <p>, the SAME pattern as the title line.
+  // No animation, no absolute positioning, no height-reserving spacer — nothing
+  // that can be wider than its column. A long value just ellipsizes ("…") and
+  // can never push the card's pill. The value still swaps every 5s (via `idx`).
   return (
-    <span className={className} style={{ position: "relative", display: "block", ...style }}>
-      <span aria-hidden style={{ visibility: "hidden" }}>{longest}</span>
-      <span style={{ position: "absolute", inset: 0 }}>
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.span
-            key={current}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.55, ease: "easeInOut" }}
-            style={{ display: "block" }}
-          >
-            {current}
-          </motion.span>
-        </AnimatePresence>
-      </span>
-    </span>
+    <p
+      className={className}
+      style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", ...style }}
+    >
+      {current}
+    </p>
   );
 }
 
@@ -173,7 +164,7 @@ function StreakCard() {
 // ringed. Echoes the old slideshow's "two rows of seven dots" card, but a row
 // per practice. Data: /api/me/practice-week (one unified matrix); which rows
 // to render mirrors the practice cards above (four core + active extras).
-function WeeklyGridCard() {
+export function WeeklyGridCard() {
   const { t } = useTranslation();
   const { gratitudeActive, examenActive } = useRhythmState();
   const tz = (() => {
@@ -210,9 +201,8 @@ function WeeklyGridCard() {
       className="rounded-2xl mt-3 px-4 py-4"
       style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(200,212,192,0.13)" }}
     >
-      <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
-        {t("rhythm.week_grid_title", { defaultValue: "This week" })}
-      </p>
+      {/* The "Weekly progress" label now lives as a section header ABOVE this
+          card (in DailyProgressBody) rather than inside it. */}
       {/* One shared 7-column grid for the header and every row, so the
           day-of-week initials sit exactly over their dots. */}
       {(() => {
@@ -313,7 +303,7 @@ function PracticeCard({
         <div className="flex-1 px-5 py-5">
           <div className="flex items-start gap-3.5">
             <span className="text-[34px] leading-none flex-shrink-0">{emoji}</span>
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               <p className="text-[22px] font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
               {useCycle
                 ? <CardSubtitleCycle values={blurbCycle!} className="text-[13.5px] mt-1 leading-snug" style={{ color: SAGE }} />
@@ -335,7 +325,14 @@ function PracticeCard({
       </div>
     );
     if (waiting) return heroRow;
-    if (onClick) return <button type="button" onClick={onClick} className="block w-full text-left">{heroRow}</button>;
+    // A plain div (not a native <button>) for the onClick path — buttons
+    // establish their own layout and don't let the flex middle shrink, which
+    // shoved the pill off the right edge. role/tabIndex keep it accessible.
+    if (onClick) return (
+      <div role="button" tabIndex={0} onClick={onClick}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+        className="block w-full cursor-pointer">{heroRow}</div>
+    );
     return <Link href={href} className="block">{heroRow}</Link>;
   }
 
@@ -361,10 +358,10 @@ function PracticeCard({
       style={{ background: `rgba(${rgb},0.10)`, border: `1px solid rgba(${rgb},${done ? 0.42 : 0.18})`, opacity: waiting ? 0.72 : 1 }}
     >
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.85})` }} />
-      <div className="flex-1 px-4 py-3.5">
+      <div className="flex-1 min-w-0 px-4 py-3.5">
         <div className="flex items-center gap-3">
           <span className="text-xl flex-shrink-0">{emoji}</span>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-hidden">
             <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
             {useCycle
               ? <CardSubtitleCycle values={blurbCycle!} className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: SAGE }} />
@@ -387,11 +384,17 @@ function PracticeCard({
   );
 
   if (waiting) return row;
-  if (onClick) return <button type="button" onClick={onClick} className="block w-full text-left">{row}</button>;
+  // Plain div (not a native <button>) so the flex middle can shrink and the
+  // pill stays put; role/tabIndex/keydown keep it accessible.
+  if (onClick) return (
+    <div role="button" tabIndex={0} onClick={onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+      className="block w-full cursor-pointer">{row}</div>
+  );
   return <Link href={href} className="block">{row}</Link>;
 }
 
-export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCard }: { showStreak?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode }) {
+export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode }) {
   const { t } = useTranslation();
   const { ready, morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone } = useRhythmState();
   const hour = new Date().getHours();
@@ -513,8 +516,48 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
   const visibleCards = showOfficeHero
     ? cards.filter((c) => c.key !== heroSide)
     : cards;
-  const upcoming = visibleCards.filter((c) => !c.done);
-  const completed = visibleCards.filter((c) => c.done);
+
+  // ── Return-to-home completion replay ──────────────────────────────────────
+  // When the user comes back to the home after finishing a practice, the card
+  // they just completed should animate from Next into Done: it fades down out
+  // of the Next list, the cards below slide up to fill the gap, and the card
+  // fades up into the Done list with its ✓. We detect "newly done since the
+  // last home view" by diffing the done-keys we persisted last time, briefly
+  // HOLD those cards in the Next list (rendered as if still to-do), then release
+  // them — framer-motion's layout + AnimatePresence plays the move. A normal
+  // refresh (nothing newly done) skips the hold and renders the final split.
+  const doneKeysCsv = visibleCards.filter((c) => c.done).map((c) => c.key).join(",");
+  const [holding, setHolding] = useState<Set<string>>(new Set());
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (!ready) return;
+    const current = doneKeysCsv ? doneKeysCsv.split(",") : [];
+    if (!seededRef.current) {
+      seededRef.current = true;
+      let prev: string[] = [];
+      try { prev = JSON.parse(localStorage.getItem(HOME_DONE_KEY) || "[]"); } catch { /* ignore */ }
+      const prevSet = new Set(prev);
+      const newly = current.filter((k) => !prevSet.has(k));
+      const reduce = typeof window !== "undefined"
+        && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      if (newly.length > 0 && !reduce) {
+        setHolding(new Set(newly));
+        const id = setTimeout(() => setHolding(new Set()), 640);
+        // Persist now so a fast second mount doesn't replay the same card.
+        try { localStorage.setItem(HOME_DONE_KEY, JSON.stringify(current)); } catch { /* ignore */ }
+        return () => clearTimeout(id);
+      }
+    }
+    try { localStorage.setItem(HOME_DONE_KEY, JSON.stringify(current)); } catch { /* ignore */ }
+    return undefined;
+  }, [ready, doneKeysCsv]);
+
+  // A held card stays in Next (shown as not-yet-done) until released, then moves
+  // to Done. Everything else splits on its real done state.
+  const upcomingDisplay = visibleCards.filter((c) => !c.done || holding.has(c.key));
+  const completedDisplay = visibleCards.filter((c) => c.done && !holding.has(c.key));
+  const showDoneSection = (showStreak || showDone) && completedDisplay.length > 0;
+
   // Matches the Prayer List title row — a larger mixed-case heading with a
   // divider line trailing off to the right.
   const sectionHeader = (label: string) => (
@@ -525,15 +568,17 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
       <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
     </div>
   );
-  const renderCard = (c: (typeof cards)[number]) => (
+  // `displayDone` lets a held card render in Next with its CTA (not the ✓) while
+  // it waits to slide over — so the move reads as "to-do → done", not "done →
+  // done".
+  const renderCard = (c: (typeof cards)[number], displayDone: boolean) => (
     <PracticeCard
-      key={c.key}
       href={c.href}
       emoji={c.emoji}
       title={c.title}
       blurb={c.blurb}
       cta={c.cta}
-      done={c.done}
+      done={displayDone}
       rgb={c.rgb}
       later={c.later}
       laterLabel={t("rhythm.later", { defaultValue: "Later" })}
@@ -542,45 +587,74 @@ export function DailyProgressBody({ showStreak = true, renderOfficeHero, leadCar
       onClick={"onClick" in c ? c.onClick : undefined}
     />
   );
-  // Hold the first paint until the rhythm queries have settled, then fade the
-  // finished Next/Done split in as one piece — otherwise the cards render all
-  // under "Next" and visibly jump into "Done" as each query lands.
+
+  // Per-card entrance (stagger on first paint; a single late card just fades up)
+  // and the "fade down" exit used when a card leaves the Next list.
+  const enterUp = (i: number) => ({
+    initial: { opacity: 0, y: 12 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.34, ease: [0.22, 1, 0.36, 1] as const, delay: Math.min(i * 0.05, 0.25) },
+  });
+  const exitDown = { opacity: 0, y: 20, transition: { duration: 0.32, ease: [0.4, 0, 1, 1] as const } };
+
   // Hold the first paint until the rhythm queries have settled (so cards don't
   // jump from Next to Done as data lands), then fade each card up in turn.
   if (!ready) return null;
+
+  // Gap above Done: when Next still has cards, a smaller gap reads right; when
+  // the hero (or nothing) is the only thing in Next it needs more breathing room.
+  const doneGapCls = !(upcomingDisplay.length > 0 || officeHero) ? ""
+    : upcomingDisplay.length > 0 ? "mt-4" : "mt-20";
+
   return (
-    <motion.div variants={fadeContainer} initial="hidden" animate="show">
+    <div>
       {/* A prayer-requests card leads the whole thing when there's something
           waiting. */}
-      {leadCard && <motion.div variants={fadeItem} className="mb-3">{leadCard}</motion.div>}
-      {(upcoming.length > 0 || officeHero) && (
+      {leadCard && <motion.div {...enterUp(0)} className="mb-3">{leadCard}</motion.div>}
+      {(upcomingDisplay.length > 0 || officeHero) && (
         <>
-          <motion.div variants={fadeItem}>{sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}</motion.div>
-          <div className="flex flex-col gap-2">
-            {/* The office hero leads the Next list — above Contemplation. */}
-            {officeHero && <motion.div variants={fadeItem}>{officeHero}</motion.div>}
-            {upcoming.map((c) => <motion.div key={c.key} variants={fadeItem}>{renderCard(c)}</motion.div>)}
-          </div>
+          {sectionHeader(t("daily_progress.next_heading", { defaultValue: "Next" }))}
+          <motion.div layout className="flex flex-col gap-2">
+            {/* popLayout pops an exiting card out of flow immediately, so the
+                cards below slide up to fill the gap as it fades down. */}
+            <AnimatePresence mode="popLayout">
+              {/* The office hero leads the Next list — above Contemplation. */}
+              {officeHero && (
+                <motion.div key="__office_hero" layout {...enterUp(0)} exit={exitDown}>{officeHero}</motion.div>
+              )}
+              {upcomingDisplay.map((c, i) => (
+                <motion.div key={c.key} layout {...enterUp(i + (officeHero ? 1 : 0))} exit={exitDown}>
+                  {renderCard(c, false)}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
         </>
       )}
-      {/* The "Done" list only belongs on the Daily Progress page (showStreak);
-          the home stays focused on what's Next. */}
-      {showStreak && completed.length > 0 && (
-        // Gap above Done: when the Next list has a card under the hero, that
-        // card already gives separation, so a smaller gap reads right; when the
-        // hero is the ONLY thing in Next, it jumps straight to Done and needs
-        // more breathing room.
-        <div className={
-          !(upcoming.length > 0 || officeHero) ? ""
-            : upcoming.length > 0 ? "mt-4" : "mt-20"
-        }>
-          <motion.div variants={fadeItem}>{sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}</motion.div>
-          <div className="flex flex-col gap-2">{completed.map((c) => <motion.div key={c.key} variants={fadeItem}>{renderCard(c)}</motion.div>)}</div>
-        </div>
+      {/* The "Done" list lives on the Daily Progress page (showStreak) and on the
+          home (showDone). A card fades UP into it as it arrives from Next. */}
+      {showDoneSection && (
+        <motion.div layout className={doneGapCls}>
+          {sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}
+          <motion.div layout className="flex flex-col gap-2">
+            <AnimatePresence>
+              {completedDisplay.map((c, i) => (
+                <motion.div key={c.key} layout {...enterUp(i)}>
+                  {renderCard(c, true)}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        </motion.div>
       )}
       {/* The weekly practice grid sits under the daily cards on the daily-
           progress page. Hidden on the home, where showStreak is false. */}
-      {showStreak && <motion.div variants={fadeItem} className="mt-6"><WeeklyGridCard /></motion.div>}
-    </motion.div>
+      {showStreak && (
+        <motion.div {...enterUp(0)} className="mt-6">
+          {sectionHeader(t("daily_progress.weekly_progress_heading", { defaultValue: "Weekly progress" }))}
+          <WeeklyGridCard />
+        </motion.div>
+      )}
+    </div>
   );
 }

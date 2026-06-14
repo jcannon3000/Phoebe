@@ -178,8 +178,13 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
       ))
       .limit(1);
     myWord = w?.content ?? null;
-    // Was there an amen by THIS viewer that lands on today's calendar
-    // date in the OWNER's tz? Same dedupe rule the count uses.
+    // "Did I amen this TODAY" is judged on the VIEWER'S calendar day — the
+    // person praying — NOT the owner's. The home-list endpoint computes
+    // myAmenedToday in the viewer's tz; this detail endpoint MUST match, or the
+    // two disagree across a timezone boundary (an owner with no tz set defaults
+    // to UTC, so a US viewer's evening amen reads as "today" here but
+    // "yesterday" on the list) — the slide then shows "Amen sent" while the
+    // home list still shows "Pray", and the viewer can't re-amen. (Prior bug.)
     const myAmens = await db
       .select({ prayedAt: prayerRequestAmensTable.prayedAt })
       .from(prayerRequestAmensTable)
@@ -190,13 +195,13 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
       .orderBy(desc(prayerRequestAmensTable.prayedAt))
       .limit(1);
     if (myAmens.length > 0) {
-      const [ownerTzRow] = await db
+      const [viewerTzRow] = await db
         .select({ timezone: usersTable.timezone })
         .from(usersTable)
-        .where(eq(usersTable.id, r.ownerId));
-      const ownerTz = ownerTzRow?.timezone || "UTC";
-      const today = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-      const lastDay = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz, year: "numeric", month: "2-digit", day: "2-digit" }).format(myAmens[0].prayedAt);
+        .where(eq(usersTable.id, sessionUserId));
+      const viewerTz = viewerTzRow?.timezone || "UTC";
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      const lastDay = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz, year: "numeric", month: "2-digit", day: "2-digit" }).format(myAmens[0].prayedAt);
       myAmenedToday = today === lastDay;
     }
   }

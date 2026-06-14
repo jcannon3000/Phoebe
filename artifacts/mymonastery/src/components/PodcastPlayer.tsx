@@ -1,5 +1,5 @@
 import {
-  createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode,
+  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
 } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -85,7 +85,81 @@ export function usePodcastPlayer(): PlayerCtx {
 }
 
 const FONT = "'Space Grotesk', system-ui, sans-serif";
+const SERIF = "Georgia, 'Times New Roman', serif";
 const RATES = [1, 1.25, 1.5, 2];
+
+// ── Office "now playing" backdrop ─────────────────────────────────────────
+// The daily-office listener uses a full-bleed LANDSCAPE photo from the
+// Cobreathe library (life-on-earth images) instead of the square episode
+// artwork — the office becomes an immersive, photographic prayer space. The
+// photo melts via a gradient into a solid colour sampled from the photo
+// itself (the "additional background" beneath it), so each day's office takes
+// on the tone of its image. Bundled (offline-safe).
+const OFFICE_BG_PHOTOS = Object.values(
+  import.meta.glob("@/assets/cobreathe/*.{jpg,jpeg,png,avif,webp}", {
+    eager: true,
+    query: "?url",
+    import: "default",
+  }),
+) as string[];
+
+// Stable per-episode photo pick — a small string hash so the same office on
+// the same day always shows the same image (no flicker across re-renders) but
+// different episodes/sides get different photos.
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+// Humanize an alignment section's type ("first_lesson" → "First Lesson") when
+// the server didn't supply a nicer title.
+function humanizeSectionType(type: string): string {
+  return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// A daily-office alignment section (from /api/podcast/office/:side/timestamps).
+type AlignSection = { id: string; type: string; title: string | null; startSeconds: number; endSeconds: number | null };
+
+// ── Inline transport icons (white, for the photographic office player) ──
+function IconX() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 6 18 18M18 6 6 18" />
+    </svg>
+  );
+}
+function IconShare() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 3v12" /><path d="m8 7 4-4 4 4" /><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />
+    </svg>
+  );
+}
+// Circular skip arrow with the seconds centered. `forward` mirrors the arc.
+function IconSkip({ secs, forward }: { secs: number; forward?: boolean }) {
+  return (
+    <span style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", width: 50, height: 50 }}>
+      <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        {forward
+          ? (<><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /></>)
+          : (<><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /></>)}
+      </svg>
+      <span style={{ position: "absolute", fontSize: 10, fontWeight: 700, fontFamily: FONT }}>{secs}</span>
+    </span>
+  );
+}
+function IconPlay() {
+  return (<svg width="34" height="34" viewBox="0 0 24 24" aria-hidden><path d="M7 4.5 19.5 12 7 19.5Z" fill="currentColor" /></svg>);
+}
+function IconPause() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 24 24" aria-hidden>
+      <rect x="6" y="4" width="4.2" height="16" rx="1.6" fill="currentColor" />
+      <rect x="13.8" y="4" width="4.2" height="16" rx="1.6" fill="currentColor" />
+    </svg>
+  );
+}
 
 const posKey = (e: { showSlug: string; episodeId: string }) => `phoebe:podcast:pos:${e.showSlug}:${e.episodeId}`;
 function loadPos(e: { showSlug: string; episodeId: string }): number {
@@ -610,6 +684,98 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
   const art = (!artBroken && (current?.imageUrl || current?.showArtwork)) || null;
 
+  // ── Office immersive backdrop ──────────────────────────────────────────
+  // When the now-playing episode is a daily office, choose a stable landscape
+  // photo from the library and sample a dark solid colour from it for the
+  // gradient + the "additional background" the photo melts into.
+  const isOffice = !!current?.showSlug?.startsWith("office-");
+  const officeBg = useMemo(() => {
+    if (!isOffice || OFFICE_BG_PHOTOS.length === 0) return null;
+    const seed = current?.episodeId || current?.showSlug || "office";
+    return OFFICE_BG_PHOTOS[hashStr(seed) % OFFICE_BG_PHOTOS.length];
+  }, [isOffice, current?.episodeId, current?.showSlug]);
+  const [officeRgb, setOfficeRgb] = useState<{ r: number; g: number; b: number }>({ r: 18, g: 30, b: 22 });
+  useEffect(() => {
+    if (!officeBg) return;
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement("canvas");
+        c.width = 8; c.height = 8;
+        const ctx = c.getContext("2d");
+        if (!ctx) return;
+        // Sample the LOWER band of the photo — that's what the gradient blends
+        // into, so the seam between photo and solid colour disappears.
+        ctx.drawImage(img, 0, Math.floor(img.naturalHeight * 0.6), img.naturalWidth, Math.floor(img.naturalHeight * 0.4), 0, 0, 8, 8);
+        const d = ctx.getImageData(0, 0, 8, 8).data;
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+        // Darken (mix toward black) so warm-white text always reads on it.
+        const k = 0.46;
+        if (!cancelled) setOfficeRgb({ r: Math.round((r / n) * k), g: Math.round((g / n) * k), b: Math.round((b / n) * k) });
+      } catch { /* tainted / unavailable — keep the default deep green */ }
+    };
+    img.src = officeBg;
+    return () => { cancelled = true; };
+  }, [officeBg]);
+  const oSolid = `rgb(${officeRgb.r},${officeRgb.g},${officeRgb.b})`;
+  const oRgba = (a: number) => `rgba(${officeRgb.r},${officeRgb.g},${officeRgb.b},${a})`;
+  const remaining = duration > 0 ? Math.max(0, duration - currentTime) : 0;
+  // The office mini-bar shows the day's landscape photo, not the podcast feed
+  // artwork (we no longer surface the FM/CoE thumbnail anywhere).
+  const miniArt = isOffice ? officeBg : art;
+
+  // ── Synced liturgy section titles ("transcription / section title") ───────
+  // The read-aloud office is time-aligned server-side: each liturgical part
+  // (Invitatory, Psalm, First Lesson…) has a start/end second. We poll the
+  // alignment for the playing side and surface the ACTIVE part's name as the
+  // player's live title, so it updates as the office is read — the "section
+  // title" feature, now on the immersive player (no longer beta-gated). Only
+  // Forward Movement is aligned; Church of England gracefully falls back to the
+  // episode title.
+  const officeSide: "morning" | "evening" = current?.showSlug === "office-evening" ? "evening" : "morning";
+  const { data: alignData } = useQuery<{ status: string; sections: AlignSection[] }>({
+    queryKey: [`/api/podcast/office/${officeSide}/timestamps`],
+    queryFn: () => apiRequest("GET", `/api/podcast/office/${officeSide}/timestamps`),
+    enabled: isOffice && officeAudioSource === "forward-movement",
+    staleTime: 5 * 60_000,
+    refetchInterval: (q) => { const s = q.state.data?.status; return s === "done" || s === "failed" ? false : 6000; },
+  });
+  const officeSectionTitle = useMemo(() => {
+    if (!isOffice) return null;
+    const secs = (alignData?.sections ?? [])
+      .filter((s) => s.type !== "appeal")
+      .slice()
+      .sort((a, b) => a.startSeconds - b.startSeconds);
+    if (secs.length === 0) return null;
+    // The active part is the last one whose start has passed (small lead so the
+    // title arrives just as the reader does), as long as we're before its end.
+    let active: AlignSection | null = null;
+    for (const s of secs) {
+      if (currentTime + 0.25 >= s.startSeconds) active = s; else break;
+    }
+    if (active && active.endSeconds != null && currentTime >= active.endSeconds + 0.5) {
+      // Past the end of the last matched part with nothing after — hold it.
+    }
+    if (!active) return null;
+    return (active.title && active.title.trim()) || humanizeSectionType(active.type);
+  }, [isOffice, alignData, currentTime]);
+  // The title shown on the immersive office player: the live liturgy part when
+  // we have one, else the episode title.
+  const officeTitle = officeSectionTitle ?? current?.title ?? t("podcasts.now_playing_fallback");
+
+  const shareOffice = () => {
+    const nav = navigator as Navigator & { share?: (d: { title?: string; text?: string; url?: string }) => Promise<void> };
+    if (typeof nav.share !== "function") return;
+    nav.share({
+      title: current?.showTitle ?? "The Daily Office",
+      text: current?.title ?? "",
+      url: typeof window !== "undefined" ? window.location.origin : undefined,
+    }).catch(() => { /* user dismissed */ });
+  };
+  const canShare = typeof navigator !== "undefined" && typeof (navigator as { share?: unknown }).share === "function";
+
   return (
     <Ctx.Provider value={{ current, isPlaying, play, playQueue, toggle, isCurrent }}>
       {children}
@@ -652,15 +818,15 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
               onClick={() => setExpanded(true)}
               style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: 0, cursor: "pointer", minWidth: 0, flex: 1 }}
             >
-              {art ? (
-                <img src={art} alt="" onError={() => setArtBroken(true)}
+              {miniArt ? (
+                <img src={miniArt} alt="" onError={() => { if (!isOffice) setArtBroken(true); }}
                   style={{ width: 40, height: 40, borderRadius: 8, objectFit: "cover", flexShrink: 0, background: "rgba(143,175,150,0.12)" }} />
               ) : (
                 <div style={{ width: 40, height: 40, borderRadius: 8, flexShrink: 0, background: "rgba(46,107,64,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🎧</div>
               )}
               <div style={{ minWidth: 0, textAlign: "left" }}>
                 <p style={{ fontSize: 12.5, fontWeight: 600, color: "#F0EDE6", margin: 0, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "44vw" }}>
-                  {current.title ?? t("podcasts.now_playing_fallback")}
+                  {isOffice ? officeTitle : (current.title ?? t("podcasts.now_playing_fallback"))}
                 </p>
                 <p style={{ fontSize: 10.5, color: "rgba(143,175,150,0.8)", margin: "2px 0 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "44vw" }}>
                   {fmtClock(currentTime)}{duration > 0 ? ` / ${fmtClock(duration)}` : ""}{current.showTitle ? ` · ${current.showTitle}` : ""}
@@ -692,11 +858,143 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
           </div>
         </div>
       )}
+      {/* ── Immersive OFFICE listener ──────────────────────────────────────
+          The daily office gets a photographic full-screen player: a landscape
+          library photo up top, melting through a gradient into a colour
+          sampled from the photo, with the transport over the image and the
+          time / title / scrubber on the solid colour below. */}
+      {current && expanded && isOffice && (
+        <div
+          style={{
+            position: "fixed", inset: 0, zIndex: 70, fontFamily: FONT, color: "#F6F0E6",
+            background: oSolid,
+            display: "flex", flexDirection: "column", overflow: "hidden",
+            paddingTop: "max(0.75rem, env(safe-area-inset-top))",
+            paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))",
+          }}
+        >
+          {/* Photo + gradient backdrop. The photo fills the top ~66%; the
+              gradient fades it into the solid colour so there's no seam. */}
+          <div aria-hidden style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+            {officeBg && (
+              <img
+                src={officeBg}
+                alt=""
+                style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "68%", objectFit: "cover" }}
+              />
+            )}
+            <div
+              style={{
+                position: "absolute", inset: 0,
+                background: `linear-gradient(to bottom, rgba(0,0,0,0.30) 0%, rgba(0,0,0,0.06) 14%, ${oRgba(0)} 32%, ${oRgba(0.45)} 48%, ${oRgba(0.86)} 60%, ${oSolid} 67%)`,
+              }}
+            />
+          </div>
+
+          {/* Foreground column */}
+          <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+            {/* Top bar: close (left) · share (right) */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 18px", flexShrink: 0 }}>
+              <button type="button" onClick={() => setExpanded(false)} aria-label={t("podcasts.a11y_minimize")}
+                style={{ background: "none", border: "none", color: "#FFFFFF", cursor: "pointer", padding: 6, lineHeight: 0, opacity: 0.95 }}>
+                <IconX />
+              </button>
+              {canShare ? (
+                <button type="button" onClick={shareOffice} aria-label={t("common.share", { defaultValue: "Share" })}
+                  style={{ background: "none", border: "none", color: "#FFFFFF", cursor: "pointer", padding: 6, lineHeight: 0, opacity: 0.95 }}>
+                  <IconShare />
+                </button>
+              ) : <span style={{ width: 34 }} />}
+            </div>
+
+            {/* Transport over the photo */}
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 30, minHeight: 0 }}>
+              <button type="button" onClick={() => skip(-15)} aria-label={t("podcasts.a11y_back15")}
+                style={{ background: "none", border: "none", color: "#FFFFFF", cursor: "pointer", padding: 4, lineHeight: 0 }}>
+                <IconSkip secs={15} />
+              </button>
+              <button type="button" onClick={toggle} aria-label={isPlaying ? t("podcasts.a11y_pause") : t("podcasts.a11y_play")}
+                style={{
+                  width: 96, height: 96, borderRadius: "50%", border: "none", cursor: "pointer",
+                  background: "rgba(18,20,18,0.34)", color: "#FFFFFF",
+                  backdropFilter: "blur(3px)", WebkitBackdropFilter: "blur(3px)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  boxShadow: "0 8px 30px rgba(0,0,0,0.25)",
+                }}>
+                {isPlaying ? <IconPause /> : <IconPlay />}
+              </button>
+              <button type="button" onClick={() => skip(30)} aria-label={t("podcasts.a11y_forward30")}
+                style={{ background: "none", border: "none", color: "#FFFFFF", cursor: "pointer", padding: 4, lineHeight: 0 }}>
+                <IconSkip secs={30} forward />
+              </button>
+            </div>
+
+            {/* Lower block on the solid colour: big remaining time, scrubber,
+                title, show, and the office source toggle. */}
+            <div style={{ flexShrink: 0, padding: "0 26px" }}>
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
+                <span style={{ fontFamily: SERIF, fontSize: 58, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1, color: "#F6F0E6" }}>
+                  {duration > 0 ? fmtClock(remaining) : fmtClock(currentTime)}
+                </span>
+                <button type="button" onClick={cycleRate} aria-label={t("podcasts.a11y_speed")}
+                  style={{
+                    marginBottom: 6, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)",
+                    color: "#F6F0E6", fontSize: 12.5, fontWeight: 700, fontFamily: FONT, borderRadius: 999, padding: "6px 13px", cursor: "pointer", flexShrink: 0,
+                  }}>
+                  {rate}×
+                </button>
+              </div>
+
+              <div onClick={onTrackClick} role="slider" aria-label={t("podcasts.a11y_seek")} aria-valuenow={Math.round(pct)}
+                style={{ height: 5, borderRadius: 999, background: "rgba(246,240,230,0.22)", cursor: "pointer", overflow: "hidden", marginTop: 14 }}>
+                <div style={{ width: `${pct}%`, height: "100%", background: "#F6F0E6" }} />
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "rgba(246,240,230,0.7)", margin: "7px 1px 0" }}>
+                <span>{fmtClock(currentTime)}</span>
+                <span>{duration > 0 ? `-${fmtClock(remaining)}` : "--:--"}</span>
+              </div>
+
+              <h2 style={{ fontFamily: SERIF, fontSize: 25, fontWeight: 700, margin: "16px 0 0", lineHeight: 1.18, color: "#F6F0E6", transition: "opacity 0.3s" }}>
+                {officeTitle}
+              </h2>
+              <p style={{ fontSize: 14, color: "rgba(246,240,230,0.72)", margin: "5px 0 0", fontFamily: FONT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {current.showTitle ?? ""}
+              </p>
+
+              {/* Forward Movement ↔ Church of England — light-on-photo styling */}
+              <div
+                role="tablist"
+                aria-label={t("podcasts.office_tradition_aria", { defaultValue: "Prayer tradition" })}
+                style={{ display: "inline-flex", gap: 4, background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, padding: 4, margin: "16px 0 0" }}
+              >
+                {(["forward-movement", "church-of-england"] as const).map((s) => {
+                  const active = officeAudioSource === s;
+                  return (
+                    <button key={s} type="button" role="tab" aria-selected={active}
+                      onClick={() => switchOfficeSource(s)} disabled={sourceSwitching}
+                      style={{
+                        borderRadius: 999, padding: "6px 14px", fontSize: 12, fontWeight: 600, fontFamily: FONT,
+                        cursor: sourceSwitching ? "wait" : "pointer", whiteSpace: "nowrap",
+                        background: active ? "rgba(255,255,255,0.18)" : "transparent",
+                        border: `1px solid ${active ? "rgba(255,255,255,0.3)" : "transparent"}`,
+                        color: active ? "#FFFFFF" : "rgba(246,240,230,0.6)",
+                        transition: "background 0.15s, color 0.15s",
+                      }}>
+                      {t(s === "church-of-england" ? "podcasts.office_source_coe" : "podcasts.office_source_fm",
+                        { defaultValue: s === "church-of-england" ? "Church of England" : "Forward Movement" })}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Full-screen "now playing" listener — opened by starting an
           episode or tapping the mini-bar. Carries the Recommend action
           (the show list no longer does). Drives the same <audio> as the
           mini-bar, so collapsing keeps playback going. */}
-      {current && expanded && (
+      {current && expanded && !isOffice && (
         <div
           style={{
             position: "fixed", inset: 0, zIndex: 70, fontFamily: FONT, color: "#F0EDE6",

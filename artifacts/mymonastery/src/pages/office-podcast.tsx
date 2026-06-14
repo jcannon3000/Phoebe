@@ -5,7 +5,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { useOfficePrefs, type OfficeAudioSource } from "@/lib/officePrefs";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
-import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 
 // ── /podcast/:show — daily office podcasts, pass-through launcher ──
@@ -110,18 +109,12 @@ export default function OfficePodcastPage() {
     staleTime: 30 * 60_000,
   });
 
-  // Beta: the follow-along office (glowing liturgy-part title + podcast bar)
-  // replaces the plain player — but only for Forward Movement, the office the
-  // alignment pipeline covers. Redirect before the global player launches.
-  const { isBeta } = useBetaStatus();
-  const prayAlong = isBeta && officeAudioSource === "forward-movement";
-  const redirected = useRef(false);
-  useEffect(() => {
-    if (!prayAlong || redirected.current) return;
-    redirected.current = true;
-    const flow = new URLSearchParams(window.location.search).get("flow");
-    setLocation(`/office/${show.side}/pray-along${flow ? `?flow=${flow}` : ""}`);
-  }, [prayAlong, show.side, setLocation]);
+  // The dedicated "pray-along" page is now superseded by the immersive office
+  // player (PodcastPlayer), which carries the live liturgy section titles
+  // itself — so every listener gets the section-title feature in one place,
+  // not just beta + Forward Movement. The old redirect is disabled; the page
+  // below always hands the episode to the full-screen player.
+  const prayAlong = false;
 
   const player = usePodcastPlayer();
   const playerSlug = `office-${show.side}`;

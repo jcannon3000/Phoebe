@@ -74,6 +74,11 @@ export type Moment = {
   // feed-scoped intercessions appear as cards, group-scoped ones don't.
   prayerFeedId?: number | null;
   todayPostCount: number;
+  // Whether THIS user has prayed/checked-in on this moment today (any
+  // moment_post of theirs, incl. a check-in). Unlike todayPostCount — which is
+  // the GLOBAL count of everyone's posts — this is the correct "did I pray it"
+  // flag for an intercession's done state. Backend: /api/moments → todayILogged.
+  myPrayedToday?: boolean;
   windowOpen: boolean;
   isActionableToday: boolean;
   isActionableTomorrow: boolean;
@@ -1219,7 +1224,12 @@ export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment;
     ? !isLectioCaughtUp
     : showRenewPill
       ? true
-      : (m.windowOpen && m.todayPostCount === 0);
+      // Intercessions: "still to pray" is per-USER (have *I* prayed it today),
+      // not the global post count — otherwise an intercession someone else
+      // prayed reads as done for everyone, and ones only I prayed never flip.
+      : m.templateType === "intercession"
+        ? (m.windowOpen && !m.myPrayedToday)
+        : (m.windowOpen && m.todayPostCount === 0);
   const isDesktop = useIsDesktop();
   const otherMembers = m.members.filter(p => p.email !== userEmail);
   const memberNames = otherMembers
@@ -1545,8 +1555,9 @@ export function MomentCard({ m, userEmail, keyPrefix, nextWindow }: { m: Moment;
             >
               {isFasting ? "Log 🌿" : isIntercession ? "Pray 🙏🏽" : isMorningPrayer ? "Open 📖" : "Log 🌿"}
             </motion.span>
-          ) : isIntercession && m.todayPostCount > 0 && m.windowOpen ? (
+          ) : isIntercession && m.myPrayedToday && m.windowOpen ? (
             // Already prayed today — show View pill so they can revisit the circle
+            // (per-USER flag: my own check-in, not anyone's post on the moment)
             <span
               role="button"
               tabIndex={0}
@@ -5161,6 +5172,14 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
+  // People who have prayed for the viewer's own requests lately — drives the
+  // overlapped face stack on the "Your prayer requests" section below the list.
+  const { data: prayedForMe } = useQuery<{ people: Array<{ id: number; name: string | null; avatarUrl: string | null; count: number }>; total: number }>({
+    queryKey: ["/api/prayer-streak/prayed-for-me-month"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak/prayed-for-me-month"),
+    enabled: !!user,
+    staleTime: 5 * 60_000,
+  });
   // Belt-and-suspenders: the home can be restored from the back/forward cache
   // without remounting (Safari bfcache, native back-swipe), which skips
   // refetchOnMount. Re-pull the prayer list whenever the page becomes visible
@@ -6204,14 +6223,17 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
         )}
       </AnimatePresence>
 
-      <div className="dash-shell flex flex-col w-full pb-8">
+      {/* Negative margin cancels most of the Layout <main>'s pb-12 (3rem) so the
+          page ends ~20px under the footer instead of a tall empty gap — without
+          shrinking every other page's bottom padding. */}
+      <div className="dash-shell flex flex-col w-full" style={{ marginBottom: "calc(1.25rem - 3rem)" }}>
 
         {/* ── Header ── */}
         {/* Calendar date rendered on every surface (was gated to
             non-native; the iOS status bar shows the system clock but
             not the day-of-week, so we want the in-app date visible
             there too). */}
-        <div className="mb-4">
+        <div className="mb-4" style={{ paddingTop: 4 }}>
           <p
             className="mb-1"
             style={{
@@ -6310,6 +6332,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                    Contemplation. */
                 <DailyProgressBody
                   showStreak={false}
+                  showDone
                   leadCard={newPrayersCount > 0 ? <NewPrayerRequestsCard count={newPrayersCount} faces={homeFaces} /> : null}
                   renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />}
                 />
@@ -6500,7 +6523,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       if (r.isAnswered) return false;
                       if (r.closedAt) return false;
                       if (typeof r.body !== "string" || r.body.length === 0) return false;
-                      if (!r.isOwnRequest && r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
+                      // Your OWN requests move to their own "Your prayer requests"
+                      // section below the list — so the list is purely others to pray for.
+                      if (r.isOwnRequest) return false;
+                      if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
                       return true;
                     })
                     .map((r) => ({
@@ -6511,7 +6537,16 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       ownerName: r.ownerName ?? null,
                       ownerAvatarUrl: r.ownerAvatarUrl ?? null,
                       myAmenedToday: r.myAmenedToday,
-                    }));
+                    }))
+                    // Float the ones you HAVEN'T prayed yet to the top; the ones
+                    // you've already amened today sink to the bottom. (Your own
+                    // requests have no amened state, so they stay up top too.)
+                    // Stable sort keeps the original order within each group.
+                    .sort((a, b) => {
+                      const aDone = !a.isOwnRequest && a.myAmenedToday ? 1 : 0;
+                      const bDone = !b.isOwnRequest && b.myAmenedToday ? 1 : 0;
+                      return aDone - bDone;
+                    });
                   return (
                     <div style={{ marginTop: 0 }}>
                       <PrayerListCarousel
@@ -6539,6 +6574,75 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                           </div>
                         </Link>
                       )}
+                    </div>
+                  );
+                })()}
+
+                {/* Your prayer requests — the viewer's OWN open requests, with an
+                    overlapped stack of the people who've prayed for them lately on
+                    the right. Hidden entirely when you have no open request. */}
+                {filter === null && !eventsOnly && (() => {
+                  const ownReqs = (dashPrayerRequests ?? []).filter(
+                    (r) => r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0,
+                  );
+                  if (ownReqs.length === 0) return null;
+                  const faces = (prayedForMe?.people ?? []).filter(Boolean).slice(0, 3);
+                  const total = prayedForMe?.total ?? 0;
+                  const facesInitials = (name: string | null) =>
+                    (name ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
+                  return (
+                    <div style={{ marginTop: 28 }}>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                          {t("dashboard.your_requests_title", { defaultValue: "Your prayer requests" })}
+                        </h3>
+                        <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        {ownReqs.map((req) => (
+                          <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
+                            <div
+                              className="relative flex rounded-xl overflow-hidden"
+                              style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.28)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+                            >
+                              <div className="w-1 flex-shrink-0" style={{ background: "#C17F24" }} />
+                              <div className="flex-1 px-4 pt-3 pb-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate" style={{ color: "rgba(143,175,150,0.55)" }}>
+                                      {t("prayer_list_carousel.your_request", { defaultValue: "Your request" })}
+                                    </p>
+                                    <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6" }}>
+                                      {req.body}
+                                    </p>
+                                  </div>
+                                  {/* Overlapped faces of people who've prayed for you lately. */}
+                                  {faces.length > 0 && (
+                                    <div className="flex-shrink-0 flex items-center" aria-label={t("dashboard.prayed_for_you_recently", { defaultValue: "Prayed for you recently" })}>
+                                      <div className="flex -space-x-2">
+                                        {faces.map((p) =>
+                                          p.avatarUrl ? (
+                                            <img key={p.id} src={p.avatarUrl} alt={p.name ?? ""} className="w-7 h-7 rounded-full object-cover" style={{ border: "1.5px solid #0C1F12" }} />
+                                          ) : (
+                                            <div key={p.id} className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid #0C1F12" }}>
+                                              {facesInitials(p.name)}
+                                            </div>
+                                          ),
+                                        )}
+                                      </div>
+                                      {total > faces.length && (
+                                        <span className="ml-1.5 text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                                          +{total - faces.length}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
                     </div>
                   );
                 })()}
@@ -6670,7 +6774,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
             from the side menu and the per-office Customize entries. */}
 
         {/* Footer */}
-        <p className="text-center text-xs mt-8 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
+        <p className="text-center text-xs mt-8 mb-0 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>
           {t("dashboard.inspired_by")}
         </p>
         {/* The "About" pill that lived here (linking to /church-deck)

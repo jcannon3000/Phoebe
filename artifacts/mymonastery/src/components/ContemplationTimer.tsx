@@ -384,11 +384,15 @@ export function ContemplationTimer({
         const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
         let tz = "UTC";
         try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { /* keep UTC */ }
-        apiRequest<{ todaySeconds?: number }>(
+        apiRequest<{ todaySeconds?: number; healthMinutesToday?: number }>(
           "GET",
           `/api/me/contemplation-stats?todaySince=${encodeURIComponent(midnight.toISOString())}&tz=${encodeURIComponent(tz)}`,
         )
-          .then((s) => setDailyTotalSeconds(s?.todaySeconds ?? null))
+          // Fold in Apple Health mindful minutes the same way the dashboard +
+          // Contemplation page do, so the "X of N min today" line on the close
+          // screen matches the home card (which adds Health on top of the
+          // prayer-only seconds) instead of showing a lower prayer-only total.
+          .then((s) => setDailyTotalSeconds((s?.todaySeconds ?? 0) + (s?.healthMinutesToday ?? 0) * 60))
           .catch(() => { /* non-fatal — the progress line just won't show */ });
       })
       .catch(() => { /* best-effort — a dropped stat shouldn't break the close */ });

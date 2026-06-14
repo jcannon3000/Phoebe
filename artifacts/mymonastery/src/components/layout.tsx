@@ -9,6 +9,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { WeeklyGridCard } from "@/components/DailyProgressBody";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
@@ -819,6 +820,15 @@ function OpeningSplash() {
     staleTime: 5 * 60_000,
     enabled: phase !== "gone" && !!user && native,
   });
+  // Warm the avatar images the moment the co-prayer data lands, so the face
+  // rail doesn't flash white circles while each one downloads. The rendered
+  // <img>s reuse the same in-flight/cached fetch (and carry a green placeholder
+  // background as a belt-and-suspenders, so they never read as white).
+  useEffect(() => {
+    for (const p of data?.people ?? []) {
+      if (p.avatarUrl) { const img = new Image(); img.decoding = "async"; img.src = p.avatarUrl; }
+    }
+  }, [data]);
   // Start the 5s auto-dismiss once auth has resolved (user present) — NOT on a
   // bare mount. On a native cold start `user` is null while /api/auth/me loads;
   // stamping the once-per-launch flag then would burn the splash before it ever
@@ -833,10 +843,13 @@ function OpeningSplash() {
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
-  // After the fade-out animation, unmount.
+  // Unmount is driven by the fade-out's onAnimationComplete (below) so it lands
+  // exactly when opacity hits 0 — not a racing timeout that could snap the
+  // splash back to visible for a frame (the "flash" on close). This timeout is
+  // only a safety net in case the animation callback never fires.
   useEffect(() => {
     if (phase !== "out") return;
-    const id = setTimeout(() => setPhase("gone"), 950);
+    const id = setTimeout(() => setPhase("gone"), 1400);
     return () => clearTimeout(id);
   }, [phase]);
 
@@ -871,13 +884,17 @@ function OpeningSplash() {
       initial={{ opacity: 1 }}
       animate={{ opacity: phase === "out" ? 0 : 1 }}
       transition={{ duration: phase === "out" ? 0.9 : 0, ease: "easeInOut" }}
-      className="fixed inset-0 flex flex-col items-center justify-center gap-6 px-10"
-      style={{ background: "#0C1F12", zIndex: 200, isolation: "isolate", pointerEvents: phase === "out" ? "none" : "auto" }}
+      onAnimationComplete={() => { if (phase === "out") setPhase("gone"); }}
+      className="fixed inset-0 flex flex-col items-center px-6"
+      style={{
+        background: "#0C1F12", zIndex: 200, isolation: "isolate", pointerEvents: phase === "out" ? "none" : "auto",
+        paddingTop: "calc(env(safe-area-inset-top) + 8vh)", paddingBottom: "16vh", overflowY: "auto",
+      }}
     >
       <AnimatedBackground base="#0C1F12" variant="pronounced" />
       <p
-        className="absolute text-center px-8"
-        style={{ top: "13vh", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}
+        className="text-center px-8 mb-8 relative"
+        style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}
       >
         {firstName ? `${greeting}, ${firstName}` : greeting}
       </p>
@@ -891,7 +908,15 @@ function OpeningSplash() {
         const visible = people.slice(0, 6);
         const overflow = Math.max(0, people.length - visible.length);
         return (
-          <div className="flex flex-col items-center px-6" style={{ maxWidth: 420 }}>
+          // The whole block gently FADES UP rather than popping in (the avatars
+          // are preloaded above, so nothing flashes white).
+          <motion.div
+            className="flex flex-col items-center w-full relative"
+            style={{ maxWidth: 420 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.12, ease: "easeOut" }}
+          >
             <p className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-5" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}>
               {t("splash.prayed_for_you_month", { defaultValue: "Prayed for you this month" })}
             </p>
@@ -900,7 +925,7 @@ function OpeningSplash() {
             <div className="flex items-center justify-center -space-x-3">
               {visible.map((p) => (
                 p.avatarUrl ? (
-                  <img key={p.id} src={p.avatarUrl} alt={fn(p.name)} className="w-12 h-12 rounded-full object-cover" style={{ border: "2px solid #0C1F12" }} />
+                  <img key={p.id} src={p.avatarUrl} alt={fn(p.name)} loading="eager" decoding="async" className="w-12 h-12 rounded-full object-cover" style={{ border: "2px solid #0C1F12", backgroundColor: "#1A4A2E" }} />
                 ) : (
                   <div key={p.id} className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "2px solid #0C1F12" }}>
                     {(p.name ?? "?").trim().split(/\s+/).slice(0, 2).map((s) => s[0] ?? "").join("").toUpperCase().slice(0, 2) || "?"}
@@ -919,14 +944,19 @@ function OpeningSplash() {
                 defaultValue: `${people.length} ${people.length === 1 ? "person" : "people"} prayed for you this month`,
               })}
             </p>
-          </div>
+            {/* This week's rhythm grid, under the faces — cached/persisted so it's
+                ready on the next open, not lagging in. */}
+            <div className="w-full mt-7">
+              <WeeklyGridCard />
+            </div>
+          </motion.div>
         );
       })()}
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); dismiss(); }}
         aria-label="Continue"
-        style={{ position: "absolute", bottom: "11vh", background: "none", border: "none", cursor: "pointer", padding: 16 }}
+        style={{ position: "absolute", bottom: "6vh", background: "none", border: "none", cursor: "pointer", padding: 16, zIndex: 1 }}
       >
         <span style={{ color: "#8FAF96", fontSize: 30, lineHeight: 1 }}>→</span>
       </button>

@@ -1541,50 +1541,9 @@ export default function PrayerListPage() {
             the prayer list surfaces all four relationships:
             intercessions, requests, prayers-I'm-praying, prayers-for-me.
             Each section still auto-hides when empty. */}
-        {activePrayersFor.length > 0 && (focused === null || focused === "prayers-for") && (
-          <SectionShell
-            id="prayers-for"
-            label={t("prayer_list.section_my_prayers_for")}
-            count={activePrayersFor.length}
-            focused={focused}
-            onFocus={setFocused}
-          >
-            {activePrayersFor.map((p) => (
-              <PrayerForCard key={p.id} p={p} onOpen={() => setDetail({ kind: "prayer-for", id: p.id })} />
-            ))}
-          </SectionShell>
-        )}
-
-        {/* Prayers for you — active and past in one section. Active rows
-            render first with the warm-amber accent; past rows follow with
-            a faded border + sage palette and "Prayed Apr 23" date meta.
-            Combining the two sections means the recipient sees one rolling
-            record of who is and was holding them in prayer. */}
-        {(prayersForMe.length > 0 || pastPrayersForMe.length > 0) && (focused === null || focused === "prayers-from") && (
-          <SectionShell
-            id="prayers-from"
-            label={t("prayer_list.section_prayers_for_you")}
-            count={prayersForMe.length + pastPrayersForMe.length}
-            focused={focused}
-            onFocus={setFocused}
-          >
-            {prayersForMe.map((p) => (
-              <PrayerFromCard
-                key={`active-${p.id}`}
-                p={p}
-                onOpen={() => setDetail({ kind: "prayer-from", id: p.id })}
-              />
-            ))}
-            {pastPrayersForMe.map((p) => (
-              <PrayerFromCard
-                key={`past-${p.id}`}
-                p={p}
-                isPast
-                onOpen={() => setDetail({ kind: "prayer-from", id: p.id })}
-              />
-            ))}
-          </SectionShell>
-        )}
+        {/* "My prayers for others" and "Prayers for you" sections removed from
+            this page per request — prayers-for-you now surface as the face stack
+            on the home "Your prayer requests" section. */}
 
         {/* Community intercessions — intercession practices.
             Moved to the bottom of the page (was at the top): the manage

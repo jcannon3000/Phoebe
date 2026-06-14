@@ -1001,39 +1001,56 @@ export default function ContemplationPage() {
             </p>
           ) : (
             <div className="space-y-2">
-              {/* Apple Health — today's mindful minutes from OTHER apps (Calm,
-                  Insight Timer, Apple Mindfulness), each as its own card. */}
-              {externalHealthSessions.map((h, idx) => {
-                const iso = new Date(h.startMs).toISOString();
-                return (
-                  <div
-                    key={`hk-${h.startMs}-${idx}`}
-                    className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
-                    style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.20)" }}
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
-                        {formatSessionDate(iso, t, i18n.language)}
-                      </p>
-                      <p className="text-[12px] mt-0.5 truncate" style={{ color: SAGE, margin: 0 }}>
-                        {formatSessionTime(iso)} · 🍎 {h.source || t("contemplation.health_title", { defaultValue: "Apple Health" })}
-                      </p>
+              {/* Recent — Phoebe sits + Apple Health mindful minutes (Calm,
+                  Insight Timer, Apple Mindfulness) interleaved in true
+                  chronological order (newest first), not grouped by source.
+                  Older Phoebe sits collapse into per-day summaries below. */}
+              {(() => {
+                type Row =
+                  | { kind: "health"; ms: number; h: (typeof externalHealthSessions)[number] }
+                  | { kind: "sit"; ms: number; s: Session };
+                const rows: Row[] = [
+                  ...externalHealthSessions.map((h) => ({ kind: "health" as const, ms: h.startMs, h })),
+                  ...historyGroups.recent.map((s) => ({
+                    kind: "sit" as const,
+                    ms: new Date(s.startedAt ?? s.endedAt ?? 0).getTime(),
+                    s,
+                  })),
+                ].sort((a, b) => b.ms - a.ms);
+                return rows.map((row) => {
+                  if (row.kind === "sit") {
+                    return (
+                      <SessionRow
+                        key={row.s.id}
+                        s={row.s}
+                        onDelete={() => deleteMutation.mutate(row.s.id)}
+                        deleting={deleteMutation.isPending}
+                      />
+                    );
+                  }
+                  const h = row.h;
+                  const iso = new Date(h.startMs).toISOString();
+                  return (
+                    <div
+                      key={`hk-${h.startMs}`}
+                      className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
+                      style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.20)" }}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, margin: 0 }}>
+                          {formatSessionDate(iso, t, i18n.language)}
+                        </p>
+                        <p className="text-[12px] mt-0.5 truncate" style={{ color: SAGE, margin: 0 }}>
+                          {formatSessionTime(iso)} · 🍎 {h.source || t("contemplation.health_title", { defaultValue: "Apple Health" })}
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold shrink-0" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+                        {humanMinutes(h.minutes * 60)}
+                      </span>
                     </div>
-                    <span className="text-sm font-semibold shrink-0" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                      {humanMinutes(h.minutes * 60)}
-                    </span>
-                  </div>
-                );
-              })}
-              {/* Today & yesterday — individual sits (with per-entry delete). */}
-              {historyGroups.recent.map((s) => (
-                <SessionRow
-                  key={s.id}
-                  s={s}
-                  onDelete={() => deleteMutation.mutate(s.id)}
-                  deleting={deleteMutation.isPending}
-                />
-              ))}
+                  );
+                });
+              })()}
               {/* Older — one condensed summary card per day. */}
               {historyGroups.olderDays.map((g) => (
                 <div
