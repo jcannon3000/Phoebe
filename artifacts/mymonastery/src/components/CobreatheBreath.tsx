@@ -26,10 +26,10 @@ const WARM = "#F0EDE6";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
 
-// Breath pacing — a simple in / out breath, 7s each: a long, calm inhale
-// and an equally long exhale, no holds. 14s per cycle; twelve cycles ≈ 2:48.
-const INHALE_MS = 7000;
-const EXHALE_MS = 7000;
+// Breath pacing — a simple in / out breath, 12s each: a long, slow inhale
+// and an equally long exhale, no holds. 24s per cycle; twelve cycles ≈ 4:48.
+const INHALE_MS = 12000;
+const EXHALE_MS = 12000;
 // Each phase (in, out) is one PHASE_MS slice of the cycle — used to derive a
 // globally-synced octave that rotates 0→1→2→3 across phases.
 const PHASE_MS = INHALE_MS;
@@ -197,11 +197,11 @@ export function CobreatheBreath({
       const now = Date.now();
       const pos = now % CYCLE_MS;
       const isCounting = now - countStartRef.current >= 0;
-      // Phase transitions (inhale ↔ exhale): a soft haptic + a swell tone at
-      // the start of each phase (only once synced). The octave ROTATES through
-      // four octaves, one per 7s phase — and because it's derived from the
-      // global clock (floor(now / PHASE_MS) % 4), everyone breathing at this
-      // instant hears the same octave, so the tones stay in unison too.
+      // Phase transitions (inhale ↔ exhale): a soft haptic on each, but the
+      // swell TONE sounds only at the start of the inhale (once synced) — one
+      // note per breath. The octave ROTATES through three slide octaves
+      // (0,1,2), derived from the global clock (floor(now / PHASE_MS) % 3), so
+      // everyone breathing at this instant hears the same tone, in unison.
       const phase = phaseAt(pos);
       if (lastPhaseRef.current === null) {
         lastPhaseRef.current = phase;
@@ -211,8 +211,14 @@ export function CobreatheBreath({
           try {
             window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } }));
           } catch { /* no native shell on web — silent */ }
-          const octave = Math.floor(now / PHASE_MS) % 4;
-          try { playOpeningSwell(octave); } catch { /* audio locked — non-fatal */ }
+          // Sound ONLY on the inhale (the start of each breath), not the
+          // exhale — one tone per breath. And only the three lower slide
+          // octaves (0,1,2), cycled from the global clock so everyone
+          // breathing at this instant hears the same tone.
+          if (phase === "in") {
+            const octave = Math.floor(now / PHASE_MS) % 3;
+            try { playOpeningSwell(octave); } catch { /* audio locked — non-fatal */ }
+          }
         }
       }
       const s = scaleAt(pos);
@@ -244,7 +250,7 @@ export function CobreatheBreath({
       // Always-present baseline so the photo is visible from the first moment
       // (incl. the sync pre-roll and every exhale), brightening toward the top
       // of the inhale rather than vanishing to nothing.
-      if (photoRef.current) photoRef.current.style.opacity = (0.34 + pAnim * 0.58).toFixed(4);
+      if (photoRef.current) photoRef.current.style.opacity = (0.5 + pAnim * 0.5).toFixed(4);
       // The phase word breathes a hair with the circle (only once synced).
       if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;
       raf = requestAnimationFrame(loop);
@@ -430,16 +436,16 @@ export function CobreatheBreath({
             alt=""
             style={{
               position: "absolute", inset: 0, width: "100%", height: "100%",
-              objectFit: "cover", opacity: 0.34, willChange: "opacity",
+              objectFit: "cover", opacity: 0.5, willChange: "opacity",
             }}
           />
           {/* Legibility wash — a deep green-to-black veil over the photo. Kept
               darker toward the bottom (behind the counter text) but lighter up
-              top so the image actually reads. */}
+              top so the brighter image actually reads. */}
           <div
             style={{
               position: "absolute", inset: 0,
-              background: "linear-gradient(180deg, rgba(6,24,16,0.30) 0%, rgba(5,18,12,0.40) 45%, rgba(4,13,8,0.62) 100%)",
+              background: "linear-gradient(180deg, rgba(6,24,16,0.18) 0%, rgba(5,18,12,0.28) 45%, rgba(4,13,8,0.55) 100%)",
             }}
           />
           {/* Decode the next photo off-screen so it's ready before it fades up. */}
@@ -449,15 +455,15 @@ export function CobreatheBreath({
         </div>
       )}
 
-      {/* The world at the centre of the breath — turning between the three
-          globes (one per second), sitting in the middle of the gradient and
-          breathing gently with it. A little larger now, on top of the spiral. */}
+      {/* The world — turning between the three globes (one per second). Pulled
+          DOWN from the centre of the glow so it sits just above the "Breathe
+          in" word, anchoring the cue rather than floating mid-gradient. */}
       <div
         ref={globeRef}
         aria-hidden="true"
         style={{
           position: "absolute", top: "50%", left: "50%",
-          transform: "translate(-50%, -50%) scale(1)",
+          transform: "translate(-50%, calc(-50% + 168px)) scale(1)",
           fontSize: 72, lineHeight: 1, pointerEvents: "none", zIndex: 2,
           filter: "drop-shadow(0 3px 14px rgba(8,30,18,0.6))",
           willChange: "transform, opacity",
@@ -516,7 +522,7 @@ export function CobreatheBreath({
           <span
             style={{
               color: WARM, fontFamily: SPACE_GROTESK, fontSize: 26, fontWeight: 600,
-              letterSpacing: "0.14em", textTransform: "lowercase", textShadow: "0 2px 18px rgba(8,30,18,0.6)",
+              letterSpacing: "0.14em", textShadow: "0 2px 18px rgba(8,30,18,0.6)",
             }}
           >
             {centerLabel}
