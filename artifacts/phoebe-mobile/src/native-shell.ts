@@ -1203,7 +1203,9 @@ function wireContemplation() {
 // Replace this with the real catalog playlist id from the Apple Music share
 // link (the "pl...." id — a public/curated playlist, NOT a personal "p...."
 // one). While it's the placeholder, play() resolves nothing and quietly no-ops.
-const COBREATHE_PLAYLIST_ID = "pl.PLACEHOLDER";
+// Apple Music "Ambient Chill" (Apple-curated):
+// https://music.apple.com/us/playlist/ambient-chill/pl.bed492442a53481f98e98c6c4da9e01d
+const COBREATHE_PLAYLIST_ID = "pl.bed492442a53481f98e98c6c4da9e01d";
 
 function getCobreatheMusic(): {
   authorize?: () => Promise<{ status: string }>;
