@@ -2730,7 +2730,11 @@ export default function PrayerModePage() {
             // for yourself in the slideshow, and surfacing them was
             // creating a "why am I being asked to pray for me" loop.
             if (r.isOwnRequest === true) return false;
-            if (r.myAmenedEver === true) return false;
+            // "Undone" = not prayed TODAY (the viewer's tz), not "never prayed".
+            // So the walk re-includes a request each new day and matches the home
+            // card's ✓ (which is myAmenedToday). Was myAmenedEver, which dropped a
+            // request from the walk forever after the first amen.
+            if (r.myAmenedToday === true) return false;
             if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
             return true;
           })

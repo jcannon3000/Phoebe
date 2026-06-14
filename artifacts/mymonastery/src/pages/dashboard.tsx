@@ -3898,7 +3898,34 @@ function PrayerListCarousel({
   hideTitle?: boolean;
 }) {
   const { t } = useTranslation();
-  const [, navigate] = useLocation();
+  const carouselQc = useQueryClient();
+  // Inline amen: tapping the 🙏 pill records the amen and flips the card to ✓
+  // IMMEDIATELY (optimistic), instead of dropping the user into a slideshow
+  // whose AmenButton needs a 4-second hold (the "I hit amen and nothing
+  // changed" bug). The optimistic write to the ["/api/prayer-requests"] cache
+  // re-derives carouselRows on the dashboard, so the pill swaps to ✓ on the
+  // same frame; onSuccess revalidates against the server.
+  const amenFromPill = useMutation({
+    mutationFn: (id: number) => amenWithLocation(id),
+    onMutate: async (id: number) => {
+      await carouselQc.cancelQueries({ queryKey: ["/api/prayer-requests"] });
+      const prev = carouselQc.getQueryData(["/api/prayer-requests"]);
+      carouselQc.setQueryData(["/api/prayer-requests"], (old: unknown) =>
+        Array.isArray(old)
+          ? old.map((r: { id?: number } & Record<string, unknown>) =>
+              r && r.id === id ? { ...r, myAmenedToday: true, myAmenedEver: true } : r)
+          : old);
+      return { prev };
+    },
+    onError: (_e, _id, ctx) => {
+      if (ctx?.prev !== undefined) carouselQc.setQueryData(["/api/prayer-requests"], ctx.prev);
+    },
+    onSuccess: (_d, id: number) => {
+      try { triggerAmenFeedback(); } catch { /* non-fatal */ }
+      carouselQc.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      carouselQc.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
+    },
+  });
   if (requests.length === 0) return null;
 
   // ~3.5 card rows. Each card is roughly 72-80px tall with vertical
@@ -3961,7 +3988,7 @@ function PrayerListCarousel({
               : (req.isOwnRequest ? viewerAvatarUrl : (req.ownerAvatarUrl ?? null));
             const eyebrow = req.isOwnRequest ? t("prayer_list_carousel.your_request") : t("prayer_list_carousel.from_name", { name: displayName });
             return (
-              <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
+              <Link key={req.id} href={`/prayer-mode?queue=new&focus=${req.id}`} className="block">
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -4024,7 +4051,8 @@ function PrayerListCarousel({
                         ) : (
                           <button
                             type="button"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(`/prayer-mode?reset=1&focus=${req.id}`); }}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); amenFromPill.mutate(req.id); }}
+                            disabled={amenFromPill.isPending}
                             aria-label={t("prayer_card.pray", { defaultValue: "Pray" })}
                             className="flex-shrink-0 inline-flex items-center justify-center rounded-full transition-opacity hover:opacity-90 active:scale-95"
                             style={{ width: 46, height: 30, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", fontSize: 14, lineHeight: 1 }}
@@ -5157,6 +5185,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     // Used by ActiveRequestsCard to roll up "prayed N times" across
     // the viewer's own active requests.
     amenCountTotal?: number | null;
+    // Distinct people who have prayed this request (owner-only).
+    amenPeopleCount?: number | null;
+    // Up to 3 faces of who prayed for THIS request, newest-first (owner-only).
+    amenFaces?: Array<{ name: string | null; avatarUrl: string | null }> | null;
   };
   type DashPrayerFor = {
     id: number; expired: boolean; expiresAt: string;
@@ -5173,14 +5205,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
-  // People who have prayed for the viewer's own requests lately — drives the
-  // overlapped face stack on the "Your prayer requests" section below the list.
-  const { data: prayedForMe } = useQuery<{ people: Array<{ id: number; name: string | null; avatarUrl: string | null; count: number }>; total: number }>({
-    queryKey: ["/api/prayer-streak/prayed-for-me-month"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak/prayed-for-me-month"),
-    enabled: !!user,
-    staleTime: 5 * 60_000,
-  });
+  // (The own-request card's "who prayed for THIS request" faces now come per-
+  // request from /api/prayer-requests (req.amenFaces), so the global
+  // prayed-for-me-month query that used to back it here was removed.)
   // Belt-and-suspenders: the home can be restored from the back/forward cache
   // without remounting (Safari bfcache, native back-swipe), which skips
   // refetchOnMount. Re-pull the prayer list whenever the page becomes visible
@@ -6574,8 +6601,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   const ownReqs = (dashPrayerRequests ?? []).filter(
                     (r) => r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0,
                   );
-                  const faces = (prayedForMe?.people ?? []).filter(Boolean).slice(0, 3);
-                  const total = prayedForMe?.total ?? 0;
                   const facesInitials = (name: string | null) =>
                     (name ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
                   const newRequestBtn = isAdminOfAny ? (
@@ -6608,49 +6633,64 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                         </div>
                       )}
                       <div className="flex flex-col gap-2">
-                        {ownReqs.map((req) => (
-                          <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
-                            <div
-                              className="relative flex rounded-xl overflow-hidden"
-                              style={{ background: "rgba(46,107,64,0.15)", border: "1px solid rgba(46,107,64,0.28)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
-                            >
-                              <div className="w-1 flex-shrink-0" style={{ background: "#C17F24" }} />
-                              <div className="flex-1 px-4 pt-3 pb-3">
-                                <div className="flex items-center gap-3">
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate" style={{ color: "rgba(143,175,150,0.55)" }}>
-                                      {t("prayer_list_carousel.your_request", { defaultValue: "Your request" })}
-                                    </p>
-                                    <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6" }}>
-                                      {req.body}
-                                    </p>
-                                  </div>
-                                  {/* Overlapped faces of people who've prayed for you lately. */}
-                                  {faces.length > 0 && (
-                                    <div className="flex-shrink-0 flex items-center" aria-label={t("dashboard.prayed_for_you_recently", { defaultValue: "Prayed for you recently" })}>
-                                      <div className="flex -space-x-2">
-                                        {faces.map((p) =>
-                                          p.avatarUrl ? (
-                                            <img key={p.id} src={p.avatarUrl} alt={p.name ?? ""} className="w-7 h-7 rounded-full object-cover" style={{ border: "1.5px solid #0C1F12" }} />
-                                          ) : (
-                                            <div key={p.id} className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid #0C1F12" }}>
-                                              {facesInitials(p.name)}
-                                            </div>
-                                          ),
+                        {ownReqs.map((req) => {
+                          // Faces of who prayed for THIS request (per-request, from
+                          // the API), newest-first — not the global "prayed for me".
+                          const reqFaces = (req.amenFaces ?? []).filter(Boolean);
+                          const reqTotal = req.amenPeopleCount ?? reqFaces.length;
+                          return (
+                            <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
+                              <div
+                                className="relative flex rounded-xl overflow-hidden"
+                                style={{ background: "rgba(96,141,209,0.12)", border: "1px solid rgba(96,141,209,0.3)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+                              >
+                                {/* Blue accent — your own request (others' cards are sage). */}
+                                <div className="w-1 flex-shrink-0" style={{ background: "#608DD1" }} />
+                                <div className="flex-1 px-4 pt-3 pb-3">
+                                  <div className="flex items-center gap-3">
+                                    {/* Your own avatar. */}
+                                    {user?.avatarUrl ? (
+                                      <img src={user.avatarUrl} alt={userName ?? ""} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(96,141,209,0.4)" }} />
+                                    ) : (
+                                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style={{ background: "#1A2F4A", color: "#A8C0E0" }}>
+                                        {facesInitials(userName)}
+                                      </div>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate" style={{ color: "rgba(143,175,150,0.55)" }}>
+                                        {t("prayer_list_carousel.your_request", { defaultValue: "Your request" })}
+                                      </p>
+                                      <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6" }}>
+                                        {req.body}
+                                      </p>
+                                    </div>
+                                    {/* Overlapped faces of who prayed for THIS request. */}
+                                    {reqFaces.length > 0 && (
+                                      <div className="flex-shrink-0 flex items-center" aria-label={t("dashboard.prayed_for_this_request", { defaultValue: "Prayed for this request" })}>
+                                        <div className="flex -space-x-2">
+                                          {reqFaces.map((p, idx) =>
+                                            p.avatarUrl ? (
+                                              <img key={idx} src={p.avatarUrl} alt={p.name ?? ""} className="w-7 h-7 rounded-full object-cover" style={{ border: "1.5px solid #0C1F12" }} />
+                                            ) : (
+                                              <div key={idx} className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-semibold" style={{ background: "#1A2F4A", color: "#A8C0E0", border: "1.5px solid #0C1F12" }}>
+                                                {facesInitials(p.name)}
+                                              </div>
+                                            ),
+                                          )}
+                                        </div>
+                                        {reqTotal > reqFaces.length && (
+                                          <span className="ml-1.5 text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                                            +{reqTotal - reqFaces.length}
+                                          </span>
                                         )}
                                       </div>
-                                      {total > faces.length && (
-                                        <span className="ml-1.5 text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                                          +{total - faces.length}
-                                        </span>
-                                      )}
-                                    </div>
-                                  )}
+                                    )}
+                                  </div>
                                 </div>
                               </div>
-                            </div>
-                          </Link>
-                        ))}
+                            </Link>
+                          );
+                        })}
                       </div>
                       {newRequestBtn}
                     </div>

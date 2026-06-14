@@ -440,8 +440,16 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
           requestId: prayerRequestAmensTable.requestId,
           prayedAt: prayerRequestAmensTable.prayedAt,
           userId: prayerRequestAmensTable.userId,
-        }).from(prayerRequestAmensTable).where(inArray(prayerRequestAmensTable.requestId, requestIds))
-      : Promise.resolve([] as Array<{ requestId: number; prayedAt: Date; userId: number }>),
+          // The amener's name + avatar, so an OWNER's card can show the faces of
+          // who prayed for THAT request. Ordered newest-first so the face list
+          // below is the most recent prayers.
+          amenName: usersTable.name,
+          amenAvatarUrl: usersTable.avatarUrl,
+        }).from(prayerRequestAmensTable)
+          .leftJoin(usersTable, eq(usersTable.id, prayerRequestAmensTable.userId))
+          .where(inArray(prayerRequestAmensTable.requestId, requestIds))
+          .orderBy(desc(prayerRequestAmensTable.prayedAt))
+      : Promise.resolve([] as Array<{ requestId: number; prayedAt: Date; userId: number; amenName: string | null; amenAvatarUrl: string | null }>),
   ]);
 
   const ownersMap = new Map<number, { name: string | null; avatarUrl: string | null }>();
@@ -490,6 +498,9 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
     // prays on three different days counts once here (vs amenCountTotal
     // which is per-user-per-day).
     let amenPeopleCount: number | null = null;
+    // Up to 3 distinct faces of people who prayed for THIS request (owner-only),
+    // most-recent first — for the home "Your prayer requests" card.
+    let amenFaces: Array<{ name: string | null; avatarUrl: string | null }> | null = null;
 
     let myAmenedToday = false;
     let myAmenedEver = false;
@@ -521,6 +532,18 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       amenCountTotal = totalUserDays.size;
       amenCountToday = todayUsers.size;
       amenPeopleCount = distinctUsers.size;
+      // `amens` is ordered newest-first (the bulk query orders by prayedAt
+      // desc), so walking it and keeping the first occurrence per user yields
+      // the 3 most-recent distinct people who prayed for this request.
+      const seenFace = new Set<number>();
+      const faces: Array<{ name: string | null; avatarUrl: string | null }> = [];
+      for (const row of amens) {
+        if (seenFace.has(row.userId)) continue;
+        seenFace.add(row.userId);
+        faces.push({ name: row.amenName ?? null, avatarUrl: row.amenAvatarUrl ?? null });
+        if (faces.length >= 3) break;
+      }
+      amenFaces = faces;
     }
 
     // Freshness flags based on expiresAt (which we no longer hard-filter on)
@@ -558,6 +581,8 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       amenCountToday,
       amenCountTotal,
       amenPeopleCount,
+      // Up to 3 faces (owner-only) of who prayed for THIS request, newest-first.
+      amenFaces,
       // True if THIS viewer (not anyone) has tapped Amen on this
       // request today, in their own timezone. Drives the "skip
       // already-prayed slides" resume + the dashboard partial-
