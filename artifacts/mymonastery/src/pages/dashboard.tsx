@@ -3899,13 +3899,14 @@ function PrayerListCarousel({
 }) {
   const { t } = useTranslation();
   const carouselQc = useQueryClient();
-  // Inline amen: tapping the 🙏 pill records the amen and flips the card to ✓
-  // IMMEDIATELY (optimistic), instead of dropping the user into a slideshow
-  // whose AmenButton needs a 4-second hold (the "I hit amen and nothing
-  // changed" bug). The optimistic write to the ["/api/prayer-requests"] cache
-  // re-derives carouselRows on the dashboard, so the pill swaps to ✓ on the
-  // same frame; onSuccess revalidates against the server.
-  const amenFromPill = useMutation({
+  // Tap-to-pray, Reminders-style: tapping a card records the amen and flips it
+  // to ✓ instantly. We write the ✓ straight into the ["/api/prayer-requests"]
+  // cache (optimistic) and DO NOT refetch the list on success — an immediate
+  // refetch was racing the write and REVERTING the ✓ back to 🙏 (the "it works
+  // for the first prayer, then no others" bug). The server has recorded it; the
+  // home re-confirms on its next natural refetch (mount / focus). Each id is its
+  // own mutate() call, so amening one never blocks tapping another.
+  const amenCard = useMutation({
     mutationFn: (id: number) => amenWithLocation(id),
     onMutate: async (id: number) => {
       await carouselQc.cancelQueries({ queryKey: ["/api/prayer-requests"] });
@@ -3915,14 +3916,16 @@ function PrayerListCarousel({
           ? old.map((r: { id?: number } & Record<string, unknown>) =>
               r && r.id === id ? { ...r, myAmenedToday: true, myAmenedEver: true } : r)
           : old);
+      try { triggerAmenFeedback(); } catch { /* non-fatal */ }
       return { prev };
     },
+    // Only revert on a real failure — never on a successful (or throttled-ok)
+    // response. A throttled re-tap still means "you've prayed today" → keep ✓.
     onError: (_e, _id, ctx) => {
       if (ctx?.prev !== undefined) carouselQc.setQueryData(["/api/prayer-requests"], ctx.prev);
     },
     onSuccess: (_d, id: number) => {
-      try { triggerAmenFeedback(); } catch { /* non-fatal */ }
-      carouselQc.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      // Refresh ONLY the detail query (not the home list) so the ✓ can't revert.
       carouselQc.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
     },
   });
@@ -3987,12 +3990,25 @@ function PrayerListCarousel({
               ? null
               : (req.isOwnRequest ? viewerAvatarUrl : (req.ownerAvatarUrl ?? null));
             const eyebrow = req.isOwnRequest ? t("prayer_list_carousel.your_request") : t("prayer_list_carousel.from_name", { name: displayName });
+            const amened = !!req.myAmenedToday;
+            // Tapping anywhere on the card prays for it (undone → ✓). Reminders-
+            // style: one tap, instant check, stays checked. Your own request
+            // isn't tappable (you don't pray for yourself).
+            const tappable = !req.isOwnRequest && !amened;
             return (
-              <Link key={req.id} href={`/prayer-mode?queue=new&focus=${req.id}`} className="block">
+              <div
+                key={req.id}
+                role={tappable ? "button" : undefined}
+                tabIndex={tappable ? 0 : undefined}
+                aria-label={req.isOwnRequest ? undefined : amened ? t("prayer_card.amened", { defaultValue: "Prayed" }) : t("prayer_card.pray", { defaultValue: "Tap to pray" })}
+                onClick={() => { if (tappable) amenCard.mutate(req.id); }}
+                onKeyDown={(e) => { if (tappable && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); amenCard.mutate(req.id); } }}
+                className={`block w-full text-left ${tappable ? "cursor-pointer" : ""}`}
+              >
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="relative flex rounded-xl overflow-hidden"
+                  className={`relative flex rounded-xl overflow-hidden ${tappable ? "transition-transform active:scale-[0.99]" : ""}`}
                   style={{
                     background: "rgba(46,107,64,0.15)",
                     border: "1px solid rgba(46,107,64,0.28)",
@@ -4031,40 +4047,28 @@ function PrayerListCarousel({
                           {req.body}
                         </p>
                       </div>
-                      {/* Prayer-hands — opens the slideshow at this request, then
-                          continues through the rest of the list. Not on your own
-                          request (you don't pray for yourself in the walk). Once
-                          you've prayed it today, it becomes a check. Both states
-                          share ONE fixed-size pill (width + height set, content
-                          centered) so the oval is identical whether it holds a
-                          thin ✓ or the wide 🙏🏾 emoji — padding-based sizing
-                          would make the emoji pill bigger than the check. */}
+                      {/* Reminders-style checkbox: an empty circle you tap to
+                          pray, which fills with a ✓. The whole card is the tap
+                          target — this is the state indicator. Not on your own
+                          request. */}
                       {!req.isOwnRequest && (
-                        req.myAmenedToday ? (
-                          <span
-                            aria-label={t("prayer_card.amened", { defaultValue: "Amened" })}
-                            className="flex-shrink-0 inline-flex items-center justify-center rounded-full"
-                            style={{ width: 46, height: 30, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "rgba(240,237,230,0.85)", fontSize: 13, fontWeight: 600, lineHeight: 1 }}
-                          >
-                            ✓
-                          </span>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); amenFromPill.mutate(req.id); }}
-                            disabled={amenFromPill.isPending}
-                            aria-label={t("prayer_card.pray", { defaultValue: "Pray" })}
-                            className="flex-shrink-0 inline-flex items-center justify-center rounded-full transition-opacity hover:opacity-90 active:scale-95"
-                            style={{ width: 46, height: 30, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", fontSize: 14, lineHeight: 1 }}
-                          >
-                            🙏🏾
-                          </button>
-                        )
+                        <span
+                          aria-hidden
+                          className="flex-shrink-0 inline-flex items-center justify-center rounded-full transition-colors"
+                          style={{
+                            width: 27, height: 27, borderRadius: "50%",
+                            background: amened ? "#2D5E3F" : "transparent",
+                            border: amened ? "1.5px solid #2D5E3F" : "1.5px solid rgba(143,175,150,0.55)",
+                            color: "#F0EDE6", fontSize: 14, fontWeight: 700, lineHeight: 1,
+                          }}
+                        >
+                          {amened ? "✓" : ""}
+                        </span>
                       )}
                     </div>
                   </div>
                 </motion.div>
-              </Link>
+              </div>
             );
           })}
         </div>
@@ -6608,7 +6612,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       type="button"
                       onClick={() => setShowNewPrayerChoice(true)}
                       className={`w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99] ${ownReqs.length > 0 ? "mt-3" : ""}`}
-                      style={{ padding: "12px 16px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
+                      style={{ padding: "12px 16px", background: "rgba(96,141,209,0.18)", border: "1px solid rgba(96,141,209,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
                     >
                       ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
                     </button>
@@ -6616,7 +6620,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     <Link href="/pray-request/new" className={`block ${ownReqs.length > 0 ? "mt-3" : ""}`}>
                       <div
                         className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-                        style={{ padding: "12px 16px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
+                        style={{ padding: "12px 16px", background: "rgba(96,141,209,0.18)", border: "1px solid rgba(96,141,209,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
                       >
                         ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
                       </div>

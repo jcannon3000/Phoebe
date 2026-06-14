@@ -1474,6 +1474,15 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
     const ownerTz = owner?.timezone || "UTC";
     ownerLocalYmd = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz }).format(new Date());
 
+    // The "have I already prayed this today" throttle must be judged on the
+    // VIEWER's calendar day — same tz the read (myAmenedToday) uses — or the
+    // two disagree across a tz boundary (the throttle blocks the insert while
+    // the read still shows "not prayed" → a permanently-uncheckable card).
+    const [viewerRow] = await db.select({ timezone: usersTable.timezone })
+      .from(usersTable).where(eq(usersTable.id, sessionUserId));
+    const viewerTz = viewerRow?.timezone || "UTC";
+    const viewerYmd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(new Date());
+
     const prior = await db.select({
       userId: prayerRequestAmensTable.userId,
       prayedAt: prayerRequestAmensTable.prayedAt,
@@ -1481,19 +1490,18 @@ router.post("/prayer-requests/:id/amen", async (req, res): Promise<void> => {
       .from(prayerRequestAmensTable)
       .where(eq(prayerRequestAmensTable.requestId, id));
 
-    // Throttle: skip the insert if this user has already logged an
-    // amen on this request today (in the owner's tz). One amen per
-    // person per request per day — the client's optimistic UI is
-    // unaffected; the row just doesn't contribute to counts or
-    // notifications.
+    // Throttle: skip the insert if this user has already logged an amen on this
+    // request today (the viewer's tz). One amen per person per request per day —
+    // the client keeps its ✓ regardless; the row just doesn't double-count.
     let myAmensToday = 0;
     for (const r of prior) {
       if (r.userId !== sessionUserId || !r.prayedAt) continue;
-      const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: ownerTz }).format(r.prayedAt);
-      if (ymd === ownerLocalYmd) myAmensToday += 1;
+      const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(r.prayedAt);
+      if (ymd === viewerYmd) myAmensToday += 1;
     }
     if (myAmensToday >= AMEN_DAILY_CAP) {
-      res.json({ ok: true, throttled: true, reason: "daily-cap" });
+      // Already prayed today — tell the client so its ✓ is never wrong.
+      res.json({ ok: true, throttled: true, reason: "daily-cap", myAmenedToday: true });
       return;
     }
 
