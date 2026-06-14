@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Plus, X, Camera, Sliders } from "lucide-react";
+import { Plus, X, Camera } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -4039,28 +4039,9 @@ function PrayerListCarousel({
         )}
       </div>
 
-      {/* "Pray through the whole list →" — same CTA the manage
-          prayer list page surfaces. Sits below the carousel so a
-          user who wants to walk every request has a one-tap entrance
-          right under what they were just browsing. ?reset=1 starts
-          the slideshow from slide 0 and bypasses the alreadyPrayed
-          skip, so this is a real do-over even if they prayed earlier
-          today. */}
-      <Link
-        href="/prayer-mode?reset=1"
-        className="block mt-4 rounded-xl px-4 py-3 transition-opacity hover:opacity-90"
-        style={{
-          background: "rgba(46,107,64,0.18)",
-          border: "1px solid rgba(46,107,64,0.4)",
-          textAlign: "center",
-          color: "#F0EDE6",
-          fontFamily: "'Space Grotesk', sans-serif",
-          fontSize: 14,
-          fontWeight: 600,
-        }}
-      >
-        🕯️ Pray through the whole list →
-      </Link>
+      {/* "Pray through the whole list" CTA removed per product direction —
+          the New prayer request button below now carries the ghost style it
+          used to have. */}
     </div>
   );
 }
@@ -6223,7 +6204,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
         )}
       </AnimatePresence>
 
-      <div className="dash-shell flex flex-col w-full pb-36">
+      <div className="dash-shell flex flex-col w-full pb-8">
 
         {/* ── Header ── */}
         {/* Calendar date rendered on every surface (was gated to
@@ -6471,6 +6452,19 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
           const fMonth = monthItems.filter(byFilter);
           const filteredEmpty = filter !== null && fToday.length === 0 && fTomorrow.length === 0 && fWeek.length === 0 && fMonth.length === 0;
 
+          // "Coming up" — when the user is down to ONE daily practice left,
+          // surface the single soonest upcoming event (any day) in a section
+          // between Next and the Prayer List. Hidden entirely when nothing's
+          // left to do, more than one card remains, or there's no event on the
+          // calendar (the buckets are already today→month chronological, so the
+          // first event-kind item across them is the soonest).
+          const isEventItem = (it: DashboardItem) =>
+            it.kind === "gathering" || it.kind === "service" || it.kind === "services" || it.kind === "action";
+          const oneCardLeft = rhythm.ready && rhythm.totalAnchors > 0 && (rhythm.totalAnchors - rhythm.doneCount) === 1;
+          const nextEventItem: DashboardItem | null = oneCardLeft
+            ? ([todayItems, tomorrowItems, weekItems, monthItems].map((b) => b.find(isEventItem)).find(Boolean) ?? null)
+            : null;
+
           return (
             <AnimatePresence mode="wait">
               <motion.div
@@ -6480,6 +6474,22 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
+                {/* Coming up — one upcoming event, only when a single daily
+                    practice is left, sitting between Next and the Prayer List. */}
+                {filter === null && !eventsOnly && nextEventItem && (
+                  <div className="mb-2">
+                    <TimeSection
+                      label={t("dashboard.coming_up", { defaultValue: "Coming up" })}
+                      items={[nextEventItem]}
+                      userEmail={userEmail}
+                      userName={userName}
+                      onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
+                      onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })}
+                      onOpenGathering={(r) => setOpenGathering(r)}
+                    />
+                  </div>
+                )}
+
                 {/* Prayer List — the requests carousel (title + divider +
                     "View all", "Pray through the whole list" at its foot), then
                     a wide "New prayer request" CTA. Leads the home, above the
@@ -6514,16 +6524,16 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                         <button
                           type="button"
                           onClick={() => setShowNewPrayerChoice(true)}
-                          className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] mt-4"
-                          style={{ padding: "11px 20px", background: "#2D5E3F", border: "1px solid rgba(46,107,64,0.7)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600 }}
+                          className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99] mt-4"
+                          style={{ padding: "12px 16px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
                         >
                           ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
                         </button>
                       ) : (
                         <Link href="/pray-request/new" className="block mt-4">
                           <div
-                            className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-                            style={{ padding: "11px 20px", background: "#2D5E3F", border: "1px solid rgba(46,107,64,0.7)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600 }}
+                            className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+                            style={{ padding: "12px 16px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
                           >
                             ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
                           </div>
@@ -6655,27 +6665,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
             side menu (Audio → News & Actions, beta) and at /news. It was
             briefly shown here as a rail; removed per product direction. */}
 
-        {/* Customize pill — opens the daily-prayer-habit customizer
-            (/rule-of-life: depth, way to pray, confession, closing reflection).
-            Only on the unfiltered home. */}
-        {filter === null && (
-          <div className="flex justify-center mt-10">
-            <Link
-              href="/rule-of-life"
-              className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 transition-opacity hover:opacity-90"
-              style={{
-                background: "rgba(46,107,64,0.10)",
-                border: "1px solid rgba(46,107,64,0.28)",
-                color: "#A8C5A0",
-                fontFamily: "'Space Grotesk', sans-serif",
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              <Sliders size={14} /> {t("dashboard.customize")}
-            </Link>
-          </div>
-        )}
+        {/* Customize pill removed from the home surface per product direction —
+            the daily-prayer-habit customizer (/rule-of-life) is still reachable
+            from the side menu and the per-office Customize entries. */}
 
         {/* Footer */}
         <p className="text-center text-xs mt-8 mb-4 tracking-wide" style={{ color: "rgba(143, 175, 150, 0.5)" }}>

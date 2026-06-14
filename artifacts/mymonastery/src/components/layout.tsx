@@ -840,6 +840,16 @@ function OpeningSplash() {
     return () => clearTimeout(id);
   }, [phase]);
 
+  // Once the co-prayer query resolves with NOBODY, there's nothing to show —
+  // dismiss right away rather than dwelling on a bare greeting. This also kills
+  // the old "You are held in prayer" blessing that used to flash on every load
+  // while the query was still in flight (people=[] during loading).
+  useEffect(() => {
+    if (phase === "in" && data !== undefined && (data.people?.length ?? 0) === 0) {
+      setPhase("out");
+    }
+  }, [data, phase]);
+
   // Web (or logged out) → no splash at all.
   if (!native || !user || phase === "gone") return null;
 
@@ -873,36 +883,42 @@ function OpeningSplash() {
       </p>
       {(() => {
         const people = data?.people ?? [];
+        // Nothing yet (still loading) or nobody → render no content. The empty
+        // case is handled by the dismiss effect above; we never flash the old
+        // "held in prayer" blessing or a bare greeting here.
+        if (people.length === 0) return null;
         const fn = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "Someone";
-        if (people.length === 0) {
-          return (
-            <p className="text-[22px] italic text-center px-10" style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif" }}>
-              {t("splash.held", { defaultValue: "You are held in prayer." })}
-            </p>
-          );
-        }
+        const visible = people.slice(0, 6);
+        const overflow = Math.max(0, people.length - visible.length);
         return (
-          <div className="flex flex-col items-center px-6" style={{ maxWidth: 400 }}>
+          <div className="flex flex-col items-center px-6" style={{ maxWidth: 420 }}>
             <p className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-5" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}>
               {t("splash.prayed_for_you_month", { defaultValue: "Prayed for you this month" })}
             </p>
-            <div className="flex flex-wrap items-start justify-center gap-x-5 gap-y-6">
-              {people.slice(0, 6).map((p) => (
-                <div key={p.id} className="flex flex-col items-center" style={{ width: 88 }}>
-                  {p.avatarUrl ? (
-                    <img src={p.avatarUrl} alt={fn(p.name)} className="w-14 h-14 rounded-full object-cover" />
-                  ) : (
-                    <div className="w-14 h-14 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>
-                      {(p.name ?? "?").trim().split(/\s+/).slice(0, 2).map((s) => s[0] ?? "").join("").toUpperCase().slice(0, 2) || "?"}
-                    </div>
-                  )}
-                  <p className="text-[13px] font-medium mt-2 truncate w-full text-center" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{fn(p.name)}</p>
-                  <p className="text-[11px] mt-0.5 leading-tight text-center" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
-                    {t("splash.prayed_n_times", { count: p.count, defaultValue: `prayed for you ${p.count}×` })}
-                  </p>
-                </div>
+            {/* Horizontal overlapping rail — the same face-stack used everywhere
+                else (garden week, the slideshow recap). No per-person counts. */}
+            <div className="flex items-center justify-center -space-x-3">
+              {visible.map((p) => (
+                p.avatarUrl ? (
+                  <img key={p.id} src={p.avatarUrl} alt={fn(p.name)} className="w-12 h-12 rounded-full object-cover" style={{ border: "2px solid #0C1F12" }} />
+                ) : (
+                  <div key={p.id} className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "2px solid #0C1F12" }}>
+                    {(p.name ?? "?").trim().split(/\s+/).slice(0, 2).map((s) => s[0] ?? "").join("").toUpperCase().slice(0, 2) || "?"}
+                  </div>
+                )
               ))}
+              {overflow > 0 && (
+                <div className="w-12 h-12 rounded-full flex items-center justify-center text-[12px] font-semibold" style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", border: "2px solid #0C1F12" }}>
+                  +{overflow}
+                </div>
+              )}
             </div>
+            <p className="text-[15px] mt-5 text-center" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
+              {t("splash.prayed_for_you_total", {
+                count: people.length,
+                defaultValue: `${people.length} ${people.length === 1 ? "person" : "people"} prayed for you this month`,
+              })}
+            </p>
           </div>
         );
       })()}

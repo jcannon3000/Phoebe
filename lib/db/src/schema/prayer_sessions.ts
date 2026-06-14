@@ -94,6 +94,11 @@ export const prayerSessionsTable = pgTable(
     // existing rows behave as before; the toggle on the contemplation
     // summary screen flips this for individual sits.
     isPrivate: boolean("is_private").notNull().default(false),
+    // Display tag for where a contemplation sit came from, distinct from
+    // `surface` (which stays "contemplation" so the goal/stats/streak rollups
+    // keep counting it). Today only "cobreathe" is set, so the Contemplation
+    // history can label a Cobreathe sit. NULL = a plain silent sit.
+    source: text("source"),
   },
   (t) => ({
     // Metrics queries filter by user + ended_at window. The composite

@@ -53,7 +53,6 @@ export default function BeginPrayerPage() {
     // side's per-side default to honor for the Morning/Evening split.
     const hourNow = new Date().getHours();
     const isMorning = hourNow < 12;
-    const isNight = hourNow >= 20;
     const side: OfficeSide = isMorning ? "morning" : "evening";
 
     // Per-side depth override (Morning/Evening split) wins; otherwise the
@@ -120,9 +119,10 @@ export default function BeginPrayerPage() {
       }
     }
 
-    // Same href construction as dashboard's ctaHref. Compline after
-    // 8pm wins for both office and devotion levels — it's the BCP's
-    // night office and the natural fit for both depths at that hour.
+    // Honor the depth the user actually set for this side. We no longer
+    // override to Compline after 8pm — if they've chosen Evening Prayer
+    // (office) or Evening Devotion, the home card takes them there, not to
+    // Compline. (Compline stays reachable from the chooser / first-slide pills.)
     const devotionMode = isMorning ? "morning-devotion" : "early-evening-devotion";
     const officeModeForLink = isMorning ? "morning" : "evening";
     const reset = prayedToday ? "&reset=1" : "";
@@ -135,12 +135,10 @@ export default function BeginPrayerPage() {
     const officeHref = getSideEntry(side) === "listen"
       ? `/podcast/${officeModeForLink}-office?flow=daily`
       : `/bcp/daily-office?mode=${officeModeForLink}${reset}`;
-    const complineHref = `/bcp/daily-office?mode=compline${reset}`;
     const intercessionsHref = prayedToday ? "/prayer-mode?reset=1" : "/prayer-mode";
 
     const ctaHref =
       defaultPrayerLevel === "intercessions" ? intercessionsHref
-      : isNight ? complineHref
       : defaultPrayerLevel === "office" ? officeHref
       : devotionHref;
 

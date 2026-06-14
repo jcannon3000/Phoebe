@@ -212,6 +212,10 @@ const schema = z.object({
   // rollups require this for the four office surfaces, so a partial sit that
   // auto-commits on unmount doesn't count the office. Omitted = false.
   completed: z.boolean().optional(),
+  // Display tag for where a contemplation sit came from (e.g. "cobreathe"),
+  // distinct from `surface` which stays "contemplation" so the rollups still
+  // count it. Omitted = a plain silent sit.
+  source: z.string().max(40).optional(),
 });
 
 router.post("/prayer-sessions", async (req, res): Promise<void> => {
@@ -220,7 +224,7 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
 
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
-  const { surface, durationSeconds, startedAt, endedAt, slidesCompleted, isPrivate, completed } = parsed.data;
+  const { surface, durationSeconds, startedAt, endedAt, slidesCompleted, isPrivate, completed, source } = parsed.data;
 
   if (!SURFACE_SET.has(surface)) {
     res.status(400).json({ error: "Unknown surface" });
@@ -274,6 +278,7 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
     endedAt: endedAtDate,
     isPrivate: isPrivate === true,
     completed: completed === true,
+    source: typeof source === "string" && source.trim() ? source.trim() : null,
   }).returning({ id: prayerSessionsTable.id });
 
   // Return the new row id so the client can PATCH it later (e.g. the
@@ -431,6 +436,7 @@ router.get("/me/contemplation-sessions", async (req, res): Promise<void> => {
         startedAt: prayerSessionsTable.startedAt,
         endedAt: prayerSessionsTable.endedAt,
         durationSeconds: prayerSessionsTable.durationSeconds,
+        source: prayerSessionsTable.source,
       })
       .from(prayerSessionsTable)
       .where(and(
@@ -503,6 +509,7 @@ router.get("/me/contemplation-sessions", async (req, res): Promise<void> => {
       startedAt: r.startedAt ? r.startedAt.toISOString() : null,
       endedAt: r.endedAt ? r.endedAt.toISOString() : null,
       durationSeconds: r.durationSeconds,
+      source: r.source ?? null,
       companions: companionsBySession.get(r.id) ?? [],
     })));
   } catch (err) {

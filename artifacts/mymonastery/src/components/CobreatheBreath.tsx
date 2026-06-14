@@ -27,9 +27,9 @@ const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
 
 // Breath pacing — a simple in / out breath, 12s each: a long, slow inhale
-// and an equally long exhale, no holds. 24s per cycle; twelve cycles ≈ 4:48.
-const INHALE_MS = 12000;
-const EXHALE_MS = 12000;
+// and an equally long exhale, no holds. 16s per cycle; twelve cycles ≈ 3:12.
+const INHALE_MS = 8000;
+const EXHALE_MS = 8000;
 // Each phase (in, out) is one PHASE_MS slice of the cycle — used to derive a
 // globally-synced octave that rotates 0→1→2→3 across phases.
 const PHASE_MS = INHALE_MS;
@@ -96,6 +96,8 @@ const HALO = "radial-gradient(circle, rgba(110,180,150,0.13) 0%, rgba(92,158,138
 // breath. CSS-transitioned between the two.
 const FIELD_DIM = "#040D08";          // before sync — near-black green
 const FIELD_LIVE = "#0B2014";         // live — a touch lighter/greener
+// The world turns between these three globes — one per breath cycle.
+const GLOBES = ["🌍", "🌎", "🌏"] as const;
 
 // Fisher–Yates shuffle — used to put the photo library in a fresh order each
 // session so the same faces and places don't arrive in the same sequence twice.
@@ -146,6 +148,7 @@ export function CobreatheBreath({
   // behind it for depth.
   const circleRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
+  const globeRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
   // Two stacked photo layers that crossfade, plus a group wrapper whose opacity
   // breathes with the cycle. The rAF loop ping-pongs between A and B: each breath
@@ -295,9 +298,11 @@ export function CobreatheBreath({
           prevEl.style.transform = `scale(${(1 + ZOOM + zoomP * ZOOM).toFixed(4)})`;
           prevEl.style.zIndex = "1";
         }
-        // The group breathes: visible from the first moment (0.5 floor),
-        // brightening to full at the top of the inhale.
-        if (photoGroupRef.current) photoGroupRef.current.style.opacity = (0.5 + pAnim * 0.5).toFixed(4);
+        // The group breathes with the lungs: fully faded DOWN at the bottom of
+        // every breath (and at the start, before sync), rising only to ~0.72 at
+        // the top of the inhale — so each photo dips all the way out each cycle
+        // but never blasts to full brightness.
+        if (photoGroupRef.current) photoGroupRef.current.style.opacity = (pAnim * 0.72).toFixed(4);
         // Once the crossfade is done (incoming fully covers the old), preload the
         // NEXT photo onto the now-hidden layer so it's decoded before its turn.
         if (cross >= 1 && photoPreloadedRef.current !== idx && prevEl) {
@@ -306,8 +311,16 @@ export function CobreatheBreath({
           photoPreloadedRef.current = idx;
         }
       }
-      // The phase word breathes a hair with the circle (only once synced).
-      if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;
+      // The phase word — "Breathe In" / "Breathe Out" — fades UP from nothing at
+      // the start of each phase, peaks mid-phase, and fades DOWN to nothing at
+      // the turn (so the word swap happens while invisible). A hair of scale
+      // rides along with the breath. Before sync, the "Syncing" label holds at
+      // full opacity instead of breathing.
+      if (labelRef.current) {
+        const f = pos < INHALE_MS ? pos / INHALE_MS : (pos - INHALE_MS) / EXHALE_MS;
+        labelRef.current.style.opacity = isCounting ? Math.sin(Math.PI * f).toFixed(4) : "1";
+        labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;
+      }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -387,10 +400,13 @@ export function CobreatheBreath({
   const now = Date.now();
   const pos = now % CYCLE_MS;
   const phase = phaseAt(pos);
+  // The world turns once a second — 🌍 → 🌎 → 🌏 — wall-clock synced, so
+  // everyone breathing at this moment sees the same face.
+  const globe = GLOBES[Math.floor(now / 1000) % GLOBES.length];
   const phaseLabel =
     phase === "in"
-      ? t("cobreathe.phase_in", { defaultValue: "Breathe in" })
-      : t("cobreathe.phase_out", { defaultValue: "Breathe out" });
+      ? t("cobreathe.phase_in", { defaultValue: "Breathe In" })
+      : t("cobreathe.phase_out", { defaultValue: "Breathe Out" });
 
   // Where are we in the count? Negative during the pre-roll; uncapped after,
   // so the count keeps climbing past the target while they keep breathing.
@@ -508,6 +524,22 @@ export function CobreatheBreath({
         </div>
       )}
 
+      {/* The world at the centre of the breath — turning between the three
+          globes (one per second), sitting in the middle over the photo
+          background and the glow. Steady size — it doesn't breathe. */}
+      <div
+        ref={globeRef}
+        aria-hidden="true"
+        style={{
+          position: "absolute", top: "50%", left: "50%",
+          transform: "translate(-50%, -50%)",
+          fontSize: 72, lineHeight: 1, pointerEvents: "none", zIndex: 2,
+          filter: "drop-shadow(0 3px 14px rgba(8,30,18,0.6))",
+        }}
+      >
+        {globe}
+      </div>
+
       {/* Cancel — top-right, exits the breath (no count unless already kept). */}
       <button
         type="button"
@@ -554,7 +586,7 @@ export function CobreatheBreath({
           marginTop: CIRCLE_BASE * 0.78, zIndex: 2,
         }}
       >
-        <div ref={labelRef} style={{ willChange: "transform" }}>
+        <div ref={labelRef} style={{ willChange: "transform, opacity" }}>
           <span
             style={{
               color: WARM, fontFamily: SPACE_GROTESK, fontSize: 26, fontWeight: 600,

@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
 import { Layout } from "@/components/layout";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { apiRequest } from "@/lib/queryClient";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
@@ -86,6 +87,9 @@ type Session = {
   startedAt: string | null;
   endedAt: string | null;
   durationSeconds: number;
+  // Where the sit came from — "cobreathe" tags a communal-breath sit so the
+  // history can label it. null/absent = a plain silent sit.
+  source?: string | null;
   // Garden members who were praying at the same moment as this session.
   companions?: Companion[];
 };
@@ -365,6 +369,9 @@ function SessionRow({ s, onDelete, deleting }: { s: Session; onDelete: () => voi
         </p>
         <p className="text-[12px] mt-0.5" style={{ color: SAGE, margin: 0 }}>
           {when ? formatSessionTime(when) : ""}
+          {s.source === "cobreathe" && (
+            <span> · 🌍 {t("cobreathe.title", { defaultValue: "Cobreathe" })}</span>
+          )}
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
@@ -664,6 +671,124 @@ export default function ContemplationPage() {
     catch { return false; }
   })();
 
+  // The choose-your-sit pills — a length dropdown + Start (tight together), a
+  // space, then Cobreathe set apart. Shared by the full page and the immersive
+  // begin-mode slide.
+  const beginPills = (
+    <div>
+      <div className="space-y-2.5">
+        {/* Length dropdown pill */}
+        <div className="relative">
+          <select
+            value={String(chosenMin)}
+            onChange={(e) => setChosenMin(parseInt(e.target.value, 10))}
+            aria-label={t("contemplation.length_label", { defaultValue: "Length" })}
+            className="w-full rounded-full"
+            style={{
+              background: "rgba(46,107,64,0.18)",
+              border: "1px solid rgba(46,107,64,0.4)",
+              color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
+              padding: "15px 40px", outline: "none", colorScheme: "dark",
+              appearance: "none", WebkitAppearance: "none", cursor: "pointer",
+              textAlign: "center", textAlignLast: "center",
+            }}
+          >
+            {Array.from({ length: 12 }, (_, i) => (i + 1) * 5).map((m) => (
+              <option key={m} value={String(m)}>
+                {t("contemplation.length_minutes", { count: m, defaultValue: `${m} minutes` })}
+              </option>
+            ))}
+          </select>
+          <span aria-hidden style={{ position: "absolute", right: 18, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: SAGE, fontSize: 12 }}>▾</span>
+        </div>
+
+        {/* Start contemplation pill */}
+        <button
+          type="button"
+          onClick={() => start(chosenMin)}
+          className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+          style={{
+            background: "#2D5E3F",
+            color: WARM,
+            border: "1px solid rgba(46,107,64,0.7)",
+            fontFamily: SPACE_GROTESK,
+            fontSize: 16,
+            fontWeight: 600,
+            padding: "15px",
+            cursor: "pointer",
+          }}
+        >
+          {t("contemplation.start_contemplation", { defaultValue: "Start contemplation" })} <span aria-hidden>→</span>
+        </button>
+      </div>
+
+      {/* Cobreathe pill — set apart with a space, straight into today's
+          communal breath (?start=1). */}
+      <Link href="/cobreathe?start=1" onClick={() => primeAudio()} className="block mt-6">
+        <div
+          className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
+          style={{
+            background: `rgba(62,124,122,${cobreathe?.done ? 0.2 : 0.14})`,
+            border: `1px solid rgba(62,124,122,${cobreathe?.done ? 0.5 : 0.4})`,
+            color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
+            padding: "15px", cursor: "pointer",
+          }}
+        >
+          <CobreatheGlobe size={18} />
+          <span>{t("cobreathe.title", { defaultValue: "Cobreathe" })}</span>
+          {cobreathe?.done && <span aria-hidden>🌿</span>}
+        </div>
+      </Link>
+    </div>
+  );
+
+  // Immersive full-screen begin slide — green ambient background, no app
+  // chrome, content centred. Reads like the office slideshow's contemplation
+  // slide. The timer overlay still opens on Start.
+  if (beginMode) {
+    return (
+      <>
+        <div
+          className="fixed inset-0 flex flex-col items-center justify-center px-8"
+          style={{
+            background: "#0C1F12", zIndex: 60, overflow: "hidden",
+            paddingTop: "calc(env(safe-area-inset-top) + 24px)",
+            paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
+          }}
+        >
+          <AnimatedBackground base="#0C1F12" variant="pronounced" />
+          <Link
+            href="/dashboard"
+            aria-label={t("common.close", { defaultValue: "Close" })}
+            className="flex items-center justify-center"
+            style={{
+              position: "absolute", top: "calc(env(safe-area-inset-top) + 16px)", right: 16,
+              width: 34, height: 34, borderRadius: 999,
+              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(182,210,188,0.22)",
+              color: "rgba(182,210,188,0.72)", fontSize: 16, lineHeight: 1, zIndex: 2,
+            }}
+          >
+            ✕
+          </Link>
+          <div className="w-full" style={{ maxWidth: 360, position: "relative", zIndex: 1 }}>
+            <p className="text-center text-[10px] uppercase tracking-[0.2em] font-semibold mb-3" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
+              🕯️ {t("contemplation.title")}
+            </p>
+            <p className="text-center text-[20px] leading-[1.5] italic mb-8 px-2" style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif" }}>
+              {t("contemplation.begin_prompt", { defaultValue: "Choose a length, and settle into silence." })}
+            </p>
+            {beginPills}
+          </div>
+        </div>
+        <ContemplationTimer
+          open={timerOpen}
+          startMinutes={startMinutes}
+          onClose={() => { setTimerOpen(false); setStartMinutes(undefined); }}
+        />
+      </>
+    );
+  }
+
   return (
     <Layout>
       <motion.div
@@ -689,73 +814,7 @@ export default function ContemplationPage() {
           </div>
         </div>
 
-        {/* Begin — a length dropdown + a Start pill (tight together), then a
-            space, then Cobreathe set apart on its own. */}
-        <div>
-          <div className="space-y-2.5">
-            {/* Length dropdown pill */}
-            <div className="relative">
-              <select
-                value={String(chosenMin)}
-                onChange={(e) => setChosenMin(parseInt(e.target.value, 10))}
-                aria-label={t("contemplation.length_label", { defaultValue: "Length" })}
-                className="w-full rounded-full"
-                style={{
-                  background: "rgba(46,107,64,0.18)",
-                  border: "1px solid rgba(46,107,64,0.4)",
-                  color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
-                  padding: "15px 40px", outline: "none", colorScheme: "dark",
-                  appearance: "none", WebkitAppearance: "none", cursor: "pointer",
-                  textAlign: "center", textAlignLast: "center",
-                }}
-              >
-                {Array.from({ length: 12 }, (_, i) => (i + 1) * 5).map((m) => (
-                  <option key={m} value={String(m)}>
-                    {t("contemplation.length_minutes", { count: m, defaultValue: `${m} minutes` })}
-                  </option>
-                ))}
-              </select>
-              <span aria-hidden style={{ position: "absolute", right: 18, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: SAGE, fontSize: 12 }}>▾</span>
-            </div>
-
-            {/* Start contemplation pill */}
-            <button
-              type="button"
-              onClick={() => start(chosenMin)}
-              className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-              style={{
-                background: "#2D5E3F",
-                color: WARM,
-                border: "1px solid rgba(46,107,64,0.7)",
-                fontFamily: SPACE_GROTESK,
-                fontSize: 16,
-                fontWeight: 600,
-                padding: "15px",
-                cursor: "pointer",
-              }}
-            >
-              {t("contemplation.start_contemplation", { defaultValue: "Start contemplation" })} <span aria-hidden>→</span>
-            </button>
-          </div>
-
-          {/* Cobreathe pill — set apart with a space, straight into today's
-              communal breath (?start=1). */}
-          <Link href="/cobreathe?start=1" onClick={() => primeAudio()} className="block mt-6">
-            <div
-              className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
-              style={{
-                background: `rgba(62,124,122,${cobreathe?.done ? 0.2 : 0.14})`,
-                border: `1px solid rgba(62,124,122,${cobreathe?.done ? 0.5 : 0.4})`,
-                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
-                padding: "15px", cursor: "pointer",
-              }}
-            >
-              <CobreatheGlobe size={18} />
-              <span>{t("cobreathe.title", { defaultValue: "Cobreathe" })}</span>
-              {cobreathe?.done && <span aria-hidden>🌿</span>}
-            </div>
-          </Link>
-        </div>
+        {beginPills}
 
         {/* Everything below the pills (goal, stats, history, learn) is hidden
             in the focused begin-mode slide. */}

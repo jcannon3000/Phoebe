@@ -1577,6 +1577,12 @@ export async function migrate() {
     // so existing rows behave as before; the contemplation summary
     // toggle is the only surface that flips this today.
     await run(client, `ALTER TABLE prayer_sessions ADD COLUMN IF NOT EXISTS is_private BOOLEAN NOT NULL DEFAULT FALSE`);
+    // source: a display tag for WHERE a contemplation sit came from, distinct
+    // from `surface` (which stays "contemplation" so the goal/stats/streak
+    // rollups keep counting it). Today only "cobreathe" is set — so the
+    // Contemplation history can label a Cobreathe sit as such instead of an
+    // anonymous timer sit. NULL = a plain silent sit.
+    await run(client, `ALTER TABLE prayer_sessions ADD COLUMN IF NOT EXISTS source TEXT`);
     // completed: true only when the user finished the office/devotion slideshow
     // (closing Amen/Done) or attested it from the book. The office-history /
     // "prayed today" rollups require this for the four office surfaces, so a

@@ -59,6 +59,7 @@ export function CobreatheOverlay({
     const startedAt = new Date(endedAt.getTime() - secondsKept * 1000);
     void apiRequest("POST", "/api/prayer-sessions", {
       surface: "contemplation",
+      source: "cobreathe",
       durationSeconds: secondsKept,
       startedAt: startedAt.toISOString(),
       endedAt: endedAt.toISOString(),
