@@ -96,8 +96,6 @@ const HALO = "radial-gradient(circle, rgba(110,180,150,0.13) 0%, rgba(92,158,138
 // breath. CSS-transitioned between the two.
 const FIELD_DIM = "#040D08";          // before sync — near-black green
 const FIELD_LIVE = "#0B2014";         // live — a touch lighter/greener
-// The world turns between these three globes — one per breath cycle.
-const GLOBES = ["🌍", "🌎", "🌏"] as const;
 
 // Fisher–Yates shuffle — used to put the photo library in a fresh order each
 // session so the same faces and places don't arrive in the same sequence twice.
@@ -148,7 +146,6 @@ export function CobreatheBreath({
   // behind it for depth.
   const circleRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
-  const globeRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
   // Two stacked photo layers that crossfade, plus a group wrapper whose opacity
   // breathes with the cycle. The rAF loop ping-pongs between A and B: each breath
@@ -390,11 +387,6 @@ export function CobreatheBreath({
   const now = Date.now();
   const pos = now % CYCLE_MS;
   const phase = phaseAt(pos);
-  // The globe turns once a second — 🌍 → 🌎 → 🌏 → 🌍 — so the world keeps
-  // visibly spinning. Anchored to wall-clock time, so everyone breathing at
-  // this moment sees the same face. (The ~150ms tick re-render below picks up
-  // each second's change.)
-  const globe = GLOBES[Math.floor(now / 1000) % GLOBES.length];
   const phaseLabel =
     phase === "in"
       ? t("cobreathe.phase_in", { defaultValue: "Breathe in" })
@@ -515,23 +507,6 @@ export function CobreatheBreath({
           />
         </div>
       )}
-
-      {/* The world — turning between the three globes (one per second). Pulled
-          DOWN from the centre of the glow so it sits just above the "Breathe
-          in" word, anchoring the cue rather than floating mid-gradient. */}
-      <div
-        ref={globeRef}
-        aria-hidden="true"
-        style={{
-          position: "absolute", top: "50%", left: "50%",
-          transform: "translate(-50%, calc(-50% + 168px)) scale(1)",
-          fontSize: 72, lineHeight: 1, pointerEvents: "none", zIndex: 2,
-          filter: "drop-shadow(0 3px 14px rgba(8,30,18,0.6))",
-          willChange: "transform, opacity",
-        }}
-      >
-        {globe}
-      </div>
 
       {/* Cancel — top-right, exits the breath (no count unless already kept). */}
       <button

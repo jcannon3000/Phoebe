@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { playOpeningSwell, primeAudio } from "@/lib/amenFeedback";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { writeMindfulSession } from "@/lib/appleHealth";
 
 // Silent contemplation timer — Insight-Timer-style. The slideshow's
@@ -921,7 +922,7 @@ export function ContemplationTimer({
                         className="mt-5 w-full rounded-2xl py-3 transition-opacity hover:opacity-90 active:scale-[0.98] flex flex-col items-center"
                         style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.32)", color: WARM, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
                       >
-                        <span style={{ fontSize: 15, fontWeight: 600 }}>🌍 {t("contemplation_timer.cobreathe", { defaultValue: "Cobreathe" })}</span>
+                        <span style={{ fontSize: 15, fontWeight: 600 }}><CobreatheGlobe size={15} style={{ marginRight: 4, verticalAlign: "-1px" }} />{t("contemplation_timer.cobreathe", { defaultValue: "Cobreathe" })}</span>
                         <span style={{ fontSize: 12, color: SAGE, marginTop: 2 }}>{t("contemplation_timer.cobreathe_sub", { defaultValue: "Breathing together for climate justice" })}</span>
                       </button>
                     </>

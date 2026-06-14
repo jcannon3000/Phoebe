@@ -13,6 +13,7 @@ import { triggerAmenFeedback, playOpeningSwell, triggerSubmitFeedback, primeAudi
 import { openExternal } from "@/lib/openExternal";
 import { isNativeShell } from "@/lib/isNativeShell";
 import FddJournalSheet from "@/components/FddJournalSheet";
+import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import {
   CAC_TODAY_URL,
   FDD_TODAY_URL,
@@ -685,7 +686,8 @@ function SlideContent({
               cursor: "pointer",
             }}
           >
-            🌬️ Cobreathe — breathe together
+            <CobreatheGlobe size={15} style={{ marginRight: 6, verticalAlign: "-2px" }} />
+            Cobreathe — breathe together
           </button>
         </div>
       </div>

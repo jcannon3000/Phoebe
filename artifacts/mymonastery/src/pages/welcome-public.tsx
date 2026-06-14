@@ -1,4 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
+import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -123,7 +124,7 @@ export default function WelcomePublicPage() {
               account, the way the climate feed used to be reachable here. */}
           <ChoiceCard
             href="/cobreathe?start=1"
-            emoji="🌬️"
+            emoji={<CobreatheGlobe size={28} />}
             title={t("welcome_public.cobreathe_title", { defaultValue: "Cobreathe" })}
             blurb={t("welcome_public.cobreathe_blurb", { defaultValue: "Twelve slow breaths, in one shared rhythm — a prayer for justice." })}
             delay={0.09}
@@ -194,7 +195,7 @@ function ChoiceCard({
   onClick,
 }: {
   href: string;
-  emoji: string;
+  emoji: ReactNode;
   title: string;
   blurb: string;
   delay: number;
