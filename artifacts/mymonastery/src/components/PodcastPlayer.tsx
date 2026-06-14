@@ -177,6 +177,25 @@ function fmtClock(t: number): string {
   return `${m}:${String(s).padStart(2, "0")}`;
 }
 
+// Recognize a daily-office episode regardless of HOW it was launched: the
+// dedicated launcher uses showSlug "office-morning"/"office-evening", while the
+// Audio library plays the same feed under its own slug "morning-office"/
+// "evening-office". Either maps to the office side — so listening to ≥60% of the
+// office credits the day no matter which screen opened it.
+function officeSideFromSlug(slug: string | null | undefined): "morning" | "evening" | null {
+  if (!slug) return null;
+  if (slug === "office-morning" || slug === "morning-office") return "morning";
+  if (slug === "office-evening" || slug === "evening-office") return "evening";
+  return null;
+}
+// Local calendar date (YYYY-MM-DD) — the key the office-completed flag uses.
+function officeYmdLocal(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+// Fraction of the episode a listen must reach to count the office as prayed.
+const OFFICE_CREDIT_FRACTION = 0.6;
+
 export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -211,6 +230,9 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // Set when an episode starts; read by commitSession (which can't close
   // over `current`). Defaults to the podcast surface.
   const sessionMetaRef = useRef<{ surface: string; creditMode?: "morning" | "evening" }>({ surface: "podcast" });
+  // The episodeId of the office episode we've already credited this play, so the
+  // ≥60% office credit fires exactly once per listen.
+  const officeCreditedRef = useRef<string | null>(null);
 
   const closeSeg = useCallback(() => {
     if (seg.current.start !== null) {
@@ -229,20 +251,44 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     const { surface, creditMode } = sessionMetaRef.current;
     seg.current = { start: null, acc: 0, startedAt: null };
     if (total > 0 && startedAt && user) {
+      // Listening-time row (community metrics + streak). The office "prayed
+      // today" credit is handled separately by creditOfficePodcast once the
+      // listener crosses 60% — so this row is left completed:false and the
+      // office-history rollup only counts the ≥60% completed row.
       apiRequest("POST", "/api/prayer-sessions", {
         surface,
         durationSeconds: total,
         startedAt: startedAt.toISOString(),
         endedAt: new Date().toISOString(),
       }).catch(() => { /* best-effort */ });
-      // NB: listening to the office podcast no longer credits the office in the
-      // daily-progress / streak rollups — that now requires finishing the
-      // slideshow (completed=TRUE). The session row above still records the
-      // listening time for community metrics; it just doesn't mark the office
-      // "prayed today". (creditMode retained for any future use.)
       void creditMode;
     }
   }, [closeSeg, user]);
+
+  // Count an office podcast as PRAYED TODAY (≥60% listened). Stamps the local
+  // office-completed flag (instant dashboard flip) and POSTs a completed=TRUE
+  // office-podcast prayer-session that the office-history rollup counts (so it
+  // survives a refetch / other device + feeds the streak). Fires once per play.
+  const creditOfficePodcast = useCallback((side: "morning" | "evening", playedSeconds: number, startedAt: Date | null) => {
+    try { localStorage.setItem(`phoebe:office-completed:${side}:${officeYmdLocal()}`, "1"); } catch { /* non-fatal */ }
+    if (user) {
+      const ended = new Date();
+      apiRequest("POST", "/api/prayer-sessions", {
+        surface: `${side}-office-podcast`,
+        durationSeconds: Math.max(1, Math.round(playedSeconds)),
+        completed: true,
+        startedAt: (startedAt ?? ended).toISOString(),
+        endedAt: ended.toISOString(),
+      })
+        .then(() => {
+          // The rhythm/daily-progress card + streak read these — refetch so the
+          // office flips to "Prayed today" without an app restart.
+          queryClient.invalidateQueries({ queryKey: ["/api/me/office-history-week"] });
+          queryClient.invalidateQueries({ queryKey: ["/api/me/prayer-days"] });
+        })
+        .catch(() => { /* best-effort — the localStorage flag already flipped the local UI */ });
+    }
+  }, [user, queryClient]);
 
   // Core episode-start logic, shared by user-tap play and queue auto-advance.
   const startEpisode = useCallback((ep: PlayingEpisode) => {
@@ -256,8 +302,14 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       if (a && prev) savePos(prev, a.currentTime);
       commitSession(); // flushes prev's session under prev's surface
       // Switch the session surface/credit to the new episode (commitSession
-      // above already used the old meta).
-      sessionMetaRef.current = { surface: ep.sessionSurface ?? "podcast", creditMode: ep.creditMode };
+      // above already used the old meta). Derive the office side from the slug
+      // too, so an office played from the Audio library (feed slug, no tags)
+      // still counts as the office — not just the dedicated launcher.
+      const officeSide = officeSideFromSlug(ep.showSlug) ?? ep.creditMode ?? null;
+      sessionMetaRef.current = officeSide
+        ? { surface: `${officeSide}-office-podcast`, creditMode: officeSide }
+        : { surface: ep.sessionSurface ?? "podcast", creditMode: ep.creditMode };
+      officeCreditedRef.current = null;
       pendingSeekRef.current = loadPos(ep);
       setArtBroken(false);
       return ep;
@@ -515,6 +567,20 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     const a = audioRef.current; if (!a || !current) return;
     setCurrentTime(a.currentTime);
     syncMediaPosition();
+    // Office credit: the moment the listener crosses 60% of the episode, count
+    // the office as prayed today (works whether opened from the office launcher
+    // or the Audio library). Fires once per play.
+    const officeSide = officeSideFromSlug(current.showSlug) ?? current.creditMode ?? null;
+    if (
+      officeSide &&
+      officeCreditedRef.current !== current.episodeId &&
+      isFinite(a.duration) && a.duration > 0 &&
+      a.currentTime / a.duration >= OFFICE_CREDIT_FRACTION
+    ) {
+      officeCreditedRef.current = current.episodeId;
+      const played = seg.current.acc + (seg.current.start !== null ? (Date.now() - seg.current.start) / 1000 : 0);
+      creditOfficePodcast(officeSide, played > 1 ? played : a.currentTime, seg.current.startedAt);
+    }
     const now = Date.now();
     if (now - lastSaveRef.current > 5000) { lastSaveRef.current = now; savePos(current, a.currentTime); }
   };

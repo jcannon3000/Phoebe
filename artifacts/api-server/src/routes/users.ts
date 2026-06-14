@@ -458,8 +458,8 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
       SELECT DISTINCT
         to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') AS day,
         CASE
-          WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral') THEN 'morning'
-          WHEN surface IN ('evening-prayer', 'early-evening-devotion') THEN 'evening'
+          WHEN surface IN ('morning-prayer', 'morning-devotion', 'national-cathedral', 'morning-office-podcast') THEN 'morning'
+          WHEN surface IN ('evening-prayer', 'early-evening-devotion', 'evening-office-podcast') THEN 'evening'
         END AS side
       FROM prayer_sessions
       WHERE user_id = ${sessionUserId}
@@ -469,6 +469,9 @@ router.get("/me/office-history-week", async (req, res): Promise<void> => {
           -- A partial sit that auto-commits on unmount has completed=FALSE.
           (surface IN ('morning-prayer', 'morning-devotion', 'evening-prayer', 'early-evening-devotion') AND completed = TRUE)
           OR (surface = 'national-cathedral' AND duration_seconds >= 180)
+          -- Listening to the read-aloud office podcast counts once the listener
+          -- crosses 60% — the client posts that row with completed = TRUE.
+          OR (surface IN ('morning-office-podcast', 'evening-office-podcast') AND completed = TRUE)
         )
         AND ended_at >= NOW() - INTERVAL '8 days'
     `);
