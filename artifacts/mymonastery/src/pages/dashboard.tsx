@@ -3991,24 +3991,16 @@ function PrayerListCarousel({
               : (req.isOwnRequest ? viewerAvatarUrl : (req.ownerAvatarUrl ?? null));
             const eyebrow = req.isOwnRequest ? t("prayer_list_carousel.your_request") : t("prayer_list_carousel.from_name", { name: displayName });
             const amened = !!req.myAmenedToday;
-            // Tapping anywhere on the card prays for it (undone → ✓). Reminders-
-            // style: one tap, instant check, stays checked. Your own request
-            // isn't tappable (you don't pray for yourself).
-            const tappable = !req.isOwnRequest && !amened;
+            // Tapping the CARD opens the prayer slideshow (walk through the
+            // undone requests, praying each). The checkbox circle on the right
+            // is a quick one-tap "pray" — like ticking a reminder — for when you
+            // just want to mark this one prayed without the walk.
             return (
-              <div
-                key={req.id}
-                role={tappable ? "button" : undefined}
-                tabIndex={tappable ? 0 : undefined}
-                aria-label={req.isOwnRequest ? undefined : amened ? t("prayer_card.amened", { defaultValue: "Prayed" }) : t("prayer_card.pray", { defaultValue: "Tap to pray" })}
-                onClick={() => { if (tappable) amenCard.mutate(req.id); }}
-                onKeyDown={(e) => { if (tappable && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); amenCard.mutate(req.id); } }}
-                className={`block w-full text-left ${tappable ? "cursor-pointer" : ""}`}
-              >
+              <Link key={req.id} href={`/prayer-mode?queue=new&focus=${req.id}`} className="block">
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`relative flex rounded-xl overflow-hidden ${tappable ? "transition-transform active:scale-[0.99]" : ""}`}
+                  className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]"
                   style={{
                     background: "rgba(46,107,64,0.15)",
                     border: "1px solid rgba(46,107,64,0.28)",
@@ -4047,28 +4039,41 @@ function PrayerListCarousel({
                           {req.body}
                         </p>
                       </div>
-                      {/* Reminders-style checkbox: an empty circle you tap to
-                          pray, which fills with a ✓. The whole card is the tap
-                          target — this is the state indicator. Not on your own
-                          request. */}
+                      {/* Reminders-style checkbox. Empty circle = tap to pray
+                          right here (a quick tick, no walk); fills with ✓ once
+                          prayed. stopPropagation so it doesn't also open the
+                          slideshow. Not on your own request. */}
                       {!req.isOwnRequest && (
-                        <span
-                          aria-hidden
-                          className="flex-shrink-0 inline-flex items-center justify-center rounded-full transition-colors"
-                          style={{
-                            width: 27, height: 27, borderRadius: "50%",
-                            background: amened ? "#2D5E3F" : "transparent",
-                            border: amened ? "1.5px solid #2D5E3F" : "1.5px solid rgba(143,175,150,0.55)",
-                            color: "#F0EDE6", fontSize: 14, fontWeight: 700, lineHeight: 1,
-                          }}
-                        >
-                          {amened ? "✓" : ""}
-                        </span>
+                        amened ? (
+                          <span
+                            aria-label={t("prayer_card.amened", { defaultValue: "Prayed" })}
+                            className="flex-shrink-0 inline-flex items-center justify-center rounded-full"
+                            style={{
+                              width: 27, height: 27, borderRadius: "50%",
+                              background: "#2D5E3F", border: "1.5px solid #2D5E3F",
+                              color: "#F0EDE6", fontSize: 14, fontWeight: 700, lineHeight: 1,
+                            }}
+                          >
+                            ✓
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); amenCard.mutate(req.id); }}
+                            aria-label={t("prayer_card.pray", { defaultValue: "Pray" })}
+                            className="flex-shrink-0 inline-flex items-center justify-center rounded-full transition-colors hover:opacity-90 active:scale-90"
+                            style={{
+                              width: 27, height: 27, borderRadius: "50%",
+                              background: "transparent", border: "1.5px solid rgba(143,175,150,0.55)",
+                              color: "#F0EDE6", fontSize: 14, lineHeight: 1,
+                            }}
+                          />
+                        )
                       )}
                     </div>
                   </div>
                 </motion.div>
-              </div>
+              </Link>
             );
           })}
         </div>

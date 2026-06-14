@@ -274,32 +274,17 @@ function AmenButton({ slideKey, onAdvance }: {
   slideKey: string | number;
   onAdvance: () => void;
 }) {
-  const HOLD_MS = 4000;
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => {
-      setReady(true);
-      // "Light" haptic on reveal — a soft tick that says "you can act
-      // now." The Amen tap itself fires a medium impact via
-      // triggerAmenFeedback, so the user feels two distinct beats:
-      // a small one when the button arrives, a fuller one when they
-      // press it. On non-native (web) the event is a silent no-op.
-      try {
-        window.dispatchEvent(
-          new CustomEvent("phoebe:haptic", { detail: { style: "light" } }),
-        );
-      } catch { /* non-fatal */ }
-    }, HOLD_MS);
-    return () => window.clearTimeout(t);
-  }, [slideKey]);
+  // The Amen button is tappable IMMEDIATELY — tap it to pray for this person and
+  // it checks them off on the home like a reminder, then advances. (Previously
+  // the button sat disabled for a 4-SECOND pause before it accepted a tap, so a
+  // quick tap did nothing and the prayer never recorded — the "first one works,
+  // then no others" bug. The reflective pause is gone per user direction.)
+  const [ready] = useState(true);
 
   return (
     <button
-      onClick={() => { if (ready) onAdvance(); }}
-      disabled={!ready}
-      aria-disabled={!ready}
-      aria-label={ready ? "Amen" : "Hold a moment"}
+      onClick={() => onAdvance()}
+      aria-label="Amen"
       className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide active:scale-[0.98] relative overflow-hidden"
       style={{
         background: ready ? "#2D5E3F" : "rgba(46,107,64,0.18)",
