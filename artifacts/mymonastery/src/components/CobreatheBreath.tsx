@@ -112,9 +112,9 @@ const SESSION_BLUE = "#5B9DEF";
 // Vertical centre of the breath cluster (glow + globe + ring) — lowered toward
 // the bottom third of the screen so the breath sits low and there's room above.
 const BREATH_Y = "63%";
-const RING_R = 53;           // outer per-breath ring radius — wraps the globe…
+const RING_R = 58;           // outer per-breath ring radius — wraps the globe…
 const RING_CIRC = 2 * Math.PI * RING_R;
-const SESSION_R = 43;        // …with the slow blue session ring nested inside
+const SESSION_R = 47;        // …with the slow blue session ring nested inside
 const SESSION_CIRC = 2 * Math.PI * SESSION_R;
 
 // The bundled photo library — every image under src/assets/cobreathe is glob-
@@ -651,36 +651,36 @@ export function CobreatheBreath({
           sits under both. */}
       <svg
         aria-hidden="true"
-        width={120} height={120} viewBox="0 0 120 120"
+        width={128} height={128} viewBox="0 0 128 128"
         style={{
           position: "absolute", top: BREATH_Y, left: "50%",
-          transform: "translate(-50%, calc(-50% + 12px)) rotate(-90deg)",
+          transform: "translate(-50%, calc(-50% + 20px)) rotate(-90deg)",
           zIndex: 2, pointerEvents: "none",
           filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))",
         }}
       >
-        <circle cx={60} cy={60} r={RING_R} fill="none" stroke="rgba(143,175,150,0.14)" strokeWidth={4} />
+        <circle cx={64} cy={64} r={RING_R} fill="none" stroke="rgba(143,175,150,0.14)" strokeWidth={4} />
         {/* lighter — inhale (fills, then holds) */}
         <circle
           ref={ringInRef}
-          cx={60} cy={60} r={RING_R}
+          cx={64} cy={64} r={RING_R}
           fill="none" stroke={RING_IN} strokeWidth={4} strokeLinecap="round"
           style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }}
         />
         {/* darker — exhale, drawn ON TOP of the lighter ring */}
         <circle
           ref={ringOutRef}
-          cx={60} cy={60} r={RING_R}
+          cx={64} cy={64} r={RING_R}
           fill="none" stroke={RING_OUT} strokeWidth={4} strokeLinecap="round"
           style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }}
         />
         {/* inner SESSION ring — faint blue track + one slow blue fill across all
             twelve breaths (driven in the rAF loop). */}
-        <circle cx={60} cy={60} r={SESSION_R} fill="none" stroke="rgba(91,157,239,0.16)" strokeWidth={3} />
+        <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(91,157,239,0.16)" strokeWidth={4} />
         <circle
           ref={sessionRingRef}
-          cx={60} cy={60} r={SESSION_R}
-          fill="none" stroke={SESSION_BLUE} strokeWidth={3} strokeLinecap="round"
+          cx={64} cy={64} r={SESSION_R}
+          fill="none" stroke={SESSION_BLUE} strokeWidth={4} strokeLinecap="round"
           style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset" }}
         />
       </svg>
@@ -693,7 +693,7 @@ export function CobreatheBreath({
         aria-hidden="true"
         style={{
           position: "absolute", top: BREATH_Y, left: "50%",
-          transform: "translate(-50%, calc(-50% + 12px))",
+          transform: "translate(-50%, calc(-50% + 20px))",
           fontSize: 72, lineHeight: 1, pointerEvents: "none", zIndex: 2,
           // Once the blue session ring completes (all twelve breaths kept) the
           // globe takes on a blue glow; otherwise its usual soft dark shadow.
@@ -749,7 +749,7 @@ export function CobreatheBreath({
         style={{
           position: "absolute", left: "50%", top: BREATH_Y,
           transform: "translate(-50%, 0)",
-          marginTop: CIRCLE_BASE * 0.46 - 12, zIndex: 2,
+          marginTop: CIRCLE_BASE * 0.46 - 20, zIndex: 2,
         }}
       >
         <div ref={labelRef} style={{ willChange: "transform, opacity" }}>
@@ -785,7 +785,7 @@ export function CobreatheBreath({
           color: reachedNow ? "#EAF6F4" : TEXT_FAINT,
           fontWeight: reachedNow ? 600 : 400,
           fontFamily: SPACE_GROTESK, background: "none", border: "none", cursor: "pointer", position: "relative",
-          marginBottom: 12,
+          marginBottom: 24,
         }}
       >
         {reachedNow
