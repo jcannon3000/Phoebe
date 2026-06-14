@@ -71,6 +71,8 @@
 	<string>Phoebe saves your contemplative sits to Apple Health as Mindful Minutes, so the silence you keep here shows up alongside your other mindfulness time.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>If you turn it on, Phoebe attaches a rough (about a mile) location when you pray for someone, so they can see a map of the places their prayers came from. Your exact location is never shared, and this stays off until you enable it.</string>
+	<key>NSAppleMusicUsageDescription</key>
+	<string>Phoebe plays a contemplative playlist while you breathe with Cobreathe. It only plays music — it never reads your listening history.</string>
 
 	<!-- Background modes:
 	     • remote-notification — silent push wake-up; bell scheduling uses it.

@@ -1193,6 +1193,55 @@ function wireContemplation() {
   });
 }
 
+// ─── Cobreathe music (Apple Music) ──────────────────────────────────────────
+// The Cobreathe breath can play ONE fixed, curated Apple Music playlist while
+// you breathe — playback ONLY, never reads listening history. The web app
+// dispatches `phoebe:cobreathe-music-start` when the breath begins (only if the
+// user enabled it) and `phoebe:cobreathe-music-stop` on every exit; we route to
+// the native CobreatheMusic plugin. Subscriber-gated; no-op on web / iOS < 16.
+//
+// Replace this with the real catalog playlist id from the Apple Music share
+// link (the "pl...." id — a public/curated playlist, NOT a personal "p...."
+// one). While it's the placeholder, play() resolves nothing and quietly no-ops.
+const COBREATHE_PLAYLIST_ID = "pl.PLACEHOLDER";
+
+function getCobreatheMusic(): {
+  authorize?: () => Promise<{ status: string }>;
+  getAuthorizationStatus?: () => Promise<{ status: string }>;
+  isAvailable?: () => Promise<{ available: boolean }>;
+  play?: (opts: { playlistId: string }) => Promise<{ playing: boolean; reason?: string }>;
+  stop?: () => Promise<void>;
+} | undefined {
+  const cap = (window as {
+    Capacitor?: { Plugins?: Record<string, unknown> };
+  }).Capacitor;
+  return cap?.Plugins?.["CobreatheMusic"] as ReturnType<typeof getCobreatheMusic>;
+}
+
+function wireCobreatheMusic() {
+  window.addEventListener("phoebe:cobreathe-music-start", async () => {
+    if (!COBREATHE_PLAYLIST_ID || COBREATHE_PLAYLIST_ID === "pl.PLACEHOLDER") return;
+    const music = getCobreatheMusic();
+    if (!music) return;
+    try {
+      // Ensure access (prompts on first run), then only play for subscribers;
+      // denied access / non-subscribers silently skip — the breath plays on.
+      const status = (await music.getAuthorizationStatus?.())?.status;
+      if (status !== "authorized") {
+        const res = await music.authorize?.();
+        if (res?.status !== "authorized") return;
+      }
+      const avail = await music.isAvailable?.();
+      if (!avail?.available) return;
+      await music.play?.({ playlistId: COBREATHE_PLAYLIST_ID });
+    } catch { /* best-effort — music is optional over the breath */ }
+  });
+
+  window.addEventListener("phoebe:cobreathe-music-stop", async () => {
+    try { await getCobreatheMusic()?.stop?.(); } catch { /* best-effort */ }
+  });
+}
+
 // ─── Persisted storage bridge ──────────────────────────────────────────────
 // Capacitor Preferences is more reliable than localStorage inside a
 // WKWebView cold start on iOS. The web app still uses localStorage; we
@@ -1501,6 +1550,7 @@ function exposePublicApi() {
   wireBiometricLock();
   wireLocalNotifications();
   wireContemplation();
+  wireCobreatheMusic();
   wireDurableStorage();
   wireLifecycle();
 })();

@@ -24,6 +24,7 @@
 		B1B1E0010000000000000006 /* PhoebeBadgePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000005 /* PhoebeBadgePlugin.swift */; };
 		B1B1E0010000000000000008 /* PhoebeAudioPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000007 /* PhoebeAudioPlugin.swift */; };
 		B1B1E001000000000000000A /* MindfulHealthPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E0010000000000000009 /* MindfulHealthPlugin.swift */; };
+		B1B1E001000000000000000E /* CobreatheMusicPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E001000000000000000D /* CobreatheMusicPlugin.swift */; };
 		B1B1E001000000000000000C /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1B1E001000000000000000B /* MainViewController.swift */; };
 		DDDE5045232BE6609109A4F0 /* PhoebeWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 72701FD9A9DF4B3EB7605138 /* PhoebeWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		PB0EBE7515E0001000000001 /* PhoebeRising.caf in Resources */ = {isa = PBXBuildFile; fileRef = PB0EBE7515E0001000000002 /* PhoebeRising.caf */; };
@@ -79,6 +80,7 @@
 		B1B1E0010000000000000007 /* PhoebeAudioPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoebeAudioPlugin.swift; sourceTree = "<group>"; };
 		B1B1E0010000000000000009 /* MindfulHealthPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MindfulHealthPlugin.swift; sourceTree = "<group>"; };
 		B1B1E001000000000000000B /* MainViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
+		B1B1E001000000000000000D /* CobreatheMusicPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CobreatheMusicPlugin.swift; sourceTree = "<group>"; };
 		CD6994986DD0CAC2938F8675 /* PhoebeWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = PhoebeWidget.entitlements; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
 		FF59DA4399194D23B4DC93F2 /* PhoebeWidgetPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PhoebeWidgetPlugin.swift; sourceTree = "<group>"; };
@@ -148,6 +150,7 @@
 				B1B1E0010000000000000005 /* PhoebeBadgePlugin.swift */,
 				B1B1E0010000000000000007 /* PhoebeAudioPlugin.swift */,
 				B1B1E0010000000000000009 /* MindfulHealthPlugin.swift */,
+				B1B1E001000000000000000D /* CobreatheMusicPlugin.swift */,
 				B1B1E001000000000000000B /* MainViewController.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
@@ -343,6 +346,7 @@
 				B1B1E0010000000000000006 /* PhoebeBadgePlugin.swift in Sources */,
 				B1B1E0010000000000000008 /* PhoebeAudioPlugin.swift in Sources */,
 				B1B1E001000000000000000A /* MindfulHealthPlugin.swift in Sources */,
+				B1B1E001000000000000000E /* CobreatheMusicPlugin.swift in Sources */,
 				B1B1E001000000000000000C /* MainViewController.swift in Sources */,
 				1906F0DF4B109027829D0BEC /* PhoebeWidgetPlugin.swift in Sources */,
 			);
