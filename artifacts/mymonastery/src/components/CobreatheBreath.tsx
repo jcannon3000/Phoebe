@@ -149,8 +149,19 @@ export function CobreatheBreath({
   const circleRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<HTMLDivElement>(null);
-  const photoRef = useRef<HTMLImageElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
+  // Two stacked photo layers that crossfade, plus a group wrapper whose opacity
+  // breathes with the cycle. The rAF loop ping-pongs between A and B: each breath
+  // the incoming layer fades in over the outgoing (never a hard switch), and each
+  // photo slowly zooms in (Ken Burns push) the whole time it's shown. Srcs are
+  // assigned via refs from the rAF clock (not React render) so the swap can't
+  // race the 150ms tick. `lastIdx` tracks the current breath; `preloaded` marks
+  // when we've decoded the next photo onto the hidden layer.
+  const photoGroupRef = useRef<HTMLDivElement>(null);
+  const photoARef = useRef<HTMLImageElement>(null);
+  const photoBRef = useRef<HTMLImageElement>(null);
+  const photoLastIdxRef = useRef<number>(-1);
+  const photoPreloadedRef = useRef<number>(-1);
   // The photo library, shuffled once per session (stable across re-renders).
   // We rotate through it one photo per breath; the rAF loop fades the current
   // photo up on the inhale and down on the exhale.
@@ -247,10 +258,57 @@ export function CobreatheBreath({
       // field at the bottom (where it's swapped for the next one, so the change
       // is never seen). A gentle ease via pAnim, capped so the glow/globe/text
       // stay legible over it.
-      // Always-present baseline so the photo is visible from the first moment
-      // (incl. the sync pre-roll and every exhale), brightening toward the top
-      // of the inhale rather than vanishing to nothing.
-      if (photoRef.current) photoRef.current.style.opacity = (0.5 + pAnim * 0.5).toFixed(4);
+      // ── Breathing photo: crossfade between photos + slow zoom-in ─────────
+      // The whole group's opacity breathes (up on inhale, down on exhale). The
+      // two layers ping-pong: the incoming photo fades IN over the outgoing at
+      // the breath boundary (a crossfade, never a hard cut), and each photo
+      // slowly pushes in (scale 1 → 1+ZOOM) the entire time it's shown.
+      const order = photoOrderRef.current;
+      if (order.length > 0) {
+        const ZOOM = 0.10;          // total scale push per photo while shown
+        const CROSSFADE_MS = 3500;  // how long the incoming photo takes to arrive
+        const idx = isCounting
+          ? Math.max(0, Math.floor((now - countStartRef.current) / CYCLE_MS))
+          : 0;
+        const a = photoARef.current;
+        const b = photoBRef.current;
+        // New breath: the incoming layer was preloaded last cycle; make sure it
+        // holds the right photo (covers the very first breath, where it wasn't).
+        if (idx !== photoLastIdxRef.current) {
+          photoLastIdxRef.current = idx;
+          const incoming = (idx % 2 === 0) ? a : b;
+          const url = order[idx % order.length];
+          if (incoming && incoming.getAttribute("src") !== url) incoming.src = url;
+          photoPreloadedRef.current = -1;
+        }
+        const activeIsA = idx % 2 === 0;
+        const activeEl = activeIsA ? a : b;
+        const prevEl = activeIsA ? b : a;
+        const zoomP = pos / CYCLE_MS;                                  // 0→1 across the breath
+        const cross = idx === 0 ? 1 : Math.min(1, pos / CROSSFADE_MS); // incoming fade-in weight
+        if (activeEl) {
+          activeEl.style.opacity = cross.toFixed(4);
+          activeEl.style.transform = `scale(${(1 + zoomP * ZOOM).toFixed(4)})`;
+          activeEl.style.zIndex = "2";
+        }
+        if (prevEl) {
+          // Sits underneath at full opacity, continuing its zoom from where the
+          // active layer left off so the push reads as one continuous motion.
+          prevEl.style.opacity = "1";
+          prevEl.style.transform = `scale(${(1 + ZOOM + zoomP * ZOOM).toFixed(4)})`;
+          prevEl.style.zIndex = "1";
+        }
+        // The group breathes: visible from the first moment (0.5 floor),
+        // brightening to full at the top of the inhale.
+        if (photoGroupRef.current) photoGroupRef.current.style.opacity = (0.5 + pAnim * 0.5).toFixed(4);
+        // Once the crossfade is done (incoming fully covers the old), preload the
+        // NEXT photo onto the now-hidden layer so it's decoded before its turn.
+        if (cross >= 1 && photoPreloadedRef.current !== idx && prevEl) {
+          const nextUrl = order[(idx + 1) % order.length];
+          if (prevEl.getAttribute("src") !== nextUrl) prevEl.src = nextUrl;
+          photoPreloadedRef.current = idx;
+        }
+      }
       // The phase word breathes a hair with the circle (only once synced).
       if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;
       raf = requestAnimationFrame(loop);
@@ -353,12 +411,7 @@ export function CobreatheBreath({
   const completed = counting ? Math.floor(sinceCount / CYCLE_MS) : 0;
   const breathNum = completed + 1;
   const reachedNow = counting && completed >= totalBreaths;
-  // Which photo this breath shows, and the next — rotating through the shuffled
-  // library, one per breath. The src swaps at the cycle boundary, where the
-  // photo has faded to ~0, so the change is invisible. We render the next one
-  // hidden so it's decoded and ready before it fades up.
-  const currentPhoto = photoOrder.length > 0 ? photoOrder[completed % photoOrder.length] : null;
-  const nextPhoto = photoOrder.length > 0 ? photoOrder[(completed + 1) % photoOrder.length] : null;
+  const hasPhotos = photoOrder.length > 0;
   const intention = counting ? INTENTIONS[(breathNum - 1) % INTENTIONS.length] : null;
 
   // Soft sage tones that sit calmly on the deep-green field.
@@ -422,24 +475,36 @@ export function CobreatheBreath({
         />
       </div>
 
-      {/* The breathing photo — a single image of life on earth, full-bleed
-          behind the breath, fading up on the inhale and down on the exhale.
-          Rotates through the shuffled library, one photo per breath; the swap
-          happens at the bottom of the breath (opacity ~0), so it's never seen.
-          A deep-green wash sits over it so the glow, globe and text stay legible.
-          No captions — the images speak for themselves. */}
-      {currentPhoto && (
+      {/* The breathing photos — images of life on earth, full-bleed behind the
+          breath. Two stacked layers crossfade so the change from one photo to
+          the next is never a hard cut; each photo slowly zooms in (Ken Burns
+          push) the whole time it's shown. The group's opacity breathes: up on
+          the inhale, down on the exhale. The rAF loop drives all of it (srcs,
+          opacity, zoom). A deep-green wash over the top keeps the glow, globe
+          and text legible. No captions — the images speak for themselves. */}
+      {hasPhotos && (
         <div aria-hidden="true" style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
-          <img
-            ref={photoRef}
-            src={currentPhoto}
-            alt=""
-            style={{
-              position: "absolute", inset: 0, width: "100%", height: "100%",
-              objectFit: "cover", opacity: 0.5, willChange: "opacity",
-            }}
-          />
-          {/* Legibility wash — a deep green-to-black veil over the photo. Kept
+          <div ref={photoGroupRef} style={{ position: "absolute", inset: 0, willChange: "opacity" }}>
+            <img
+              ref={photoARef}
+              alt=""
+              style={{
+                position: "absolute", inset: 0, width: "100%", height: "100%",
+                objectFit: "cover", opacity: 0, transformOrigin: "center",
+                willChange: "transform, opacity",
+              }}
+            />
+            <img
+              ref={photoBRef}
+              alt=""
+              style={{
+                position: "absolute", inset: 0, width: "100%", height: "100%",
+                objectFit: "cover", opacity: 0, transformOrigin: "center",
+                willChange: "transform, opacity",
+              }}
+            />
+          </div>
+          {/* Legibility wash — a deep green-to-black veil over the photos. Kept
               darker toward the bottom (behind the counter text) but lighter up
               top so the brighter image actually reads. */}
           <div
@@ -448,10 +513,6 @@ export function CobreatheBreath({
               background: "linear-gradient(180deg, rgba(6,24,16,0.18) 0%, rgba(5,18,12,0.28) 45%, rgba(4,13,8,0.55) 100%)",
             }}
           />
-          {/* Decode the next photo off-screen so it's ready before it fades up. */}
-          {nextPhoto && nextPhoto !== currentPhoto && (
-            <img src={nextPhoto} alt="" aria-hidden="true" style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }} />
-          )}
         </div>
       )}
 
