@@ -6335,9 +6335,15 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // Day's rhythm is complete — hand the home over to the upcoming
                 // schedule. The full Next/Done cards still live on /daily-progress.
                 const noEvents = todayItems.length === 0 && tomorrowItems.length === 0 && weekItems.length === 0 && monthItems.length === 0;
-                // If there's nothing coming up, don't show the events section at
-                // all (no empty-state card).
-                if (noEvents) return null;
+                // Nothing coming up → invite the reader into a podcast instead of
+                // an empty events section.
+                if (noEvents) {
+                  return (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
+                      <PodcastsRail title={t("dashboard.dive_into_podcast", { defaultValue: "Dive into a podcast" })} />
+                    </motion.div>
+                  );
+                }
                 const evtProps = {
                   userEmail, userName,
                   onOpenService: (schedule: ServiceSchedule, nextDate: Date) => setOpenService({ schedule, nextDate }),

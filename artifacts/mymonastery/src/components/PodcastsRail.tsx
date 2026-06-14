@@ -57,7 +57,7 @@ function Fallback({ hidden }: { hidden?: boolean }) {
   );
 }
 
-export function PodcastsRail() {
+export function PodcastsRail({ title = "🎧 Podcasts" }: { title?: string }) {
   const [, setLocation] = useLocation();
   const { data, isLoading, isError, refetch } = useQuery<PodcastsResponse>({
     queryKey: ["/api/podcasts"],
@@ -84,7 +84,7 @@ export function PodcastsRail() {
   const header = (
     <div className="flex items-center justify-between mb-3">
       <h2 className="text-lg font-bold" style={{ color: "#F0EDE6", fontFamily: FONT }}>
-        🎧 Podcasts
+        {title}
       </h2>
       <Link href="/podcasts" className="text-sm font-semibold" style={{ color: "#A8C5A0", fontFamily: FONT }}>
         See all →

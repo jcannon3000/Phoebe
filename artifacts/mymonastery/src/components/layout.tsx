@@ -917,11 +917,9 @@ function OpeningSplash() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, delay: 0.12, ease: "easeOut" }}
           >
-            <p className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-5" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}>
-              {t("splash.prayed_for_you_month", { defaultValue: "Prayed for you this month" })}
-            </p>
             {/* Horizontal overlapping rail — the same face-stack used everywhere
-                else (garden week, the slideshow recap). No per-person counts. */}
+                else (garden week, the slideshow recap). No per-person counts.
+                (The "Prayed for you this month" eyebrow above it was removed.) */}
             <div className="flex items-center justify-center -space-x-3">
               {visible.map((p) => (
                 p.avatarUrl ? (
@@ -959,6 +957,32 @@ function OpeningSplash() {
   );
 }
 
+// One-time "green curtain" reveal on cold app load: a full-screen wash in the
+// home's own green that fades AND slides DOWN as the content rises into view —
+// smoothing the seam between the native launch ("Be together with Phoebe") and
+// the home. Plays once per app session (the module flag resets on reload).
+let loadRevealPlayed = false;
+function LoadReveal() {
+  const [show, setShow] = useState(!loadRevealPlayed);
+  useEffect(() => {
+    if (loadRevealPlayed) return;
+    loadRevealPlayed = true;
+    const id = window.setTimeout(() => setShow(false), 900);
+    return () => window.clearTimeout(id);
+  }, []);
+  if (!show) return null;
+  return (
+    <motion.div
+      aria-hidden
+      initial={{ opacity: 1, y: 0 }}
+      animate={{ opacity: 0, y: "22%" }}
+      transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
+      className="fixed inset-0"
+      style={{ zIndex: 150, pointerEvents: "none", background: "#091A10" }}
+    />
+  );
+}
+
 export function Layout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -984,6 +1008,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10" }}>
+      <LoadReveal />
       <OpeningSplash />
       <header
         className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pb-2 md:pb-5 flex justify-between items-center"

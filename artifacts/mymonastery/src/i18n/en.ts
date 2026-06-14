@@ -557,7 +557,7 @@ export const en = {
   header: {
     home: "Home",
     prayer_list: "Prayer list",
-    daily_progress: "Daily progress",
+    daily_progress: "Progress",
     people: "People",
     menu: "Menu",
     way_of_love: "Way of Love",
