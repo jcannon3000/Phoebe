@@ -99,55 +99,15 @@ const FIELD_LIVE = "#0B2014";         // live — a touch lighter/greener
 // The world turns between these three globes — one per breath cycle.
 const GLOBES = ["🌍", "🌎", "🌏"] as const;
 
-// A soft "radial gradient" of small emojis spiralling out from the globe
-// (Apple-style emoji burst). Laid out on a phyllotaxis spiral — the golden
-// angle, the same spacing leaves take around a stem — so it reads as a living
-// spray, not a rigid ring. Smaller + fainter toward the rim. The whole spiral
-// scales with the breath (positions computed once; animated in the rAF loop).
-//
-// The cast is all of breathing life: plants, ordinary people of many skin tones
-// and ages, and small animals — "the air in your lungs has passed through every
-// living thing." The emojis are RE-PICKED on every mount (random within each
-// category, random starting category, interleaved for balance), so no two
-// sessions wear the same faces.
-const PLANT_POOL = ["🌿", "🌱", "🍃", "🌾", "☘️", "🌻", "🍀"];
-const ANIMAL_POOL = ["🦋", "🐝", "🐦", "🐞", "🐢", "🐌", "🦔", "🐿️", "🐇", "🐠"];
-// Ordinary people of many ages and skin tones — weighted toward darker and
-// medium tones so the spiral reads as the whole human family, not mostly light.
-const PEOPLE_POOL = ["🧑🏽", "🧑🏾", "🧑🏿", "👩🏽", "👩🏾", "👩🏿", "👨🏾", "👨🏿", "👨🏽", "🧒🏾", "🧒🏿", "👵🏽", "🧓🏾", "👴🏿", "👶🏽", "🧑🏻", "👩🏻", "🧑🏼"];
-// Vocations — people at their work and callings (the "vocational" set), again
-// across skin tones. Folds the breadth of human labor into the breath.
-const VOCATION_POOL = ["👩🏽‍⚕️", "👨🏿‍🏫", "👩🏾‍🌾", "🧑🏽‍🍳", "👨🏾‍🔧", "👩🏿‍🏭", "🧑🏾‍🎓", "👷🏽‍♀️", "🧑🏿‍🚒", "👩🏽‍🏫", "🧑🏾‍🔬", "👨🏾‍🍳", "👩🏿‍✈️", "🧑🏽‍🌾", "👨🏽‍⚕️", "👩🏾‍💻"];
-const CATEGORY_POOLS = [PLANT_POOL, PEOPLE_POOL, VOCATION_POOL, ANIMAL_POOL];
-const GOLDEN_ANGLE = 2.399963229728653; // radians (~137.5°)
-const PARTICLE_COUNT = 60;
-const PARTICLE_LAYOUT = Array.from({ length: PARTICLE_COUNT }, (_, i) => {
-  const f = i / PARTICLE_COUNT;
-  const angle = i * GOLDEN_ANGLE;
-  const radius = 64 + 248 * Math.sqrt(f); // px from centre — spreads well past the old rim
-  return {
-    x: Math.cos(angle) * radius,
-    y: Math.sin(angle) * radius,
-    size: 20 - f * 11,        // ~20px near the globe → ~9px at the rim
-    opacity: 0.82 - f * 0.62, // fade outward, like a radial gradient
-  };
-});
-// Build a fresh, balanced-but-varied cast: walk the categories in order from a
-// random start (plant → people → animal → …) and pick a random emoji within
-// each, so every breath opens with a different spiral.
-function pickParticleEmojis(): string[] {
-  const start = Math.floor(Math.random() * CATEGORY_POOLS.length);
-  return Array.from({ length: PARTICLE_COUNT }, (_, i) => {
-    const pool = CATEGORY_POOLS[(start + i) % CATEGORY_POOLS.length];
-    return pool[Math.floor(Math.random() * pool.length)];
-  });
-}
-// One random emoji from a random category — used when a single particle
-// crossfades to its next emoji (so the cast keeps mixing plants, people,
-// vocations and animals as it shimmers).
-function pickOneEmoji(): string {
-  const pool = CATEGORY_POOLS[Math.floor(Math.random() * CATEGORY_POOLS.length)];
-  return pool[Math.floor(Math.random() * pool.length)];
+// Fisher–Yates shuffle — used to put the photo library in a fresh order each
+// session so the same faces and places don't arrive in the same sequence twice.
+function shuffle<T>(input: readonly T[]): T[] {
+  const arr = input.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }
 
 export function CobreatheBreath({
@@ -157,6 +117,7 @@ export function CobreatheBreath({
   othersToday,
   todayCount,
   backgroundImage,
+  photos,
 }: {
   // Fired ONCE, when the target number of breaths has been kept. The breath
   // does NOT stop here — people can keep breathing as long as they like.
@@ -174,6 +135,12 @@ export function CobreatheBreath({
   // Optional photo behind the breath (e.g. the /cobreathe page). A dark green
   // wash sits over it so the glow, globe, and text stay legible.
   backgroundImage?: string;
+  // A library of photos of life on earth. Instead of a static background, ONE
+  // photo at a time fades up on the inhale and down on the exhale, then the next
+  // one takes its place at the bottom of the breath — the world breathing. The
+  // set is shuffled once per session and rotated through, one photo per breath.
+  // No captions: the images speak for themselves.
+  photos?: string[];
 }) {
   const { t } = useTranslation();
   // The breath is a single solid green circle that swells on the inhale and
@@ -182,27 +149,16 @@ export function CobreatheBreath({
   const circleRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<HTMLDivElement>(null);
-  const plantsRef = useRef<HTMLDivElement>(null);
+  const photoRef = useRef<HTMLImageElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
-  // Per-particle emoji on an independent, staggered cycle. Rather than the
-  // whole cast swapping at once at the bottom of each breath (a hard "switch"),
-  // each particle holds its emoji, then does a quick flip through TWO emoji
-  // keyframes (k1 → k2) before landing on its next one. Varied periods +
-  // offsets mean the spiral is always rolling somewhere, so it reads as fluid
-  // motion rather than a single cut.
-  const partSpanRefs = useRef<(HTMLSpanElement | null)[]>([]);
-  const partMeta = useRef(
-    (() => {
-      const init = pickParticleEmojis();
-      return PARTICLE_LAYOUT.map((_, i) => ({
-        emoji: init[i],                    // currently-rendered emoji
-        k1: init[i], k2: init[i], final: init[i], // the roll's two keyframes + landing
-        period: 2400 + ((i * 257) % 2200), // 2.4s–4.6s, varied per particle
-        offset: (i * 911) % 3000,          // staggered so they never sync up
-        lastPhase: 0,
-      }));
-    })(),
-  );
+  // The photo library, shuffled once per session (stable across re-renders).
+  // We rotate through it one photo per breath; the rAF loop fades the current
+  // photo up on the inhale and down on the exhale.
+  const photoOrderRef = useRef<string[]>([]);
+  if (photoOrderRef.current.length === 0 && photos && photos.length > 0) {
+    photoOrderRef.current = shuffle(photos);
+  }
+  const photoOrder = photoOrderRef.current;
 
   // Prime the audio subsystem on mount so the per-breath swell tones sound. (No
   // fade-in: the scene is held still at rest until synced, so nothing flashes.)
@@ -280,9 +236,12 @@ export function CobreatheBreath({
       // The globe stays a STEADY size — it no longer swells with the breath
       // (only the glow behind it breathes). Left untouched here so it holds at
       // its base scale/opacity.
-      // The emoji spiral itself stays STILL — per the design, only the gradient
-      // glow behind it breathes (the circle + halo above). The particles hold
-      // their positions and their emoji; nothing scales, fades, or rolls.
+      // The photo of life on earth fades UP on the inhale and DOWN on the
+      // exhale — brightest at the top of the breath, receding into the dark
+      // field at the bottom (where it's swapped for the next one, so the change
+      // is never seen). A gentle ease via pAnim, capped so the glow/globe/text
+      // stay legible over it.
+      if (photoRef.current) photoRef.current.style.opacity = (pAnim * 0.72).toFixed(4);
       // The phase word breathes a hair with the circle (only once synced).
       if (labelRef.current) labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;
       raf = requestAnimationFrame(loop);
@@ -385,6 +344,12 @@ export function CobreatheBreath({
   const completed = counting ? Math.floor(sinceCount / CYCLE_MS) : 0;
   const breathNum = completed + 1;
   const reachedNow = counting && completed >= totalBreaths;
+  // Which photo this breath shows, and the next — rotating through the shuffled
+  // library, one per breath. The src swaps at the cycle boundary, where the
+  // photo has faded to ~0, so the change is invisible. We render the next one
+  // hidden so it's decoded and ready before it fades up.
+  const currentPhoto = photoOrder.length > 0 ? photoOrder[completed % photoOrder.length] : null;
+  const nextPhoto = photoOrder.length > 0 ? photoOrder[(completed + 1) % photoOrder.length] : null;
   const intention = counting ? INTENTIONS[(breathNum - 1) % INTENTIONS.length] : null;
 
   // Soft sage tones that sit calmly on the deep-green field.
@@ -448,32 +413,36 @@ export function CobreatheBreath({
         />
       </div>
 
-      {/* Radial plant spiral — small leaves spraying out from the globe,
-          blooming on the inhale and contracting on the exhale. Sits beneath
-          the globe so the world stays the centrepiece. */}
-      <div
-        ref={plantsRef}
-        aria-hidden="true"
-        style={{
-          position: "absolute", top: "50%", left: "50%",
-          transform: "translate(-50%, -50%) scale(1)",
-          pointerEvents: "none", zIndex: 1, willChange: "transform, opacity",
-        }}
-      >
-        {PARTICLE_LAYOUT.map((pt, i) => (
-          <span
-            key={i}
-            ref={(el) => { partSpanRefs.current[i] = el; }}
+      {/* The breathing photo — a single image of life on earth, full-bleed
+          behind the breath, fading up on the inhale and down on the exhale.
+          Rotates through the shuffled library, one photo per breath; the swap
+          happens at the bottom of the breath (opacity ~0), so it's never seen.
+          A deep-green wash sits over it so the glow, globe and text stay legible.
+          No captions — the images speak for themselves. */}
+      {currentPhoto && (
+        <div aria-hidden="true" style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
+          <img
+            ref={photoRef}
+            src={currentPhoto}
+            alt=""
             style={{
-              position: "absolute", left: pt.x, top: pt.y,
-              transform: "translate(-50%, -50%)",
-              fontSize: pt.size, opacity: pt.opacity, lineHeight: 1,
+              position: "absolute", inset: 0, width: "100%", height: "100%",
+              objectFit: "cover", opacity: 0, willChange: "opacity",
             }}
-          >
-            {partMeta.current[i].emoji}
-          </span>
-        ))}
-      </div>
+          />
+          {/* Legibility wash — a deep green-to-black veil over the photo. */}
+          <div
+            style={{
+              position: "absolute", inset: 0,
+              background: "linear-gradient(180deg, rgba(6,24,16,0.42) 0%, rgba(5,18,12,0.5) 45%, rgba(4,13,8,0.66) 100%)",
+            }}
+          />
+          {/* Decode the next photo off-screen so it's ready before it fades up. */}
+          {nextPhoto && nextPhoto !== currentPhoto && (
+            <img src={nextPhoto} alt="" aria-hidden="true" style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }} />
+          )}
+        </div>
+      )}
 
       {/* The world at the centre of the breath — turning between the three
           globes (one per second), sitting in the middle of the gradient and

@@ -8,6 +8,18 @@ import { writeMindfulSession } from "@/lib/appleHealth";
 import { CobreatheBreath } from "@/components/CobreatheBreath";
 import { COBREATHE_INTRO_SEEN_KEY } from "@/pages/cobreathe-about";
 
+// The Cobreathe photo library — every image in src/assets/cobreathe is bundled
+// (hashed + optimized by Vite) and rotated through during the breath, one photo
+// per breath, shuffled per session. Drop a new photo into that folder and it
+// joins the rotation automatically; no manifest to edit.
+const COBREATHE_PHOTOS = Object.values(
+  import.meta.glob("@/assets/cobreathe/*.{jpg,jpeg,png,avif,webp}", {
+    eager: true,
+    query: "?url",
+    import: "default",
+  }),
+) as string[];
+
 // True once the user has been through the intro slideshow at least once.
 function introSeen(): boolean {
   try { return localStorage.getItem(COBREATHE_INTRO_SEEN_KEY) === "1"; } catch { return false; }
@@ -235,7 +247,7 @@ export default function CobreathePage() {
             todayCount={state?.count ?? 0}
             onReachTarget={handleReachTarget}
             onEnd={handleEnd}
-            backgroundImage="/images/cobreathe-bg.avif"
+            photos={COBREATHE_PHOTOS}
           />
         )}
 
