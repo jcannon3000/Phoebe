@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -7,6 +7,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { writeMindfulSession } from "@/lib/appleHealth";
 import { CobreatheBreath } from "@/components/CobreatheBreath";
 import { COBREATHE_INTRO_SEEN_KEY } from "@/pages/cobreathe-about";
+import { useAuth } from "@/hooks/useAuth";
+import { usePeople } from "@/hooks/usePeople";
+import { useCobreatheSync } from "@/hooks/useCobreatheSync";
+import { computeFingerprint } from "@/lib/cobreatheOrder";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
 // (hashed + optimized by Vite) and rotated through during the breath, one photo
@@ -19,6 +23,10 @@ const COBREATHE_PHOTOS = Object.values(
     import: "default",
   }),
 ) as string[];
+
+// Fingerprint of the bundled photo set — two clients only sync if it matches,
+// so a build/version drift (different photos) safely falls back to solo order.
+const COBREATHE_FINGERPRINT = computeFingerprint(COBREATHE_PHOTOS);
 
 // True once the user has been through the intro slideshow at least once.
 function introSeen(): boolean {
@@ -142,6 +150,16 @@ export default function CobreathePage() {
     if (wantsStart() && !introSeen()) setLocation("/cobreathe/about");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Garden-mate photo sync: while breathing, follow the earliest online garden-
+  // mate's photo order (or lead if first). Gated on showPresence inside the hook.
+  const { user } = useAuth();
+  const { data: people } = usePeople(user?.id);
+  const gardenEmails = useMemo(() => new Set((people ?? []).map((p) => p.email)), [people]);
+  const breathSync = useCobreatheSync(user, gardenEmails, {
+    fingerprint: COBREATHE_FINGERPRINT,
+    active: mode === "breathing",
+  });
   // State returned by the POST — fresher than the GET cache on the done screen.
   const [doneState, setDoneState] = useState<BreathState | null>(null);
 
@@ -186,18 +204,19 @@ export default function CobreathePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Reaching the 12th breath records the day's communal breath AND logs the sit
-  // right away — so a completed Cobreathe always lands in history/stats, even
-  // if the user wanders off without tapping Finish. The breath keeps going.
+  // Reaching the 12th breath records the day's communal breath (the count +
+  // who's breathing). We do NOT log the contemplation sit here — the breath
+  // keeps going past 12, and we want history/stats to credit the FULL length
+  // the user actually sat, not just the first twelve. The sit is logged on
+  // finish (handleEnd) with the real elapsed time.
   const handleReachTarget = useCallback((secondsKept: number) => {
     record.mutate(secondsKept);
-    logSit(secondsKept);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Finishing (or backing out). Either way, log the sit (no-op if already
-  // logged at the target). Finished → record the communal breath + return to
-  // Contemplation; bailed early → slip back to the intro.
+  // Finishing (or backing out) — this is where the sit is logged, with the FULL
+  // elapsed time (so 20 breaths counts as 20, not 12). Finished → record the
+  // communal breath + return to Contemplation; bailed early → slip back.
   const handleEnd = useCallback((secondsKept: number, reached: boolean) => {
     logSit(secondsKept);
     if (!reached) { setMode("intro"); return; }
@@ -212,6 +231,25 @@ export default function CobreathePage() {
   // "N other people" — subtract the caller once they're in the count.
   const others = Math.max(0, (state?.count ?? 0) - (state?.done ? 1 : 0));
   const withLine = state ? companionLine(state.companions, state.companionCount) : "";
+
+  // Breathing is a full-screen portal — render it WITHOUT the Layout chrome
+  // (app header + page background) so navigating in doesn't flash the page
+  // behind the breath for a frame. (The breath's own opaque field covers the
+  // screen from the first paint.)
+  if (mode === "breathing") {
+    return (
+      <CobreatheBreath
+        othersToday={others}
+        todayCount={state?.count ?? 0}
+        onReachTarget={handleReachTarget}
+        onEnd={handleEnd}
+        photos={COBREATHE_PHOTOS}
+        followSeed={breathSync.leader?.masterSeed}
+        followStartEpochMs={breathSync.leader?.startEpochMs}
+        onLeading={(info) => breathSync.becomeLeader(info.startEpochMs, info.masterSeed)}
+      />
+    );
+  }
 
   return (
     <Layout>
@@ -241,16 +279,6 @@ export default function CobreathePage() {
             </p>
           </div>
         </div>
-
-        {mode === "breathing" && (
-          <CobreatheBreath
-            othersToday={others}
-            todayCount={state?.count ?? 0}
-            onReachTarget={handleReachTarget}
-            onEnd={handleEnd}
-            photos={COBREATHE_PHOTOS}
-          />
-        )}
 
         {mode === "intro" && (
           <>

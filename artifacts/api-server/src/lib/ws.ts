@@ -20,9 +20,21 @@ interface ClientState {
   presence: PresenceInfo | null;
 }
 
+// A live cobreathe session: a user currently breathing, with the seed + start
+// origin garden-mates need to follow their photo order. Garden filtering is done
+// client-side (like presence), so this stays free of the social graph / DB.
+interface CobreatheSession {
+  userId: number;
+  email: string;
+  startEpochMs: number;
+  masterSeed: number;
+  fingerprint: string;
+}
+
 // ── State ────────────────────────────────────────────────────────────────────
 
 const clients = new Map<WebSocket, ClientState>();
+const cobreatheSessions = new Map<WebSocket, CobreatheSession>();
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -71,6 +83,19 @@ function broadcastPresenceSync() {
   }
 }
 
+function getCobreatheSessions(): CobreatheSession[] {
+  return Array.from(cobreatheSessions.values());
+}
+
+function broadcastCobreatheSync() {
+  const msg = JSON.stringify({ type: "cobreathe-sync", sessions: getCobreatheSessions() });
+  for (const [ws] of clients) {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.send(msg);
+    }
+  }
+}
+
 // ── Setup ────────────────────────────────────────────────────────────────────
 
 export function attachWebSocketServer(server: HttpServer) {
@@ -80,8 +105,10 @@ export function attachWebSocketServer(server: HttpServer) {
     const state: ClientState = { ws, userId: null, email: null, presence: null };
     clients.set(ws, state);
 
-    // Send current presence state to new client
+    // Send current presence + cobreathe state to the new client so a late joiner
+    // immediately sees who's present and who's already breathing.
     ws.send(JSON.stringify({ type: "presence-sync", presence: getPresenceList() }));
+    ws.send(JSON.stringify({ type: "cobreathe-sync", sessions: getCobreatheSessions() }));
 
     ws.on("message", (raw) => {
       try {
@@ -99,6 +126,32 @@ export function attachWebSocketServer(server: HttpServer) {
           state.presence = null;
           broadcastPresenceSync();
         }
+
+        // A user started breathing — store their seed + origin so garden-mates
+        // can follow the same photo order, and tell everyone.
+        if (msg.type === "cobreathe-start" && msg.payload) {
+          const p = msg.payload as Partial<CobreatheSession>;
+          if (
+            typeof p.userId === "number" &&
+            typeof p.email === "string" &&
+            typeof p.startEpochMs === "number" &&
+            typeof p.masterSeed === "number" &&
+            typeof p.fingerprint === "string"
+          ) {
+            cobreatheSessions.set(ws, {
+              userId: p.userId,
+              email: p.email,
+              startEpochMs: p.startEpochMs,
+              masterSeed: p.masterSeed,
+              fingerprint: p.fingerprint,
+            });
+            broadcastCobreatheSync();
+          }
+        }
+
+        if (msg.type === "cobreathe-stop") {
+          if (cobreatheSessions.delete(ws)) broadcastCobreatheSync();
+        }
       } catch {
         // ignore malformed messages
       }
@@ -106,14 +159,22 @@ export function attachWebSocketServer(server: HttpServer) {
 
     ws.on("close", () => {
       const hadPresence = state.presence !== null;
+      const hadCobreathe = cobreatheSessions.delete(ws);
       clients.delete(ws);
       if (hadPresence) {
         broadcastPresenceSync();
       }
+      if (hadCobreathe) {
+        broadcastCobreatheSync();
+      }
     });
 
     ws.on("error", () => {
+      const hadCobreathe = cobreatheSessions.delete(ws);
       clients.delete(ws);
+      if (hadCobreathe) {
+        broadcastCobreatheSync();
+      }
     });
   });
 

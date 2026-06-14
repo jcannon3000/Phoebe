@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { playOpeningSwell, primeAudio } from "@/lib/amenFeedback";
+import { buildCanonical, photoForGlobalIndex, randomSeed, type Canonical } from "@/lib/cobreatheOrder";
 
 // ── CobreatheBreath ─────────────────────────────────────────────────────────
 //
@@ -99,20 +100,29 @@ const FIELD_LIVE = "#0B2014";         // live — a touch lighter/greener
 // The world turns between these three globes — one per breath cycle.
 const GLOBES = ["🌍", "🌎", "🌏"] as const;
 
-// The breath always opens on this one calm image (the rest of the library is
-// shuffled in behind it). Matched by filename stem so it survives Vite hashing.
-const FIRST_PHOTO_KEY = "photo-1589648751789";
+// Breath-progress ring around the globe: it sweeps clockwise from the top,
+// filling over each phase — a LIGHTER green while breathing IN, a DARKER green
+// while breathing OUT. Resets to empty at every phase boundary.
+const RING_IN = "#86C79B";   // inhale — lighter green
+const RING_OUT = "#2E6B40";  // exhale — darker green
+// Vertical centre of the breath cluster (glow + globe + ring) — lowered toward
+// the bottom third of the screen so the breath sits low and there's room above.
+const BREATH_Y = "63%";
+const RING_R = 47;           // ring radius (px) — wraps the 72px globe
+const RING_CIRC = 2 * Math.PI * RING_R;
 
-// Fisher–Yates shuffle — used to put the photo library in a fresh order each
-// session so the same faces and places don't arrive in the same sequence twice.
-function shuffle<T>(input: readonly T[]): T[] {
-  const arr = input.slice();
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
+// The bundled photo library — every image under src/assets/cobreathe is glob-
+// imported here so the breath ALWAYS has pictures, no matter which surface
+// launches it (the /cobreathe page OR the office/devotion slideshow overlay).
+// Callers may still pass their own `photos`, but when they don't we fall back
+// to this so the world never breathes on an empty green field.
+const DEFAULT_PHOTOS = Object.values(
+  import.meta.glob("@/assets/cobreathe/*.{jpg,jpeg,png,avif,webp}", {
+    eager: true,
+    query: "?url",
+    import: "default",
+  }),
+) as string[];
 
 export function CobreatheBreath({
   onReachTarget,
@@ -122,6 +132,9 @@ export function CobreatheBreath({
   todayCount,
   backgroundImage,
   photos,
+  followSeed,
+  followStartEpochMs,
+  onLeading,
 }: {
   // Fired ONCE, when the target number of breaths has been kept. The breath
   // does NOT stop here — people can keep breathing as long as they like.
@@ -145,6 +158,17 @@ export function CobreatheBreath({
   // set is shuffled once per session and rotated through, one photo per breath.
   // No captions: the images speak for themselves.
   photos?: string[];
+  // ── Synchronized photos (optional) ────────────────────────────────────────
+  // When breathing alongside a garden-mate, the /cobreathe page elects a leader
+  // and passes the leader's photo seed + count origin so this session shows the
+  // SAME photo at the same moment — after its own opening photo. Absent → solo:
+  // our own random seed drives the order. See useCobreatheSync + cobreatheOrder.
+  followSeed?: number;
+  followStartEpochMs?: number;
+  // Fired once, when counting begins and we were NOT handed a leader to follow —
+  // i.e. we ARE the leader. The page broadcasts our seed + origin so garden-mates
+  // can sync to us.
+  onLeading?: (info: { startEpochMs: number; masterSeed: number }) => void;
 }) {
   const { t } = useTranslation();
   // The breath is a single solid green circle that swells on the inhale and
@@ -153,6 +177,10 @@ export function CobreatheBreath({
   const circleRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<HTMLDivElement>(null);
+  // Two breath rings: the lighter one fills on the inhale and HOLDS full through
+  // the exhale; the darker one sweeps over the lighter on the exhale.
+  const ringInRef = useRef<SVGCircleElement>(null);
+  const ringOutRef = useRef<SVGCircleElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
   // Two stacked photo layers that crossfade, plus a group wrapper whose opacity
   // breathes with the cycle. The rAF loop ping-pongs between A and B: each breath
@@ -166,18 +194,35 @@ export function CobreatheBreath({
   const photoBRef = useRef<HTMLImageElement>(null);
   const photoLastIdxRef = useRef<number>(-1);
   const photoPreloadedRef = useRef<number>(-1);
-  // The photo library, shuffled once per session (stable across re-renders).
-  // We rotate through it one photo per breath; the rAF loop fades the current
-  // photo up on the inhale and down on the exhale.
-  const photoOrderRef = useRef<string[]>([]);
-  if (photoOrderRef.current.length === 0 && photos && photos.length > 0) {
-    const shuffled = shuffle(photos);
-    // Pin the opening image to the front; the rest stay shuffled behind it.
-    const firstIdx = shuffled.findIndex((u) => u.includes(FIRST_PHOTO_KEY));
-    if (firstIdx > 0) shuffled.unshift(shuffled.splice(firstIdx, 1)[0]);
-    photoOrderRef.current = shuffled;
+  // Fall back to the bundled library when no caller passes photos, so the
+  // breath always has pictures (the office/devotion overlay passes none).
+  const photoLibrary = photos && photos.length > 0 ? photos : DEFAULT_PHOTOS;
+  // Canonical (stem-sorted) photo split, built once. The order shown is derived
+  // DETERMINISTICALLY from a seed — ours when leading/solo, the leader's when
+  // following — so garden-mates can see the very same sequence without exchanging
+  // the list. See @/lib/cobreatheOrder and useCobreatheSync.
+  const canonicalRef = useRef<Canonical | null>(null);
+  if (canonicalRef.current === null && photoLibrary.length > 0) {
+    canonicalRef.current = buildCanonical(photoLibrary);
   }
-  const photoOrder = photoOrderRef.current;
+  const hasPhotos = photoLibrary.length > 0;
+  // Our own random seed — used when we're the leader or breathing solo.
+  const ownSeedRef = useRef<number>(randomSeed());
+  // Live mirror of the follow props until counting begins, then FROZEN so a
+  // leader arriving or leaving mid-session never reroutes our plan (the freeze +
+  // leader announcement happen in the slow tick below).
+  const followSeedRef = useRef<number | null>(followSeed ?? null);
+  const followStartRef = useRef<number | null>(followStartEpochMs ?? null);
+  const frozenRef = useRef(false);
+  const leadAnnouncedRef = useRef(false);
+  const onLeadingRef = useRef(onLeading);
+  onLeadingRef.current = onLeading;
+  // Mirror the follow props into refs (read live by the rAF loop) until frozen.
+  useEffect(() => {
+    if (frozenRef.current) return;
+    followSeedRef.current = followSeed ?? null;
+    followStartRef.current = followStartEpochMs ?? null;
+  }, [followSeed, followStartEpochMs]);
 
   // Prime the audio subsystem on mount so the per-breath swell tones sound. (No
   // fade-in: the scene is held still at rest until synced, so nothing flashes.)
@@ -271,20 +316,34 @@ export function CobreatheBreath({
       // two layers ping-pong: the incoming photo fades IN over the outgoing at
       // the breath boundary (a crossfade, never a hard cut), and each photo
       // slowly pushes in (scale 1 → 1+ZOOM) the entire time it's shown.
-      const order = photoOrderRef.current;
-      if (order.length > 0) {
+      const canonical = canonicalRef.current;
+      if (canonical && (canonical.opening || canonical.rest.length > 0)) {
         const ZOOM = 0.10;          // total scale push per photo while shown
-        const idx = isCounting
+        // Our own breath index since counting began.
+        const localIdx = isCounting
           ? Math.max(0, Math.floor((now - countStartRef.current) / CYCLE_MS))
           : 0;
+        // Following a garden-mate? Show our OWN opening photo for the first
+        // counted breath, then snap to the photo the LEADER is currently on
+        // (derived from their start origin) so we advance in lockstep. Solo /
+        // leader: our own seed, our own index. (Refs so the rAF loop reads the
+        // live value; frozen once counting begins — see the slow tick.)
+        const fSeed = followSeedRef.current;
+        const fStart = followStartRef.current;
+        const following = fSeed !== null && fStart !== null;
+        const seed = following ? (fSeed as number) : ownSeedRef.current;
+        const idx = following
+          ? (localIdx === 0 ? 0 : Math.max(1, Math.floor((now - (fStart as number)) / CYCLE_MS)))
+          : localIdx;
         const a = photoARef.current;
         const b = photoBRef.current;
         // New breath: the incoming layer was preloaded last cycle; make sure it
-        // holds the right photo (covers the very first breath, where it wasn't).
+        // holds the right photo (covers the very first breath, where it wasn't,
+        // and the follower's snap from its opening photo to the leader's).
         if (idx !== photoLastIdxRef.current) {
           photoLastIdxRef.current = idx;
           const incoming = (idx % 2 === 0) ? a : b;
-          const url = order[idx % order.length];
+          const url = photoForGlobalIndex(canonical, seed, idx);
           if (incoming && incoming.getAttribute("src") !== url) incoming.src = url;
           photoPreloadedRef.current = -1;
         }
@@ -305,15 +364,16 @@ export function CobreatheBreath({
           prevEl.style.opacity = "0";
           prevEl.style.zIndex = "1";
         }
-        // The group breathes with the lungs: fully faded DOWN at the bottom of
-        // every breath (and at the start, before sync), rising only to ~0.72 at
-        // the top of the inhale — so each photo dips all the way out each cycle
-        // but never blasts to full brightness.
-        if (photoGroupRef.current) photoGroupRef.current.style.opacity = (pAnim * 0.72).toFixed(4);
+        // The group breathes with the lungs: fully faded DOWN to 0 at the bottom
+        // of every breath (and before sync), rising to a gentle ~0.55 peak at
+        // the top of the inhale. The slight ease (pAnim^1.25) pulls the lower
+        // range down faster so the photo is truly GONE at the bottom of the
+        // exhale — no lingering as the next one rises.
+        if (photoGroupRef.current) photoGroupRef.current.style.opacity = (Math.pow(pAnim, 1.25) * 0.55).toFixed(4);
         // Preload the NEXT photo onto the now-hidden previous layer so it's
         // decoded before its turn (it becomes the active layer next breath).
         if (photoPreloadedRef.current !== idx && prevEl) {
-          const nextUrl = order[(idx + 1) % order.length];
+          const nextUrl = photoForGlobalIndex(canonical, seed, idx + 1);
           if (prevEl.getAttribute("src") !== nextUrl) prevEl.src = nextUrl;
           photoPreloadedRef.current = idx;
         }
@@ -327,6 +387,17 @@ export function CobreatheBreath({
         const f = pos < INHALE_MS ? pos / INHALE_MS : (pos - INHALE_MS) / EXHALE_MS;
         labelRef.current.style.opacity = isCounting ? Math.sin(Math.PI * f).toFixed(4) : "1";
         labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;
+      }
+      // Breath-progress rings. The LIGHTER ring fills clockwise over the inhale
+      // and HOLDS full through the exhale; the DARKER ring then sweeps over it
+      // (on top) as you breathe out. Both reset to empty at the start of the
+      // next inhale (and before sync).
+      {
+        const inhale = pos < INHALE_MS;
+        const fIn = isCounting ? (inhale ? pos / INHALE_MS : 1) : 0;
+        const fOut = isCounting ? (inhale ? 0 : (pos - INHALE_MS) / EXHALE_MS) : 0;
+        if (ringInRef.current) ringInRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fIn)).toFixed(2);
+        if (ringOutRef.current) ringOutRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fOut)).toFixed(2);
       }
       raf = requestAnimationFrame(loop);
     };
@@ -348,6 +419,16 @@ export function CobreatheBreath({
       //     on resume.
       const gap = lastTickRef.current ? now - lastTickRef.current : 0;
       lastTickRef.current = now;
+      // First counted tick freezes our role: if no leader was supplied by now,
+      // WE lead this session — announce our seed + origin so garden-mates can
+      // follow. Frozen so a leader arriving/leaving later never reroutes us.
+      if (!frozenRef.current && now - countStartRef.current >= 0) {
+        frozenRef.current = true;
+        if (followSeedRef.current === null && !leadAnnouncedRef.current) {
+          leadAnnouncedRef.current = true;
+          onLeadingRef.current?.({ startEpochMs: countStartRef.current, masterSeed: ownSeedRef.current });
+        }
+      }
       if (!reachedRef.current &&
           ((typeof document !== "undefined" && document.hidden) || gap > 1500)) {
         invalidRef.current = true;
@@ -426,7 +507,6 @@ export function CobreatheBreath({
   const completed = counting ? Math.floor(sinceCount / CYCLE_MS) : 0;
   const breathNum = completed + 1;
   const reachedNow = counting && completed >= totalBreaths;
-  const hasPhotos = photoOrder.length > 0;
   const intention = counting ? INTENTIONS[(breathNum - 1) % INTENTIONS.length] : null;
 
   // Soft sage tones that sit calmly on the deep-green field.
@@ -469,7 +549,7 @@ export function CobreatheBreath({
         <div
           ref={ringRef}
           style={{
-            position: "absolute", top: "50%", left: "50%",
+            position: "absolute", top: BREATH_Y, left: "50%",
             width: CIRCLE_BASE, height: CIRCLE_BASE, borderRadius: "50%",
             background: HALO,
             transform: "translate(-50%, -50%) scale(1)",
@@ -480,7 +560,7 @@ export function CobreatheBreath({
         <div
           ref={circleRef}
           style={{
-            position: "absolute", top: "50%", left: "50%",
+            position: "absolute", top: BREATH_Y, left: "50%",
             width: CIRCLE_BASE, height: CIRCLE_BASE, borderRadius: "50%",
             background: GLOW,
             transform: "translate(-50%, -50%) scale(1)",
@@ -499,7 +579,18 @@ export function CobreatheBreath({
           and text legible. No captions — the images speak for themselves. */}
       {hasPhotos && (
         <div aria-hidden="true" style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
-          <div ref={photoGroupRef} style={{ position: "absolute", inset: 0, willChange: "opacity" }}>
+          <div
+            ref={photoGroupRef}
+            style={{
+              position: "absolute", inset: 0, willChange: "opacity",
+              // Gentle ramp-down over the bottom 30% (behind the "Breathe Out"
+              // word + counter) — a little reduction, not all the way — so the
+              // lower edge of the photo recedes rather than reading as a hard
+              // band of imagery under the text.
+              WebkitMaskImage: "linear-gradient(to bottom, #000 70%, rgba(0,0,0,0.55) 100%)",
+              maskImage: "linear-gradient(to bottom, #000 70%, rgba(0,0,0,0.55) 100%)",
+            }}
+          >
             <img
               ref={photoARef}
               alt=""
@@ -531,6 +622,37 @@ export function CobreatheBreath({
         </div>
       )}
 
+      {/* Breath-progress rings around the globe — both sweep clockwise from the
+          top. The LIGHTER ring fills on the inhale and holds full through the
+          exhale; the DARKER ring sweeps over it on the breath out. A faint track
+          sits under both. */}
+      <svg
+        aria-hidden="true"
+        width={110} height={110} viewBox="0 0 110 110"
+        style={{
+          position: "absolute", top: BREATH_Y, left: "50%",
+          transform: "translate(-50%, -50%) rotate(-90deg)",
+          zIndex: 2, pointerEvents: "none",
+          filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))",
+        }}
+      >
+        <circle cx={55} cy={55} r={RING_R} fill="none" stroke="rgba(143,175,150,0.14)" strokeWidth={4} />
+        {/* lighter — inhale (fills, then holds) */}
+        <circle
+          ref={ringInRef}
+          cx={55} cy={55} r={RING_R}
+          fill="none" stroke={RING_IN} strokeWidth={4} strokeLinecap="round"
+          style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }}
+        />
+        {/* darker — exhale, drawn ON TOP of the lighter ring */}
+        <circle
+          ref={ringOutRef}
+          cx={55} cy={55} r={RING_R}
+          fill="none" stroke={RING_OUT} strokeWidth={4} strokeLinecap="round"
+          style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }}
+        />
+      </svg>
+
       {/* The world at the centre of the breath — turning between the three
           globes (one per second), sitting in the middle over the photo
           background and the glow. Steady size — it doesn't breathe. */}
@@ -538,7 +660,7 @@ export function CobreatheBreath({
         ref={globeRef}
         aria-hidden="true"
         style={{
-          position: "absolute", top: "50%", left: "50%",
+          position: "absolute", top: BREATH_Y, left: "50%",
           transform: "translate(-50%, -50%)",
           fontSize: 72, lineHeight: 1, pointerEvents: "none", zIndex: 2,
           filter: "drop-shadow(0 3px 14px rgba(8,30,18,0.6))",
@@ -588,9 +710,9 @@ export function CobreatheBreath({
       <div
         className="flex flex-col items-center"
         style={{
-          position: "absolute", left: "50%", top: "50%",
+          position: "absolute", left: "50%", top: BREATH_Y,
           transform: "translate(-50%, 0)",
-          marginTop: CIRCLE_BASE * 0.78, zIndex: 2,
+          marginTop: CIRCLE_BASE * 0.46, zIndex: 2,
         }}
       >
         <div ref={labelRef} style={{ willChange: "transform, opacity" }}>

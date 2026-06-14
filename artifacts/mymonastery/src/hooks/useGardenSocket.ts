@@ -57,13 +57,15 @@ function ensureSocket() {
   };
 }
 
-function sendMessage(msg: Record<string, unknown>) {
+// Exported so other socket hooks (e.g. useCobreatheSync) share this ONE
+// singleton connection instead of opening their own.
+export function sendMessage(msg: Record<string, unknown>) {
   if (sharedSocket?.readyState === WebSocket.OPEN) {
     sharedSocket.send(JSON.stringify(msg));
   }
 }
 
-function subscribe(handler: MessageHandler) {
+export function subscribe(handler: MessageHandler) {
   handlers.add(handler);
   ensureSocket();
   return () => {
