@@ -134,7 +134,7 @@ export function CobreatheBreath({
   photos,
   followSeed,
   followStartEpochMs,
-  onLeading,
+  onSession,
 }: {
   // Fired ONCE, when the target number of breaths has been kept. The breath
   // does NOT stop here — people can keep breathing as long as they like.
@@ -165,10 +165,12 @@ export function CobreatheBreath({
   // our own random seed drives the order. See useCobreatheSync + cobreatheOrder.
   followSeed?: number;
   followStartEpochMs?: number;
-  // Fired once, when counting begins and we were NOT handed a leader to follow —
-  // i.e. we ARE the leader. The page broadcasts our seed + origin so garden-mates
-  // can sync to us.
-  onLeading?: (info: { startEpochMs: number; masterSeed: number }) => void;
+  // Fired once, when counting begins, with the photo plan this breath is running:
+  // our own {origin, seed} when leading/solo, or the LEADER's when following. The
+  // page broadcasts it either way, so followers re-advertise the leader's plan —
+  // that keeps the chain alive when the original leader leaves (those following us
+  // keep flowing, and new joiners can still pick up the same plan from us).
+  onSession?: (info: { startEpochMs: number; masterSeed: number }) => void;
 }) {
   const { t } = useTranslation();
   // The breath is a single solid green circle that swells on the inhale and
@@ -214,9 +216,9 @@ export function CobreatheBreath({
   const followSeedRef = useRef<number | null>(followSeed ?? null);
   const followStartRef = useRef<number | null>(followStartEpochMs ?? null);
   const frozenRef = useRef(false);
-  const leadAnnouncedRef = useRef(false);
-  const onLeadingRef = useRef(onLeading);
-  onLeadingRef.current = onLeading;
+  const sessionAnnouncedRef = useRef(false);
+  const onSessionRef = useRef(onSession);
+  onSessionRef.current = onSession;
   // Mirror the follow props into refs (read live by the rAF loop) until frozen.
   useEffect(() => {
     if (frozenRef.current) return;
@@ -419,14 +421,21 @@ export function CobreatheBreath({
       //     on resume.
       const gap = lastTickRef.current ? now - lastTickRef.current : 0;
       lastTickRef.current = now;
-      // First counted tick freezes our role: if no leader was supplied by now,
-      // WE lead this session — announce our seed + origin so garden-mates can
-      // follow. Frozen so a leader arriving/leaving later never reroutes us.
+      // First counted tick freezes our role and announces the plan we're running:
+      // the LEADER's {origin, seed} if we were handed one to follow, otherwise our
+      // OWN. Followers re-advertise the leader's plan so it survives the leader
+      // leaving and new joiners can still pick it up from us. Frozen so a leader
+      // arriving/leaving later never reroutes us.
       if (!frozenRef.current && now - countStartRef.current >= 0) {
         frozenRef.current = true;
-        if (followSeedRef.current === null && !leadAnnouncedRef.current) {
-          leadAnnouncedRef.current = true;
-          onLeadingRef.current?.({ startEpochMs: countStartRef.current, masterSeed: ownSeedRef.current });
+        if (!sessionAnnouncedRef.current) {
+          sessionAnnouncedRef.current = true;
+          const fSeed = followSeedRef.current;
+          const fStart = followStartRef.current;
+          const plan = fSeed !== null && fStart !== null
+            ? { startEpochMs: fStart, masterSeed: fSeed }
+            : { startEpochMs: countStartRef.current, masterSeed: ownSeedRef.current };
+          onSessionRef.current?.(plan);
         }
       }
       if (!reachedRef.current &&
@@ -439,11 +448,11 @@ export function CobreatheBreath({
       // time — a backgrounded tab/app that "completed" the count doesn't count.
       if (!reachedRef.current && !invalidRef.current && completed >= totalBreaths) {
         reachedRef.current = true;
-        // The payoff when all twelve breaths are kept: a big celebration swell
-        // haptic (crescendo → hold → fade) paired with Phoebe's swell tone — a
-        // richer moment than the soft per-breath taps.
+        // The payoff when all twelve breaths are kept: a GENTLE swell haptic
+        // (soft rise-and-fall, no jolts) paired with Phoebe's swell tone — a calm
+        // exhale of a moment, not a buzz. See `breath-complete` in native-shell.
         try {
-          window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "celebration" } }));
+          window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "breath-complete" } }));
         } catch { /* no native shell on web — silent */ }
         try { playOpeningSwell(); } catch { /* audio locked — non-fatal */ }
         onReachTarget?.(Math.round((now - startRef.current) / 1000));
@@ -661,7 +670,7 @@ export function CobreatheBreath({
         aria-hidden="true"
         style={{
           position: "absolute", top: BREATH_Y, left: "50%",
-          transform: "translate(-50%, -50%)",
+          transform: "translate(-50%, calc(-50% + 4px))",
           fontSize: 72, lineHeight: 1, pointerEvents: "none", zIndex: 2,
           filter: "drop-shadow(0 3px 14px rgba(8,30,18,0.6))",
         }}
@@ -712,7 +721,7 @@ export function CobreatheBreath({
         style={{
           position: "absolute", left: "50%", top: BREATH_Y,
           transform: "translate(-50%, 0)",
-          marginTop: CIRCLE_BASE * 0.46, zIndex: 2,
+          marginTop: CIRCLE_BASE * 0.46 - 4, zIndex: 2,
         }}
       >
         <div ref={labelRef} style={{ willChange: "transform, opacity" }}>

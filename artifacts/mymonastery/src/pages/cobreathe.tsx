@@ -246,7 +246,7 @@ export default function CobreathePage() {
         photos={COBREATHE_PHOTOS}
         followSeed={breathSync.leader?.masterSeed}
         followStartEpochMs={breathSync.leader?.startEpochMs}
-        onLeading={(info) => breathSync.becomeLeader(info.startEpochMs, info.masterSeed)}
+        onSession={(info) => breathSync.announceSession(info.startEpochMs, info.masterSeed)}
       />
     );
   }

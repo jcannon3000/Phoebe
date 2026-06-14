@@ -597,6 +597,47 @@ function fireSustainedRumble() {
   sustainedInterval = window.setInterval(tick, TICK_MS);
 }
 
+// A GENTLE swell — much smoother than `celebration`: no sharp opening "success"
+// double-tap, no Heavy jolts, no hard Light→Medium→Heavy steps. Instead a soft
+// rise-and-fall felt through DENSITY: uniform Light taps whose spacing eases from
+// sparse (150ms) at the edges to dense (55ms) at the peak, on a cosine envelope,
+// with a whisper of Medium only at the very top. Used for the Cobreathe "you kept
+// all twelve breaths" payoff, which wants to feel like a calm exhale, not a buzz.
+let smoothSwellTimer: number | null = null;
+function fireSmoothSwell() {
+  if (smoothSwellTimer !== null) {
+    window.clearTimeout(smoothSwellTimer);
+    smoothSwellTimer = null;
+  }
+  const IN_MS = 1800;   // gentle rise
+  const HOLD_MS = 700;  // brief peak
+  const OUT_MS = 2200;  // long, soft fall
+  const TOTAL_MS = IN_MS + HOLD_MS + OUT_MS;
+  const started = Date.now();
+  // Cosine-eased amplitude 0→1→0 (no abrupt edges).
+  const amplitude = (e: number): number => {
+    if (e < IN_MS) return (1 - Math.cos(Math.PI * (e / IN_MS))) / 2;
+    if (e < IN_MS + HOLD_MS) return 1;
+    const t = Math.min(1, (e - IN_MS - HOLD_MS) / OUT_MS);
+    return (1 + Math.cos(Math.PI * t)) / 2;
+  };
+  const step = () => {
+    const e = Date.now() - started;
+    if (e >= TOTAL_MS) {
+      smoothSwellTimer = null;
+      return;
+    }
+    const a = amplitude(e);
+    // Mostly Light; only a touch of Medium right at the crest. No Heavy.
+    const style = a > 0.9 ? ImpactStyle.Medium : ImpactStyle.Light;
+    Haptics.impact({ style }).catch(() => {});
+    // Spacing carries the swell: 150ms (quiet edges) → 55ms (dense peak).
+    const interval = 150 - (150 - 55) * a;
+    smoothSwellTimer = window.setTimeout(step, interval);
+  };
+  step();
+}
+
 function wireHaptics() {
   window.addEventListener("phoebe:haptic", e => {
     const detail = (e as CustomEvent).detail as { style?: string } | undefined;
@@ -605,6 +646,9 @@ function wireHaptics() {
       switch (s) {
         case "celebration":
           fireCelebrationRumble();
+          break;
+        case "breath-complete":
+          fireSmoothSwell();
           break;
         case "sustained":
           fireSustainedRumble();

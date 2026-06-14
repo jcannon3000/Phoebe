@@ -112,8 +112,11 @@ export function useCobreatheSync(
     if (enabled) setLeader(elect(sessionsRef.current));
   }, [enabled, gardenKey, fingerprint, elect]);
 
-  // Called by CobreatheBreath's onLeading when this client is the leader.
-  const becomeLeader = useCallback(
+  // Called by CobreatheBreath's onSession at count-begin with the plan we're
+  // running — our own when leading/solo, or the leader's when following. Either
+  // way we advertise it, so a follower re-broadcasts the leader's plan and the
+  // chain survives the original leader leaving.
+  const announceSession = useCallback(
     (startEpochMs: number, masterSeed: number) => {
       const u = userRef.current;
       if (!enabled || !u) return;
@@ -137,5 +140,5 @@ export function useCobreatheSync(
     }
   }, []);
 
-  return { leader, becomeLeader, stop };
+  return { leader, announceSession, stop };
 }
