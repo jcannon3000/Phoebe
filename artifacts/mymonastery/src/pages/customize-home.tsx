@@ -373,24 +373,35 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
                   </p>
                   <p className="text-[12px]" style={{ color: SAGE, margin: "2px 0 0" }}>{meta.sub}</p>
                 </div>
-                {/* Remove — stop-propagation on pointer-down prevents drag start. */}
-                <button
-                  type="button"
-                  aria-label={`Remove ${meta.label}`}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={() => removeCard(key)}
-                  className="transition-opacity hover:opacity-80 rounded-full flex items-center justify-center"
-                  style={{
-                    color: "rgba(143,175,150,0.7)",
-                    background: "rgba(143,175,150,0.10)",
-                    border: "1px solid rgba(143,175,150,0.20)",
-                    cursor: "pointer",
-                    padding: 5,
-                    flexShrink: 0,
-                  }}
-                >
-                  <X size={14} />
-                </button>
+                {/* Remove — stop-propagation on pointer-down prevents drag start.
+                    Disabled (visibly) on the last remaining card: you must keep
+                    at least one panel besides the pinned ones, so the X would
+                    otherwise look tappable but silently do nothing. */}
+                {(() => {
+                  const cannotRemove = visibleMovable.length <= 1;
+                  return (
+                    <button
+                      type="button"
+                      aria-label={cannotRemove ? `Keep at least one card on your home` : `Remove ${meta.label}`}
+                      title={cannotRemove ? t("customize_home.keep_one", { defaultValue: "Keep at least one card on your home" }) : undefined}
+                      disabled={cannotRemove}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={() => removeCard(key)}
+                      className="transition-opacity rounded-full flex items-center justify-center"
+                      style={{
+                        color: "rgba(143,175,150,0.7)",
+                        background: "rgba(143,175,150,0.10)",
+                        border: "1px solid rgba(143,175,150,0.20)",
+                        cursor: cannotRemove ? "not-allowed" : "pointer",
+                        opacity: cannotRemove ? 0.4 : 1,
+                        padding: 5,
+                        flexShrink: 0,
+                      }}
+                    >
+                      <X size={14} />
+                    </button>
+                  );
+                })()}
               </Reorder.Item>
             );
           })}

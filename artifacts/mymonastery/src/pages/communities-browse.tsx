@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
+import { useToast } from "@/hooks/use-toast";
 
 interface PublicGroup {
   id: number;
@@ -30,6 +31,7 @@ export default function CommunitiesBrowsePage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
@@ -54,7 +56,22 @@ export default function CommunitiesBrowsePage() {
       // they can see the "Pending" pill flip on the card.
       if (result.status === "already_member" && result.groupSlug) {
         setLocation(`/communities/${result.groupSlug}`);
+        return;
       }
+      // Confirm the request landed — otherwise the only signal is the pill
+      // quietly flipping to "Pending" after the refetch, which reads as nothing
+      // happened on a slow connection.
+      toast({
+        title: t("communities_browse.request_sent", { defaultValue: "Request sent" }),
+        description: t("communities_browse.request_sent_sub", { defaultValue: "The community's admin will review it. You'll be notified when you're in." }),
+      });
+    },
+    onError: () => {
+      toast({
+        title: t("communities_browse.request_failed", { defaultValue: "Couldn't send your request" }),
+        description: t("communities_browse.request_failed_sub", { defaultValue: "Please check your connection and try again." }),
+        variant: "destructive",
+      });
     },
   });
 

@@ -86,9 +86,11 @@ export default function ExamenPage() {
     >
       {/* Top bar — back exits to the offices picker, the same place
           the Examen is reached from. On a movement slide, Back steps
-          one movement instead of leaving. */}
+          one movement instead of leaving, so a discreet ✕ on the right
+          always offers a one-tap exit (no need to step back through each
+          movement to escape). */}
       <header
-        className="px-5 pb-2"
+        className="px-5 pb-2 flex items-center justify-between"
         style={{ paddingTop: "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))" }}
       >
         <button
@@ -109,6 +111,21 @@ export default function ExamenPage() {
         >
           {t("examen.back")}
         </button>
+        {step > 0 && step < 6 && (
+          <button
+            type="button"
+            onClick={() => setLocation("/offices")}
+            aria-label={t("examen.exit", { defaultValue: "Exit" })}
+            className="flex items-center justify-center rounded-full"
+            style={{
+              width: 32, height: 32, background: "rgba(46,107,64,0.16)",
+              border: "1px solid rgba(46,107,64,0.32)", color: "rgba(200,212,192,0.85)",
+              fontSize: 17, lineHeight: 1, cursor: "pointer",
+            }}
+          >
+            ×
+          </button>
+        )}
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center px-6 pb-12">

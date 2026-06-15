@@ -113,7 +113,10 @@ export default function PrayerChooserPage() {
       sub: t("chooser.bcp_sub"),
       badge: t("chooser.badge_15_20"),
       verb: verbFor(officeStateLocal),
-      href: `/bcp/daily-office?mode=${encodeURIComponent(officeMode)}${officeStateLocal.kind === "done" ? "&reset=1" : ""}`,
+      // picked=1 — the user is choosing the office from this chooser, so the
+      // viewer drops its alternate-route "way to pray" dropdowns (matches the
+      // devotion card above).
+      href: `/bcp/daily-office?mode=${encodeURIComponent(officeMode)}&picked=1${officeStateLocal.kind === "done" ? "&reset=1" : ""}`,
     },
   ];
 

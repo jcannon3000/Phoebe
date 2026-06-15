@@ -35,8 +35,29 @@ export function ShareStudyToGroup({ title, body }: { title: string; body: string
     onSuccess: () => { setDone(true); setOpen(false); },
   });
 
-  // Nothing to share to, or the study is empty.
-  if (jardinGroups.length === 0 || !body.trim()) return null;
+  // The study is empty — nothing to share yet.
+  if (!body.trim()) return null;
+
+  // No Jardín group to share into — show a disabled affordance that explains
+  // how to unlock sharing, instead of silently rendering nothing (which left
+  // users with no idea the feature existed).
+  if (jardinGroups.length === 0) {
+    return (
+      <div className="mt-3">
+        <button
+          type="button"
+          disabled
+          className="w-full rounded-xl py-2.5 text-sm font-semibold"
+          style={{ background: "transparent", color: "rgba(143,175,150,0.5)", border: "1px solid rgba(46,107,64,0.2)", fontFamily: FONT, cursor: "not-allowed" }}
+        >
+          📤 {t("jardin.share_to_group")}
+        </button>
+        <p className="text-center text-[12px] mt-1.5" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>
+          {t("jardin.share_needs_group", { defaultValue: "Join or create a Jardín group to share your studies." })}
+        </p>
+      </div>
+    );
+  }
 
   if (done) {
     return <p className="text-center text-[13px] mt-3" style={{ color: SAGE, fontFamily: FONT }}>{t("jardin.shared_ok")}</p>;

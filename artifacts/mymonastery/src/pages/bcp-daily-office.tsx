@@ -2686,7 +2686,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               flex: "0 0 auto",
             }}
           >
-            {slideIdx + 1} · {sectionLabel}
+            {slideIdx + 1} of {slides.length} · {sectionLabel}
           </p>
           {(() => {
             // Slide types that finish on "Amen" rather than "Next":
@@ -3552,6 +3552,10 @@ export default function BcpDailyOfficePage() {
   // True when the user picked an "In your book" row — the viewer opens
   // on the physical-book page guide instead of the slide deck.
   const [showBook, setShowBook] = useState(false);
+  // True when arriving from the way-to-pray chooser (?picked=1) — the viewer
+  // then drops its own "way to pray" dropdowns instead of asking again (the
+  // user already chose). Mirrors the daily-devotions page.
+  const [cameFromPicker, setCameFromPicker] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
@@ -3567,6 +3571,8 @@ export default function BcpDailyOfficePage() {
     if (betaLoading) return;
     const search = new URLSearchParams(window.location.search);
     const mode = search.get("mode");
+    // Came from the chooser → the viewer won't re-ask "how do you want to pray".
+    setCameFromPicker(search.get("picked") === "1");
     if (mode === "compline") {
       if (rawIsBeta) {
         setShowMode("compline");
@@ -3637,7 +3643,8 @@ export default function BcpDailyOfficePage() {
       <OfficeViewer
         mode={showMode}
         initialBook={showBook}
-        onBack={() => { setShowMode(null); setShowBook(false); }}
+        cameFromPicker={cameFromPicker}
+        onBack={() => { setShowMode(null); setShowBook(false); setCameFromPicker(false); }}
       />
     );
   }

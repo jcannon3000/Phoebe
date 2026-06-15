@@ -78,14 +78,26 @@ export default function CommunitiesPage() {
             <p className="text-sm mb-5" style={{ color: "#8FAF96" }}>
               {isBuilder ? t("communities.empty_builder") : t("communities.empty_member")}
             </p>
-            {isBuilder && (
-              <Link href="/communities/new">
+            <div className="flex flex-col items-center gap-3">
+              {isBuilder && (
+                <Link href="/communities/new">
+                  <span className="inline-flex items-center gap-1.5 px-5 py-3 rounded-xl text-sm font-semibold"
+                    style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
+                    <Plus size={16} /> {t("communities.create_community")}
+                  </span>
+                </Link>
+              )}
+              {/* Everyone gets a way to find existing communities — without this
+                  a member with no groups hit a pure dead end. */}
+              <Link href="/communities/browse">
                 <span className="inline-flex items-center gap-1.5 px-5 py-3 rounded-xl text-sm font-semibold"
-                  style={{ background: "#2D5E3F", color: "#F0EDE6" }}>
-                  <Plus size={16} /> {t("communities.create_community")}
+                  style={isBuilder
+                    ? { background: "transparent", color: "#A8C5A0", border: "1px solid rgba(46,107,64,0.4)" }
+                    : { background: "#2D5E3F", color: "#F0EDE6" }}>
+                  {t("communities.browse_communities", { defaultValue: "Browse communities" })} →
                 </span>
               </Link>
-            )}
+            </div>
           </div>
         ) : (
           <div className="space-y-2">

@@ -171,9 +171,15 @@ export function FellowsConnect({ canManage = false }: { canManage?: boolean }) {
         )}
         {native && q.trim().length < 2 && (
           contactsStage === "idle" ? (
-            <button type="button" onClick={startContacts} className="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-full py-2.5 text-[13.5px] font-semibold transition-opacity active:scale-[0.99]" style={{ color: "#A8C5A0", fontFamily: FONT }}>
-              <Users size={15} /> {t("fellows_c.from_contacts", { defaultValue: "Find from your contacts" })}
-            </button>
+            <>
+              <button type="button" onClick={startContacts} className="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-full py-2.5 text-[13.5px] font-semibold transition-opacity active:scale-[0.99]" style={{ color: "#A8C5A0", fontFamily: FONT }}>
+                <Users size={15} /> {t("fellows_c.from_contacts", { defaultValue: "Find from your contacts" })}
+              </button>
+              {/* Reassure before asking for contacts — matches the Find Friends copy. */}
+              <p className="text-[11px] text-center px-3 mt-0.5" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>
+                {t("fellows_c.contacts_privacy", { defaultValue: "Your contacts stay on your device — we only check encrypted matches, then delete them." })}
+              </p>
+            </>
           ) : contactsStage === "working" ? <p className="text-[13px] px-1 py-2 mt-1" style={{ color: SAGE, fontFamily: FONT }}>{t("fellows_c.contacts_working", { defaultValue: "Looking through your contacts…" })}</p>
           : contactsStage === "denied" ? <p className="text-[13px] px-1 py-2 mt-1" style={{ color: "#C47A65", fontFamily: FONT }}>{t("fellows_c.contacts_denied", { defaultValue: "Contacts access is off — enable it in Settings to find fellows this way." })}</p>
           : contactsStage === "error" ? <p className="text-[13px] px-1 py-2 mt-1" style={{ color: "#C47A65", fontFamily: FONT }}>{t("fellows_c.contacts_error", { defaultValue: "Couldn't read your contacts. Try again." })}</p>

@@ -30,7 +30,9 @@ export function GratitudeComposer({
   const [text, setText] = useState("");
   const [shared, setShared] = useState(false);
   const wc = words(text);
-  const valid = wc >= 5 && wc <= 50;
+  // Accept any non-empty thanks — even one word is a gift. The only ceiling is
+  // a gentle 50-word cap so it stays a quick beat, not a journal entry.
+  const valid = wc >= 1 && wc <= 50;
 
   const save = useMutation({
     mutationFn: () => apiRequest("POST", "/api/gratitude", { text: text.trim(), shared }),
@@ -66,8 +68,8 @@ export function GratitudeComposer({
       />
       <div className="flex items-center justify-between mt-2">
         <span className="text-[11px]" style={{ color: wc > 50 ? "#E8B872" : "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
-          {wc < 5
-            ? t("gratitude_composer.minimum_count", { count: wc })
+          {wc === 0
+            ? ""
             : wc > 50
               ? t("gratitude_composer.keep_under_50")
               : t("gratitude_composer.word_count", { count: wc })}

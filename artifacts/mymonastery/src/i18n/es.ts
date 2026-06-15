@@ -4478,7 +4478,7 @@ export const es: Translations = {
   find_friends: {
     back: "← Atrás",
     title: "Encuentra amigos en Phoebe",
-    blurb: "Revisaremos tus contactos contra quienes hayan agregado su número de teléfono a Phoebe. Los números nunca salen de tu dispositivo sin hashear.",
+    blurb: "Veremos cuáles de tus contactos ya están en Phoebe. Tus contactos permanecen en tu dispositivo — solo enviamos versiones cifradas (codificadas) de los números para buscar coincidencias, y las eliminamos de inmediato. Nunca guardamos tu agenda.",
     scan: "Escanear mis contactos",
     reading_contacts: "Leyendo tus contactos…",
     hashing: "Hasheando {{count}} contactos…",

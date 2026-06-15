@@ -4597,7 +4597,7 @@ export const en = {
   find_friends: {
     back: "← Back",
     title: "Find friends on Phoebe",
-    blurb: "We'll check your contacts against people who've added their phone number to Phoebe. Numbers never leave your device unhashed.",
+    blurb: "We'll see which of your contacts are already on Phoebe. Your contacts stay on your device — we only send scrambled (encrypted) versions of phone numbers to look for matches, then delete them right away. We never store your address book.",
     scan: "Scan my contacts",
     reading_contacts: "Reading your contacts…",
     hashing: "Hashing {{count}} contacts…",
