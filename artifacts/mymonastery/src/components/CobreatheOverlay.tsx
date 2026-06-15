@@ -4,7 +4,9 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { writeMindfulSession } from "@/lib/appleHealth";
-import { CobreatheBreath } from "@/components/CobreatheBreath";
+import { CobreatheBreath, DEFAULT_TOTAL_BREATHS } from "@/components/CobreatheBreath";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { addBreathsThisWeek } from "@/lib/cobreatheTally";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 
 // ── CobreatheOverlay ────────────────────────────────────────────────────────
@@ -51,6 +53,9 @@ export function CobreatheOverlay({
   // True once the user taps Continue — fades the overlay out onto the office
   // slide that onSummary already advanced to behind it.
   const [closing, setClosing] = useState(false);
+  // This week's running breath tally (per-device), shown on the summary.
+  const [weekBreaths, setWeekBreaths] = useState(0);
+  const talliedRef = useRef(false);
   // Hold the screen on through the breath (no touch input to keep it awake).
   useKeepAwake(open && phase === "breathing");
 
@@ -58,14 +63,19 @@ export function CobreatheOverlay({
   // the next office slide loads behind the overlay (ready for the fade back).
   const onSummaryRef = useRef(onSummary);
   onSummaryRef.current = onSummary;
-  useEffect(() => { if (phase === "done") onSummaryRef.current?.(); }, [phase]);
+  useEffect(() => {
+    if (phase !== "done") return;
+    onSummaryRef.current?.();
+    // Add this completed set to the week's breath tally, once.
+    if (!talliedRef.current) { talliedRef.current = true; setWeekBreaths(addBreathsThisWeek(DEFAULT_TOTAL_BREATHS)); }
+  }, [phase]);
 
   // The overlay stays mounted (prayer-mode toggles `open`), so reset to a fresh
   // breath each time it opens — otherwise reopening after a finished breath
   // lands straight on the stale "you cobreathed with N" done screen.
   const sitLoggedRef = useRef(false);
   useEffect(() => {
-    if (open) { setPhase("breathing"); setResp(null); sitLoggedRef.current = false; setClosing(false); }
+    if (open) { setPhase("breathing"); setResp(null); sitLoggedRef.current = false; setClosing(false); talliedRef.current = false; }
   }, [open]);
 
   // Log the breathed time as a contemplation sit — exactly once per open — so a
@@ -168,37 +178,41 @@ export function CobreatheOverlay({
         background: "#0A1C14",
         paddingTop: "env(safe-area-inset-top)",
         paddingBottom: "env(safe-area-inset-bottom)",
+        overflow: "hidden",
       }}
     >
-      {(
-        <div className="flex-1 flex flex-col items-center justify-center text-center px-8 max-w-xl mx-auto">
-          <div className="text-5xl mb-5">🌬️</div>
-          <h2 className="text-[1.4rem] font-bold mb-3" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-            {!resp
-              ? t("cobreathe.done_counting", { defaultValue: "Breath held" })
-              : others === 0
-                ? t("cobreathe.done_first", { defaultValue: "You are the first breath today" })
-                : t("cobreathe.done_with", { count: others, defaultValue: `You cobreathed with ${others} other ${others === 1 ? "person" : "people"}` })}
-          </h2>
-          <p className="text-[14px] leading-relaxed mb-8" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
-            {others === 0 && resp
-              ? t("cobreathe.done_first_sub", { defaultValue: "Others will join their breath to yours as the day goes on." })
-              : t("cobreathe.done_sub", { defaultValue: "Not at the same hour — but one body, one breath, held across the day." })}
-          </p>
-          <button
-            type="button"
-            onClick={() => setClosing(true)}
-            disabled={closing}
-            className="rounded-xl py-3 px-8"
-            style={{
-              background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)",
-              fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer",
-            }}
-          >
-            {t("common.continue", { defaultValue: "Continue" })}
-          </button>
-        </div>
-      )}
+      <AnimatedBackground base="#0A1C14" variant="pronounced" />
+      <div className="flex-1 flex flex-col items-center justify-center text-center px-8 max-w-xl mx-auto relative">
+        <div className="text-[46px] mb-3">🌍</div>
+        {/* Breaths this session — the headline number. */}
+        <h2 className="text-[2.1rem] font-bold leading-none mb-1.5" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+          {DEFAULT_TOTAL_BREATHS} {t("cobreathe.breaths_word", { defaultValue: "breaths" })}
+        </h2>
+        {/* Breaths so far this week, and who you breathed with today. */}
+        <p className="text-[13px] tracking-wide mb-7" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+          {weekBreaths} {t("cobreathe.breaths_this_week", { defaultValue: "breaths this week" })}
+          {others > 0 ? ` · ${t("cobreathe.summary_with_today", { defaultValue: `with ${others} ${others === 1 ? "other" : "others"} today` })}` : ""}
+        </p>
+        {/* Breathing with the planet + the climate-justice thanks. */}
+        <p className="text-[16px] leading-relaxed mb-3" style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic" }}>
+          {t("cobreathe.summary_planet", { defaultValue: "One breath, drawn with the whole creation — the forests exhaling, the seas, every lung on the planet rising and falling as one." })}
+        </p>
+        <p className="text-[14px] leading-relaxed mb-9" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
+          {t("cobreathe.summary_thanks", { defaultValue: "Thank you for praying for climate justice." })}
+        </p>
+        <button
+          type="button"
+          onClick={() => setClosing(true)}
+          disabled={closing}
+          className="rounded-xl py-3 px-8 active:scale-[0.98] transition-transform"
+          style={{
+            background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(140,195,160,0.5)",
+            fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer",
+          }}
+        >
+          {t("common.continue", { defaultValue: "Continue" })}
+        </button>
+      </div>
     </motion.div>
   );
 }
