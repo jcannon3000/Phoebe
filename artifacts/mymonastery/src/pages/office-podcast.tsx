@@ -140,9 +140,10 @@ export default function OfficePodcastPage() {
       skipHistory: true,
       hideRecommend: true,
       showHref: `/podcast/${show.apiSlug}`,
-      // When the office finishes, hand off to the closing flow (reflection /
-      // whatever the user has set after the office), same as before.
-      afterEndHref: `/prayer-mode?afterOffice=1&side=${show.side}`,
+      // When the audio office finishes, it just ends — no handoff to the
+      // intercessions slideshow + closing "who prayed with you" faces slide
+      // (removed per user direction). The listener simply lands back where they
+      // were, with the office credited (≥60% listened).
     });
   }
 

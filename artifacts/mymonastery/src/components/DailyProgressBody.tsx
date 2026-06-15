@@ -254,11 +254,15 @@ export function WeeklyGridCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick, doneCta,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   later?: boolean; laterLabel?: string;
   progress?: { current: number; goal: number };
+  /** When a DONE card should still invite action (e.g. contemplation can keep
+   *  going past its goal), this CTA replaces the plain ✓ and the card stays
+   *  tappable to `href`/`onClick`. */
+  doneCta?: string;
   /** When set, the card runs this instead of navigating to `href` — e.g. the
    *  CAC reflection opens the meditation directly in the in-app browser. */
   onClick?: () => void;
@@ -330,10 +334,21 @@ function PracticeCard({
   }
 
   const pill = done ? (
-    <span
-      className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
-      style={{ background: `rgba(${rgb},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${rgb},0.45)` }}
-    >✓</span>
+    doneCta ? (
+      // Done, but still invites more (e.g. keep sitting past the contemplation
+      // goal). A "✓ Sit again →" pill — the card stays tappable to its href.
+      <span
+        className="flex-shrink-0 inline-flex items-center gap-1 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center"
+        style={{ background: `rgba(${rgb},0.85)`, color: WARM }}
+      >
+        <span aria-hidden style={{ opacity: 0.85 }}>✓</span> {doneCta} <span aria-hidden>→</span>
+      </span>
+    ) : (
+      <span
+        className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
+        style={{ background: `rgba(${rgb},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${rgb},0.45)` }}
+      >✓</span>
+    )
   ) : waiting ? (
     <span
       className="flex-shrink-0 rounded-full text-[12px] font-medium px-3.5 py-1.5 text-center"
@@ -463,6 +478,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       title: t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
       blurb: contemplationBlurb,
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+      // Even once the goal is met (card sits under Done), keep inviting more —
+      // contemplation has no ceiling; tap to sit again past the goal.
+      doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
       progress: { current: contemplationMin, goal: contemplationGoalMin },
     },
     ...(gratitudeActive ? [{
@@ -542,6 +560,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       progress={"progress" in c ? c.progress : undefined}
       blurbCycle={"blurbCycle" in c ? c.blurbCycle : undefined}
       onClick={"onClick" in c ? c.onClick : undefined}
+      doneCta={"doneCta" in c ? c.doneCta : undefined}
     />
   );
 

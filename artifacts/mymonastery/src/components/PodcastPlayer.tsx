@@ -103,6 +103,23 @@ const OFFICE_BG_PHOTOS = Object.values(
   }),
 ) as string[];
 
+// Dedicated, hand-picked office backgrounds. Drop a file into src/assets/office/
+// whose name contains the side — e.g. fm-morning.jpg / morning.jpg for Morning
+// Prayer — and it becomes that office's fixed backdrop (overriding the random
+// Cobreathe photo). Empty/missing folder → falls back to the Cobreathe library,
+// so the build never breaks waiting on the asset.
+const OFFICE_DEDICATED_BG = import.meta.glob("@/assets/office/*.{jpg,jpeg,png,avif,webp}", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
+function dedicatedOfficeBg(side: "morning" | "evening"): string | null {
+  for (const [path, url] of Object.entries(OFFICE_DEDICATED_BG)) {
+    if (path.toLowerCase().includes(side)) return url;
+  }
+  return null;
+}
+
 // Stable per-episode photo pick — a small string hash so the same office on
 // the same day always shows the same image (no flicker across re-renders) but
 // different episodes/sides get different photos.
@@ -126,6 +143,14 @@ function IconX() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M6 6 18 18M18 6 6 18" />
+    </svg>
+  );
+}
+// Minimize-to-mini-bar chevron (the office player's top-left affordance).
+function IconChevronDown() {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M6 9 12 15 18 9" />
     </svg>
   );
 }
@@ -754,12 +779,22 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // When the now-playing episode is a daily office, choose a stable landscape
   // photo from the library and sample a dark solid colour from it for the
   // gradient + the "additional background" the photo melts into.
-  const isOffice = !!current?.showSlug?.startsWith("office-");
+  // Office regardless of launch path (the office launcher's "office-morning" OR
+  // the Audio library's "morning-office").
+  const officeSide = officeSideFromSlug(current?.showSlug) ?? current?.creditMode ?? null;
+  const isOffice = officeSide !== null;
   const officeBg = useMemo(() => {
-    if (!isOffice || OFFICE_BG_PHOTOS.length === 0) return null;
+    if (!isOffice) return null;
+    // A hand-picked background for this side (e.g. fm-morning.jpg) wins; else a
+    // stable random Cobreathe photo.
+    if (officeSide) {
+      const dedicated = dedicatedOfficeBg(officeSide);
+      if (dedicated) return dedicated;
+    }
+    if (OFFICE_BG_PHOTOS.length === 0) return null;
     const seed = current?.episodeId || current?.showSlug || "office";
     return OFFICE_BG_PHOTOS[hashStr(seed) % OFFICE_BG_PHOTOS.length];
-  }, [isOffice, current?.episodeId, current?.showSlug]);
+  }, [isOffice, officeSide, current?.episodeId, current?.showSlug]);
   const [officeRgb, setOfficeRgb] = useState<{ r: number; g: number; b: number }>({ r: 18, g: 30, b: 22 });
   useEffect(() => {
     if (!officeBg) return;
@@ -800,10 +835,11 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // title" feature, now on the immersive player (no longer beta-gated). Only
   // Forward Movement is aligned; Church of England gracefully falls back to the
   // episode title.
-  const officeSide: "morning" | "evening" = current?.showSlug === "office-evening" ? "evening" : "morning";
+  // Reuses the unified `officeSide` derived above (covers both launch paths).
+  const alignSide: "morning" | "evening" = officeSide ?? "morning";
   const { data: alignData } = useQuery<{ status: string; sections: AlignSection[] }>({
-    queryKey: [`/api/podcast/office/${officeSide}/timestamps`],
-    queryFn: () => apiRequest("GET", `/api/podcast/office/${officeSide}/timestamps`),
+    queryKey: [`/api/podcast/office/${alignSide}/timestamps`],
+    queryFn: () => apiRequest("GET", `/api/podcast/office/${alignSide}/timestamps`),
     enabled: isOffice && officeAudioSource === "forward-movement",
     staleTime: 5 * 60_000,
     refetchInterval: (q) => { const s = q.state.data?.status; return s === "done" || s === "failed" ? false : 6000; },
@@ -959,11 +995,11 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
 
           {/* Foreground column */}
           <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-            {/* Top bar: close (left) · share (right) */}
+            {/* Top bar: minimize chevron (left) · share (right) */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 18px", flexShrink: 0 }}>
               <button type="button" onClick={() => setExpanded(false)} aria-label={t("podcasts.a11y_minimize")}
                 style={{ background: "none", border: "none", color: "#FFFFFF", cursor: "pointer", padding: 6, lineHeight: 0, opacity: 0.95 }}>
-                <IconX />
+                <IconChevronDown />
               </button>
               {canShare ? (
                 <button type="button" onClick={shareOffice} aria-label={t("common.share", { defaultValue: "Share" })}
@@ -998,17 +1034,10 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
             {/* Lower block on the solid colour: big remaining time, scrubber,
                 title, show, and the office source toggle. */}
             <div style={{ flexShrink: 0, padding: "0 26px" }}>
-              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
+              <div style={{ display: "flex", alignItems: "flex-end" }}>
                 <span style={{ fontFamily: SERIF, fontSize: 58, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1, color: "#F6F0E6" }}>
                   {duration > 0 ? fmtClock(remaining) : fmtClock(currentTime)}
                 </span>
-                <button type="button" onClick={cycleRate} aria-label={t("podcasts.a11y_speed")}
-                  style={{
-                    marginBottom: 6, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.18)",
-                    color: "#F6F0E6", fontSize: 12.5, fontWeight: 700, fontFamily: FONT, borderRadius: 999, padding: "6px 13px", cursor: "pointer", flexShrink: 0,
-                  }}>
-                  {rate}×
-                </button>
               </div>
 
               <div onClick={onTrackClick} role="slider" aria-label={t("podcasts.a11y_seek")} aria-valuenow={Math.round(pct)}
