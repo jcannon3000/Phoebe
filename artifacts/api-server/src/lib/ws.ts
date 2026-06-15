@@ -87,8 +87,12 @@ function broadcastPresenceSync() {
   }
 }
 
-function getCobreatheSessions(): CobreatheSession[] {
-  return Array.from(cobreatheSessions.values());
+// Public view broadcast to clients — WITHOUT email. Clients match sessions to
+// their connections by userId (the page passes garden user-ids), so email never
+// needs to cross the wire to every connected client. (email is kept server-side
+// in the Map but never broadcast — a privacy fix vs. the original design.)
+function getCobreatheSessions(): Array<Omit<CobreatheSession, "email">> {
+  return Array.from(cobreatheSessions.values()).map(({ email: _email, ...rest }) => rest);
 }
 
 function broadcastCobreatheSync() {

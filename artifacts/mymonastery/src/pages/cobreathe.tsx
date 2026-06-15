@@ -180,8 +180,13 @@ export default function CobreathePage() {
   // mate's photo order (or lead if first). Gated on showPresence inside the hook.
   const { user } = useAuth();
   const { data: people } = usePeople(user?.id);
-  const gardenEmails = useMemo(() => new Set((people ?? []).map((p) => p.email)), [people]);
-  const breathSync = useCobreatheSync(user, gardenEmails, {
+  // Match live breathers to our connections by userId — the server no longer
+  // broadcasts emails in cobreathe-sync (privacy), so we filter by id.
+  const gardenUserIds = useMemo(
+    () => new Set((people ?? []).map((p) => p.userId).filter((x): x is number => x != null)),
+    [people],
+  );
+  const breathSync = useCobreatheSync(user, gardenUserIds, {
     fingerprint: COBREATHE_FINGERPRINT,
     active: mode === "breathing",
   });

@@ -27,7 +27,9 @@ export interface CobreatheLeader {
 
 interface CobreatheSessionMsg {
   userId: number;
-  email: string;
+  // Only present on the payload WE send (our own email); the server strips it
+  // from the broadcast, so received sessions match by userId, not email.
+  email?: string;
   startEpochMs: number;
   masterSeed: number;
   fingerprint: string;
@@ -35,7 +37,7 @@ interface CobreatheSessionMsg {
 
 export function useCobreatheSync(
   user: AuthUser | null,
-  gardenEmails: Set<string>,
+  gardenUserIds: Set<number>,
   opts: { fingerprint: string; active: boolean },
 ) {
   const { fingerprint, active } = opts;
@@ -50,8 +52,8 @@ export function useCobreatheSync(
   // garden/fingerprint doesn't churn the subscription.
   const userRef = useRef(user);
   userRef.current = user;
-  const gardenRef = useRef(gardenEmails);
-  gardenRef.current = gardenEmails;
+  const gardenRef = useRef(gardenUserIds);
+  gardenRef.current = gardenUserIds;
   const fpRef = useRef(fingerprint);
   fpRef.current = fingerprint;
   // What we broadcast when WE lead — kept so we can re-announce after a reconnect.
@@ -60,8 +62,8 @@ export function useCobreatheSync(
   const sessionsRef = useRef<CobreatheSessionMsg[]>([]);
 
   // Stable key for the garden set so the re-election effect doesn't fire on every
-  // render (gardenEmails is a fresh Set each render).
-  const gardenKey = useMemo(() => Array.from(gardenEmails).sort().join(","), [gardenEmails]);
+  // render (gardenUserIds is a fresh Set each render).
+  const gardenKey = useMemo(() => Array.from(gardenUserIds).sort((a, b) => a - b).join(","), [gardenUserIds]);
 
   const elect = useCallback((sessions: CobreatheSessionMsg[]): CobreatheLeader | null => {
     const u = userRef.current;
@@ -69,7 +71,7 @@ export function useCobreatheSync(
     const garden = gardenRef.current;
     const fp = fpRef.current;
     const candidates = sessions
-      .filter((s) => s.userId !== u.id && garden.has(s.email) && s.fingerprint === fp)
+      .filter((s) => s.userId !== u.id && garden.has(s.userId) && s.fingerprint === fp)
       .sort((a, b) => a.startEpochMs - b.startEpochMs || a.userId - b.userId);
     const top = candidates[0];
     return top ? { startEpochMs: top.startEpochMs, masterSeed: top.masterSeed } : null;

@@ -244,6 +244,7 @@ const OfficesPage = lazy(() => import("./pages/offices"));
 const ExamenPage = lazy(() => import("./pages/examen"));
 const ContemplationPage = lazy(() => import("./pages/contemplation"));
 const CobreathePage = lazy(() => import("./pages/cobreathe"));
+const DailyStepsPage = lazy(() => import("./pages/daily-steps"));
 const CobreatheAboutPage = lazy(() => import("./pages/cobreathe-about"));
 const SaintsIndex = lazy(() => import("./pages/Saints/SaintsIndex"));
 const CustomizeHomePage = lazy(() => import("./pages/customize-home"));
@@ -870,6 +871,7 @@ function Router() {
       <Route path="/offices" component={OfficesPage} />
       <Route path="/examen" component={ExamenPage} />
       <Route path="/contemplation" component={ContemplationPage} />
+      <Route path="/daily-steps" component={DailyStepsPage} />
       <Route path="/cobreathe/about" component={CobreatheAboutPage} />
       <Route path="/cobreathe" component={CobreathePage} />
       {/* Saints — a single browsable/searchable index (BCP-Prayers-style). */}

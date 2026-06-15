@@ -183,6 +183,13 @@ export const usersTable = pgTable("users", {
   // freshly-set goal nudges by default; the user can keep a goal for tracking
   // while silencing the reminder from Settings → Daily reminders.
   contemplationReminderEnabled: boolean("contemplation_reminder_enabled").notNull().default(true),
+  // Daily steps goal (Apple Health). When > 0, the home card shows progress and
+  // the server pushes "you hit your step goal" the first time today's synced
+  // steps cross it. 0 = off.
+  dailyStepGoal: integer("daily_step_goal").notNull().default(0),
+  // YYYY-MM-DD (user TZ) of the last "step goal reached" push — one per local
+  // day. NULL = never sent.
+  dailyStepReachedDate: text("daily_step_reached_date"),
   // Weekly Way of Love review (the Sunday-evening examen). Reminder on by
   // default; opt out in Settings. The sent-date (YYYY-MM-DD of the Sunday we
   // last nudged, user TZ) dedups the once-a-week push across 15-min ticks.

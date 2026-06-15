@@ -197,9 +197,10 @@ export default function WayOfLoveRuleFlow({
   // Optional daily practices — adding one surfaces its home card AND an extra
   // Daily-progress checkmark. Seeded from whether the card is already on the
   // user's (current-version) home layout (in order, not hidden).
-  const [extras, setExtras] = useState<{ gratitude: boolean; examen: boolean }>(() => ({
+  const [extras, setExtras] = useState<{ gratitude: boolean; examen: boolean; steps: boolean }>(() => ({
     gratitude: homeCardOn(user?.homeLayout, "gratitude"),
     examen: homeCardOn(user?.homeLayout, "examen"),
+    steps: homeCardOn(user?.homeLayout, "steps"),
   }));
   // Re-seed once auth resolves — `user` is often null on the first render, so
   // the initializer above can miss an existing selection. Guard on touchedRef
@@ -211,9 +212,10 @@ export default function WayOfLoveRuleFlow({
     setExtras({
       gratitude: homeCardOn(user.homeLayout, "gratitude"),
       examen: homeCardOn(user.homeLayout, "examen"),
+      steps: homeCardOn(user.homeLayout, "steps"),
     });
   }, [user]);
-  const toggleExtra = (k: "gratitude" | "examen") => {
+  const toggleExtra = (k: "gratitude" | "examen" | "steps") => {
     touchedRef.current = true;
     setExtras((prev) => ({ ...prev, [k]: !prev[k] }));
   };
@@ -322,8 +324,8 @@ export default function WayOfLoveRuleFlow({
     const others = (["cac", "fdd", "ssje"] as const).filter((n) => !newsletters.includes(n));
     // Added optional practices are surfaced (in order, not hidden); unselected
     // ones go to the hidden tail like the other opt-in modules.
-    const extrasOn = [...(extras.gratitude ? ["gratitude"] : []), ...(extras.examen ? ["examen"] : [])];
-    const extrasOff = [...(extras.gratitude ? [] : ["gratitude"]), ...(extras.examen ? [] : ["examen"])];
+    const extrasOn = [...(extras.gratitude ? ["gratitude"] : []), ...(extras.examen ? ["examen"] : []), ...(extras.steps ? ["steps"] : [])];
+    const extrasOff = [...(extras.gratitude ? [] : ["gratitude"]), ...(extras.examen ? [] : ["examen"]), ...(extras.steps ? [] : ["steps"])];
     const order = ["requests", "office", "contemplation", ...newsletters, ...extrasOn, "feeds", "ncmp", "podcasts", ...extrasOff, ...others];
     const hidden = ["feeds", "ncmp", "podcasts", ...extrasOff, ...others];
     apiRequest("PUT", "/api/me/home-layout", { order, hidden, v: HOME_LAYOUT_VERSION })
@@ -651,6 +653,7 @@ export default function WayOfLoveRuleFlow({
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(extras.gratitude, `🙏 ${t("wol_rule.extra_gratitude", { defaultValue: "Gratitude" })}`, t("wol_rule.extra_gratitude_sub", { defaultValue: "Name one gift from the day." }), () => toggleExtra("gratitude"))}
           {choiceRow(extras.examen, `🌗 ${t("wol_rule.extra_examen", { defaultValue: "The Examen" })}`, t("wol_rule.extra_examen_sub", { defaultValue: "St. Ignatius' end-of-day review of the day with God." }), () => toggleExtra("examen"))}
+          {choiceRow(extras.steps, `👟 ${t("wol_rule.extra_steps", { defaultValue: "Daily steps" })}`, t("wol_rule.extra_steps_sub", { defaultValue: "Walk toward a step goal — set it and connect Apple Health on the card." }), () => toggleExtra("steps"))}
         </div>
         {ctaButton(t("wol_rule.finish", { defaultValue: "Save my daily rhythm" }), commit)}
       </>,
@@ -684,6 +687,7 @@ export default function WayOfLoveRuleFlow({
       : []),
     ...(extras.gratitude ? [{ emoji: "🙏", label: "Gratitude", sub: "Name one gift from the day", step: "extras" as Step }] : []),
     ...(extras.examen ? [{ emoji: "🌗", label: "The Examen", sub: "Review the day with God", step: "extras" as Step }] : []),
+    ...(extras.steps ? [{ emoji: "👟", label: "Daily steps", sub: "Walk toward a step goal", step: "extras" as Step }] : []),
   ];
   return shell(
     <>

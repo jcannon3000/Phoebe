@@ -14,6 +14,7 @@ import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { DailyProgressBody } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
+import { useDailySteps } from "@/lib/appleHealth";
 import { amenWithLocation } from "@/lib/prayLocation";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
@@ -2483,6 +2484,74 @@ export function ContemplationHomeCard() {
             }}
           >
             Begin <span aria-hidden>→</span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// ── StepsHomeCard — goal-oriented "daily steps" anchor (Apple Health) ──
+// Same shape as ContemplationHomeCard. Reads today's steps live from HealthKit
+// (useDailySteps, native-only) and the goal from office-prefs; shows progress
+// toward the goal. Taps through to /daily-steps to set the goal / connect Health.
+export function StepsHomeCard() {
+  const { data: prefs } = useQuery<{ dailyStepGoal?: number }>({
+    queryKey: ["/api/me/office-prefs"],
+    queryFn: () => apiRequest("GET", "/api/me/office-prefs") as Promise<{ dailyStepGoal?: number }>,
+    staleTime: 5 * 60_000,
+  });
+  const goal = prefs?.dailyStepGoal ?? 0;
+  // Live HealthKit read (also uploads to the server so the reached-push fires).
+  const { steps } = useDailySteps();
+  const met = goal > 0 && steps >= goal;
+  const progressLabel = goal <= 0
+    ? "Set a step goal →"
+    : met
+      ? "Goal reached 🌿"
+      : `${steps.toLocaleString()} of ${goal.toLocaleString()} steps today`;
+
+  return (
+    <Link href="/daily-steps" className="block">
+      <div
+        role="button"
+        tabIndex={0}
+        className="relative flex rounded-xl overflow-hidden cursor-pointer"
+        style={{ background: "rgba(139,121,84,0.12)", border: `1px solid rgba(139,121,84,0.35)` }}
+      >
+        <div className="w-1 flex-shrink-0" style={{ background: `rgba(139,121,84,0.85)` }} />
+        <div className="flex-1 px-4 py-[14px] flex items-center gap-3">
+          <span className="text-xl flex-shrink-0" aria-hidden>👟</span>
+          <div className="flex-1 min-w-0">
+            <p
+              className="font-semibold min-w-0 truncate"
+              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
+            >
+              Daily steps
+            </p>
+            <p
+              className="truncate"
+              style={{ color: met ? "#C9B98A" : "rgba(143,175,150,0.8)", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12 }}
+            >
+              {progressLabel}
+            </p>
+            {goal > 0 && !met && (
+              <div className="mt-2 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${Math.min(100, Math.round((steps / goal) * 100))}%`, background: "rgba(139,121,84,0.85)", transition: "width 0.3s" }}
+                />
+              </div>
+            )}
+          </div>
+          <div
+            className="rounded-full text-center shrink-0"
+            style={{
+              background: "rgba(139,121,84,0.85)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 13, fontWeight: 500, padding: "6px 14px", border: "1px solid rgba(139,121,84,0.45)", whiteSpace: "nowrap",
+            }}
+          >
+            View <span aria-hidden>→</span>
           </div>
         </div>
       </div>
@@ -5353,7 +5422,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "steps", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // Home-layout version (keep in sync with customize-home.tsx). A saved layout
   // whose `v` is below this is ignored and the user resets to DEFAULT_ORDER /
@@ -5363,7 +5432,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // The default everyone starts at: prayer requests pinned on top, then
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.
   // Everything else is hidden but addable from Customize.
-  const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "gratitude", "examen", "steps", "cac", "ssje", "ncmp", "podcasts"];
   const DEFAULT_HIDDEN = ["feeds", "gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
   // Only a current-version saved layout counts; anything older falls back to
   // the default (that's the reset).
@@ -6478,6 +6547,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   return <GratitudeHomeCard />;
                 case "examen":
                   return <ExamenHomeCard />;
+                case "steps":
+                  return <StepsHomeCard />;
                 case "cac":
                   return reflectionIsHero("cac") ? <CacHomeCard /> : null;
                 case "fdd":

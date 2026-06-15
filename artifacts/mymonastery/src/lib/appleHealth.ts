@@ -41,6 +41,8 @@ interface MindfulHealthPlugin {
   // goal-reached push fires even when silence is kept in another app with
   // Phoebe closed. apiBase defaults native-side to https://withphoebe.app.
   enableBackgroundDelivery?: (opts?: { apiBase?: string }) => Promise<{ enabled: boolean }>;
+  // Today's step count from Apple Health (read-only). Powers the Daily steps card.
+  stepsToday?: () => Promise<{ steps: number }>;
 }
 
 function getPlugin(): MindfulHealthPlugin | null {
@@ -197,6 +199,49 @@ let bgDeliveryArmed = false;
  * dedupe to a single HealthKit read. Only uploads a positive value, so an
  * ungranted/empty read can't clobber a real total synced earlier.
  */
+// ── Daily steps (Apple Health) ───────────────────────────────────────────────
+
+/** Today's step count from Apple Health, or null if unavailable/denied. */
+export async function getStepsToday(): Promise<number | null> {
+  const p = getPlugin();
+  if (!p?.stepsToday) return null;
+  try {
+    const r = await p.stepsToday();
+    return typeof r?.steps === "number" ? r.steps : null;
+  } catch {
+    return null;
+  }
+}
+
+let lastStepsUpload = "";
+/**
+ * Reads today's steps from Apple Health, best-effort uploads them to the server
+ * (so the "step goal reached" push can fire), and returns the count for the
+ * Daily steps home card. Shares its query key so the card + the sync are one
+ * fetch. Background delivery is armed by useSyncHealthMinutes (the native call
+ * arms both mindful + steps observers), so a goal crossed with Phoebe closed
+ * still uploads and pushes.
+ */
+export function useDailySteps(): { steps: number } {
+  const day = new Date().toLocaleDateString("en-CA");
+  const q = useQuery<number | null>({
+    queryKey: ["apple-health-steps", day],
+    queryFn: () => getStepsToday(),
+    enabled: appleHealthAvailable(),
+    staleTime: 5 * 60_000,
+  });
+  const steps = q.data ?? 0;
+  useEffect(() => {
+    if (steps <= 0) return;
+    const key = `${day}:${steps}`;
+    if (lastStepsUpload === key) return;
+    lastStepsUpload = key;
+    void apiRequest("PUT", "/api/me/daily-steps", { steps, day })
+      .catch(() => { if (lastStepsUpload === key) lastStepsUpload = ""; }); // allow retry
+  }, [steps, day]);
+  return { steps };
+}
+
 export function useSyncHealthMinutes(): void {
   const day = new Date().toLocaleDateString("en-CA");
   const qc = useQueryClient();

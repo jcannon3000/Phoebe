@@ -271,6 +271,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
         defaultPrayerLevel: usersTable.defaultPrayerLevel,
         contemplationGoalMinutes: usersTable.contemplationGoalMinutes,
         contemplationReminderEnabled: usersTable.contemplationReminderEnabled,
+        dailyStepGoal: usersTable.dailyStepGoal,
         weeklyReviewReminder: usersTable.weeklyReviewReminder,
         sharePrayLocation: usersTable.sharePrayLocation,
       })
@@ -362,6 +363,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
       defaultPrayerLevel: u?.defaultPrayerLevel ?? "ask",
       contemplationGoalMinutes: u?.contemplationGoalMinutes ?? 0,
       contemplationReminderEnabled: u?.contemplationReminderEnabled ?? true,
+      dailyStepGoal: u?.dailyStepGoal ?? 0,
       weeklyReviewReminder: u?.weeklyReviewReminder ?? true,
       sharePrayLocation: u?.sharePrayLocation ?? false,
       lastPrayedMorning,
@@ -412,6 +414,10 @@ router.put("/me/office-prefs", async (req, res): Promise<void> => {
   }
   if (typeof body.contemplationReminderEnabled === "boolean") {
     update.contemplationReminderEnabled = body.contemplationReminderEnabled;
+  }
+  // Daily steps goal (0 = off). Clamp to 0–200k; the UI offers preset goals.
+  if (typeof body.dailyStepGoal === "number" && Number.isFinite(body.dailyStepGoal)) {
+    update.dailyStepGoal = Math.max(0, Math.min(200000, Math.round(body.dailyStepGoal)));
   }
   if (typeof body.weeklyReviewReminder === "boolean") {
     update.weeklyReviewReminder = body.weeklyReviewReminder;

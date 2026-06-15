@@ -1,9 +1,9 @@
 import { Router, type IRouter } from "express";
-import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, usersTable, contemplationHealthMinutesTable, breathSessionsTable } from "@workspace/db";
+import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, usersTable, contemplationHealthMinutesTable, breathSessionsTable, dailyHealthStepsTable } from "@workspace/db";
 import { and, desc, eq, gte, gt, lt, inArray, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { getGardenUserIds } from "../lib/garden";
-import { sendContemplationGoalReachedPush } from "../lib/pushSender";
+import { sendContemplationGoalReachedPush, sendDailyStepGoalReachedPush } from "../lib/pushSender";
 import { todayDateInTz, isValidTimeZone } from "../lib/tz";
 
 const router: IRouter = Router();
@@ -805,6 +805,62 @@ router.put("/me/contemplation-health-minutes", async (req, res): Promise<void> =
       }
     } catch { /* best-effort — don't surface push errors to the client */ }
   }
+});
+
+// PUT /api/me/daily-steps — the iOS client best-effort uploads today's Apple
+// Health step count per local day. Stored so the server can fire a "you hit
+// your step goal" push (the home card reads steps straight from HealthKit).
+// Mirrors /me/contemplation-health-minutes: GREATEST upsert (monotonic within
+// the day), ±1-day sanity bound, one push per local day via daily_step_reached_date.
+const dailyStepsSchema = z.object({
+  // Bounded to reject garbage; a very active day is well under 200k.
+  steps: z.number().int().min(0).max(200000),
+  day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+});
+router.put("/me/daily-steps", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parsed = dailyStepsSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
+  const { steps, day } = parsed.data;
+  const dayMs = Date.parse(`${day}T00:00:00Z`);
+  if (Number.isNaN(dayMs)) { res.status(400).json({ error: "Invalid day" }); return; }
+  const now = new Date();
+  const utcTodayMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  if (Math.abs(dayMs - utcTodayMs) > 86400000) { res.status(400).json({ error: "Day out of range" }); return; }
+
+  try {
+    await db.insert(dailyHealthStepsTable)
+      .values({ userId: sessionUserId, day, steps })
+      .onConflictDoUpdate({
+        target: [dailyHealthStepsTable.userId, dailyHealthStepsTable.day],
+        set: {
+          steps: sql`GREATEST(${dailyHealthStepsTable.steps}, EXCLUDED.steps)`,
+          updatedAt: new Date(),
+        },
+      });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[/me/daily-steps PUT] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+    return;
+  }
+
+  // After responding: if today's steps reach the goal and we haven't already
+  // congratulated them today, push once and stamp the date (one per local day).
+  try {
+    const [u] = await db
+      .select({ goal: usersTable.dailyStepGoal, reached: usersTable.dailyStepReachedDate })
+      .from(usersTable)
+      .where(eq(usersTable.id, sessionUserId));
+    const goal = u?.goal ?? 0;
+    if (goal > 0 && steps >= goal && u?.reached !== day) {
+      await db.update(usersTable)
+        .set({ dailyStepReachedDate: day })
+        .where(eq(usersTable.id, sessionUserId));
+      void sendDailyStepGoalReachedPush(sessionUserId, { goalSteps: goal, steps }).catch(() => {});
+    }
+  } catch { /* best-effort — don't surface push errors to the client */ }
 });
 
 // PATCH /api/me/contemplation-sessions/:id/visibility — flip a sit's

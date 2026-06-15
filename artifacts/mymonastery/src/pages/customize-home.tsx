@@ -26,7 +26,7 @@ const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 // HOME_MODULE_KEYS in api-server/src/routes/prayer.ts — keys not in
 // the server's allowlist are silently dropped from saved layouts.
 const HOME_MODULES = [
-  "office", "contemplation", "gratitude", "examen",
+  "office", "contemplation", "gratitude", "examen", "steps",
   "cac", "fdd", "ssje", "ncmp", "podcasts", "requests",
 ] as const;
 type HomeModule = typeof HOME_MODULES[number];
@@ -85,8 +85,8 @@ const HOME_LAYOUT_VERSION = 2;
 // The default home everyone starts at (and resets to on a version bump):
 // requests (pinned) → community prayers (office) → Gratitude →
 // Forward Day by Day. Everything else is hidden but addable.
-const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "gratitude", "fdd", "contemplation", "examen", "cac", "ssje", "ncmp", "podcasts"];
-const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "examen", "cac", "ssje", "ncmp", "podcasts"];
+const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "gratitude", "fdd", "contemplation", "examen", "steps", "cac", "ssje", "ncmp", "podcasts"];
+const DEFAULT_HIDDEN: HomeModule[] = ["contemplation", "examen", "steps", "cac", "ssje", "ncmp", "podcasts"];
 
 function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub: string }> {
   const { t } = useTranslation();
@@ -95,6 +95,7 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
     contemplation:{ label: t("menu.contemplation"),              emoji: "🕯️", sub: t("customize_home.module_contemplation_sub") },
     gratitude:    { label: t("gratitude.title"),                 emoji: "🌾", sub: t("customize_home.module_gratitude_sub") },
     examen:       { label: t("menu.examen"),                     emoji: "🤔", sub: t("customize_home.module_examen_sub") },
+    steps:        { label: t("customize_home.module_steps", { defaultValue: "Daily steps" }), emoji: "👟", sub: t("customize_home.module_steps_sub", { defaultValue: "Walk toward a daily step goal · Apple Health" }) },
     cac:          { label: "CAC Daily Reflection",               emoji: "🌅", sub: "Today's reflection from the Center for Action & Contemplation" },
     fdd:          { label: "Forward Day by Day",                 emoji: "📖", sub: "Today's meditation from Forward Movement" },
     ssje:         { label: "SSJE Reflections",                   emoji: "✍🏽", sub: "Today's Brother, Give Us a Word" },

@@ -40,12 +40,18 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "writeMindfulSession", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openApp", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "enableBackgroundDelivery", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "stepsToday", returnType: CAPPluginReturnPromise),
     ]
 
     private let healthStore = HKHealthStore()
 
     private var mindfulType: HKCategoryType? {
         return HKObjectType.categoryType(forIdentifier: .mindfulSession)
+    }
+
+    // Daily steps (read-only) — for the "Daily steps" goal card + push.
+    private var stepType: HKQuantityType? {
+        return HKObjectType.quantityType(forIdentifier: .stepCount)
     }
 
     @objc func isAvailable(_ call: CAPPluginCall) {
@@ -59,8 +65,11 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         // Read AND write mindful sessions: read pulls in minutes logged by other
         // apps (Calm, Insight Timer); write lets Phoebe save its own sits back to
-        // Apple Health so they show in the user's Mindful Minutes too.
-        healthStore.requestAuthorization(toShare: [type], read: [type]) { success, error in
+        // Apple Health so they show in the user's Mindful Minutes too. Step count
+        // is read-only and bundled into the same prompt (HealthKit groups them).
+        var readTypes: Set<HKObjectType> = [type]
+        if let steps = stepType { readTypes.insert(steps) }
+        healthStore.requestAuthorization(toShare: [type], read: readTypes) { success, error in
             if let error = error {
                 call.reject("Authorization failed: \(error.localizedDescription)")
                 return
@@ -144,6 +153,26 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
                 ]
             }
             call.resolve(["sessions": out])
+        }
+        healthStore.execute(query)
+    }
+
+    // Today's step count from Apple Health (cumulative sum from start of day).
+    // Read-only; powers the Daily steps goal card + the goal-reached push.
+    @objc func stepsToday(_ call: CAPPluginCall) {
+        guard HKHealthStore.isHealthDataAvailable(), let type = stepType else {
+            call.resolve(["steps": 0])
+            return
+        }
+        let startOfDay = Calendar.current.startOfDay(for: Date())
+        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: Date(), options: .strictStartDate)
+        let query = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: .cumulativeSum) { _, result, error in
+            if let error = error {
+                call.reject("Query failed: \(error.localizedDescription)")
+                return
+            }
+            let steps = result?.sumQuantity()?.doubleValue(for: HKUnit.count()) ?? 0
+            call.resolve(["steps": Int(steps.rounded())])
         }
         healthStore.execute(query)
     }
@@ -247,6 +276,7 @@ final class MindfulBackgroundSync {
 
     private let healthStore = HKHealthStore()
     private var observerQuery: HKObserverQuery?
+    private var stepObserverQuery: HKObserverQuery?
 
     private let apiBaseKey = "phoebe.mindful.apiBase"
     private let enabledKey = "phoebe.mindful.bgEnabled"
@@ -254,6 +284,10 @@ final class MindfulBackgroundSync {
 
     private var mindfulType: HKCategoryType? {
         HKObjectType.categoryType(forIdentifier: .mindfulSession)
+    }
+
+    private var stepType: HKQuantityType? {
+        HKObjectType.quantityType(forIdentifier: .stepCount)
     }
 
     private var apiBase: String {
@@ -281,19 +315,34 @@ final class MindfulBackgroundSync {
     }
 
     private func arm() {
-        guard HKHealthStore.isHealthDataAvailable(), let type = mindfulType else { return }
-        // Persisted by the system; calling again is harmless. .immediate asks
-        // iOS to wake us as soon as new mindful samples are written.
-        healthStore.enableBackgroundDelivery(for: type, frequency: .immediate) { _, _ in }
+        guard HKHealthStore.isHealthDataAvailable() else { return }
 
-        if observerQuery != nil { return }   // don't stack observers this launch
-        let query = HKObserverQuery(sampleType: type, predicate: nil) { [weak self] _, completion, _ in
-            // ALWAYS call completion — iOS throttles (then stops) background HK
-            // delivery to apps that don't acknowledge updates.
-            self?.uploadTodayMinutes { completion() }
+        // Mindful minutes — wake immediately on new samples.
+        if let type = mindfulType {
+            healthStore.enableBackgroundDelivery(for: type, frequency: .immediate) { _, _ in }
+            if observerQuery == nil {   // don't stack observers this launch
+                let query = HKObserverQuery(sampleType: type, predicate: nil) { [weak self] _, completion, _ in
+                    // ALWAYS call completion — iOS throttles (then stops) background
+                    // HK delivery to apps that don't acknowledge updates.
+                    self?.uploadTodayMinutes { completion() }
+                }
+                observerQuery = query
+                healthStore.execute(query)
+            }
         }
-        observerQuery = query
-        healthStore.execute(query)
+
+        // Daily steps — hourly is plenty (steps stream constantly; immediate would
+        // wake us far too often). Lets the "step goal reached" push fire passively.
+        if let steps = stepType {
+            healthStore.enableBackgroundDelivery(for: steps, frequency: .hourly) { _, _ in }
+            if stepObserverQuery == nil {
+                let q = HKObserverQuery(sampleType: steps, predicate: nil) { [weak self] _, completion, _ in
+                    self?.uploadTodaySteps { completion() }
+                }
+                stepObserverQuery = q
+                healthStore.execute(q)
+            }
+        }
     }
 
     /// Read today's EXTERNAL mindful minutes and PUT them to the server.
@@ -360,6 +409,53 @@ final class MindfulBackgroundSync {
                 req.setValue("application/json", forHTTPHeaderField: "Content-Type")
                 req.setValue(header, forHTTPHeaderField: "Cookie")
                 req.httpBody = try? JSONSerialization.data(withJSONObject: ["minutes": minutes, "day": day])
+                URLSession.shared.dataTask(with: req) { _, _, _ in finish() }.resume()
+            }
+        }
+    }
+
+    /// Read today's step count and PUT it to /api/me/daily-steps. completion()
+    /// always runs exactly once. Mirrors uploadTodayMinutes/put for steps.
+    private func uploadTodaySteps(completion: @escaping () -> Void) {
+        guard let type = stepType else { completion(); return }
+        let startOfDay = Calendar.current.startOfDay(for: Date())
+        let predicate = HKQuery.predicateForSamples(withStart: startOfDay, end: Date(), options: .strictStartDate)
+        let q = HKStatisticsQuery(quantityType: type, quantitySamplePredicate: predicate, options: .cumulativeSum) { [weak self] _, result, _ in
+            guard let self = self else { completion(); return }
+            let steps = Int((result?.sumQuantity()?.doubleValue(for: HKUnit.count()) ?? 0).rounded())
+            // GREATEST-wins server-side, so a 0 could never lower a real total.
+            if steps <= 0 { completion(); return }
+            self.putSteps(steps: steps, day: self.localDayString(startOfDay), completion: completion)
+        }
+        healthStore.execute(q)
+    }
+
+    private func putSteps(steps: Int, day: String, completion: @escaping () -> Void) {
+        guard let url = URL(string: apiBase + "/api/me/daily-steps") else { completion(); return }
+        let host = URL(string: apiBase)?.host ?? ""
+        DispatchQueue.main.async {
+            var bgTask = UIBackgroundTaskIdentifier.invalid
+            bgTask = UIApplication.shared.beginBackgroundTask(withName: "steps-upload") {
+                if bgTask != .invalid { UIApplication.shared.endBackgroundTask(bgTask); bgTask = .invalid }
+            }
+            let finish: () -> Void = {
+                if bgTask != .invalid { UIApplication.shared.endBackgroundTask(bgTask); bgTask = .invalid }
+                completion()
+            }
+            WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
+                let header = cookies
+                    .filter { c in
+                        let d = c.domain.hasPrefix(".") ? String(c.domain.dropFirst()) : c.domain
+                        return host == d || host.hasSuffix("." + d)
+                    }
+                    .map { "\($0.name)=\($0.value)" }
+                    .joined(separator: "; ")
+                if header.isEmpty { finish(); return }
+                var req = URLRequest(url: url)
+                req.httpMethod = "PUT"
+                req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                req.setValue(header, forHTTPHeaderField: "Cookie")
+                req.httpBody = try? JSONSerialization.data(withJSONObject: ["steps": steps, "day": day])
                 URLSession.shared.dataTask(with: req) { _, _, _ in finish() }.resume()
             }
         }
