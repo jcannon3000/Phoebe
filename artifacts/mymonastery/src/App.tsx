@@ -340,6 +340,12 @@ const queryClient = new QueryClient({
       // toast — a secondary feature's refetch failing shouldn't nag the user
       // who's looking at a perfectly-loaded home.
       if (query.meta?.silentError) return;
+      // Only speak up when the OS says we're genuinely OFFLINE. A single slow
+      // or timed-out query (the 12s GET timeout throws a non-ApiError) happens
+      // on perfectly healthy connections too — popping a "needs a connection"
+      // toast then is both annoying and untrue. Flaky-but-online connections
+      // are handled separately, and more gently, by the NetworkBanner.
+      if (typeof navigator !== "undefined" && navigator.onLine) return;
       // We have cached data on screen — the failed refetch is invisible to the
       // user, so there's nothing to tell them.
       if (query.state.data !== undefined) return;
@@ -350,7 +356,7 @@ const queryClient = new QueryClient({
       if (now - lastOfflineToastAt < 8000) return;
       lastOfflineToastAt = now;
       toast({
-        title: navigator.onLine ? "Couldn't load that" : "You're offline",
+        title: "You're offline",
         description: "This needs a connection — it'll load once you're back online.",
       });
     },
