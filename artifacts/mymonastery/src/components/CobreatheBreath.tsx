@@ -380,12 +380,11 @@ export function CobreatheBreath({
           prevEl.style.zIndex = "1";
         }
         // The group breathes with the lungs: fully faded DOWN to 0 at the bottom
-        // of every breath (and before sync), rising to a bright ~0.85 peak at
-        // the top of the inhale (the bottom gradient keeps text legible). The
-        // slight ease (pAnim^1.25) pulls the lower
+        // of every breath (and before sync), rising to a gentle ~0.55 peak at
+        // the top of the inhale. The slight ease (pAnim^1.25) pulls the lower
         // range down faster so the photo is truly GONE at the bottom of the
         // exhale — no lingering as the next one rises.
-        if (photoGroupRef.current) photoGroupRef.current.style.opacity = (Math.pow(pAnim, 1.25) * 0.85).toFixed(4);
+        if (photoGroupRef.current) photoGroupRef.current.style.opacity = (Math.pow(pAnim, 1.25) * 0.55).toFixed(4);
         // Preload the NEXT photo onto the now-hidden previous layer so it's
         // decoded before its turn (it becomes the active layer next breath).
         if (photoPreloadedRef.current !== idx && prevEl) {

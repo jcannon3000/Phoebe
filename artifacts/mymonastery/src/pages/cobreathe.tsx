@@ -628,41 +628,50 @@ export default function CobreathePage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
             >
-              <div className="text-5xl mb-5">🌬️</div>
-              <h2 className="text-[1.4rem] font-bold mb-3 px-4" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+              <div className="text-4xl mb-4">🌬️</div>
+              {/* Eyebrow → big italic-serif headline → italic supporting lines —
+                  the same shape as the Contemplation closing summary. */}
+              <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
+                {t("cobreathe.done_eyebrow", { defaultValue: "Breathed together" })}
+              </p>
+              <p className="text-[26px] leading-[1.3] font-medium italic mb-2 px-4" style={{ color: WARM, fontFamily: SERIF }}>
                 {!s
                   ? t("cobreathe.done_counting", { defaultValue: "Breath held" })
                   : othersDone === 0
                     ? t("cobreathe.done_first", { defaultValue: "You are the first breath today" })
                     : t("cobreathe.done_with", { count: othersDone, defaultValue: `You cobreathed with ${othersDone} other ${othersDone === 1 ? "person" : "people"}` })}
-              </h2>
-              {s && s.companions.length > 0 && (
-                <div className="flex items-center justify-center gap-2 mb-3">
-                  <Faces companions={s.companions} />
-                  <p className="text-[13px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                    {t("cobreathe.including", { names: line, defaultValue: `including ${line}` })}
-                  </p>
-                </div>
-              )}
-              <p className="text-[14px] leading-relaxed px-6 mb-2" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
+              </p>
+              <p className="text-[13px] leading-relaxed px-6 mb-5" style={{ color: "rgba(143,175,150,0.65)", fontFamily: SERIF, fontStyle: "italic", maxWidth: 300 }}>
                 {othersDone === 0 && s
                   ? t("cobreathe.done_first_sub", { defaultValue: "Others will join their breath to yours as the day goes on." })
                   : t("cobreathe.done_sub", { defaultValue: "Not at the same hour — but one body, one breath, held across the day." })}
               </p>
-              <p className="text-[13px] px-6 mb-2" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SERIF, fontStyle: "italic" }}>
+              <p className="text-[12px] px-6 mb-1.5" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SERIF, fontStyle: "italic", maxWidth: 290 }}>
                 {t("cobreathe.done_focus", { focus: t(`cobreathe.focus.${focus.key}.title`, { defaultValue: focus.title }).toLowerCase(), defaultValue: `Held this week for ${t(`cobreathe.focus.${focus.key}.title`, { defaultValue: focus.title }).toLowerCase()}.` })}
               </p>
-              <p className="text-[13px] px-6 mb-8" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SERIF, fontStyle: "italic" }}>
+              <p className="text-[12px] px-6 mb-8" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SERIF, fontStyle: "italic", maxWidth: 290 }}>
                 {t("cobreathe.done_charge", { defaultValue: "Now let the conspiring continue — breathing together is how working together begins." })}
               </p>
+
+              {/* "With you" face block — eyebrow + overlapping faces + names,
+                  matching the Contemplation summary's companions block. */}
+              {s && s.companions.length > 0 && (
+                <div className="flex flex-col items-center mb-8" style={{ maxWidth: 320 }}>
+                  <p className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
+                    {t("cobreathe.with_you", { defaultValue: "With you" })}
+                  </p>
+                  <div className="mb-2"><Faces companions={s.companions} /></div>
+                  <p className="text-[12px] text-center" style={{ color: "rgba(200,212,192,0.75)", fontFamily: SPACE_GROTESK }}>
+                    {line}
+                  </p>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={() => { if (fromContemplationRef.current) setLocation("/contemplation"); else setMode("intro"); }}
-                className="rounded-xl py-3 px-8"
-                style={{
-                  background: "rgba(46,107,64,0.20)", color: WARM, border: "1px solid rgba(46,107,64,0.45)",
-                  fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer",
-                }}
+                className="rounded-full px-10 py-3.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+                style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: SPACE_GROTESK, cursor: "pointer" }}
               >
                 {t("common.done", { defaultValue: "Done" })}
               </button>
