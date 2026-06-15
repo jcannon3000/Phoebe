@@ -3998,14 +3998,23 @@ function PrayerListCarousel({
             // just want to mark this one prayed without the walk.
             return (
               <Link key={req.id} href={`/prayer-mode?queue=new&focus=${req.id}`} className="block">
+                {(() => {
+                  // A "new" (still-unprayed) request announces itself with a
+                  // gently pulsing border glow — replacing the old top-of-home
+                  // "N requests waiting" card. Prayed ones sit calm.
+                  const base = "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)";
+                  const glowLow = `${base}, 0 0 6px rgba(143,175,150,0.25)`;
+                  const glowHigh = `${base}, 0 0 16px rgba(143,175,150,0.55)`;
+                  return (
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  animate={amened ? { opacity: 1, y: 0 } : { opacity: 1, y: 0, boxShadow: [glowLow, glowHigh, glowLow] }}
+                  transition={amened ? undefined : { boxShadow: { duration: 2.6, repeat: Infinity, ease: "easeInOut" }, default: { duration: 0.3 } }}
                   className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]"
                   style={{
                     background: "rgba(46,107,64,0.15)",
-                    border: "1px solid rgba(46,107,64,0.28)",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+                    border: amened ? "1px solid rgba(46,107,64,0.28)" : "1px solid rgba(143,175,150,0.7)",
+                    boxShadow: base,
                   }}
                 >
                   <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
@@ -4076,6 +4085,8 @@ function PrayerListCarousel({
                     </div>
                   </div>
                 </motion.div>
+                  );
+                })()}
               </Link>
             );
           })}
@@ -6413,7 +6424,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 <DailyProgressBody
                   showStreak={false}
                   showDone
-                  leadCard={newPrayersCount > 0 ? <NewPrayerRequestsCard count={newPrayersCount} faces={homeFaces} /> : null}
+                  /* The "N prayer requests waiting" lead card was removed — new
+                     requests now announce themselves with a glowing border in
+                     the prayer list below instead of a separate top card. */
+                  leadCard={null}
                   renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />}
                 />
               )}
@@ -6428,11 +6442,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               if (homeHidden.has(key)) return null;
               switch (key) {
                 case "requests":
-                  // "X new prayer requests" notification card — only on
-                  // days there's something waiting.
-                  return newPrayersCount > 0
-                    ? <NewPrayerRequestsCard count={newPrayersCount} faces={homeFaces} />
-                    : null;
+                  // The "X new prayer requests" notification card was removed —
+                  // new requests glow their border in the prayer list instead.
+                  return null;
                 case "office":
                   // Hero when it's the "what's next" office (with the forced
                   // side); compact one-liner when something else leads.

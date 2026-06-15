@@ -36,9 +36,9 @@ export function PartnerExchange() {
     return (
       <Link href="/prayer-partner" className="block">
         <div className="rounded-3xl px-5 py-6 text-center" style={{ background: `rgba(${G},0.10)`, border: `1px solid rgba(${G},0.30)` }}>
-          <div className="text-[30px] mb-2">🕊️</div>
-          <p className="text-[16px] font-bold" style={{ color: WARM, fontFamily: FONT }}>{t("prayer_partner.empty_title", { defaultValue: "Find a prayer partner" })}</p>
-          <p className="text-[13px] mt-1" style={{ color: SAGE, fontFamily: FONT }}>{t("prayer_partner.empty_blurb", { defaultValue: "Share a prayer each day and hold each other in it." })}</p>
+          <div className="text-[30px] mb-2">💛</div>
+          <p className="text-[16px] font-bold" style={{ color: WARM, fontFamily: FONT }}>{t("prayer_partner.empty_title", { defaultValue: "Start a Heart to Heart" })}</p>
+          <p className="text-[13px] mt-1" style={{ color: SAGE, fontFamily: FONT }}>{t("prayer_partner.empty_blurb", { defaultValue: "Share what's on your heart each day — and hold each other in prayer, back and forth." })}</p>
         </div>
       </Link>
     );
@@ -54,7 +54,7 @@ export function PartnerExchange() {
     <div>
       {/* ── Your prayer for the day ─────────────────────────────────── */}
       <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: FAINT, fontFamily: FONT }}>
-        🕯️ {t("prayer_partner.your_prayer_eyebrow", { defaultValue: "Your prayer for the day" })}
+        💛 {t("prayer_partner.your_prayer_eyebrow", { defaultValue: "What's on your heart" })}
       </p>
 
       {data.mine ? (
@@ -70,11 +70,11 @@ export function PartnerExchange() {
         >
           <p className="text-[16px] font-bold" style={{ color: WARM, fontFamily: FONT }}>
             {data.shouldPromptSendBack
-              ? t("prayer_partner.send_back_title", { defaultValue: "Send your prayer back" })
-              : t("prayer_partner.share_title", { defaultValue: "Share your prayer for the day" })}
+              ? t("prayer_partner.send_back_title", { defaultValue: "Share what's on your heart back" })
+              : t("prayer_partner.share_title", { defaultValue: "Share what's on your heart" })}
           </p>
           <p className="text-[13px] mt-0.5" style={{ color: SAGE, fontFamily: FONT }}>
-            {t("prayer_partner.share_blurb", { defaultValue: "One prayer, shared with your partners." })} →
+            {t("prayer_partner.share_blurb", { defaultValue: "One prayer a day, heart to heart." })} →
           </p>
         </button>
       )}
@@ -82,7 +82,7 @@ export function PartnerExchange() {
       {/* ── Partner threads ─────────────────────────────────────────── */}
       <div className="flex items-center justify-between mb-2">
         <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: FAINT, fontFamily: FONT }}>
-          {t("prayer_partner.partners_eyebrow", { defaultValue: "Your prayer partners" })}
+          {t("prayer_partner.partners_eyebrow", { defaultValue: "Heart to Hearts" })}
         </p>
         <Link href="/prayer-partner" className="text-[12px]" style={{ color: SAGE, fontFamily: FONT }}>{t("common.manage", { defaultValue: "Manage" })}</Link>
       </div>

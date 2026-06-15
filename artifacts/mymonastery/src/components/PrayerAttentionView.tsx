@@ -44,7 +44,7 @@ export function PrayerAttentionView({
           ? <img src={partnerAvatarUrl} alt={first} className="w-8 h-8 rounded-full object-cover" style={{ border: "1.5px solid #1A4A2E" }} />
           : <div className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>{(first[0] ?? "?").toUpperCase()}</div>}
         <p className="flex-1 text-[13px]" style={{ color: SAGE, fontFamily: "'Space Grotesk', sans-serif" }}>
-          {t("prayer_partner.their_prayer", { name: first, defaultValue: `${first}'s prayer for the day` })}
+          {t("prayer_partner.their_prayer", { name: first, defaultValue: `What's on ${first}'s heart` })}
         </p>
         <button onClick={onClose} aria-label="Close" className="text-[22px] leading-none px-2 active:opacity-60" style={{ color: SAGE }}>×</button>
       </div>

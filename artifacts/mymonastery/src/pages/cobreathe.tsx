@@ -10,6 +10,7 @@ import { COBREATHE_INTRO_SEEN_KEY } from "@/pages/cobreathe-about";
 import { useAuth } from "@/hooks/useAuth";
 import { usePeople } from "@/hooks/usePeople";
 import { useCobreatheSync } from "@/hooks/useCobreatheSync";
+import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { computeFingerprint } from "@/lib/cobreatheOrder";
 import { isNativeShell } from "@/lib/isNativeShell";
 
@@ -151,6 +152,9 @@ export default function CobreathePage() {
   const [mode, setMode] = useState<"intro" | "breathing" | "done">(() =>
     wantsStart() && introSeen() ? "breathing" : "intro",
   );
+  // Hold the screen on while breathing — the breath has no touch input, so the
+  // idle timer would otherwise dim/sleep the phone mid-sit.
+  useKeepAwake(mode === "breathing");
   useEffect(() => {
     if (wantsStart() && !introSeen()) setLocation("/cobreathe/about");
     // eslint-disable-next-line react-hooks/exhaustive-deps

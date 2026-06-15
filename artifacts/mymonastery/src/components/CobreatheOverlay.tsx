@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { writeMindfulSession } from "@/lib/appleHealth";
 import { CobreatheBreath } from "@/components/CobreatheBreath";
+import { useKeepAwake } from "@/hooks/useKeepAwake";
 
 // ── CobreatheOverlay ────────────────────────────────────────────────────────
 //
@@ -40,6 +41,8 @@ export function CobreatheOverlay({
   const day = localDay();
   const [phase, setPhase] = useState<"breathing" | "done">("breathing");
   const [resp, setResp] = useState<BreathResp | null>(null);
+  // Hold the screen on through the breath (no touch input to keep it awake).
+  useKeepAwake(open && phase === "breathing");
 
   // The overlay stays mounted (prayer-mode toggles `open`), so reset to a fresh
   // breath each time it opens — otherwise reopening after a finished breath

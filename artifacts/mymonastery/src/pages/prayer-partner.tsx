@@ -16,10 +16,10 @@ export default function PrayerPartnerPage() {
           ← {t("common.home", { defaultValue: "Home" })}
         </Link>
         <h1 className="text-2xl font-bold mb-1" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-          {t("prayer_partner.page_title", { defaultValue: "Prayer partners" })}
+          {t("prayer_partner.page_title", { defaultValue: "Heart to Hearts" })}
         </h1>
         <p className="text-sm mb-6" style={{ color: "#8FAF96" }}>
-          {t("prayer_partner.page_subtitle", { defaultValue: "Share a prayer each day and hold each other in it." })}
+          {t("prayer_partner.page_subtitle", { defaultValue: "Share what's on your heart each day — and hold each other in prayer, back and forth." })}
         </p>
         <PartnerExchange />
         <div className="mt-8">

@@ -39,7 +39,7 @@ export function PartnerPairing() {
       {invites && invites.length > 0 && (
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
-            {t("prayer_partner.invites_eyebrow", { defaultValue: "Partner requests" })}
+            {t("prayer_partner.invites_eyebrow", { defaultValue: "Heart to Heart requests" })}
           </p>
           <div className="flex flex-col gap-2.5">
             {invites.map((inv) => (
@@ -59,7 +59,7 @@ export function PartnerPairing() {
       {/* Add a partner */}
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
-          {t("prayer_partner.add_eyebrow", { defaultValue: "Add a prayer partner" })}
+          {t("prayer_partner.add_eyebrow", { defaultValue: "Start a heart to heart" })}
         </p>
         <input
           value={q} onChange={(e) => setQ(e.target.value)}
