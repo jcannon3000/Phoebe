@@ -810,6 +810,8 @@ function OpeningSplash() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const native = isNativeShell();
+  const [, splashGoTo] = useLocation();
+  const rhythm = useRhythmState();
   const [phase, setPhase] = useState<"in" | "out" | "gone">(() => {
     if (typeof window === "undefined") return "gone";
     try { return sessionStorage.getItem("phoebe:splash-shown") ? "gone" : "in"; } catch { return "in"; }
@@ -864,9 +866,9 @@ function OpeningSplash() {
   // only a safety net in case the animation callback never fires.
   useEffect(() => {
     if (phase !== "out") return;
-    // As the splash ("the flash") goes down, kick off the green home reveal so
-    // the two fade away together into the home.
-    try { window.dispatchEvent(new CustomEvent("phoebe:home-reveal")); } catch { /* non-fatal */ }
+    // Do NOT fire phoebe:home-reveal here: the splash's own green backdrop is
+    // already fading to the home, so a second green LoadReveal curtain sliding
+    // in on top just reads as a flash. The splash fade IS the reveal.
     const id = setTimeout(() => setPhase("gone"), 1400);
     return () => clearTimeout(id);
   }, [phase]);
@@ -899,6 +901,17 @@ function OpeningSplash() {
       : t("splash.evening", { defaultValue: "Good evening" });
   const firstName = (user.name ?? "").trim().split(/\s+/)[0] || "";
 
+  // The next office to pray — a "What's next" card under the faces, mirroring
+  // the home. Null once both are done (the day is kept).
+  const nextSide: "morning" | "evening" | null = rhythm.ready
+    ? (!rhythm.morningDone ? "morning" : (!rhythm.eveningDone ? "evening" : null))
+    : null;
+  const nextEmoji = nextSide === "morning" ? "🌅" : "🌙";
+  const sideWord = nextSide === "morning" ? "Morning" : "Evening";
+  const nextTitle = !nextSide ? ""
+    : rhythm.prayerKind === "community" ? t("rhythm.card_community", { defaultValue: "Pray together" })
+    : `${sideWord} ${rhythm.prayerKind === "devotion" ? "Devotion" : "Prayer"}`;
+
   return (
     <motion.div
       onClick={dismiss}
@@ -909,10 +922,10 @@ function OpeningSplash() {
       animate={{ opacity: phase === "out" ? 0 : 1 }}
       transition={{ duration: phase === "out" ? 0.9 : 0, ease: "easeInOut" }}
       onAnimationComplete={() => { if (phase === "out") setPhase("gone"); }}
-      className="fixed inset-0 flex flex-col items-center justify-center px-6"
+      className="fixed inset-0 flex flex-col items-center justify-start px-6"
       style={{
         background: "#0C1F12", zIndex: 200, isolation: "isolate", pointerEvents: phase === "out" ? "none" : "auto",
-        paddingTop: "calc(env(safe-area-inset-top) + 24px)", paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)", overflowY: "auto",
+        paddingTop: "calc(env(safe-area-inset-top) + 13vh)", paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)", overflowY: "auto",
       }}
     >
       <AnimatedBackground base="#0C1F12" variant="pronounced" />
@@ -978,6 +991,32 @@ function OpeningSplash() {
           </motion.div>
         );
       })()}
+      {/* What's next — the next office to pray, mirroring the home, so the load
+          screen hands you straight into the day's first prayer. */}
+      {nextSide && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.45, ease: "easeOut" }}
+          onClick={(e) => { e.stopPropagation(); setPhase("out"); splashGoTo("/begin-prayer"); }}
+          className="relative w-full mt-12 cursor-pointer active:scale-[0.99]"
+          style={{ maxWidth: 420 }}
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-widest mb-2 text-center" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>
+            {t("splash.whats_next", { defaultValue: "What's next" })}
+          </p>
+          <div className="flex items-stretch rounded-3xl overflow-hidden" style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.42)" }}>
+            <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
+            <div className="flex-1 px-5 py-4 flex items-center gap-3.5">
+              <span className="text-[30px] leading-none flex-shrink-0">{nextEmoji}</span>
+              <p className="flex-1 text-left text-[18px] font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{nextTitle}</p>
+              <span className="flex-shrink-0 rounded-full px-5 py-2 text-[14px] font-semibold" style={{ background: "rgba(46,107,64,0.9)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {t("rhythm.begin", { defaultValue: "Begin" })} →
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      )}
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); dismiss(); }}
