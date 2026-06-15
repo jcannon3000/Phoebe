@@ -12,6 +12,7 @@ import { eq, and, or, inArray, sql } from "drizzle-orm";
 import { db, fellowsTable, fellowInvitesTable, usersTable, betaUsersTable, userMutesTable } from "@workspace/db";
 import { z } from "zod/v4";
 import { sendPushToUser } from "../lib/pushSender";
+import { perUserRateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -162,7 +163,7 @@ router.post("/fellows/requests/:id/decline", requireBeta, async (req, res): Prom
 });
 
 // ─── GET /api/fellows/search?q= — find people to add, with status ────────────
-router.get("/fellows/search", requireBeta, async (req, res): Promise<void> => {
+router.get("/fellows/search", perUserRateLimit("fellows_search", { max: 40, windowMs: 60 * 1000 }), requireBeta, async (req, res): Promise<void> => {
   const me = getUserId(req)!;
   const q = ((req.query.q as string) || "").trim();
   if (q.length < 2) { res.json({ users: [] }); return; }

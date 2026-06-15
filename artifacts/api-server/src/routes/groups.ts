@@ -3080,7 +3080,7 @@ router.delete("/groups/:slug/focus/:id", async (req, res): Promise<void> => {
 //
 // Filter is done SQL-side via ILIKE so we never pull the whole users
 // table into Node, and LIMIT 8 caps the wire size.
-router.get("/groups/users/search", async (req, res): Promise<void> => {
+router.get("/groups/users/search", perUserRateLimit("groups_user_search", { max: 40, windowMs: 60 * 1000 }), async (req, res): Promise<void> => {
   try {
     const user = getUser(req);
     if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }

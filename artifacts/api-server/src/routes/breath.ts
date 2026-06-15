@@ -2,6 +2,7 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { db, breathSessionsTable, usersTable } from "@workspace/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { getGardenUserIds } from "../lib/garden";
+import { perUserRateLimit } from "../lib/rate-limit";
 
 // ── Cobreathe ────────────────────────────────────────────────────────
 //
@@ -116,7 +117,7 @@ router.get("/breath/today", async (req: Request, res: Response): Promise<void> =
   }
 });
 
-router.post("/breath/today", async (req: Request, res: Response): Promise<void> => {
+router.post("/breath/today", perUserRateLimit("breath_record", { max: 20, windowMs: 60 * 1000 }), async (req: Request, res: Response): Promise<void> => {
   const userId = uid(req);
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
 
