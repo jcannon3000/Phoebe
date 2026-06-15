@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { motion } from "framer-motion";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
@@ -488,7 +488,14 @@ export default function ContemplationPage() {
     return 10;
   });
   // Which supporting section shows under the Begin card.
-  const [tab, setTab] = useState<"history" | "stats" | "learn">("history");
+  const [, setLocation] = useLocation();
+  const [tab, setTab] = useState<"history" | "stats" | "learn">(() => {
+    try {
+      const v = new URLSearchParams(window.location.search).get("tab");
+      if (v === "stats" || v === "learn" || v === "history") return v;
+    } catch { /* ignore */ }
+    return "history";
+  });
   // Local midnight so the server can scope "today" to the user's
   // calendar day rather than UTC. Stable within a day; keyed into the
   // query so it refetches cleanly across a midnight rollover.
@@ -721,6 +728,20 @@ export default function ContemplationPage() {
           {t("contemplation.start_contemplation", { defaultValue: "Start contemplation" })} <span aria-hidden>→</span>
         </button>
       </div>
+
+      {/* View stats — a quiet link under Start that drops the focused slide and
+          opens the full page on the Stats tab. Only in the immersive begin
+          mode; the full page already carries the History/Stats/Learn tabs. */}
+      {beginMode && (
+        <button
+          type="button"
+          onClick={() => { setTab("stats"); setLocation("/contemplation?tab=stats"); }}
+          className="w-full text-center mt-3.5 transition-opacity active:opacity-70"
+          style={{ background: "none", border: "none", color: "rgba(143,175,150,0.85)", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+        >
+          {t("contemplation.view_stats", { defaultValue: "View stats" })} <span aria-hidden>→</span>
+        </button>
+      )}
 
       {/* Cobreathe pill — set apart with a space, straight into today's
           communal breath (?start=1). */}
