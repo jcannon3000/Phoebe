@@ -1172,6 +1172,57 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS prayers_for_prayer_user ON prayers_for (prayer_user_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS prayers_for_recipient ON prayers_for (recipient_user_id)`);
 
+    // ── Prayer Dialogue (1:1 "prayer for the day") ─────────────────────────
+    // prayer_partnerships — the 1:1 bond (normalized lo/hi pair; one active
+    // partner per person, enforced in the route layer).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_partnerships (
+        id SERIAL PRIMARY KEY,
+        user_lo_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        user_hi_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        invited_by_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        accepted_at TIMESTAMPTZ,
+        ended_at TIMESTAMPTZ,
+        ended_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS prayer_partnerships_pair ON prayer_partnerships (user_lo_id, user_hi_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS prayer_partnerships_lo ON prayer_partnerships (user_lo_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS prayer_partnerships_hi ON prayer_partnerships (user_hi_id)`);
+
+    // daily_prayers — one "prayer for the day" per author per local day.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS daily_prayers (
+        id SERIAL PRIMARY KEY,
+        author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        partner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        partnership_id INTEGER NOT NULL REFERENCES prayer_partnerships(id) ON DELETE CASCADE,
+        ymd TEXT NOT NULL,
+        body TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS daily_prayers_author_ymd ON daily_prayers (author_id, ymd)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS daily_prayers_partnership ON daily_prayers (partnership_id, created_at)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS daily_prayers_partner ON daily_prayers (partner_id, created_at)`);
+
+    // prayer_attentions — the attention/"view receipt" (>=3s = counted/prayed).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS prayer_attentions (
+        id SERIAL PRIMARY KEY,
+        daily_prayer_id INTEGER NOT NULL REFERENCES daily_prayers(id) ON DELETE CASCADE,
+        viewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        first_viewed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        attention_seconds INTEGER NOT NULL DEFAULT 0,
+        counted_at TIMESTAMPTZ,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS prayer_attentions_prayer_viewer ON prayer_attentions (daily_prayer_id, viewer_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS prayer_attentions_viewer ON prayer_attentions (viewer_id)`);
+
     // ── Prayer Circles (beta) ──────────────────────────────────────────────
     // A prayer circle is a group with a shared intention. These columns are
     // nullable/defaulted so existing groups keep working unchanged, and the

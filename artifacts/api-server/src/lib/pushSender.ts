@@ -669,6 +669,26 @@ export function sendPrayerForYouPush(
   });
 }
 
+// "{Name} shared their prayer for the day." Fires when a prayer partner
+// shares their daily prayer. This is the ONLY notification in the prayer-
+// dialogue loop — giving attention to someone's prayer (the "amen"-less,
+// 3-second view) deliberately does NOT push the author; only a fresh share
+// does. The deep link opens the day's prayer so the partner can sit with it.
+export function sendDailyPrayerPush(
+  partnerUserId: number,
+  senderName: string,
+  dailyPrayerId: number,
+) {
+  const firstName = (senderName || "Your partner").split(/\s+/)[0] || "Your partner";
+  return sendPushToUser(partnerUserId, {
+    title: `${firstName} shared their prayer for the day`,
+    body: "Open Phoebe to pray it with them.",
+    path: `/prayer-partner?focus=${dailyPrayerId}`,
+    threadId: "prayer-dialogue",
+    sound: PHOEBE_SOUND_HIGH,
+  });
+}
+
 // "{Name} wrote you a letter." Fires when a 1:1 letter arrives — read-
 // focused copy because the user might not be ready to reply right
 // away (a follow-up reminder push handles the "your turn is still

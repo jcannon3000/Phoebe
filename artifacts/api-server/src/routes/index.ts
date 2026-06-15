@@ -23,6 +23,7 @@ import feedbackRouter from "./feedback";
 import mutesRouter from "./mutes";
 import gratitudeRouter from "./gratitude";
 import prayersForRouter from "./prayers-for";
+import dailyPrayerRouter from "./daily-prayer";
 import fellowsConnectRouter from "./fellows-connect";
 import waitlistRouter from "./waitlist";
 import prayerFeedsRouter from "./prayer-feeds";
@@ -79,6 +80,8 @@ const router: IRouter = Router();
 const OFFICES_ONLY_BLOCKED_PREFIXES = [
   "/groups",
   "/prayer-requests",
+  "/prayer-partner",
+  "/daily-prayer",
   "/prayers-for",
   "/gatherings",
   // "/moments" (the social practices dashboard) is blocked, but the
@@ -154,6 +157,7 @@ router.use(feedbackRouter);
 router.use(mutesRouter);
 router.use(gratitudeRouter);
 router.use(prayersForRouter);
+router.use(dailyPrayerRouter);
 router.use(fellowsConnectRouter);
 router.use(waitlistRouter);
 router.use(prayerFeedsRouter);
