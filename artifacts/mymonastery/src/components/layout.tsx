@@ -14,6 +14,7 @@ import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
 import { useRhythmState } from "@/hooks/useRhythmState";
+import { getSideLevel } from "@/lib/officePrefs";
 import { isJardinSealed } from "@/lib/jardinMode";
 import { useHealthMindfulToday, useSyncHealthMinutes } from "@/lib/appleHealth";
 
@@ -801,18 +802,39 @@ function DailyProgressPill() {
   );
 }
 
+// Has the user actually designed a daily routine? True once they've EITHER
+// arranged their home (Customize → homeLayout) OR set up their offices via the
+// daily-habit flow (/rule-of-life → office prefs, mirrored to getSideLevel).
+// Drives the once-a-week "Design your daily routine" nudge on the splash —
+// which stops for good the moment either is true.
+function hasDesignedRoutine(u: { homeLayout?: unknown } | null | undefined): boolean {
+  if (u?.homeLayout) return true;
+  try { return getSideLevel("morning") !== null || getSideLevel("evening") !== null; }
+  catch { return false; }
+}
+const ROUTINE_PROMPT_KEY = "phoebe:routine-prompt-last";
+const ROUTINE_PROMPT_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // once a week
+
 // OpeningSplash — the native app-open greeting. It's the EXACT same slide users
 // see at the end of the slideshow (CommunityPrayedRecap: "you prayed for N
 // people this week" + their faces), gently faded up, then faded out after 5s
 // (or when you tap the arrow / anywhere). Native app only — never on web — and
 // only once per app launch, never for logged-out visitors.
+//
+// One detour: a user who hasn't designed a daily routine gets a "Design your
+// daily routine" slide AFTER the faces (Start → /rule-of-life, or Skip). It's
+// shown at most once a week (ROUTINE_PROMPT_KEY) until they have a routine.
 function OpeningSplash() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const native = isNativeShell();
   const [, splashGoTo] = useLocation();
   const rhythm = useRhythmState();
-  const [phase, setPhase] = useState<"in" | "out" | "gone">(() => {
+  // The routine nudge sends people to /rule-of-life, which is beta-gated (it
+  // bounces non-beta users to /dashboard). Match that gate exactly so the
+  // "Design my routine" button never dead-ends.
+  const { isBeta } = useBetaStatus();
+  const [phase, setPhase] = useState<"in" | "routine" | "out" | "gone">(() => {
     if (typeof window === "undefined") return "gone";
     try { return sessionStorage.getItem("phoebe:splash-shown") ? "gone" : "in"; } catch { return "in"; }
   });
@@ -846,6 +868,26 @@ function OpeningSplash() {
       if (p.avatarUrl) { const img = new Image(); img.decoding = "async"; img.src = p.avatarUrl; }
     }
   }, [data]);
+  // Is the "Design your daily routine" nudge due? Only when the user has no
+  // routine yet AND we haven't shown it in the last week.
+  const routineDue = (): boolean => {
+    if (!user || !isBeta || hasDesignedRoutine(user)) return false;
+    try {
+      const last = Number(localStorage.getItem(ROUTINE_PROMPT_KEY) || "0");
+      if (last && Date.now() - last < ROUTINE_PROMPT_INTERVAL_MS) return false;
+    } catch { /* ignore */ }
+    return true;
+  };
+  // Leaving the faces — detour to the routine slide if due (stamping the
+  // week), otherwise fade out to the home as before. The functional updater
+  // makes this a no-op once we've already left "in", so a late-firing timer
+  // can't yank the routine slide away or re-stamp.
+  const advanceFromFaces = () => {
+    const due = routineDue();
+    if (due) { try { localStorage.setItem(ROUTINE_PROMPT_KEY, String(Date.now())); } catch { /* ignore */ } }
+    setPhase((cur) => (cur !== "in" ? cur : due ? "routine" : "out"));
+  };
+
   // Start the 5s auto-dismiss once auth has resolved (user present) — NOT on a
   // bare mount. On a native cold start `user` is null while /api/auth/me loads;
   // stamping the once-per-launch flag then would burn the splash before it ever
@@ -856,7 +898,7 @@ function OpeningSplash() {
     if (startedRef.current || phase === "gone" || !native || !user) return;
     startedRef.current = true;
     try { sessionStorage.setItem("phoebe:splash-shown", "1"); } catch { /* ignore */ }
-    const id = setTimeout(() => setPhase("out"), 5000);
+    const id = setTimeout(() => advanceFromFaces(), 5000);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -885,14 +927,14 @@ function OpeningSplash() {
     // no longer holds). While data is still loading (undefined) the cache keeps
     // painting and the 5s timer runs as normal.
     if (phase === "in" && data !== undefined && (data.people?.length ?? 0) === 0) {
-      setPhase("out");
+      advanceFromFaces();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, phase]);
 
   // Web (or logged out) → no splash at all.
   if (!native || !user || phase === "gone") return null;
 
-  const dismiss = () => setPhase("out");
   const hour = new Date().getHours();
   const greeting = hour < 12
     ? t("splash.morning", { defaultValue: "Good morning" })
@@ -914,7 +956,10 @@ function OpeningSplash() {
 
   return (
     <motion.div
-      onClick={dismiss}
+      // Tapping the backdrop advances from the faces (to the routine slide or
+      // home); on the routine slide itself only Start / Skip act, so a stray
+      // tap can't dismiss it.
+      onClick={() => { if (phase === "in") advanceFromFaces(); }}
       // The backdrop is opaque from the very first frame — so the recap is the
       // first thing shown (no flash of the home behind it). Only the fade-OUT
       // animates; the recap's own content gently rises in on top.
@@ -929,6 +974,42 @@ function OpeningSplash() {
       }}
     >
       <AnimatedBackground base="#0C1F12" variant="pronounced" />
+      {phase === "routine" ? (
+        // Design-your-daily-routine nudge — shown after the faces to users who
+        // haven't set up a routine yet (once a week until they have one).
+        <motion.div
+          initial={{ opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: "easeOut" }}
+          className="relative flex flex-1 flex-col items-center justify-center text-center w-full"
+          style={{ maxWidth: 420 }}
+        >
+          <div className="text-5xl mb-5">🌿</div>
+          <h2 className="px-4 mb-3" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 26, fontWeight: 600, letterSpacing: "-0.01em" }}>
+            {t("splash.routine_title", { defaultValue: "Design your daily routine" })}
+          </h2>
+          <p className="px-7 text-[15.5px] leading-relaxed mb-9" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
+            {t("splash.routine_subtitle", { defaultValue: "A simple rhythm of prayer, shaped to your day — morning, evening, a moment of stillness. It takes about a minute." })}
+          </p>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setPhase("out"); splashGoTo("/rule-of-life"); }}
+            className="rounded-full px-9 py-3.5 text-[16px] font-semibold active:scale-[0.98]"
+            style={{ background: "rgba(46,107,64,0.92)", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)", fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            {t("splash.routine_start", { defaultValue: "Design my routine" })} →
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setPhase("out"); }}
+            className="mt-5 text-[14px] font-medium active:opacity-70"
+            style={{ background: "none", border: "none", color: "rgba(143,175,150,0.78)", fontFamily: "'Space Grotesk', sans-serif", cursor: "pointer" }}
+          >
+            {t("splash.routine_skip", { defaultValue: "Skip for now" })}
+          </button>
+        </motion.div>
+      ) : (
+      <>
       <p
         className="text-center px-8 mb-8 relative"
         style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}
@@ -1019,12 +1100,14 @@ function OpeningSplash() {
       )}
       <button
         type="button"
-        onClick={(e) => { e.stopPropagation(); dismiss(); }}
+        onClick={(e) => { e.stopPropagation(); advanceFromFaces(); }}
         aria-label="Continue"
         style={{ position: "absolute", bottom: "6vh", background: "none", border: "none", cursor: "pointer", padding: 16, zIndex: 1 }}
       >
         <span style={{ color: "#8FAF96", fontSize: 30, lineHeight: 1 }}>→</span>
       </button>
+      </>
+      )}
     </motion.div>
   );
 }
