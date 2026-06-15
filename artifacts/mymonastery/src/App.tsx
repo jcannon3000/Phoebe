@@ -218,6 +218,7 @@ const MorningPrayerPage = lazy(() => import("./pages/morning-prayer"));
 const MomentsDashboard = lazy(() => import("./pages/moments-dashboard"));
 const MomentRedirect = lazy(() => import("./pages/moment-redirect"));
 const PrayerListPage = lazy(() => import("./pages/prayer-list"));
+const PrayerPartnerPage = lazy(() => import("./pages/prayer-partner"));
 const PrayerModePage = lazy(() => import("./pages/prayer-mode"));
 const DailyPracticePage = lazy(() => import("./pages/daily-practice"));
 const DailyProgressPage = lazy(() => import("./pages/daily-progress"));
@@ -828,6 +829,7 @@ function Router() {
       <Route path="/my-prayer-feeds" component={MyPrayerFeedsPage} />
       <Route path="/admin/newsletter" component={AdminNewsletterPage} />
       <Route path="/prayer-list" component={PrayerListPage} />
+      <Route path="/prayer-partner" component={PrayerPartnerPage} />
       <Route path="/my-prayer-requests" component={MyPrayerRequestsPage} />
       <Route path="/prayers-for-me" component={PrayersForMePage} />
       <Route path="/prayer-mode" component={PrayerModePage} />
