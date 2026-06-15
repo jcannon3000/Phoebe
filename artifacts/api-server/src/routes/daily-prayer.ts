@@ -130,7 +130,11 @@ router.get("/daily-prayer/today", async (req, res): Promise<void> => {
   const partners: Array<Record<string, unknown>> = [];
   let attendedAny = false;
 
-  for (const p of partnerships) {
+  // Process every partnership CONCURRENTLY (was a sequential await-loop → ~4
+  // round-trips per partner, serialized). The per-partner query chain is
+  // unchanged; Promise.all just overlaps them (pool-bounded), so wall-clock is
+  // the slowest single chain rather than the sum across partners.
+  const partnerResults = await Promise.all(partnerships.map(async (p) => {
     const partnerId = partnerIdOf(p, uid);
     const partner = await loadUserCard(partnerId);
     const [theirLatest] = await db.select().from(dailyPrayersTable)
@@ -139,21 +143,30 @@ router.get("/daily-prayer/today", async (req, res): Promise<void> => {
     const myAtt = theirLatest ? (await db.select().from(prayerAttentionsTable).where(and(
       eq(prayerAttentionsTable.dailyPrayerId, theirLatest.id), eq(prayerAttentionsTable.viewerId, uid))))[0] : undefined;
     const counted = !!myAtt?.countedAt;
-    if (counted) attendedAny = true;
     const streak = await computeStreak(uid, partnerId, tz);
-    partners.push({
-      partner,
-      streak,
-      theirLatest: theirLatest ?? null,
-      myAttention: { counted, seconds: myAtt?.attentionSeconds ?? 0 },
-      // Their newest prayer that I haven't prayed yet → surfaces a "new" dot.
-      isNew: !!theirLatest && !counted,
-    });
+    let receipt: { partner: unknown; counted: boolean; viewedAt: Date | null } | null = null;
     if (mine) {
       const partnerAtt = (await db.select().from(prayerAttentionsTable).where(and(
         eq(prayerAttentionsTable.dailyPrayerId, mine.id), eq(prayerAttentionsTable.viewerId, partnerId))))[0];
-      shareReceipts.push({ partner, counted: !!partnerAtt?.countedAt, viewedAt: partnerAtt?.firstViewedAt ?? null });
+      receipt = { partner, counted: !!partnerAtt?.countedAt, viewedAt: partnerAtt?.firstViewedAt ?? null };
     }
+    return {
+      counted,
+      entry: {
+        partner,
+        streak,
+        theirLatest: theirLatest ?? null,
+        myAttention: { counted, seconds: myAtt?.attentionSeconds ?? 0 },
+        // Their newest prayer that I haven't prayed yet → surfaces a "new" dot.
+        isNew: !!theirLatest && !counted,
+      },
+      receipt,
+    };
+  }));
+  for (const r of partnerResults) {
+    partners.push(r.entry);
+    if (r.counted) attendedAny = true;
+    if (r.receipt) shareReceipts.push(r.receipt);
   }
   // Newest / unprayed partners first.
   partners.sort((a, b) => Number(b.isNew) - Number(a.isNew));
@@ -176,8 +189,11 @@ router.get("/prayer-partners", async (req, res): Promise<void> => {
   const uid = uidOf(req);
   if (!uid) { res.status(401).json({ error: "Unauthorized" }); return; }
   const partnerships = await getActivePartnerships(uid);
-  const out = [];
-  for (const p of partnerships) out.push({ partnershipId: p.id, partner: await loadUserCard(partnerIdOf(p, uid)) });
+  // Load each partner's card concurrently (was a sequential per-partner await).
+  const out = await Promise.all(partnerships.map(async (p) => ({
+    partnershipId: p.id,
+    partner: await loadUserCard(partnerIdOf(p, uid)),
+  })));
   res.json(out);
 });
 

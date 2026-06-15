@@ -802,6 +802,24 @@ router.post("/prayer-requests", rateLimit({
   // that follow-up). Everything else uses the chosen 3/7-day window.
   const eventDate = parsed.data.kind === "life-event" && parsed.data.eventDate
     ? new Date(parsed.data.eventDate) : null;
+  // A life event needs BOTH a date and a title (the follow-up cron + the detail
+  // UI depend on them), and the date can't be in the past — otherwise the row's
+  // expiry (eventDate + 2d) would land in the past and it'd be born expired.
+  // (>24h-ago guard, not "before now", so picking today still works.)
+  if (parsed.data.kind === "life-event") {
+    if (!eventDate) {
+      res.status(400).json({ error: "A life event needs a date." });
+      return;
+    }
+    if (eventDate.getTime() < Date.now() - 24 * 60 * 60 * 1000) {
+      res.status(400).json({ error: "The event date can't be in the past." });
+      return;
+    }
+    if (!parsed.data.eventTitle || !parsed.data.eventTitle.trim()) {
+      res.status(400).json({ error: "A life event needs a title." });
+      return;
+    }
+  }
   const expiresAt = eventDate
     ? new Date(eventDate.getTime() + 2 * 24 * 60 * 60 * 1000)
     : new Date(Date.now() + parsed.data.durationDays * 24 * 60 * 60 * 1000);
@@ -821,7 +839,7 @@ router.post("/prayer-requests", rateLimit({
       createdByName: owner?.name ?? null,
       kind: parsed.data.kind,
       eventDate,
-      eventTitle: eventDate ? (parsed.data.eventTitle?.trim() || null) : null,
+      eventTitle: parsed.data.kind === "life-event" ? (parsed.data.eventTitle?.trim() || null) : null,
       expiresAt,
       shareToken,
     })

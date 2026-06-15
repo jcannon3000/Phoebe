@@ -848,17 +848,24 @@ function OpeningSplash() {
   // INSTANTLY on a cold open — no waiting on the network or the React-Query
   // persister to rehydrate. The live query (above) refreshes them in the
   // background and the effect below re-saves the latest set for next launch.
-  const [cachedFaces] = useState<Array<{ id: number; name: string | null; avatarUrl: string | null; count?: number }>>(() => {
-    if (typeof window === "undefined") return [];
-    try { return JSON.parse(localStorage.getItem("phoebe:splash-faces") || "[]"); } catch { return []; }
+  // Keyed by user id so a PREVIOUS account's faces can never flash for the next
+  // person to sign in on a shared device (the cache outlives a no-logout close).
+  type CachedFaces = { uid: number | null; people: Array<{ id: number; name: string | null; avatarUrl: string | null; count?: number }> };
+  const [cachedFaces] = useState<CachedFaces>(() => {
+    if (typeof window === "undefined") return { uid: null, people: [] };
+    try {
+      const raw = JSON.parse(localStorage.getItem("phoebe:splash-faces") || "null");
+      if (raw && typeof raw.uid === "number" && Array.isArray(raw.people)) return raw as CachedFaces;
+    } catch { /* ignore */ }
+    return { uid: null, people: [] };
   });
   useEffect(() => {
     if (data === undefined) return;
     try {
-      if (data.people && data.people.length > 0) localStorage.setItem("phoebe:splash-faces", JSON.stringify(data.people));
+      if (data.people && data.people.length > 0 && user) localStorage.setItem("phoebe:splash-faces", JSON.stringify({ uid: user.id, people: data.people }));
       else localStorage.removeItem("phoebe:splash-faces");
     } catch { /* ignore */ }
-  }, [data]);
+  }, [data, user]);
   // Warm the avatar images the moment the co-prayer data lands, so the face
   // rail doesn't flash white circles while each one downloads. The rendered
   // <img>s reuse the same in-flight/cached fetch (and carry a green placeholder
@@ -1028,8 +1035,10 @@ function OpeningSplash() {
       </p>
       {(() => {
         // Prefer the live set; fall back to last session's cached faces so the
-        // rail paints instantly on a cold open (no network wait).
-        const people = (data?.people && data.people.length > 0) ? data.people : cachedFaces;
+        // rail paints instantly on a cold open (no network wait) — but ONLY when
+        // the cache belongs to THIS user (never flash a prior account's faces).
+        const cached = cachedFaces.uid === user.id ? cachedFaces.people : [];
+        const people = (data?.people && data.people.length > 0) ? data.people : cached;
         // Nothing yet (still loading) or nobody → render no content. The empty
         // case is handled by the dismiss effect above; we never flash the old
         // "held in prayer" blessing or a bare greeting here.

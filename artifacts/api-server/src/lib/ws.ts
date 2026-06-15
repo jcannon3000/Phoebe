@@ -6,6 +6,7 @@ import { db, usersTable } from "@workspace/db";
 import { logger } from "./logger";
 import { getFellowUserIds } from "./garden";
 import { sendPushToUser } from "./pushSender";
+import { sessionMiddleware } from "./session";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -78,8 +79,13 @@ function getPresenceList(): PresenceInfo[] {
 }
 
 function broadcastPresenceSync() {
-  const presence = getPresenceList();
-  const msg = JSON.stringify({ type: "presence-sync", presence });
+  // NOTE: presence carries email because the client filters its garden by email
+  // (useGardenSocket: gardenEmails.has(p.email)). Now that the socket is
+  // authenticated, this is an authenticated-users-only roster — and presence is
+  // additionally gated on the per-user `showPresence` pref, so it's inert for
+  // anyone who hasn't opted in. A future cleanup can move the client to user_id
+  // filtering and drop email from the wire entirely.
+  const msg = JSON.stringify({ type: "presence-sync", presence: getPresenceList() });
   for (const [ws] of clients) {
     if (ws.readyState === WebSocket.OPEN) {
       ws.send(msg);
@@ -240,83 +246,114 @@ async function recomputeBreathNotifications() {
 export function attachWebSocketServer(server: HttpServer) {
   const wss = new WebSocketServer({ server, path: "/ws" });
 
-  wss.on("connection", (ws: WebSocket, _req: IncomingMessage) => {
-    const state: ClientState = { ws, userId: null, email: null, presence: null };
-    clients.set(ws, state);
+  // Run the express-session middleware on the upgrade request so we can read the
+  // authenticated user id (passport stores it at session.passport.user).
+  const runSession = sessionMiddleware as unknown as (
+    req: IncomingMessage, res: Record<string, unknown>, next: () => void,
+  ) => void;
 
-    // Send current presence + cobreathe state to the new client so a late joiner
-    // immediately sees who's present and who's already breathing.
-    ws.send(JSON.stringify({ type: "presence-sync", presence: getPresenceList() }));
-    ws.send(JSON.stringify({ type: "cobreathe-sync", sessions: getCobreatheSessions() }));
+  wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
+    // AUTHENTICATE the socket against the SAME session cookie the HTTP API uses.
+    // Until now the WS trusted client-supplied identity entirely: any anonymous
+    // client could impersonate a user (forging presence as them), spoof
+    // cobreathe sessions (push-spamming a victim's fellows + probing the social
+    // graph server-side), and pull a live roster of every present user. After
+    // this gate we NEVER trust a client-supplied user id — it always comes from
+    // the session.
+    runSession(req, {}, () => {
+      const authedUserId = (req as unknown as { session?: { passport?: { user?: number } } })
+        .session?.passport?.user;
+      if (typeof authedUserId !== "number") {
+        try { ws.close(1008, "Unauthorized"); } catch { /* already closing */ }
+        return;
+      }
 
-    ws.on("message", (raw) => {
-      try {
-        const msg = JSON.parse(String(raw));
+      const state: ClientState = { ws, userId: authedUserId, email: null, presence: null };
+      clients.set(ws, state);
 
-        if (msg.type === "track" && msg.payload) {
-          const p = msg.payload as PresenceInfo;
-          state.userId = p.user_id;
-          state.email = p.email;
-          state.presence = p;
-          broadcastPresenceSync();
-        }
+      // Send current presence + cobreathe state to the new client so a late
+      // joiner immediately sees who's present and who's already breathing.
+      ws.send(JSON.stringify({ type: "presence-sync", presence: getPresenceList() }));
+      ws.send(JSON.stringify({ type: "cobreathe-sync", sessions: getCobreatheSessions() }));
 
-        if (msg.type === "untrack") {
-          state.presence = null;
-          broadcastPresenceSync();
-        }
+      ws.on("message", (raw) => {
+        try {
+          const msg = JSON.parse(String(raw));
 
-        // A user started breathing — store their seed + origin so garden-mates
-        // can follow the same photo order, and tell everyone.
-        if (msg.type === "cobreathe-start" && msg.payload) {
-          const p = msg.payload as Partial<CobreatheSession>;
-          if (
-            typeof p.userId === "number" &&
-            typeof p.email === "string" &&
-            typeof p.startEpochMs === "number" &&
-            typeof p.masterSeed === "number" &&
-            typeof p.fingerprint === "string"
-          ) {
-            cobreatheSessions.set(ws, {
-              userId: p.userId,
-              email: p.email,
-              startEpochMs: p.startEpochMs,
-              masterSeed: p.masterSeed,
-              fingerprint: p.fingerprint,
-            });
-            broadcastCobreatheSync();
-            scheduleBreathRecompute();
+          if (msg.type === "track" && msg.payload) {
+            const p = msg.payload as Partial<PresenceInfo>;
+            // user_id is the AUTHENTICATED user — never the client payload (that
+            // was the impersonation hole). The cosmetic display fields + email
+            // (used by the client's garden filter) come from the payload, but a
+            // mis-tagged email can't impersonate anyone since the id is fixed.
+            state.email = typeof p.email === "string" ? p.email : null;
+            state.presence = {
+              user_id: authedUserId,
+              display_name: typeof p.display_name === "string" ? p.display_name : "",
+              email: typeof p.email === "string" ? p.email : "",
+              avatar_url: typeof p.avatar_url === "string" ? p.avatar_url : null,
+              joined_at: typeof p.joined_at === "string" ? p.joined_at : new Date().toISOString(),
+            };
+            broadcastPresenceSync();
           }
+
+          if (msg.type === "untrack") {
+            state.presence = null;
+            broadcastPresenceSync();
+          }
+
+          // A user started breathing — store their seed + origin so garden-mates
+          // can follow the same photo order, and tell everyone. The userId is
+          // the authenticated one, so a client can't forge a session for someone
+          // else (which would have spammed that person's fellows).
+          if (msg.type === "cobreathe-start" && msg.payload) {
+            const p = msg.payload as Partial<CobreatheSession>;
+            if (
+              typeof p.startEpochMs === "number" &&
+              typeof p.masterSeed === "number" &&
+              typeof p.fingerprint === "string"
+            ) {
+              cobreatheSessions.set(ws, {
+                userId: authedUserId,
+                email: "",
+                startEpochMs: p.startEpochMs,
+                masterSeed: p.masterSeed,
+                fingerprint: p.fingerprint,
+              });
+              broadcastCobreatheSync();
+              scheduleBreathRecompute();
+            }
+          }
+
+          if (msg.type === "cobreathe-stop") {
+            if (cobreatheSessions.delete(ws)) { broadcastCobreatheSync(); scheduleBreathRecompute(); }
+          }
+        } catch {
+          // ignore malformed messages
         }
+      });
 
-        if (msg.type === "cobreathe-stop") {
-          if (cobreatheSessions.delete(ws)) { broadcastCobreatheSync(); scheduleBreathRecompute(); }
+      ws.on("close", () => {
+        const hadPresence = state.presence !== null;
+        const hadCobreathe = cobreatheSessions.delete(ws);
+        clients.delete(ws);
+        if (hadPresence) {
+          broadcastPresenceSync();
         }
-      } catch {
-        // ignore malformed messages
-      }
-    });
+        if (hadCobreathe) {
+          broadcastCobreatheSync();
+          scheduleBreathRecompute();
+        }
+      });
 
-    ws.on("close", () => {
-      const hadPresence = state.presence !== null;
-      const hadCobreathe = cobreatheSessions.delete(ws);
-      clients.delete(ws);
-      if (hadPresence) {
-        broadcastPresenceSync();
-      }
-      if (hadCobreathe) {
-        broadcastCobreatheSync();
-        scheduleBreathRecompute();
-      }
-    });
-
-    ws.on("error", () => {
-      const hadCobreathe = cobreatheSessions.delete(ws);
-      clients.delete(ws);
-      if (hadCobreathe) {
-        broadcastCobreatheSync();
-        scheduleBreathRecompute();
-      }
+      ws.on("error", () => {
+        const hadCobreathe = cobreatheSessions.delete(ws);
+        clients.delete(ws);
+        if (hadCobreathe) {
+          broadcastCobreatheSync();
+          scheduleBreathRecompute();
+        }
+      });
     });
   });
 

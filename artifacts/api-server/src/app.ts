@@ -1,9 +1,8 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
-import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
 import passport from "passport";
+import { sessionMiddleware } from "./lib/session";
 import router from "./routes";
 import { bustUserCache } from "./routes/auth";
 import { logger } from "./lib/logger";
@@ -22,8 +21,6 @@ import { db, groupsTable, prayerRequestsTable, usersTable } from "@workspace/db"
 import { eq } from "drizzle-orm";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-const PgSession = connectPgSimple(session);
 
 if (process.env["NODE_ENV"] === "production" && !process.env["SESSION_SECRET"]) {
   throw new Error("SESSION_SECRET must be set in production");
@@ -136,32 +133,10 @@ app.use((_req, res, next) => {
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-app.use(
-  session({
-    store: new PgSession({
-      conString: process.env["DATABASE_URL"],
-      tableName: "user_sessions",
-    }),
-    secret: process.env["SESSION_SECRET"] ?? "dev-secret-change-me",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: process.env["NODE_ENV"] === "production",
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-      sameSite: process.env["NODE_ENV"] === "production" ? "none" : "lax",
-      // Flag-gated shared-session domain. Set SESSION_COOKIE_DOMAIN=
-      // ".withphoebe.app" to share the login across subdomains (so a Phoebe
-      // session is recognized on eljardin.withphoebe.app and vice versa).
-      // Unset → the cookie stays scoped to the exact origin (today's
-      // behavior). ⚠️ Flipping this re-scopes the cookie, so every current
-      // user is logged out once — deploy it deliberately.
-      ...(process.env["SESSION_COOKIE_DOMAIN"]
-        ? { domain: process.env["SESSION_COOKIE_DOMAIN"] }
-        : {}),
-    },
-  })
-);
+// The session middleware now lives in ./lib/session so the WebSocket upgrade
+// (lib/ws.ts) can authenticate against the SAME session cookie. See the
+// SESSION_COOKIE_DOMAIN note there.
+app.use(sessionMiddleware);
 
 app.use(passport.initialize());
 app.use(passport.session());

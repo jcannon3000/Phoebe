@@ -553,14 +553,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // built on framer-motion layout + popLayout — glitched, so it's gone: on
   // return the finished card simply renders in Done with the same clean fade.)
   const upcomingDisplay = visibleCards.filter((c) => !c.done);
-  const completedDisplay = visibleCards.filter((c) => {
-    if (!c.done) return false;
-    // On the home, once it's afternoon (12 PM+), drop Morning Prayer and the
-    // reflection from the Done list — the morning is past; keep it to the
-    // evening. (The full Daily Progress page still shows everything.)
-    if (showDone && hour >= 12 && (c.key === "morning" || c.key === "reflect")) return false;
-    return true;
-  });
+  // Everything kept today stays in the Done section all day — until the whole
+  // day's rhythm is complete — so the home always reflects what's been prayed.
+  // (We used to drop Morning Prayer + the reflection after noon; that made the
+  // Done section quietly empty out as the day went on.)
+  const completedDisplay = visibleCards.filter((c) => c.done);
   const showDoneSection = (showStreak || showDone) && completedDisplay.length > 0;
 
   // Matches the Prayer List title row — a larger mixed-case heading with a
