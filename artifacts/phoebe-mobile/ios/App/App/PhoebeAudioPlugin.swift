@@ -38,6 +38,7 @@ import Foundation
 import Capacitor
 import AVFoundation
 import UserNotifications
+import CoreHaptics
 
 @objc(PhoebeAudioPlugin)
 public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -50,9 +51,68 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "cancelScheduled", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "scheduleBellNotification", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cancelBellNotification", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "smoothSwell", returnType: CAPPluginReturnPromise),
     ]
 
     private let bellNotificationId = "phoebe-contemplation-bell"
+    // Core Haptics engine for the Cobreathe completion swell (lazy; reused).
+    private var hapticEngine: CHHapticEngine?
+
+    // ─── Smooth completion haptic (Core Haptics) ─────────────────────────────
+    // ONE continuous vibration whose intensity follows a parabola — rising from
+    // nothing to a peak and falling back to nothing — like Duolingo's success
+    // buzz. Capacitor's Haptics plugin can only fire discrete impacts, which
+    // read as a string of taps; this is a single sustained swell. No-ops on
+    // hardware without Core Haptics (older devices / most iPads); the web side
+    // falls back to the impact-density approximation there.
+    //   durationMs  default 1300   peak 0..1 default 1.0   sharpness 0..1 default 0.3
+    @objc func smoothSwell(_ call: CAPPluginCall) {
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else {
+            call.resolve(["ok": false])
+            return
+        }
+        let duration = (call.getDouble("durationMs") ?? 1300) / 1000.0
+        let peak = Float(call.getDouble("peak") ?? 1.0)
+        let sharpness = Float(call.getDouble("sharpness") ?? 0.3)
+        do {
+            if hapticEngine == nil {
+                let e = try CHHapticEngine()
+                // Restart transparently if the system resets/stops the engine.
+                e.resetHandler = { [weak self] in try? self?.hapticEngine?.start() }
+                e.stoppedHandler = { _ in }
+                hapticEngine = e
+            }
+            try hapticEngine?.start()
+
+            let intensity = CHHapticEventParameter(parameterID: .hapticIntensity, value: peak)
+            let sharp = CHHapticEventParameter(parameterID: .hapticSharpness, value: sharpness)
+            let event = CHHapticEvent(eventType: .hapticContinuous,
+                                      parameters: [intensity, sharp],
+                                      relativeTime: 0,
+                                      duration: duration)
+
+            // Parabolic intensity envelope: value = 1 - (2t - 1)^2 → 0 at the
+            // ends, 1 at the midpoint. The engine interpolates smoothly between
+            // these control points, so the buzz swells and fades as one motion.
+            let steps = 18
+            var points: [CHHapticParameterCurve.ControlPoint] = []
+            for i in 0...steps {
+                let t = Double(i) / Double(steps)
+                let value = Float(max(0.0, 1.0 - pow(2.0 * t - 1.0, 2.0)))
+                points.append(CHHapticParameterCurve.ControlPoint(relativeTime: t * duration, value: value))
+            }
+            let curve = CHHapticParameterCurve(parameterID: .hapticIntensityControl,
+                                               controlPoints: points,
+                                               relativeTime: 0)
+
+            let pattern = try CHHapticPattern(events: [event], parameterCurves: [curve])
+            let player = try hapticEngine?.makePlayer(with: pattern)
+            try player?.start(atTime: CHHapticTimeImmediate)
+            call.resolve(["ok": true])
+        } catch {
+            call.reject("smoothSwell failed: \(error.localizedDescription)")
+        }
+    }
 
     // Schedule the end bell as a TIME-SENSITIVE local notification — bypasses
     // Do Not Disturb / Focus (the entitlement is in App.entitlements). Its

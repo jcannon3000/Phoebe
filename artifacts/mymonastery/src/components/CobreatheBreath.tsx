@@ -121,7 +121,6 @@ export function CobreatheBreath({
   onReachTarget,
   onEnd,
   totalBreaths = DEFAULT_TOTAL_BREATHS,
-  othersToday,
   todayCount,
   backgroundImage,
   photos,
@@ -136,8 +135,9 @@ export function CobreatheBreath({
   // got through the full set (Finish) or backed out early (End early).
   onEnd: (secondsKept: number, reachedTarget: boolean) => void;
   totalBreaths?: number;
-  // How many others have breathed with them today — shown live under the
-  // counter so the practice feels held in company, not alone.
+  // Accepted but no longer shown DURING the practice — the social "you
+  // cobreathed with N" count lives on the summary slide now, so the breath
+  // itself stays calm and undistracted.
   othersToday?: number;
   // Everyone who has breathed today (incl. the caller once recorded) — shown
   // as the participation detail under the title.
@@ -192,6 +192,16 @@ export function CobreatheBreath({
   // on the lowest (0) and rotates 0,1,2 per breath — regardless of where the
   // global clock happens to be when the user starts.
   const inhaleToneCountRef = useRef(0);
+  // The globe is chosen ONCE per session and HELD for the whole sit — no more
+  // per-breath flipping (that was distracting). A localStorage counter advances
+  // each use, so it rotates 🌍 → 🌎 → 🌏 across sessions.
+  const sessionGlobeRef = useRef<string | null>(null);
+  if (sessionGlobeRef.current === null) {
+    let gi = 0;
+    try { gi = ((parseInt(localStorage.getItem("phoebe:cobreathe-globe") || "0", 10) || 0) % GLOBES.length + GLOBES.length) % GLOBES.length; } catch { /* ignore */ }
+    sessionGlobeRef.current = GLOBES[gi];
+    try { localStorage.setItem("phoebe:cobreathe-globe", String((gi + 1) % GLOBES.length)); } catch { /* ignore */ }
+  }
   // Fall back to the bundled library when no caller passes photos, so the
   // breath always has pictures (the office/devotion overlay passes none).
   const photoLibrary = photos && photos.length > 0 ? photos : DEFAULT_PHOTOS;
@@ -224,8 +234,11 @@ export function CobreatheBreath({
 
   // Prime the audio subsystem on mount so the per-breath swell tones sound. (No
   // fade-in: the scene is held still at rest until synced, so nothing flashes.)
+  // Also reset the inhale-tone counter so EVERY session starts on the lowest
+  // octave (0), even if this component instance is reused across sits.
   useEffect(() => {
     primeAudio();
+    inhaleToneCountRef.current = 0;
   }, []);
 
   // Anchor points (fixed at mount): when the user arrived, and the next clean
@@ -261,9 +274,9 @@ export function CobreatheBreath({
       const isCounting = now - countStartRef.current >= 0;
       // Phase transitions (inhale ↔ exhale): a soft haptic on each, but the
       // swell TONE sounds only at the start of the inhale (once synced) — one
-      // note per breath. The octave ROTATES through three slide octaves
-      // (0,1,2), derived from the global clock (floor(now / PHASE_MS) % 3), so
-      // everyone breathing at this instant hears the same tone, in unison.
+      // note per breath. The octave ALWAYS starts on the lowest (0) and rotates
+      // 0,1,2 per breath from a per-session counter (reset on mount), so every
+      // sit opens on the same grounding low note.
       const phase = phaseAt(pos);
       if (lastPhaseRef.current === null) {
         lastPhaseRef.current = phase;
@@ -274,9 +287,8 @@ export function CobreatheBreath({
             window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } }));
           } catch { /* no native shell on web — silent */ }
           // Sound ONLY on the inhale (the start of each breath), not the
-          // exhale — one tone per breath. And only the three lower slide
-          // octaves (0,1,2), cycled from the global clock so everyone
-          // breathing at this instant hears the same tone.
+          // exhale — one tone per breath, rising through the three lower slide
+          // octaves (0,1,2) from a per-session counter that starts at 0.
           if (phase === "in") {
             // Start on the lowest octave, then rotate 0,1,2 per breath.
             const octave = inhaleToneCountRef.current % 3;
@@ -368,11 +380,12 @@ export function CobreatheBreath({
           prevEl.style.zIndex = "1";
         }
         // The group breathes with the lungs: fully faded DOWN to 0 at the bottom
-        // of every breath (and before sync), rising to a gentle ~0.55 peak at
-        // the top of the inhale. The slight ease (pAnim^1.25) pulls the lower
+        // of every breath (and before sync), rising to a bright ~0.85 peak at
+        // the top of the inhale (the bottom gradient keeps text legible). The
+        // slight ease (pAnim^1.25) pulls the lower
         // range down faster so the photo is truly GONE at the bottom of the
         // exhale — no lingering as the next one rises.
-        if (photoGroupRef.current) photoGroupRef.current.style.opacity = (Math.pow(pAnim, 1.25) * 0.55).toFixed(4);
+        if (photoGroupRef.current) photoGroupRef.current.style.opacity = (Math.pow(pAnim, 1.25) * 0.85).toFixed(4);
         // Preload the NEXT photo onto the now-hidden previous layer so it's
         // decoded before its turn (it becomes the active layer next breath).
         if (photoPreloadedRef.current !== idx && prevEl) {
@@ -507,7 +520,7 @@ export function CobreatheBreath({
   const phase = phaseAt(pos);
   // The world turns once a second — 🌍 → 🌎 → 🌏 — wall-clock synced, so
   // everyone breathing at this moment sees the same face.
-  const globe = GLOBES[Math.floor(now / 1000) % GLOBES.length];
+  const globe = sessionGlobeRef.current ?? GLOBES[0];
   const phaseLabel =
     phase === "in"
       ? t("cobreathe.phase_in", { defaultValue: "Breathe In" })
@@ -597,13 +610,14 @@ export function CobreatheBreath({
               }}
             />
           </div>
-          {/* Legibility wash — a deep green-to-black veil over the photos. Kept
-              darker toward the bottom (behind the counter text) but lighter up
-              top so the brighter image actually reads. */}
+          {/* Legibility gradient — podcast-player style: the photo reads bright
+              up top, then a deep green-to-black overlay ramps in over the lower
+              half so the breath text + bottom content stay legible even at the
+              photo's higher peak opacity. */}
           <div
             style={{
               position: "absolute", inset: 0,
-              background: "linear-gradient(180deg, rgba(6,24,16,0.18) 0%, rgba(5,18,12,0.28) 45%, rgba(4,13,8,0.55) 100%)",
+              background: "linear-gradient(180deg, rgba(6,24,16,0.10) 0%, rgba(6,24,16,0.12) 30%, rgba(5,18,12,0.45) 54%, rgba(4,13,8,0.80) 80%, rgba(3,11,7,0.94) 100%)",
             }}
           />
         </div>
@@ -660,13 +674,14 @@ export function CobreatheBreath({
           padding: "0 24px", zIndex: 2,
         }}
       >
-        {/* Left — "Breathe In" over "Breath n of 12", left-aligned. */}
+        {/* Left — "Breathe In" over "Breath n of 12", left-aligned. Kept
+            distraction-free during the practice: no social count here (the
+            "you cobreathed with N" line lives on the summary slide instead). */}
         <div className="flex flex-col items-start">
           <div ref={labelRef} style={{ willChange: "transform, opacity" }}>
             <span
               style={{
-                // Georgia serif — matching the office podcast title.
-                color: WARM, fontFamily: SERIF, fontSize: 27, fontWeight: 600,
+                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 27, fontWeight: 600,
                 letterSpacing: "0.04em", textShadow: "0 2px 18px rgba(8,30,18,0.6)", whiteSpace: "nowrap",
               }}
             >
@@ -680,11 +695,6 @@ export function CobreatheBreath({
                 ? t("cobreathe.breath_counter_past", { current: breathNum, defaultValue: `🌿 Breath ${breathNum} — keep going as long as you like` })
                 : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `Breath ${breathNum} of ${totalBreaths}` })}
           </p>
-          {othersToday != null && othersToday > 0 && (
-            <p className="mt-1.5 text-[12px]" style={{ color: TEXT_FAINT, fontFamily: SERIF, fontStyle: "italic", maxWidth: 175 }}>
-              {t("cobreathe.breathing_with_you", { count: othersToday, defaultValue: `${othersToday} ${othersToday === 1 ? "person is" : "people are"} breathing with you today` })}
-            </p>
-          )}
         </div>
 
         {/* Right — globe + progress rings, concentric in a fixed cell. Sized at

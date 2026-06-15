@@ -299,17 +299,18 @@ export default function CobreathePage() {
   // Captured once at mount: did we arrive from the contemplation page/sit?
   const fromContemplationRef = useRef(cameFromContemplation());
 
-  // Finishing (or backing out) — this is where the sit is logged, with the FULL
-  // elapsed time (so 20 breaths counts as 20, not 12). Finished → record the
-  // communal breath + return to Contemplation; bailed early → slip back.
+  // Finishing (or backing out). A sit only COUNTS if the user completed the set
+  // (reached the 12th breath). Cancelling or bailing early does NOT log a
+  // contemplation sit — nothing toward the daily goal, history, or Apple Health.
+  // When it does count, it's logged with the FULL elapsed time (20 breaths = 20).
   const handleEnd = useCallback((secondsKept: number, reached: boolean) => {
-    logSit(secondsKept);
     const fromContemplation = fromContemplationRef.current;
     if (!reached) {
-      // Bailed early: from contemplation, slip back there; otherwise the intro.
+      // Cancelled / bailed early — does not count. Just exit.
       if (fromContemplation) setLocation("/contemplation"); else setMode("intro");
       return;
     }
+    logSit(secondsKept);
     record.mutate(secondsKept);
     // From the contemplation page → show the summary screen; otherwise return
     // straight to contemplation as before.

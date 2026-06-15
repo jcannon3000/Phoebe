@@ -652,6 +652,22 @@ function fireSmoothSwell() {
   step();
 }
 
+// The Cobreathe "all twelve breaths" payoff. PREFER native Core Haptics
+// (PhoebeAudio.smoothSwell) — a single CONTINUOUS vibration on a parabolic
+// intensity envelope, the genuinely smooth "Duolingo" swell. Only fall back to
+// the impact-density approximation (fireSmoothSwell) on the web or on hardware
+// without Core Haptics, where it reads as a string of taps.
+async function playBreathCompleteHaptic() {
+  try {
+    const audio = getPhoebeAudio();
+    if (audio?.smoothSwell) {
+      const res = await audio.smoothSwell({ durationMs: 1300, peak: 1.0, sharpness: 0.3 });
+      if (res?.ok) return; // native swell played — don't also fire the taps
+    }
+  } catch { /* fall through to the web approximation */ }
+  fireSmoothSwell();
+}
+
 function wireHaptics() {
   window.addEventListener("phoebe:haptic", e => {
     const detail = (e as CustomEvent).detail as { style?: string } | undefined;
@@ -662,7 +678,7 @@ function wireHaptics() {
           fireCelebrationRumble();
           break;
         case "breath-complete":
-          fireSmoothSwell();
+          void playBreathCompleteHaptic();
           break;
         case "sustained":
           fireSustainedRumble();
@@ -1118,6 +1134,7 @@ function getPhoebeAudio(): {
   cancelScheduled?: () => Promise<void>;
   scheduleBellNotification?: (opts: { at: number; sound: string }) => Promise<void>;
   cancelBellNotification?: () => Promise<void>;
+  smoothSwell?: (opts?: { durationMs?: number; peak?: number; sharpness?: number }) => Promise<{ ok?: boolean }>;
 } | undefined {
   const cap = (window as {
     Capacitor?: { Plugins?: Record<string, unknown> };
