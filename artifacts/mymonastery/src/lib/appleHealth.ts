@@ -33,6 +33,9 @@ export type MindfulSession = {
 interface MindfulHealthPlugin {
   isAvailable: () => Promise<{ available: boolean }>;
   requestAuthorization: () => Promise<{ requested: boolean }>;
+  // Step read access — a SEPARATE prompt from the mindful one, only shown once
+  // the user opts into the Daily steps practice.
+  requestStepAuthorization?: () => Promise<{ requested: boolean }>;
   mindfulMinutesToday: (opts?: { excludeOwn?: boolean }) => Promise<{ minutes: number; sessions: number }>;
   mindfulSessionsToday: () => Promise<{ sessions: MindfulSession[] }>;
   writeMindfulSession: (opts: { startMs: number; endMs: number }) => Promise<{ written: boolean }>;
@@ -79,6 +82,24 @@ export async function requestMindfulAuthorization(): Promise<boolean> {
   const p = getPlugin();
   if (!p) return false;
   try {
+    return (await p.requestAuthorization()).requested;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Prompt for READ access to Apple Health STEP data — a separate prompt from the
+ * mindful one. Called only when the user opts into the Daily steps practice (the
+ * Rule-of-Life builder or the Daily steps card's Connect button), so we never
+ * ask for step data as a side effect of setting up Contemplation. Falls back to
+ * the bundled mindful prompt on an older native shell that predates the split.
+ */
+export async function requestStepAuthorization(): Promise<boolean> {
+  const p = getPlugin();
+  if (!p) return false;
+  try {
+    if (p.requestStepAuthorization) return (await p.requestStepAuthorization()).requested;
     return (await p.requestAuthorization()).requested;
   } catch {
     return false;
@@ -222,12 +243,14 @@ let lastStepsUpload = "";
  * arms both mindful + steps observers), so a goal crossed with Phoebe closed
  * still uploads and pushes.
  */
-export function useDailySteps(): { steps: number } {
+export function useDailySteps(enabled = true): { steps: number } {
   const day = new Date().toLocaleDateString("en-CA");
   const q = useQuery<number | null>({
     queryKey: ["apple-health-steps", day],
     queryFn: () => getStepsToday(),
-    enabled: appleHealthAvailable(),
+    // Only read HealthKit steps when the caller has opted into the Daily steps
+    // practice — never as a side effect of just being on a native build.
+    enabled: enabled && appleHealthAvailable(),
     staleTime: 5 * 60_000,
   });
   const steps = q.data ?? 0;

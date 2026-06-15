@@ -5,7 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import {
   useDailySteps,
   appleHealthAvailable,
-  requestMindfulAuthorization,
+  requestStepAuthorization,
   openHealthApp,
 } from "@/lib/appleHealth";
 
@@ -44,7 +44,7 @@ export default function DailyStepsPage() {
   });
 
   const connect = () => {
-    void requestMindfulAuthorization()
+    void requestStepAuthorization()
       .then(() => {
         try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* private mode */ }
         setConnected(true);

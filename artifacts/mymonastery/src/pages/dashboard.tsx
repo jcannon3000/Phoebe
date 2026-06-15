@@ -5434,7 +5434,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.
   // Everything else is hidden but addable from Customize.
   const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "gratitude", "examen", "steps", "cac", "ssje", "ncmp", "podcasts"];
-  const DEFAULT_HIDDEN = ["feeds", "gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_HIDDEN = ["feeds", "gratitude", "examen", "steps", "cac", "ssje", "ncmp", "podcasts"];
   // Only a current-version saved layout counts; anything older falls back to
   // the default (that's the reset).
   const savedLayout = user?.homeLayout && user.homeLayout.v === HOME_LAYOUT_VERSION ? user.homeLayout : null;

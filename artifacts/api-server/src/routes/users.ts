@@ -272,6 +272,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
         contemplationGoalMinutes: usersTable.contemplationGoalMinutes,
         contemplationReminderEnabled: usersTable.contemplationReminderEnabled,
         dailyStepGoal: usersTable.dailyStepGoal,
+        dailyStepReachedDate: usersTable.dailyStepReachedDate,
         weeklyReviewReminder: usersTable.weeklyReviewReminder,
         sharePrayLocation: usersTable.sharePrayLocation,
       })
@@ -364,6 +365,7 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
       contemplationGoalMinutes: u?.contemplationGoalMinutes ?? 0,
       contemplationReminderEnabled: u?.contemplationReminderEnabled ?? true,
       dailyStepGoal: u?.dailyStepGoal ?? 0,
+      dailyStepReachedDate: u?.dailyStepReachedDate ?? null,
       weeklyReviewReminder: u?.weeklyReviewReminder ?? true,
       sharePrayLocation: u?.sharePrayLocation ?? false,
       lastPrayedMorning,
@@ -527,7 +529,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
     const [meTz] = await db
-      .select({ timezone: usersTable.timezone, contemplationGoalMinutes: usersTable.contemplationGoalMinutes })
+      .select({ timezone: usersTable.timezone, contemplationGoalMinutes: usersTable.contemplationGoalMinutes, dailyStepGoal: usersTable.dailyStepGoal })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
     const tz = meTz?.timezone || "UTC";
@@ -535,6 +537,9 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     // a day's contemplation dot once the day's total contemplative time meets
     // this goal — not on any logged minute. With no goal set, any sit counts.
     const contemplationGoalMin = meTz?.contemplationGoalMinutes ?? 0;
+    // Daily step goal (steps; 0 = practice off). A day's steps dot fills only
+    // when that day's synced step total reaches the goal.
+    const dailyStepGoal = meTz?.dailyStepGoal ?? 0;
 
     // Build the 7-day window in user-tz, oldest first, up front — we need the
     // oldest ymd to bound the text-keyed (YYYY-MM-DD) tables below.
@@ -549,7 +554,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     const oldestYmd = ymds[0];
 
     // Each query returns the set of local days a practice was completed.
-    const [officeRows, contRows, healthRows, reflRows, cacRows, pcRows] = await Promise.all([
+    const [officeRows, contRows, healthRows, reflRows, cacRows, pcRows, stepRows] = await Promise.all([
       // Office, by side — same surfaces + completed gate as office-history-week.
       db.execute<{ day: string; side: string }>(sql`
         SELECT DISTINCT
@@ -599,6 +604,12 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
         SELECT DISTINCT section, local_date FROM practice_completion
         WHERE user_id = ${sessionUserId} AND section IN ('gratitude', 'examen') AND local_date >= ${oldestYmd}
       `),
+      // Daily steps — the synced per-day step total (day is already a tz-local
+      // ymd). Compared to the user's current goal below to fill the steps dot.
+      db.execute<{ day: string; steps: number }>(sql`
+        SELECT day, steps FROM daily_health_steps
+        WHERE user_id = ${sessionUserId} AND day >= ${oldestYmd}
+      `),
     ]);
 
     const morning = new Set<string>();
@@ -638,6 +649,14 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       if (r.section === "gratitude") gratitude.add(r.local_date);
       if (r.section === "examen") examen.add(r.local_date);
     }
+    // Steps: a day counts only when the goal is set AND that day's synced steps
+    // reached it. (No goal → the practice is off, so no day fills.)
+    const steps = new Set<string>();
+    if (dailyStepGoal > 0) {
+      for (const r of stepRows.rows) {
+        if ((Number(r.steps) || 0) >= dailyStepGoal) steps.add(r.day);
+      }
+    }
 
     const days = ymds.map((ymd) => ({
       ymd,
@@ -647,6 +666,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       reflection: reflection.has(ymd),
       gratitude: gratitude.has(ymd),
       examen: examen.has(ymd),
+      steps: steps.has(ymd),
     }));
     res.json({ days });
   } catch (err) {

@@ -8,6 +8,7 @@ import {
 import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
 import { getSideLevel } from "@/lib/officePrefs";
+import { useDailySteps } from "@/lib/appleHealth";
 import { useAuth } from "@/hooks/useAuth";
 
 // How the user has chosen to pray the daily office — drives whether the
@@ -55,8 +56,14 @@ export type RhythmState = {
    *  home layout) — each adds a checkmark to Daily progress. */
   gratitudeActive: boolean;
   examenActive: boolean;
+  stepsActive: boolean;
   gratitudeDone: boolean;
   examenDone: boolean;
+  stepsDone: boolean;
+  /** Today's step count + the daily goal (0 = no goal) — for the Daily steps
+   *  anchor's progress bar. */
+  stepsToday: number;
+  stepsGoal: number;
   /** How many anchors exist for this user — the four core ones plus any
    *  active optional practices (gratitude / examen). The denominator of the
    *  "N of X kept" header. */
@@ -266,7 +273,7 @@ export function useRhythmState(): RhythmState {
   // What the user prays for the office — global default (office-prefs) OR a
   // per-side override. Mirrors the home prayer card's resolution, so the
   // Morning/Evening anchors read "Devotion"/"Prayer"/"Pray together" to match.
-  const { data: officePrefs } = useQuery<{ defaultPrayerLevel?: "devotion" | "office" | "intercessions"; contemplationGoalMinutes?: number }>({
+  const { data: officePrefs } = useQuery<{ defaultPrayerLevel?: "devotion" | "office" | "intercessions"; contemplationGoalMinutes?: number; dailyStepGoal?: number; dailyStepReachedDate?: string | null }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     staleTime: 60_000,
@@ -297,11 +304,23 @@ export function useRhythmState(): RhythmState {
   const gratitudeDone = gratitudeActive && (practiceLocal.gratitude || serverDone("gratitude"));
   const examenDone = examenActive && (practiceLocal.examen || serverDone("examen"));
 
+  // Daily steps (optional practice). Active only when the card is on the home
+  // AND a step goal is set. We read today's steps from HealthKit ONLY while
+  // active (the hook is gated), and treat the day as kept when the live count
+  // reaches the goal OR the server already stamped today's reached-date (the
+  // cross-device / web signal, set on the first synced crossing).
+  const stepsGoal = officePrefs?.dailyStepGoal ?? 0;
+  const stepsActive = homeCardActive(user?.homeLayout, "steps") && stepsGoal > 0;
+  const { steps: stepsToday } = useDailySteps(stepsActive);
+  const stepsReachedToday = (officePrefs?.dailyStepReachedDate ?? null) === day;
+  const stepsDone = stepsActive && (stepsReachedToday || stepsToday >= stepsGoal);
+
   // The four core anchors plus whichever optional practices the user added.
   const coreFlags = [morningDone, reflectDone, silenceDone, eveningDone];
   const extraFlags = [
     ...(gratitudeActive ? [gratitudeDone] : []),
     ...(examenActive ? [examenDone] : []),
+    ...(stepsActive ? [stepsDone] : []),
   ];
   const allFlags = [...coreFlags, ...extraFlags];
   const totalAnchors = allFlags.length;
@@ -328,8 +347,12 @@ export function useRhythmState(): RhythmState {
     eveningDone,
     gratitudeActive,
     examenActive,
+    stepsActive,
     gratitudeDone,
     examenDone,
+    stepsDone,
+    stepsToday,
+    stepsGoal,
     totalAnchors,
     doneCount,
     streak: rhythm?.streak ?? 0,

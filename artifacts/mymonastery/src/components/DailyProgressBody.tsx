@@ -171,11 +171,11 @@ function StreakCard() {
 // to render mirrors the practice cards above (four core + active extras).
 export function WeeklyGridCard() {
   const { t } = useTranslation();
-  const { gratitudeActive, examenActive } = useRhythmState();
+  const { gratitudeActive, examenActive, stepsActive } = useRhythmState();
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   })();
-  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; gratitude: boolean; examen: boolean };
+  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; gratitude: boolean; examen: boolean; steps: boolean };
   const { data } = useQuery<{ days: Day[] }>({
     queryKey: ["/api/me/practice-week", tz],
     queryFn: () => apiRequest("GET", "/api/me/practice-week"),
@@ -191,6 +191,7 @@ export function WeeklyGridCard() {
     { key: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "124,116,196" },
     ...(gratitudeActive ? [{ key: "gratitude" as const, emoji: "🙏", label: t("rhythm.row_gratitude", { defaultValue: "Gratitude" }), rgb: "182,140,90" }] : []),
     ...(examenActive ? [{ key: "examen" as const, emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180" }] : []),
+    ...(stepsActive ? [{ key: "steps" as const, emoji: "👟", label: t("rhythm.row_steps", { defaultValue: "Steps" }), rgb: "139,121,84" }] : []),
   ];
 
   // Single-letter weekday initials under each column (noon avoids any tz/DST
@@ -409,7 +410,14 @@ function PracticeCard({
     </motion.div>
   );
 
-  if (waiting) return row;
+  // A "Later" card is intentionally inert (e.g. Evening before 3 PM). Mark it
+  // so it doesn't read as a tappable card that silently does nothing — a
+  // not-allowed cursor on desktop and aria-disabled for assistive tech.
+  if (waiting) return (
+    <div aria-disabled="true" title={laterLabel ? `${title} — ${laterLabel.toLowerCase()}` : undefined} style={{ cursor: "not-allowed" }}>
+      {row}
+    </div>
+  );
   // Plain div (not a native <button>) so the flex middle can shrink and the
   // pill stays put; role/tabIndex/keydown keep it accessible.
   if (onClick) return (
@@ -422,7 +430,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone } = useRhythmState();
+  const { ready, morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, stepsToday, stepsGoal } = useRhythmState();
   const hour = new Date().getHours();
   const kept = t("rhythm.kept", { defaultValue: "Kept today" });
   const prayed = t("rhythm.prayed", { defaultValue: "Prayed today" });
@@ -512,6 +520,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       title: t("rhythm.card_examen", { defaultValue: "The Examen" }),
       blurb: examenDone ? kept : t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }),
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+    }] : []),
+    ...(stepsActive ? [{
+      key: "steps", emoji: "👟", rgb: "139,121,84", done: stepsDone, href: "/daily-steps",
+      title: t("rhythm.card_steps", { defaultValue: "Daily steps" }),
+      blurb: stepsDone
+        ? t("rhythm.steps_reached", { goal: stepsGoal.toLocaleString(), defaultValue: `Reached your ${stepsGoal.toLocaleString()}-step goal` })
+        : t("rhythm.steps_progress", { current: stepsToday.toLocaleString(), goal: stepsGoal.toLocaleString(), defaultValue: `${stepsToday.toLocaleString()} of ${stepsGoal.toLocaleString()} steps today` }),
+      cta: t("rhythm.view", { defaultValue: "View" }), later: false,
+      progress: { current: stepsToday, goal: stepsGoal },
     }] : []),
     {
       // Evening sits last and stays a quiet "later" card until 3 PM, so the

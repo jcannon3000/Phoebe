@@ -35,6 +35,7 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "requestAuthorization", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "requestStepAuthorization", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "mindfulMinutesToday", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "mindfulSessionsToday", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "writeMindfulSession", returnType: CAPPluginReturnPromise),
@@ -65,11 +66,29 @@ public class MindfulHealthPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         // Read AND write mindful sessions: read pulls in minutes logged by other
         // apps (Calm, Insight Timer); write lets Phoebe save its own sits back to
-        // Apple Health so they show in the user's Mindful Minutes too. Step count
-        // is read-only and bundled into the same prompt (HealthKit groups them).
-        var readTypes: Set<HKObjectType> = [type]
-        if let steps = stepType { readTypes.insert(steps) }
-        healthStore.requestAuthorization(toShare: [type], read: readTypes) { success, error in
+        // Apple Health so they show in the user's Mindful Minutes too.
+        // Step count is REQUESTED SEPARATELY (requestStepAuthorization) so a user
+        // who only set up Contemplation is never asked for their step data — we
+        // only prompt for steps once they choose the Daily steps practice.
+        healthStore.requestAuthorization(toShare: [type], read: [type]) { success, error in
+            if let error = error {
+                call.reject("Authorization failed: \(error.localizedDescription)")
+                return
+            }
+            call.resolve(["requested": success])
+        }
+    }
+
+    // READ-ONLY step authorization — a SEPARATE prompt from the mindful one, so
+    // Phoebe only asks for Apple Health step data after the user opts into the
+    // Daily steps practice (from the Rule-of-Life builder or the Daily steps
+    // card), never as a side effect of setting up Contemplation.
+    @objc func requestStepAuthorization(_ call: CAPPluginCall) {
+        guard HKHealthStore.isHealthDataAvailable(), let steps = stepType else {
+            call.resolve(["requested": false])
+            return
+        }
+        healthStore.requestAuthorization(toShare: [], read: [steps]) { success, error in
             if let error = error {
                 call.reject("Authorization failed: \(error.localizedDescription)")
                 return
