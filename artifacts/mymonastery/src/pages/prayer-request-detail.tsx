@@ -47,6 +47,12 @@ type PrayerRequestDetail = {
   id: number;
   body: string;
   kind: string | null;
+  // Life-event fields (kind === "life-event"): the dated thing, and the
+  // owner's "how it went" update once they post one.
+  eventDate: string | null;
+  eventTitle: string | null;
+  eventUpdate: string | null;
+  eventUpdatedAt: string | null;
   ownerId: number;
   ownerName: string | null;
   ownerAvatarUrl: string | null;
@@ -470,6 +476,8 @@ export default function PrayerRequestDetailPage() {
               {data.body}
             </p>
 
+            <EventBlock data={data} isOwner={false} />
+
             {/* Tagged users row — shared with the owner view below. */}
             {data.tags.length > 0 && (
               <TaggedRow
@@ -669,6 +677,8 @@ export default function PrayerRequestDetailPage() {
                 {data.body}
               </p>
             )}
+
+            <EventBlock data={data} isOwner={true} />
 
             {/* Tagged users — read row + per-chip remove + "+ Tag
                 someone" pill. Owner can manage tags after creation:
@@ -1312,5 +1322,87 @@ function ShareLinkButton({
     >
       {justCopied ? t("prayer_request_detail.link_copied_pill") : t("prayer_request_detail.share_pill")}
     </button>
+  );
+}
+
+// ── Life-event block ───────────────────────────────────────────────────────
+// For a kind === "life-event" request: shows the date + title, the owner's
+// "how it went" update once posted (to everyone), and — for the owner, after
+// the date has passed and before they've shared — a composer to post the update
+// (which notifies the people who prayed).
+function EventBlock({ data, isOwner }: { data: PrayerRequestDetail; isOwner: boolean }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const [composing, setComposing] = useState(false);
+  const [text, setText] = useState("");
+  const post = useMutation({
+    mutationFn: (body: string) => apiRequest("POST", `/api/prayer-requests/${data.id}/event-update`, { text: body }),
+    onSuccess: () => {
+      setComposing(false);
+      setText("");
+      qc.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${data.id}`] });
+    },
+  });
+
+  if (data.kind !== "life-event") return null;
+  const date = data.eventDate ? new Date(data.eventDate) : null;
+  const dateStr = date && !isNaN(date.getTime())
+    ? date.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })
+    : null;
+  const eventPassed = date ? date.getTime() <= Date.now() : false;
+
+  return (
+    <div className="w-full mt-3">
+      {(data.eventTitle || dateStr) && (
+        <p className="text-center text-[13px]" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
+          🌱 {data.eventTitle}{data.eventTitle && dateStr ? " · " : ""}{dateStr}
+        </p>
+      )}
+
+      {data.eventUpdate && (
+        <div className="rounded-2xl px-4 py-3 mt-3" style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.34)" }}>
+          <p className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-1.5" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}>
+            {t("prayer_request_detail.how_it_went", { defaultValue: "How it went" })}
+          </p>
+          <p className="text-[15px] italic leading-relaxed" style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif" }}>
+            {data.eventUpdate}
+          </p>
+        </div>
+      )}
+
+      {isOwner && eventPassed && !data.eventUpdate && (
+        composing ? (
+          <div className="mt-3">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value.slice(0, 1000))}
+              rows={3}
+              autoFocus
+              placeholder={t("prayer_request_detail.how_it_went_placeholder", { defaultValue: "Share how it went with the people who prayed…" })}
+              className="w-full rounded-xl px-4 py-3 text-base outline-none resize-none"
+              style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.35)", color: "#F0EDE6", fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic" }}
+            />
+            <button
+              type="button"
+              disabled={!text.trim() || post.isPending}
+              onClick={() => post.mutate(text.trim())}
+              className="w-full mt-2 py-3 rounded-xl text-[14px] font-semibold disabled:opacity-40"
+              style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              {post.isPending ? t("prayer_request_detail.sharing_update", { defaultValue: "Sharing…" }) : t("prayer_request_detail.share_update", { defaultValue: "Share the update" })}
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setComposing(true)}
+            className="w-full mt-3 py-3 rounded-xl text-[14px] font-semibold transition-opacity active:scale-[0.99]"
+            style={{ background: "rgba(46,107,64,0.2)", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.45)", fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            🌱 {t("prayer_request_detail.share_how_it_went", { defaultValue: "Share how it went" })}
+          </button>
+        )
+      )}
+    </div>
   );
 }

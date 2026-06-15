@@ -115,6 +115,13 @@ export default function PrayerRequestNew() {
   // membership. Reset on success when the form unmounts.
   const [taggedUserIds, setTaggedUserIds] = useState<number[]>([]);
 
+  // Life-event extras — a short title + the date it happens. Drives the
+  // "how did it go?" follow-up. The body still holds the prayer focus.
+  const isLifeEvent = kind === "life-event";
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventDate, setEventDate] = useState(""); // YYYY-MM-DD from <input type=date>
+  const todayStr = new Date().toLocaleDateString("en-CA");
+
   const bodyRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { if (step === 0) bodyRef.current?.focus(); }, [step]);
 
@@ -137,6 +144,12 @@ export default function PrayerRequestNew() {
         isAnonymous: false,
         durationDays: days,
         kind,
+        // Life-event only: a title + the date (sent as LOCAL noon so the
+        // owner-tz calendar date is unambiguous). Ignored for other kinds.
+        ...(isLifeEvent ? {
+          eventTitle: eventTitle.trim(),
+          eventDate: eventDate ? new Date(`${eventDate}T12:00:00`).toISOString() : undefined,
+        } : {}),
         // Server accepts an empty / missing array — it's only meaningful
         // when the user picked tags via the TagPicker below.
         taggedUserIds,
@@ -168,6 +181,15 @@ export default function PrayerRequestNew() {
 
   function handleBodyNext() {
     if (body.trim().length === 0) { setError(t("prayer_request.write_request_first")); return; }
+    // Life events carry a title + date and derive their own lifetime, so they
+    // skip the 3/7-day step and submit straight from here.
+    if (isLifeEvent) {
+      if (eventTitle.trim().length === 0) { setError(t("prayer_request.life_event_need_title", { defaultValue: "Give it a short title." })); return; }
+      if (!eventDate) { setError(t("prayer_request.life_event_need_date", { defaultValue: "Pick the date it happens." })); return; }
+      setError("");
+      createMutation.mutate();
+      return;
+    }
     setError("");
     setStep(1);
   }
@@ -195,7 +217,7 @@ export default function PrayerRequestNew() {
           {t("prayer_request.back")}
         </button>
         <div className="flex-1 flex gap-1.5">
-          {[0, 1].map((s) => (
+          {(isLifeEvent ? [0] : [0, 1]).map((s) => (
             <div
               key={s}
               className="h-1 flex-1 rounded-full transition-colors duration-300"
@@ -224,6 +246,33 @@ export default function PrayerRequestNew() {
               <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
                 {copy.subtitle}
               </p>
+
+              {/* Life-event: a short title + the date it happens. */}
+              {isLifeEvent && (
+                <div className="space-y-3 mb-5">
+                  <input
+                    type="text"
+                    value={eventTitle}
+                    onChange={(e) => { setEventTitle(e.target.value.slice(0, 80)); setError(""); }}
+                    placeholder={t("prayer_request.life_event_title_placeholder", { defaultValue: "What is it? e.g. Knee surgery" })}
+                    className="w-full rounded-xl px-4 py-3.5 text-base outline-none"
+                    style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.35)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+                  />
+                  <div>
+                    <label className="text-[12px] block mb-1.5" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      {t("prayer_request.life_event_date_label", { defaultValue: "When does it happen?" })}
+                    </label>
+                    <input
+                      type="date"
+                      value={eventDate}
+                      min={todayStr}
+                      onChange={(e) => { setEventDate(e.target.value); setError(""); }}
+                      className="w-full rounded-xl px-4 py-3.5 text-base outline-none"
+                      style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.35)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", colorScheme: "dark" }}
+                    />
+                  </div>
+                </div>
+              )}
 
               <textarea
                 ref={bodyRef}
@@ -261,11 +310,13 @@ export default function PrayerRequestNew() {
 
               <button
                 onClick={handleBodyNext}
-                disabled={body.trim().length === 0}
+                disabled={body.trim().length === 0 || (isLifeEvent && createMutation.isPending)}
                 className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
                 style={{ background: "#2D5E3F", color: "#F0EDE6" }}
               >
-                {t("prayer_request.continue_button")}
+                {isLifeEvent
+                  ? (createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community"))
+                  : t("prayer_request.continue_button")}
               </button>
 
               {/* Renew-instead card — only when the user has a previous

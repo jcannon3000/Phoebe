@@ -28,6 +28,7 @@ import {
   sendLectioReminderPush,
   sendLectioEveningReminderPush,
   sendPrayerRenewalNudgePush,
+  sendLifeEventFollowUpPush,
   sendParishOfficeReminderPush,
   sendContemplationGoalReminderPush,
   sendWeeklyReviewPush,
@@ -753,6 +754,80 @@ export async function runPrayerRenewalNudgeSender(opts: { forceNow?: boolean } =
       logger.info({ requestId: c.id, ownerId: c.ownerId, amenCountTotal }, "[renewal-nudge] sent");
     } catch (err) {
       logger.error({ err, requestId: c.id }, "[renewal-nudge] processing failed");
+    }
+  }
+}
+
+// ─── Life-event follow-up ("how did it go?", 8pm on the event day) ─────────
+//
+// Fires once per life-event prayer request at/after 20:00 owner-local on (or
+// after) the calendar day the event happens. Asks the owner to share how it
+// went so they can update the people who prayed. Dedup via the
+// life_event_followup_sent_at column, stamped on successful dispatch.
+const LIFE_EVENT_FOLLOWUP_HOUR = 20;
+const LIFE_EVENT_FOLLOWUP_MINUTE = 0;
+export async function runLifeEventFollowUpSender(opts: { forceNow?: boolean } = {}): Promise<void> {
+  const candidates = await db
+    .select({
+      id: prayerRequestsTable.id,
+      ownerId: prayerRequestsTable.ownerId,
+      eventDate: prayerRequestsTable.eventDate,
+      eventTitle: prayerRequestsTable.eventTitle,
+      ownerTimezone: usersTable.timezone,
+    })
+    .from(prayerRequestsTable)
+    .innerJoin(usersTable, eq(usersTable.id, prayerRequestsTable.ownerId))
+    .where(
+      and(
+        eq(prayerRequestsTable.kind, "life-event"),
+        isNull(prayerRequestsTable.lifeEventFollowUpSentAt),
+        isNull(prayerRequestsTable.closedAt),
+        sql`${prayerRequestsTable.eventDate} IS NOT NULL`,
+      ),
+    );
+
+  if (candidates.length === 0) return;
+
+  for (const c of candidates) {
+    try {
+      const tz = c.ownerTimezone ?? "America/New_York";
+      const eventDate = c.eventDate;
+      if (!eventDate) continue;
+
+      // Time gate — fire only at/after 20:00 owner-local, a calm end-of-day ask.
+      if (!opts.forceNow) {
+        const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
+        if ((nowH * 60 + nowM) < (LIFE_EVENT_FOLLOWUP_HOUR * 60 + LIFE_EVENT_FOLLOWUP_MINUTE)) continue;
+      }
+
+      // Calendar-day diff in the owner's tz. dayDiff > 0 → the event is still in
+      // the future; skip. dayDiff === 0 → event is today; <0 → already past
+      // (catch-up if a tick was missed). Combined with the 20:00 gate, the ask
+      // lands the evening of the event.
+      const todayStr = todayDateInTz(tz);
+      const eventStr = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(eventDate);
+      const todayUtc = Date.parse(`${todayStr}T00:00:00Z`);
+      const eventUtc = Date.parse(`${eventStr}T00:00:00Z`);
+      const dayDiff = Math.round((eventUtc - todayUtc) / 86_400_000);
+      if (!opts.forceNow && dayDiff > 0) continue;
+
+      try {
+        await sendLifeEventFollowUpPush(c.ownerId, {
+          prayerRequestId: c.id,
+          eventTitle: c.eventTitle,
+        });
+      } catch (err) {
+        logger.warn({ err, requestId: c.id, ownerId: c.ownerId }, "[life-event-followup] push dispatch failed — skipping stamp so we retry next tick");
+        continue;
+      }
+
+      await db.update(prayerRequestsTable)
+        .set({ lifeEventFollowUpSentAt: new Date() })
+        .where(eq(prayerRequestsTable.id, c.id));
+
+      logger.info({ requestId: c.id, ownerId: c.ownerId }, "[life-event-followup] sent");
+    } catch (err) {
+      logger.error({ err, requestId: c.id }, "[life-event-followup] processing failed");
     }
   }
 }
@@ -1769,6 +1844,7 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   { name: "lectio-reminder",       run: runLectioReminderSender },
   { name: "lectio-evening",        run: runLectioEveningReminderSender },
   { name: "renewal-nudge",         run: runPrayerRenewalNudgeSender },
+  { name: "life-event-followup",   run: runLifeEventFollowUpSender },
   { name: "parish-office",         run: runParishOfficeReminderSender },
   { name: "contemplation-goal",    run: runContemplationGoalSender },
   // Weekly review + weekly digest are turned OFF for now (the settings

@@ -40,6 +40,19 @@ export const prayerRequestsTable = pgTable("prayer_requests", {
   // out. Cron checks this before sending so we don't double-fire on
   // a request that already got its nudge.
   renewalNudgeSentAt: timestamp("renewal_nudge_sent_at", { withTimezone: true }),
+  // ── Life-event fields (kind = "life-event") ──────────────────────────────
+  // A dated thing the person is walking toward — a surgery, an interview, a
+  // hard conversation. `eventDate` is the day it happens; `eventTitle` a short
+  // label ("Knee surgery"). The body still holds what they'd like prayed for.
+  eventDate: timestamp("event_date", { withTimezone: true }),
+  eventTitle: text("event_title"),
+  // Stamped when the "how did it go?" follow-up push is sent (the evening of
+  // the event day), so the cron fires it exactly once.
+  lifeEventFollowUpSentAt: timestamp("life_event_followup_sent_at", { withTimezone: true }),
+  // The owner's update after the event — "how it went" — shared back with the
+  // people who prayed. One update; re-posting overwrites it.
+  eventUpdate: text("event_update"),
+  eventUpdatedAt: timestamp("event_updated_at", { withTimezone: true }),
   // Public share token — a random opaque slug that lets the owner
   // hand out a no-auth link to this request (/p/:share_token). Every
   // new request gets one minted at insert time so "share" is a one-

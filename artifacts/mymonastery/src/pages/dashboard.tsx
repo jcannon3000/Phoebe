@@ -487,6 +487,7 @@ export function HomeAuthoringFAB() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
+  const { isBeta } = useBetaStatus();
   // Same admin probe HomeFAB() uses below — admin in *any* group earns
   // the community-intercession option. Server enforces nothing yet, so
   // this is a soft gate; we'll harden if it turns out anyone bypasses it.
@@ -514,6 +515,16 @@ export function HomeAuthoringFAB() {
               <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 {t("home_fab.prayer_request")}</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.prayer_request_sub")}</p>
             </button>
+            {LETTERS_MESSAGES_ENABLED && isBeta && (
+              <button
+                onClick={() => { setOpen(false); setLocation("/messages/new"); }}
+                className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+                style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+              >
+                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>💬 {t("home_fab.one_to_one", { defaultValue: "Pray 1:1 with someone" })}</p>
+                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.one_to_one_sub", { defaultValue: "Start a private back-and-forth prayer." })}</p>
+              </button>
+            )}
             {isAdminOfAny && (
               <button
                 onClick={() => { setOpen(false); setLocation("/moment/new?template=intercession"); }}

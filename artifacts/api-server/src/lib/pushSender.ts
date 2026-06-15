@@ -707,6 +707,44 @@ export function sendDailyPrayerPush(
   });
 }
 
+// "How did it go?" — the life-event follow-up, fired the evening of the event
+// day by the cron. Taps into the request so the owner can post an update.
+export function sendLifeEventFollowUpPush(
+  ownerId: number,
+  opts: { prayerRequestId: number; eventTitle: string | null },
+) {
+  const what = (opts.eventTitle || "").trim();
+  return sendPushToUser(ownerId, {
+    title: "How did it go?",
+    body: what
+      ? `Share how ${what} went with the people who prayed.`
+      : "Share how it went with the people who prayed.",
+    path: `/prayer-requests/${opts.prayerRequestId}`,
+    threadId: "prayer-requests",
+    data: { prayerRequestId: opts.prayerRequestId },
+    sound: PHOEBE_SOUND_MID,
+  });
+}
+
+// "{Name} shared how [title] went" — sent to everyone who prayed for a life
+// event once its owner posts their update. Closes the loop with the people who
+// actually showed up for it.
+export async function sendLifeEventUpdatePush(
+  userIds: number[],
+  opts: { prayerRequestId: number; ownerName: string; eventTitle: string | null },
+): Promise<void> {
+  const firstName = (opts.ownerName || "Someone").split(/\s+/)[0] || "Someone";
+  const what = (opts.eventTitle || "").trim();
+  await sendPushToUsers(userIds, {
+    title: what ? `${firstName} shared how ${what} went` : `${firstName} shared an update`,
+    body: "Tap to read how the prayer was answered.",
+    path: `/prayer-requests/${opts.prayerRequestId}`,
+    threadId: "prayer-requests",
+    data: { prayerRequestId: opts.prayerRequestId },
+    sound: PHOEBE_SOUND_HIGH,
+  });
+}
+
 // "{Name} wrote you a letter." Fires when a 1:1 letter arrives — read-
 // focused copy because the user might not be ready to reply right
 // away (a follow-up reminder push handles the "your turn is still
@@ -1124,6 +1162,23 @@ export function sendContemplationGoalReachedPush(
     path: "/contemplation",
     threadId: "contemplation-goal",
     collapseId: `contemplation-goal-reached-${userId}`,
+    sound: PHOEBE_SOUND_LOW,
+  });
+}
+
+// Congrats push when Apple Health step count crosses the user's daily step
+// goal. Fired from PUT /me/daily-steps on the first upload that reaches the goal
+// (deduped to once per local day by users.daily_step_reached_date).
+export function sendDailyStepGoalReachedPush(
+  userId: number,
+  opts: { goalSteps: number; steps: number }
+) {
+  return sendPushToUser(userId, {
+    title: "Step goal reached 👟",
+    body: `${opts.steps.toLocaleString()} steps today — you've hit your ${opts.goalSteps.toLocaleString()}-step goal.`,
+    path: "/dashboard",
+    threadId: "daily-steps",
+    collapseId: `daily-steps-reached-${userId}`,
     sound: PHOEBE_SOUND_LOW,
   });
 }

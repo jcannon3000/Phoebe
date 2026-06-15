@@ -11,4 +11,4 @@
  *
  * Keep this in sync with the server flag.
  */
-export const LETTERS_MESSAGES_ENABLED = false;
+export const LETTERS_MESSAGES_ENABLED = true;

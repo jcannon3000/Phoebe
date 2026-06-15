@@ -7,4 +7,4 @@
  * routes still function, but with the client surfaces hidden no one reaches
  * them. Keep in sync with the client flag.
  */
-export const LETTERS_MESSAGES_ENABLED = false;
+export const LETTERS_MESSAGES_ENABLED = true;

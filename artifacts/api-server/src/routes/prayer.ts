@@ -6,7 +6,7 @@ import { sql } from "drizzle-orm";
 import crypto from "crypto";
 import { getCorrespondentUserIds } from "../lib/correspondents";
 import { getGardenUserIds } from "../lib/garden";
-import { sendPrayerWordPush, sendFirstAmenPush, sendNewPrayerRequestPush } from "../lib/pushSender";
+import { sendPrayerWordPush, sendFirstAmenPush, sendNewPrayerRequestPush, sendLifeEventUpdatePush } from "../lib/pushSender";
 import { logger } from "../lib/logger";
 import { isParishOnlyUser } from "../lib/parishGate";
 import { rateLimit } from "../lib/rate-limit";
@@ -229,6 +229,11 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     // Mirrors the field on the prayer-mode slideshow's request slide
     // so the deep-link page renders the same chip.
     kind: r.kind ?? "request",
+    // Life-event fields — the dated thing, and the owner's "how it went" update.
+    eventDate: r.eventDate ? r.eventDate.toISOString() : null,
+    eventTitle: r.eventTitle ?? null,
+    eventUpdate: r.eventUpdate ?? null,
+    eventUpdatedAt: r.eventUpdatedAt ? r.eventUpdatedAt.toISOString() : null,
     ownerId: r.ownerId,
     // Honor anonymity. Every other surface (feed list at ~531, the
     // slideshow, push copy) suppresses the author's name + avatar for an
@@ -752,6 +757,10 @@ router.post("/prayer-requests", rateLimit({
     // shared_moments via /moment/new?template=intercession, so they
     // never reach this endpoint.
     kind: z.enum(["request", "life-event", "justice"]).optional().default("request"),
+    // Life-event fields — only meaningful when kind === "life-event": the date
+    // it happens (ISO) and a short title ("Knee surgery"). Ignored otherwise.
+    eventDate: z.string().datetime().optional(),
+    eventTitle: z.string().trim().max(80).optional(),
     // Tagged Phoebe users — the owner explicitly named these people
     // in the request ("praying for my friend Matthew"). They get
     // visibility regardless of garden membership and receive a push
@@ -788,7 +797,14 @@ router.post("/prayer-requests", rateLimit({
 
   const [owner] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, sessionUserId));
 
-  const expiresAt = new Date(Date.now() + parsed.data.durationDays * 24 * 60 * 60 * 1000);
+  // Life events live until just after the event itself, so the "how did it go?"
+  // nudge can fire the evening of (the +2-day grace keeps the row active through
+  // that follow-up). Everything else uses the chosen 3/7-day window.
+  const eventDate = parsed.data.kind === "life-event" && parsed.data.eventDate
+    ? new Date(parsed.data.eventDate) : null;
+  const expiresAt = eventDate
+    ? new Date(eventDate.getTime() + 2 * 24 * 60 * 60 * 1000)
+    : new Date(Date.now() + parsed.data.durationDays * 24 * 60 * 60 * 1000);
 
   // Every new request gets a public share token at creation time.
   // The /p/:token public page reads through this slug; without one,
@@ -804,6 +820,8 @@ router.post("/prayer-requests", rateLimit({
       isAnonymous: parsed.data.isAnonymous,
       createdByName: owner?.name ?? null,
       kind: parsed.data.kind,
+      eventDate,
+      eventTitle: eventDate ? (parsed.data.eventTitle?.trim() || null) : null,
       expiresAt,
       shareToken,
     })
@@ -1222,6 +1240,49 @@ router.patch("/prayer-requests/:id/answer", async (req, res): Promise<void> => {
     .set({ isAnswered: true, answeredAt: new Date(), closedAt: new Date(), closeReason: "answered" })
     .where(eq(prayerRequestsTable.id, id))
     .returning();
+  res.json(updated);
+});
+
+// POST /api/prayer-requests/:id/event-update — the owner of a life-event request
+// shares how it went. The update is stored on the request; on the FIRST update,
+// everyone who prayed for it (the amen-ers) gets a "how it went" push. Editing
+// it later doesn't re-notify. Owner only.
+router.post("/prayer-requests/:id/event-update", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const text = typeof req.body?.text === "string" ? req.body.text.trim() : "";
+  if (!text || text.length > 1000) { res.status(400).json({ error: "Please share a short update." }); return; }
+
+  const [request] = await db.select().from(prayerRequestsTable).where(eq(prayerRequestsTable.id, id));
+  if (!request) { res.status(404).json({ error: "Not found" }); return; }
+  if (request.ownerId !== sessionUserId) { res.status(403).json({ error: "Forbidden" }); return; }
+
+  const firstUpdate = !request.eventUpdate;
+  const [updated] = await db.update(prayerRequestsTable)
+    .set({ eventUpdate: text, eventUpdatedAt: new Date() })
+    .where(eq(prayerRequestsTable.id, id))
+    .returning();
+
+  if (firstUpdate) {
+    void (async () => {
+      try {
+        const rows = await db.select({ userId: prayerRequestAmensTable.userId })
+          .from(prayerRequestAmensTable)
+          .where(eq(prayerRequestAmensTable.requestId, id));
+        const ids = Array.from(new Set(rows.map(r => r.userId))).filter(uid => uid !== sessionUserId);
+        if (ids.length === 0) return;
+        const [owner] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, sessionUserId));
+        await sendLifeEventUpdatePush(ids, {
+          prayerRequestId: id,
+          ownerName: request.isAnonymous ? "Someone" : (owner?.name?.trim() || "Someone"),
+          eventTitle: request.eventTitle,
+        });
+      } catch { /* best-effort */ }
+    })();
+  }
+
   res.json(updated);
 });
 

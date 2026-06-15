@@ -592,6 +592,12 @@ export async function migrate() {
     // renewal_nudge_sent_at: stamped when the 1-day-left renewal push
     // fires for a prayer request, so the cron doesn't re-send.
     await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS renewal_nudge_sent_at TIMESTAMPTZ`);
+    // Life-event fields (kind = 'life-event'): a dated thing + the owner's update.
+    await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS event_date TIMESTAMPTZ`);
+    await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS event_title TEXT`);
+    await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS life_event_followup_sent_at TIMESTAMPTZ`);
+    await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS event_update TEXT`);
+    await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS event_updated_at TIMESTAMPTZ`);
 
 
     // Connection cache — persists even when practices are deleted
@@ -1685,6 +1691,21 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS contemplation_health_minutes_user_day_uk ON contemplation_health_minutes (user_id, day)`);
 
+    // ── daily_health_steps ────────────────────────────────────────────────────
+    // Apple Health step count the iOS client uploads per local day, so the
+    // server can fire a "you hit your step goal" push (the home card itself
+    // reads steps straight from HealthKit). Mirrors contemplation_health_minutes.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS daily_health_steps (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day TEXT NOT NULL,
+        steps INTEGER NOT NULL DEFAULT 0,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS daily_health_steps_user_day_uk ON daily_health_steps (user_id, day)`);
+
     // ── Sign in with Apple — add apple_id column + partial-unique index ─────
     // `sub` from a verified Apple identity token. Partial-unique so existing
     // Google-only / email-only users don't trip a uniqueness check on NULL.
@@ -1892,6 +1913,9 @@ export async function migrate() {
     // + whether the ~7pm nudge is enabled (default true).
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_goal_minutes INTEGER NOT NULL DEFAULT 0`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_goal_sent_date TEXT`);
+    // Daily steps goal (Apple Health) + one-per-day "reached" push dedupe.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_step_goal INTEGER NOT NULL DEFAULT 0`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_step_reached_date TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_reminder_enabled BOOLEAN NOT NULL DEFAULT true`);
     // Weekly Way of Love review — Sunday-evening reminder (opt-out) + per-week dedup stamp.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_review_reminder BOOLEAN NOT NULL DEFAULT true`);
