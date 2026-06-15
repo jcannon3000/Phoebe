@@ -21,7 +21,7 @@ function firstName(n: string | null | undefined) { return (n ?? "").trim().split
 
 // PartnerExchange — replaces the old home prayer list. Your prayer for the day
 // (compose, or shared + receipts) above your prayer-partner threads.
-export function PartnerExchange() {
+export function PartnerExchange({ hideWhenEmpty = false }: { hideWhenEmpty?: boolean } = {}) {
   const { t } = useTranslation();
   const { data, isLoading } = useDailyPrayerToday();
   const share = useShareDailyPrayer();
@@ -31,8 +31,10 @@ export function PartnerExchange() {
 
   if (isLoading || !data) return null;
 
-  // No partner yet → a gentle invitation to pair.
+  // No partner yet. On the home we hide the section entirely; on the dedicated
+  // page we show a gentle invitation to pair.
   if (data.status === "none") {
+    if (hideWhenEmpty) return null;
     return (
       <Link href="/prayer-partner" className="block">
         <div className="rounded-3xl px-5 py-6 text-center" style={{ background: `rgba(${G},0.10)`, border: `1px solid rgba(${G},0.30)` }}>

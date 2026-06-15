@@ -3998,26 +3998,20 @@ function PrayerListCarousel({
             // just want to mark this one prayed without the walk.
             return (
               <Link key={req.id} href={`/prayer-mode?queue=new&focus=${req.id}`} className="block">
-                {(() => {
-                  // A "new" (still-unprayed) request announces itself with a
-                  // gently pulsing border glow — replacing the old top-of-home
-                  // "N requests waiting" card. Prayed ones sit calm.
-                  const base = "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)";
-                  const glowLow = `${base}, 0 0 6px rgba(143,175,150,0.25)`;
-                  const glowHigh = `${base}, 0 0 16px rgba(143,175,150,0.55)`;
-                  return (
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
-                  animate={amened ? { opacity: 1, y: 0 } : { opacity: 1, y: 0, boxShadow: [glowLow, glowHigh, glowLow] }}
-                  transition={amened ? undefined : { boxShadow: { duration: 2.6, repeat: Infinity, ease: "easeInOut" }, default: { duration: 0.3 } }}
-                  className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]"
+                  animate={{ opacity: 1, y: 0 }}
+                  // A "new" (still-unprayed) request pulses its BORDER COLOR like
+                  // a today's-event card — replacing the old top-of-home "N
+                  // requests waiting" card. Prayed ones rest calm.
+                  className={`relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99] ${amened ? "" : "animate-turn-pulse-practices"}`}
                   style={{
                     background: "rgba(46,107,64,0.15)",
-                    border: amened ? "1px solid rgba(46,107,64,0.28)" : "1px solid rgba(143,175,150,0.7)",
-                    boxShadow: base,
+                    border: amened ? "1px solid rgba(46,107,64,0.28)" : "1px solid rgba(140,195,160,0.5)",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
                   }}
                 >
-                  <div className="w-1 flex-shrink-0" style={{ background: "#8FAF96" }} />
+                  <div className={`w-1 flex-shrink-0 ${amened ? "" : "animate-bar-pulse-practices"}`} style={amened ? { background: "#8FAF96" } : undefined} />
                   <div className="flex-1 px-4 pt-3 pb-3">
                     <div className="flex items-center gap-3">
                       {displayAvatar ? (
@@ -4085,8 +4079,6 @@ function PrayerListCarousel({
                     </div>
                   </div>
                 </motion.div>
-                  );
-                })()}
               </Link>
             );
           })}
@@ -6609,9 +6601,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     attention-based exchange). Sits above the community prayer
                     list; the two models coexist. */}
                 {filter === null && !eventsOnly && (
-                  <div className="mb-7">
-                    <PartnerExchange />
-                  </div>
+                  <PartnerExchange hideWhenEmpty />
                 )}
 
                 {/* Prayer List — the requests carousel (title + divider +

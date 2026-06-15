@@ -57,8 +57,8 @@ function CardSubtitleCycle({ values, className, style }: { values: string[]; cla
       style={{
         overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         opacity: shown ? 1 : 0,
-        transform: shown ? "translateY(0)" : "translateY(4px)",
-        transition: "opacity 0.26s ease, transform 0.26s ease",
+        // Pure crossfade — no vertical movement.
+        transition: "opacity 0.26s ease",
         ...style,
       }}
     >
@@ -439,8 +439,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const morningBlurb = t("rhythm.blurb_morning", { defaultValue: "Begin the day with the office" });
   const eveningBlurb = t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" });
   const officeCycle = [
-    t("rhythm.with_intercessions", { defaultValue: "with community intercessions" }),
-    t("rhythm.with_requests", { defaultValue: "with community prayer requests" }),
+    t("rhythm.from_bcp", { defaultValue: "From the Book of Common Prayer" }),
+    t("rhythm.with_community", { defaultValue: "with community prayers" }),
   ];
   // Whenever there's a minute goal, show progress toward it ("12 of 20 min
   // today") — even once it's met — so the card always reads as minutes-of-goal.
