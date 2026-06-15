@@ -30,6 +30,26 @@ export function openExternal(url: string): void {
   window.open(url, "_blank", "noopener,noreferrer");
 }
 
+// Open a reflection / newsletter, and mark it read only once the user CLOSES
+// the in-app browser (native), not the instant they open it — so the "done"
+// animation waits until they've actually X'd out. On web there's no close event
+// (it opens a new tab), so we mark on open, which is the best we can do.
+export function openExternalThenMarkRead(url: string, markRead: () => void): void {
+  if (!url) return;
+  const native = (window as unknown as { PhoebeNative?: PhoebeNative }).PhoebeNative;
+  if (native?.isNative?.() && native.openInAppBrowser) {
+    void native.openInAppBrowser(url);
+    const onDone = () => {
+      window.removeEventListener("phoebe:browserfinished", onDone);
+      markRead();
+    };
+    window.addEventListener("phoebe:browserfinished", onDone);
+    return;
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+  markRead();
+}
+
 // Warm a URL in the native in-app browser's background so a later openExternal
 // of the same URL opens instantly. No-op on web (there's nothing to preload)
 // and best-effort everywhere — safe to call from a card's mount effect.

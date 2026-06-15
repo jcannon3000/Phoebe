@@ -16,7 +16,7 @@ import { DailyProgressBody } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
 import { amenWithLocation } from "@/lib/prayLocation";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
-import { openExternal } from "@/lib/openExternal";
+import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
 import { useRhythmState } from "@/hooks/useRhythmState";
@@ -2592,11 +2592,10 @@ export function CacHomeCard() {
   });
   const cacTitle = cacMeta?.title ?? "";
   const onClick = () => {
-    // Mark read, then open the meditation — in-app browser on iOS, new tab on
-    // web (openExternal). No /reflect/cac return page (no flagReturn), so
-    // Phoebe stays on the current page when the reader is dismissed.
-    recordCacOpened();
-    openExternal(CAC_TODAY_URL);
+    // Open the meditation, and mark it read only once the reader is CLOSED —
+    // so the card's done animation waits until they've X'd out, not the
+    // instant they tap in. (Web has no close event, so it marks on open.)
+    openExternalThenMarkRead(CAC_TODAY_URL, recordCacOpened);
   };
   return (
     <div
@@ -2804,9 +2803,8 @@ function FddHomeCard() {
     };
   }, []);
   const onClick = () => {
-    // In-app browser on iOS, new tab on web. No return page (no flagReturn).
-    recordFddOpened();
-    openExternal(FDD_TODAY_URL);
+    // Mark read only once the reader is closed (see CAC card above).
+    openExternalThenMarkRead(FDD_TODAY_URL, recordFddOpened);
   };
   return (
     <div
@@ -2867,9 +2865,8 @@ function SsjeHomeCard() {
     };
   }, []);
   const onClick = () => {
-    // In-app browser on iOS, new tab on web. No return page (no flagReturn).
-    recordSsjeOpened();
-    openExternal(SSJE_TODAY_URL);
+    // Mark read only once the reader is closed (see CAC card above).
+    openExternalThenMarkRead(SSJE_TODAY_URL, recordSsjeOpened);
   };
   return (
     <div
