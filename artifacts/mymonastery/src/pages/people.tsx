@@ -568,12 +568,42 @@ export default function People() {
           </h1>
         </div>
 
-        {/* Search bar — filters the garden list by name, email, or
-            active prayer-request body. Sits above the find-friends
-            entry so it's the first interactive element on the page,
-            and the user-flow reads "search → find → write a prayer"
-            top to bottom. Empty query falls through and the full
-            sorted list renders. */}
+        {/* Fellows — your 1:1 prayer connections, prioritized at the very
+            top of the page so your closest people lead before search or the
+            wider garden. Beta users can add (search / contacts) + accept
+            requests; everyone sees their fellows list (fellows also form via
+            shared-prayer signup). Backed by /api/fellows (the accepted link
+            already feeds the garden + your prayer list). Shown when the viewer
+            is beta OR already has fellows, so non-beta with none see nothing
+            rather than an empty header. */}
+        {(rawIsBeta || (fellowsData?.fellows?.length ?? 0) > 0) && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>{t("people.fellows")}</p>
+              <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
+            </div>
+            <FellowsConnect canManage={rawIsBeta} />
+          </div>
+        )}
+
+        {/* Plans — the "How About" surface: share what you're going to, and your
+            fellows can come. Shown alongside Fellows (beta OR has fellows), since
+            a plan is only ever seen by the host's 1:1 connections. */}
+        {(rawIsBeta || (fellowsData?.fellows?.length ?? 0) > 0) && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>{t("people.plans", { defaultValue: "Plans" })}</p>
+              <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
+            </div>
+            <FellowPlans canManage={rawIsBeta} />
+          </div>
+        )}
+
+        {/* Search bar — filters the garden list by name, email, or active
+            prayer-request body. Sits directly above the garden list it filters;
+            your Fellows + Plans lead the page, then search → find → garden,
+            top to bottom. Empty query falls through and the full sorted list
+            renders. */}
         <div className="mb-4 relative">
           <span
             aria-hidden
@@ -636,35 +666,6 @@ export default function People() {
             </button>
           )}
         </div>
-
-        {/* Fellows — your 1:1 prayer connections. Beta users can add (search /
-            contacts) + accept requests; everyone sees their fellows list (fellows
-            also form via shared-prayer signup). Backed by /api/fellows (the
-            accepted link already feeds the garden + your prayer list). Shown when
-            the viewer is beta OR already has fellows, so non-beta with none see
-            nothing rather than an empty header. */}
-        {(rawIsBeta || (fellowsData?.fellows?.length ?? 0) > 0) && (
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>{t("people.fellows")}</p>
-              <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
-            </div>
-            <FellowsConnect canManage={rawIsBeta} />
-          </div>
-        )}
-
-        {/* Plans — the "How About" surface: share what you're going to, and your
-            fellows can come. Shown alongside Fellows (beta OR has fellows), since
-            a plan is only ever seen by the host's 1:1 connections. */}
-        {(rawIsBeta || (fellowsData?.fellows?.length ?? 0) > 0) && (
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>{t("people.plans", { defaultValue: "Plans" })}</p>
-              <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
-            </div>
-            <FellowPlans canManage={rawIsBeta} />
-          </div>
-        )}
 
         {/* Find friends entry — native-only. The underlying flow reads
             iOS Contacts via the Capacitor plugin, which doesn't exist

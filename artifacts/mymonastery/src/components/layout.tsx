@@ -1206,7 +1206,7 @@ function LoadReveal() {
   }, []);
   useEffect(() => {
     if (!show) return;
-    const id = window.setTimeout(() => setShow(false), 950);
+    const id = window.setTimeout(() => setShow(false), 475);
     return () => window.clearTimeout(id);
   }, [show, token]);
   if (!show) return null;
@@ -1216,7 +1216,7 @@ function LoadReveal() {
       aria-hidden
       initial={{ opacity: 1, y: 0 }}
       animate={{ opacity: 0, y: "22%" }}
-      transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
+      transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
       className="fixed inset-0"
       style={{ zIndex: 150, pointerEvents: "none", background: "#091A10" }}
     />
