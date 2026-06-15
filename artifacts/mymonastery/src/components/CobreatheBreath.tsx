@@ -609,16 +609,9 @@ export function CobreatheBreath({
               }}
             />
           </div>
-          {/* Legibility gradient — podcast-player style: the photo reads bright
-              up top, then a deep green-to-black overlay ramps in over the lower
-              half so the breath text + bottom content stay legible even at the
-              photo's higher peak opacity. */}
-          <div
-            style={{
-              position: "absolute", inset: 0,
-              background: "linear-gradient(180deg, rgba(6,24,16,0.10) 0%, rgba(6,24,16,0.12) 30%, rgba(5,18,12,0.45) 54%, rgba(4,13,8,0.80) 80%, rgba(3,11,7,0.94) 100%)",
-            }}
-          />
+          {/* (No legibility gradient overlay — removed per request. The photo's
+              own bottom mask ramp-down above is the only fade; the deep-green
+              page background keeps the breath text readable.) */}
         </div>
       )}
 
@@ -654,21 +647,26 @@ export function CobreatheBreath({
             </span>
           )}
         </p>
-        {todayCount != null && todayCount > 0 && (
+        {/* The social "N breathed today" count is a distraction DURING the
+            breath — keep the practice screen undistracted and let the count
+            live on the idle/summary states only (not while counting). */}
+        {!counting && todayCount != null && todayCount > 0 && (
           <p className="text-[12px] mt-1" style={{ color: TEXT_FAINT, fontFamily: SPACE_GROTESK }}>
             {t("cobreathe.breathed_today_count", { count: todayCount, defaultValue: `${todayCount} ${todayCount === 1 ? "person has" : "people have"} breathed today` })}
           </p>
         )}
       </div>
 
-      {/* Breath row — "Breathe In" + count on the left, the globe + progress
-          rings to their right, SIDE BY SIDE as one centred group, dropped 40px
-          below the breath's vertical centre. */}
+      {/* Breath row — "Breathe In" + count ANCHORED to the left edge (40px
+          padding), the globe + rings ANCHORED to the right edge (40px), each
+          independent of the other (space-between across the full width, NOT a
+          centred group whose spacing depends on both), dropped 40px below the
+          breath's vertical centre. */}
       <div
         style={{
-          position: "absolute", left: "50%", top: BREATH_Y,
-          transform: "translate(-50%, calc(-50% + 40px))",
-          display: "flex", alignItems: "center", gap: 18, zIndex: 2,
+          position: "absolute", left: 40, right: 40, top: BREATH_Y,
+          transform: "translateY(calc(-50% + 40px))",
+          display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 2,
         }}
       >
         {/* Left — "Breathe In" over "Breath n of 12", left-aligned. Kept
@@ -685,7 +683,7 @@ export function CobreatheBreath({
               {centerLabel}
             </span>
           </div>
-          <p className="mt-3 text-[13px]" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, maxWidth: 175 }}>
+          <p className="mt-0 text-[13px]" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, maxWidth: 175 }}>
             {!counting
               ? t("cobreathe.finding_rhythm", { defaultValue: "Syncing with the global breath…" })
               : reachedNow
@@ -695,9 +693,10 @@ export function CobreatheBreath({
         </div>
 
         {/* Right — globe + progress rings, concentric in a fixed cell. Sized
-            132 (globe + ring radius +15%), nudged 24px further right; the
-            viewBox stays 128 so the rings simply render scaled. */}
-        <div style={{ position: "relative", width: 132, height: 132, flexShrink: 0, transform: "translateX(24px)" }}>
+            132 (globe + ring radius +15%); the row's space-between anchors this
+            cell to the right edge (40px padding), so no manual nudge is needed.
+            The viewBox stays 128 so the rings simply render scaled. */}
+        <div style={{ position: "relative", width: 132, height: 132, flexShrink: 0 }}>
           <svg
             aria-hidden="true"
             width={132} height={132} viewBox="0 0 128 128"
