@@ -907,15 +907,19 @@ function OpeningSplash() {
         const fn = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "Someone";
         const visible = people.slice(0, 6);
         const overflow = Math.max(0, people.length - visible.length);
+        // Each face (and the total line) FADES UP in a gentle stagger — the
+        // profile pictures rise in one after another rather than popping in.
+        const faceVariant = {
+          hidden: { opacity: 0, y: 14 },
+          show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" as const } },
+        };
         return (
-          // The whole block gently FADES UP rather than popping in (the avatars
-          // are preloaded above, so nothing flashes white).
           <motion.div
             className="flex flex-col items-center w-full relative"
             style={{ maxWidth: 420 }}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, delay: 0.12, ease: "easeOut" }}
+            initial="hidden"
+            animate="show"
+            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.12 } } }}
           >
             {/* Horizontal overlapping rail — the same face-stack used everywhere
                 else (garden week, the slideshow recap). No per-person counts.
@@ -923,25 +927,25 @@ function OpeningSplash() {
             <div className="flex items-center justify-center -space-x-3">
               {visible.map((p) => (
                 p.avatarUrl ? (
-                  <img key={p.id} src={p.avatarUrl} alt={fn(p.name)} loading="eager" decoding="async" className="w-12 h-12 rounded-full object-cover" style={{ border: "2px solid #0C1F12", backgroundColor: "#1A4A2E" }} />
+                  <motion.img key={p.id} variants={faceVariant} src={p.avatarUrl} alt={fn(p.name)} loading="eager" decoding="async" className="w-12 h-12 rounded-full object-cover" style={{ border: "2px solid #0C1F12", backgroundColor: "#1A4A2E" }} />
                 ) : (
-                  <div key={p.id} className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "2px solid #0C1F12" }}>
+                  <motion.div key={p.id} variants={faceVariant} className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "2px solid #0C1F12" }}>
                     {(p.name ?? "?").trim().split(/\s+/).slice(0, 2).map((s) => s[0] ?? "").join("").toUpperCase().slice(0, 2) || "?"}
-                  </div>
+                  </motion.div>
                 )
               ))}
               {overflow > 0 && (
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-[12px] font-semibold" style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", border: "2px solid #0C1F12" }}>
+                <motion.div variants={faceVariant} className="w-12 h-12 rounded-full flex items-center justify-center text-[12px] font-semibold" style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", border: "2px solid #0C1F12" }}>
                   +{overflow}
-                </div>
+                </motion.div>
               )}
             </div>
-            <p className="text-[15px] mt-5 text-center" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
+            <motion.p variants={faceVariant} className="text-[15px] mt-5 text-center" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
               {t("splash.prayed_for_you_total", {
                 count: people.length,
                 defaultValue: `${people.length} ${people.length === 1 ? "person" : "people"} prayed for you this month`,
               })}
-            </p>
+            </motion.p>
           </motion.div>
         );
       })()}
