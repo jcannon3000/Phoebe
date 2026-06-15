@@ -149,6 +149,14 @@ export interface PushPayload {
   // stack, but each carries `data.prayerRequestId` so the per-amen
   // sweep can remove only the matching banner.
   data?: Record<string, string | number | boolean>;
+  // Silent / background push: no alert, no sound — just `content-available: 1`
+  // so the app wakes (best-effort) to act on `data`. Used to REMOVE a delivered
+  // notification remotely (e.g. withdraw "Join the breath" when the live count
+  // drops below 3). iOS throttles background delivery, so this is best-effort.
+  silent?: boolean;
+  // Skip web-push subscriptions — send to iOS device tokens only. (A silent push
+  // is always iOS-only; this also lets an alert be iOS-scoped.)
+  iosOnly?: boolean;
 }
 
 interface SendResult {
@@ -205,7 +213,10 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
       )),
   ]);
 
-  const totalTargets = tokens.length + webSubs.length;
+  // Silent + iOS-only pushes never go to the web (no service-worker silent path,
+  // and a titleless web push would spawn a junk banner).
+  const targetWebSubs = (payload.silent || payload.iosOnly) ? [] : webSubs;
+  const totalTargets = tokens.length + targetWebSubs.length;
   if (totalTargets === 0) {
     // Two distinct "no tokens" cases worth separating in the log so we
     // can triage silenced users from Railway without a DB session:
@@ -279,7 +290,7 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
     else if (outcome === "invalid") invalidTokenIds.push(t.id);
   }
 
-  for (const sub of webSubs) {
+  for (const sub of targetWebSubs) {
     // Same retry pattern for web push. webpush.sendNotification returns
     // an Error subclass with statusCode on 4xx/5xx; sendOneWebPush
     // collapses that to "ok" / "invalid" / "error".
@@ -407,13 +418,20 @@ async function sendOneApns(deviceToken: string, payload: PushPayload): Promise<A
     return "error";
   }
 
-  const apsPayload: Record<string, unknown> = {
-    alert: { title: payload.title, body: payload.body },
-    sound: payload.sound ?? "default",
-  };
-  if (payload.threadId) apsPayload["thread-id"] = payload.threadId;
-  if (payload.badge !== undefined) apsPayload["badge"] = payload.badge;
-  if (payload.interruptionLevel) apsPayload["interruption-level"] = payload.interruptionLevel;
+  // Silent/background push carries only `content-available` — no alert/sound —
+  // so the app can act on `data` (e.g. remove a delivered banner) without
+  // showing anything. Normal pushes carry the alert + sound + grouping fields.
+  const apsPayload: Record<string, unknown> = payload.silent
+    ? { "content-available": 1 }
+    : {
+        alert: { title: payload.title, body: payload.body },
+        sound: payload.sound ?? "default",
+      };
+  if (!payload.silent) {
+    if (payload.threadId) apsPayload["thread-id"] = payload.threadId;
+    if (payload.badge !== undefined) apsPayload["badge"] = payload.badge;
+    if (payload.interruptionLevel) apsPayload["interruption-level"] = payload.interruptionLevel;
+  }
 
   const body = JSON.stringify({
     aps: apsPayload,
@@ -428,8 +446,8 @@ async function sendOneApns(deviceToken: string, payload: PushPayload): Promise<A
   const headers: Record<string, string> = {
     authorization: `bearer ${jwt}`,
     "apns-topic": CREDS.bundleId as string,
-    "apns-push-type": "alert",
-    "apns-priority": "10",
+    "apns-push-type": payload.silent ? "background" : "alert",
+    "apns-priority": payload.silent ? "5" : "10",
     "content-type": "application/json",
   };
   if (payload.collapseId) {

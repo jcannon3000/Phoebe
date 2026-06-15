@@ -278,6 +278,20 @@ async function registerForPushIfRequested() {
           window.dispatchEvent(new CustomEvent("phoebe:push-error", { detail: err }));
         });
 
+        // Silent/background pushes that ask us to REMOVE a delivered banner
+        // (e.g. "Join the breath" is withdrawn once fewer than 3 Fellows are
+        // still breathing). We don't show anything — just clear the matching
+        // thread via the same path /prayer-mode uses. Best-effort: iOS only
+        // wakes us for background pushes when it grants execution time.
+        await PushNotifications.addListener("pushNotificationReceived", n => {
+          const data = (n.data as Record<string, string> | undefined) ?? {};
+          if (data["type"] === "cobreathe-live-withdraw") {
+            window.dispatchEvent(new CustomEvent("phoebe:clear-notifications", {
+              detail: { threadId: data["threadId"] || "cobreathe-live" },
+            }));
+          }
+        });
+
         // The `pushNotificationActionPerformed` listener is wired at boot
         // by `wirePushActionListener`, not here — see that function for why.
 
