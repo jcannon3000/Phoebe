@@ -15,29 +15,29 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.2.0",
+    "@capacitor/cli": "^8.4.0",
     "@types/node": "catalog:",
     "sharp": "^0.34.5",
     "typescript": "^5.6.3",
     "vite": "catalog:"
   },
   "dependencies": {
-    "@capacitor-community/apple-sign-in": "^6.0.0",
-    "@capacitor-community/contacts": "^6.0.0",
-    "@capacitor-community/keep-awake": "^5.0.0",
-    "@capacitor/app": "^6.0.0",
-    "@capacitor/browser": "^6.0.0",
-    "@capacitor/core": "^6.2.0",
-    "@capacitor/geolocation": "^6.1.1",
-    "@capacitor/haptics": "^6.0.0",
-    "@capacitor/ios": "^6.2.0",
-    "@capacitor/keyboard": "^6.0.0",
-    "@capacitor/local-notifications": "^6.0.0",
-    "@capacitor/preferences": "^6.0.0",
-    "@capacitor/push-notifications": "^6.0.0",
-    "@capacitor/share": "^6.0.0",
-    "@capacitor/splash-screen": "^6.0.0",
-    "@capacitor/status-bar": "^6.0.0",
-    "@capgo/capacitor-native-biometric": "^6.0.0"
+    "@capacitor-community/apple-sign-in": "^7.1.0",
+    "@capacitor-community/contacts": "^7.2.0",
+    "@capacitor-community/keep-awake": "^8.0.1",
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/browser": "^8.0.3",
+    "@capacitor/core": "^8.4.0",
+    "@capacitor/geolocation": "^8.2.0",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.4.0",
+    "@capacitor/keyboard": "^8.0.3",
+    "@capacitor/local-notifications": "^8.2.0",
+    "@capacitor/preferences": "^8.0.1",
+    "@capacitor/push-notifications": "^8.1.1",
+    "@capacitor/share": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2",
+    "@capgo/capacitor-native-biometric": "^8.4.5"
   }
 }
