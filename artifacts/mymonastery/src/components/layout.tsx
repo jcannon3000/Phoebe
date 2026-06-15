@@ -898,7 +898,8 @@ function OpeningSplash() {
     if (startedRef.current || phase === "gone" || !native || !user) return;
     startedRef.current = true;
     try { sessionStorage.setItem("phoebe:splash-shown", "1"); } catch { /* ignore */ }
-    const id = setTimeout(() => advanceFromFaces(), 5000);
+    // Hold the greeting a beat longer (7.5s) so it doesn't snap away.
+    const id = setTimeout(() => advanceFromFaces(), 7500);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
@@ -943,16 +944,25 @@ function OpeningSplash() {
       : t("splash.evening", { defaultValue: "Good evening" });
   const firstName = (user.name ?? "").trim().split(/\s+/)[0] || "";
 
-  // The next office to pray — a "What's next" card under the faces, mirroring
-  // the home. Null once both are done (the day is kept).
-  const nextSide: "morning" | "evening" | null = rhythm.ready
-    ? (!rhythm.morningDone ? "morning" : (!rhythm.eveningDone ? "evening" : null))
-    : null;
-  const nextEmoji = nextSide === "morning" ? "🌅" : "🌙";
-  const sideWord = nextSide === "morning" ? "Morning" : "Evening";
-  const nextTitle = !nextSide ? ""
+  // The "What's next" card under the faces, mirroring the home. Order through
+  // the day: Morning → (before 5pm) Contemplation → (5pm onward) Evening.
+  // Evening is NOT offered until 5pm; before then it's Contemplation, and once
+  // that's done there's nothing more to nudge until evening. Null when the
+  // current step is already done (the day is kept).
+  const nextKind: "morning" | "contemplation" | "evening" | null = !rhythm.ready
+    ? null
+    : !rhythm.morningDone
+      ? "morning"
+      : hour < 17
+        ? (!rhythm.silenceDone ? "contemplation" : null)
+        : (!rhythm.eveningDone ? "evening" : null);
+  const nextEmoji = nextKind === "morning" ? "🌅" : nextKind === "evening" ? "🌙" : "🕯️";
+  const nextTitle = !nextKind ? ""
+    : nextKind === "contemplation" ? t("rhythm.card_contemplation", { defaultValue: "Contemplation" })
     : rhythm.prayerKind === "community" ? t("rhythm.card_community", { defaultValue: "Pray together" })
-    : `${sideWord} ${rhythm.prayerKind === "devotion" ? "Devotion" : "Prayer"}`;
+    : `${nextKind === "morning" ? "Morning" : "Evening"} ${rhythm.prayerKind === "devotion" ? "Devotion" : "Prayer"}`;
+  // Contemplation opens its own begin slide; the offices go through /begin-prayer.
+  const nextHref = nextKind === "contemplation" ? "/contemplation?begin=1" : "/begin-prayer";
 
   return (
     <motion.div
@@ -1025,7 +1035,7 @@ function OpeningSplash() {
         // "held in prayer" blessing or a bare greeting here.
         if (people.length === 0) return null;
         const fn = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "Someone";
-        const visible = people.slice(0, 24);
+        const visible = people.slice(0, 7);
         const overflow = Math.max(0, people.length - visible.length);
         // Each face (and the total line) FADES UP in a gentle stagger — the
         // profile pictures rise in one after another rather than popping in.
@@ -1041,10 +1051,9 @@ function OpeningSplash() {
             animate="show"
             variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.12 } } }}
           >
-            {/* Everyone in your gardens who prayed this month — all their faces,
-                wrapped into rows (not a capped overlapping rail), so you see the
-                whole company who prayed with you. */}
-            <div className="flex flex-wrap items-center justify-center gap-2">
+            {/* The garden members who prayed with you this month — a single
+                horizontal overlapping rail (capped, with a +N chip), not a grid. */}
+            <div className="flex items-center justify-center -space-x-3">
               {visible.map((p) => (
                 p.avatarUrl ? (
                   <motion.img key={p.id} variants={faceVariant} src={p.avatarUrl} alt={fn(p.name)} loading="eager" decoding="async" className="w-12 h-12 rounded-full object-cover" style={{ border: "2px solid #0C1F12", backgroundColor: "#1A4A2E" }} />
@@ -1074,12 +1083,12 @@ function OpeningSplash() {
       })()}
       {/* What's next — the next office to pray, mirroring the home, so the load
           screen hands you straight into the day's first prayer. */}
-      {nextSide && (
+      {nextKind && (
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.45, ease: "easeOut" }}
-          onClick={(e) => { e.stopPropagation(); setPhase("out"); splashGoTo("/begin-prayer"); }}
+          onClick={(e) => { e.stopPropagation(); setPhase("out"); splashGoTo(nextHref); }}
           className="relative w-full mt-12 cursor-pointer active:scale-[0.99]"
           style={{ maxWidth: 420 }}
         >

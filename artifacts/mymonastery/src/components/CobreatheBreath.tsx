@@ -79,19 +79,6 @@ function phaseAt(pos: number): Phase {
 }
 
 // ── The breath ─────────────────────────────────────────────────────────────
-// A soft radial-gradient glow (no hard circle edge) that swells AND brightens
-// on the inhale and recedes on the exhale — bigger + stronger, then smaller.
-// The rAF loop drives transform scale + opacity each frame (GPU-composited, so
-// it stays glass-smooth). A larger, fainter gradient behind it gives depth and
-// the subtle colour difference.
-const CIRCLE_BASE = 300;
-// Centre brighter green fading out to nothing — a glow, not a disc. Many
-// gradual stops + a fully-transparent outer edge so there is no hard ring and
-// no banding: the alpha steps down a little at a time and reaches 0 well inside
-// the element box (so the blur below never clips a visible edge).
-const GLOW = "radial-gradient(circle, rgba(130,196,150,0.52) 0%, rgba(118,186,142,0.38) 20%, rgba(100,168,124,0.25) 38%, rgba(78,142,98,0.15) 54%, rgba(58,120,76,0.08) 70%, rgba(46,107,64,0.03) 84%, rgba(46,107,64,0) 94%)";
-// Larger, cooler, fainter halo behind it for depth + a hint of colour shift.
-const HALO = "radial-gradient(circle, rgba(110,180,150,0.13) 0%, rgba(92,158,138,0.08) 30%, rgba(74,140,128,0.05) 52%, rgba(58,120,96,0.02) 72%, rgba(46,107,64,0) 88%)";
 // The field starts darker (settling in, before sync) and warms a touch greener
 // once the session goes live — a quiet swell that marks joining the global
 // breath. CSS-transitioned between the two.
@@ -182,8 +169,6 @@ export function CobreatheBreath({
   // The breath is a single solid green circle that swells on the inhale and
   // contracts on the exhale, over a solid deep-green field. A faint ring sits
   // behind it for depth.
-  const circleRef = useRef<HTMLDivElement>(null);
-  const ringRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<HTMLDivElement>(null);
   // Two breath rings: the lighter one fills on the inhale and HOLDS full through
   // the exhale; the darker one sweeps over the lighter on the exhale.
@@ -308,16 +293,6 @@ export function CobreatheBreath({
       // boundary (p=0), so the breath starts from this exact rest state with no
       // jump.
       const pAnim = isCounting ? p : 0;
-      // Everything below scales RADIALLY from the centre (translate -50%,-50%
-      // only) — purely in/out, no vertical drift, all centred on the globe.
-      if (circleRef.current) {
-        circleRef.current.style.transform = `translate(-50%, -50%) scale(${(0.66 + pAnim * 0.86).toFixed(4)})`;
-        circleRef.current.style.opacity = String(0.3 + pAnim * 0.45);
-      }
-      if (ringRef.current) {
-        ringRef.current.style.transform = `translate(-50%, -50%) scale(${(0.82 + pAnim * 0.98).toFixed(4)})`;
-        ringRef.current.style.opacity = String(0.18 + pAnim * 0.34);
-      }
       // The globe's GREEN glow crossfades with the breath — DARK green at the
       // bottom of the exhale (pAnim→0), LIGHTER green at the top of the inhale
       // (pAnim→1) — styled like the blue completion glow. Skipped once the set
@@ -582,36 +557,6 @@ export function CobreatheBreath({
         paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
       }}
     >
-      {/* The breath — a soft radial-gradient glow (no hard edge) that swells
-          AND brightens on the inhale and recedes on the exhale. Driven by the
-          global clock, so everyone breathing at this moment sees the same glow
-          at the same size. A larger, fainter halo behind it gives depth and a
-          subtle colour shift. Transform + opacity only — perfectly smooth. */}
-      <div aria-hidden="true" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
-        <div
-          ref={ringRef}
-          style={{
-            position: "absolute", top: BREATH_Y, left: "calc(50% + 95px)",
-            width: CIRCLE_BASE, height: CIRCLE_BASE, borderRadius: "50%",
-            background: HALO,
-            transform: "translate(-50%, -50%) scale(1)",
-            filter: "blur(20px)",
-            willChange: "transform, opacity",
-          }}
-        />
-        <div
-          ref={circleRef}
-          style={{
-            position: "absolute", top: BREATH_Y, left: "calc(50% + 95px)",
-            width: CIRCLE_BASE, height: CIRCLE_BASE, borderRadius: "50%",
-            background: GLOW,
-            transform: "translate(-50%, -50%) scale(1)",
-            filter: "blur(14px)",
-            willChange: "transform, opacity",
-          }}
-        />
-      </div>
-
       {/* The breathing photos — images of life on earth, full-bleed behind the
           breath. Two stacked layers crossfade so the change from one photo to
           the next is never a hard cut; each photo slowly zooms in (Ken Burns
@@ -703,15 +648,16 @@ export function CobreatheBreath({
         )}
       </div>
 
-      {/* Breath row — the phase word + count sit LEFT-ALIGNED on the left, with
-          the globe + progress rings to their right on the same line. Centred on
-          screen at the breath's vertical position. The big soft glow sits behind
-          (nudged right to sit under the globe). */}
+      {/* Breath row — "Breathe In" + count pinned to the LEFT edge (with padding
+          from the edge); the globe + progress rings pinned to the RIGHT edge
+          (its outer ring aligned to the right with padding). The two are
+          independent, anchored to opposite sides rather than grouped/centred. */}
       <div
         style={{
-          position: "absolute", left: "50%", top: BREATH_Y,
-          transform: "translate(-50%, calc(-50% + 20px))",
-          display: "flex", alignItems: "center", gap: 18, zIndex: 2,
+          position: "absolute", left: 0, right: 0, top: BREATH_Y,
+          transform: "translateY(calc(-50% + 52px))",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "0 24px", zIndex: 2,
         }}
       >
         {/* Left — "Breathe In" over "Breath n of 12", left-aligned. */}
@@ -741,11 +687,13 @@ export function CobreatheBreath({
           )}
         </div>
 
-        {/* Right — globe + progress rings, concentric in a fixed cell. */}
-        <div style={{ position: "relative", width: 128, height: 128, flexShrink: 0 }}>
+        {/* Right — globe + progress rings, concentric in a fixed cell. Sized at
+            90% (globe + ring radius reduced 10%); the viewBox stays 128 so the
+            rings simply render scaled. */}
+        <div style={{ position: "relative", width: 115, height: 115, flexShrink: 0 }}>
           <svg
             aria-hidden="true"
-            width={128} height={128} viewBox="0 0 128 128"
+            width={115} height={115} viewBox="0 0 128 128"
             style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none", filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))" }}
           >
             <circle cx={64} cy={64} r={RING_R} fill="none" stroke="rgba(143,175,150,0.14)" strokeWidth={4} />
@@ -778,7 +726,7 @@ export function CobreatheBreath({
             aria-hidden="true"
             style={{
               position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 72, lineHeight: 1, pointerEvents: "none",
+              fontSize: 65, lineHeight: 1, pointerEvents: "none",
               // Once the blue session ring completes (all twelve breaths kept) the
               // globe takes on a blue glow. Otherwise it carries a GREEN glow the
               // rAF crossfades per frame — lighter green at the top of the inhale,
