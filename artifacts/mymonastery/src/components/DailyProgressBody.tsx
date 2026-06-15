@@ -512,9 +512,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // it becomes the office hero.
       key: "evening", emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: hour >= 20 ? "/examen" : "/begin-prayer",
       title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
+      // After 8 PM the title is "Close the day"; the second line names the actual
+      // evening method (Evening Prayer / Evening Devotion / Pray together).
       blurb: eveningDone
         ? prayed
-        : hour >= 20 ? t("rhythm.blurb_compline", { defaultValue: "Examine the day and rest" }) : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
+        : hour >= 20 ? officeTitle("Evening") : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
       blurbCycle: (eveningDone || hour >= 20) ? undefined : [eveningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
       later: hour < 15,

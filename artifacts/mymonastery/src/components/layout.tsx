@@ -820,6 +820,21 @@ function OpeningSplash() {
     staleTime: 5 * 60_000,
     enabled: phase !== "gone" && !!user && native,
   });
+  // Last session's faces, read SYNCHRONOUSLY from localStorage so the rail paints
+  // INSTANTLY on a cold open — no waiting on the network or the React-Query
+  // persister to rehydrate. The live query (above) refreshes them in the
+  // background and the effect below re-saves the latest set for next launch.
+  const [cachedFaces] = useState<Array<{ id: number; name: string | null; avatarUrl: string | null; count: number }>>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem("phoebe:splash-faces") || "[]"); } catch { return []; }
+  });
+  useEffect(() => {
+    if (data === undefined) return;
+    try {
+      if (data.people && data.people.length > 0) localStorage.setItem("phoebe:splash-faces", JSON.stringify(data.people));
+      else localStorage.removeItem("phoebe:splash-faces");
+    } catch { /* ignore */ }
+  }, [data]);
   // Warm the avatar images the moment the co-prayer data lands, so the face
   // rail doesn't flash white circles while each one downloads. The rendered
   // <img>s reuse the same in-flight/cached fetch (and carry a green placeholder
@@ -858,10 +873,12 @@ function OpeningSplash() {
   // the old "You are held in prayer" blessing that used to flash on every load
   // while the query was still in flight (people=[] during loading).
   useEffect(() => {
-    if (phase === "in" && data !== undefined && (data.people?.length ?? 0) === 0) {
+    // Dismiss only when there's genuinely nobody to show — the live query came
+    // back empty AND we have no cached faces to paint either.
+    if (phase === "in" && data !== undefined && (data.people?.length ?? 0) === 0 && cachedFaces.length === 0) {
       setPhase("out");
     }
-  }, [data, phase]);
+  }, [data, phase, cachedFaces.length]);
 
   // Web (or logged out) → no splash at all.
   if (!native || !user || phase === "gone") return null;
@@ -899,7 +916,9 @@ function OpeningSplash() {
         {firstName ? `${greeting}, ${firstName}` : greeting}
       </p>
       {(() => {
-        const people = data?.people ?? [];
+        // Prefer the live set; fall back to last session's cached faces so the
+        // rail paints instantly on a cold open (no network wait).
+        const people = (data?.people && data.people.length > 0) ? data.people : cachedFaces;
         // Nothing yet (still loading) or nobody → render no content. The empty
         // case is handled by the dismiss effect above; we never flash the old
         // "held in prayer" blessing or a bare greeting here.
@@ -967,9 +986,11 @@ function OpeningSplash() {
 // the home. Plays once per app session (the module flag resets on reload).
 let loadRevealPlayed = false;
 function LoadReveal() {
-  const [show, setShow] = useState(!loadRevealPlayed);
+  // Web only: on native the OpeningSplash already IS the green load screen, and a
+  // second overlay behind it flashed when the splash was dismissed quickly.
+  const [show, setShow] = useState(!loadRevealPlayed && !isNativeShell());
   useEffect(() => {
-    if (loadRevealPlayed) return;
+    if (loadRevealPlayed || isNativeShell()) return;
     loadRevealPlayed = true;
     const id = window.setTimeout(() => setShow(false), 900);
     return () => window.clearTimeout(id);
