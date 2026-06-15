@@ -2595,7 +2595,7 @@ export function CacHomeCard() {
     // Open the meditation, and mark it read only once the reader is CLOSED —
     // so the card's done animation waits until they've X'd out, not the
     // instant they tap in. (Web has no close event, so it marks on open.)
-    openExternalThenMarkRead(CAC_TODAY_URL, recordCacOpened);
+    openExternalThenMarkRead(CAC_TODAY_URL, recordCacOpened, { reader: true });
   };
   return (
     <div
@@ -2804,7 +2804,7 @@ function FddHomeCard() {
   }, []);
   const onClick = () => {
     // Mark read only once the reader is closed (see CAC card above).
-    openExternalThenMarkRead(FDD_TODAY_URL, recordFddOpened);
+    openExternalThenMarkRead(FDD_TODAY_URL, recordFddOpened, { reader: true });
   };
   return (
     <div
@@ -2866,7 +2866,7 @@ function SsjeHomeCard() {
   }, []);
   const onClick = () => {
     // Mark read only once the reader is closed (see CAC card above).
-    openExternalThenMarkRead(SSJE_TODAY_URL, recordSsjeOpened);
+    openExternalThenMarkRead(SSJE_TODAY_URL, recordSsjeOpened, { reader: true });
   };
   return (
     <div

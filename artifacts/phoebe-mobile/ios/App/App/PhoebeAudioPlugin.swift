@@ -37,6 +37,7 @@
 import Foundation
 import Capacitor
 import AVFoundation
+import UserNotifications
 
 @objc(PhoebeAudioPlugin)
 public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
@@ -47,7 +48,52 @@ public class PhoebeAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "playNow", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "scheduleBellAt", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cancelScheduled", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "scheduleBellNotification", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "cancelBellNotification", returnType: CAPPluginReturnPromise),
     ]
+
+    private let bellNotificationId = "phoebe-contemplation-bell"
+
+    // Schedule the end bell as a TIME-SENSITIVE local notification — bypasses
+    // Do Not Disturb / Focus (the entitlement is in App.entitlements). Its
+    // sound still honors the hardware silent switch; the in-app .playback
+    // bell (scheduleBellAt) covers the muted-while-foregrounded case. The two
+    // together are the reliable backstop for "the bell actually rings."
+    @objc func scheduleBellNotification(_ call: CAPPluginCall) {
+        let atMs = call.getDouble("at") ?? 0
+        let soundName = call.getString("sound") ?? "PhoebeRising-high.caf"
+        let target = Date(timeIntervalSince1970: atMs / 1000.0)
+        let delay = target.timeIntervalSinceNow
+        if delay <= 0.05 {
+            call.reject("target time too soon or in past")
+            return
+        }
+        let content = UNMutableNotificationContent()
+        content.title = "Contemplation"
+        content.body = "Your time is complete."
+        content.sound = UNNotificationSound(named: UNNotificationSoundName(soundName))
+        if #available(iOS 15.0, *) {
+            content.interruptionLevel = .timeSensitive
+        }
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: delay, repeats: false)
+        let request = UNNotificationRequest(identifier: bellNotificationId, content: content, trigger: trigger)
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [bellNotificationId])
+        center.add(request) { error in
+            if let error = error {
+                call.reject("schedule notification failed: \(error.localizedDescription)")
+            } else {
+                call.resolve()
+            }
+        }
+    }
+
+    @objc func cancelBellNotification(_ call: CAPPluginCall) {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [bellNotificationId])
+        center.removeDeliveredNotifications(withIdentifiers: [bellNotificationId])
+        call.resolve()
+    }
 
     // The keep-alive silent loop. Volume is set just barely above 0
     // because some iOS revisions treat an exact 0-volume player as

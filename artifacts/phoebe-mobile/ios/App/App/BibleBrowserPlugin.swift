@@ -24,15 +24,45 @@
 import Foundation
 import Capacitor
 import UIKit
+import SafariServices
 
 @objc(BibleBrowserPlugin)
-public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin {
+public class BibleBrowserPlugin: CAPPlugin, CAPBridgedPlugin, SFSafariViewControllerDelegate {
     public let identifier = "BibleBrowserPlugin"
     public let jsName = "BibleBrowser"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "open", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "openReader", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "preload", returnType: CAPPluginReturnPromise),
     ]
+
+    // Open a URL in Safari's reader view (SFSafariViewController with
+    // entersReaderIfAvailable) — used for newsletters, where clean reading
+    // beats the pinned Done button of the WKWebView path. The toolbar
+    // auto-collapses on scroll (the documented trade), but a Done button is
+    // still reachable. Emits phoebe:browserfinished on dismiss so the caller
+    // can mark the newsletter read only once it's actually closed.
+    @objc func openReader(_ call: CAPPluginCall) {
+        guard let urlStr = call.getString("url"),
+              let url = URL(string: urlStr) else {
+            call.reject("Missing or invalid url")
+            return
+        }
+        DispatchQueue.main.async { [weak self] in
+            let config = SFSafariViewController.Configuration()
+            config.entersReaderIfAvailable = true
+            let vc = SFSafariViewController(url: url, configuration: config)
+            vc.delegate = self
+            vc.dismissButtonStyle = .done
+            vc.preferredControlTintColor = UIColor(red: 0.18, green: 0.42, blue: 0.25, alpha: 1.0)
+            self?.bridge?.viewController?.present(vc, animated: true)
+            call.resolve()
+        }
+    }
+
+    public func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
+        bridge?.triggerWindowJSEvent(eventName: "phoebe:browserfinished")
+    }
 
     // Warm a URL in a background web view so a later open() shows it instantly.
     // Best-effort: a bad URL just no-ops. Called when a newsletter card mounts.

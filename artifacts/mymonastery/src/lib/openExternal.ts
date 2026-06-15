@@ -13,6 +13,7 @@
 type PhoebeNative = {
   isNative?: () => boolean;
   openInAppBrowser?: (url: string) => Promise<void>;
+  openReaderView?: (url: string) => Promise<void>;
   preloadInAppBrowser?: (url: string) => Promise<void>;
 };
 
@@ -34,11 +35,18 @@ export function openExternal(url: string): void {
 // the in-app browser (native), not the instant they open it — so the "done"
 // animation waits until they've actually X'd out. On web there's no close event
 // (it opens a new tab), so we mark on open, which is the best we can do.
-export function openExternalThenMarkRead(url: string, markRead: () => void): void {
+export function openExternalThenMarkRead(
+  url: string,
+  markRead: () => void,
+  opts?: { reader?: boolean },
+): void {
   if (!url) return;
   const native = (window as unknown as { PhoebeNative?: PhoebeNative }).PhoebeNative;
   if (native?.isNative?.() && native.openInAppBrowser) {
-    void native.openInAppBrowser(url);
+    // Newsletters (reader:true) open in Safari reader view; everything else in
+    // the normal in-app browser. Both emit phoebe:browserfinished on close.
+    if (opts?.reader && native.openReaderView) void native.openReaderView(url);
+    else void native.openInAppBrowser(url);
     const onDone = () => {
       window.removeEventListener("phoebe:browserfinished", onDone);
       markRead();

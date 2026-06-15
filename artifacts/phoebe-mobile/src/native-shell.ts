@@ -1102,6 +1102,8 @@ function getPhoebeAudio(): {
   playNow?: (opts: { sound: string }) => Promise<void>;
   scheduleBellAt?: (opts: { at: number; sound: string }) => Promise<void>;
   cancelScheduled?: () => Promise<void>;
+  scheduleBellNotification?: (opts: { at: number; sound: string }) => Promise<void>;
+  cancelBellNotification?: () => Promise<void>;
 } | undefined {
   const cap = (window as {
     Capacitor?: { Plugins?: Record<string, unknown> };
@@ -1140,29 +1142,39 @@ function wireContemplation() {
       /* fall through to the LocalNotification fallback */
     }
 
-    // Fallback path: LocalNotification. Still useful if iOS suspends the
-    // audio session or the user is on an older app build without the
-    // plugin. The audible part may be muted by silent switch / Focus,
-    // but the banner+vibration is a reasonable second line.
+    // Fallback path: a TIME-SENSITIVE local notification. Scheduled natively
+    // (PhoebeAudio.scheduleBellNotification) so we can set interruptionLevel =
+    // .timeSensitive — which breaks through Do Not Disturb / Focus. Its audible
+    // part still honors the hardware silent switch, but the in-app .playback
+    // bell above covers the muted-while-foregrounded case, so together they're
+    // a reliable backstop. We still ask for notification permission via the
+    // Capacitor plugin (same authorization the native scheduler relies on),
+    // then fall back to a plain Capacitor notification if the native plugin is
+    // missing (older bundle).
     try {
       const perm = await LocalNotifications.checkPermissions();
       if (perm.display !== "granted") {
         const req = await LocalNotifications.requestPermissions();
         if (req.display !== "granted") return;
       }
-      await LocalNotifications.schedule({
-        notifications: [
-          {
-            id: CONTEMPLATION_BELL_ID,
-            title: "Contemplation",
-            body: "Your time is complete.",
-            schedule: { at, allowWhileIdle: true },
-            smallIcon: "phoebe_bell",
-            iconColor: "#2E6B40",
-            sound: CONTEMPLATION_BELL_FILE,
-          },
-        ],
-      });
+      const audio = getPhoebeAudio();
+      if (audio?.scheduleBellNotification) {
+        await audio.scheduleBellNotification({ at: at.getTime(), sound: CONTEMPLATION_BELL_FILE });
+      } else {
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              id: CONTEMPLATION_BELL_ID,
+              title: "Contemplation",
+              body: "Your time is complete.",
+              schedule: { at, allowWhileIdle: true },
+              smallIcon: "phoebe_bell",
+              iconColor: "#2E6B40",
+              sound: CONTEMPLATION_BELL_FILE,
+            },
+          ],
+        });
+      }
     } catch {
       /* best-effort */
     }
@@ -1173,6 +1185,7 @@ function wireContemplation() {
     // (in-app Web Audio bell PLUS the native scheduled bell PLUS the
     // local notification all firing within milliseconds of each other).
     try { await getPhoebeAudio()?.cancelScheduled?.(); } catch { /* best-effort */ }
+    try { await getPhoebeAudio()?.cancelBellNotification?.(); } catch { /* best-effort */ }
     try {
       await LocalNotifications.cancel({ notifications: [{ id: CONTEMPLATION_BELL_ID }] });
     } catch {
@@ -1487,6 +1500,21 @@ function exposePublicApi() {
           /* ignore */
         }
       }
+    },
+    // Open a URL in Safari's READER VIEW (SFSafariViewController with
+    // entersReaderIfAvailable) — used for newsletters. The reader-view plugin
+    // method emits phoebe:browserfinished on dismiss, so callers can mark the
+    // newsletter read only once it's closed. Falls back to the normal in-app
+    // browser when the plugin/method isn't present (older bundle, web).
+    async openReaderView(url: string) {
+      if (!url) return;
+      const cap = (window as { Capacitor?: { Plugins?: Record<string, { openReader?: (opts: { url: string }) => Promise<void> }> } }).Capacitor;
+      const bible = cap?.Plugins?.BibleBrowser;
+      if (bible?.openReader) {
+        try { await bible.openReader({ url }); return; }
+        catch (err) { console.warn("[PhoebeNative] openReader failed, falling back:", err); }
+      }
+      await this.openInAppBrowser(url);
     },
     async preloadInAppBrowser(url: string) {
       // Best-effort warm: start loading `url` in a background WKWebView so a
