@@ -1192,21 +1192,25 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS prayer_partnerships_lo ON prayer_partnerships (user_lo_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS prayer_partnerships_hi ON prayer_partnerships (user_hi_id)`);
 
-    // daily_prayers — one "prayer for the day" per author per local day.
+    // daily_prayers — one "prayer for the day" per author per local day,
+    // shared with ALL the author's partners (author-scoped, not partner-scoped).
     await run(client, `
       CREATE TABLE IF NOT EXISTS daily_prayers (
         id SERIAL PRIMARY KEY,
         author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        partner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        partnership_id INTEGER NOT NULL REFERENCES prayer_partnerships(id) ON DELETE CASCADE,
         ymd TEXT NOT NULL,
         body TEXT NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    // A pre-multi-thread build scoped the prayer to a single partner; the
+    // prayer for the day is now shared with every partner, so shed those cols.
+    await run(client, `ALTER TABLE daily_prayers DROP COLUMN IF EXISTS partner_id`);
+    await run(client, `ALTER TABLE daily_prayers DROP COLUMN IF EXISTS partnership_id`);
+    await run(client, `DROP INDEX IF EXISTS daily_prayers_partnership`);
+    await run(client, `DROP INDEX IF EXISTS daily_prayers_partner`);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS daily_prayers_author_ymd ON daily_prayers (author_id, ymd)`);
-    await run(client, `CREATE INDEX IF NOT EXISTS daily_prayers_partnership ON daily_prayers (partnership_id, created_at)`);
-    await run(client, `CREATE INDEX IF NOT EXISTS daily_prayers_partner ON daily_prayers (partner_id, created_at)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS daily_prayers_author ON daily_prayers (author_id, created_at)`);
 
     // prayer_attentions — the attention/"view receipt" (>=3s = counted/prayed).
     await run(client, `
