@@ -203,6 +203,10 @@ export function CobreatheBreath({
   const photoBRef = useRef<HTMLImageElement>(null);
   const photoLastIdxRef = useRef<number>(-1);
   const photoPreloadedRef = useRef<number>(-1);
+  // Counts inhale tones since this breath began, so the octave always STARTS
+  // on the lowest (0) and rotates 0,1,2 per breath — regardless of where the
+  // global clock happens to be when the user starts.
+  const inhaleToneCountRef = useRef(0);
   // Fall back to the bundled library when no caller passes photos, so the
   // breath always has pictures (the office/devotion overlay passes none).
   const photoLibrary = photos && photos.length > 0 ? photos : DEFAULT_PHOTOS;
@@ -289,7 +293,9 @@ export function CobreatheBreath({
           // octaves (0,1,2), cycled from the global clock so everyone
           // breathing at this instant hears the same tone.
           if (phase === "in") {
-            const octave = Math.floor(now / PHASE_MS) % 3;
+            // Start on the lowest octave, then rotate 0,1,2 per breath.
+            const octave = inhaleToneCountRef.current % 3;
+            inhaleToneCountRef.current += 1;
             try { playOpeningSwell(octave); } catch { /* audio locked — non-fatal */ }
           }
         }

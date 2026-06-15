@@ -9,6 +9,7 @@ import { RequestWordField } from "@/components/RequestWordField";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 import { sharePrayerRequest } from "@/lib/sharePrayerRequest";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 // Deep-link landing for "X is asking for your prayers" (and the
 // other prayer-request pushes — first amen, third amen, word of
@@ -327,8 +328,14 @@ export default function PrayerRequestDetailPage() {
         background: SLIDE_BG,
         minHeight: "100dvh",
         position: "relative",
+        overflow: "hidden",
+        // Center the request vertically in the screen, with the gradient behind.
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
       }}
     >
+      <AnimatedBackground base={SLIDE_BG} variant="pronounced" />
       {/* Always-visible close + share — fixed position so they never
           scroll off, and high enough above any iOS notch / safe area
           that the user can always reach them. Share sits to the left
@@ -379,14 +386,15 @@ export default function PrayerRequestDetailPage() {
       <div
         className="flex flex-col items-center text-center px-6 w-full"
         style={{
+          position: "relative",
+          zIndex: 1,
           maxWidth: 560,
           margin: "0 auto",
           minHeight: "100dvh",
-          // Recipient view stays vertically centered (single slide-
-          // shaped column). Owner view top-anchors so a long amen
-          // rail + every word-of-comfort can scroll naturally without
-          // pushing the body off the top of the screen.
-          justifyContent: isOwnerView ? "flex-start" : "center",
+          // Vertically centered (a single slide-shaped column). The minHeight
+          // grows with content, so centering never clips a long owner view —
+          // it just scrolls.
+          justifyContent: "center",
           paddingTop: "clamp(64px, 14dvh, 140px)",
           paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 56px)",
         }}

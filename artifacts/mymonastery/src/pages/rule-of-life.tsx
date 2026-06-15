@@ -13,13 +13,14 @@
  * + concrete office settings that can be applied in one tap, saved, or emailed.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, X, Check, Share2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { playOpeningSwell, primeAudio } from "@/lib/amenFeedback";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -376,6 +377,8 @@ export default function RuleOfLifePage() {
   };
 
   const toggleChip = (slide: SlideSpec, value: string) => {
+    // Unlock the audio context on a real tap so the advance swells can play.
+    try { primeAudio(); } catch { /* non-fatal */ }
     setAnswers((prev) => {
       if (slide.multi) {
         const cur = Array.isArray(prev[slide.key]) ? (prev[slide.key] as string[]) : [];
@@ -399,8 +402,12 @@ export default function RuleOfLifePage() {
     recommendMutation.mutate(payload);
   };
 
+  // A soft swell on each slide advance — rotating through the three octaves,
+  // always STARTING with the lowest (0) at the top of the flow.
+  const swellOctaveRef = useRef(0);
   const handleContinue = () => {
     if (!currentSlide || !slideAnswered(currentSlide)) return;
+    try { playOpeningSwell(swellOctaveRef.current % 3); swellOctaveRef.current += 1; } catch { /* audio locked — non-fatal */ }
     if (slideIndex < totalSlides - 1) {
       setSlideIndex((i) => i + 1);
     } else {
@@ -447,7 +454,7 @@ export default function RuleOfLifePage() {
   if (phase === "mode") {
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
-        <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
+        <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
             <Link href="/daily-practice">
@@ -507,7 +514,7 @@ export default function RuleOfLifePage() {
   if (phase === "name") {
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
-        <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
+        <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
           <button onClick={handleBack} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "8px 0", display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
             <ChevronLeft size={18} />
@@ -571,7 +578,7 @@ export default function RuleOfLifePage() {
 
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
-        <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
+        <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
@@ -667,7 +674,7 @@ export default function RuleOfLifePage() {
     const errored = recommendMutation.isError;
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-        <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
+        <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
         <div style={{ position: "relative", zIndex: 1, textAlign: "center", padding: 24, maxWidth: 420 }}>
           {errored ? (
             <>
@@ -724,7 +731,7 @@ export default function RuleOfLifePage() {
 
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
-        <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
+        <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
           <button onClick={handleBack} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "8px 0", display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
             <ChevronLeft size={18} />
@@ -759,7 +766,7 @@ export default function RuleOfLifePage() {
   if (phase === "email" && result) {
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
-        <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
+        <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
           <button onClick={handleBack} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "8px 0", display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
             <ChevronLeft size={18} />
@@ -834,7 +841,7 @@ export default function RuleOfLifePage() {
   if (phase === "result" && result) {
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative" }}>
-        <AnimatedBackground base={EP_BG} variant="subtle" fadeTop />
+        <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
         <div style={{ position: "relative", zIndex: 1, padding: "24px 20px 60px", maxWidth: 560, margin: "0 auto" }}>
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
