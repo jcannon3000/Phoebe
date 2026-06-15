@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -40,6 +41,12 @@ function introSeen(): boolean {
 }
 function wantsStart(): boolean {
   try { return new URLSearchParams(window.location.search).get("start") === "1"; } catch { return false; }
+}
+// Launched from the contemplation page / sit? Those entry points pass
+// ?from=contemplation, and finishing then shows the summary screen (and returns
+// to /contemplation) instead of slipping straight back.
+function cameFromContemplation(): boolean {
+  try { return new URLSearchParams(window.location.search).get("from") === "contemplation"; } catch { return false; }
 }
 
 // Cobreathe — from "conspire", con + spirare, to breathe together.
@@ -245,14 +252,24 @@ export default function CobreathePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Captured once at mount: did we arrive from the contemplation page/sit?
+  const fromContemplationRef = useRef(cameFromContemplation());
+
   // Finishing (or backing out) — this is where the sit is logged, with the FULL
   // elapsed time (so 20 breaths counts as 20, not 12). Finished → record the
   // communal breath + return to Contemplation; bailed early → slip back.
   const handleEnd = useCallback((secondsKept: number, reached: boolean) => {
     logSit(secondsKept);
-    if (!reached) { setMode("intro"); return; }
+    const fromContemplation = fromContemplationRef.current;
+    if (!reached) {
+      // Bailed early: from contemplation, slip back there; otherwise the intro.
+      if (fromContemplation) setLocation("/contemplation"); else setMode("intro");
+      return;
+    }
     record.mutate(secondsKept);
-    setLocation("/contemplation");
+    // From the contemplation page → show the summary screen; otherwise return
+    // straight to contemplation as before.
+    if (fromContemplation) setMode("done"); else setLocation("/contemplation");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -517,7 +534,12 @@ export default function CobreathePage() {
             );
           }
           return (
-            <div className="flex flex-col items-center text-center flex-1 justify-center py-10">
+            <motion.div
+              className="flex flex-col items-center text-center flex-1 justify-center py-10"
+              initial={{ opacity: 0, y: -14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+            >
               <div className="text-5xl mb-5">🌬️</div>
               <h2 className="text-[1.4rem] font-bold mb-3 px-4" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
                 {!s
@@ -547,7 +569,7 @@ export default function CobreathePage() {
               </p>
               <button
                 type="button"
-                onClick={() => setMode("intro")}
+                onClick={() => { if (fromContemplationRef.current) setLocation("/contemplation"); else setMode("intro"); }}
                 className="rounded-xl py-3 px-8"
                 style={{
                   background: "rgba(46,107,64,0.20)", color: WARM, border: "1px solid rgba(46,107,64,0.45)",
@@ -556,7 +578,7 @@ export default function CobreathePage() {
               >
                 {t("common.done", { defaultValue: "Done" })}
               </button>
-            </div>
+            </motion.div>
           );
         })()}
       </div>

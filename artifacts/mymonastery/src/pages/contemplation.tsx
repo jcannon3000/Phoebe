@@ -724,7 +724,7 @@ export default function ContemplationPage() {
 
       {/* Cobreathe pill — set apart with a space, straight into today's
           communal breath (?start=1). */}
-      <Link href="/cobreathe?start=1" onClick={() => primeAudio()} className="block mt-6">
+      <Link href="/cobreathe?start=1&from=contemplation" onClick={() => primeAudio()} className="block mt-6">
         <div
           className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
           style={{
