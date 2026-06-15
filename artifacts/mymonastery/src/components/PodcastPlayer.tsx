@@ -259,10 +259,11 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     if (reverbReadyRef.current || !OFFICE_REVERB_ENABLED) return;
     const a = audioRef.current;
     if (!a) return;
+    let ctx: AudioContext | null = null;
     try {
       const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AC) return;
-      const ctx = new AC();
+      ctx = new AC();
       const source = ctx.createMediaElementSource(a);
       // Dry passthrough connected FIRST — audio is never lost even if the wet
       // path below throws; reverb is a pure add-on.
@@ -276,7 +277,15 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         source.connect(conv); conv.connect(lp); lp.connect(wet); wet.connect(ctx.destination);
         reverbWetRef.current = wet;
       } catch { /* dry-only; passthrough already connected */ }
-    } catch { /* Web Audio unavailable / element already routed — dry playback */ }
+    } catch {
+      // Web Audio unavailable, or createMediaElementSource threw (the element
+      // was already routed). Tear down any half-built context and mark the
+      // graph "ready" so we never attempt a second createMediaElementSource on
+      // the same <audio> element — it keeps playing dry on its own.
+      if (ctx) { try { ctx.close(); } catch { /* already closed */ } }
+      audioCtxRef.current = null;
+      reverbReadyRef.current = true;
+    }
   }, []);
 
   const [current, setCurrent] = useState<PlayingEpisode | null>(null);
@@ -416,6 +425,10 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     a.src = current.audioUrl;
     a.playbackRate = rate;
     a.load();
+    // If a prior FM office rerouted this shared element through an AudioContext
+    // that iOS later suspended, a programmatic play() would run silently. Resume
+    // it first so auto-advance / return-to-app playback isn't muted.
+    resumeAudioCtx();
     a.play().catch(() => { /* iOS may gate autoplay; the bar's play button covers it */ });
 
     // Listening history — once per episode per session. Offices opt out

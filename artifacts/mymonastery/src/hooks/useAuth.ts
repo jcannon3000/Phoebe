@@ -130,6 +130,11 @@ export function useLogout() {
     // previous account's cached home (incl. the persisted /api/auth/me user)
     // on disk for the next person to sign in on this device.
     try { window.localStorage.removeItem("phoebe:rq-daily"); } catch { /* ignore */ }
+    // Splash face cache is painted synchronously on cold open before the
+    // account-scoped query resolves — wipe it so the next person to sign in on
+    // this device can't briefly see the previous account's "prayed for you"
+    // contacts (names + avatars).
+    try { window.localStorage.removeItem("phoebe:splash-faces"); } catch { /* ignore */ }
     // Wipe the larger IndexedDB layer too (feeds + office text) so one
     // account's cached content never carries over to the next person.
     try { await clearIdbCache(); } catch { /* ignore */ }

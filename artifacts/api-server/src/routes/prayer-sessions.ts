@@ -251,6 +251,13 @@ router.post("/prayer-sessions", async (req, res): Promise<void> => {
     // the external stream, so we credit a fixed broadcast-length
     // duration on tap.
     "national-cathedral",
+    // The audio-office surfaces only POST once the listener has crossed the
+    // 60% mark — that threshold IS the "this was a real office" signal, like
+    // the offices above. Bypass the 5s floor so a short clip (or a mis-reported
+    // tiny duration at the 60% mark) can't silently drop the cross-device /
+    // streak credit while the local office-completed flag still flips.
+    "morning-office-podcast",
+    "evening-office-podcast",
   ]);
   if (!FLOOR_BYPASS_SURFACES.has(surface) && durationSeconds < MIN_SESSION_SECONDS) {
     // Drop silently — too short to count as a real prayer session.

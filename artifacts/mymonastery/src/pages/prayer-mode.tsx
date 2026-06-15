@@ -3504,7 +3504,11 @@ export default function PrayerModePage() {
           queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${rid}`] });
         })
         .catch(() => {
-          /* swallow — amen logging is best-effort, never blocks prayer flow */
+          // The POST failed, so the optimistic myAmenedToday:true above is now
+          // a lie the server never recorded. Reconcile the list against the
+          // server so the card doesn't show a phantom "Prayed today" ✓ (and the
+          // user can re-amen) instead of swallowing the failure outright.
+          queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
         });
     }
     if (current && current.kind === "intercession" && current.momentToken) {

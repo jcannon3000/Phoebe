@@ -99,6 +99,7 @@ const PUBLISHERS: Record<string, { title: string; emoji: string; showSlugs: stri
     showSlugs: [
       "way-of-love-curry",
       "experiencing-jesus",
+      "green-lectionary",
       "nc-crossroads",
       "roundtables-on-race",
       "living-church",
@@ -261,6 +262,15 @@ export const SHOWS: Record<string, Show> = {
     publisher: "cac",
     feedUrl: "https://feeds.megaphone.fm/CFAC6648912537",
     artwork: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts211/v4/79/46/12/794612f8-accf-5683-521e-5805da51ae5d/mza_4535843137584053387.jpg/600x600bb.jpg",
+  },
+  // ── Creation Justice Ministries — The Green Lectionary ──────────────
+  "green-lectionary": {
+    slug: "green-lectionary",
+    title: "The Green Lectionary Podcast",
+    artist: "Creation Justice Ministries",
+    publisher: "around-the-church",
+    feedUrl: "https://feed.podbean.com/greenlectionary/feed.xml",
+    artwork: "/podcast-art/green-lectionary.jpg",
   },
   // ── Washington National Cathedral ───────────────────────────────────
   "nc-crossroads": {

@@ -876,12 +876,16 @@ function OpeningSplash() {
   // the old "You are held in prayer" blessing that used to flash on every load
   // while the query was still in flight (people=[] during loading).
   useEffect(() => {
-    // Dismiss only when there's genuinely nobody to show — the live query came
-    // back empty AND we have no cached faces to paint either.
-    if (phase === "in" && data !== undefined && (data.people?.length ?? 0) === 0 && cachedFaces.length === 0) {
+    // Once the live query RESOLVES with nobody, dismiss — even if we have cached
+    // faces. The cache is only a cold-open instant-paint stand-in; the moment the
+    // account-scoped query says "nobody this month", that's the truth, so we must
+    // not dwell 5s on last session's stale faces (or a "prayed for you" line that
+    // no longer holds). While data is still loading (undefined) the cache keeps
+    // painting and the 5s timer runs as normal.
+    if (phase === "in" && data !== undefined && (data.people?.length ?? 0) === 0) {
       setPhase("out");
     }
-  }, [data, phase, cachedFaces.length]);
+  }, [data, phase]);
 
   // Web (or logged out) → no splash at all.
   if (!native || !user || phase === "gone") return null;
