@@ -318,6 +318,19 @@ export function CobreatheBreath({
         ringRef.current.style.transform = `translate(-50%, -50%) scale(${(0.82 + pAnim * 0.98).toFixed(4)})`;
         ringRef.current.style.opacity = String(0.18 + pAnim * 0.34);
       }
+      // The globe's GREEN glow crossfades with the breath — DARK green at the
+      // bottom of the exhale (pAnim→0), LIGHTER green at the top of the inhale
+      // (pAnim→1) — styled like the blue completion glow. Skipped once the set
+      // is complete, so the declarative blue glow takes over.
+      if (globeRef.current && !reachedRef.current) {
+        const gr = Math.round(46 + (134 - 46) * pAnim);   // 2E6B40 → 86C79B (R)
+        const gg = Math.round(107 + (199 - 107) * pAnim); // (G)
+        const gb = Math.round(64 + (155 - 64) * pAnim);   // (B)
+        const blur = (10 + pAnim * 13).toFixed(1);
+        const alpha = (0.42 + pAnim * 0.42).toFixed(2);
+        globeRef.current.style.filter =
+          `drop-shadow(0 0 ${blur}px rgba(${gr},${gg},${gb},${alpha})) drop-shadow(0 3px 14px rgba(8,30,18,0.6))`;
+      }
       // The globe stays a STEADY size — it no longer swells with the breath
       // (only the glow behind it breathes). Left untouched here so it holds at
       // its base scale/opacity.
@@ -578,7 +591,7 @@ export function CobreatheBreath({
         <div
           ref={ringRef}
           style={{
-            position: "absolute", top: BREATH_Y, left: "50%",
+            position: "absolute", top: BREATH_Y, left: "calc(50% + 95px)",
             width: CIRCLE_BASE, height: CIRCLE_BASE, borderRadius: "50%",
             background: HALO,
             transform: "translate(-50%, -50%) scale(1)",
@@ -589,7 +602,7 @@ export function CobreatheBreath({
         <div
           ref={circleRef}
           style={{
-            position: "absolute", top: BREATH_Y, left: "50%",
+            position: "absolute", top: BREATH_Y, left: "calc(50% + 95px)",
             width: CIRCLE_BASE, height: CIRCLE_BASE, borderRadius: "50%",
             background: GLOW,
             transform: "translate(-50%, -50%) scale(1)",
@@ -651,66 +664,8 @@ export function CobreatheBreath({
         </div>
       )}
 
-      {/* Breath-progress rings around the globe — both sweep clockwise from the
-          top. The LIGHTER ring fills on the inhale and holds full through the
-          exhale; the DARKER ring sweeps over it on the breath out. A faint track
-          sits under both. */}
-      <svg
-        aria-hidden="true"
-        width={128} height={128} viewBox="0 0 128 128"
-        style={{
-          position: "absolute", top: BREATH_Y, left: "50%",
-          transform: "translate(-50%, calc(-50% + 20px)) rotate(-90deg)",
-          zIndex: 2, pointerEvents: "none",
-          filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))",
-        }}
-      >
-        <circle cx={64} cy={64} r={RING_R} fill="none" stroke="rgba(143,175,150,0.14)" strokeWidth={4} />
-        {/* lighter — inhale (fills, then holds) */}
-        <circle
-          ref={ringInRef}
-          cx={64} cy={64} r={RING_R}
-          fill="none" stroke={RING_IN} strokeWidth={4} strokeLinecap="round"
-          style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }}
-        />
-        {/* darker — exhale, drawn ON TOP of the lighter ring */}
-        <circle
-          ref={ringOutRef}
-          cx={64} cy={64} r={RING_R}
-          fill="none" stroke={RING_OUT} strokeWidth={4} strokeLinecap="round"
-          style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }}
-        />
-        {/* inner SESSION ring — faint blue track + one slow blue fill across all
-            twelve breaths (driven in the rAF loop). */}
-        <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(91,157,239,0.16)" strokeWidth={4} />
-        <circle
-          ref={sessionRingRef}
-          cx={64} cy={64} r={SESSION_R}
-          fill="none" stroke={SESSION_BLUE} strokeWidth={4} strokeLinecap="round"
-          style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset" }}
-        />
-      </svg>
-
-      {/* The world at the centre of the breath — turning between the three
-          globes (one per second), sitting in the middle over the photo
-          background and the glow. Steady size — it doesn't breathe. */}
-      <div
-        ref={globeRef}
-        aria-hidden="true"
-        style={{
-          position: "absolute", top: BREATH_Y, left: "50%",
-          transform: "translate(-50%, calc(-50% + 20px))",
-          fontSize: 72, lineHeight: 1, pointerEvents: "none", zIndex: 2,
-          // Once the blue session ring completes (all twelve breaths kept) the
-          // globe takes on a blue glow; otherwise its usual soft dark shadow.
-          filter: reachedNow
-            ? "drop-shadow(0 0 18px rgba(91,157,239,0.9)) drop-shadow(0 2px 10px rgba(8,30,18,0.5))"
-            : "drop-shadow(0 3px 14px rgba(8,30,18,0.6))",
-          transition: "filter 1.2s ease",
-        }}
-      >
-        {globe}
-      </div>
+      {/* (The breath rings + globe now sit in the row below, to the RIGHT of the
+          "Breathe In" / count text — see the breath row near the bottom.) */}
 
       {/* Cancel — top-right, exits the breath (no count unless already kept). */}
       <button
@@ -748,39 +703,97 @@ export function CobreatheBreath({
         )}
       </div>
 
-      {/* Phase word + counter — BELOW the gradient now (it used to sit centred
-          over the glow), clearing the globe that now holds the middle. */}
+      {/* Breath row — the phase word + count sit LEFT-ALIGNED on the left, with
+          the globe + progress rings to their right on the same line. Centred on
+          screen at the breath's vertical position. The big soft glow sits behind
+          (nudged right to sit under the globe). */}
       <div
-        className="flex flex-col items-center"
         style={{
           position: "absolute", left: "50%", top: BREATH_Y,
-          transform: "translate(-50%, 0)",
-          marginTop: CIRCLE_BASE * 0.46 - 20, zIndex: 2,
+          transform: "translate(-50%, calc(-50% + 20px))",
+          display: "flex", alignItems: "center", gap: 18, zIndex: 2,
         }}
       >
-        <div ref={labelRef} style={{ willChange: "transform, opacity" }}>
-          <span
+        {/* Left — "Breathe In" over "Breath n of 12", left-aligned. */}
+        <div className="flex flex-col items-start">
+          <div ref={labelRef} style={{ willChange: "transform, opacity" }}>
+            <span
+              style={{
+                // Georgia serif — matching the office podcast title.
+                color: WARM, fontFamily: SERIF, fontSize: 27, fontWeight: 600,
+                letterSpacing: "0.04em", textShadow: "0 2px 18px rgba(8,30,18,0.6)", whiteSpace: "nowrap",
+              }}
+            >
+              {centerLabel}
+            </span>
+          </div>
+          <p className="mt-3 text-[13px]" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, maxWidth: 175 }}>
+            {!counting
+              ? t("cobreathe.finding_rhythm", { defaultValue: "Syncing with the global breath…" })
+              : reachedNow
+                ? t("cobreathe.breath_counter_past", { current: breathNum, defaultValue: `🌿 Breath ${breathNum} — keep going as long as you like` })
+                : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `Breath ${breathNum} of ${totalBreaths}` })}
+          </p>
+          {othersToday != null && othersToday > 0 && (
+            <p className="mt-1.5 text-[12px]" style={{ color: TEXT_FAINT, fontFamily: SERIF, fontStyle: "italic", maxWidth: 175 }}>
+              {t("cobreathe.breathing_with_you", { count: othersToday, defaultValue: `${othersToday} ${othersToday === 1 ? "person is" : "people are"} breathing with you today` })}
+            </p>
+          )}
+        </div>
+
+        {/* Right — globe + progress rings, concentric in a fixed cell. */}
+        <div style={{ position: "relative", width: 128, height: 128, flexShrink: 0 }}>
+          <svg
+            aria-hidden="true"
+            width={128} height={128} viewBox="0 0 128 128"
+            style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none", filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))" }}
+          >
+            <circle cx={64} cy={64} r={RING_R} fill="none" stroke="rgba(143,175,150,0.14)" strokeWidth={4} />
+            {/* lighter — inhale (fills, then holds) */}
+            <circle
+              ref={ringInRef}
+              cx={64} cy={64} r={RING_R}
+              fill="none" stroke={RING_IN} strokeWidth={4} strokeLinecap="round"
+              style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }}
+            />
+            {/* darker — exhale, drawn ON TOP of the lighter ring */}
+            <circle
+              ref={ringOutRef}
+              cx={64} cy={64} r={RING_R}
+              fill="none" stroke={RING_OUT} strokeWidth={4} strokeLinecap="round"
+              style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }}
+            />
+            {/* inner SESSION ring — faint blue track + one slow blue fill across
+                all twelve breaths (driven in the rAF loop). */}
+            <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(91,157,239,0.16)" strokeWidth={4} />
+            <circle
+              ref={sessionRingRef}
+              cx={64} cy={64} r={SESSION_R}
+              fill="none" stroke={SESSION_BLUE} strokeWidth={4} strokeLinecap="round"
+              style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset" }}
+            />
+          </svg>
+          <div
+            ref={globeRef}
+            aria-hidden="true"
             style={{
-              // Georgia serif — matching the office podcast title.
-              color: WARM, fontFamily: SERIF, fontSize: 27, fontWeight: 600,
-              letterSpacing: "0.04em", textShadow: "0 2px 18px rgba(8,30,18,0.6)",
+              position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 72, lineHeight: 1, pointerEvents: "none",
+              // Once the blue session ring completes (all twelve breaths kept) the
+              // globe takes on a blue glow. Otherwise it carries a GREEN glow the
+              // rAF crossfades per frame — lighter green at the top of the inhale,
+              // darker at the bottom of the exhale (this static value is just the
+              // mid-green starting point). No transition while breathing, so the
+              // per-frame crossfade tracks the breath cleanly.
+              filter: reachedNow
+                ? "drop-shadow(0 0 18px rgba(91,157,239,0.9)) drop-shadow(0 2px 10px rgba(8,30,18,0.5))"
+                : "drop-shadow(0 0 13px rgba(90,150,110,0.55)) drop-shadow(0 3px 14px rgba(8,30,18,0.6))",
+              transition: reachedNow ? "filter 1.2s ease" : "none",
             }}
           >
-            {centerLabel}
-          </span>
+            {globe}
+          </div>
         </div>
-        <p className="mt-5 text-[13px] text-center" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, maxWidth: 300 }}>
-          {!counting
-            ? t("cobreathe.finding_rhythm", { defaultValue: "Syncing with the global breath…" })
-            : reachedNow
-              ? t("cobreathe.breath_counter_past", { current: breathNum, defaultValue: `🌿 Breath ${breathNum} — keep going as long as you like` })
-              : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `Breath ${breathNum} of ${totalBreaths}` })}
-        </p>
-        {othersToday != null && othersToday > 0 && (
-          <p className="mt-1.5 text-[12px] text-center" style={{ color: TEXT_FAINT, fontFamily: SERIF, fontStyle: "italic", maxWidth: 300 }}>
-            {t("cobreathe.breathing_with_you", { count: othersToday, defaultValue: `${othersToday} ${othersToday === 1 ? "person is" : "people are"} breathing with you today` })}
-          </p>
-        )}
       </div>
 
       {/* End / Finish — bottom */}
