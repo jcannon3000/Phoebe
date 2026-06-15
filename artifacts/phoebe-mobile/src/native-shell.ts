@@ -68,16 +68,17 @@ function installApiFetchInterceptor() {
 // `viewport-fit=cover` in compose-www.mjs). Here we only need to style
 // the status bar content to match Phoebe's dark palette.
 async function configureStatusBar() {
-  try {
-    await StatusBar.setStyle({ style: Style.Dark });
-    await StatusBar.setBackgroundColor({ color: "#091A10" });
-    // Overlays are off so the status bar has its own solid strip — easier
-    // to align with safe-area CSS than a translucent bar that shifts on
-    // scroll.
-    await StatusBar.setOverlaysWebView({ overlay: false });
-  } catch {
-    // Non-fatal — older iOS versions or plugin mismatch.
-  }
+  // Each call is ISOLATED in its own try/catch. setBackgroundColor is
+  // Android-only and REJECTS on iOS in Capacitor 7+ — in a single shared
+  // try/catch (as before) that rejection aborted the later setOverlaysWebView
+  // call, so after the Cap 8 upgrade the bar fell back to its default overlay
+  // mode and rendered a mismatched dark strip over the splash. Isolating each
+  // call guarantees the iOS-relevant ones (style + overlay) always run.
+  try { await StatusBar.setStyle({ style: Style.Dark }); } catch { /* older iOS / mismatch */ }
+  try { await StatusBar.setBackgroundColor({ color: "#091A10" }); } catch { /* Android-only; iOS rejects */ }
+  // Overlays off so the status bar has its own solid strip — easier to align
+  // with safe-area CSS than a translucent bar that shifts on scroll.
+  try { await StatusBar.setOverlaysWebView({ overlay: false }); } catch { /* older iOS / mismatch */ }
 }
 
 // ─── Splash screen ─────────────────────────────────────────────────────────

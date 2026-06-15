@@ -825,12 +825,15 @@ async function fetchAvatarDataUrl(url: string): Promise<string | null> {
   try {
     const res = await fetch(url);
     if (!res.ok) return null;
-    const type = res.headers.get("content-type") || "";
-    if (!type.startsWith("image/")) return null;
     const blob = await res.blob();
-    // Avatars are tiny; cap at 512KB so we never bloat localStorage. A response
-    // bigger than that means something's off — skip it and fall back to the URL.
-    if (blob.size === 0 || blob.size > 512 * 1024) return null;
+    // Validate the IMAGE via the Blob's own MIME type, NOT the response headers.
+    // CapacitorHttp's patched fetch (native) frequently returns a Response with
+    // no content-type header, so the old `res.headers.get("content-type")` check
+    // made EVERY avatar fail → nothing ever cached → the faces kept lagging.
+    // Only reject when the blob EXPLICITLY reports a non-image type. Avatars are
+    // tiny; cap at 512KB so we never bloat localStorage.
+    if (!blob || blob.size === 0 || blob.size > 512 * 1024) return null;
+    if (blob.type && !blob.type.startsWith("image/")) return null;
     return await new Promise<string | null>((resolve) => {
       const reader = new FileReader();
       reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
@@ -1138,7 +1141,7 @@ function OpeningSplash() {
                 const n = data?.total ?? people.length;
                 return t("splash.prayed_with_you_total", {
                   count: n,
-                  defaultValue: `${n} ${n === 1 ? "person" : "people"} prayed with you this month`,
+                  defaultValue: `You prayed with ${n} ${n === 1 ? "person" : "people"} this month`,
                 });
               })()}
             </motion.p>
@@ -1172,19 +1175,27 @@ function OpeningSplash() {
               {/* Contemplation tracks a daily minutes goal — show today's progress
                   (caption + bar) so the splash card mirrors the home contemplation
                   card. Only contemplation has a goal; the offices are binary. */}
-              {nextKind === "contemplation" && rhythm.contemplationGoalMin > 0 && (
-                <div className="mt-3.5">
-                  <p className="text-[11.5px] mb-1.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                    {t("rhythm.contemplation_progress", { current: rhythm.contemplationMin, goal: rhythm.contemplationGoalMin, defaultValue: `${rhythm.contemplationMin} of ${rhythm.contemplationGoalMin} min today` })}
-                  </p>
-                  <div className="rounded-full overflow-hidden" style={{ height: 5, background: "rgba(143,175,150,0.16)" }}>
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${Math.min(100, Math.round((rhythm.contemplationMin / rhythm.contemplationGoalMin) * 100))}%`, background: "rgba(46,107,64,0.9)", transition: "width 0.3s" }}
-                    />
+              {nextKind === "contemplation" && (() => {
+                // Always show the bar on the contemplation card. If the user
+                // hasn't set a daily contemplation goal (contemplationGoalMin
+                // is 0), fall back to a sensible 5-min default so the bar still
+                // renders rather than vanishing.
+                const goal = rhythm.contemplationGoalMin > 0 ? rhythm.contemplationGoalMin : 5;
+                const pct = Math.min(100, Math.round((rhythm.contemplationMin / goal) * 100));
+                return (
+                  <div className="mt-3.5">
+                    <p className="text-[11.5px] mb-1.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      {t("rhythm.contemplation_progress", { current: rhythm.contemplationMin, goal, defaultValue: `${rhythm.contemplationMin} of ${goal} min today` })}
+                    </p>
+                    <div className="rounded-full overflow-hidden" style={{ height: 5, background: "rgba(143,175,150,0.16)" }}>
+                      <div
+                        className="h-full rounded-full"
+                        style={{ width: `${pct}%`, background: "rgba(46,107,64,0.9)", transition: "width 0.3s" }}
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           </div>
         </motion.div>
