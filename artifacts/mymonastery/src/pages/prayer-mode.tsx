@@ -4005,10 +4005,11 @@ export default function PrayerModePage() {
           slideshow like a completed sit. */}
       <CobreatheOverlay
         open={cobreatheOpen}
-        onClose={(result) => {
-          setCobreatheOpen(false);
-          if (result?.completed) advance();
-        }}
+        // The breath finished → its summary is up. Advance the slideshow NOW,
+        // behind the opaque overlay, so the next office slide is loaded and
+        // ready; the overlay then fades onto it (smooth hand-off, no hard cut).
+        onSummary={() => advance()}
+        onClose={() => setCobreatheOpen(false)}
       />
     </div>
   );

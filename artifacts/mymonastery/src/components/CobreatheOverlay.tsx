@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { motion } from "framer-motion";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
@@ -31,25 +32,40 @@ type BreathResp = { ok?: boolean; count: number; done?: boolean; companionCount:
 export function CobreatheOverlay({
   open,
   onClose,
+  onSummary,
 }: {
   open: boolean;
   // result.completed is true when the breath ran to the end (vs. backing out).
   onClose: (result?: { completed: boolean }) => void;
+  // Fired the instant the breath completes and the summary appears. The host
+  // (prayer-mode) advances the slideshow underneath here, so the next office
+  // slide is already loaded behind the opaque overlay and the close is a smooth
+  // fade onto a ready slide rather than a hard cut.
+  onSummary?: () => void;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const day = localDay();
   const [phase, setPhase] = useState<"breathing" | "done">("breathing");
   const [resp, setResp] = useState<BreathResp | null>(null);
+  // True once the user taps Continue — fades the overlay out onto the office
+  // slide that onSummary already advanced to behind it.
+  const [closing, setClosing] = useState(false);
   // Hold the screen on through the breath (no touch input to keep it awake).
   useKeepAwake(open && phase === "breathing");
+
+  // The moment the summary appears, tell the host to advance the slideshow so
+  // the next office slide loads behind the overlay (ready for the fade back).
+  const onSummaryRef = useRef(onSummary);
+  onSummaryRef.current = onSummary;
+  useEffect(() => { if (phase === "done") onSummaryRef.current?.(); }, [phase]);
 
   // The overlay stays mounted (prayer-mode toggles `open`), so reset to a fresh
   // breath each time it opens — otherwise reopening after a finished breath
   // lands straight on the stale "you cobreathed with N" done screen.
   const sitLoggedRef = useRef(false);
   useEffect(() => {
-    if (open) { setPhase("breathing"); setResp(null); sitLoggedRef.current = false; }
+    if (open) { setPhase("breathing"); setResp(null); sitLoggedRef.current = false; setClosing(false); }
   }, [open]);
 
   // Log the breathed time as a contemplation sit — exactly once per open — so a
@@ -139,8 +155,14 @@ export function CobreatheOverlay({
   }
 
   return (
-    <div
+    <motion.div
       className="flex flex-col"
+      initial={{ opacity: 1 }}
+      animate={{ opacity: closing ? 0 : 1 }}
+      transition={{ duration: 0.6, ease: "easeInOut" }}
+      // The office slide underneath was already advanced (onSummary), so fading
+      // to 0 reveals a ready slide — a smooth hand-off, no hard cut.
+      onAnimationComplete={() => { if (closing) onClose(); }}
       style={{
         position: "fixed", inset: 0, zIndex: 60,
         background: "#0A1C14",
@@ -165,7 +187,8 @@ export function CobreatheOverlay({
           </p>
           <button
             type="button"
-            onClick={() => onClose({ completed: true })}
+            onClick={() => setClosing(true)}
+            disabled={closing}
             className="rounded-xl py-3 px-8"
             style={{
               background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)",
@@ -176,6 +199,6 @@ export function CobreatheOverlay({
           </button>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
