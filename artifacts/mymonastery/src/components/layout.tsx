@@ -814,9 +814,9 @@ function OpeningSplash() {
     if (typeof window === "undefined") return "gone";
     try { return sessionStorage.getItem("phoebe:splash-shown") ? "gone" : "in"; } catch { return "in"; }
   });
-  const { data } = useQuery<{ people?: Array<{ id: number; name: string | null; avatarUrl: string | null; count: number }> }>({
-    queryKey: ["/api/prayer-streak/prayed-for-me-month"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak/prayed-for-me-month"),
+  const { data } = useQuery<{ people?: Array<{ id: number; name: string | null; avatarUrl: string | null; count?: number }>; total?: number }>({
+    queryKey: ["/api/prayer-streak/community-prayed-month"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-month"),
     staleTime: 5 * 60_000,
     enabled: phase !== "gone" && !!user && native,
   });
@@ -824,7 +824,7 @@ function OpeningSplash() {
   // INSTANTLY on a cold open — no waiting on the network or the React-Query
   // persister to rehydrate. The live query (above) refreshes them in the
   // background and the effect below re-saves the latest set for next launch.
-  const [cachedFaces] = useState<Array<{ id: number; name: string | null; avatarUrl: string | null; count: number }>>(() => {
+  const [cachedFaces] = useState<Array<{ id: number; name: string | null; avatarUrl: string | null; count?: number }>>(() => {
     if (typeof window === "undefined") return [];
     try { return JSON.parse(localStorage.getItem("phoebe:splash-faces") || "[]"); } catch { return []; }
   });
@@ -931,7 +931,7 @@ function OpeningSplash() {
         // "held in prayer" blessing or a bare greeting here.
         if (people.length === 0) return null;
         const fn = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "Someone";
-        const visible = people.slice(0, 6);
+        const visible = people.slice(0, 24);
         const overflow = Math.max(0, people.length - visible.length);
         // Each face (and the total line) FADES UP in a gentle stagger — the
         // profile pictures rise in one after another rather than popping in.
@@ -947,10 +947,10 @@ function OpeningSplash() {
             animate="show"
             variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.12 } } }}
           >
-            {/* Horizontal overlapping rail — the same face-stack used everywhere
-                else (garden week, the slideshow recap). No per-person counts.
-                (The "Prayed for you this month" eyebrow above it was removed.) */}
-            <div className="flex items-center justify-center -space-x-3">
+            {/* Everyone in your gardens who prayed this month — all their faces,
+                wrapped into rows (not a capped overlapping rail), so you see the
+                whole company who prayed with you. */}
+            <div className="flex flex-wrap items-center justify-center gap-2">
               {visible.map((p) => (
                 p.avatarUrl ? (
                   <motion.img key={p.id} variants={faceVariant} src={p.avatarUrl} alt={fn(p.name)} loading="eager" decoding="async" className="w-12 h-12 rounded-full object-cover" style={{ border: "2px solid #0C1F12", backgroundColor: "#1A4A2E" }} />
@@ -967,10 +967,13 @@ function OpeningSplash() {
               )}
             </div>
             <motion.p variants={faceVariant} className="text-[15px] mt-5 text-center" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
-              {t("splash.prayed_for_you_total", {
-                count: people.length,
-                defaultValue: `${people.length} ${people.length === 1 ? "person" : "people"} prayed for you this month`,
-              })}
+              {(() => {
+                const n = data?.total ?? people.length;
+                return t("splash.prayed_with_you_total", {
+                  count: n,
+                  defaultValue: `${n} ${n === 1 ? "person" : "people"} prayed with you this month`,
+                });
+              })()}
             </motion.p>
           </motion.div>
         );

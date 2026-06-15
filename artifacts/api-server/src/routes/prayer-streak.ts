@@ -208,6 +208,58 @@ router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Res
   }
 });
 
+// GET /prayer-streak/community-prayed-month — same as community-prayed-week
+// but over the last ~30 days. Powers the app load screen's "N prayed with
+// you" + faces of everyone in your gardens who prayed this month.
+router.get("/prayer-streak/community-prayed-month", async (req: Request, res: Response): Promise<void> => {
+  const sessionUser = req.user as { id: number } | undefined;
+  if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const { getGardenUserIds } = await import("../lib/garden.js");
+    const gardenIds = await getGardenUserIds(sessionUser.id);
+    if (gardenIds.length === 0) { res.json({ people: [], total: 0 }); return; }
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const peopleRows = await db
+      .select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+      .from(usersTable)
+      .where(inArray(usersTable.id, gardenIds));
+
+    const activeIds = new Set<number>();
+    const sessionRows = await db
+      .selectDistinct({ userId: prayerSessionsTable.userId })
+      .from(prayerSessionsTable)
+      .where(and(
+        inArray(prayerSessionsTable.userId, gardenIds),
+        gte(prayerSessionsTable.endedAt, thirtyDaysAgo),
+      ));
+    for (const r of sessionRows) { if (typeof r.userId === "number") activeIds.add(r.userId); }
+    const amenRows = await db
+      .selectDistinct({ userId: prayerRequestAmensTable.userId })
+      .from(prayerRequestAmensTable)
+      .where(and(
+        inArray(prayerRequestAmensTable.userId, gardenIds),
+        gte(prayerRequestAmensTable.prayedAt, thirtyDaysAgo),
+      ));
+    for (const r of amenRows) { if (typeof r.userId === "number") activeIds.add(r.userId); }
+
+    const activePeople = peopleRows.filter((p) => activeIds.has(p.id));
+    const total = activePeople.length;
+    // Lead the rail with people who have a profile photo, then show the rest.
+    const people = activePeople
+      .slice()
+      .sort((a, b) => (b.avatarUrl ? 1 : 0) - (a.avatarUrl ? 1 : 0))
+      .map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl }));
+
+    res.json({ people, total });
+  } catch (err) {
+    console.error("[prayer-streak:community-prayed-month] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // GET /prayer-streak/co-prayers-week — returns the distinct people the
 // caller has prayed for in the last 7 days, derived from
 // prayer_request_amens joined back to prayer_requests for the owner.
