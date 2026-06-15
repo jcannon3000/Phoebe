@@ -11,6 +11,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import i18n from "@/i18n";
 import { playOfficeChime } from "@/lib/amenFeedback";
 import { apiRequest } from "@/lib/queryClient";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
@@ -1045,10 +1046,25 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // "watch" → the Cathedral broadcast, "book" → the physical-book guide,
   // "screen" → the slideshow. Staying on the surface you're already viewing
   // just advances (next()); switching routes to the other surface.
+  // Watch the Cathedral broadcast. On the app, skip the /ncmp/watch landing and
+  // go STRAIGHT to the broadcast in the web view — but still credit the watch as
+  // a national-cathedral prayer-session (what that page does on the way out).
+  const goToWatch = () => {
+    if (isNativeShell()) {
+      openExternal("https://www.youtube.com/@WashingtonNationalCathedral/live");
+      const now = new Date();
+      void apiRequest("POST", "/api/prayer-sessions", {
+        surface: "national-cathedral", durationSeconds: 60, completed: true,
+        startedAt: now.toISOString(), endedAt: now.toISOString(),
+      }).catch(() => { /* best-effort credit */ });
+    } else {
+      setViewerLocation("/ncmp/watch");
+    }
+  };
   const launchWay = (way: WayToPray, method: PrayMethod) => {
     if (way === "intercessions") { setViewerLocation("/prayer-mode"); return; }
     if (method === "listen") { setViewerLocation(`/podcast/${officeSide}-office`); return; }
-    if (method === "watch") { setViewerLocation("/ncmp/watch"); return; }
+    if (method === "watch") { goToWatch(); return; }
     const onThisSurface = (way === "devotion" && isDevotion) || (way === "office" && !isDevotion);
     if (onThisSurface) {
       if (method === "book") { setBookOpen(true); return; }
@@ -1386,7 +1402,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 {officeSide === "morning" && isWeekday && (
                   <button
                     type="button"
-                    onClick={() => setViewerLocation("/ncmp/watch")}
+                    onClick={goToWatch}
                     style={{
                       display: "inline-flex",
                       alignItems: "center",

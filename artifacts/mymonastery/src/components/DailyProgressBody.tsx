@@ -466,8 +466,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
 
   const cards = [
     {
-      // Drop the sunrise emoji once morning prayer is done — it's no longer morning.
-      key: "morning", emoji: morningDone ? "" : "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer",
+      key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer",
       title: officeTitle("Morning"),
       blurb: morningDone ? prayed : morningBlurb,
       blurbCycle: morningDone ? undefined : [morningBlurb, ...officeCycle],
