@@ -29,26 +29,37 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
-// A card subtitle that gently cross-fades between a few values (opacity only,
-// no movement — the same crossfade the worship card uses). An invisible spacer
-// of the longest value reserves the height, so the swap never nudges the
-// content below.
+// A card subtitle that cycles between a few values, fading the old one DOWN and
+// out and the new one UP and in (a gentle vertical crossfade) — never a hard
+// switch. It's ONE truncating <p> animated with opacity + a tiny translateY:
+// transforms don't affect layout, so the text can never grow wider/taller than
+// its column and the card's pill never moves (the bug the plain swap fixed).
 function CardSubtitleCycle({ values, className, style }: { values: string[]; className?: string; style?: CSSProperties }) {
   const [idx, setIdx] = useState(0);
+  const [shown, setShown] = useState(true);
   useEffect(() => {
     if (values.length <= 1) return;
-    const t = setInterval(() => setIdx((i) => (i + 1) % values.length), 5000);
-    return () => clearInterval(t);
+    let swap: ReturnType<typeof setTimeout> | undefined;
+    const t = setInterval(() => {
+      setShown(false); // fade the current value down and out…
+      swap = setTimeout(() => {
+        setIdx((i) => (i + 1) % values.length); // …swap while hidden…
+        setShown(true); // …then fade the next value up and in.
+      }, 260);
+    }, 5000);
+    return () => { clearInterval(t); if (swap) clearTimeout(swap); };
   }, [values.length]);
   const current = values[idx % values.length] ?? "";
-  // Dead simple: a plain truncating <p>, the SAME pattern as the title line.
-  // No animation, no absolute positioning, no height-reserving spacer — nothing
-  // that can be wider than its column. A long value just ellipsizes ("…") and
-  // can never push the card's pill. The value still swaps every 5s (via `idx`).
   return (
     <p
       className={className}
-      style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", ...style }}
+      style={{
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        opacity: shown ? 1 : 0,
+        transform: shown ? "translateY(0)" : "translateY(4px)",
+        transition: "opacity 0.26s ease, transform 0.26s ease",
+        ...style,
+      }}
     >
       {current}
     </p>
@@ -533,7 +544,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // built on framer-motion layout + popLayout — glitched, so it's gone: on
   // return the finished card simply renders in Done with the same clean fade.)
   const upcomingDisplay = visibleCards.filter((c) => !c.done);
-  const completedDisplay = visibleCards.filter((c) => c.done);
+  const completedDisplay = visibleCards.filter((c) => {
+    if (!c.done) return false;
+    // On the home, once it's afternoon (12 PM+), drop Morning Prayer and the
+    // reflection from the Done list — the morning is past; keep it to the
+    // evening. (The full Daily Progress page still shows everything.)
+    if (showDone && hour >= 12 && (c.key === "morning" || c.key === "reflect")) return false;
+    return true;
+  });
   const showDoneSection = (showStreak || showDone) && completedDisplay.length > 0;
 
   // Matches the Prayer List title row — a larger mixed-case heading with a
