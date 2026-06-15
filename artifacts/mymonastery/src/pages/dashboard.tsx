@@ -4052,10 +4052,11 @@ function PrayerListCarousel({
                           <span
                             aria-label={t("prayer_card.amened", { defaultValue: "Prayed" })}
                             className="flex-shrink-0 inline-flex items-center justify-center rounded-full font-semibold"
+                            // Same border + color as the daily-practice check pills.
                             style={{
                               height: 30, padding: "0 14px",
-                              background: "rgba(46,107,64,0.9)", border: "1.5px solid #2D5E3F",
-                              color: "#F0EDE6", fontSize: 14, lineHeight: 1,
+                              background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)",
+                              color: "rgba(240,237,230,0.85)", fontSize: 14, lineHeight: 1,
                             }}
                           >
                             ✓
@@ -4068,7 +4069,7 @@ function PrayerListCarousel({
                             className="flex-shrink-0 inline-flex items-center justify-center rounded-full transition-opacity hover:opacity-90 active:scale-95"
                             style={{
                               height: 30, padding: "0 13px",
-                              background: "rgba(46,107,64,0.18)", border: "1.5px solid rgba(46,107,64,0.5)",
+                              background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)",
                               fontSize: 15, lineHeight: 1,
                             }}
                           >

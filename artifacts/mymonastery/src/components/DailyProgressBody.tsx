@@ -266,7 +266,7 @@ export function WeeklyGridCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick, doneCta,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick, doneCta, pulse,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   later?: boolean; laterLabel?: string;
@@ -284,6 +284,9 @@ function PracticeCard({
   /** Render the larger "what's next" hero layout — big emoji + title and a
    *  prominent CTA button. Used for the first card under Next. */
   hero?: boolean;
+  /** Pulse the border color (like a today's-event card) to draw the eye to the
+   *  next thing to do. The caller decides when (with its own guards). */
+  pulse?: boolean;
 }) {
   const waiting = !!later && !done;
   // Cycle the subtitle whenever a cycle is supplied — including on a DONE card
@@ -311,7 +314,7 @@ function PracticeCard({
         <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.9})` }} />
         <div className="flex-1 px-5 py-5">
           <div className="flex items-start gap-3.5">
-            <span className="text-[34px] leading-none flex-shrink-0">{emoji}</span>
+            {emoji ? <span className="text-[34px] leading-none flex-shrink-0">{emoji}</span> : null}
             <div className="flex-1 min-w-0 overflow-hidden">
               <p className="text-[22px] font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
               {useCycle
@@ -372,15 +375,18 @@ function PracticeCard({
     </span>
   );
 
+  const restBorder = `rgba(${rgb},${done ? 0.42 : 0.18})`;
   const row = (
-    <div
+    <motion.div
       className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
-      style={{ background: `rgba(${rgb},0.10)`, border: `1px solid rgba(${rgb},${done ? 0.42 : 0.18})`, opacity: waiting ? 0.72 : 1 }}
+      style={{ background: `rgba(${rgb},0.10)`, border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1 }}
+      animate={pulse ? { borderColor: [restBorder, `rgba(${rgb},0.65)`, restBorder] } : undefined}
+      transition={pulse ? { duration: 2.2, repeat: Infinity, ease: "easeInOut" } : undefined}
     >
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.85})` }} />
       <div className="flex-1 min-w-0 px-4 py-3.5">
         <div className="flex items-center gap-3">
-          <span className="text-xl flex-shrink-0">{emoji}</span>
+          {emoji ? <span className="text-xl flex-shrink-0">{emoji}</span> : null}
           <div className="flex-1 min-w-0 overflow-hidden">
             <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
             {useCycle
@@ -400,7 +406,7 @@ function PracticeCard({
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 
   if (waiting) return row;
@@ -460,7 +466,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
 
   const cards = [
     {
-      key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer",
+      // Drop the sunrise emoji once morning prayer is done — it's no longer morning.
+      key: "morning", emoji: morningDone ? "" : "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer",
       title: officeTitle("Morning"),
       blurb: morningDone ? prayed : morningBlurb,
       blurbCycle: morningDone ? undefined : [morningBlurb, ...officeCycle],
@@ -567,7 +574,17 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
     </div>
   );
-  const renderCard = (c: (typeof cards)[number]) => (
+  // The lead practice card (the next thing to do) pulses its border like a
+  // today's-event card — EXCEPT when it's too early to nudge: Evening prayer
+  // before 5pm, or Contemplation already >50% of its goal before 3pm.
+  const lead = upcomingDisplay[0] as (undefined | (typeof cards)[number] & { later?: boolean });
+  const leadPulse = !!lead && !lead.done && !lead.later && (
+    lead.key === "evening" ? hour >= 17
+    : lead.key === "contemplation" ? !(contemplationGoalMin > 0 && contemplationMin > contemplationGoalMin * 0.5 && hour < 15)
+    : true
+  );
+
+  const renderCard = (c: (typeof cards)[number], pulse = false) => (
     <PracticeCard
       href={c.href}
       emoji={c.emoji}
@@ -582,6 +599,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurbCycle={"blurbCycle" in c ? c.blurbCycle : undefined}
       onClick={"onClick" in c ? c.onClick : undefined}
       doneCta={"doneCta" in c ? c.doneCta : undefined}
+      pulse={pulse}
     />
   );
 
@@ -619,7 +637,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
             )}
             {upcomingDisplay.map((c, i) => (
               <motion.div key={c.key} {...enterUp(i + (officeHero ? 1 : 0))}>
-                {renderCard(c)}
+                {renderCard(c, i === 0 && leadPulse)}
               </motion.div>
             ))}
           </div>

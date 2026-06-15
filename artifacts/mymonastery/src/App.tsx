@@ -336,6 +336,10 @@ const queryClient = new QueryClient({
       // ApiError = the server replied with a non-2xx (it's reachable) — that's
       // a real error, not "offline", so don't mislabel it.
       if (error instanceof ApiError) return;
+      // Background-poll queries (Heart to Hearts, etc.) opt out of the offline
+      // toast — a secondary feature's refetch failing shouldn't nag the user
+      // who's looking at a perfectly-loaded home.
+      if (query.meta?.silentError) return;
       // We have cached data on screen — the failed refetch is invisible to the
       // user, so there's nothing to tell them.
       if (query.state.data !== undefined) return;
