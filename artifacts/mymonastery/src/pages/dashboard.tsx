@@ -5995,6 +5995,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
       // of the service. Otherwise the upcoming Sunday sits on the home all week.
       if (dow === 0 && nextMs - todayStart > 3 * 24 * 60 * 60 * 1000) continue;
       const isOnDate = nextMs === todayStart;
+      // On Sunday itself, don't surface Sunday worship as a "today" event — the
+      // home leads with the podcast rail instead of a service card. It still
+      // surfaces Thu–Sat as the upcoming Sunday service (the window above);
+      // services on other days are unaffected.
+      if (dow === 0 && isOnDate) continue;
       const item: DashboardItem = list.length === 1
         ? { kind: "service", data: list[0]!, nextDate: next, isOnDate }
         : { kind: "services", schedules: list, nextDate: next, isOnDate };
