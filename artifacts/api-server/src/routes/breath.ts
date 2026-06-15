@@ -125,13 +125,36 @@ router.post("/breath/today", async (req: Request, res: Response): Promise<void> 
   const secondsRaw = Number(req.body?.seconds);
   const seconds = Number.isFinite(secondsRaw) ? Math.max(0, Math.min(3600, Math.round(secondsRaw))) : 0;
 
+  // Optional, opt-in coarse location + the church (Google Place) the user
+  // anchored the breath to. All nullable; stored only when sent.
+  const latRaw = Number(req.body?.lat);
+  const lngRaw = Number(req.body?.lng);
+  const hasLoc = Number.isFinite(latRaw) && latRaw >= -90 && latRaw <= 90
+    && Number.isFinite(lngRaw) && lngRaw >= -180 && lngRaw <= 180;
+  const lat = hasLoc ? latRaw : null;
+  const lng = hasLoc ? lngRaw : null;
+  const placeId = typeof req.body?.placeId === "string" && req.body.placeId.length <= 256
+    ? req.body.placeId : null;
+  const placeName = typeof req.body?.placeName === "string"
+    ? req.body.placeName.trim().slice(0, 200) || null : null;
+
   try {
     // Idempotent — one breath per local day; a second sit the same day keeps
-    // the first row (and its created_at) rather than duplicating.
+    // the first row (and its created_at) rather than duplicating. If the first
+    // row was recorded without a location and the user later anchors a church,
+    // fill the location in (but never overwrite an existing anchor).
     await db
       .insert(breathSessionsTable)
-      .values({ userId, day, seconds })
-      .onConflictDoNothing();
+      .values({ userId, day, seconds, lat, lng, placeId, placeName })
+      .onConflictDoUpdate({
+        target: [breathSessionsTable.userId, breathSessionsTable.day],
+        set: {
+          lat: sql`COALESCE(${breathSessionsTable.lat}, EXCLUDED.lat)`,
+          lng: sql`COALESCE(${breathSessionsTable.lng}, EXCLUDED.lng)`,
+          placeId: sql`COALESCE(${breathSessionsTable.placeId}, EXCLUDED.place_id)`,
+          placeName: sql`COALESCE(${breathSessionsTable.placeName}, EXCLUDED.place_name)`,
+        },
+      });
 
     res.json({ ok: true, ...(await breathPayload(userId, day)) });
   } catch (err) {

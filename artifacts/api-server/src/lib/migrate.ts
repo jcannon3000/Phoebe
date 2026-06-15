@@ -2946,6 +2946,14 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS breath_sessions_user_day_uk ON breath_sessions (user_id, day)`);
     await run(client, `CREATE INDEX IF NOT EXISTS breath_sessions_day_idx ON breath_sessions (day)`);
+    // Opt-in coarse location + anchored Google Place (a nearby church) for the
+    // day's cobreathe — all nullable, set only when the user shares location.
+    await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION`);
+    await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
+    await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS place_id TEXT`);
+    await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS place_name TEXT`);
+    // Per-place lookups (history counts + "who's at this church").
+    await run(client, `CREATE INDEX IF NOT EXISTS breath_sessions_place_idx ON breath_sessions (place_id)`);
 
     // ── reflection_reads (Forward Day by Day / SSJE read-state) ──────────────
     // CAC reads live in cac_reads (richer — community read presence); this
