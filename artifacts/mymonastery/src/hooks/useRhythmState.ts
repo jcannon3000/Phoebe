@@ -6,6 +6,7 @@ import {
   CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT,
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
+import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
 import { getSideLevel } from "@/lib/officePrefs";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -167,6 +168,33 @@ export function useRhythmState(): RhythmState {
     };
   }, []);
 
+  // Office completion — the instant local flags the office viewer AND the
+  // physical-book quick-log write. ORed with the server office-history below;
+  // the local flag flips the anchor the moment the office is logged, and the
+  // OFFICE_DONE_EVENT lets an in-place quick-log refresh the home without a nav.
+  const [officeLocal, setOfficeLocal] = useState(() => ({
+    morning: officeLocalDone(["morning", "morning-devotion"]),
+    evening: officeLocalDone(["evening", "early-evening-devotion", "compline"]),
+  }));
+  useEffect(() => {
+    const recheck = () => setOfficeLocal({
+      morning: officeLocalDone(["morning", "morning-devotion"]),
+      evening: officeLocalDone(["evening", "early-evening-devotion", "compline"]),
+    });
+    window.addEventListener(OFFICE_DONE_EVENT, recheck);
+    window.addEventListener("focus", recheck);
+    window.addEventListener("pageshow", recheck);
+    window.addEventListener("storage", recheck);
+    window.addEventListener("phoebe:appactive", recheck);
+    return () => {
+      window.removeEventListener(OFFICE_DONE_EVENT, recheck);
+      window.removeEventListener("focus", recheck);
+      window.removeEventListener("pageshow", recheck);
+      window.removeEventListener("storage", recheck);
+      window.removeEventListener("phoebe:appactive", recheck);
+    };
+  }, []);
+
   const { data: officeHistory } = useQuery<{ days: Array<{ ymd: string; morning: boolean; evening: boolean }> }>({
     queryKey: ["/api/me/office-history-week"],
     queryFn: () => apiRequest("GET", "/api/me/office-history-week"),
@@ -253,8 +281,8 @@ export function useRhythmState(): RhythmState {
     : "devotion";
 
   const todayOffice = officeHistory?.days?.[officeHistory.days.length - 1];
-  const morningDone = !!todayOffice?.morning || officeLocalDone(["morning", "morning-devotion"]);
-  const eveningDone = !!todayOffice?.evening || officeLocalDone(["evening", "early-evening-devotion", "compline"]);
+  const morningDone = !!todayOffice?.morning || officeLocal.morning;
+  const eveningDone = !!todayOffice?.evening || officeLocal.evening;
 
   // Contemplation (was "Silence"): today's minutes = Phoebe sits + any external
   // Apple Health mindful minutes (a Cobreathe breath logs a contemplation sit,

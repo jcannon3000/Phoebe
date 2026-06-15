@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/officePrefs";
+import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
 import { CAC_TODAY_URL, markCacRead } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
 
@@ -611,6 +612,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           <div className="flex flex-col gap-2">
             {/* The office hero leads the Next list — above Contemplation. */}
             {officeHero && <motion.div {...enterUp(0)}>{officeHero}</motion.div>}
+            {/* Praying this office from the physical book? A one-tap log sits
+                right under the card — no need to open the page guide. */}
+            {officeHero && heroSide && (
+              <BookOfficeLogRow side={heroSide} done={heroSide === "morning" ? morningDone : eveningDone} />
+            )}
             {upcomingDisplay.map((c, i) => (
               <motion.div key={c.key} {...enterUp(i + (officeHero ? 1 : 0))}>
                 {renderCard(c)}
