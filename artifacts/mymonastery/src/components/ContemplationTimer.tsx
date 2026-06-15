@@ -922,7 +922,7 @@ export function ContemplationTimer({
                           the silence. Closes the picker and opens the breath. */}
                       <button
                         type="button"
-                        onClick={() => { primeAudio(); onClose({ completed: false }); setLocation("/cobreathe?start=1"); }}
+                        onClick={() => { primeAudio(); onClose({ completed: false }); setLocation("/cobreathe?start=1&from=contemplation"); }}
                         className="mt-5 w-full rounded-2xl py-3 transition-opacity hover:opacity-90 active:scale-[0.98] flex flex-col items-center"
                         style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.32)", color: WARM, fontFamily: SPACE_GROTESK, cursor: "pointer" }}
                       >
