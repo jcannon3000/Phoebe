@@ -1916,6 +1916,11 @@ export async function migrate() {
     // Daily steps goal (Apple Health) + one-per-day "reached" push dedupe.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_step_goal INTEGER NOT NULL DEFAULT 0`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_step_reached_date TEXT`);
+    // Exercise (Strava) habit — mode/metric/goal + one-per-day reached dedupe.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS exercise_mode TEXT NOT NULL DEFAULT 'off'`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS exercise_metric TEXT NOT NULL DEFAULT 'minutes'`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS exercise_goal INTEGER NOT NULL DEFAULT 0`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS exercise_reached_date TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_reminder_enabled BOOLEAN NOT NULL DEFAULT true`);
     // Weekly Way of Love review — Sunday-evening reminder (opt-out) + per-week dedup stamp.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_review_reminder BOOLEAN NOT NULL DEFAULT true`);
@@ -3045,6 +3050,9 @@ export async function migrate() {
       )
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_fellow_plans_user ON fellow_plans (user_id)`);
+    // The feed query filters by host IN (...) AND status='open' — a composite
+    // index serves that directly.
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_fellow_plans_user_status ON fellow_plans (user_id, status)`);
     await run(client, `
       CREATE TABLE IF NOT EXISTS fellow_plan_rsvps (
         id SERIAL PRIMARY KEY,

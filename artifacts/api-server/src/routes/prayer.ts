@@ -418,7 +418,10 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
   // the number in the UI matches the user's local day, not UTC.
   const [viewer] = await db.select({ timezone: usersTable.timezone }).from(usersTable).where(eq(usersTable.id, sessionUserId));
   const viewerTz = viewer?.timezone || "UTC";
-  const viewerTodayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(new Date());
+  // ONE formatter for the viewer's tz, reused for every amen below. Constructing
+  // a fresh Intl.DateTimeFormat per amen (×200 requests) was a real hot-path cost.
+  const viewerFmt = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz });
+  const viewerTodayYmd = viewerFmt.format(new Date());
 
   // Bulk-load owners, words, and amens for all requests in three queries
   // instead of 3×N individual lookups.
@@ -513,7 +516,7 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       if (row.userId !== sessionUserId) continue;
       if (!row.prayedAt) continue;
       myAmenedEver = true;
-      const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(row.prayedAt);
+      const ymd = viewerFmt.format(row.prayedAt);
       if (ymd === viewerTodayYmd) { myAmenedToday = true; }
       if (myAmenedToday && myAmenedEver) break;
     }
@@ -529,7 +532,7 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       const distinctUsers = new Set<number>();
       for (const row of amens) {
         if (!row.prayedAt) continue;
-        const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(row.prayedAt);
+        const ymd = viewerFmt.format(row.prayedAt);
         totalUserDays.add(`${row.userId}|${ymd}`);
         distinctUsers.add(row.userId);
         if (ymd === viewerTodayYmd) todayUsers.add(row.userId);

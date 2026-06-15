@@ -115,7 +115,9 @@ export function usePeople(ownerId: number | undefined) {
       return res.json();
     },
     enabled: !!ownerId,
-    staleTime: 0,
+    // The garden changes slowly; cache for 5 min so re-opening /people paints
+    // instantly from cache instead of refetching on every visit.
+    staleTime: 5 * 60_000,
   });
 }
 

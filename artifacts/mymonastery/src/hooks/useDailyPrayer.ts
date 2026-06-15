@@ -71,7 +71,7 @@ const INVITES_KEY = ["/api/prayer-partner/invites"];
 // Poll while the home is open so a partner's share / a fresh prayer appears
 // without a manual refresh (same cadence as the messaging inbox).
 export function useDailyPrayerToday() {
-  return useQuery<DailyPrayerToday>({ queryKey: TODAY_KEY, refetchInterval: 30_000, meta: { silentError: true } });
+  return useQuery<DailyPrayerToday>({ queryKey: TODAY_KEY, refetchInterval: 60_000, staleTime: 30_000, meta: { silentError: true } });
 }
 export function usePartnerInvites() {
   return useQuery<PartnerInvite[]>({ queryKey: INVITES_KEY, refetchInterval: 60_000, meta: { silentError: true } });
