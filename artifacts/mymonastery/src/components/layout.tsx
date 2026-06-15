@@ -815,6 +815,33 @@ function hasDesignedRoutine(u: { homeLayout?: unknown } | null | undefined): boo
 const ROUTINE_PROMPT_KEY = "phoebe:routine-prompt-last";
 const ROUTINE_PROMPT_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // once a week
 
+// Fetch a co-prayer's avatar and inline it as a base64 data URL, so the splash
+// face rail can paint the ACTUAL photo instantly from localStorage on a cold
+// open — not just the URL, which still costs a network round-trip per image.
+// CapacitorHttp (enabled natively) routes this cross-origin fetch through native
+// HTTP, bypassing CORS. Best-effort: any failure (non-image, oversized, network)
+// returns null and the <img> simply falls back to the live URL.
+async function fetchAvatarDataUrl(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const type = res.headers.get("content-type") || "";
+    if (!type.startsWith("image/")) return null;
+    const blob = await res.blob();
+    // Avatars are tiny; cap at 512KB so we never bloat localStorage. A response
+    // bigger than that means something's off — skip it and fall back to the URL.
+    if (blob.size === 0 || blob.size > 512 * 1024) return null;
+    return await new Promise<string | null>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 // OpeningSplash — the native app-open greeting. It's the EXACT same slide users
 // see at the end of the slideshow (CommunityPrayedRecap: "you prayed for N
 // people this week" + their faces), gently faded up, then faded out after 5s
@@ -850,7 +877,7 @@ function OpeningSplash() {
   // background and the effect below re-saves the latest set for next launch.
   // Keyed by user id so a PREVIOUS account's faces can never flash for the next
   // person to sign in on a shared device (the cache outlives a no-logout close).
-  type CachedFaces = { uid: number | null; people: Array<{ id: number; name: string | null; avatarUrl: string | null; count?: number }> };
+  type CachedFaces = { uid: number | null; people: Array<{ id: number; name: string | null; avatarUrl: string | null; avatarData?: string; count?: number }> };
   const [cachedFaces] = useState<CachedFaces>(() => {
     if (typeof window === "undefined") return { uid: null, people: [] };
     try {
@@ -861,11 +888,29 @@ function OpeningSplash() {
   });
   useEffect(() => {
     if (data === undefined) return;
-    try {
-      if (data.people && data.people.length > 0 && user) localStorage.setItem("phoebe:splash-faces", JSON.stringify({ uid: user.id, people: data.people }));
-      else localStorage.removeItem("phoebe:splash-faces");
-    } catch { /* ignore */ }
-  }, [data, user]);
+    let cancelled = false;
+    (async () => {
+      const people = data.people ?? [];
+      if (!user || people.length === 0) {
+        try { localStorage.removeItem("phoebe:splash-faces"); } catch { /* ignore */ }
+        return;
+      }
+      // Re-use any base64 we already inlined for the same avatar URL (avatars
+      // rarely change), so we only fetch the ones we're missing.
+      const have = new Map<string, string>();
+      for (const p of cachedFaces.people) if (p.avatarUrl && p.avatarData) have.set(p.avatarUrl, p.avatarData);
+      const enriched = await Promise.all(people.map(async (p) => {
+        if (!p.avatarUrl) return { ...p, avatarData: undefined };
+        const existing = have.get(p.avatarUrl);
+        if (existing) return { ...p, avatarData: existing };
+        const inlined = await fetchAvatarDataUrl(p.avatarUrl);
+        return { ...p, avatarData: inlined ?? undefined };
+      }));
+      if (cancelled) return;
+      try { localStorage.setItem("phoebe:splash-faces", JSON.stringify({ uid: user.id, people: enriched })); } catch { /* ignore (quota) */ }
+    })();
+    return () => { cancelled = true; };
+  }, [data, user, cachedFaces]);
   // Warm the avatar images the moment the co-prayer data lands, so the face
   // rail doesn't flash white circles while each one downloads. The rendered
   // <img>s reuse the same in-flight/cached fetch (and carry a green placeholder
@@ -1043,6 +1088,12 @@ function OpeningSplash() {
         // the cache belongs to THIS user (never flash a prior account's faces).
         const cached = cachedFaces.uid === user.id ? cachedFaces.people : [];
         const people = (data?.people && data.people.length > 0) ? data.people : cached;
+        // Base64-inlined avatars from a prior cold open, keyed by URL — so even the
+        // freshly-fetched live people paint from the cached photo (zero network
+        // wait) when we already have it. New faces fall back to the live URL and
+        // get inlined for next launch by the effect above.
+        const base64ByUrl = new Map<string, string>();
+        for (const p of cachedFaces.people) if (p.avatarUrl && p.avatarData) base64ByUrl.set(p.avatarUrl, p.avatarData);
         // Nothing yet (still loading) or nobody → render no content. The empty
         // case is handled by the dismiss effect above; we never flash the old
         // "held in prayer" blessing or a bare greeting here.
@@ -1069,7 +1120,7 @@ function OpeningSplash() {
             <div className="flex items-center justify-center -space-x-3">
               {visible.map((p) => (
                 p.avatarUrl ? (
-                  <motion.img key={p.id} variants={faceVariant} src={p.avatarUrl} alt={fn(p.name)} loading="eager" decoding="async" className="w-12 h-12 rounded-full object-cover" style={{ border: "2px solid #0C1F12", backgroundColor: "#1A4A2E" }} />
+                  <motion.img key={p.id} variants={faceVariant} src={base64ByUrl.get(p.avatarUrl) ?? p.avatarUrl} alt={fn(p.name)} loading="eager" decoding="async" onError={(e) => { const img = e.currentTarget; if (p.avatarUrl && img.src !== p.avatarUrl) img.src = p.avatarUrl; }} className="w-12 h-12 rounded-full object-cover" style={{ border: "2px solid #0C1F12", backgroundColor: "#1A4A2E" }} />
                 ) : (
                   <motion.div key={p.id} variants={faceVariant} className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "2px solid #0C1F12" }}>
                     {(p.name ?? "?").trim().split(/\s+/).slice(0, 2).map((s) => s[0] ?? "").join("").toUpperCase().slice(0, 2) || "?"}

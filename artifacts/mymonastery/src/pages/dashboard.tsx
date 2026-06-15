@@ -4069,12 +4069,13 @@ function PrayerListCarousel({
               : (req.isOwnRequest ? viewerAvatarUrl : (req.ownerAvatarUrl ?? null));
             const eyebrow = req.isOwnRequest ? t("prayer_list_carousel.your_request") : t("prayer_list_carousel.from_name", { name: displayName });
             const amened = !!req.myAmenedToday;
-            // Tapping the CARD opens the prayer slideshow (walk through the
-            // undone requests, praying each). The checkbox circle on the right
-            // is a quick one-tap "pray" — like ticking a reminder — for when you
-            // just want to mark this one prayed without the walk.
+            // Tapping an UN-prayed card opens the prayer slideshow (walk through
+            // the undone requests, praying each). A PRAYED card isn't in that
+            // "new" queue anymore, so tapping it there went nowhere — instead
+            // open its detail page so the tap always lands somewhere. The
+            // checkbox circle on the right is a quick one-tap "pray".
             return (
-              <Link key={req.id} href={`/prayer-mode?queue=new&focus=${req.id}`} className="block">
+              <Link key={req.id} href={amened ? `/prayer-requests/${req.id}` : `/prayer-mode?queue=new&focus=${req.id}`} className="block">
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
