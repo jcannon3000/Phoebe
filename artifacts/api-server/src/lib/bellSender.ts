@@ -43,6 +43,7 @@ import {
 } from "./pushSender";
 import { nextSundayDate, getReadingForSunday } from "./rclLectionary";
 import { getGardenUserIds } from "./garden";
+import { runRetentionCleanupSender } from "./retention";
 import { logger } from "./logger";
 import { PHOEBE_PARISH_ENABLED } from "./parishFlag";
 import { loadFeedDigest } from "./feedDigest";
@@ -1858,6 +1859,7 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   { name: "action-reminder",       run: runActionReminderSender },
   // { name: "digest",                run: runWeeklyDigestSender },
   { name: "parish-weekly",         run: runParishWeeklyRecapSender },
+  { name: "retention-cleanup",     run: runRetentionCleanupSender },
 ];
 
 function fireAllSenders(): void {
