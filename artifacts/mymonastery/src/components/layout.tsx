@@ -864,6 +864,9 @@ function OpeningSplash() {
   // only a safety net in case the animation callback never fires.
   useEffect(() => {
     if (phase !== "out") return;
+    // As the splash ("the flash") goes down, kick off the green home reveal so
+    // the two fade away together into the home.
+    try { window.dispatchEvent(new CustomEvent("phoebe:home-reveal")); } catch { /* non-fatal */ }
     const id = setTimeout(() => setPhase("gone"), 1400);
     return () => clearTimeout(id);
   }, [phase]);
@@ -984,20 +987,30 @@ function OpeningSplash() {
 // home's own green that fades AND slides DOWN as the content rises into view —
 // smoothing the seam between the native launch ("Be together with Phoebe") and
 // the home. Plays once per app session (the module flag resets on reload).
-let loadRevealPlayed = false;
 function LoadReveal() {
-  // Web only: on native the OpeningSplash already IS the green load screen, and a
-  // second overlay behind it flashed when the splash was dismissed quickly.
-  const [show, setShow] = useState(!loadRevealPlayed && !isNativeShell());
+  const [location] = useLocation();
+  const isHome = location === "/dashboard";
+  const [show, setShow] = useState(false);
+  const [token, setToken] = useState(0); // bump to (re)start the animation
+  // Play whenever you ARRIVE at the home page…
   useEffect(() => {
-    if (loadRevealPlayed || isNativeShell()) return;
-    loadRevealPlayed = true;
-    const id = window.setTimeout(() => setShow(false), 900);
-    return () => window.clearTimeout(id);
+    if (isHome) { setShow(true); setToken((n) => n + 1); }
+  }, [isHome]);
+  // …and when the opening splash ("the flash") starts going down.
+  useEffect(() => {
+    const play = () => { setShow(true); setToken((n) => n + 1); };
+    window.addEventListener("phoebe:home-reveal", play);
+    return () => window.removeEventListener("phoebe:home-reveal", play);
   }, []);
+  useEffect(() => {
+    if (!show) return;
+    const id = window.setTimeout(() => setShow(false), 950);
+    return () => window.clearTimeout(id);
+  }, [show, token]);
   if (!show) return null;
   return (
     <motion.div
+      key={token}
       aria-hidden
       initial={{ opacity: 1, y: 0 }}
       animate={{ opacity: 0, y: "22%" }}

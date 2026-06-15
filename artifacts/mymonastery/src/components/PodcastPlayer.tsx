@@ -129,6 +129,26 @@ function hashStr(s: string): number {
   return Math.abs(h);
 }
 
+// ── Cathedral reverb for the Forward Movement offices ─────────────────────
+// The read-aloud FM office is routed through a Web Audio ConvolverNode so it
+// sounds read in a stone chapel. The dry passthrough is connected FIRST, so if
+// anything in the wet path fails the audio is never lost — it just plays dry.
+// NOTE: routing the <audio> through Web Audio means the AudioContext suspends
+// when the app backgrounds on iOS; we resume it on every play + foreground.
+// Flip OFFICE_REVERB_ENABLED off if locked-screen office playback misbehaves.
+const OFFICE_REVERB_ENABLED = true;
+const REVERB_WET = 0.32;
+function makeReverbIR(ctx: AudioContext): AudioBuffer {
+  const seconds = 2.8, decay = 2.4;
+  const len = Math.max(1, Math.floor(ctx.sampleRate * seconds));
+  const ir = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = ir.getChannelData(ch);
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+  }
+  return ir;
+}
+
 // Humanize an alignment section's type ("first_lesson" → "First Lesson") when
 // the server didn't supply a nicer title.
 function humanizeSectionType(type: string): string {
@@ -227,6 +247,37 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { t } = useTranslation();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  // Web Audio reverb graph (FM offices only). Created lazily, once.
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const reverbWetRef = useRef<GainNode | null>(null);
+  const reverbReadyRef = useRef(false);
+  const resumeAudioCtx = () => {
+    const ctx = audioCtxRef.current;
+    if (ctx && ctx.state === "suspended") ctx.resume().catch(() => { /* gesture-gated */ });
+  };
+  const ensureReverbGraph = useCallback(() => {
+    if (reverbReadyRef.current || !OFFICE_REVERB_ENABLED) return;
+    const a = audioRef.current;
+    if (!a) return;
+    try {
+      const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AC) return;
+      const ctx = new AC();
+      const source = ctx.createMediaElementSource(a);
+      // Dry passthrough connected FIRST — audio is never lost even if the wet
+      // path below throws; reverb is a pure add-on.
+      source.connect(ctx.destination);
+      audioCtxRef.current = ctx;
+      reverbReadyRef.current = true;
+      try {
+        const wet = ctx.createGain(); wet.gain.value = 0;
+        const conv = ctx.createConvolver(); conv.buffer = makeReverbIR(ctx);
+        const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 3200;
+        source.connect(conv); conv.connect(lp); lp.connect(wet); wet.connect(ctx.destination);
+        reverbWetRef.current = wet;
+      } catch { /* dry-only; passthrough already connected */ }
+    } catch { /* Web Audio unavailable / element already routed — dry playback */ }
+  }, []);
 
   const [current, setCurrent] = useState<PlayingEpisode | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -478,6 +529,10 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     const resumeForeground = () => {
       const a = audioRef.current;
       if (!a) return;
+      // Web Audio suspends on background (iOS) — resume it so the reverb'd office
+      // isn't left silent on return.
+      const rc = audioCtxRef.current;
+      if (rc && rc.state === "suspended") rc.resume().catch(() => { /* ignore */ });
       const now = Date.now();
       if (now - lastResume < 800) return;
       lastResume = now;
@@ -646,6 +701,11 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
     const a = audioRef.current; if (!a) return;
     if (a.paused) {
       wasPlayingRef.current = true;
+      // Resume the reverb AudioContext in this user gesture (iOS keeps it
+      // suspended until a tap; without this the office would play silent once
+      // routed through Web Audio).
+      const ctx = audioCtxRef.current;
+      if (ctx && ctx.state === "suspended") ctx.resume().catch(() => { /* ignore */ });
       // If WKWebView evicted the decoded buffer while suspended, readyState
       // drops and a bare play() can stall — reload to the saved spot first
       // so a manual tap after returning to the app always recovers.
@@ -783,6 +843,21 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // the Audio library's "morning-office").
   const officeSide = officeSideFromSlug(current?.showSlug) ?? current?.creditMode ?? null;
   const isOffice = officeSide !== null;
+  // Reverb engages only for the Forward Movement office. Build the graph + ramp
+  // the wet signal in; for everything else (other podcasts, CoE office) the wet
+  // gain rides to 0 so playback is the untouched dry signal.
+  const reverbOn = OFFICE_REVERB_ENABLED && isOffice && officeAudioSource === "forward-movement";
+  useEffect(() => {
+    if (reverbOn) ensureReverbGraph();
+    const ctx = audioCtxRef.current;
+    const wet = reverbWetRef.current;
+    if (!ctx) return;
+    resumeAudioCtx();
+    if (wet) {
+      try { wet.gain.setTargetAtTime(reverbOn ? REVERB_WET : 0, ctx.currentTime, 0.25); } catch { /* ignore */ }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reverbOn]);
   const officeBg = useMemo(() => {
     if (!isOffice) return null;
     // A hand-picked background for this side (e.g. fm-morning.jpg) wins; else a
