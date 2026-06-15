@@ -6340,11 +6340,48 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // Day's rhythm is complete — hand the home over to the upcoming
                 // schedule. The full Next/Done cards still live on /daily-progress.
                 const noEvents = todayItems.length === 0 && tomorrowItems.length === 0 && weekItems.length === 0 && monthItems.length === 0;
+                // The "day is kept" header shows whether or not there are events —
+                // it's the blessing on a finished rhythm, not an events label.
+                const keptHeader = (
+                  <div className="mb-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      🌿 {t("dashboard.day_kept_eyebrow", { defaultValue: "The day is kept" })}
+                    </p>
+                    <p className="text-[15px]" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      {noEvents
+                        ? t("dashboard.day_kept_rest_line", { defaultValue: "Rest in it — or sit a while longer." })
+                        : t("dashboard.day_kept_events_line", { defaultValue: "Here's what's coming up." })}
+                    </p>
+                  </div>
+                );
+                // Contemplation has no ceiling — keep it on the home even once the
+                // day is "done" so the reader can always sit again if they want.
+                const RGB = "62,124,122";
+                const contemplationHref = (() => { try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "/cobreathe?start=1" : "/contemplation?begin=1"; } catch { return "/contemplation?begin=1"; } })();
+                const contemplationAgainCard = (
+                  <Link href={contemplationHref} className="block mb-5">
+                    <div className="relative flex rounded-3xl overflow-hidden transition-opacity hover:opacity-95 active:scale-[0.99]" style={{ background: `rgba(${RGB},0.12)`, border: `1px solid rgba(${RGB},0.42)` }}>
+                      <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${RGB},0.9)` }} />
+                      <div className="flex-1 px-5 py-4 flex items-center gap-3.5">
+                        <span className="text-[28px] leading-none flex-shrink-0">🕯️</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[16px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t("rhythm.card_contemplation", { defaultValue: "Contemplation" })}</p>
+                          <p className="text-[13px] mt-0.5 leading-snug" style={{ color: "#8FAF96" }}>{t("dashboard.contemplation_more_blurb", { defaultValue: "Sit a while longer" })}</p>
+                        </div>
+                        <span className="flex-shrink-0 inline-flex items-center gap-1 rounded-full text-[12px] font-semibold px-3.5 py-1.5" style={{ background: `rgba(${RGB},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                          <span aria-hidden style={{ opacity: 0.85 }}>✓</span> {t("rhythm.sit_again", { defaultValue: "Sit again" })} <span aria-hidden>→</span>
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                );
                 // Nothing coming up → invite the reader into a podcast instead of
                 // an empty events section.
                 if (noEvents) {
                   return (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
+                      {keptHeader}
+                      {contemplationAgainCard}
                       <PodcastsRail title={t("dashboard.dive_into_podcast", { defaultValue: "Dive into a podcast" })} />
                     </motion.div>
                   );
@@ -6357,14 +6394,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 };
                 return (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
-                    <div className="mb-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-widest mb-1" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                        🌿 {t("dashboard.day_kept_eyebrow", { defaultValue: "The day is kept" })}
-                      </p>
-                      <p className="text-[15px]" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
-                        {t("dashboard.day_kept_events_line", { defaultValue: "Here's what's coming up." })}
-                      </p>
-                    </div>
+                    {keptHeader}
+                    {contemplationAgainCard}
                     <TimeSection label={t("dashboard.today_section")} items={todayItems} {...evtProps} />
                     <TimeSection label={t("dashboard.tomorrow_section")} items={tomorrowItems} {...evtProps} />
                     <TimeSection label={t("dashboard.this_week_section")} items={weekItems} {...evtProps} />
