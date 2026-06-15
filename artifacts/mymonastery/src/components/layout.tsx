@@ -1161,12 +1161,30 @@ function OpeningSplash() {
           </p>
           <div className="flex items-stretch rounded-3xl overflow-hidden" style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.42)" }}>
             <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
-            <div className="flex-1 px-5 py-4 flex items-center gap-3.5">
-              <span className="text-[30px] leading-none flex-shrink-0">{nextEmoji}</span>
-              <p className="flex-1 text-left text-[18px] font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{nextTitle}</p>
-              <span className="flex-shrink-0 rounded-full px-5 py-2 text-[14px] font-semibold" style={{ background: "rgba(46,107,64,0.9)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                {t("rhythm.begin", { defaultValue: "Begin" })} →
-              </span>
+            <div className="flex-1 px-5 py-4">
+              <div className="flex items-center gap-3.5">
+                <span className="text-[30px] leading-none flex-shrink-0">{nextEmoji}</span>
+                <p className="flex-1 text-left text-[18px] font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{nextTitle}</p>
+                <span className="flex-shrink-0 rounded-full px-5 py-2 text-[14px] font-semibold" style={{ background: "rgba(46,107,64,0.9)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {t("rhythm.begin", { defaultValue: "Begin" })} →
+                </span>
+              </div>
+              {/* Contemplation tracks a daily minutes goal — show today's progress
+                  (caption + bar) so the splash card mirrors the home contemplation
+                  card. Only contemplation has a goal; the offices are binary. */}
+              {nextKind === "contemplation" && rhythm.contemplationGoalMin > 0 && (
+                <div className="mt-3.5">
+                  <p className="text-[11.5px] mb-1.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    {t("rhythm.contemplation_progress", { current: rhythm.contemplationMin, goal: rhythm.contemplationGoalMin, defaultValue: `${rhythm.contemplationMin} of ${rhythm.contemplationGoalMin} min today` })}
+                  </p>
+                  <div className="rounded-full overflow-hidden" style={{ height: 5, background: "rgba(143,175,150,0.16)" }}>
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${Math.min(100, Math.round((rhythm.contemplationMin / rhythm.contemplationGoalMin) * 100))}%`, background: "rgba(46,107,64,0.9)", transition: "width 0.3s" }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </motion.div>
