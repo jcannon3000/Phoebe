@@ -30,6 +30,8 @@ export * from "./journal_entries";
 export * from "./practice_completion";
 export * from "./office_audio_alignments";
 export * from "./fellow_invites";
+export * from "./fellow_plans";
+export * from "./fellow_plan_rsvps";
 export * from "./prayers_for";
 export * from "./waitlist";
 export * from "./prayer_feeds";

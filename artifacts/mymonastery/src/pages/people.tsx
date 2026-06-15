@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { FellowsConnect } from "@/components/FellowsConnect";
+import { FellowPlans } from "@/components/FellowPlans";
 import { useBetaStatus } from "@/hooks/useDemo";
 import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
 
@@ -643,6 +644,19 @@ export default function People() {
               <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
             </div>
             <FellowsConnect canManage={rawIsBeta} />
+          </div>
+        )}
+
+        {/* Plans — the "How About" surface: share what you're going to, and your
+            fellows can come. Shown alongside Fellows (beta OR has fellows), since
+            a plan is only ever seen by the host's 1:1 connections. */}
+        {(rawIsBeta || (fellowsData?.fellows?.length ?? 0) > 0) && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>{t("people.plans", { defaultValue: "Plans" })}</p>
+              <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
+            </div>
+            <FellowPlans canManage={rawIsBeta} />
           </div>
         )}
 

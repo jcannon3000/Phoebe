@@ -2995,6 +2995,36 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS forum_replies_by_post ON forum_replies (post_id, created_at)`);
 
+    // Fellow plans — the "How About" surface: a person shares something they're
+    // going to, and their active Fellows can say they'll come. Personal (one
+    // host), visible only to the host + the host's fellows.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS fellow_plans (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title TEXT NOT NULL,
+        note TEXT,
+        location TEXT,
+        emoji TEXT,
+        starts_at TIMESTAMPTZ,
+        when_text TEXT,
+        status TEXT NOT NULL DEFAULT 'open',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_fellow_plans_user ON fellow_plans (user_id)`);
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS fellow_plan_rsvps (
+        id SERIAL PRIMARY KEY,
+        plan_id INTEGER NOT NULL REFERENCES fellow_plans(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_fellow_plan_rsvp_plan_user ON fellow_plan_rsvps (plan_id, user_id)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns
