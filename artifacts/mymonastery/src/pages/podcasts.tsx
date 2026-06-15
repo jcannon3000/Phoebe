@@ -127,49 +127,8 @@ function Fallback({ hidden }: { hidden?: boolean }) {
   );
 }
 
-// Small square artwork thumbnail (left of an office-style row card).
-function ThumbArt({ url, alt }: { url: string | null; alt: string }) {
-  const S = 58;
-  if (url) {
-    return (
-      <div style={{ position: "relative", width: S, height: S, flexShrink: 0 }}>
-        <img
-          src={url}
-          alt={alt}
-          loading="lazy"
-          style={{ width: S, height: S, objectFit: "cover", borderRadius: 12, background: "rgba(143,175,150,0.12)", display: "block" }}
-          onError={(e) => {
-            const el = e.currentTarget as HTMLImageElement;
-            el.style.display = "none";
-            const sib = el.nextElementSibling as HTMLElement | null;
-            if (sib) sib.style.display = "flex";
-          }}
-        />
-        <ThumbFallback hidden />
-      </div>
-    );
-  }
-  return <ThumbFallback />;
-}
-function ThumbFallback({ hidden }: { hidden?: boolean }) {
-  const S = 58;
-  return (
-    <div
-      style={{
-        width: S, height: S, flexShrink: 0, borderRadius: 12,
-        background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.3)",
-        display: hidden ? "none" : "flex", alignItems: "center", justifyContent: "center", fontSize: 26,
-      }}
-      aria-hidden
-    >
-      🎧
-    </div>
-  );
-}
-
-// One show row — the SAME card language as the Daily Offices list (full-width
-// rounded green card, artwork where the office emoji sits, title + artist, a
-// trailing arrow). Shared by the publisher sections and search results.
+// One cover-art cell. Shared by the publisher sections and the search
+// results grid so the card looks identical in both.
 function ShowTile({ show, onOpen }: { show: ShowCard; onOpen: () => void }) {
   return (
     <div
@@ -177,31 +136,26 @@ function ShowTile({ show, onOpen }: { show: ShowCard; onOpen: () => void }) {
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
-      className="w-full text-left p-3 rounded-2xl transition-all hover:opacity-90 active:scale-[0.99] cursor-pointer"
-      style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.35)" }}
+      className="cursor-pointer transition-opacity hover:opacity-90"
     >
-      <div className="flex items-center gap-3.5">
-        <ThumbArt url={show.artwork} alt={show.title} />
-        <div className="flex-1 min-w-0">
-          <p
-            style={{
-              fontSize: 16, fontWeight: 700, color: PALETTE.warm, margin: 0, lineHeight: 1.25, fontFamily: FONT,
-              display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
-            }}
-          >
-            {show.title}
-          </p>
-          <p
-            style={{
-              fontSize: 13, color: PALETTE.sage, margin: "3px 0 0", lineHeight: 1.3, fontFamily: FONT,
-              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-            }}
-          >
-            {show.artist}
-          </p>
-        </div>
-        <span style={{ color: PALETTE.sage, flexShrink: 0, fontSize: 17 }} aria-hidden>→</span>
-      </div>
+      <GridArt url={show.artwork} alt={show.title} />
+      <p
+        style={{
+          fontSize: 15, fontWeight: 700, color: PALETTE.warm,
+          margin: "10px 0 0", lineHeight: 1.2,
+          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
+        }}
+      >
+        {show.title}
+      </p>
+      <p
+        style={{
+          fontSize: 12.5, color: PALETTE.sage, margin: "3px 0 0", lineHeight: 1.3,
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+        }}
+      >
+        {show.artist}
+      </p>
     </div>
   );
 }
@@ -649,7 +603,7 @@ export default function PodcastsPage() {
                   <h2 style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.12em", color: PALETTE.faint, margin: "0 0 12px" }}>
                     {t("podcasts.section_shows")}
                   </h2>
-                  <div className="flex flex-col gap-3">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-6">
                     {showHits.map((s) => (
                       <ShowTile key={s.slug} show={s} onOpen={() => setLocation(`/podcasts/show/${s.slug}`)} />
                     ))}
@@ -694,7 +648,7 @@ export default function PodcastsPage() {
                         </h2>
                       </div>
                     )}
-                    <div className="flex flex-col gap-3">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-6">
                       {pub.shows.map((s) => (
                         <ShowTile key={s.slug} show={s} onOpen={() => setLocation(`/podcasts/show/${s.slug}`)} />
                       ))}
@@ -708,7 +662,7 @@ export default function PodcastsPage() {
                         {t("podcasts.more_shows")}
                       </h2>
                     </div>
-                    <div className="flex flex-col gap-3">
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-6">
                       {singleShows.map((s) => (
                         <ShowTile key={s.slug} show={s} onOpen={() => setLocation(`/podcasts/show/${s.slug}`)} />
                       ))}
