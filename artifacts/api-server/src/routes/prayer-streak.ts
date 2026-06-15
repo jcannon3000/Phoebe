@@ -348,7 +348,9 @@ router.get("/prayer-streak/co-prayers-week", async (req: Request, res: Response)
 // GET /prayer-streak/prayed-for-me-month — the people who have prayed for the
 // caller in the last ~30 days, with HOW MANY times each prayed (distinct
 // request-days they amened one of the caller's requests). Drives the app-open
-// splash: avatars + "prayed for you N times". Sorted by most prayers first.
+// splash: avatars + "prayed for you N times". Ordered by who the caller has
+// interacted with most — the combined prayers each way (theirs for you + yours
+// for them) in the window, recency as the tiebreaker.
 router.get("/prayer-streak/prayed-for-me-month", async (req: Request, res: Response): Promise<void> => {
   const sessionUser = req.user as { id: number } | undefined;
   if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -384,16 +386,49 @@ router.get("/prayer-streak/prayed-for-me-month", async (req: Request, res: Respo
     const ids = Array.from(byUser.keys());
     if (ids.length === 0) { res.json({ people: [], total: 0 }); return; }
 
+    // Reciprocal leg: how many times the CALLER prayed for each of THESE people
+    // in the same window. "Most interacted with" is mutual — someone you've both
+    // prayed for and been prayed for by should rank above a one-way pray-er. We
+    // surface `count` (their prayers for you) unchanged for the "prayed for you N
+    // times" line, but ORDER by the combined back-and-forth.
+    const theirReqs = await db
+      .select({ id: prayerRequestsTable.id, ownerId: prayerRequestsTable.ownerId })
+      .from(prayerRequestsTable)
+      .where(inArray(prayerRequestsTable.ownerId, ids));
+    const reqOwner = new Map<number, number>();
+    for (const r of theirReqs) reqOwner.set(r.id, r.ownerId);
+    const reciprocal = new Map<number, number>();
+    if (reqOwner.size > 0) {
+      const myAmens = await db
+        .select({ requestId: prayerRequestAmensTable.requestId })
+        .from(prayerRequestAmensTable)
+        .where(and(
+          eq(prayerRequestAmensTable.userId, sessionUser.id),
+          inArray(prayerRequestAmensTable.requestId, Array.from(reqOwner.keys())),
+          gte(prayerRequestAmensTable.prayedAt, monthAgo),
+        ));
+      for (const a of myAmens) {
+        const owner = reqOwner.get(a.requestId);
+        if (owner == null) continue;
+        reciprocal.set(owner, (reciprocal.get(owner) ?? 0) + 1);
+      }
+    }
+
     const users = await db
       .select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
       .from(usersTable)
       .where(inArray(usersTable.id, ids));
 
     const people = users
-      .map((u) => ({ id: u.id, name: u.name, avatarUrl: u.avatarUrl, count: byUser.get(u.id)?.count ?? 0, _last: byUser.get(u.id)?.last ?? new Date(0) }))
-      .sort((a, b) => b.count - a.count || b._last.getTime() - a._last.getTime())
+      .map((u) => {
+        const count = byUser.get(u.id)?.count ?? 0;
+        const mine = reciprocal.get(u.id) ?? 0;
+        return { id: u.id, name: u.name, avatarUrl: u.avatarUrl, count, _score: count + mine, _last: byUser.get(u.id)?.last ?? new Date(0) };
+      })
+      // Most-interacted-with first: combined prayers each way, then recency.
+      .sort((a, b) => b._score - a._score || b._last.getTime() - a._last.getTime())
       .slice(0, 12)
-      .map(({ _last, ...p }) => p);
+      .map(({ _last, _score, ...p }) => p);
 
     res.json({ people, total: people.length });
   } catch (err) {

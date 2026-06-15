@@ -871,10 +871,14 @@ function OpeningSplash() {
   // <img>s reuse the same in-flight/cached fetch (and carry a green placeholder
   // background as a belt-and-suspenders, so they never read as white).
   useEffect(() => {
-    for (const p of data?.people ?? []) {
-      if (p.avatarUrl) { const img = new Image(); img.decoding = "async"; img.src = p.avatarUrl; }
-    }
-  }, [data]);
+    // Warm BOTH the cached faces (what paints on a cold open, instantly from
+    // localStorage) and the live set the moment it lands — so neither flashes a
+    // white circle. De-dup the urls so we don't kick off the same fetch twice.
+    const urls = new Set<string>();
+    for (const p of cachedFaces.people) if (p.avatarUrl) urls.add(p.avatarUrl);
+    for (const p of data?.people ?? []) if (p.avatarUrl) urls.add(p.avatarUrl);
+    for (const url of urls) { const img = new Image(); img.decoding = "async"; img.src = url; }
+  }, [data, cachedFaces]);
   // Is the "Design your daily routine" nudge due? Only when the user has no
   // routine yet AND we haven't shown it in the last week.
   const routineDue = (): boolean => {
@@ -984,10 +988,10 @@ function OpeningSplash() {
       animate={{ opacity: phase === "out" ? 0 : 1 }}
       transition={{ duration: phase === "out" ? 0.9 : 0, ease: "easeInOut" }}
       onAnimationComplete={() => { if (phase === "out") setPhase("gone"); }}
-      className="fixed inset-0 flex flex-col items-center justify-start px-6"
+      className="fixed inset-0 flex flex-col items-center justify-center px-6"
       style={{
         background: "#0C1F12", zIndex: 200, isolation: "isolate", pointerEvents: phase === "out" ? "none" : "auto",
-        paddingTop: "calc(env(safe-area-inset-top) + 13vh)", paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)", overflowY: "auto",
+        paddingTop: "calc(env(safe-area-inset-top) + 24px)", paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)", overflowY: "auto",
       }}
     >
       <AnimatedBackground base="#0C1F12" variant="pronounced" />
