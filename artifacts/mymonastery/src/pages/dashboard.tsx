@@ -27,6 +27,7 @@ import {
 } from "@/lib/cacReadState";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
+import { PartnerExchange } from "@/components/PartnerExchange";
 import { ParishWeeklyCard } from "@/components/ParishWeeklyCard";
 import { RsvpBlock, RsvpSummaryStrip, useDashboardRsvpSummary } from "@/components/RsvpBlock";
 // Office-progress reading + LiturgyMode now live on /prayer-chooser
@@ -4039,19 +4040,19 @@ function PrayerListCarousel({
                           {req.body}
                         </p>
                       </div>
-                      {/* Reminders-style checkbox. Empty circle = tap to pray
-                          right here (a quick tick, no walk); fills with ✓ once
-                          prayed. stopPropagation so it doesn't also open the
-                          slideshow. Not on your own request. */}
+                      {/* Amen oval — same size as the daily-practice check pills.
+                          Not prayed = a 🙏🏽 amen hand (tap to pray right here, a
+                          quick amen, no walk); prayed = a ✓. stopPropagation so it
+                          doesn't also open the slideshow. Not on your own request. */}
                       {!req.isOwnRequest && (
                         amened ? (
                           <span
                             aria-label={t("prayer_card.amened", { defaultValue: "Prayed" })}
-                            className="flex-shrink-0 inline-flex items-center justify-center rounded-full"
+                            className="flex-shrink-0 inline-flex items-center justify-center rounded-full font-semibold"
                             style={{
-                              width: 27, height: 27, borderRadius: "50%",
-                              background: "#2D5E3F", border: "1.5px solid #2D5E3F",
-                              color: "#F0EDE6", fontSize: 14, fontWeight: 700, lineHeight: 1,
+                              height: 30, padding: "0 14px",
+                              background: "rgba(46,107,64,0.9)", border: "1.5px solid #2D5E3F",
+                              color: "#F0EDE6", fontSize: 14, lineHeight: 1,
                             }}
                           >
                             ✓
@@ -4061,13 +4062,15 @@ function PrayerListCarousel({
                             type="button"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); amenCard.mutate(req.id); }}
                             aria-label={t("prayer_card.pray", { defaultValue: "Pray" })}
-                            className="flex-shrink-0 inline-flex items-center justify-center rounded-full transition-colors hover:opacity-90 active:scale-90"
+                            className="flex-shrink-0 inline-flex items-center justify-center rounded-full transition-opacity hover:opacity-90 active:scale-95"
                             style={{
-                              width: 27, height: 27, borderRadius: "50%",
-                              background: "transparent", border: "1.5px solid rgba(143,175,150,0.55)",
-                              color: "#F0EDE6", fontSize: 14, lineHeight: 1,
+                              height: 30, padding: "0 13px",
+                              background: "rgba(46,107,64,0.18)", border: "1.5px solid rgba(46,107,64,0.5)",
+                              fontSize: 15, lineHeight: 1,
                             }}
-                          />
+                          >
+                            🙏🏽
+                          </button>
                         )
                       )}
                     </div>
@@ -6587,6 +6590,15 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })}
                       onOpenGathering={(r) => setOpenGathering(r)}
                     />
+                  </div>
+                )}
+
+                {/* One-to-one prayer — your prayer partners (the daily
+                    attention-based exchange). Sits above the community prayer
+                    list; the two models coexist. */}
+                {filter === null && !eventsOnly && (
+                  <div className="mb-7">
+                    <PartnerExchange />
                   </div>
                 )}
 
