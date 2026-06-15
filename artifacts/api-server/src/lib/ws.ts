@@ -10,10 +10,11 @@ import { sessionMiddleware } from "./session";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+// Presence carries NO email — clients match their garden by user_id. (Email
+// used to cross the wire to every connected client, a PII leak.)
 interface PresenceInfo {
   user_id: number;
   display_name: string;
-  email: string;
   avatar_url: string | null;
   joined_at: string;
 }
@@ -21,7 +22,6 @@ interface PresenceInfo {
 interface ClientState {
   ws: WebSocket;
   userId: number | null;
-  email: string | null;
   presence: PresenceInfo | null;
 }
 
@@ -53,7 +53,10 @@ export function broadcastLog(payload: {
   momentName: string;
   templateType: string | null;
   guestName: string;
-  userEmail: string;
+  // The poster's user id (null for account-less guests) — used by the client
+  // ONLY to suppress its own log. Replaces the poster's email, which used to be
+  // broadcast to every client in the moment (a PII leak).
+  userId: number | null;
 }) {
   const msg = JSON.stringify({ type: "new-log", payload });
   for (const [ws] of clients) {
@@ -79,12 +82,7 @@ function getPresenceList(): PresenceInfo[] {
 }
 
 function broadcastPresenceSync() {
-  // NOTE: presence carries email because the client filters its garden by email
-  // (useGardenSocket: gardenEmails.has(p.email)). Now that the socket is
-  // authenticated, this is an authenticated-users-only roster — and presence is
-  // additionally gated on the per-user `showPresence` pref, so it's inert for
-  // anyone who hasn't opted in. A future cleanup can move the client to user_id
-  // filtering and drop email from the wire entirely.
+  // Presence is emailless — clients filter their garden by user_id.
   const msg = JSON.stringify({ type: "presence-sync", presence: getPresenceList() });
   for (const [ws] of clients) {
     if (ws.readyState === WebSocket.OPEN) {
@@ -268,7 +266,7 @@ export function attachWebSocketServer(server: HttpServer) {
         return;
       }
 
-      const state: ClientState = { ws, userId: authedUserId, email: null, presence: null };
+      const state: ClientState = { ws, userId: authedUserId, presence: null };
       clients.set(ws, state);
 
       // Send current presence + cobreathe state to the new client so a late
@@ -283,14 +281,11 @@ export function attachWebSocketServer(server: HttpServer) {
           if (msg.type === "track" && msg.payload) {
             const p = msg.payload as Partial<PresenceInfo>;
             // user_id is the AUTHENTICATED user — never the client payload (that
-            // was the impersonation hole). The cosmetic display fields + email
-            // (used by the client's garden filter) come from the payload, but a
-            // mis-tagged email can't impersonate anyone since the id is fixed.
-            state.email = typeof p.email === "string" ? p.email : null;
+            // was the impersonation hole). Only cosmetic display fields are
+            // taken from the client; no email crosses the wire anymore.
             state.presence = {
               user_id: authedUserId,
               display_name: typeof p.display_name === "string" ? p.display_name : "",
-              email: typeof p.email === "string" ? p.email : "",
               avatar_url: typeof p.avatar_url === "string" ? p.avatar_url : null,
               joined_at: typeof p.joined_at === "string" ? p.joined_at : new Date().toISOString(),
             };

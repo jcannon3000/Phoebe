@@ -51,7 +51,7 @@ function daysSince(dateStr: string): number {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function sortPeople(people: PersonSummary[], presentEmails: Set<string>): PersonSummary[] {
+function sortPeople(people: PersonSummary[], presentUserIds: Set<number>): PersonSummary[] {
   return [...people].sort((a, b) => {
     // Primary: people you've prayed for most (most Amens you've tapped
     // on their requests) rise to the top.
@@ -63,8 +63,8 @@ function sortPeople(people: PersonSummary[], presentEmails: Set<string>): Person
     const aPrayer = a.activePrayerRequest ? 1 : 0;
     const bPrayer = b.activePrayerRequest ? 1 : 0;
     if (aPrayer !== bPrayer) return bPrayer - aPrayer;
-    const aPresent = presentEmails.has(a.email) ? 1 : 0;
-    const bPresent = presentEmails.has(b.email) ? 1 : 0;
+    const aPresent = a.userId != null && presentUserIds.has(a.userId) ? 1 : 0;
+    const bPresent = b.userId != null && presentUserIds.has(b.userId) ? 1 : 0;
     if (aPresent !== bPresent) return bPresent - aPresent;
     return new Date(b.lastActiveDate).getTime() - new Date(a.lastActiveDate).getTime();
   });
@@ -437,10 +437,16 @@ export default function People() {
   // cards but is dropped on navigation away.
   const [searchQuery, setSearchQuery] = useState("");
 
-  const gardenEmails = useMemo(() => new Set((people ?? []).map(p => p.email)), [people]);
+  // Garden members by user id — presence is now matched by id (no email on the
+  // wire). Email-only invites (no account) can't be present, so dropping them is
+  // safe.
+  const gardenUserIds = useMemo(
+    () => new Set((people ?? []).map(p => p.userId).filter((id): id is number => id != null)),
+    [people],
+  );
   const emptyMomentIds = useMemo(() => new Set<number>(), []);
-  const { presentUsers } = useGardenSocket(user, gardenEmails, emptyMomentIds);
-  const presentEmails = useMemo(() => new Set(presentUsers.map(u => u.email)), [presentUsers]);
+  const { presentUsers } = useGardenSocket(user, gardenUserIds, emptyMomentIds);
+  const presentUserIds = useMemo(() => new Set(presentUsers.map(u => u.user_id)), [presentUsers]);
 
   // Fellows — durable person-to-person connections created when
   // someone signs up via a /p/:token share-link Amen. Already part
@@ -530,7 +536,7 @@ export default function People() {
 
   if (authLoading || !user) return null;
 
-  const sorted = people ? sortPeople(people, presentEmails) : [];
+  const sorted = people ? sortPeople(people, presentUserIds) : [];
   // Case-insensitive name + email + active-prayer-text match. Trimmed
   // empty query falls through and the full sorted list renders, so
   // the search bar acts as a filter overlay rather than a separate
@@ -724,7 +730,7 @@ export default function People() {
                 >
                   <PersonCard
                     person={person}
-                    isPresent={presentEmails.has(person.email)}
+                    isPresent={person.userId != null && presentUserIds.has(person.userId)}
                     iPrayFor={iPrayForEmails.has(person.email.toLowerCase())}
                     prayForMe={prayForMeEmails.has(person.email.toLowerCase())}
                     isFellow={fellowEmails.has(person.email.toLowerCase())}

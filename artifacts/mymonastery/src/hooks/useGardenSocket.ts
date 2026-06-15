@@ -6,7 +6,6 @@ import type { AuthUser } from "./useAuth";
 export interface PresenceUser {
   user_id: number;
   display_name: string;
-  email: string;
   avatar_url: string | null;
   joined_at: string;
 }
@@ -17,7 +16,9 @@ export interface LogEvent {
   momentName: string;
   templateType: string | null;
   guestName: string;
-  userEmail: string;
+  // The poster's user id (null for account-less guests) — used only to suppress
+  // the viewer's OWN log. Replaces the poster's email (no PII on the wire).
+  userId: number | null;
 }
 
 type MessageHandler = (msg: { type: string; [key: string]: unknown }) => void;
@@ -81,7 +82,7 @@ const IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 /**
  * Tracks presence and listens for log notifications over a single WebSocket.
  */
-export function useGardenSocket(user: AuthUser | null, gardenEmails: Set<string>, userMomentIds: Set<number>) {
+export function useGardenSocket(user: AuthUser | null, gardenUserIds: Set<number>, userMomentIds: Set<number>) {
   const [presentUsers, setPresentUsers] = useState<PresenceUser[]>([]);
   const [logEvents, setLogEvents] = useState<LogEvent[]>([]);
   const isTrackedRef = useRef(false);
@@ -92,9 +93,9 @@ export function useGardenSocket(user: AuthUser | null, gardenEmails: Set<string>
     sendMessage({
       type: "track",
       payload: {
+        // Identity is set server-side from the session; these are display only.
         user_id: user.id,
         display_name: user.name,
-        email: user.email,
         avatar_url: user.avatarUrl,
         joined_at: new Date().toISOString(),
       },
@@ -120,9 +121,9 @@ export function useGardenSocket(user: AuthUser | null, gardenEmails: Set<string>
     const handleMessage: MessageHandler = (msg) => {
       if (msg.type === "presence-sync") {
         const all = (msg.presence as PresenceUser[]) ?? [];
-        // Filter: garden members only, not self
+        // Filter: garden members only, not self — matched by user id (no email).
         const filtered = all.filter(
-          p => p.user_id !== user.id && gardenEmails.has(p.email)
+          p => p.user_id !== user.id && gardenUserIds.has(p.user_id)
         );
         setPresentUsers(filtered);
       }
@@ -130,8 +131,8 @@ export function useGardenSocket(user: AuthUser | null, gardenEmails: Set<string>
       if (msg.type === "new-log") {
         const payload = msg.payload as LogEvent;
         if (!payload) return;
-        // Don't show own logs
-        if (payload.userEmail?.toLowerCase() === user.email.toLowerCase()) return;
+        // Don't show own logs (matched by user id; null = a guest, never me).
+        if (payload.userId != null && payload.userId === user.id) return;
         // Only practices user is in
         if (!userMomentIds.has(payload.momentId)) return;
         setLogEvents(prev => [...prev, payload]);
@@ -198,7 +199,7 @@ export function useGardenSocket(user: AuthUser | null, gardenEmails: Set<string>
       isTrackedRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, user?.showPresence, gardenEmails.size, userMomentIds.size]);
+  }, [user?.id, user?.showPresence, gardenUserIds.size, userMomentIds.size]);
 
   // Consume log events (caller should clear after processing)
   const consumeLogEvents = useCallback(() => {

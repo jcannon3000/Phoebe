@@ -3450,13 +3450,18 @@ router.post("/moment/:momentToken/:userToken/post", async (req, res): Promise<vo
       const latestPost = await db.select().from(momentPostsTable)
         .where(and(eq(momentPostsTable.momentId, moment.id), eq(momentPostsTable.userToken, userToken)))
         .limit(1);
+      // Resolve the poster's user id from their email so the live log carries an
+      // id (not the email) — null for account-less guests, which is fine: the
+      // client only uses it to suppress its OWN log.
+      const [posterUser] = await db.select({ id: usersTable.id }).from(usersTable)
+        .where(sql`LOWER(${usersTable.email}) = LOWER(${userTokenRow.email})`);
       broadcastLog({
         momentId: moment.id,
         postId: latestPost[0]?.id ?? 0,
         momentName: moment.name,
         templateType: moment.templateType,
         guestName,
-        userEmail: userTokenRow.email,
+        userId: posterUser?.id ?? null,
       });
     }
 

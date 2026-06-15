@@ -662,16 +662,14 @@ export function CobreatheBreath({
         )}
       </div>
 
-      {/* Breath row — "Breathe In" + count pinned to the LEFT edge (with padding
-          from the edge); the globe + progress rings pinned to the RIGHT edge
-          (its outer ring aligned to the right with padding). The two are
-          independent, anchored to opposite sides rather than grouped/centred. */}
+      {/* Breath row — "Breathe In" + count on the left, the globe + progress
+          rings to their right, SIDE BY SIDE as one centred group, dropped 40px
+          below the breath's vertical centre. */}
       <div
         style={{
-          position: "absolute", left: 0, right: 0, top: BREATH_Y,
-          transform: "translateY(calc(-50% + 52px))",
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "0 24px", zIndex: 2,
+          position: "absolute", left: "50%", top: BREATH_Y,
+          transform: "translate(-50%, calc(-50% + 40px))",
+          display: "flex", alignItems: "center", gap: 18, zIndex: 2,
         }}
       >
         {/* Left — "Breathe In" over "Breath n of 12", left-aligned. Kept
@@ -697,13 +695,13 @@ export function CobreatheBreath({
           </p>
         </div>
 
-        {/* Right — globe + progress rings, concentric in a fixed cell. Sized at
-            90% (globe + ring radius reduced 10%); the viewBox stays 128 so the
-            rings simply render scaled. */}
-        <div style={{ position: "relative", width: 115, height: 115, flexShrink: 0 }}>
+        {/* Right — globe + progress rings, concentric in a fixed cell. Sized
+            132 (globe + ring radius +15%), nudged 24px further right; the
+            viewBox stays 128 so the rings simply render scaled. */}
+        <div style={{ position: "relative", width: 132, height: 132, flexShrink: 0, transform: "translateX(24px)" }}>
           <svg
             aria-hidden="true"
-            width={115} height={115} viewBox="0 0 128 128"
+            width={132} height={132} viewBox="0 0 128 128"
             style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none", filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))" }}
           >
             <circle cx={64} cy={64} r={RING_R} fill="none" stroke="rgba(143,175,150,0.14)" strokeWidth={4} />
@@ -736,7 +734,7 @@ export function CobreatheBreath({
             aria-hidden="true"
             style={{
               position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 65, lineHeight: 1, pointerEvents: "none",
+              fontSize: 75, lineHeight: 1, pointerEvents: "none",
               // Once the blue session ring completes (all twelve breaths kept) the
               // globe takes on a blue glow. Otherwise it carries a GREEN glow the
               // rAF crossfades per frame — lighter green at the top of the inhale,
