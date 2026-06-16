@@ -8,7 +8,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus, useCommunityAdminToggle } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { ScrollStrip } from "@/components/ScrollStrip";
-import { PodcastsRail } from "@/components/PodcastsRail";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
@@ -6463,14 +6462,14 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     </div>
                   </Link>
                 );
-                // Nothing coming up → invite the reader into a podcast instead of
-                // an empty events section.
+                // Nothing coming up → the "caught up / sit again" card stands on
+                // its own (the Podcasts rail that used to fill this empty-events
+                // slot is retired along with the rest of the Podcasts feature).
                 if (noEvents) {
                   return (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
                       {keptHeader}
                       {contemplationAgainCard}
-                      <PodcastsRail title={t("dashboard.dive_into_podcast", { defaultValue: "Dive into a podcast" })} />
                     </motion.div>
                   );
                 }
