@@ -43,7 +43,10 @@ const SAGE = "#8FAF96";
 const SAGE_DIM = "rgba(143,175,150,0.6)";
 const CARD = "rgba(46,107,64,0.12)";
 const CARD_ACTIVE = "rgba(46,107,64,0.34)";
-const CARD_B = "rgba(46,107,64,0.28)";
+// Match the app-wide card border (rgba(46,107,64,0.4) — the dominant resting
+// border on dashboard/daily-progress surfaces) so the builder doesn't read as a
+// different style. Was 0.28, which looked noticeably fainter than other cards.
+const CARD_B = "rgba(46,107,64,0.4)";
 const CARD_B_ACTIVE = "rgba(168,197,160,0.7)";
 const CTA = "#2D5E3F";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
