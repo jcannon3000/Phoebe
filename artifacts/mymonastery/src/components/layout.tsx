@@ -1285,19 +1285,13 @@ export function Layout({ children }: { children: ReactNode }) {
         className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pb-2 md:pb-5 flex justify-between items-center"
         style={{
           background: "#091A10",
-          // Native shell: Capacitor's StatusBar.setOverlaysWebView(false)
-          // already places the WebView BELOW the system status bar, so
-          // its strip is accounted for natively and the WebView itself
-          // doesn't need to inset for it. Earlier we still added
-          // env(safe-area-inset-top) here, which double-counted on
-          // iPhones with a Dynamic Island and left an enormous black
-          // gap above the "Phoebe" wordmark.
-          // Web (Safari / PWA with the translucent status bar meta tag):
-          // keep the safe-area math — there the WebView IS under the
-          // notch and needs the inset.
-          paddingTop: isNativeShell()
-            ? "1.25rem"
-            : "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))",
+          // The status bar now OVERLAYS the WebView (setOverlaysWebView(true)),
+          // so on BOTH native and web the WebView runs UNDER the notch / status
+          // bar and the header must inset for it with env(safe-area-inset-top).
+          // (Previously native used a fixed 1.25rem because overlay was OFF and
+          // the WebView already sat below the bar — that left the mismatched
+          // dark strip the overlay switch removes.)
+          paddingTop: "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))",
         }}
       >
         <div className="flex items-center gap-6">
