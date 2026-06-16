@@ -130,13 +130,18 @@ function hashStr(s: string): number {
 }
 
 // ── Cathedral reverb for the Forward Movement offices ─────────────────────
-// The read-aloud FM office is routed through a Web Audio ConvolverNode so it
-// sounds read in a stone chapel. The dry passthrough is connected FIRST, so if
-// anything in the wet path fails the audio is never lost — it just plays dry.
-// NOTE: routing the <audio> through Web Audio means the AudioContext suspends
-// when the app backgrounds on iOS; we resume it on every play + foreground.
-// Flip OFFICE_REVERB_ENABLED off if locked-screen office playback misbehaves.
-const OFFICE_REVERB_ENABLED = true;
+// The read-aloud FM office WAS routed through a Web Audio ConvolverNode so it
+// sounded read in a stone chapel (dry passthrough connected first, reverb a
+// pure add-on).
+//
+// DISABLED — createMediaElementSource() reroutes the <audio> element ENTIRELY
+// into the Web Audio graph, and on iOS WKWebView that reliably yields SILENCE:
+// the element "plays" (time advances) but no sound reaches the speakers, and it
+// also fights Capacitor's native audio session / lock-screen controls. The
+// office read-aloud is a core feature, so the cosmetic reverb is off — exactly
+// the failure the original kill-switch note warned about. With this false,
+// ensureReverbGraph() early-returns and the <audio> plays direct + reliably.
+const OFFICE_REVERB_ENABLED = false;
 const REVERB_WET = 0.32;
 function makeReverbIR(ctx: AudioContext): AudioBuffer {
   const seconds = 2.8, decay = 2.4;
