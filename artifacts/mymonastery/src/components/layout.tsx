@@ -8,7 +8,6 @@ import { X, LogOut, ChevronRight, ChevronDown } from "lucide-react";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
@@ -198,9 +197,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const isCommunityAdmin = (groupsData?.groups ?? []).some(
     (g) => g.myRole === "admin" || g.myRole === "hidden_admin",
   );
-  // Letters & Messages are turned OFF as a feature (LETTERS_MESSAGES_ENABLED).
-  // When the flag is false the menu rows never show, regardless of admin/beta.
-  const showLetters = isCommunityAdmin && LETTERS_MESSAGES_ENABLED;
   // Admin Tools — beta users, community admins, feed creators, beta admins.
   const showAdminTools = rawIsBeta || rawIsAdmin || myFeeds.length > 0 || isCommunityAdmin;
 
@@ -274,15 +270,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
 
               {/* Pilot view / community admin toggles moved to Admin Tools page */}
             </div>
-
-            {/* ── Prayer list ── moved here from the header pill (which now
-                opens the Way of Love drawer). Sits above Communities; hidden
-                for offices-only, who have no personal list. */}
-            {!officesOnly && !jardinShell && (
-              <div className="px-5 py-3" style={{ borderBottom: "1px solid rgba(46,107,64,0.15)" }}>
-                <MenuRow emoji="🙏" label={t("menu.prayer_list", { defaultValue: "Prayer list" })} onClick={() => navigate("/prayer-list")} />
-              </div>
-            )}
 
             {/* ── Communities ── lists the user's communities.
                 Offices-only tier has none, so the whole block is
@@ -455,14 +442,6 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   {/* Podcasts content browser retired from the app — the daily
                       offices keep their audio; only the standalone Podcasts hub
                       is hidden. (Jardín's Spanish podcast stays below.) */}
-                  {showLetters && (
-                    <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
-                  )}
-                  {/* Beta Messages — unlimited 1:1 messaging between beta
-                      users. Off while LETTERS_MESSAGES_ENABLED is false. */}
-                  {LETTERS_MESSAGES_ENABLED && rawIsBeta && (
-                    <MenuRow emoji="✉️" label={t("menu.messages", { defaultValue: "Messages" })} badge={t("menu.beta")} onClick={() => navigate("/messages")} />
-                  )}
                 </>
               )}
               {/* El Jardín. For a SEALED Jardín account the drawer IS the El
