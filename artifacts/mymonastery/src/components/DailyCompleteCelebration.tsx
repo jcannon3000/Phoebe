@@ -20,7 +20,7 @@
  * logged-out visitor).
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
@@ -192,36 +192,46 @@ function CelebrationOverlay({ streak, doneCount, total, onClose }: {
 }
 
 function DailyCompleteWatcher() {
-  const { doneCount, totalAnchors, streak } = useRhythmState();
+  const rs = useRhythmState();
+  const streak = rs.streak;
+  // The celebration marks completing your daily PRACTICES (the prayer rhythm):
+  // the four core anchors + the optional SPIRITUAL extras (gratitude / examen).
+  // It deliberately EXCLUDES the daily-steps health goal — otherwise finishing
+  // all your prayer + contemplation wouldn't trigger it on a day you didn't hit
+  // your step count, and once steps is active the celebration would almost never
+  // fire. (The home "day is kept" hero already excludes steps too.)
+  const practiceFlags = [
+    rs.morningDone, rs.reflectDone, rs.silenceDone, rs.eveningDone,
+    ...(rs.gratitudeActive ? [rs.gratitudeDone] : []),
+    ...(rs.examenActive ? [rs.examenDone] : []),
+  ];
+  const totalAnchors = practiceFlags.length;
+  const doneCount = practiceFlags.filter(Boolean).length;
+
   const [shown, setShown] = useState<{ streak: number; doneCount: number; total: number } | null>(null);
 
-  // Baseline arming: ignore the initial query-load climb. We snapshot the first
-  // settled doneCount; only a climb to complete AFTER arming is a real
-  // completion, not data landing.
-  const armedRef = useRef(false);
+  // Baseline arming: ignore the initial query-load climb (counts climb 0 → N as
+  // data lands). We arm ~1.4s after the counts settle. `armed` is STATE, not a
+  // ref, so flipping it re-runs the trigger effect below — that way a day that's
+  // already complete WHEN we arm (you finished just before the watcher armed, or
+  // reopened after finishing without ever seeing the celebration) still fires,
+  // not only an in-session climb. The once-per-day localStorage gate stops any
+  // repeat.
+  const [armed, setArmed] = useState(false);
 
   useEffect(() => {
-    const day = localDay();
-    if (alreadyCelebrated(day)) return;
-
-    // Settle window — give the rhythm queries time to land before we trust the
-    // counts. Re-runs whenever counts change; the timer is the gate.
-    const timer = window.setTimeout(() => {
-      if (!armedRef.current) {
-        armedRef.current = true;
-        return; // first settled read is the baseline, never a trigger
-      }
-    }, 1400);
+    if (armed || alreadyCelebrated(localDay())) return;
+    const timer = window.setTimeout(() => setArmed(true), 1400);
     return () => window.clearTimeout(timer);
-  }, [doneCount, totalAnchors]);
+  }, [doneCount, totalAnchors, armed]);
 
   useEffect(() => {
     const day = localDay();
     if (shown || alreadyCelebrated(day)) return;
-    if (!armedRef.current) return;
+    if (!armed) return;
     if (totalAnchors <= 0 || doneCount < totalAnchors) return;
 
-    // Genuine in-session completion.
+    // Genuine completion — an in-session climb, or already complete at arm time.
     markCelebrated(day);
     setShown({ streak, doneCount, total: totalAnchors });
     try {
@@ -229,7 +239,7 @@ function DailyCompleteWatcher() {
     } catch {
       /* no native shell on web — silent */
     }
-  }, [doneCount, totalAnchors, streak, shown]);
+  }, [armed, doneCount, totalAnchors, streak, shown]);
 
   return (
     <AnimatePresence>

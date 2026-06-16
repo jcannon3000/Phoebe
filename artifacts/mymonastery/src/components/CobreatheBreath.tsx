@@ -665,7 +665,7 @@ export function CobreatheBreath({
       <div
         style={{
           position: "absolute", left: 40, right: 40, top: BREATH_Y,
-          transform: "translateY(calc(-50% + 40px))",
+          transform: "translateY(calc(-50% + 70px))",
           display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 2,
         }}
       >
@@ -693,13 +693,13 @@ export function CobreatheBreath({
         </div>
 
         {/* Right — globe + progress rings, concentric in a fixed cell. Sized
-            132 (globe + ring radius +15%); the row's space-between anchors this
-            cell to the right edge (40px padding), so no manual nudge is needed.
-            The viewBox stays 128 so the rings simply render scaled. */}
-        <div style={{ position: "relative", width: 132, height: 132, flexShrink: 0 }}>
+            158 (132 +20%), anchored to the right edge by the row's space-between
+            then nudged 20px further LEFT. The viewBox stays 128 so the rings
+            simply render scaled up to the larger cell. */}
+        <div style={{ position: "relative", width: 158, height: 158, flexShrink: 0, transform: "translateX(-20px)" }}>
           <svg
             aria-hidden="true"
-            width={132} height={132} viewBox="0 0 128 128"
+            width={158} height={158} viewBox="0 0 128 128"
             style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none", filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))" }}
           >
             <circle cx={64} cy={64} r={RING_R} fill="none" stroke="rgba(143,175,150,0.14)" strokeWidth={4} />
@@ -732,7 +732,7 @@ export function CobreatheBreath({
             aria-hidden="true"
             style={{
               position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 75, lineHeight: 1, pointerEvents: "none",
+              fontSize: 90, lineHeight: 1, pointerEvents: "none",
               // Once the blue session ring completes (all twelve breaths kept) the
               // globe takes on a blue glow. Otherwise it carries a GREEN glow the
               // rAF crossfades per frame — lighter green at the top of the inhale,

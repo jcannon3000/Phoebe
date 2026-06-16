@@ -3353,7 +3353,31 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
   const ctaHref = programmedOffice
     ? "/begin-prayer"
     : (prayedToday ? "/prayer-mode?reset=1" : "/prayer-mode");
-  const ctaCopy = "Begin prayer";
+  // Started-but-not-finished today's office on this side → "Continue" (not
+  // "Begin"). Mirrors the completed-key check above, reading the office
+  // viewer's saved slide position (phoebe:office-progress:<mode>:<day>); the
+  // viewer auto-resumes at that slide when re-entered via /begin-prayer.
+  const inProgress = !prayedToday && (() => {
+    if (typeof window === "undefined") return false;
+    const d = new Date();
+    const todayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const sideModes = isMorning
+      ? ["morning", "morning-devotion"]
+      : ["evening", "early-evening-devotion", "compline"];
+    try {
+      for (const mode of sideModes) {
+        if (localStorage.getItem(`phoebe:office-completed:${mode}:${todayKey}`)) continue;
+        const raw = localStorage.getItem(`phoebe:office-progress:${mode}:${todayKey}`);
+        if (!raw) continue;
+        const parsed = JSON.parse(raw) as { slideIdx?: number };
+        if (typeof parsed.slideIdx === "number" && parsed.slideIdx > 0) return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  })();
+  const ctaCopy = inProgress ? "Continue" : "Begin prayer";
 
   // Compact one-line variant — used when feed-first home promotes a
   // feed to the hero slot and the office becomes a secondary anchor.
