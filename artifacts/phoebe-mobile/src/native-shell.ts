@@ -1393,6 +1393,13 @@ declare global {
         nextOffice?: string | null;
         newPrayersCount?: number | null;
         updatedAt?: string | null;
+        // Daily rhythm progress (widget dots + "N of M today").
+        doneCount?: number | null;
+        totalAnchors?: number | null;
+        morningDone?: boolean | null;
+        reflectDone?: boolean | null;
+        eveningDone?: boolean | null;
+        reflectAvailable?: boolean | null;
         // Dynamic "what's next" hero (medium widget) — mirrors the home hero.
         heroKind?: string | null;       // "office" | "reflect" | "summary"
         heroEyebrow?: string | null;
@@ -1477,6 +1484,12 @@ function exposePublicApi() {
           prayedToday: state.prayedToday ?? null,
           nextOffice: state.nextOffice ?? null,
           newPrayersCount: state.newPrayersCount ?? null,
+          doneCount: state.doneCount ?? null,
+          totalAnchors: state.totalAnchors ?? null,
+          morningDone: state.morningDone ?? null,
+          reflectDone: state.reflectDone ?? null,
+          eveningDone: state.eveningDone ?? null,
+          reflectAvailable: state.reflectAvailable ?? null,
           updatedAt: state.updatedAt ?? null,
           heroKind: state.heroKind ?? null,
           heroEyebrow: state.heroEyebrow ?? null,

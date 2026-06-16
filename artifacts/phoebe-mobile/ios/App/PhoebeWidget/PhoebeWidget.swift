@@ -34,12 +34,20 @@ struct PhoebeStats {
     var prayedToday: Bool
     var nextOffice: String
     var newPrayers: Int        // prayer requests waiting for the viewer
+    var doneCount: Int         // daily anchors completed today
+    var totalAnchors: Int      // daily anchors that count today (2 offices + reflection)
+    var morningDone: Bool
+    var reflectDone: Bool
+    var eveningDone: Bool
+    var reflectAvailable: Bool // false → user has no reflection source; skip that dot
 
     static let placeholder = PhoebeStats(
         kind: "office", eyebrow: "Book of Common Prayer", title: "Evening Devotion",
         subtitle: "9 people prayed with you this week", cta: "Begin prayer",
         deepLink: "https://withphoebe.app/", streakDays: 4, prayedToday: false,
-        nextOffice: "Evening Prayer", newPrayers: 0
+        nextOffice: "Evening Prayer", newPrayers: 0,
+        doneCount: 2, totalAnchors: 3,
+        morningDone: true, reflectDone: true, eveningDone: false, reflectAvailable: true
     )
 
     // Before the app has ever pushed data (or if the App Group store can't be
@@ -57,7 +65,9 @@ struct PhoebeStats {
             deepLink: "https://withphoebe.app/",
             streakDays: 0, prayedToday: false,
             nextOffice: morning ? "Morning Prayer" : "Evening Prayer",
-            newPrayers: 0
+            newPrayers: 0,
+            doneCount: 0, totalAnchors: 3,
+            morningDone: false, reflectDone: false, eveningDone: false, reflectAvailable: true
         )
     }
 
@@ -85,9 +95,20 @@ struct PhoebeStats {
         let deepLink = (obj["heroDeepLink"] as? String) ?? "https://withphoebe.app/"
         let newPrayers = (obj["newPrayersCount"] as? NSNumber)?.intValue ?? 0
         let eyebrow = (obj["heroEyebrow"] as? String) ?? ""
+        // Daily-progress anchors. totalAnchors defaults to 3 (not 0) so an older
+        // payload renders "0 of 3 today" rather than "0 of 0".
+        let doneCount = (obj["doneCount"] as? NSNumber)?.intValue ?? 0
+        let totalAnchors = (obj["totalAnchors"] as? NSNumber)?.intValue ?? 3
+        let morningDone = (obj["morningDone"] as? NSNumber)?.boolValue ?? false
+        let reflectDone = (obj["reflectDone"] as? NSNumber)?.boolValue ?? false
+        let eveningDone = (obj["eveningDone"] as? NSNumber)?.boolValue ?? false
+        let reflectAvailable = (obj["reflectAvailable"] as? NSNumber)?.boolValue ?? true
         return PhoebeStats(kind: kind, eyebrow: eyebrow, title: title, subtitle: subtitle, cta: cta,
                            deepLink: deepLink, streakDays: streak, prayedToday: prayed,
-                           nextOffice: nextOffice, newPrayers: newPrayers)
+                           nextOffice: nextOffice, newPrayers: newPrayers,
+                           doneCount: doneCount, totalAnchors: totalAnchors,
+                           morningDone: morningDone, reflectDone: reflectDone,
+                           eveningDone: eveningDone, reflectAvailable: reflectAvailable)
     }
 
     var streakText: String { streakDays > 0 ? "\(streakDays)-day streak" : "Begin a streak" }
@@ -160,6 +181,26 @@ struct PhoebeWidgetView: View {
         return stats.kind == "summary" ? "THE DAY IS KEPT" : "NEXT UP"
     }
 
+    // Daily-progress dots — one per applicable anchor (Morning · Reflection ·
+    // Evening), filled when done, plus an "N/M" count. Reflects how far through
+    // today's rhythm the user is.
+    private var progressDots: some View {
+        HStack(spacing: 5) {
+            anchorDot(done: stats.morningDone)
+            if stats.reflectAvailable { anchorDot(done: stats.reflectDone) }
+            anchorDot(done: stats.eveningDone)
+            Text("\(stats.doneCount)/\(stats.totalAnchors)")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(phoebeSage)
+                .padding(.leading, 2)
+        }
+    }
+    private func anchorDot(done: Bool) -> some View {
+        Image(systemName: done ? "checkmark.circle.fill" : "circle")
+            .font(.system(size: 13))
+            .foregroundColor(done ? accentColor : phoebeSage.opacity(0.4))
+    }
+
     var body: some View {
         switch family {
         case .accessoryInline:
@@ -223,15 +264,22 @@ struct PhoebeWidgetView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 4)
-                if !heroCta.isEmpty {
-                    HStack(spacing: 4) {
-                        Text(heroCta).font(.system(size: 13, weight: .semibold))
-                        Image(systemName: "arrow.right").font(.system(size: 11, weight: .semibold))
+                // Bottom row: the CTA pill on the left, today's rhythm progress
+                // (dots + N/M) on the right — so the widget shows both what's
+                // next AND how far through the day you are.
+                HStack(alignment: .center, spacing: 8) {
+                    if !heroCta.isEmpty {
+                        HStack(spacing: 4) {
+                            Text(heroCta).font(.system(size: 13, weight: .semibold))
+                            Image(systemName: "arrow.right").font(.system(size: 11, weight: .semibold))
+                        }
+                        .foregroundColor(phoebeWarm)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Capsule().fill(accentColor))
                     }
-                    .foregroundColor(phoebeWarm)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .background(Capsule().fill(accentColor))
+                    Spacer(minLength: 6)
+                    progressDots
                 }
             }
             .padding(16)
@@ -247,10 +295,15 @@ struct PhoebeWidgetView: View {
                 Text("Phoebe").font(.system(size: 13, weight: .semibold)).foregroundColor(phoebeWarm.opacity(0.75))
             }
             Spacer()
-            Text("\(stats.streakDays)").font(.system(size: 40, weight: .bold)).foregroundColor(phoebeWarm)
-            Text("day streak").font(.system(size: 12)).foregroundColor(phoebeWarm.opacity(0.75))
+            Text("\(stats.doneCount) of \(stats.totalAnchors)").font(.system(size: 34, weight: .bold)).foregroundColor(phoebeWarm)
+            Text("done today").font(.system(size: 12)).foregroundColor(phoebeWarm.opacity(0.75))
+            HStack(spacing: 5) {
+                anchorDot(done: stats.morningDone)
+                if stats.reflectAvailable { anchorDot(done: stats.reflectDone) }
+                anchorDot(done: stats.eveningDone)
+            }.padding(.top, 6)
             Spacer()
-            Text(stats.todayLine).font(.system(size: 13, weight: .medium)).foregroundColor(phoebeWarm).lineLimit(1)
+            Text(stats.todayLine).font(.system(size: 12, weight: .medium)).foregroundColor(phoebeWarm.opacity(0.85)).lineLimit(1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }

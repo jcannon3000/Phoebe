@@ -452,7 +452,9 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   <MenuRow emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })} onClick={() => goCategory("/menu/bcp")} />
                   <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
                   <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
-                  <MenuRow emoji="🎧" label={t("menu.podcasts", { defaultValue: "Podcasts" })} onClick={() => navigate("/podcasts")} />
+                  {/* Podcasts content browser retired from the app — the daily
+                      offices keep their audio; only the standalone Podcasts hub
+                      is hidden. (Jardín's Spanish podcast stays below.) */}
                   {showLetters && (
                     <MenuRow emoji="📮" label={t("menu.letters")} badge={t("menu.beta")} onClick={() => navigate("/letters")} />
                   )}

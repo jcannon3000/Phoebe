@@ -5458,8 +5458,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
       }
     }
     for (const k of HOME_MODULES) if (!seen.has(k)) out.push(k);
-    // Pin Prayer requests to the front so it always leads.
-    return ["requests", ...out.filter((k) => k !== "requests")];
+    // Pin Prayer requests to the front so it always leads. Podcasts is retired
+    // from the home — filter it out everywhere so neither a saved layout nor
+    // the default order can surface it (the offices keep their own audio; only
+    // the Podcasts content module is hidden).
+    return ["requests", ...out.filter((k) => k !== "requests" && k !== "podcasts")];
   })();
   // Primary anchor = first visible office/feeds module → full office /
   // feed hero; the other office instance drops to the compact card.

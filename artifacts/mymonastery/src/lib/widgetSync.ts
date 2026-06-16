@@ -34,6 +34,16 @@ type WidgetState = {
   // New prayer requests waiting for the viewer — the lock-screen rectangular
   // widget leads with "N prayer requests waiting" when this is > 0.
   newPrayersCount: number;
+  // Daily rhythm progress — how many of today's core anchors (Morning office,
+  // the day's reflection, Evening office) are done, so the widget reflects how
+  // far through the rhythm the day is. reflectAvailable is false when the user
+  // has no reflection source, so the widget skips that anchor.
+  doneCount: number;
+  totalAnchors: number;
+  morningDone: boolean;
+  reflectDone: boolean;
+  eveningDone: boolean;
+  reflectAvailable: boolean;
   updatedAt: string;
 };
 type WidgetBridge = { updateWidget?: (s: Partial<WidgetState>) => void };
@@ -205,6 +215,13 @@ export function useWidgetSync(): void {
       heroCta = "";
     }
 
+    // Daily-progress anchors: the two offices always count; the reflection
+    // counts only when the user has a source set. doneCount/totalAnchors drive
+    // the widget's progress dots + "X of Y today".
+    const anchors = [morningDone, eveningDone, ...(reflectAvailable ? [reflectDone] : [])];
+    const totalAnchors = anchors.length;
+    const doneCount = anchors.filter(Boolean).length;
+
     const bridge = (window as unknown as { PhoebeNative?: WidgetBridge }).PhoebeNative;
     bridge?.updateWidget?.({
       heroKind,
@@ -217,6 +234,12 @@ export function useWidgetSync(): void {
       prayedToday: morningDone || eveningDone,
       nextOffice,
       newPrayersCount,
+      doneCount,
+      totalAnchors,
+      morningDone,
+      reflectDone,
+      eveningDone,
+      reflectAvailable,
       updatedAt: new Date().toISOString(),
     });
   }, [

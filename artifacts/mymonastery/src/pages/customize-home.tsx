@@ -119,7 +119,9 @@ function buildOrder(saved: string[] | null | undefined, fallback: HomeModule[]):
   // Append any module not yet in saved order (newly added modules).
   for (const k of HOME_MODULES) if (!seen.has(k)) out.push(k);
   // Two fixed anchors lead, in order: Prayer requests, then the Pray card.
-  return [PINNED, PRAY_ANCHOR, ...out.filter((k) => k !== PINNED && k !== PRAY_ANCHOR)];
+  // Podcasts is retired — never surface it in the editor (only the standalone
+  // Podcasts content module is hidden; the daily offices keep their audio).
+  return [PINNED, PRAY_ANCHOR, ...out.filter((k) => k !== PINNED && k !== PRAY_ANCHOR && k !== "podcasts")];
 }
 
 // ── Shared state hook used by both pages ─────────────────────────────────────
@@ -212,7 +214,7 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
   // Visible modules (excluding the two fixed anchors: Prayer requests + Pray).
   const visibleMovable = order.filter((k) => k !== PINNED && k !== PRAY_ANCHOR && !hidden.has(k));
   const hiddenCount = order.filter((k) => k !== PINNED && k !== PRAY_ANCHOR && hidden.has(k)).length
-    + HOME_MODULES.filter((k) => k !== PINNED && k !== PRAY_ANCHOR && !order.includes(k)).length;
+    + HOME_MODULES.filter((k) => k !== PINNED && k !== PRAY_ANCHOR && k !== "podcasts" && !order.includes(k)).length;
 
   // Pray-card variant (Community / Devotions / Office). Read from the server
   // default + per-side local levels (same signals PrayerOfficeCard reads), and
@@ -458,7 +460,7 @@ function CustomizeHomeAddInner({ user }: { user: AuthUser }) {
   // Modules available to add: hidden ones + any not yet in order. The two
   // fixed anchors (Prayer requests + Pray) are never in this list.
   const available = HOME_MODULES.filter(
-    (k) => k !== PINNED && k !== PRAY_ANCHOR && (hidden.has(k) || !order.includes(k)),
+    (k) => k !== PINNED && k !== PRAY_ANCHOR && k !== "podcasts" && (hidden.has(k) || !order.includes(k)),
   );
 
   return (
