@@ -768,11 +768,17 @@ async function readDeviceContacts(): Promise<PhoebeContact[]> {
 function wireContacts() {
   window.addEventListener("phoebe:request-contacts", async () => {
     try {
+      // iOS 18 + @capacitor-community/contacts@7 added a "Limited Access" choice
+      // that returns the permission state "limited" — getContacts() still works
+      // (returns the user's selected subset), so treat it as granted. The old
+      // `=== "granted"` gate (Cap 6 had no "limited") aborted the whole invite
+      // flow for anyone who tapped Limited Access.
+      const ok = (s: string) => s === "granted" || s === "limited";
       const perm = await Contacts.checkPermissions();
-      let granted = perm.contacts === "granted";
+      let granted = ok(perm.contacts);
       if (!granted) {
         const requested = await Contacts.requestPermissions();
-        granted = requested.contacts === "granted";
+        granted = ok(requested.contacts);
       }
       if (!granted) {
         window.dispatchEvent(new CustomEvent("phoebe:contacts-denied"));

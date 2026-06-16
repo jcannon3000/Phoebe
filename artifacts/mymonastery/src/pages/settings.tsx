@@ -1811,7 +1811,12 @@ function ExportDataSection() {
     try {
       const res = await fetch("/api/users/me/export", { credentials: "include" });
       if (!res.ok) throw new Error(`Export failed (HTTP ${res.status})`);
-      const blob = await res.blob();
+      // The export is JSON TEXT. Read it as text and build the Blob ourselves —
+      // on iOS the CapacitorHttp-patched fetch drops/garbles res.blob()'s binary
+      // body (the same bug fixed for splash avatars), which produced a corrupt
+      // export file. Reading text avoids the binary path entirely.
+      const text = await res.text();
+      const blob = new Blob([text], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const stamp = new Date().toISOString().replace(/[:.]/g, "-");
       const a = document.createElement("a");
