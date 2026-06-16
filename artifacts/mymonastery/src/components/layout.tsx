@@ -889,6 +889,16 @@ function OpeningSplash() {
     } catch { /* ignore */ }
     return { uid: null, people: [] };
   });
+  // The splash shows EITHER the faces OR the "What's next" card — alternating
+  // each app open — instead of both at once. A localStorage counter flips it;
+  // read + increment once on mount (one splash per app launch).
+  const [preferFaces] = useState<boolean>(() => {
+    try {
+      const n = Number(localStorage.getItem("phoebe:splash-alt") || "0");
+      localStorage.setItem("phoebe:splash-alt", String(n + 1));
+      return n % 2 === 0;
+    } catch { return true; }
+  });
   useEffect(() => {
     if (data === undefined) return;
     let cancelled = false;
@@ -1022,6 +1032,15 @@ function OpeningSplash() {
     : `${nextKind === "morning" ? "Morning" : "Evening"} ${rhythm.prayerKind === "devotion" ? "Devotion" : "Prayer"}`;
   // Contemplation opens its own begin slide; the offices go through /begin-prayer.
   const nextHref = nextKind === "contemplation" ? "/contemplation?begin=1" : "/begin-prayer";
+  // Alternate which block this open shows (faces vs "What's next"), but fall back
+  // to whichever actually has content so the splash is never blank.
+  const facesPeople = (data?.people && data.people.length > 0)
+    ? data.people
+    : (user && cachedFaces.uid === user.id ? cachedFaces.people : []);
+  const hasFaces = facesPeople.length > 0;
+  const hasNext = !!nextKind;
+  const showFaces = hasFaces && (!hasNext || preferFaces);
+  const showNext = hasNext && !showFaces;
 
   return (
     <motion.div
@@ -1085,7 +1104,7 @@ function OpeningSplash() {
       >
         {firstName ? `${greeting}, ${firstName}` : greeting}
       </p>
-      {(() => {
+      {showFaces && (() => {
         // Prefer the live set; fall back to last session's cached faces so the
         // rail paints instantly on a cold open (no network wait) — but ONLY when
         // the cache belongs to THIS user (never flash a prior account's faces).
@@ -1149,8 +1168,9 @@ function OpeningSplash() {
         );
       })()}
       {/* What's next — the next office to pray, mirroring the home, so the load
-          screen hands you straight into the day's first prayer. */}
-      {nextKind && (
+          screen hands you straight into the day's first prayer. Shown only on
+          the opens where the faces aren't (they alternate). */}
+      {showNext && (
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
