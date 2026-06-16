@@ -562,23 +562,29 @@ export function CobreatheBreath({
       </button>
 
       {/* While SYNCING (before the session joins the global breath), a quote
-          rests in the vertical middle of the screen — left-aligned, in Space
-          Grotesk. It fades out once the breath goes live. */}
-      {!counting && (
-        <div
-          style={{
-            position: "absolute", left: 28, right: 32, top: "50%",
-            transform: "translateY(-50%)", zIndex: 2, pointerEvents: "none", maxWidth: 560,
-          }}
-        >
-          <p style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: "clamp(15px, 4.4vw, 18px)", lineHeight: 1.5, textAlign: "left", textShadow: "0 2px 18px rgba(8,30,18,0.6)" }}>
-            {t("cobreathe.sync_quote", { defaultValue: "By paying attention, especially to the beauty of the world and to the suffering of others, we open the possibility for God to reach us, beginning the process of change whereby we allow ourselves to be decreated from egotists to lovers of God by loving the neighbor as ourselves." })}
-          </p>
-          <p style={{ color: "rgba(182,210,188,0.62)", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, letterSpacing: "0.06em", marginTop: 16, textAlign: "left" }}>
-            {t("cobreathe.sync_quote_author", { defaultValue: "Sallie McFague" })}
-          </p>
-        </div>
-      )}
+          rests in the upper-middle of the screen — left-aligned, in Space
+          Grotesk. It's kept mounted and FADES DOWN (opacity → 0, drifting down a
+          touch) once the breath goes live, rather than hard-cutting, so the
+          transition into the practice is smooth. */}
+      <div
+        aria-hidden={counting}
+        style={{
+          position: "absolute", left: 28, right: 32, top: "50%",
+          // Centered, then lifted ~80px into the upper-middle; on going live it
+          // drifts down a touch as it fades.
+          transform: counting ? "translateY(calc(-50% - 80px + 16px))" : "translateY(calc(-50% - 80px))",
+          opacity: counting ? 0 : 1,
+          transition: "opacity 0.8s ease, transform 0.8s ease",
+          zIndex: 2, pointerEvents: "none", maxWidth: 560,
+        }}
+      >
+        <p style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: "clamp(15px, 4.4vw, 18px)", lineHeight: 1.5, textAlign: "left", textShadow: "0 2px 18px rgba(8,30,18,0.6)" }}>
+          {t("cobreathe.sync_quote", { defaultValue: "By paying attention, especially to the beauty of the world and to the suffering of others, we open the possibility for God to reach us, beginning the process of change whereby we allow ourselves to be decreated from egotists to lovers of God by loving the neighbor as ourselves." })}
+        </p>
+        <p style={{ color: "rgba(182,210,188,0.62)", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, letterSpacing: "0.06em", marginTop: 16, textAlign: "left" }}>
+          {t("cobreathe.sync_quote_author", { defaultValue: "Sallie McFague" })}
+        </p>
+      </div>
 
       {/* Title + Synced + participation — top, LEFT-ALIGNED to the "Breathe In"
           text below (same 28px left inset). */}
