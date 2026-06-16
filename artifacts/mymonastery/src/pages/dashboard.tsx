@@ -2502,13 +2502,16 @@ export function StepsHomeCard() {
   });
   const goal = prefs?.dailyStepGoal ?? 0;
   // Live HealthKit read (also uploads to the server so the reached-push fires).
-  const { steps } = useDailySteps();
-  const met = goal > 0 && steps >= goal;
-  const progressLabel = goal <= 0
-    ? "Set a step goal →"
-    : met
-      ? "Goal reached 🌿"
-      : `${steps.toLocaleString()} of ${goal.toLocaleString()} steps today`;
+  // Gated on an active goal so we never touch HealthKit when steps is off.
+  const { steps } = useDailySteps(goal > 0);
+  const met = steps >= goal;
+  const progressLabel = met
+    ? "Goal reached 🌿"
+    : `${steps.toLocaleString()} of ${goal.toLocaleString()} steps today`;
+
+  // No goal set → no card. Without a goal there's nothing to work toward, so the
+  // steps card only appears once the user has chosen a daily goal.
+  if (goal <= 0) return null;
 
   return (
     <Link href="/daily-steps" className="block">
@@ -2516,9 +2519,9 @@ export function StepsHomeCard() {
         role="button"
         tabIndex={0}
         className="relative flex rounded-xl overflow-hidden cursor-pointer"
-        style={{ background: "rgba(139,121,84,0.12)", border: `1px solid rgba(139,121,84,0.35)` }}
+        style={{ background: "rgba(82,140,222,0.12)", border: `1px solid rgba(82,140,222,0.35)` }}
       >
-        <div className="w-1 flex-shrink-0" style={{ background: `rgba(139,121,84,0.85)` }} />
+        <div className="w-1 flex-shrink-0" style={{ background: `rgba(82,140,222,0.85)` }} />
         <div className="flex-1 px-4 py-[14px] flex items-center gap-3">
           <span className="text-xl flex-shrink-0" aria-hidden>👟</span>
           <div className="flex-1 min-w-0">
@@ -2530,15 +2533,15 @@ export function StepsHomeCard() {
             </p>
             <p
               className="truncate"
-              style={{ color: met ? "#C9B98A" : "rgba(143,175,150,0.8)", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12 }}
+              style={{ color: met ? "#A9C7EF" : "rgba(143,175,150,0.8)", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12 }}
             >
               {progressLabel}
             </p>
-            {goal > 0 && !met && (
+            {!met && (
               <div className="mt-2 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
                 <div
                   className="h-full rounded-full"
-                  style={{ width: `${Math.min(100, Math.round((steps / goal) * 100))}%`, background: "rgba(139,121,84,0.85)", transition: "width 0.3s" }}
+                  style={{ width: `${Math.min(100, Math.round((steps / goal) * 100))}%`, background: "rgba(82,140,222,0.85)", transition: "width 0.3s" }}
                 />
               </div>
             )}
@@ -2546,8 +2549,8 @@ export function StepsHomeCard() {
           <div
             className="rounded-full text-center shrink-0"
             style={{
-              background: "rgba(139,121,84,0.85)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: 13, fontWeight: 500, padding: "6px 14px", border: "1px solid rgba(139,121,84,0.45)", whiteSpace: "nowrap",
+              background: "rgba(82,140,222,0.85)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: 13, fontWeight: 500, padding: "6px 14px", border: "1px solid rgba(82,140,222,0.45)", whiteSpace: "nowrap",
             }}
           >
             View <span aria-hidden>→</span>
@@ -5317,11 +5320,36 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
     enabled: !!user,
+    // Paint INSTANTLY from a synchronous device snapshot (like the splash faces)
+    // so the list never sits blank on a cold open — immune to React Query's
+    // async rehydration / 5MB-quota eviction / 24h expiry. updatedAt 0 marks it
+    // stale so the live refetch below still runs immediately. Keyed by user id so
+    // a prior account's list never flashes on a shared device.
+    initialData: () => {
+      if (!user) return undefined;
+      try {
+        const raw = localStorage.getItem("phoebe:prayer-list-snapshot");
+        if (!raw || raw.length > 300_000) return undefined;
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.uid === user.id && Array.isArray(parsed.list)) return parsed.list as DashPrayerRequest[];
+      } catch { /* ignore (corrupt / private mode) */ }
+      return undefined;
+    },
+    initialDataUpdatedAt: 0,
     // Always refetch when the home mounts or regains focus, so a prayer prayed
     // anywhere else (the slideshow, a request page) shows as checked here.
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
+  // Re-save the snapshot whenever the list lands, so next cold open paints it
+  // instantly. Size-guarded so a huge list can't blow the localStorage quota.
+  useEffect(() => {
+    if (!user || !dashPrayerRequests) return;
+    try {
+      const raw = JSON.stringify({ uid: user.id, list: dashPrayerRequests });
+      if (raw.length <= 300_000) localStorage.setItem("phoebe:prayer-list-snapshot", raw);
+    } catch { /* ignore (quota / private mode) */ }
+  }, [user, dashPrayerRequests]);
   // (The own-request card's "who prayed for THIS request" faces now come per-
   // request from /api/prayer-requests (req.amenFaces), so the global
   // prayed-for-me-month query that used to back it here was removed.)

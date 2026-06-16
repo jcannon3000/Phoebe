@@ -191,7 +191,7 @@ export function WeeklyGridCard() {
     { key: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "124,116,196" },
     ...(gratitudeActive ? [{ key: "gratitude" as const, emoji: "🙏", label: t("rhythm.row_gratitude", { defaultValue: "Gratitude" }), rgb: "182,140,90" }] : []),
     ...(examenActive ? [{ key: "examen" as const, emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180" }] : []),
-    ...(stepsActive ? [{ key: "steps" as const, emoji: "👟", label: t("rhythm.row_steps", { defaultValue: "Steps" }), rgb: "139,121,84" }] : []),
+    ...(stepsActive ? [{ key: "steps" as const, emoji: "👟", label: t("rhythm.row_steps", { defaultValue: "Steps" }), rgb: "82,140,222" }] : []),
   ];
 
   // Single-letter weekday initials under each column (noon avoids any tz/DST
@@ -522,7 +522,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
     ...(stepsActive ? [{
-      key: "steps", emoji: "👟", rgb: "139,121,84", done: stepsDone, href: "/daily-steps",
+      key: "steps", emoji: "👟", rgb: "82,140,222", done: stepsDone, href: "/daily-steps",
       title: t("rhythm.card_steps", { defaultValue: "Daily steps" }),
       blurb: stepsDone
         ? t("rhythm.steps_reached", { goal: stepsGoal.toLocaleString(), defaultValue: `Reached your ${stepsGoal.toLocaleString()}-step goal` })
