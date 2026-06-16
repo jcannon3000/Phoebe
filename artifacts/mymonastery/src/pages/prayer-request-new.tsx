@@ -7,20 +7,19 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
 
 // ── Visual language ─────────────────────────────────────────────────
-// Matches the Cobreathe / contemplation surfaces: a slow drifting green
-// gradient (AnimatedBackground) behind frosted-glass cards, Space Grotesk
-// headings, Georgia-italic body, a sage + warm-cream palette.
-const BG = "#0C1F12";
+// A calm DARK-BLUE surface (the app's reflection blue, #608DD1, family) —
+// solid, no drifting gradient — behind frosted-glass cards, Space Grotesk
+// headings, Georgia-italic body, a blue-grey + warm-cream palette.
+const BG = "#0C1A30";
 const CREAM = "#F0EDE6";
-const SAGE = "#8FAF96";
-const SAGE_DIM = "rgba(143,175,150,0.6)";
+const SAGE = "#94A8C6";
+const SAGE_DIM = "rgba(148,168,198,0.6)";
 const SERIF = "Georgia, 'Times New Roman', serif";
 const SPACE = "'Space Grotesk', sans-serif";
-const GLASS = "rgba(9,22,14,0.6)";
-const GLASS_BORDER = "rgba(140,195,160,0.22)";
+const GLASS = "rgba(9,16,34,0.6)";
+const GLASS_BORDER = "rgba(150,178,224,0.22)";
 // Shared glass field styling (textarea + inputs). No box-shadow inline so
 // the global input :focus glow (index.css) still rings the field.
 const glassField = {
@@ -87,7 +86,7 @@ function useKindCopy(): Record<RequestKind, { emoji: string; eyebrow: string; ti
 // Full-screen, step-by-step authoring flow for sharing your own prayer
 // request with the community. Mirrors the "gathering" and "pray-for-new"
 // templates so the creation affordances all feel like siblings:
-//   • dark #091A10 canvas
+//   • dark #08142A canvas
 //   • header = back button + progress pills
 //   • one question per step, Space Grotesk titles, Playfair Display body
 //
@@ -235,7 +234,6 @@ export default function PrayerRequestNew() {
 
   return (
     <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh", background: BG, overflowX: "hidden" }}>
-      <AnimatedBackground base={BG} variant="pronounced" fadeTop />
 
       {/* Header — just a quiet Back. No progress bar (the flow is two short steps). */}
       <div style={{ paddingTop: "max(1rem, var(--safe-top))", paddingLeft: 20, paddingRight: 20, paddingBottom: 2 }}>
@@ -284,7 +282,7 @@ export default function PrayerRequestNew() {
                     style={{ ...glassField, fontFamily: SPACE }}
                   />
                   <div>
-                    <label className="text-[12px] block mb-1.5" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    <label className="text-[12px] block mb-1.5" style={{ color: "#94A8C6", fontFamily: "'Space Grotesk', sans-serif" }}>
                       {t("prayer_request.life_event_date_label", { defaultValue: "When does it happen?" })}
                     </label>
                     <input
@@ -315,7 +313,7 @@ export default function PrayerRequestNew() {
                   lineHeight: 1.6,
                 }}
               />
-              <p className="text-[11px] mb-6 text-right" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE, marginTop: 8 }}>
+              <p className="text-[11px] mb-6 text-right" style={{ color: "rgba(148,168,198,0.5)", fontFamily: SPACE, marginTop: 8 }}>
                 {t("prayer_request.char_count", { count: body.length })}
               </p>
 
@@ -338,12 +336,12 @@ export default function PrayerRequestNew() {
                 disabled={body.trim().length === 0 || (isLifeEvent && createMutation.isPending)}
                 className="w-full py-4 text-base font-semibold disabled:opacity-40 active:scale-[0.99] transition-all"
                 style={{
-                  background: "linear-gradient(180deg, #34734A 0%, #285539 100%)",
+                  background: "linear-gradient(180deg, #3A6BB0 0%, #2C5491 100%)",
                   color: CREAM,
                   fontFamily: SPACE,
                   borderRadius: 20,
-                  border: "1px solid rgba(140,195,160,0.4)",
-                  boxShadow: "0 10px 30px rgba(18,56,35,0.5), inset 0 1px 0 rgba(255,255,255,0.07)",
+                  border: "1px solid rgba(150,178,224,0.4)",
+                  boxShadow: "0 10px 30px rgba(20,40,68,0.5), inset 0 1px 0 rgba(255,255,255,0.07)",
                 }}
               >
                 {isLifeEvent
@@ -370,7 +368,7 @@ export default function PrayerRequestNew() {
                 >
                   <p
                     className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2"
-                    style={{ color: "rgba(143,175,150,0.6)" }}
+                    style={{ color: "rgba(148,168,198,0.6)" }}
                   >
                     {t("prayer_request.or_renew")}
                   </p>
@@ -391,7 +389,7 @@ export default function PrayerRequestNew() {
                     onClick={() => renewMutation.mutate(lastMine.id)}
                     disabled={renewMutation.isPending}
                     className="text-xs font-semibold rounded-full px-4 py-2 disabled:opacity-50"
-                    style={{ background: "rgba(46,107,64,0.45)", color: "#F0EDE6" }}
+                    style={{ background: "rgba(52,95,158,0.45)", color: "#F0EDE6" }}
                   >
                     {renewMutation.isPending ? t("prayer_request.renewing") : t("prayer_request.renew_for_7_days")}
                   </button>
@@ -430,12 +428,12 @@ export default function PrayerRequestNew() {
                       onClick={() => setDays(o.value)}
                       className="w-full text-left p-4 active:scale-[0.99] transition-all"
                       style={{
-                        background: sel ? "linear-gradient(180deg, rgba(52,112,73,0.92) 0%, rgba(40,86,57,0.92) 100%)" : GLASS,
-                        border: `1.5px solid ${sel ? "rgba(140,195,160,0.55)" : GLASS_BORDER}`,
+                        background: sel ? "linear-gradient(180deg, rgba(58,107,176,0.92) 0%, rgba(44,84,145,0.92) 100%)" : GLASS,
+                        border: `1.5px solid ${sel ? "rgba(150,178,224,0.55)" : GLASS_BORDER}`,
                         borderRadius: 18,
                         backdropFilter: "blur(8px)",
                         WebkitBackdropFilter: "blur(8px)",
-                        boxShadow: sel ? "0 8px 26px rgba(18,56,35,0.45)" : "none",
+                        boxShadow: sel ? "0 8px 26px rgba(20,40,68,0.45)" : "none",
                       }}
                     >
                       <div className="flex items-center gap-3">
@@ -445,7 +443,7 @@ export default function PrayerRequestNew() {
                           <p className="text-sm" style={{ color: SAGE }}>{o.tagline}</p>
                         </div>
                         {sel && (
-                          <span className="ml-auto text-base font-bold" style={{ color: "#C8D4C0" }}>✓</span>
+                          <span className="ml-auto text-base font-bold" style={{ color: "#C2CFE2" }}>✓</span>
                         )}
                       </div>
                     </button>
@@ -460,12 +458,12 @@ export default function PrayerRequestNew() {
                 disabled={createMutation.isPending}
                 className="w-full py-4 text-base font-semibold disabled:opacity-40 active:scale-[0.99] transition-all"
                 style={{
-                  background: "linear-gradient(180deg, #34734A 0%, #285539 100%)",
+                  background: "linear-gradient(180deg, #3A6BB0 0%, #2C5491 100%)",
                   color: CREAM,
                   fontFamily: SPACE,
                   borderRadius: 20,
-                  border: "1px solid rgba(140,195,160,0.4)",
-                  boxShadow: "0 10px 30px rgba(18,56,35,0.5), inset 0 1px 0 rgba(255,255,255,0.07)",
+                  border: "1px solid rgba(150,178,224,0.4)",
+                  boxShadow: "0 10px 30px rgba(20,40,68,0.5), inset 0 1px 0 rgba(255,255,255,0.07)",
                 }}
               >
                 {createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community")}
@@ -542,9 +540,9 @@ function TagPicker({
           onClick={() => setOpen(o => !o)}
           className="text-[12px] font-medium px-3 py-1.5 rounded-full transition-opacity hover:opacity-90"
           style={{
-            background: "rgba(46,107,64,0.18)",
-            border: "1px solid rgba(46,107,64,0.4)",
-            color: "#C8D4C0",
+            background: "rgba(52,95,158,0.18)",
+            border: "1px solid rgba(52,95,158,0.4)",
+            color: "#C2CFE2",
             fontFamily: "'Space Grotesk', sans-serif",
           }}
         >
@@ -557,8 +555,8 @@ function TagPicker({
             key={p.userId}
             className="inline-flex items-center gap-1 text-[12px] px-2.5 py-1 rounded-full"
             style={{
-              background: "rgba(46,107,64,0.28)",
-              border: "1px solid rgba(46,107,64,0.5)",
+              background: "rgba(52,95,158,0.28)",
+              border: "1px solid rgba(52,95,158,0.5)",
               color: "#F0EDE6",
               fontFamily: "'Space Grotesk', sans-serif",
             }}
@@ -571,7 +569,7 @@ function TagPicker({
               style={{
                 background: "transparent",
                 border: "none",
-                color: "rgba(143,175,150,0.85)",
+                color: "rgba(148,168,198,0.85)",
                 cursor: "pointer",
                 padding: 0,
                 marginLeft: 2,
@@ -589,8 +587,8 @@ function TagPicker({
         <div
           className="mt-3 rounded-xl"
           style={{
-            background: "#0F2818",
-            border: "1px solid rgba(46,107,64,0.35)",
+            background: "#0E2138",
+            border: "1px solid rgba(52,95,158,0.35)",
             padding: 8,
           }}
         >
@@ -601,15 +599,15 @@ function TagPicker({
             onChange={(e) => setQuery(e.target.value)}
             className="w-full text-sm px-3 py-2 rounded-lg mb-2 outline-none"
             style={{
-              background: "rgba(15,40,24,0.7)",
-              border: "1px solid rgba(46,107,64,0.3)",
+              background: "rgba(14,30,52,0.7)",
+              border: "1px solid rgba(52,95,158,0.3)",
               color: "#F0EDE6",
               fontFamily: "'Space Grotesk', sans-serif",
             }}
           />
           <div style={{ maxHeight: 200, overflowY: "auto" }}>
             {filtered.length === 0 && (
-              <p className="text-xs italic text-center py-2" style={{ color: "rgba(143,175,150,0.55)" }}>
+              <p className="text-xs italic text-center py-2" style={{ color: "rgba(148,168,198,0.55)" }}>
                 {eligible.length === 0
                   ? t("prayer_request.no_one_in_community")
                   : t("prayer_request.no_one_matches_name")}
@@ -624,10 +622,10 @@ function TagPicker({
                   onClick={() => toggle(p.userId)}
                   className="w-full flex items-center gap-3 px-2 py-2 rounded-lg text-left transition-colors"
                   style={{
-                    background: isSelected ? "rgba(46,107,64,0.25)" : "transparent",
+                    background: isSelected ? "rgba(52,95,158,0.25)" : "transparent",
                   }}
                   onMouseEnter={(e) => {
-                    if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = "rgba(200,212,192,0.06)";
+                    if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = "rgba(194,207,226,0.06)";
                   }}
                   onMouseLeave={(e) => {
                     if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = "transparent";
@@ -642,7 +640,7 @@ function TagPicker({
                   ) : (
                     <div
                       className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold"
-                      style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                      style={{ background: "#1C3A5C", color: "#A6C0E6" }}
                     >
                       {(p.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
                     </div>
@@ -650,7 +648,7 @@ function TagPicker({
                   <span className="text-sm flex-1 truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                     {p.name}
                   </span>
-                  {isSelected && <span className="text-sm" style={{ color: "#A8C5A0" }}>✓</span>}
+                  {isSelected && <span className="text-sm" style={{ color: "#A6C0E6" }}>✓</span>}
                 </button>
               );
             })}
