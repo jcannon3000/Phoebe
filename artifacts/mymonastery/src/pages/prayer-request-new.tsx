@@ -7,6 +7,31 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
+
+// ── Visual language ─────────────────────────────────────────────────
+// Matches the Cobreathe / contemplation surfaces: a slow drifting green
+// gradient (AnimatedBackground) behind frosted-glass cards, Space Grotesk
+// headings, Georgia-italic body, a sage + warm-cream palette.
+const BG = "#0C1F12";
+const CREAM = "#F0EDE6";
+const SAGE = "#8FAF96";
+const SAGE_DIM = "rgba(143,175,150,0.6)";
+const SERIF = "Georgia, 'Times New Roman', serif";
+const SPACE = "'Space Grotesk', sans-serif";
+const GLASS = "rgba(9,22,14,0.6)";
+const GLASS_BORDER = "rgba(140,195,160,0.22)";
+// Shared glass field styling (textarea + inputs). No box-shadow inline so
+// the global input :focus glow (index.css) still rings the field.
+const glassField = {
+  background: GLASS,
+  border: `1px solid ${GLASS_BORDER}`,
+  borderRadius: 18,
+  color: CREAM,
+  backdropFilter: "blur(8px)",
+  WebkitBackdropFilter: "blur(8px)",
+  outline: "none",
+} as const;
 
 type LastMineRow = {
   id: number;
@@ -32,23 +57,26 @@ export type RequestKind = "request" | "life-event" | "justice";
 // Per-kind copy is built from i18n via useKindCopy() — was a frozen
 // module-level const before, which locked the labels to English at
 // load time even when the user flipped to Spanish.
-function useKindCopy(): Record<RequestKind, { emoji: string; title: string; subtitle: string; placeholder: string }> {
+function useKindCopy(): Record<RequestKind, { emoji: string; eyebrow: string; title: string; subtitle: string; placeholder: string }> {
   const { t } = useTranslation();
   return {
     "request": {
       emoji: "🙏🏽",
+      eyebrow: t("prayer_request.eyebrow_default", { defaultValue: "Prayer request" }),
       title: t("prayer_request.title_default"),
       subtitle: t("prayer_request.subtitle_default"),
       placeholder: t("prayer_request.placeholder_default"),
     },
     "life-event": {
       emoji: "🌱",
+      eyebrow: t("prayer_request.eyebrow_life_event", { defaultValue: "Life event" }),
       title: t("prayer_request.title_life_event"),
       subtitle: t("prayer_request.subtitle_life_event"),
       placeholder: t("prayer_request.placeholder_life_event"),
     },
     "justice": {
       emoji: "⚖️",
+      eyebrow: t("prayer_request.eyebrow_justice", { defaultValue: "For justice" }),
       title: t("prayer_request.title_justice"),
       subtitle: t("prayer_request.subtitle_justice"),
       placeholder: t("prayer_request.placeholder_justice"),
@@ -206,28 +234,20 @@ export default function PrayerRequestNew() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#091A10" }}>
-      {/* Header — back + progress pills */}
-      <div className="px-6 pt-6 pb-4 flex items-center gap-4">
+    <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh", background: BG, overflowX: "hidden" }}>
+      <AnimatedBackground base={BG} variant="pronounced" fadeTop />
+
+      {/* Header — just a quiet Back. No progress bar (the flow is two short steps). */}
+      <div style={{ paddingTop: "max(1rem, var(--safe-top))", paddingLeft: 20, paddingRight: 20, paddingBottom: 2 }}>
         <button
           onClick={handleBack}
-          className="text-sm"
-          style={{ color: "#8FAF96" }}
+          style={{ color: SAGE, fontSize: 14, fontFamily: SPACE, background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}
         >
           {t("prayer_request.back")}
         </button>
-        <div className="flex-1 flex gap-1.5">
-          {(isLifeEvent ? [0] : [0, 1]).map((s) => (
-            <div
-              key={s}
-              className="h-1 flex-1 rounded-full transition-colors duration-300"
-              style={{ background: s <= step ? "#2D5E3F" : "rgba(200,212,192,0.2)" }}
-            />
-          ))}
-        </div>
       </div>
 
-      <div className="flex-1 px-6 pt-4 pb-24 max-w-lg mx-auto w-full">
+      <div style={{ maxWidth: 480, margin: "0 auto", width: "100%", padding: "22px 24px calc(env(safe-area-inset-bottom) + 48px)" }}>
         <AnimatePresence mode="wait">
 
           {/* Step 0 — Write the request */}
@@ -240,10 +260,15 @@ export default function PrayerRequestNew() {
               exit="exit"
               transition={{ duration: 0.2 }}
             >
-              <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                {copy.title} {copy.emoji}
+              {/* Eyebrow + title + serif subtitle — the contemplation / Cobreathe hierarchy. */}
+              <p style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 600, color: SAGE_DIM, fontFamily: SPACE, margin: 0, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+                <span aria-hidden style={{ fontSize: 15 }}>{copy.emoji}</span>
+                {copy.eyebrow}
+              </p>
+              <h1 style={{ fontSize: 29, lineHeight: 1.18, fontWeight: 700, color: CREAM, fontFamily: SPACE, letterSpacing: "-0.02em", margin: 0, marginBottom: 12 }}>
+                {copy.title}
               </h1>
-              <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
+              <p style={{ fontSize: 16, lineHeight: 1.5, fontStyle: "italic", color: SAGE, fontFamily: SERIF, margin: 0, marginBottom: 26 }}>
                 {copy.subtitle}
               </p>
 
@@ -255,8 +280,8 @@ export default function PrayerRequestNew() {
                     value={eventTitle}
                     onChange={(e) => { setEventTitle(e.target.value.slice(0, 80)); setError(""); }}
                     placeholder={t("prayer_request.life_event_title_placeholder", { defaultValue: "What is it? e.g. Knee surgery" })}
-                    className="w-full rounded-xl px-4 py-3.5 text-base outline-none"
-                    style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.35)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+                    className="w-full px-4 py-3.5 text-base"
+                    style={{ ...glassField, fontFamily: SPACE }}
                   />
                   <div>
                     <label className="text-[12px] block mb-1.5" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
@@ -267,8 +292,8 @@ export default function PrayerRequestNew() {
                       value={eventDate}
                       min={todayStr}
                       onChange={(e) => { setEventDate(e.target.value); setError(""); }}
-                      className="w-full rounded-xl px-4 py-3.5 text-base outline-none"
-                      style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.35)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", colorScheme: "dark" }}
+                      className="w-full px-4 py-3.5 text-base"
+                      style={{ ...glassField, fontFamily: SPACE, colorScheme: "dark" }}
                     />
                   </div>
                 </div>
@@ -278,19 +303,19 @@ export default function PrayerRequestNew() {
                 ref={bodyRef}
                 value={body}
                 onChange={(e) => { setBody(e.target.value.slice(0, 1000)); setError(""); }}
-                rows={4}
+                rows={5}
                 placeholder={copy.placeholder}
-                className="w-full rounded-xl px-4 py-3.5 text-base outline-none resize-none mb-2"
+                className="w-full px-5 py-4 text-base resize-none"
                 style={{
-                  background: "#0F2818",
-                  border: "1.5px solid rgba(46,107,64,0.35)",
-                  color: "#F0EDE6",
-                  fontFamily: "Georgia, 'Times New Roman', serif",
+                  ...glassField,
+                  minHeight: 156,
+                  fontFamily: SERIF,
                   fontStyle: "italic",
+                  fontSize: 17,
                   lineHeight: 1.6,
                 }}
               />
-              <p className="text-[11px] mb-6 text-right" style={{ color: "rgba(143,175,150,0.5)" }}>
+              <p className="text-[11px] mb-6 text-right" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE, marginTop: 8 }}>
                 {t("prayer_request.char_count", { count: body.length })}
               </p>
 
@@ -311,8 +336,15 @@ export default function PrayerRequestNew() {
               <button
                 onClick={handleBodyNext}
                 disabled={body.trim().length === 0 || (isLifeEvent && createMutation.isPending)}
-                className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
-                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                className="w-full py-4 text-base font-semibold disabled:opacity-40 active:scale-[0.99] transition-all"
+                style={{
+                  background: "linear-gradient(180deg, #34734A 0%, #285539 100%)",
+                  color: CREAM,
+                  fontFamily: SPACE,
+                  borderRadius: 20,
+                  border: "1px solid rgba(140,195,160,0.4)",
+                  boxShadow: "0 10px 30px rgba(18,56,35,0.5), inset 0 1px 0 rgba(255,255,255,0.07)",
+                }}
               >
                 {isLifeEvent
                   ? (createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community"))
@@ -327,10 +359,13 @@ export default function PrayerRequestNew() {
                   user can still write something fresh if they prefer. */}
               {showRenewCard && lastMine && (
                 <div
-                  className="mt-6 rounded-xl p-4"
+                  className="mt-7 p-4"
                   style={{
-                    background: "#0F2818",
-                    border: "1px solid rgba(46,107,64,0.35)",
+                    background: GLASS,
+                    border: `1px solid ${GLASS_BORDER}`,
+                    borderRadius: 18,
+                    backdropFilter: "blur(8px)",
+                    WebkitBackdropFilter: "blur(8px)",
                   }}
                 >
                   <p
@@ -375,36 +410,47 @@ export default function PrayerRequestNew() {
               exit="exit"
               transition={{ duration: 0.2 }}
             >
-              <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+              <p style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 600, color: SAGE_DIM, fontFamily: SPACE, margin: 0, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
+                <span aria-hidden style={{ fontSize: 15 }}>🕊️</span>
+                {t("prayer_request.eyebrow_duration", { defaultValue: "How long" })}
+              </p>
+              <h1 style={{ fontSize: 29, lineHeight: 1.18, fontWeight: 700, color: CREAM, fontFamily: SPACE, letterSpacing: "-0.02em", margin: 0, marginBottom: 12 }}>
                 {t("prayer_request.duration_question")}
               </h1>
-              <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>
+              <p style={{ fontSize: 16, lineHeight: 1.5, fontStyle: "italic", color: SAGE, fontFamily: SERIF, margin: 0, marginBottom: 26 }}>
                 {t("prayer_request.duration_subtitle")}
               </p>
 
               <div className="space-y-3 mb-8">
-                {DURATION_OPTIONS.map((o) => (
-                  <button
-                    key={o.value}
-                    onClick={() => setDays(o.value)}
-                    className="w-full text-left p-4 rounded-2xl transition-all"
-                    style={{
-                      background: days === o.value ? "#2D5E3F" : "#0F2818",
-                      border: `2px solid ${days === o.value ? "rgba(46,107,64,0.65)" : "rgba(46,107,64,0.3)"}`,
-                    }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">🙏</span>
-                      <div>
-                        <p className="font-semibold" style={{ color: "#F0EDE6" }}>{o.label}</p>
-                        <p className="text-sm" style={{ color: "#8FAF96" }}>{o.tagline}</p>
+                {DURATION_OPTIONS.map((o) => {
+                  const sel = days === o.value;
+                  return (
+                    <button
+                      key={o.value}
+                      onClick={() => setDays(o.value)}
+                      className="w-full text-left p-4 active:scale-[0.99] transition-all"
+                      style={{
+                        background: sel ? "linear-gradient(180deg, rgba(52,112,73,0.92) 0%, rgba(40,86,57,0.92) 100%)" : GLASS,
+                        border: `1.5px solid ${sel ? "rgba(140,195,160,0.55)" : GLASS_BORDER}`,
+                        borderRadius: 18,
+                        backdropFilter: "blur(8px)",
+                        WebkitBackdropFilter: "blur(8px)",
+                        boxShadow: sel ? "0 8px 26px rgba(18,56,35,0.45)" : "none",
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-xl">🙏</span>
+                        <div>
+                          <p className="font-semibold" style={{ color: CREAM, fontFamily: SPACE }}>{o.label}</p>
+                          <p className="text-sm" style={{ color: SAGE }}>{o.tagline}</p>
+                        </div>
+                        {sel && (
+                          <span className="ml-auto text-base font-bold" style={{ color: "#C8D4C0" }}>✓</span>
+                        )}
                       </div>
-                      {days === o.value && (
-                        <span className="ml-auto text-base font-bold" style={{ color: "#C8D4C0" }}>✓</span>
-                      )}
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  );
+                })}
               </div>
 
               {error && <p className="text-sm mb-4" style={{ color: "#C47A65" }}>{error}</p>}
@@ -412,8 +458,15 @@ export default function PrayerRequestNew() {
               <button
                 onClick={() => createMutation.mutate()}
                 disabled={createMutation.isPending}
-                className="w-full py-4 rounded-2xl text-base font-semibold disabled:opacity-40 transition-all"
-                style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+                className="w-full py-4 text-base font-semibold disabled:opacity-40 active:scale-[0.99] transition-all"
+                style={{
+                  background: "linear-gradient(180deg, #34734A 0%, #285539 100%)",
+                  color: CREAM,
+                  fontFamily: SPACE,
+                  borderRadius: 20,
+                  border: "1px solid rgba(140,195,160,0.4)",
+                  boxShadow: "0 10px 30px rgba(18,56,35,0.5), inset 0 1px 0 rgba(255,255,255,0.07)",
+                }}
               >
                 {createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community")}
               </button>
