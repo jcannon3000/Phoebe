@@ -89,6 +89,24 @@ const FIELD_LIVE = "#0B2014";         // live — a touch lighter/greener
 // screen so the breath sits low and there's room above.
 const BREATH_Y = "63%";
 
+// The world turns between these three globes — one held per session, rotating
+// across sessions.
+const GLOBES = ["🌍", "🌎", "🌏"] as const;
+// Outer per-breath ring around the globe: the lighter green fills clockwise on
+// the inhale and HOLDS through the exhale; the darker green sweeps over it on
+// the exhale. Resets each cycle.
+const RING_IN = "#86C79B";
+const RING_OUT = "#2E6B40";
+const RING_R = 58;                       // outer ring radius (viewBox 128)
+const RING_CIRC = 2 * Math.PI * RING_R;
+const RING_SW = 4;                       // stroke width — the inner ring matches it
+// Inner blue SESSION ring — ONE slow circle filling once across the whole set
+// of breaths. Radius is 10% smaller than the old 47, and its thickness matches
+// the outer ring (RING_SW). The globe takes on a blue glow when the set is kept.
+const SESSION_BLUE = "#5B9DEF";
+const SESSION_R = 42;                     // ≈ 47 × 0.9 (10% smaller)
+const SESSION_CIRC = 2 * Math.PI * SESSION_R;
+
 // The bundled photo library — every image under src/assets/cobreathe is glob-
 // imported here so the breath ALWAYS has pictures, no matter which surface
 // launches it (the /cobreathe page OR the office/devotion slideshow overlay).
@@ -154,6 +172,20 @@ export function CobreatheBreath({
   // The breath is text + a softly breathing photo field — no centre globe or
   // progress rings. The phase word ("Breathe In/Out") is the only moving glyph.
   const labelRef = useRef<HTMLDivElement>(null);
+  // Globe + the rings around it (driven from the rAF clock below).
+  const globeRef = useRef<HTMLDivElement>(null);
+  const ringInRef = useRef<SVGCircleElement>(null);
+  const ringOutRef = useRef<SVGCircleElement>(null);
+  const sessionRingRef = useRef<SVGCircleElement>(null);
+  // The globe is chosen ONCE per session and held for the whole sit; a
+  // localStorage counter rotates 🌍 → 🌎 → 🌏 across sessions.
+  const sessionGlobeRef = useRef<string | null>(null);
+  if (sessionGlobeRef.current === null) {
+    let gi = 0;
+    try { gi = ((parseInt(localStorage.getItem("phoebe:cobreathe-globe") || "0", 10) || 0) % GLOBES.length + GLOBES.length) % GLOBES.length; } catch { /* ignore */ }
+    sessionGlobeRef.current = GLOBES[gi];
+    try { localStorage.setItem("phoebe:cobreathe-globe", String((gi + 1) % GLOBES.length)); } catch { /* ignore */ }
+  }
   // Two stacked photo layers that crossfade, plus a group wrapper whose opacity
   // breathes with the cycle. The rAF loop ping-pongs between A and B: each breath
   // the incoming layer fades in over the outgoing (never a hard switch), and each
@@ -355,6 +387,32 @@ export function CobreatheBreath({
         labelRef.current.style.opacity = isCounting ? Math.sin(Math.PI * f).toFixed(4) : "1";
         labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;
       }
+      // Globe GREEN glow crossfades with the breath — darker at the bottom of the
+      // exhale (pAnim→0), lighter at the top of the inhale (pAnim→1). Skipped once
+      // the set is complete, so the declarative blue glow takes over.
+      if (globeRef.current && !reachedRef.current) {
+        const gr = Math.round(46 + (134 - 46) * pAnim);
+        const gg = Math.round(107 + (199 - 107) * pAnim);
+        const gb = Math.round(64 + (155 - 64) * pAnim);
+        const blur = (10 + pAnim * 13).toFixed(1);
+        const alpha = (0.42 + pAnim * 0.42).toFixed(2);
+        globeRef.current.style.filter =
+          `drop-shadow(0 0 ${blur}px rgba(${gr},${gg},${gb},${alpha})) drop-shadow(0 3px 14px rgba(8,30,18,0.6))`;
+      }
+      // Breath-progress rings: the lighter ring fills over the inhale + holds; the
+      // darker ring sweeps over it on the exhale; both reset each cycle. The inner
+      // blue ring fills once, slowly, across the whole set of breaths.
+      {
+        const inhale = pos < INHALE_MS;
+        const fIn = isCounting ? (inhale ? pos / INHALE_MS : 1) : 0;
+        const fOut = isCounting ? (inhale ? 0 : (pos - INHALE_MS) / EXHALE_MS) : 0;
+        if (ringInRef.current) ringInRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fIn)).toFixed(2);
+        if (ringOutRef.current) ringOutRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fOut)).toFixed(2);
+        if (sessionRingRef.current) {
+          const sFrac = isCounting ? Math.min(1, Math.max(0, (now - countStartRef.current) / (totalBreaths * CYCLE_MS))) : 0;
+          sessionRingRef.current.style.strokeDashoffset = (SESSION_CIRC * (1 - sFrac)).toFixed(2);
+        }
+      }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
@@ -468,6 +526,14 @@ export function CobreatheBreath({
   const breathNum = completed + 1;
   const reachedNow = counting && completed >= totalBreaths;
   const intention = counting ? INTENTIONS[(breathNum - 1) % INTENTIONS.length] : null;
+  // The session globe (held for the whole sit).
+  const globe = sessionGlobeRef.current ?? GLOBES[0];
+  // How long until the next clean cycle boundary — the sync pre-roll. Derived
+  // once from the two anchor refs (set at mount), so it doesn't flip as it
+  // counts down. Under 5s of waiting → the short Simone Weil line; longer → the
+  // fuller Sallie McFague one (there's more time to read it).
+  const syncWaitMs = countStartRef.current - startRef.current;
+  const useWeil = syncWaitMs < 5000;
 
   // Soft sage tones that sit calmly on the deep-green field.
   const TEXT_DIM = "rgba(182,210,188,0.72)";
@@ -561,34 +627,34 @@ export function CobreatheBreath({
         ✕
       </button>
 
-      {/* While SYNCING (before the session joins the global breath), a quote
-          rests in the upper-middle of the screen — left-aligned, in Space
-          Grotesk. It's kept mounted and FADES DOWN (opacity → 0, drifting down a
-          touch) once the breath goes live, rather than hard-cutting, so the
-          transition into the practice is smooth. */}
+      {/* While SYNCING, a quote rests in the upper third — centred. A short wait
+          (< 5s) shows the brief Simone Weil line; a longer wait shows the fuller
+          Sallie McFague one (more time to read). It FADES + drifts down into the
+          practice once the breath goes live, so the hand-off is smooth. */}
       <div
         aria-hidden={counting}
         style={{
-          position: "absolute", left: 28, right: 32, top: "50%",
-          // Centered, then lifted ~80px into the upper-middle; on going live it
-          // drifts down a touch as it fades.
-          transform: counting ? "translateY(calc(-50% - 80px + 16px))" : "translateY(calc(-50% - 80px))",
+          position: "absolute", left: 28, right: 28, top: "26%",
+          transform: counting ? "translateY(16px)" : "translateY(0)",
           opacity: counting ? 0 : 1,
           transition: "opacity 0.8s ease, transform 0.8s ease",
-          zIndex: 2, pointerEvents: "none", maxWidth: 560,
+          zIndex: 2, pointerEvents: "none", maxWidth: 540, marginLeft: "auto", marginRight: "auto",
         }}
       >
-        <p style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: "clamp(15px, 4.4vw, 18px)", lineHeight: 1.5, textAlign: "left", textShadow: "0 2px 18px rgba(8,30,18,0.6)" }}>
-          {t("cobreathe.sync_quote", { defaultValue: "By paying attention, especially to the beauty of the world and to the suffering of others, we open the possibility for God to reach us, beginning the process of change whereby we allow ourselves to be decreated from egotists to lovers of God by loving the neighbor as ourselves." })}
+        <p style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: useWeil ? "clamp(20px, 5.8vw, 25px)" : "clamp(15px, 4.4vw, 18px)", lineHeight: 1.5, textAlign: "center", textShadow: "0 2px 18px rgba(8,30,18,0.6)" }}>
+          {useWeil
+            ? t("cobreathe.sync_quote_weil", { defaultValue: "Absolutely unmixed attention is prayer." })
+            : t("cobreathe.sync_quote", { defaultValue: "By paying attention, especially to the beauty of the world and to the suffering of others, we open the possibility for God to reach us, beginning the process of change whereby we allow ourselves to be decreated from egotists to lovers of God by loving the neighbor as ourselves." })}
         </p>
-        <p style={{ color: "rgba(182,210,188,0.62)", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, letterSpacing: "0.06em", marginTop: 16, textAlign: "left" }}>
-          {t("cobreathe.sync_quote_author", { defaultValue: "Sallie McFague" })}
+        <p style={{ color: "rgba(182,210,188,0.62)", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, letterSpacing: "0.06em", marginTop: 16, textAlign: "center" }}>
+          {useWeil
+            ? t("cobreathe.sync_quote_weil_author", { defaultValue: "Simone Weil" })
+            : t("cobreathe.sync_quote_author", { defaultValue: "Sallie McFague" })}
         </p>
       </div>
 
-      {/* Title + Synced + participation — top, LEFT-ALIGNED to the "Breathe In"
-          text below (same 28px left inset). */}
-      <div className="flex flex-col items-start" style={{ position: "relative", alignSelf: "flex-start", marginLeft: 28 }}>
+      {/* Title + Synced + participation — TOP, centred. */}
+      <div className="flex flex-col items-center" style={{ position: "relative" }}>
         <p className="text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "rgba(182,210,188,0.55)", fontFamily: SPACE_GROTESK }}>
           🌬️ {t("cobreathe.title", { defaultValue: "Cobreathe" })}
         </p>
@@ -611,60 +677,84 @@ export function CobreatheBreath({
         )}
       </div>
 
-      {/* Breath row — just the breathing word ("Breathe In" / "Breathe Out"),
-          left-aligned with the other elements, dropped below the breath's
-          vertical centre. The globe + rings were removed; the breath counter
-          lives at the bottom (where the Cancel button used to be). */}
-      <div
-        style={{
-          position: "absolute", left: 28, right: 40, top: BREATH_Y,
-          transform: "translateY(calc(-50% + 70px))",
-          display: "flex", alignItems: "center", justifyContent: "flex-start", zIndex: 2,
-        }}
-      >
-        <div className="flex flex-col items-start">
-          <div ref={labelRef} style={{ willChange: "transform, opacity" }}>
+      {/* Globe + rings — CENTRED, the still point of the screen. The outer ring
+          breathes (lighter green in, darker green out); the inner blue ring fills
+          once across the whole set. */}
+      <div style={{ position: "relative", width: 158, height: 158, flexShrink: 0, zIndex: 2 }}>
+        <svg
+          aria-hidden="true"
+          width={158} height={158} viewBox="0 0 128 128"
+          style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none", filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))" }}
+        >
+          <circle cx={64} cy={64} r={RING_R} fill="none" stroke="rgba(143,175,150,0.14)" strokeWidth={RING_SW} />
+          <circle ref={ringInRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={RING_SW} strokeLinecap="round"
+            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }} />
+          <circle ref={ringOutRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeLinecap="round"
+            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }} />
+          {/* inner blue session ring — faint track + slow fill, thickness matched to the outer */}
+          <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(91,157,239,0.16)" strokeWidth={RING_SW} />
+          <circle ref={sessionRingRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_BLUE} strokeWidth={RING_SW} strokeLinecap="round"
+            style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset" }} />
+        </svg>
+        <div
+          ref={globeRef}
+          aria-hidden="true"
+          style={{
+            position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 80, lineHeight: 1, pointerEvents: "none",
+            filter: reachedNow
+              ? "drop-shadow(0 0 18px rgba(91,157,239,0.9)) drop-shadow(0 2px 10px rgba(8,30,18,0.5))"
+              : "drop-shadow(0 0 13px rgba(90,150,110,0.55)) drop-shadow(0 3px 14px rgba(8,30,18,0.6))",
+            transition: reachedNow ? "filter 1.2s ease" : "none",
+          }}
+        >
+          {globe}
+        </div>
+      </div>
+
+      {/* Bottom — the breathing word in the LEFT corner (smaller) + the breath
+          count in the RIGHT corner. A Done pill rises above them once the full
+          set is kept; before then there's no button (the ✕ top-right is the way
+          out, and backgrounding the app still ends it). */}
+      <div className="w-full" style={{ paddingLeft: 28, paddingRight: 28, marginBottom: 8 }}>
+        {reachedNow && (
+          <div className="flex justify-center" style={{ marginBottom: 18 }}>
+            <button
+              type="button"
+              onClick={() => onEnd(Math.round((Date.now() - startRef.current) / 1000), reachedRef.current)}
+              className="rounded-full active:scale-[0.98] transition-transform"
+              style={{
+                background: "rgba(46,107,64,0.85)", color: "#EAF6F4",
+                border: "1px solid rgba(140,195,160,0.5)",
+                fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600,
+                padding: "10px 34px", cursor: "pointer",
+              }}
+            >
+              {t("cobreathe.done", { defaultValue: "Done" })}
+            </button>
+          </div>
+        )}
+        <div className="flex items-end justify-between" style={{ gap: 14 }}>
+          {/* LEFT corner — Breathe In / Breathe Out (smaller font). */}
+          <div ref={labelRef} style={{ willChange: "transform, opacity", flexShrink: 0 }}>
             <span
               style={{
-                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 27, fontWeight: 600,
+                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 600,
                 letterSpacing: "0.04em", textShadow: "0 2px 18px rgba(8,30,18,0.6)", whiteSpace: "nowrap",
               }}
             >
               {centerLabel}
             </span>
           </div>
+          {/* RIGHT corner — Breath n of 12 (only once the count is running). */}
+          {counting && (
+            <p className="text-[13px] text-right" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, maxWidth: 160 }}>
+              {reachedNow
+                ? t("cobreathe.breath_counter_past", { current: breathNum, defaultValue: `🌿 Breath ${breathNum}` })
+                : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `Breath ${breathNum} of ${totalBreaths}` })}
+            </p>
+          )}
         </div>
-
-      </div>
-
-      {/* Bottom — the breath counter (where the Cancel button used to be). Once
-          the full set of twelve is kept, a Done pill appears beneath it to
-          finish; before then there's no button here — the breath is a committed
-          sit (the small ✕ top-right is the only way out, and backgrounding the
-          app still ends it). */}
-      <div className="flex flex-col items-start w-full" style={{ marginBottom: 24, gap: 14, paddingLeft: 28, paddingRight: 24 }}>
-        <p className="text-[13px] text-left" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, maxWidth: 280 }}>
-          {!counting
-            ? t("cobreathe.finding_rhythm", { defaultValue: "Syncing with the global breath…" })
-            : reachedNow
-              ? t("cobreathe.breath_counter_past", { current: breathNum, defaultValue: `🌿 Breath ${breathNum} — keep going as long as you like` })
-              : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `Breath ${breathNum} of ${totalBreaths}` })}
-        </p>
-        {reachedNow && (
-          <button
-            type="button"
-            onClick={() => onEnd(Math.round((Date.now() - startRef.current) / 1000), reachedRef.current)}
-            className="rounded-full active:scale-[0.98] transition-transform"
-            style={{
-              background: "rgba(46,107,64,0.85)", color: "#EAF6F4",
-              border: "1px solid rgba(140,195,160,0.5)",
-              fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600,
-              padding: "10px 34px", cursor: "pointer",
-            }}
-          >
-            {t("cobreathe.done", { defaultValue: "Done" })}
-          </button>
-        )}
       </div>
     </div>,
     document.body,
