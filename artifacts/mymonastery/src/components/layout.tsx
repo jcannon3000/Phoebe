@@ -819,48 +819,15 @@ function hasDesignedRoutine(u: { homeLayout?: unknown } | null | undefined): boo
 const ROUTINE_PROMPT_KEY = "phoebe:routine-prompt-last";
 const ROUTINE_PROMPT_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // once a week
 
-// Fetch a co-prayer's avatar and inline it as a base64 data URL, so the splash
-// face rail can paint the ACTUAL photo instantly from localStorage on a cold
-// open — not just the URL, which still costs a network round-trip per image.
-// Best-effort: any failure returns null and the <img> falls back to the live URL.
-async function fetchAvatarDataUrl(url: string): Promise<string | null> {
-  try {
-    // NATIVE: call the CapacitorHttp plugin DIRECTLY with responseType "blob".
-    // It returns the bytes already base64-encoded in `data` (with the content
-    // type in headers). This is far more reliable than the patched `fetch().blob()`,
-    // which on iOS frequently drops the binary body — which is why earlier
-    // attempts cached nothing and the faces kept loading slowly.
-    const cap = (window as unknown as {
-      Capacitor?: { Plugins?: { CapacitorHttp?: { get?: (o: { url: string; responseType: string }) => Promise<{ data?: unknown; headers?: Record<string, string> }> } } };
-    }).Capacitor;
-    const http = cap?.Plugins?.CapacitorHttp;
-    if (http?.get) {
-      const res = await http.get({ url, responseType: "blob" });
-      const data = res?.data;
-      if (typeof data !== "string" || data.length === 0) return null;
-      // `data` is raw base64 (~1.37× the byte size). Cap so we never bloat
-      // localStorage; a normal avatar is well under this.
-      if (data.length > 700 * 1024) return null;
-      const ctRaw = (res.headers?.["Content-Type"] ?? res.headers?.["content-type"] ?? "image/jpeg");
-      const type = ctRaw.split(";")[0].trim();
-      if (!type.startsWith("image/")) return null;
-      return `data:${type};base64,${data}`;
-    }
-    // WEB fallback: a normal fetch + FileReader (CORS-permitting hosts only).
-    const r = await fetch(url);
-    if (!r.ok) return null;
-    const blob = await r.blob();
-    if (!blob || blob.size === 0 || blob.size > 512 * 1024) return null;
-    if (blob.type && !blob.type.startsWith("image/")) return null;
-    return await new Promise<string | null>((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
-      reader.onerror = () => resolve(null);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return null;
-  }
+// Avatar base64 inlining is DISABLED. It stored each co-prayer's photo as a
+// base64 data URL in localStorage to paint the face rail instantly on a cold
+// open — but inlining several images bloats the entry to multiple MB, and
+// parsing/holding + rendering that on every launch pressured WKWebView memory
+// and was CRASHING the app on load. Faces now load from their URL (warmed via
+// an <Image> preload, below). A future instant-paint approach should use a
+// size-bounded native image cache, not localStorage base64.
+async function fetchAvatarDataUrl(_url: string): Promise<string | null> {
+  return null;
 }
 
 // OpeningSplash — the native app-open greeting. It's the EXACT same slide users
@@ -902,8 +869,23 @@ function OpeningSplash() {
   const [cachedFaces] = useState<CachedFaces>(() => {
     if (typeof window === "undefined") return { uid: null, people: [] };
     try {
-      const raw = JSON.parse(localStorage.getItem("phoebe:splash-faces") || "null");
-      if (raw && typeof raw.uid === "number" && Array.isArray(raw.people)) return raw as CachedFaces;
+      const rawStr = localStorage.getItem("phoebe:splash-faces");
+      if (!rawStr) return { uid: null, people: [] };
+      // A prior build inlined base64 avatar data here, which can bloat this entry
+      // to several MB — parsing/holding that on every cold launch pressured
+      // WKWebView memory and was crashing the app on load. Drop an oversized
+      // entry (URL-only faces are ~1–2KB) and never carry base64 into the DOM.
+      if (rawStr.length > 50_000) {
+        try { localStorage.removeItem("phoebe:splash-faces"); } catch { /* ignore */ }
+        return { uid: null, people: [] };
+      }
+      const raw = JSON.parse(rawStr);
+      if (raw && typeof raw.uid === "number" && Array.isArray(raw.people)) {
+        const people = raw.people.map((p: { id: number; name: string | null; avatarUrl: string | null; count?: number }) => (
+          { id: p.id, name: p.name, avatarUrl: p.avatarUrl, count: p.count }
+        ));
+        return { uid: raw.uid, people };
+      }
     } catch { /* ignore */ }
     return { uid: null, people: [] };
   });
