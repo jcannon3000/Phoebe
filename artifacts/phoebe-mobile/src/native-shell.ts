@@ -76,13 +76,13 @@ async function configureStatusBar() {
   // call guarantees the iOS-relevant ones (style + overlay) always run.
   try { await StatusBar.setStyle({ style: Style.Dark }); } catch { /* older iOS / mismatch */ }
   try { await StatusBar.setBackgroundColor({ color: "#091A10" }); } catch { /* Android-only; iOS rejects */ }
-  // Overlays ON: the WebView fills the whole screen UNDER a transparent status
-  // bar, so each screen's own background runs edge-to-edge to the top — the
-  // green splash, the black breath, the dark home — instead of leaving a
-  // separate #091A10 status-bar strip in a mismatched color at the top. The app
-  // already pads its chrome with env(safe-area-inset-top) (viewport-fit=cover)
-  // so nothing hides under the notch / Dynamic Island.
-  try { await StatusBar.setOverlaysWebView({ overlay: true }); } catch { /* older iOS / mismatch */ }
+  // Overlays OFF: the WebView sits BELOW the system status bar, whose strip is
+  // the root #091A10. This keeps the safe-area math simple and the chrome
+  // positioned correctly. (overlay:true was tried to kill the strip on the
+  // green splash, but iOS kept the WebView below the bar anyway — so it only
+  // double-counted the inset above the header WITHOUT removing the splash
+  // strip. Removing the strip needs a native WebView-frame change, not this.)
+  try { await StatusBar.setOverlaysWebView({ overlay: false }); } catch { /* older iOS / mismatch */ }
 }
 
 // ─── Splash screen ─────────────────────────────────────────────────────────

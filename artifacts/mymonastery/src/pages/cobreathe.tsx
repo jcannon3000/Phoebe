@@ -6,7 +6,8 @@ import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { writeMindfulSession } from "@/lib/appleHealth";
-import { CobreatheBreath } from "@/components/CobreatheBreath";
+import { CobreatheBreath, CYCLE_MS, DEFAULT_TOTAL_BREATHS } from "@/components/CobreatheBreath";
+import { useRhythmState } from "@/hooks/useRhythmState";
 import { COBREATHE_INTRO_SEEN_KEY } from "@/pages/cobreathe-about";
 import { useAuth } from "@/hooks/useAuth";
 import { usePeople } from "@/hooks/usePeople";
@@ -248,6 +249,11 @@ export default function CobreathePage() {
     queryKey: ["/api/breath/today", day],
     queryFn: () => apiRequest("GET", `/api/breath/today?day=${day}`),
   });
+
+  // Today's contemplation progress, for the done screen's goal line (Cobreathe
+  // logs a contemplation sit, so it counts toward the same daily goal). logSit
+  // invalidates contemplation-stats, so this reflects the breath just finished.
+  const rhythm = useRhythmState();
 
   const record = useMutation({
     mutationFn: (seconds: number) =>
@@ -652,6 +658,25 @@ export default function CobreathePage() {
               <p className="text-[12px] px-6 mb-8" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SERIF, fontStyle: "italic", maxWidth: 290 }}>
                 {t("cobreathe.done_charge", { defaultValue: "Now let the conspiring continue — breathing together is how working together begins." })}
               </p>
+
+              {/* Breaths held + today's contemplation goal — the "how far did I
+                  get" payoff, mirroring the Contemplation closing summary. */}
+              {(() => {
+                const perBreathSec = CYCLE_MS / 1000;
+                const breaths = Math.max(DEFAULT_TOTAL_BREATHS, Math.floor((record.variables ?? DEFAULT_TOTAL_BREATHS * perBreathSec) / perBreathSec));
+                return (
+                  <div className="flex flex-col items-center gap-1 mb-8">
+                    <p className="text-[17px]" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontWeight: 600 }}>
+                      {t("cobreathe.done_breaths", { count: breaths, defaultValue: `${breaths} ${breaths === 1 ? "breath" : "breaths"} held` })}
+                    </p>
+                    {rhythm.contemplationGoalMin > 0 && (
+                      <p className="text-[13px]" style={{ color: "rgba(143,175,150,0.75)", fontFamily: SERIF, fontStyle: "italic" }}>
+                        {t("cobreathe.done_goal", { current: rhythm.contemplationMin, goal: rhythm.contemplationGoalMin, defaultValue: `${rhythm.contemplationMin} of ${rhythm.contemplationGoalMin} min today` })}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* "With you" face block — eyebrow + overlapping faces + names,
                   matching the Contemplation summary's companions block. */}

@@ -820,20 +820,34 @@ const ROUTINE_PROMPT_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // once a week
 // Fetch a co-prayer's avatar and inline it as a base64 data URL, so the splash
 // face rail can paint the ACTUAL photo instantly from localStorage on a cold
 // open — not just the URL, which still costs a network round-trip per image.
-// CapacitorHttp (enabled natively) routes this cross-origin fetch through native
-// HTTP, bypassing CORS. Best-effort: any failure (non-image, oversized, network)
-// returns null and the <img> simply falls back to the live URL.
+// Best-effort: any failure returns null and the <img> falls back to the live URL.
 async function fetchAvatarDataUrl(url: string): Promise<string | null> {
   try {
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    // Validate the IMAGE via the Blob's own MIME type, NOT the response headers.
-    // CapacitorHttp's patched fetch (native) frequently returns a Response with
-    // no content-type header, so the old `res.headers.get("content-type")` check
-    // made EVERY avatar fail → nothing ever cached → the faces kept lagging.
-    // Only reject when the blob EXPLICITLY reports a non-image type. Avatars are
-    // tiny; cap at 512KB so we never bloat localStorage.
+    // NATIVE: call the CapacitorHttp plugin DIRECTLY with responseType "blob".
+    // It returns the bytes already base64-encoded in `data` (with the content
+    // type in headers). This is far more reliable than the patched `fetch().blob()`,
+    // which on iOS frequently drops the binary body — which is why earlier
+    // attempts cached nothing and the faces kept loading slowly.
+    const cap = (window as unknown as {
+      Capacitor?: { Plugins?: { CapacitorHttp?: { get?: (o: { url: string; responseType: string }) => Promise<{ data?: unknown; headers?: Record<string, string> }> } } };
+    }).Capacitor;
+    const http = cap?.Plugins?.CapacitorHttp;
+    if (http?.get) {
+      const res = await http.get({ url, responseType: "blob" });
+      const data = res?.data;
+      if (typeof data !== "string" || data.length === 0) return null;
+      // `data` is raw base64 (~1.37× the byte size). Cap so we never bloat
+      // localStorage; a normal avatar is well under this.
+      if (data.length > 700 * 1024) return null;
+      const ctRaw = (res.headers?.["Content-Type"] ?? res.headers?.["content-type"] ?? "image/jpeg");
+      const type = ctRaw.split(";")[0].trim();
+      if (!type.startsWith("image/")) return null;
+      return `data:${type};base64,${data}`;
+    }
+    // WEB fallback: a normal fetch + FileReader (CORS-permitting hosts only).
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const blob = await r.blob();
     if (!blob || blob.size === 0 || blob.size > 512 * 1024) return null;
     if (blob.type && !blob.type.startsWith("image/")) return null;
     return await new Promise<string | null>((resolve) => {
@@ -1285,13 +1299,15 @@ export function Layout({ children }: { children: ReactNode }) {
         className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pb-2 md:pb-5 flex justify-between items-center"
         style={{
           background: "#091A10",
-          // The status bar now OVERLAYS the WebView (setOverlaysWebView(true)),
-          // so on BOTH native and web the WebView runs UNDER the notch / status
-          // bar and the header must inset for it with env(safe-area-inset-top).
-          // (Previously native used a fixed 1.25rem because overlay was OFF and
-          // the WebView already sat below the bar — that left the mismatched
-          // dark strip the overlay switch removes.)
-          paddingTop: "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))",
+          // Native shell: the WebView sits BELOW the system status bar
+          // (setOverlaysWebView(false)), so its strip is accounted for natively
+          // and the WebView itself must NOT inset for it — adding
+          // env(safe-area-inset-top) here double-counts on Dynamic Island
+          // phones and leaves a big gap above the wordmark. Web (PWA under the
+          // translucent status bar) keeps the safe-area math.
+          paddingTop: isNativeShell()
+            ? "1.25rem"
+            : "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))",
         }}
       >
         <div className="flex items-center gap-6">
