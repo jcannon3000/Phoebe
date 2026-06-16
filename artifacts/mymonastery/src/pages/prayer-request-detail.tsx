@@ -326,6 +326,10 @@ export default function PrayerRequestDetailPage() {
   // naturally. Either way a fixed X in the top-right always provides
   // a no-fail exit.
   const SLIDE_BG = "#0C1F12";
+  // A soft green glow rising from the upper-centre into a deep, dark base — a
+  // calm gradient backdrop for the request (passed to AnimatedBackground as its
+  // fill, so the drifting blobs layer gently over it).
+  const SLIDE_GRADIENT = "radial-gradient(130% 95% at 50% 24%, #1C4029 0%, #0C1F12 52%, #06120C 100%)";
   const isOwnerView = data?.viewerIsOwner === true;
 
   return (
@@ -341,7 +345,7 @@ export default function PrayerRequestDetailPage() {
         justifyContent: "center",
       }}
     >
-      <AnimatedBackground base={SLIDE_BG} variant="pronounced" />
+      <AnimatedBackground base={SLIDE_GRADIENT} variant="subtle" />
       {/* Always-visible close + share — fixed position so they never
           scroll off, and high enough above any iOS notch / safe area
           that the user can always reach them. Share sits to the left
@@ -397,12 +401,13 @@ export default function PrayerRequestDetailPage() {
           maxWidth: 560,
           margin: "0 auto",
           minHeight: "100dvh",
-          // Vertically centered (a single slide-shaped column). The minHeight
-          // grows with content, so centering never clips a long owner view —
-          // it just scrolls.
+          // Truly vertically centered (a single slide-shaped column) with
+          // SYMMETRIC top/bottom padding so the content sits at the real centre
+          // rather than skewed low. The minHeight grows with content, so a long
+          // owner view never clips — it just scrolls.
           justifyContent: "center",
-          paddingTop: "clamp(64px, 14dvh, 140px)",
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 56px)",
+          paddingTop: "calc(var(--safe-top, 0px) + 24px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)",
         }}
       >
         {isLoading && (

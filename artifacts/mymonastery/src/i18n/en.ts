@@ -3684,7 +3684,7 @@ export const en = {
     shared_silence_sub: "A few minutes of shared silence. Everyone holds the same goal.",
     together_min_met: "Together: {{total}} min today · {{met}} of {{members}} sat their {{goal}}",
     together_min: "Together: {{total}} min today",
-    sit_again: "Sit again →",
+    sit_again: "Continue",
     sit_in_contemplation: "Sit in contemplation →",
     reflect_together: "Reflect together",
     // Sunday reflection entry card.

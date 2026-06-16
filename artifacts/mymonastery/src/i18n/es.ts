@@ -3599,7 +3599,7 @@ export const es: Translations = {
     shared_silence_sub: "Unos minutos de silencio compartido. Todos sostienen la misma meta.",
     together_min_met: "Juntos: {{total}} min hoy · {{met}} de {{members}} meditaron sus {{goal}}",
     together_min: "Juntos: {{total}} min hoy",
-    sit_again: "Medita de nuevo →",
+    sit_again: "Continuar",
     sit_in_contemplation: "Medita en contemplación →",
     reflect_together: "Reflexionen juntos",
     // Sunday reflection entry card.

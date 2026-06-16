@@ -630,7 +630,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // Gap above Done: when Next still has cards, a smaller gap reads right; when
   // the hero (or nothing) is the only thing in Next it needs more breathing room.
   const doneGapCls = !(upcomingDisplay.length > 0 || officeHero) ? ""
-    : upcomingDisplay.length > 0 ? "mt-4" : "mt-20";
+    : upcomingDisplay.length > 0 ? "mt-4" : "mt-8";
 
   return (
     <div>

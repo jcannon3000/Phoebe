@@ -253,37 +253,48 @@ interface CircleIntention {
 // composer without reimplementing the public/private toggle, the
 // ×-clear button, and the friendly error mapping.
 
-// 4-second pause-before-Amen. When a slide first appears the button
+// 3-second pause-before-Amen. When a slide first appears the button
 // shows a dim green pill with a left-to-right progress wash and no
-// label. After 4 seconds the wash hits 100%, the button brightens,
+// label. After 3 seconds the wash hits 100%, the button brightens,
 // "Amen →" fades up, and a soft "light" haptic fires — distinct from
 // the medium-impact haptic that triggers on the tap itself, so the
 // reveal and the press feel like two different events.
 //
 // Why: tappers were ripping through the slideshow in a few seconds
-// without actually pausing on each prayer. The forced wait turns
-// each slide into a real moment of attention. Landed on 4s after
-// 7s tested too long (users hovered, waiting on a button that felt
-// stuck) and 3s too short (eyes finished reading and the hand was
-// already on the button). The CSS keyframe duration in index.css
-// is kept in sync — if one changes, change the other.
+// without actually pausing on each prayer. The forced wait turns each
+// slide into a real moment of attention. The CSS keyframe duration in
+// index.css (.amen-progress-fill) is kept in sync with AMEN_HOLD_MS —
+// if one changes, change the other.
 //
-// Accepts a `slideKey` prop so the parent can force a remount-style
-// reset when the slide changes (we use the slide index).
+// The component is KEYED by slideKey at the call site, so it remounts on
+// every slide; the mount-effect timer below therefore resets cleanly each
+// slide. (This is what avoids the old "first one works, then no others"
+// bug — `ready` is always fresh-false on a new slide and reliably flips
+// true after the hold, so taps register on every slide once the wait ends.)
+const AMEN_HOLD_MS = 3000;
 function AmenButton({ slideKey, onAdvance }: {
   slideKey: string | number;
   onAdvance: () => void;
 }) {
-  // The Amen button is tappable IMMEDIATELY — tap it to pray for this person and
-  // it checks them off on the home like a reminder, then advances. (Previously
-  // the button sat disabled for a 4-SECOND pause before it accepted a tap, so a
-  // quick tap did nothing and the prayer never recorded — the "first one works,
-  // then no others" bug. The reflective pause is gone per user direction.)
-  const [ready] = useState(true);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setReady(true);
+      // Soft "light" haptic marks the reveal — a different feel from the
+      // medium impact on the tap itself.
+      try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } })); } catch { /* non-fatal */ }
+    }, AMEN_HOLD_MS);
+    return () => window.clearTimeout(t);
+  }, []);
 
   return (
     <button
-      onClick={() => onAdvance()}
+      onClick={() => {
+        if (!ready) return;
+        try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "medium" } })); } catch { /* non-fatal */ }
+        onAdvance();
+      }}
+      disabled={!ready}
       aria-label="Amen"
       className="mt-2 px-8 py-3 rounded-full text-sm font-medium tracking-wide active:scale-[0.98] relative overflow-hidden"
       style={{
