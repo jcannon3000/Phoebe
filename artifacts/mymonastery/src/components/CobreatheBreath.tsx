@@ -636,8 +636,8 @@ export function CobreatheBreath({
           finish; before then there's no button here — the breath is a committed
           sit (the small ✕ top-right is the only way out, and backgrounding the
           app still ends it). */}
-      <div className="flex flex-col items-center" style={{ marginBottom: 24, gap: 14 }}>
-        <p className="text-[13px] text-center" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, maxWidth: 260 }}>
+      <div className="flex flex-col items-start w-full" style={{ marginBottom: 24, gap: 14, paddingLeft: 28, paddingRight: 24 }}>
+        <p className="text-[13px] text-left" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, maxWidth: 280 }}>
           {!counting
             ? t("cobreathe.finding_rhythm", { defaultValue: "Syncing with the global breath…" })
             : reachedNow
