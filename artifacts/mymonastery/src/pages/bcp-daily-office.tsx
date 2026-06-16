@@ -1226,7 +1226,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             alignItems: "center",
             gap: 12,
             pointerEvents: "auto",
-            paddingTop: "max(1.5rem, calc(var(--safe-top) + 0.5rem))",
+            paddingTop: "max(1.5rem, var(--safe-top))",
           }}
         >
           <button
@@ -1270,7 +1270,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           WebkitOverflowScrolling: "touch",
           paddingTop: isTitleCard
             ? "max(24px, var(--safe-top))"
-            : "max(72px, calc(var(--safe-top) + 60px))",
+            : "max(72px, calc(var(--safe-top) + 42px))",
           paddingBottom: player.current
             ? "calc(env(safe-area-inset-bottom) + 176px)"
             : "calc(env(safe-area-inset-bottom) + 112px)",
@@ -3146,7 +3146,7 @@ function PhysicalBookGuide(props: {
             alignItems: "center",
             gap: 12,
             pointerEvents: "auto",
-            paddingTop: "max(1.5rem, calc(var(--safe-top) + 0.5rem))",
+            paddingTop: "max(1.5rem, var(--safe-top))",
           }}
         >
           <button
@@ -3181,7 +3181,7 @@ function PhysicalBookGuide(props: {
           overflowY: "auto",
           overscrollBehavior: "contain",
           WebkitOverflowScrolling: "touch",
-          paddingTop: "max(76px, calc(var(--safe-top) + 64px))",
+          paddingTop: "max(76px, calc(var(--safe-top) + 42px))",
           paddingBottom: playerDocked
             ? "calc(env(safe-area-inset-bottom) + 176px)"
             : "calc(env(safe-area-inset-bottom) + 64px)",

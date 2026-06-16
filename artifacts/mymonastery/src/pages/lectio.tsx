@@ -537,7 +537,7 @@ export default function LectioPage() {
             alignItems: "center",
             gap: 12,
             pointerEvents: "auto",
-            paddingTop: "max(1.5rem, calc(var(--safe-top) + 0.5rem))",
+            paddingTop: "max(1.5rem, var(--safe-top))",
           }}
         >
           <Link href="/dashboard">
@@ -617,7 +617,7 @@ export default function LectioPage() {
           // under the bar by ~28px (the user reported it as "too high
           // on web"). At the same time `safe+56` gave too much breathing
           // on iOS. The fix is a max() that clears the bar on both.
-          paddingTop: "max(72px, calc(var(--safe-top) + 52px))",
+          paddingTop: "max(72px, calc(var(--safe-top) + 42px))",
           // Bottom nav is position:fixed with safe-area-bottom + 16 + ~50
           // pill height. Pad enough to clear it plus keyboard inset when
           // the textarea is focused.
