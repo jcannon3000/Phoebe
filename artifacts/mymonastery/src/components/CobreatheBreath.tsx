@@ -38,8 +38,9 @@ export const CYCLE_MS = INHALE_MS + EXHALE_MS;
 export const DEFAULT_TOTAL_BREATHS = 12;
 
 // Glow scale endpoints (relative to its base): collapsed at full exhale,
-// expanded at full inhale.
-const SMALL = 0.82;
+// expanded at full inhale. SMALL trimmed ~5% so the exhale settles a touch
+// smaller.
+const SMALL = 0.78;
 const BIG = 1.42;
 
 type Phase = "in" | "out";
@@ -652,20 +653,40 @@ export function CobreatheBreath({
         ✕
       </button>
 
-      {/* Title + participation + intention — top */}
-      <div className="flex flex-col items-center" style={{ position: "relative", maxWidth: 460 }}>
-        <p className="inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "rgba(182,210,188,0.55)", fontFamily: SPACE_GROTESK }}>
+      {/* While SYNCING (before the session joins the global breath), a quote
+          rests in the vertical middle of the screen — left-aligned, in Space
+          Grotesk. It fades out once the breath goes live. */}
+      {!counting && (
+        <div
+          style={{
+            position: "absolute", left: 28, right: 32, top: "50%",
+            transform: "translateY(-50%)", zIndex: 2, pointerEvents: "none", maxWidth: 560,
+          }}
+        >
+          <p style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: "clamp(15px, 4.4vw, 18px)", lineHeight: 1.5, textAlign: "left", textShadow: "0 2px 18px rgba(8,30,18,0.6)" }}>
+            {t("cobreathe.sync_quote", { defaultValue: "By paying attention, especially to the beauty of the world and to the suffering of others, we open the possibility for God to reach us, beginning the process of change whereby we allow ourselves to be decreated from egotists to lovers of God by loving the neighbor as ourselves." })}
+          </p>
+          <p style={{ color: "rgba(182,210,188,0.62)", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, letterSpacing: "0.06em", marginTop: 16, textAlign: "left" }}>
+            {t("cobreathe.sync_quote_author", { defaultValue: "Sallie McFague" })}
+          </p>
+        </div>
+      )}
+
+      {/* Title + Synced + participation — top, LEFT-ALIGNED to the "Breathe In"
+          text below (same 28px left inset). */}
+      <div className="flex flex-col items-start" style={{ position: "relative", alignSelf: "flex-start", marginLeft: 28 }}>
+        <p className="text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "rgba(182,210,188,0.55)", fontFamily: SPACE_GROTESK }}>
           🌬️ {t("cobreathe.title", { defaultValue: "Cobreathe" })}
-          {/* Live indicator — appears the moment the session joins the global
-              breath (counting), a small pulsing red dot + LIVE, like a live
-              broadcast badge. */}
-          {counting && (
-            <span className="inline-flex items-center gap-1">
-              <span className="rounded-full animate-pulse" style={{ width: 7, height: 7, background: "#E5484D", boxShadow: "0 0 6px rgba(229,72,77,0.8)" }} />
-              <span style={{ color: "#E58A8D", letterSpacing: "0.16em" }}>{t("cobreathe.synced", { defaultValue: "Synced" })}</span>
-            </span>
-          )}
         </p>
+        {/* Live indicator — pulsing red dot + "Synced", on its OWN line UNDER the
+            title (left-aligned to it). Appears once the session joins the global
+            breath (counting). */}
+        {counting && (
+          <span className="inline-flex items-center gap-1 mt-1 text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ fontFamily: SPACE_GROTESK }}>
+            <span className="rounded-full animate-pulse" style={{ width: 7, height: 7, background: "#E5484D", boxShadow: "0 0 6px rgba(229,72,77,0.8)" }} />
+            <span style={{ color: "#E58A8D", letterSpacing: "0.16em" }}>{t("cobreathe.synced", { defaultValue: "Synced" })}</span>
+          </span>
+        )}
         {/* The social "N breathed today" count is a distraction DURING the
             breath — keep the practice screen undistracted and let the count
             live on the idle/summary states only (not while counting). */}
@@ -683,7 +704,7 @@ export function CobreatheBreath({
           breath's vertical centre. */}
       <div
         style={{
-          position: "absolute", left: 40, right: 40, top: BREATH_Y,
+          position: "absolute", left: 28, right: 40, top: BREATH_Y,
           transform: "translateY(calc(-50% + 70px))",
           display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 2,
         }}
@@ -704,14 +725,15 @@ export function CobreatheBreath({
           </div>
         </div>
 
-        {/* Right — globe + progress rings, concentric in a fixed cell. Sized
-            158 (132 +20%), anchored to the right edge by the row's space-between
-            then nudged 12px further LEFT (8px right of the old 20px). The
-            viewBox stays 128 so the rings render scaled up to the larger cell. */}
-        <div style={{ position: "relative", width: 158, height: 158, flexShrink: 0, transform: "translateX(-12px)" }}>
+        {/* Right — globe + progress rings, concentric in a fixed cell. Sized 132
+            (the rings wrap the globe tightly; the earlier +20% made them read too
+            big around the unchanged globe). Anchored to the right edge by the
+            row's space-between, then nudged 12px further LEFT. viewBox stays 128
+            so the rings render scaled to the cell. */}
+        <div style={{ position: "relative", width: 132, height: 132, flexShrink: 0, transform: "translateX(-12px)" }}>
           <svg
             aria-hidden="true"
-            width={158} height={158} viewBox="0 0 128 128"
+            width={132} height={132} viewBox="0 0 128 128"
             style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none", filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))" }}
           >
             <circle cx={64} cy={64} r={RING_R} fill="none" stroke="rgba(143,175,150,0.14)" strokeWidth={4} />
