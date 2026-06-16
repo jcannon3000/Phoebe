@@ -28,15 +28,21 @@ html.platform-ios body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Safe area padding for the root container. mymonastery already uses
-   fixed padding in a few places; these rules only take effect on the
-   native platform class and layer on top. */
+/* Safe-area padding for the root container.
+   NO top inset here. The WebView is edge-to-edge (StatusBar overlay:true),
+   so env(safe-area-inset-top) resolves to the FULL Dynamic-Island inset
+   (~59px). EVERY top surface already pads itself for the notch — the app
+   header via var(--top-chrome), and the office/lectio/cobreathe/modal
+   headers via var(--safe-top). Adding padding-top here too DOUBLE-COUNTED
+   it (body 59px + header padding), which is the long-standing "too much
+   space above Phoebe" gap. (It was harmless in Capacitor 6 because
+   overlay:false put the WebView below the bar, so env() was 0.) Left/right
+   stay (landscape notch; surfaces don't self-pad those) and bottom stays
+   (home-indicator clearance for simple pages); keyboard inset is applied
+   per-input. */
 html.platform-ios body {
-  padding-top: env(safe-area-inset-top);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
-  /* The bottom inset handles the home-indicator line; keyboard inset is
-     applied per-input instead so only the focused field is padded. */
   padding-bottom: env(safe-area-inset-bottom);
   box-sizing: border-box;
 }
