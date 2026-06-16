@@ -35,6 +35,7 @@ export function CobreatheOverlay({
   open,
   onClose,
   onSummary,
+  immediateClose = false,
 }: {
   open: boolean;
   // result.completed is true when the breath ran to the end (vs. backing out).
@@ -44,6 +45,12 @@ export function CobreatheOverlay({
   // slide is already loaded behind the opaque overlay and the close is a smooth
   // fade onto a ready slide rather than a hard cut.
   onSummary?: () => void;
+  // When the host's "Continue" hand-off is a route change (seamless office
+  // flow → setLocation), there's nothing behind this overlay to fade ONTO —
+  // the whole view (this overlay included) unmounts. A fade-then-close would
+  // briefly reveal the slide underneath; close instantly instead so the host
+  // can navigate straight from the summary. Default keeps the smooth fade.
+  immediateClose?: boolean;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -202,7 +209,7 @@ export function CobreatheOverlay({
         </p>
         <button
           type="button"
-          onClick={() => setClosing(true)}
+          onClick={() => { if (immediateClose) onClose({ completed: true }); else setClosing(true); }}
           disabled={closing}
           className="rounded-xl py-3 px-8 active:scale-[0.98] transition-transform"
           style={{

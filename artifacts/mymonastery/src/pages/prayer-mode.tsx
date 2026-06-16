@@ -4013,14 +4013,26 @@ export default function PrayerModePage() {
 
       {/* Cobreathe — full-screen overlay launched from the pause slide,
           beside the contemplation timer. A finished breath advances the
-          slideshow like a completed sit. */}
+          slideshow like a completed sit.
+
+          The pause slide is the LAST slide, so advancing always hits the
+          end-of-deck branch. Two shapes:
+            • In-app close (setPhase("closing")) — the view stays mounted, so
+              we pre-advance behind the opaque summary on onSummary and let
+              Continue fade onto the ready closing slide (the original design).
+            • Seamless office hand-off (setLocation → the office's closing) —
+              a ROUTE CHANGE that unmounts this view AND the summary with it.
+              Running it on onSummary made the summary flash and vanish into
+              the office's last screen. Defer it to Continue, and close
+              instantly so we navigate straight from the stable summary. */}
       <CobreatheOverlay
         open={cobreatheOpen}
-        // The breath finished → its summary is up. Advance the slideshow NOW,
-        // behind the opaque overlay, so the next office slide is loaded and
-        // ready; the overlay then fades onto it (smooth hand-off, no hard cut).
-        onSummary={() => advance()}
-        onClose={() => setCobreatheOpen(false)}
+        onSummary={seamlessFlow ? undefined : () => advance()}
+        immediateClose={seamlessFlow}
+        onClose={() => {
+          setCobreatheOpen(false);
+          if (seamlessFlow) advance();
+        }}
       />
     </div>
   );
