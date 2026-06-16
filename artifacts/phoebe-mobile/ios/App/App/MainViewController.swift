@@ -36,6 +36,18 @@ class MainViewController: CAPBridgeViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         webView?.frame = view.bounds
+        // Edge-to-edge: the WebView spans the full screen and the WEB side adds
+        // the safe-area inset via env(safe-area-inset-top). If the scroll view
+        // ALSO inset for the safe area we'd double-count it (the "too much room
+        // above the header" gap), so force every inset to zero — .never alone
+        // didn't reliably stop it on this Cap 8 build.
         webView?.scrollView.contentInsetAdjustmentBehavior = .never
+        webView?.scrollView.contentInset = .zero
+        webView?.scrollView.verticalScrollIndicatorInsets = .zero
+        if #available(iOS 11.0, *) {
+            // No extra safe-area on top of the system's — the web reads
+            // env(safe-area-inset-*) directly and pads itself.
+            additionalSafeAreaInsets = .zero
+        }
     }
 }
