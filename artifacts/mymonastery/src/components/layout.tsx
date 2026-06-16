@@ -887,9 +887,24 @@ function OpeningSplash() {
     } catch { return 0; }
   });
   const splashVariant = splashOpenN % 3;     // 0 = faces, 1 = What's next, 2 = quote
+  // The "What's next" card — Morning → (before 5pm) Contemplation → (5pm onward)
+  // Evening. Null when the current step is already done (the day is kept) or the
+  // rhythm hasn't resolved yet.
+  const hour = new Date().getHours();
+  const nextKind: "morning" | "contemplation" | "evening" | null = !rhythm.ready
+    ? null
+    : !rhythm.morningDone
+      ? "morning"
+      : hour < 17
+        ? (!rhythm.silenceDone ? "contemplation" : null)
+        : (!rhythm.eveningDone ? "evening" : null);
   const showFaces = splashVariant === 0;
-  const showNext = splashVariant === 1;
-  const showQuote = splashVariant === 2;
+  // If the "What's next" slot has no card to show, skip it in the rotation and
+  // let the quote take this open — never dwell on a bare greeting. Gated on
+  // rhythm.ready so a card that's still loading isn't prematurely swapped for
+  // the quote (which would flicker quote → card once the rhythm lands).
+  const showNext = splashVariant === 1 && rhythm.ready && nextKind !== null;
+  const showQuote = splashVariant === 2 || (splashVariant === 1 && rhythm.ready && nextKind === null);
   // The quote advances each time the quote slide comes up (every third open).
   const quote = SPLASH_QUOTES[Math.floor(splashOpenN / 3) % SPLASH_QUOTES.length]!;
   useEffect(() => {
@@ -1001,7 +1016,6 @@ function OpeningSplash() {
   // Web (or logged out) → no splash at all.
   if (!native || !user || phase === "gone") return null;
 
-  const hour = new Date().getHours();
   const greeting = hour < 12
     ? t("splash.morning", { defaultValue: "Good morning" })
     : hour < 17
@@ -1009,18 +1023,8 @@ function OpeningSplash() {
       : t("splash.evening", { defaultValue: "Good evening" });
   const firstName = (user.name ?? "").trim().split(/\s+/)[0] || "";
 
-  // The "What's next" card under the faces, mirroring the home. Order through
-  // the day: Morning → (before 5pm) Contemplation → (5pm onward) Evening.
-  // Evening is NOT offered until 5pm; before then it's Contemplation, and once
-  // that's done there's nothing more to nudge until evening. Null when the
-  // current step is already done (the day is kept).
-  const nextKind: "morning" | "contemplation" | "evening" | null = !rhythm.ready
-    ? null
-    : !rhythm.morningDone
-      ? "morning"
-      : hour < 17
-        ? (!rhythm.silenceDone ? "contemplation" : null)
-        : (!rhythm.eveningDone ? "evening" : null);
+  // nextKind (and the hour it needs) is computed above, before the variant
+  // selection, so the "What's next" slot can be skipped when there's no card.
   const nextEmoji = nextKind === "morning" ? "🌅" : nextKind === "evening" ? "🌙" : "🕯️";
   const nextTitle = !nextKind ? ""
     : nextKind === "contemplation" ? t("rhythm.card_contemplation", { defaultValue: "Contemplation" })
