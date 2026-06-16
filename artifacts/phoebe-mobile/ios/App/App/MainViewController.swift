@@ -23,10 +23,6 @@ import Capacitor
 class MainViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(MindfulHealthPlugin())
-        // Registered explicitly for the same dead-strip reason as MindfulHealth:
-        // nothing in Swift references CobreatheMusicPlugin, so the linker can
-        // drop it and it won't appear in window.Capacitor.Plugins otherwise.
-        bridge?.registerPluginInstance(CobreatheMusicPlugin())
     }
 
     // Edge-to-edge: render the WebView UNDER a transparent status bar
