@@ -752,6 +752,9 @@ function DailyProgressPill() {
     ...(examenActive ? [examenDone] : []),
     ...(stepsActive ? [stepsDone] : []),
   ];
+  // Every practice for the day kept → the dots gently pulse COLOR (not size) as
+  // a quiet "you held the whole day" cue. A staggered wave across the dots.
+  const allDone = dots.length > 0 && dots.every(Boolean);
   return (
     <Link
       href="/daily-progress"
@@ -770,6 +773,7 @@ function DailyProgressPill() {
         {dots.map((done, i) => (
           <span
             key={i}
+            className={allDone ? "dp-dot-pulse" : undefined}
             style={{
               width: 6,
               height: 6,
@@ -777,6 +781,7 @@ function DailyProgressPill() {
               display: "inline-block",
               background: done ? "rgba(110,180,130,0.95)" : "transparent",
               border: done ? "none" : "1px solid rgba(143,175,150,0.5)",
+              animationDelay: allDone ? `${(i * 0.12).toFixed(2)}s` : undefined,
             }}
           />
         ))}
@@ -886,6 +891,10 @@ function OpeningSplash() {
       return n;
     } catch { return 0; }
   });
+  // Brief settle so a still-loading What's-next card wins over the quote
+  // fallback — without it the quote can flash in then get replaced by the card.
+  const [splashSettled, setSplashSettled] = useState(false);
+  useEffect(() => { const id = setTimeout(() => setSplashSettled(true), 650); return () => clearTimeout(id); }, []);
   const splashVariant = splashOpenN % 3;     // 0 = faces, 1 = What's next, 2 = quote
   // The "What's next" card — Morning → (before 5pm) Contemplation → (5pm onward)
   // Evening. Null when the current step is already done (the day is kept) or the
@@ -904,7 +913,7 @@ function OpeningSplash() {
   // rhythm.ready so a card that's still loading isn't prematurely swapped for
   // the quote (which would flicker quote → card once the rhythm lands).
   const showNext = splashVariant === 1 && rhythm.ready && nextKind !== null;
-  const showQuote = splashVariant === 2 || (splashVariant === 1 && rhythm.ready && nextKind === null);
+  const showQuote = splashVariant === 2 || (splashVariant === 1 && rhythm.ready && nextKind === null && splashSettled);
   // The quote advances each time the quote slide comes up (every third open).
   const quote = SPLASH_QUOTES[Math.floor(splashOpenN / 3) % SPLASH_QUOTES.length]!;
   useEffect(() => {
@@ -1088,12 +1097,16 @@ function OpeningSplash() {
         </motion.div>
       ) : (
       <>
-      <p
-        className="text-center px-8 mb-8 relative"
-        style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}
-      >
-        {firstName ? `${greeting}, ${firstName}` : greeting}
-      </p>
+      {/* Greeting — on the faces + What's-next variants. The quote stands on
+          its own (no "Good evening" over it). */}
+      {!showQuote && (
+        <p
+          className="text-center px-8 mb-8 relative"
+          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}
+        >
+          {firstName ? `${greeting}, ${firstName}` : greeting}
+        </p>
+      )}
       {showFaces && (() => {
         // Prefer the live set; fall back to last session's cached faces so the
         // rail paints instantly on a cold open (no network wait) — but ONLY when

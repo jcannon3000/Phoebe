@@ -326,7 +326,7 @@ function PracticeCard({
                 the compact cards. */}
             <div className="flex-shrink-0">{heroCta}</div>
           </div>
-          {progress && progress.goal > 0 && (
+          {progress && progress.goal > 0 && !done && (
             <div className="mt-3.5 rounded-full overflow-hidden" style={{ height: 5, background: "rgba(143,175,150,0.16)" }}>
               <div
                 className="h-full rounded-full"

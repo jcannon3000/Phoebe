@@ -180,6 +180,19 @@
   animation: card-breathe 5s ease-in-out infinite;
 }
 
+/* Daily-progress dots: a gentle COLOR pulse (no scale) when every practice for
+   the day is kept. The implicit 0%/100% keyframes use each dot's own resting
+   green (set inline), so it eases up to a brighter mint and back. */
+@keyframes dp-dot-pulse {
+  50% { background-color: rgba(176, 230, 150, 1); }
+}
+.dp-dot-pulse {
+  animation: dp-dot-pulse 1.7s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dp-dot-pulse { animation: none; }
+}
+
 /* ── Global input styling ────────────────────────────────────────── */
 input[type="text"],
 input[type="email"],
