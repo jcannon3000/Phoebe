@@ -14,8 +14,6 @@ import { usePeople } from "@/hooks/usePeople";
 import { useCobreatheSync } from "@/hooks/useCobreatheSync";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { computeFingerprint } from "@/lib/cobreatheOrder";
-import { isNativeShell } from "@/lib/isNativeShell";
-import { getCoarseLocation, type Coords } from "@/lib/cobreatheLocation";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
 // (hashed + optimized by Vite) and rotated through during the breath, one photo
@@ -32,18 +30,6 @@ const COBREATHE_PHOTOS = Object.values(
 // Fingerprint of the bundled photo set — two clients only sync if it matches,
 // so a build/version drift (different photos) safely falls back to solo order.
 const COBREATHE_FINGERPRINT = computeFingerprint(COBREATHE_PHOTOS);
-
-// Opt-in flag for Apple Music during the breath. `phoebe:persist:` prefix →
-// mirrored to Capacitor Preferences by the native shell (survives cache purges).
-const MUSIC_PREF_KEY = "phoebe:persist:cobreatheMusicEnabled";
-
-// ── Location / "your churches" (Phase 1 foundation) ──────────────────────────
-// Opt-in coarse location so the breath can be anchored to a nearby church.
-// Master gate: keep OFF until the church list + counts ship (Phase 2, needs the
-// Google Places key) so we never prompt for location with nothing to show. Flip
-// to true to preview the toggle + capture end-to-end.
-const COBREATHE_LOCATION_ENABLED = false;
-const LOCATION_PREF_KEY = "phoebe:persist:cobreatheLocationEnabled";
 
 // True once the user has been through the intro slideshow at least once.
 function introSeen(): boolean {
@@ -192,56 +178,6 @@ export default function CobreathePage() {
     active: mode === "breathing",
   });
 
-  // Opt-in: play a curated Apple Music playlist while breathing (native only).
-  // Persisted under the `phoebe:persist:` prefix so it mirrors to Capacitor
-  // Preferences and survives WebView cache purges. Playback / auth / subscriber
-  // gating all live in native-shell's wireCobreatheMusic.
-  const [musicEnabled, setMusicEnabled] = useState<boolean>(() => {
-    try { return localStorage.getItem(MUSIC_PREF_KEY) === "1"; } catch { return false; }
-  });
-  const toggleMusic = useCallback(() => {
-    setMusicEnabled((on) => {
-      const next = !on;
-      try { localStorage.setItem(MUSIC_PREF_KEY, next ? "1" : "0"); } catch { /* ignore */ }
-      return next;
-    });
-  }, []);
-  // Start the playlist when the breath begins (if enabled); stop on every exit
-  // (mode change, Finish/Cancel, or unmount via the effect cleanup).
-  useEffect(() => {
-    if (mode !== "breathing" || !musicEnabled) return;
-    window.dispatchEvent(new CustomEvent("phoebe:cobreathe-music-start"));
-    return () => { window.dispatchEvent(new CustomEvent("phoebe:cobreathe-music-stop")); };
-  }, [mode, musicEnabled]);
-
-  // Opt-in: anchor the breath to a nearby church via a coarse (~1mi) location.
-  // Gated behind COBREATHE_LOCATION_ENABLED until the church list ships, and only
-  // on native. The captured fix is attached to the recorded breath (lat/lng now;
-  // the church place_id comes in Phase 2). Persisted like the music toggle.
-  const locationFeature = COBREATHE_LOCATION_ENABLED && isNativeShell();
-  const [locationEnabled, setLocationEnabled] = useState<boolean>(() => {
-    try { return localStorage.getItem(LOCATION_PREF_KEY) === "1"; } catch { return false; }
-  });
-  const toggleLocation = useCallback(() => {
-    setLocationEnabled((on) => {
-      const next = !on;
-      try { localStorage.setItem(LOCATION_PREF_KEY, next ? "1" : "0"); } catch { /* ignore */ }
-      // Turning it on: ask for the OS permission right away (explicit opt-in).
-      if (next) void getCoarseLocation(true).then((c) => { breathLocationRef.current = c; });
-      else breathLocationRef.current = null;
-      return next;
-    });
-  }, []);
-  // The fix captured for the current session, attached to the breath record.
-  const breathLocationRef = useRef<Coords | null>(null);
-  // Capture once when the breath begins (if opted in).
-  useEffect(() => {
-    if (mode !== "breathing" || !locationFeature || !locationEnabled) return;
-    let cancelled = false;
-    void getCoarseLocation(false).then((c) => { if (!cancelled) breathLocationRef.current = c; });
-    return () => { cancelled = true; };
-  }, [mode, locationFeature, locationEnabled]);
-
   // State returned by the POST — fresher than the GET cache on the done screen.
   const [doneState, setDoneState] = useState<BreathState | null>(null);
 
@@ -260,9 +196,6 @@ export default function CobreathePage() {
       apiRequest<BreathState & { ok: boolean }>("POST", "/api/breath/today", {
         day,
         seconds,
-        // Opt-in coarse location (Phase 1). Omitted when off / unavailable; the
-        // server stores it only when present. Church place_id arrives in Phase 2.
-        ...(breathLocationRef.current ? { lat: breathLocationRef.current.lat, lng: breathLocationRef.current.lng } : {}),
       }),
     onSuccess: (resp) => {
       setDoneState(resp);
@@ -455,82 +388,6 @@ export default function CobreathePage() {
                 ? t("cobreathe.begin_again", { defaultValue: "Breathe again" })
                 : t("cobreathe.begin", { defaultValue: "Cobreathe — twelve breaths" })}
             </button>
-
-            {/* Apple Music opt-in — native app only (full playback needs the
-                native MusicKit player). Requires an Apple Music subscription;
-                if off / not subscribed, the breath plays with its tones only. */}
-            {isNativeShell() && (
-              <button
-                type="button"
-                onClick={toggleMusic}
-                role="switch"
-                aria-checked={musicEnabled}
-                className="w-full flex items-center justify-between rounded-xl px-4 py-3 mt-3"
-                style={{
-                  background: musicEnabled ? "rgba(46,107,64,0.14)" : "rgba(62,124,122,0.07)",
-                  border: `1px solid ${musicEnabled ? "rgba(46,107,64,0.4)" : "rgba(62,124,122,0.22)"}`,
-                  cursor: "pointer",
-                }}
-              >
-                <span className="flex items-center gap-2 text-[13px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                  🎵 {t("cobreathe.music_toggle", { defaultValue: "Play Apple Music while you breathe" })}
-                </span>
-                <span
-                  aria-hidden="true"
-                  style={{
-                    position: "relative", width: 38, height: 22, borderRadius: 999, flexShrink: 0,
-                    background: musicEnabled ? "#2D5E3F" : "rgba(143,175,150,0.25)",
-                    transition: "background 0.18s ease",
-                  }}
-                >
-                  <span
-                    style={{
-                      position: "absolute", top: 2, left: musicEnabled ? 18 : 2,
-                      width: 18, height: 18, borderRadius: "50%", background: WARM,
-                      transition: "left 0.18s ease",
-                    }}
-                  />
-                </span>
-              </button>
-            )}
-
-            {/* Location opt-in — anchor your breath to a nearby church so you can
-                see your churches + how many of your people are breathing there.
-                Gated behind COBREATHE_LOCATION_ENABLED until the church list ships. */}
-            {locationFeature && (
-              <button
-                type="button"
-                onClick={toggleLocation}
-                role="switch"
-                aria-checked={locationEnabled}
-                className="w-full flex items-center justify-between rounded-xl px-4 py-3 mt-3"
-                style={{
-                  background: locationEnabled ? "rgba(46,107,64,0.14)" : "rgba(62,124,122,0.07)",
-                  border: `1px solid ${locationEnabled ? "rgba(46,107,64,0.4)" : "rgba(62,124,122,0.22)"}`,
-                  cursor: "pointer",
-                }}
-              >
-                <span className="flex items-center gap-2 text-[13px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                  📍 {t("cobreathe.location_toggle", { defaultValue: "Breathe with your church" })}
-                </span>
-                <span
-                  aria-hidden="true"
-                  style={{
-                    position: "relative", width: 38, height: 22, borderRadius: 999, flexShrink: 0,
-                    background: locationEnabled ? "#2D5E3F" : "rgba(143,175,150,0.25)",
-                    transition: "background 0.18s ease",
-                  }}
-                >
-                  <span
-                    style={{
-                      position: "absolute", top: 2, left: locationEnabled ? 18 : 2,
-                      width: 18, height: 18, borderRadius: "50%", background: WARM,
-                      transition: "left 0.18s ease",
-                    }}
-                  />
-                </span>
-              </button>
-            )}
 
             <p className="text-[12px] mt-3 mb-6 text-center px-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SERIF, fontStyle: "italic" }}>
               {t("cobreathe.caption", { defaultValue: "About two and a half minutes — it counts toward your contemplation goal. Sit comfortably; let the circle pace you." })}

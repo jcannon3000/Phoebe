@@ -1916,11 +1916,6 @@ export async function migrate() {
     // Daily steps goal (Apple Health) + one-per-day "reached" push dedupe.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_step_goal INTEGER NOT NULL DEFAULT 0`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_step_reached_date TEXT`);
-    // Exercise (Strava) habit — mode/metric/goal + one-per-day reached dedupe.
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS exercise_mode TEXT NOT NULL DEFAULT 'off'`);
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS exercise_metric TEXT NOT NULL DEFAULT 'minutes'`);
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS exercise_goal INTEGER NOT NULL DEFAULT 0`);
-    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS exercise_reached_date TEXT`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_reminder_enabled BOOLEAN NOT NULL DEFAULT true`);
     // Weekly Way of Love review — Sunday-evening reminder (opt-out) + per-week dedup stamp.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_review_reminder BOOLEAN NOT NULL DEFAULT true`);
@@ -2975,14 +2970,6 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS breath_sessions_user_day_uk ON breath_sessions (user_id, day)`);
     await run(client, `CREATE INDEX IF NOT EXISTS breath_sessions_day_idx ON breath_sessions (day)`);
-    // Opt-in coarse location + anchored Google Place (a nearby church) for the
-    // day's cobreathe — all nullable, set only when the user shares location.
-    await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION`);
-    await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
-    await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS place_id TEXT`);
-    await run(client, `ALTER TABLE breath_sessions ADD COLUMN IF NOT EXISTS place_name TEXT`);
-    // Per-place lookups (history counts + "who's at this church").
-    await run(client, `CREATE INDEX IF NOT EXISTS breath_sessions_place_idx ON breath_sessions (place_id)`);
 
     // ── reflection_reads (Forward Day by Day / SSJE read-state) ──────────────
     // CAC reads live in cac_reads (richer — community read presence); this

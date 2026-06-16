@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, timestamp, uniqueIndex, index, doublePrecision } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
 // Breathing Together (beta) — "con-spire", from Latin con + spirare, to
@@ -24,14 +24,6 @@ export const breathSessionsTable = pgTable(
     day: text("day").notNull(),
     // Length of the guided breath actually kept, for future stats.
     seconds: integer("seconds").notNull().default(0),
-    // Optional, opt-in coarse (~1 mile) location of the day's cobreathe, plus the
-    // Google Place the user anchored it to (a nearby church). All nullable — set
-    // only when the user has location sharing on. Powers "your churches" history
-    // and the per-church counts among people you're connected with.
-    lat: doublePrecision("lat"),
-    lng: doublePrecision("lng"),
-    placeId: text("place_id"),
-    placeName: text("place_name"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
@@ -39,7 +31,5 @@ export const breathSessionsTable = pgTable(
     userDayUk: uniqueIndex("breath_sessions_user_day_uk").on(t.userId, t.day),
     // The daily count query scans by day string.
     dayIdx: index("breath_sessions_day_idx").on(t.day),
-    // Per-church lookups (history counts + "who's at this church").
-    placeIdx: index("breath_sessions_place_idx").on(t.placeId),
   }),
 );
