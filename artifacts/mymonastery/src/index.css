@@ -94,6 +94,15 @@
      with overlay off, the WebView sat below the bar and this was zeroed on
      html.platform-ios to avoid double-counting.) */
   --safe-top: env(safe-area-inset-top, 0px);
+  /* Top-chrome inset — the ONE knob for app header top padding. A header's
+     content sits in the CORNERS (wordmark left, controls right), not under the
+     centred Dynamic Island, so it only needs to clear the status-bar clock /
+     battery (~top 37px) — NOT the full safe-area-inset-top (~59px on Island
+     phones, which exists for centred content under the Island). Capping at 44px
+     reclaims that gap (the "too much padding above the header") while still
+     clearing the clock on every device; on a notch/older phone or web it falls
+     back to the real (smaller) inset or an 8px floor. Tweak the 44 here only. */
+  --top-chrome: max(0.5rem, min(var(--safe-top), 44px));
   /* Phoebe — a forest chapel at dusk */
   /* deep   #091A10 — page background, deep forest     */
   /* card   #0F2818 — card surface, dark emerald        */

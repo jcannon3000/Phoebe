@@ -226,7 +226,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 sensible on non-notched devices + web. */}
             <div
               className="flex justify-end px-4 pb-2"
-              style={{ paddingTop: "max(1rem, calc(var(--safe-top) + 0.5rem))" }}
+              style={{ paddingTop: "var(--top-chrome)" }}
             >
               <button onClick={onClose} className="p-2 rounded-xl transition-colors" style={{ color: "#8FAF96" }}>
                 <X size={20} />
@@ -653,7 +653,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
           >
             <div
               className="flex items-center justify-between px-5 pb-2"
-              style={{ paddingTop: "max(1rem, calc(var(--safe-top) + 0.5rem))" }}
+              style={{ paddingTop: "var(--top-chrome)" }}
             >
               <span className="text-base font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.01em" }}>
                 {t("wol.title", { defaultValue: "Way of Love" })}
@@ -818,6 +818,14 @@ async function fetchAvatarDataUrl(_url: string): Promise<string | null> {
 // One detour: a user who hasn't designed a daily routine gets a "Design your
 // daily routine" slide AFTER the faces (Start → /rule-of-life, or Skip). It's
 // shown at most once a week (ROUTINE_PROMPT_KEY) until they have a routine.
+// Splash quote rotation — the third alternate (after the faces + "What's next").
+// Each time the quote slide comes up it shows the next one in turn.
+const SPLASH_QUOTES: Array<{ text: string; author: string }> = [
+  { text: "You do not think yourself into a new way of living, you live yourself into a new way of thinking.", author: "Richard Rohr" },
+  { text: "The proper habitat for truth is human relationships.", author: "Josef Pieper" },
+  { text: "Attention is the rarest and purest form of generosity.", author: "Simone Weil" },
+];
+
 function OpeningSplash() {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -868,16 +876,22 @@ function OpeningSplash() {
     } catch { /* ignore */ }
     return { uid: null, people: [] };
   });
-  // The splash shows EITHER the faces OR the "What's next" card — alternating
-  // each app open — instead of both at once. A localStorage counter flips it;
-  // read + increment once on mount (one splash per app launch).
-  const [preferFaces] = useState<boolean>(() => {
+  // The splash rotates among THREE blocks each app open — the faces, the
+  // "What's next" card, and a quote — instead of all at once. A localStorage
+  // counter advances it; read + increment once on mount (one splash per launch).
+  const [splashOpenN] = useState<number>(() => {
     try {
       const n = Number(localStorage.getItem("phoebe:splash-alt") || "0");
       localStorage.setItem("phoebe:splash-alt", String(n + 1));
-      return n % 2 === 0;
-    } catch { return true; }
+      return n;
+    } catch { return 0; }
   });
+  const splashVariant = splashOpenN % 3;     // 0 = faces, 1 = What's next, 2 = quote
+  const showFaces = splashVariant === 0;
+  const showNext = splashVariant === 1;
+  const showQuote = splashVariant === 2;
+  // The quote advances each time the quote slide comes up (every third open).
+  const quote = SPLASH_QUOTES[Math.floor(splashOpenN / 3) % SPLASH_QUOTES.length]!;
   useEffect(() => {
     if (data === undefined) return;
     let cancelled = false;
@@ -975,11 +989,14 @@ function OpeningSplash() {
     // not dwell 5s on last session's stale faces (or a "prayed for you" line that
     // no longer holds). While data is still loading (undefined) the cache keeps
     // painting and the 5s timer runs as normal.
-    if (phase === "in" && data !== undefined && (data.people?.length ?? 0) === 0) {
+    // Only the FACES variant has nothing to show without co-prayers; the
+    // "What's next" and quote variants always have their own content, so an
+    // empty co-prayer query must NOT dismiss those.
+    if (showFaces && phase === "in" && data !== undefined && (data.people?.length ?? 0) === 0) {
       advanceFromFaces();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, phase]);
+  }, [data, phase, showFaces]);
 
   // Web (or logged out) → no splash at all.
   if (!native || !user || phase === "gone") return null;
@@ -1011,13 +1028,6 @@ function OpeningSplash() {
     : `${nextKind === "morning" ? "Morning" : "Evening"} ${rhythm.prayerKind === "devotion" ? "Devotion" : "Prayer"}`;
   // Contemplation opens its own begin slide; the offices go through /begin-prayer.
   const nextHref = nextKind === "contemplation" ? "/contemplation?begin=1" : "/begin-prayer";
-  // Alternate which block shows — faces on one app open, "What's next" on the
-  // next. FIXED per open (depends only on preferFaces, set once on mount —
-  // never on data, so it can't switch mid-session). Each block renders nothing
-  // when it has no content, and the empty-dismiss effect handles a blank splash.
-  const showFaces = preferFaces;
-  const showNext = !preferFaces;
-
   return (
     <motion.div
       // Tapping the backdrop advances from the faces (to the routine slide or
@@ -1198,6 +1208,30 @@ function OpeningSplash() {
           </div>
         </motion.div>
       )}
+      {/* Quote — the third alternate. A single contemplative line + attribution,
+          centred under the greeting. */}
+      {showQuote && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
+          className="relative w-full text-center"
+          style={{ maxWidth: 460 }}
+        >
+          <p
+            className="px-4"
+            style={{ color: "#F0EDE6", fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 23, lineHeight: 1.5 }}
+          >
+            “{quote.text}”
+          </p>
+          <p
+            className="mt-5 text-[13px] font-semibold uppercase tracking-[0.18em]"
+            style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}
+          >
+            {quote.author}
+          </p>
+        </motion.div>
+      )}
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); advanceFromFaces(); }}
@@ -1281,13 +1315,11 @@ export function Layout({ children }: { children: ReactNode }) {
         className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pb-2 md:pb-5 flex justify-between items-center"
         style={{
           background: "#091A10",
-          // Hug the safe-area inset — no extra padding on top of it. "Phoebe" is
-          // left-aligned and the Dynamic Island / status-bar clock sit centred/
-          // top, so the wordmark can ride right under the inset without colliding.
-          // --safe-top = env(safe-area-inset-top): the real notch/island inset on
-          // native + notched PWAs, 0 elsewhere, so a small floor keeps web/desktop
-          // off the very top edge.
-          paddingTop: "max(0.5rem, var(--safe-top))",
+          // Clear the status-bar clock, not the whole Dynamic Island. "Phoebe"
+          // (left) + the controls (right) sit in the corners, away from the
+          // centred Island, so they don't need the full safe-area-inset-top —
+          // var(--top-chrome) caps it (see index.css) and reclaims the gap.
+          paddingTop: "var(--top-chrome)",
         }}
       >
         <div className="flex items-center gap-6">
