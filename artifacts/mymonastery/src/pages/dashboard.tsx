@@ -6102,15 +6102,16 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     for (const [dow, list] of schedulesByDow.entries()) {
       const next = nextOccurrenceDate(dow);
       const nextMs = next.getTime();
-      // Sunday worship doesn't surface until Thursday — i.e. only within ~3 days
-      // of the service. Otherwise the upcoming Sunday sits on the home all week.
-      if (dow === 0 && nextMs - todayStart > 3 * 24 * 60 * 60 * 1000) continue;
+      // Sunday worship doesn't surface on the HOME until Thursday — i.e. only
+      // within ~3 days of the service — so the upcoming Sunday doesn't sit on the
+      // home all week (Sun–Wed). The dedicated EVENTS page always lists it, so
+      // both day-gates below are home-only (skipped when eventsOnly).
+      if (!eventsOnly && dow === 0 && nextMs - todayStart > 3 * 24 * 60 * 60 * 1000) continue;
       const isOnDate = nextMs === todayStart;
-      // On Sunday itself, don't surface Sunday worship as a "today" event — the
-      // home leads with the podcast rail instead of a service card. It still
-      // surfaces Thu–Sat as the upcoming Sunday service (the window above);
-      // services on other days are unaffected.
-      if (dow === 0 && isOnDate) continue;
+      // On Sunday itself, the HOME doesn't surface Sunday worship as a "today"
+      // event (it leads with the rhythm/podcast instead). The Events page still
+      // shows it. Services on other days are unaffected.
+      if (!eventsOnly && dow === 0 && isOnDate) continue;
       const item: DashboardItem = list.length === 1
         ? { kind: "service", data: list[0]!, nextDate: next, isOnDate }
         : { kind: "services", schedules: list, nextDate: next, isOnDate };
@@ -6244,7 +6245,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     monthItems.sort((a, b) => itemSortMs(a) - itemSortMs(b));
 
     return { todayItems, tomorrowItems, weekItems, monthItems, totalCount };
-  }, [momentsData, user, dashCorrespondences, serviceSchedules, subscribedFeeds, rituals, actions, isBeta]);
+  }, [momentsData, user, dashCorrespondences, serviceSchedules, subscribedFeeds, rituals, actions, isBeta, eventsOnly]);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
