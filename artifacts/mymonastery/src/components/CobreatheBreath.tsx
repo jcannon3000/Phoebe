@@ -85,31 +85,9 @@ function phaseAt(pos: number): Phase {
 // breath. CSS-transitioned between the two.
 const FIELD_DIM = "#040D08";          // before sync — near-black green
 const FIELD_LIVE = "#0B2014";         // live — a touch lighter/greener
-// The world turns between these three globes — one per breath cycle.
-const GLOBES = ["🌍", "🌎", "🌏"] as const;
-
-// Breath-progress ring around the globe: it sweeps clockwise from the top,
-// filling over each phase — a LIGHTER green while breathing IN, a DARKER green
-// while breathing OUT. Resets to empty at every phase boundary.
-const RING_IN = "#86C79B";   // inhale — lighter green
-const RING_OUT = "#2E6B40";  // exhale — darker green
-// Inner SESSION rings — one slow blue circle per set of twelve breaths, nested
-// inward and DARKENING with each set. The first fills across breaths 1–12 (as
-// before); pass twelve and a second, slightly darker ring begins within, then a
-// third, fourth, fifth — up to five sets (sixty breaths), each filling once
-// across its own twelve. When the first set completes the globe takes on a blue
-// glow. Radii are viewBox units (the ring cell's viewBox is 128); sized so all
-// five clear the (slightly smaller) globe glyph at the centre.
-const SESSION_RADII = [52, 47, 42, 37, 32];
-const SESSION_COLORS = ["#5B9DEF", "#4E89D6", "#4175BD", "#3461A4", "#284E8B"];
-const SESSION_TRACK = "rgba(120,165,215,0.16)";
-const SESSION_SW = 3;
-// Vertical centre of the breath cluster (glow + globe + ring) — lowered toward
-// the bottom third of the screen so the breath sits low and there's room above.
+// Vertical centre of the breath text — lowered toward the bottom third of the
+// screen so the breath sits low and there's room above.
 const BREATH_Y = "63%";
-const RING_R = 58;           // outer per-breath ring radius — wraps the globe…
-const RING_CIRC = 2 * Math.PI * RING_R;
-const SESSION_CIRCS = SESSION_RADII.map((r) => 2 * Math.PI * r);  // …with the slow blue session rings nested inside
 
 // The bundled photo library — every image under src/assets/cobreathe is glob-
 // imported here so the breath ALWAYS has pictures, no matter which surface
@@ -173,19 +151,8 @@ export function CobreatheBreath({
   onSession?: (info: { startEpochMs: number; masterSeed: number }) => void;
 }) {
   const { t } = useTranslation();
-  // The breath is a single solid green circle that swells on the inhale and
-  // contracts on the exhale, over a solid deep-green field. A faint ring sits
-  // behind it for depth.
-  const globeRef = useRef<HTMLDivElement>(null);
-  // Two breath rings: the lighter one fills on the inhale and HOLDS full through
-  // the exhale; the darker one sweeps over the lighter on the exhale.
-  const ringInRef = useRef<SVGCircleElement>(null);
-  const ringOutRef = useRef<SVGCircleElement>(null);
-  // One <g> + fill <circle> per set of twelve (nested, darkening). The group's
-  // opacity gates whether a deeper ring is shown yet; the fill's dashoffset is
-  // its progress across its own twelve. Both driven from the rAF clock.
-  const sessionGroupRefs = useRef<(SVGGElement | null)[]>([]);
-  const sessionFillRefs = useRef<(SVGCircleElement | null)[]>([]);
+  // The breath is text + a softly breathing photo field — no centre globe or
+  // progress rings. The phase word ("Breathe In/Out") is the only moving glyph.
   const labelRef = useRef<HTMLDivElement>(null);
   // Two stacked photo layers that crossfade, plus a group wrapper whose opacity
   // breathes with the cycle. The rAF loop ping-pongs between A and B: each breath
@@ -203,16 +170,6 @@ export function CobreatheBreath({
   // on the lowest (0) and rotates 0,1,2 per breath — regardless of where the
   // global clock happens to be when the user starts.
   const inhaleToneCountRef = useRef(0);
-  // The globe is chosen ONCE per session and HELD for the whole sit — no more
-  // per-breath flipping (that was distracting). A localStorage counter advances
-  // each use, so it rotates 🌍 → 🌎 → 🌏 across sessions.
-  const sessionGlobeRef = useRef<string | null>(null);
-  if (sessionGlobeRef.current === null) {
-    let gi = 0;
-    try { gi = ((parseInt(localStorage.getItem("phoebe:cobreathe-globe") || "0", 10) || 0) % GLOBES.length + GLOBES.length) % GLOBES.length; } catch { /* ignore */ }
-    sessionGlobeRef.current = GLOBES[gi];
-    try { localStorage.setItem("phoebe:cobreathe-globe", String((gi + 1) % GLOBES.length)); } catch { /* ignore */ }
-  }
   // Fall back to the bundled library when no caller passes photos, so the
   // breath always has pictures (the office/devotion overlay passes none).
   const photoLibrary = photos && photos.length > 0 ? photos : DEFAULT_PHOTOS;
@@ -316,22 +273,6 @@ export function CobreatheBreath({
       // boundary (p=0), so the breath starts from this exact rest state with no
       // jump.
       const pAnim = isCounting ? p : 0;
-      // The globe's GREEN glow crossfades with the breath — DARK green at the
-      // bottom of the exhale (pAnim→0), LIGHTER green at the top of the inhale
-      // (pAnim→1) — styled like the blue completion glow. Skipped once the set
-      // is complete, so the declarative blue glow takes over.
-      if (globeRef.current && !reachedRef.current) {
-        const gr = Math.round(46 + (134 - 46) * pAnim);   // 2E6B40 → 86C79B (R)
-        const gg = Math.round(107 + (199 - 107) * pAnim); // (G)
-        const gb = Math.round(64 + (155 - 64) * pAnim);   // (B)
-        const blur = (10 + pAnim * 13).toFixed(1);
-        const alpha = (0.42 + pAnim * 0.42).toFixed(2);
-        globeRef.current.style.filter =
-          `drop-shadow(0 0 ${blur}px rgba(${gr},${gg},${gb},${alpha})) drop-shadow(0 3px 14px rgba(8,30,18,0.6))`;
-      }
-      // The globe stays a STEADY size — it no longer swells with the breath
-      // (only the glow behind it breathes). Left untouched here so it holds at
-      // its base scale/opacity.
       // The photo of life on earth fades UP on the inhale and DOWN on the
       // exhale — brightest at the top of the breath, receding into the dark
       // field at the bottom (where it's swapped for the next one, so the change
@@ -413,33 +354,6 @@ export function CobreatheBreath({
         const f = pos < INHALE_MS ? pos / INHALE_MS : (pos - INHALE_MS) / EXHALE_MS;
         labelRef.current.style.opacity = isCounting ? Math.sin(Math.PI * f).toFixed(4) : "1";
         labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;
-      }
-      // Breath-progress rings. The LIGHTER ring fills clockwise over the inhale
-      // and HOLDS full through the exhale; the DARKER ring then sweeps over it
-      // (on top) as you breathe out. Both reset to empty at the start of the
-      // next inhale (and before sync).
-      {
-        const inhale = pos < INHALE_MS;
-        const fIn = isCounting ? (inhale ? pos / INHALE_MS : 1) : 0;
-        const fOut = isCounting ? (inhale ? 0 : (pos - INHALE_MS) / EXHALE_MS) : 0;
-        if (ringInRef.current) ringInRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fIn)).toFixed(2);
-        if (ringOutRef.current) ringOutRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fOut)).toFixed(2);
-        // Inner blue session rings — one slow fill per set of twelve, nested and
-        // darkening. Ring 0 fills over breaths 0–12; ring k>0 appears and fills
-        // over breaths (12k)–(12k+12). `elapsed` is fractional breaths so far.
-        {
-          const elapsed = isCounting ? Math.max(0, (now - countStartRef.current) / CYCLE_MS) : 0;
-          for (let k = 0; k < SESSION_RADII.length; k++) {
-            const fill = sessionFillRefs.current[k];
-            const grp = sessionGroupRefs.current[k];
-            const setStart = k * totalBreaths;
-            const frac = Math.min(1, Math.max(0, (elapsed - setStart) / totalBreaths));
-            if (fill) fill.style.strokeDashoffset = (SESSION_CIRCS[k] * (1 - frac)).toFixed(2);
-            // Set 0 is always present; a deeper ring only appears once you've
-            // crossed into its set (past the previous twelve).
-            if (grp) grp.style.opacity = (k === 0 || elapsed > setStart) ? "1" : "0";
-          }
-        }
       }
       raf = requestAnimationFrame(loop);
     };
@@ -537,9 +451,6 @@ export function CobreatheBreath({
   const now = Date.now();
   const pos = now % CYCLE_MS;
   const phase = phaseAt(pos);
-  // The world turns once a second — 🌍 → 🌎 → 🌏 — wall-clock synced, so
-  // everyone breathing at this moment sees the same face.
-  const globe = sessionGlobeRef.current ?? GLOBES[0];
   const phaseLabel =
     phase === "in"
       ? t("cobreathe.phase_in", { defaultValue: "Breathe In" })
@@ -635,9 +546,6 @@ export function CobreatheBreath({
         </div>
       )}
 
-      {/* (The breath rings + globe now sit in the row below, to the RIGHT of the
-          "Breathe In" / count text — see the breath row near the bottom.) */}
-
       {/* Cancel — top-right, exits the breath (no count unless already kept). */}
       <button
         type="button"
@@ -697,21 +605,17 @@ export function CobreatheBreath({
         )}
       </div>
 
-      {/* Breath row — "Breathe In" + count ANCHORED to the left edge (40px
-          padding), the globe + rings ANCHORED to the right edge (40px), each
-          independent of the other (space-between across the full width, NOT a
-          centred group whose spacing depends on both), dropped 40px below the
-          breath's vertical centre. */}
+      {/* Breath row — just the breathing word ("Breathe In" / "Breathe Out"),
+          left-aligned with the other elements, dropped below the breath's
+          vertical centre. The globe + rings were removed; the breath counter
+          lives at the bottom (where the Cancel button used to be). */}
       <div
         style={{
           position: "absolute", left: 28, right: 40, top: BREATH_Y,
           transform: "translateY(calc(-50% + 70px))",
-          display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 2,
+          display: "flex", alignItems: "center", justifyContent: "flex-start", zIndex: 2,
         }}
       >
-        {/* Left — just the breathing word ("Breathe In" / "Breathe Out"),
-            left-aligned. The breath counter now lives at the bottom (where the
-            Cancel button used to be). */}
         <div className="flex flex-col items-start">
           <div ref={labelRef} style={{ willChange: "transform, opacity" }}>
             <span
@@ -725,74 +629,6 @@ export function CobreatheBreath({
           </div>
         </div>
 
-        {/* Right — globe + progress rings, concentric in a fixed cell. Sized 132
-            (the rings wrap the globe tightly; the earlier +20% made them read too
-            big around the unchanged globe). Anchored to the right edge by the
-            row's space-between, then nudged 12px further LEFT. viewBox stays 128
-            so the rings render scaled to the cell. */}
-        <div style={{ position: "relative", width: 132, height: 132, flexShrink: 0, transform: "translateX(-12px)" }}>
-          <svg
-            aria-hidden="true"
-            width={132} height={132} viewBox="0 0 128 128"
-            style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none", filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))" }}
-          >
-            <circle cx={64} cy={64} r={RING_R} fill="none" stroke="rgba(143,175,150,0.14)" strokeWidth={4} />
-            {/* lighter — inhale (fills, then holds) */}
-            <circle
-              ref={ringInRef}
-              cx={64} cy={64} r={RING_R}
-              fill="none" stroke={RING_IN} strokeWidth={4} strokeLinecap="round"
-              style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }}
-            />
-            {/* darker — exhale, drawn ON TOP of the lighter ring */}
-            <circle
-              ref={ringOutRef}
-              cx={64} cy={64} r={RING_R}
-              fill="none" stroke={RING_OUT} strokeWidth={4} strokeLinecap="round"
-              style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }}
-            />
-            {/* inner SESSION rings — one faint track + slow blue fill per set of
-                twelve, nested inward and darkening. Set 0 always shows; deeper
-                rings fade in as you pass each twelve (gated in the rAF loop). */}
-            {SESSION_RADII.map((r, k) => (
-              <g
-                key={k}
-                ref={(el) => { sessionGroupRefs.current[k] = el; }}
-                style={{ opacity: k === 0 ? 1 : 0, transition: "opacity 1.2s ease" }}
-              >
-                <circle cx={64} cy={64} r={r} fill="none" stroke={SESSION_TRACK} strokeWidth={SESSION_SW} />
-                <circle
-                  ref={(el) => { sessionFillRefs.current[k] = el; }}
-                  cx={64} cy={64} r={r}
-                  fill="none" stroke={SESSION_COLORS[k]} strokeWidth={SESSION_SW} strokeLinecap="round"
-                  style={{ strokeDasharray: SESSION_CIRCS[k], strokeDashoffset: SESSION_CIRCS[k], willChange: "stroke-dashoffset" }}
-                />
-              </g>
-            ))}
-          </svg>
-          <div
-            ref={globeRef}
-            aria-hidden="true"
-            style={{
-              position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-              // Slightly smaller than before (was 90) to make centre room for the
-              // nested set rings as the breath count climbs past twelve.
-              fontSize: 80, lineHeight: 1, pointerEvents: "none",
-              // Once the blue session ring completes (all twelve breaths kept) the
-              // globe takes on a blue glow. Otherwise it carries a GREEN glow the
-              // rAF crossfades per frame — lighter green at the top of the inhale,
-              // darker at the bottom of the exhale (this static value is just the
-              // mid-green starting point). No transition while breathing, so the
-              // per-frame crossfade tracks the breath cleanly.
-              filter: reachedNow
-                ? "drop-shadow(0 0 18px rgba(91,157,239,0.9)) drop-shadow(0 2px 10px rgba(8,30,18,0.5))"
-                : "drop-shadow(0 0 13px rgba(90,150,110,0.55)) drop-shadow(0 3px 14px rgba(8,30,18,0.6))",
-              transition: reachedNow ? "filter 1.2s ease" : "none",
-            }}
-          >
-            {globe}
-          </div>
-        </div>
       </div>
 
       {/* Bottom — the breath counter (where the Cancel button used to be). Once
