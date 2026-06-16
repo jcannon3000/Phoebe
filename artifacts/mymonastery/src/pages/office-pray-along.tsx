@@ -74,6 +74,13 @@ function sectionLabel(row: Row): string {
   return TYPE_LABEL[row.sec.type] ?? titleCase(row.sec.type.replace(/_/g, " "));
 }
 
+// The alignment marks each part's start a touch early — it catches the reader's
+// lead-in / announcement rather than the first word of the part itself. Delay
+// the on-screen section title by this many seconds so it lands as the part is
+// actually under way, not before it. One knob: raise it if titles still feel
+// early, lower it if they lag.
+const TITLE_LAG_SECONDS = 0.6;
+
 export default function OfficePrayAlongPage() {
   const [location, setLocation] = useLocation();
   const side: "morning" | "evening" = location.includes("evening") ? "evening" : "morning";
@@ -144,12 +151,14 @@ export default function OfficePrayAlongPage() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [complete, setComplete] = useState(false);
 
-  // Active part = last one whose start has passed.
+  // Active part = last one whose start has passed, held back by TITLE_LAG_SECONDS
+  // so the title doesn't appear before the part is actually being read. (Was a
+  // 0.25s LEAD, which made the titles come in early.)
   useEffect(() => {
     if (timeline.length === 0) return;
     let idx = 0;
     for (let i = 0; i < timeline.length; i++) {
-      if (timeline[i].sec.startSeconds <= current + 0.25) idx = i;
+      if (timeline[i].sec.startSeconds <= current - TITLE_LAG_SECONDS) idx = i;
       else break;
     }
     setActiveIdx((prev) => {

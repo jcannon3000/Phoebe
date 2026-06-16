@@ -116,7 +116,11 @@ export function buildSections(slides: OfficeSlideLite[]): Section[] {
       id: s.id,
       type: s.type,
       title: s.title,
-      hint: words.slice(0, 18).join(" "),
+      // The part's OWN opening words, from the text Phoebe assembled (the same
+      // translation the reader speaks). More words = a more precise anchor for
+      // where this part begins in the transcript. The heuristic only reads the
+      // first 8, so the extra length only helps the LLM.
+      hint: words.slice(0, 32).join(" "),
       weight: Math.max(2, words.length / WORDS_PER_SECOND),
       isLesson: false,
     });
@@ -204,6 +208,7 @@ async function locateOpenAI(
     "Most sections are fixed liturgical text (psalm verses, the Gloria \"Glory to the Father...\", canticles, the Apostles' Creed, the Lord's Prayer, suffrages, collects, the General Thanksgiving) — locate each by matching its words in the transcript.\n" +
     "LESSON sections carry NO scripture text — only the day's APPOINTED lectionary reference (e.g. \"Matt. 13:31-35\"), because the reader reads that passage aloud from a Bible. To place a lesson, work it out from the transcript itself: find where a scripture passage is being read — recognise it BOTH from the reader's announcement (\"A Reading from the Gospel according to Matthew\", \"The First Lesson\", \"A reading from Isaiah\", \"Here begins...\") AND from the passage's actual words (you know the Bible, so infer which book and chapter the spoken text is from). Then MATCH the passage you detected to the LESSON section whose reference names that same book and chapter, and return the timestamp where that reading begins. Lessons are read in the order listed; the appointed references are your ground truth for which reading is which.\n" +
     "Sections occur strictly in order, so start times must increase. Match on meaning, not exact words (different translations, paraphrase, spoken framing are expected). Omit a section only if you truly cannot find it.\n" +
+    "Each non-lesson hint is the OPENING WORDS of that part's actual liturgical text — the same wording the reader speaks. Return startSeconds as the timestamp of the FIRST SPOKEN WORD of the part's own text: the exact moment that part begins — NOT its title, NOT the reader's announcement, and NOT the pause or lead-in before it. Pick the transcript line where the part's words actually start; when one part runs straight into the next, the boundary is exactly where the new part's opening words begin.\n" +
     "The recording often ENDS with a closing appeal that is NOT part of the office — the reader thanks listeners and asks for support or donations for Forward Movement (e.g. \"Forward Movement is a ministry...\", \"your gift\", \"support this ministry\", \"become a monthly partner\", \"visit forwardmovement.org\"). If such an appeal is present, set appealStartSeconds to the timestamp where it begins; otherwise null.\n" +
     "Respond with ONLY a JSON object: {\"sections\":[{\"id\":\"<section id>\",\"startSeconds\":<number>,\"confidence\":<0..1>}],\"appealStartSeconds\":<number|null>}";
   const user = `SECTIONS:\n${outline}\n\nTRANSCRIPT:\n${tx}`;

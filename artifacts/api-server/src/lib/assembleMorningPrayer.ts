@@ -673,9 +673,12 @@ export async function assembleMorningPrayer(
   // and after, the Invitatory Psalm"): we prepend it to the first
   // chunk and append it to the last so the reader gets it at both
   // ends without needing a separate slide.
+  // Section title / eyebrow = the PSALM NUMBER, not the Latin name (the
+  // Latin "Venite" / "Jubilate" still leads the big headline below). Pascha
+  // Nostrum is a set of anthems, not a numbered psalm, so it keeps its name.
   const invitPsalmEyebrows: Record<string, string> = {
-    venite: "VENITE · PSALM 95",
-    jubilate: "JUBILATE · PSALM 100",
+    venite: "PSALM 95",
+    jubilate: "PSALM 100",
     pascha_nostrum: "PASCHA NOSTRUM",
   };
   const invitPsalmHeadlines: Record<string, string> = {
@@ -701,7 +704,7 @@ export async function assembleMorningPrayer(
     antiphonText.trim().length > 0 &&
     !antiphonText.startsWith("[");
   const psalmBody = getText(invitPsalmKey);
-  const invitEyebrow = invitPsalmEyebrows[invitPsalmKey] ?? "VENITE";
+  const invitEyebrow = invitPsalmEyebrows[invitPsalmKey] ?? "PSALM 95";
   const invitHeadline = invitPsalmHeadlines[invitPsalmKey] ?? "Venite";
   const invitBcpRef = invitPsalmRefs[invitPsalmKey] ?? "BCP p. 82";
 
