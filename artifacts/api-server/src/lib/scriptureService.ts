@@ -1,7 +1,13 @@
 /**
  * Scripture Service — looks up passage text from a local Bible JSON
- * file (ASV / RSV-family) with permanent caching. Psalms are NEVER
- * fetched here — they come from the bcp_texts table (BCP Psalter).
+ * file (the World English Bible, WEB — modern, public domain, so its
+ * full text can be shown inline in the office slideshows) with
+ * permanent caching. Psalms are NEVER fetched here — they come from
+ * the bcp_texts table (BCP Psalter).
+ *
+ * The bundled web.json is produced by scripts/build-web-bible.mjs and
+ * uses the SAME book names + order + verse shape the parser already
+ * expects, so swapping translations is a one-line data-path change.
  *
  * ZERO external API calls at runtime.
  */
@@ -36,7 +42,7 @@ interface BibleData {
   books: BibleBook[];
 }
 
-const bibleDataPath = join(__dirname, "data", "rsv.json");
+const bibleDataPath = join(__dirname, "data", "web.json");
 const bible: BibleData = JSON.parse(readFileSync(bibleDataPath, "utf-8"));
 
 /* ------------------------------------------------------------------ */
