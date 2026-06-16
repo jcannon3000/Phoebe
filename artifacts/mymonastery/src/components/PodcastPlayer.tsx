@@ -100,20 +100,17 @@ const OFFICE_BG_ALL = import.meta.glob("@/assets/cobreathe/*.{jpg,jpeg,png,avif,
   query: "?url",
   import: "default",
 }) as Record<string, string>;
-// Curated to LANDSCAPE-orientation scenes that read well full-bleed behind the
-// office player. The Cobreathe library is mostly PORTRAIT (crops badly here)
-// and carries a couple of jarring subjects for a prayer backdrop — a wildfire
-// shot and a wildlife close-up — so the office uses only this hand-picked set.
-// (The wildfire stays in the Cobreathe breath itself, where the climate-justice
-// theme makes it fitting.) Matched by filename stem; add a stem to include one.
+// Curated to COLOR, LANDSCAPE-orientation scenes that read well full-bleed
+// behind the office player. The Cobreathe library is mostly PORTRAIT (crops
+// badly here) and carries jarring subjects for a prayer backdrop (a wildfire
+// shot, a polar-bear close-up). It also has vintage BLACK-AND-WHITE archival
+// landscapes (National Library of Norway / UW Libraries) — those were dropped
+// per request: the office uses only full-color scenes now. Matched by filename
+// stem; add a stem here to include one (color landscapes only).
 const OFFICE_BG_ALLOW = [
-  "jean-carlo-emer",                                 // Iceland black-sand beach + sea stacks
-  "weichao-deng",                                    // bamboo forest
-  "takahiro-taguchi",                                // green hills at dawn
-  "the-national-library-of-norway-NigliAJbYwU",      // mountain road
-  "the-national-library-of-norway-yh-jpBkKRHA",      // coastal village
-  "university-of-washington-libraries-z0zBj9YQ1vo",  // snowfield
-  "university-of-washington-libraries-LgXvPTOEjhQ",  // ice cave
+  "jean-carlo-emer",   // Iceland black-sand beach + sea stacks
+  "weichao-deng",      // bamboo forest
+  "takahiro-taguchi",  // green hills at dawn
 ];
 const OFFICE_BG_PHOTOS = Object.entries(OFFICE_BG_ALL)
   .filter(([path]) => OFFICE_BG_ALLOW.some((stem) => path.includes(stem)))
