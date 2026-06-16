@@ -1302,11 +1302,13 @@ export function Layout({ children }: { children: ReactNode }) {
         className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pb-2 md:pb-5 flex justify-between items-center"
         style={{
           background: "#091A10",
-          // --safe-top is the real status-bar inset on web but ZERO on native
-          // (where the WebView already sits below the status bar), so this one
-          // expression is correct everywhere: native gets the 1.25rem floor,
-          // web/PWA gets the safe-area inset. No isNativeShell branch needed.
-          paddingTop: "max(1.25rem, calc(var(--safe-top) + 0.5rem))",
+          // Hug the safe-area inset — no extra padding on top of it. "Phoebe" is
+          // left-aligned and the Dynamic Island / status-bar clock sit centred/
+          // top, so the wordmark can ride right under the inset without colliding.
+          // --safe-top = env(safe-area-inset-top): the real notch/island inset on
+          // native + notched PWAs, 0 elsewhere, so a small floor keeps web/desktop
+          // off the very top edge.
+          paddingTop: "max(0.5rem, var(--safe-top))",
         }}
       >
         <div className="flex items-center gap-6">
@@ -1328,7 +1330,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
 
         {user && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
             {/* Daily-progress pill — sits just left of Menu, replacing the
                 old Prayer-list pill (which now lives in the Menu drawer). The
                 four dots reflect today's rhythm; tapping opens /daily-progress.
