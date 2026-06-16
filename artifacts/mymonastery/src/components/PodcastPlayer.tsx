@@ -297,6 +297,11 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  // Scrub (drag-to-seek): while dragging, scrubFrac (0..1) previews the position
+  // so the bar + time labels follow the finger; the seek commits on release.
+  // scrubbingRef gates the move handler so stray pointermoves don't jump it.
+  const [scrubFrac, setScrubFrac] = useState<number | null>(null);
+  const scrubbingRef = useRef(false);
   const [rate, setRate] = useState(1);
   const [artBroken, setArtBroken] = useState(false);
   // Full-screen "now playing" listener (vs. the bottom mini-bar).
@@ -843,11 +848,39 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   });
   const toggleRecommend = () => { if (current) recommendMut.mutate(!isRecommended); };
 
-  const onTrackClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  // Drag-to-seek (scrub) — Pointer Events cover mouse + touch in one path. A
+  // plain tap is a down+up at one spot, so this also replaces the old
+  // click-to-seek. While dragging we only move the local preview (scrubFrac);
+  // the real seek commits on release so we don't churn a.currentTime per frame.
+  const trackFrac = (clientX: number, el: HTMLElement) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 ? Math.max(0, Math.min(1, (clientX - r.left) / r.width)) : 0;
+  };
+  const onScrubDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const a = audioRef.current; if (!a || !a.duration || !isFinite(a.duration)) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    seekTo(frac * a.duration);
+    scrubbingRef.current = true;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* unsupported */ }
+    setScrubFrac(trackFrac(e.clientX, e.currentTarget));
+  };
+  const onScrubMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!scrubbingRef.current) return;
+    setScrubFrac(trackFrac(e.clientX, e.currentTarget));
+  };
+  const onScrubUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!scrubbingRef.current) return;
+    scrubbingRef.current = false;
+    const a = audioRef.current;
+    const frac = trackFrac(e.clientX, e.currentTarget);
+    if (a && a.duration && isFinite(a.duration)) seekTo(frac * a.duration);
+    setScrubFrac(null);
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* unsupported */ }
+  };
+  // Spread onto each track. touchAction:none keeps a drag from scrolling the page.
+  const scrubHandlers = {
+    onPointerDown: onScrubDown,
+    onPointerMove: onScrubMove,
+    onPointerUp: onScrubUp,
+    onPointerCancel: onScrubUp,
   };
 
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -916,6 +949,11 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const oSolid = `rgb(${officeRgb.r},${officeRgb.g},${officeRgb.b})`;
   const oRgba = (a: number) => `rgba(${officeRgb.r},${officeRgb.g},${officeRgb.b},${a})`;
   const remaining = duration > 0 ? Math.max(0, duration - currentTime) : 0;
+  // During a scrub the bar + clocks follow the finger (scrubFrac); otherwise
+  // they track the playing position as normal.
+  const displayPct = scrubFrac != null ? scrubFrac * 100 : pct;
+  const displayTime = scrubFrac != null && duration > 0 ? scrubFrac * duration : currentTime;
+  const displayRemaining = duration > 0 ? Math.max(0, duration - displayTime) : 0;
   // The office mini-bar shows the day's landscape photo, not the podcast feed
   // artwork (we no longer surface the FM/CoE thumbnail anywhere).
   const miniArt = isOffice ? officeBg : art;
@@ -997,13 +1035,13 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         >
           {/* Tappable progress track. */}
           <div
-            onClick={onTrackClick}
-            style={{ height: 5, background: "rgba(143,175,150,0.15)", cursor: "pointer" }}
+            {...scrubHandlers}
+            style={{ height: 5, background: "rgba(143,175,150,0.15)", cursor: "pointer", touchAction: "none" }}
             role="slider"
             aria-label={t("podcasts.a11y_seek")}
-            aria-valuenow={Math.round(pct)}
+            aria-valuenow={Math.round(displayPct)}
           >
-            <div style={{ width: `${pct}%`, height: "100%", background: "#A8C5A0" }} />
+            <div style={{ width: `${displayPct}%`, height: "100%", background: "#A8C5A0" }} />
           </div>
 
           <div className="w-full max-w-2xl mx-auto" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px" }}>
@@ -1129,17 +1167,20 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
             <div style={{ flexShrink: 0, padding: "0 26px" }}>
               <div style={{ display: "flex", alignItems: "flex-end" }}>
                 <span style={{ fontFamily: SERIF, fontSize: 58, fontWeight: 600, letterSpacing: "-0.01em", lineHeight: 1, color: "#F6F0E6" }}>
-                  {duration > 0 ? fmtClock(remaining) : fmtClock(currentTime)}
+                  {duration > 0 ? fmtClock(displayRemaining) : fmtClock(displayTime)}
                 </span>
               </div>
 
-              <div onClick={onTrackClick} role="slider" aria-label={t("podcasts.a11y_seek")} aria-valuenow={Math.round(pct)}
-                style={{ height: 5, borderRadius: 999, background: "rgba(246,240,230,0.22)", cursor: "pointer", overflow: "hidden", marginTop: 14 }}>
-                <div style={{ width: `${pct}%`, height: "100%", background: "#F6F0E6" }} />
+              <div {...scrubHandlers} role="slider" aria-label={t("podcasts.a11y_seek")} aria-valuenow={Math.round(displayPct)}
+                style={{ position: "relative", padding: "11px 0", marginTop: 5, cursor: "pointer", touchAction: "none" }}>
+                <div style={{ height: 5, borderRadius: 999, background: "rgba(246,240,230,0.22)", overflow: "hidden" }}>
+                  <div style={{ width: `${displayPct}%`, height: "100%", background: "#F6F0E6" }} />
+                </div>
+                <div style={{ position: "absolute", top: "50%", left: `${displayPct}%`, width: 14, height: 14, borderRadius: "50%", background: "#F6F0E6", transform: "translate(-50%, -50%)", boxShadow: "0 1px 5px rgba(0,0,0,0.45)", pointerEvents: "none" }} />
               </div>
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "rgba(246,240,230,0.7)", margin: "7px 1px 0" }}>
-                <span>{fmtClock(currentTime)}</span>
-                <span>{duration > 0 ? `-${fmtClock(remaining)}` : "--:--"}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "rgba(246,240,230,0.7)", margin: "2px 1px 0" }}>
+                <span>{fmtClock(displayTime)}</span>
+                <span>{duration > 0 ? `-${fmtClock(displayRemaining)}` : "--:--"}</span>
               </div>
 
               <h2 style={{ fontFamily: SERIF, fontSize: 25, fontWeight: 700, margin: "16px 0 0", lineHeight: 1.18, color: "#F6F0E6", transition: "opacity 0.3s" }}>
@@ -1266,12 +1307,15 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
 
           {/* Controls pinned to the bottom */}
           <div style={{ flexShrink: 0, padding: "8px 26px 0" }}>
-            <div onClick={onTrackClick} role="slider" aria-label={t("podcasts.a11y_seek")} aria-valuenow={Math.round(pct)}
-              style={{ height: 6, borderRadius: 999, background: "rgba(143,175,150,0.18)", cursor: "pointer", overflow: "hidden" }}>
-              <div style={{ width: `${pct}%`, height: "100%", background: "#A8C5A0" }} />
+            <div {...scrubHandlers} role="slider" aria-label={t("podcasts.a11y_seek")} aria-valuenow={Math.round(displayPct)}
+              style={{ position: "relative", padding: "10px 0", cursor: "pointer", touchAction: "none" }}>
+              <div style={{ height: 6, borderRadius: 999, background: "rgba(143,175,150,0.18)", overflow: "hidden" }}>
+                <div style={{ width: `${displayPct}%`, height: "100%", background: "#A8C5A0" }} />
+              </div>
+              <div style={{ position: "absolute", top: "50%", left: `${displayPct}%`, width: 15, height: 15, borderRadius: "50%", background: "#C8D4C0", transform: "translate(-50%, -50%)", boxShadow: "0 1px 5px rgba(0,0,0,0.45)", pointerEvents: "none" }} />
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(143,175,150,0.8)", margin: "6px 2px 0" }}>
-              <span>{fmtClock(currentTime)}</span>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(143,175,150,0.8)", margin: "2px 2px 0" }}>
+              <span>{fmtClock(displayTime)}</span>
               <span>{duration > 0 ? fmtClock(duration) : "--:--"}</span>
             </div>
 
