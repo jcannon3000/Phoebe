@@ -1032,15 +1032,12 @@ function OpeningSplash() {
     : `${nextKind === "morning" ? "Morning" : "Evening"} ${rhythm.prayerKind === "devotion" ? "Devotion" : "Prayer"}`;
   // Contemplation opens its own begin slide; the offices go through /begin-prayer.
   const nextHref = nextKind === "contemplation" ? "/contemplation?begin=1" : "/begin-prayer";
-  // Alternate which block this open shows (faces vs "What's next"), but fall back
-  // to whichever actually has content so the splash is never blank.
-  const facesPeople = (data?.people && data.people.length > 0)
-    ? data.people
-    : (user && cachedFaces.uid === user.id ? cachedFaces.people : []);
-  const hasFaces = facesPeople.length > 0;
-  const hasNext = !!nextKind;
-  const showFaces = hasFaces && (!hasNext || preferFaces);
-  const showNext = hasNext && !showFaces;
+  // Alternate which block shows — faces on one app open, "What's next" on the
+  // next. FIXED per open (depends only on preferFaces, set once on mount —
+  // never on data, so it can't switch mid-session). Each block renders nothing
+  // when it has no content, and the empty-dismiss effect handles a blank splash.
+  const showFaces = preferFaces;
+  const showNext = !preferFaces;
 
   return (
     <motion.div
@@ -1170,13 +1167,15 @@ function OpeningSplash() {
       {/* What's next — the next office to pray, mirroring the home, so the load
           screen hands you straight into the day's first prayer. Shown only on
           the opens where the faces aren't (they alternate). */}
-      {showNext && (
+      {showNext && nextKind && (
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.45, ease: "easeOut" }}
           onClick={(e) => { e.stopPropagation(); setPhase("out"); splashGoTo(nextHref); }}
-          className="relative w-full mt-12 cursor-pointer active:scale-[0.99]"
+          // No faces above it now (they alternate), so a tight top margin keeps
+          // the single card vertically centered with the greeting.
+          className="relative w-full mt-0 cursor-pointer active:scale-[0.99]"
           style={{ maxWidth: 420 }}
         >
           <p className="text-[11px] font-semibold uppercase tracking-widest mb-2 text-center" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>
