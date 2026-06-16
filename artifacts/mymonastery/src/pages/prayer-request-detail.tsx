@@ -351,7 +351,7 @@ export default function PrayerRequestDetailPage() {
       <div
         style={{
           position: "fixed",
-          top: "calc(env(safe-area-inset-top, 0px) + 12px)",
+          top: "calc(var(--safe-top) + 12px)",
           right: 16,
           zIndex: 100,
           display: "flex",

@@ -1645,7 +1645,7 @@ function ReflectionSlide({
         display: "flex",
         flexDirection: "column",
         background: "#0C1F12",
-        paddingTop: "max(0.75rem, env(safe-area-inset-top))",
+        paddingTop: "max(0.75rem, var(--safe-top))",
       }}
     >
       {/* Header — what they're reading + a deliberate open-out escape. */}

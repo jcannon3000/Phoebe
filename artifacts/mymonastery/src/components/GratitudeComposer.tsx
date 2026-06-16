@@ -140,7 +140,7 @@ export function GratitudeNudge({ open, onClose }: { open: boolean; onClose: () =
           aria-label="Close"
           className="absolute flex items-center justify-center rounded-full"
           style={{
-            top: "calc(env(safe-area-inset-top, 0px) + 12px)", right: 16,
+            top: "calc(var(--safe-top) + 12px)", right: 16,
             width: 36, height: 36, background: "rgba(46,107,64,0.18)",
             border: "1px solid rgba(46,107,64,0.35)", color: "#C8D4C0", fontSize: 18, lineHeight: 1, cursor: "pointer",
           }}

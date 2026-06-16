@@ -82,7 +82,7 @@ export default function ParishOnboarding() {
         style={{
           maxWidth: 600,
           margin: "0 auto",
-          padding: "calc(env(safe-area-inset-top) + 32px) 20px calc(env(safe-area-inset-bottom) + 32px)",
+          padding: "calc(var(--safe-top) + 32px) 20px calc(env(safe-area-inset-bottom) + 32px)",
         }}
       >
         <h1

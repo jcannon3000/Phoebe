@@ -80,7 +80,7 @@ export default function ReflectionReadPage() {
         display: "flex",
         flexDirection: "column",
         background: BG,
-        paddingTop: "max(0.75rem, env(safe-area-inset-top))",
+        paddingTop: "max(0.75rem, var(--safe-top))",
       }}
     >
       <AnimatedBackground base={BG} variant="subtle" fadeTop />

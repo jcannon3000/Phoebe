@@ -140,7 +140,7 @@ export default function JournalPage() {
       {/* Minimal header — back / title / Past⇄Write — same rhythm as Letters. */}
       <div
         className="flex items-center justify-between"
-        style={{ maxWidth: 720, margin: "0 auto", width: "100%", boxSizing: "border-box", padding: "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem)) 24px 10px" }}
+        style={{ maxWidth: 720, margin: "0 auto", width: "100%", boxSizing: "border-box", padding: "max(1.25rem, calc(var(--safe-top) + 0.5rem)) 24px 10px" }}
       >
         <button type="button" onClick={() => setLocation("/dashboard")} style={{ background: "none", border: "none", color: MUTED, fontSize: 16, cursor: "pointer", padding: 0 }}>
           ←

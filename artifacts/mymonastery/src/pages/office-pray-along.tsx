@@ -204,7 +204,7 @@ export default function OfficePrayAlongPage() {
       <AnimatedBackground base={BG} variant="pronounced" fadeTop />
 
       {/* Header */}
-      <header style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "max(1.1rem, calc(env(safe-area-inset-top) + 0.5rem)) 18px 6px" }}>
+      <header style={{ position: "relative", zIndex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "max(1.1rem, calc(var(--safe-top) + 0.5rem)) 18px 6px" }}>
         <button type="button" onClick={() => setLocation("/dashboard")} style={{ background: "none", border: "none", color: SAGE, fontFamily: FONT, fontSize: 13, cursor: "pointer", padding: 0 }}>
           ← {t("common.back", { defaultValue: "Back" })}
         </button>

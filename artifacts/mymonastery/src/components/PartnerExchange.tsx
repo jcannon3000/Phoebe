@@ -100,7 +100,7 @@ export function PartnerExchange({ hideWhenEmpty = false }: { hideWhenEmpty?: boo
       <AnimatePresence>
         {composeOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[280] flex flex-col" style={{ background: "rgba(9,26,16,0.96)", paddingTop: "calc(env(safe-area-inset-top) + 20px)" }}>
+            className="fixed inset-0 z-[280] flex flex-col" style={{ background: "rgba(9,26,16,0.96)", paddingTop: "calc(var(--safe-top) + 20px)" }}>
             <div className="flex items-center justify-between px-5 mb-4">
               <button onClick={() => setComposeOpen(false)} className="text-[15px]" style={{ color: SAGE, fontFamily: FONT }}>{t("common.cancel", { defaultValue: "Cancel" })}</button>
               <button onClick={submitShare} disabled={!draft.trim() || share.isPending}

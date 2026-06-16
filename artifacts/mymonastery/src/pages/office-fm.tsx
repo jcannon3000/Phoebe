@@ -44,7 +44,7 @@ export default function OfficeFmPage() {
           alignItems: "center",
           justifyContent: "space-between",
           gap: 12,
-          padding: "max(0.9rem, calc(env(safe-area-inset-top) + 0.4rem)) 16px 8px",
+          padding: "max(0.9rem, calc(var(--safe-top) + 0.4rem)) 16px 8px",
           flexShrink: 0,
         }}
       >

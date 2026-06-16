@@ -52,7 +52,7 @@ export function AnimatedBackground({ base, variant = "subtle", fadeTop = false }
   // in to full below it. base === the surface bg, so the masked-out band
   // just shows the same color.
   const topMask =
-    "linear-gradient(to bottom, transparent 0, transparent calc(env(safe-area-inset-top, 0px) + 88px), #000 calc(env(safe-area-inset-top, 0px) + 220px))";
+    "linear-gradient(to bottom, transparent 0, transparent calc(var(--safe-top) + 88px), #000 calc(var(--safe-top) + 220px))";
   return (
     <div
       aria-hidden

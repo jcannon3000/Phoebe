@@ -120,7 +120,7 @@ export default function GatherRespondPage() {
   }
 
   const shell = (children: React.ReactNode) => (
-    <div style={{ minHeight: "100dvh", background: BG, color: WARM, fontFamily: FONT, padding: "max(20px, env(safe-area-inset-top)) 18px 40px", boxSizing: "border-box" }}>
+    <div style={{ minHeight: "100dvh", background: BG, color: WARM, fontFamily: FONT, padding: "max(20px, var(--safe-top)) 18px 40px", boxSizing: "border-box" }}>
       <div style={{ maxWidth: 520, margin: "0 auto" }}>{children}</div>
     </div>
   );

@@ -565,7 +565,7 @@ export function CobreatheBreath({
               transition: "background-color 1.6s ease",
             }),
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between",
-        paddingTop: "calc(env(safe-area-inset-top) + 28px)",
+        paddingTop: "calc(var(--safe-top) + 28px)",
         paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
       }}
     >
@@ -624,7 +624,7 @@ export function CobreatheBreath({
         aria-label={t("common.cancel", { defaultValue: "Cancel" })}
         onClick={() => onEnd(Math.round((Date.now() - startRef.current) / 1000), reachedRef.current)}
         style={{
-          position: "absolute", top: "calc(env(safe-area-inset-top) + 16px)", right: 16,
+          position: "absolute", top: "calc(var(--safe-top) + 16px)", right: 16,
           width: 34, height: 34, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
           background: "rgba(255,255,255,0.06)", border: "1px solid rgba(182,210,188,0.22)",
           color: TEXT_DIM, fontSize: 16, lineHeight: 1, cursor: "pointer", zIndex: 2,

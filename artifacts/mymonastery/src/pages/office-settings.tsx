@@ -503,7 +503,7 @@ export default function OfficeSettingsPage() {
       {/* Top bar — close, progress dots, counter */}
       <div
         className="flex items-center justify-between px-4 pb-3"
-        style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top) + 0.5rem))" }}
+        style={{ paddingTop: "max(1rem, calc(var(--safe-top) + 0.5rem))" }}
       >
         <button
           type="button"

@@ -36,7 +36,7 @@ export function PrayerAttentionView({
     <motion.div
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       className="fixed inset-0 z-[300] flex flex-col"
-      style={{ background: BG, paddingTop: "calc(env(safe-area-inset-top) + 16px)", paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)" }}
+      style={{ background: BG, paddingTop: "calc(var(--safe-top) + 16px)", paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)" }}
     >
       {/* Header — whose prayer, and a quiet close. */}
       <div className="flex items-center gap-3 px-5">

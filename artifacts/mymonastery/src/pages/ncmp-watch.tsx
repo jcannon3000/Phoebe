@@ -142,7 +142,7 @@ export default function NcmpWatchPage() {
       {/* Top bar — Back + centered title. */}
       <header
         style={{
-          paddingTop: "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))",
+          paddingTop: "max(1.25rem, calc(var(--safe-top) + 0.5rem))",
           paddingLeft: 20,
           paddingRight: 20,
           paddingBottom: 10,

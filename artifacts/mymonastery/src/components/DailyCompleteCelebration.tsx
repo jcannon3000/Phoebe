@@ -94,7 +94,7 @@ function CelebrationOverlay({ streak, doneCount, total, onClose }: {
       className="fixed inset-0 z-[60] flex flex-col items-center justify-center px-6 text-center cursor-pointer"
       style={{
         background: "radial-gradient(120% 120% at 50% 35%, rgba(28,46,32,0.98) 0%, rgba(11,15,11,0.99) 70%)",
-        paddingTop: "env(safe-area-inset-top)",
+        paddingTop: "var(--safe-top)",
         paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
         backdropFilter: "blur(2px)",
       }}

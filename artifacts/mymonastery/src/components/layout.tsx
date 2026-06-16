@@ -225,12 +225,12 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 from top: 0, which on a notched iPhone puts this row
                 under the status bar / camera housing — users reported
                 the X was physically hard to tap. Pad the top by the
-                larger of 1rem and env(safe-area-inset-top) so the
+                larger of 1rem and var(--safe-top) so the
                 button is always below the notch on native and stays
                 sensible on non-notched devices + web. */}
             <div
               className="flex justify-end px-4 pb-2"
-              style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top) + 0.5rem))" }}
+              style={{ paddingTop: "max(1rem, calc(var(--safe-top) + 0.5rem))" }}
             >
               <button onClick={onClose} className="p-2 rounded-xl transition-colors" style={{ color: "#8FAF96" }}>
                 <X size={20} />
@@ -674,7 +674,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
           >
             <div
               className="flex items-center justify-between px-5 pb-2"
-              style={{ paddingTop: "max(1rem, calc(env(safe-area-inset-top) + 0.5rem))" }}
+              style={{ paddingTop: "max(1rem, calc(var(--safe-top) + 0.5rem))" }}
             >
               <span className="text-base font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.01em" }}>
                 {t("wol.title", { defaultValue: "Way of Love" })}
@@ -1057,7 +1057,7 @@ function OpeningSplash() {
       className="fixed inset-0 flex flex-col items-center justify-center px-6"
       style={{
         background: "#0C1F12", zIndex: 200, isolation: "isolate", pointerEvents: phase === "out" ? "none" : "auto",
-        paddingTop: "calc(env(safe-area-inset-top) + 24px)", paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)", overflowY: "auto",
+        paddingTop: "calc(var(--safe-top) + 24px)", paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)", overflowY: "auto",
       }}
     >
       <AnimatedBackground base="#0C1F12" variant="pronounced" />
@@ -1301,15 +1301,11 @@ export function Layout({ children }: { children: ReactNode }) {
         className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pb-2 md:pb-5 flex justify-between items-center"
         style={{
           background: "#091A10",
-          // Native shell: the WebView sits BELOW the system status bar
-          // (setOverlaysWebView(false)), so its strip is accounted for natively
-          // and the WebView itself must NOT inset for it — adding
-          // env(safe-area-inset-top) here double-counts on Dynamic Island
-          // phones and leaves a big gap above the wordmark. Web (PWA under the
-          // translucent status bar) keeps the safe-area math.
-          paddingTop: isNativeShell()
-            ? "1.25rem"
-            : "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))",
+          // --safe-top is the real status-bar inset on web but ZERO on native
+          // (where the WebView already sits below the status bar), so this one
+          // expression is correct everywhere: native gets the 1.25rem floor,
+          // web/PWA gets the safe-area inset. No isNativeShell branch needed.
+          paddingTop: "max(1.25rem, calc(var(--safe-top) + 0.5rem))",
         }}
       >
         <div className="flex items-center gap-6">

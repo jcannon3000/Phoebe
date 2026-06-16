@@ -131,7 +131,7 @@ export default function ParishSettings() {
         style={{
           maxWidth: 600,
           margin: "0 auto",
-          padding: "calc(env(safe-area-inset-top) + 24px) 20px calc(env(safe-area-inset-bottom) + 32px)",
+          padding: "calc(var(--safe-top) + 24px) 20px calc(env(safe-area-inset-bottom) + 32px)",
         }}
       >
         <div className="flex items-center justify-between mb-8">

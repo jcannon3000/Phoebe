@@ -85,7 +85,19 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Native (compose-www adds class="platform-ios" to <html>): the WebView already
+   sits below the status bar, so the top safe-area inset is handled by the
+   WebView's position — zero --safe-top so surfaces don't double-count it. */
+html.platform-ios { --safe-top: 0px; }
+
 :root {
+  /* Safe-area TOP inset — ZEROED on native (html.platform-ios rule below).
+     On native the WebView already sits BELOW the status bar
+     (setOverlaysWebView(false)), so adding env(safe-area-inset-top) on top
+     double-counts and leaves a big gap above the content on Dynamic Island
+     phones. Surfaces use var(--safe-top) for their top padding: native gets
+     only their floor value, web/PWA keeps the real inset. */
+  --safe-top: env(safe-area-inset-top, 0px);
   /* Phoebe — a forest chapel at dusk */
   /* deep   #091A10 — page background, deep forest     */
   /* card   #0F2818 — card surface, dark emerald        */

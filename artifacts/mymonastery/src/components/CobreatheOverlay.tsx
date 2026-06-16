@@ -176,7 +176,7 @@ export function CobreatheOverlay({
       style={{
         position: "fixed", inset: 0, zIndex: 60,
         background: "#0A1C14",
-        paddingTop: "env(safe-area-inset-top)",
+        paddingTop: "var(--safe-top)",
         paddingBottom: "env(safe-area-inset-bottom)",
         overflow: "hidden",
       }}

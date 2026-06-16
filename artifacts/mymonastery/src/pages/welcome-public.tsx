@@ -71,7 +71,7 @@ export default function WelcomePublicPage() {
       style={{
         background: BG,
         fontFamily: SPACE_GROTESK,
-        paddingTop: "env(safe-area-inset-top, 0px)",
+        paddingTop: "var(--safe-top)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >

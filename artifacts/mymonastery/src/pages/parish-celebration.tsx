@@ -78,7 +78,7 @@ export default function ParishCelebration() {
           flex: 1,
           maxWidth: 540,
           margin: "0 auto",
-          padding: "calc(env(safe-area-inset-top) + 64px) 24px 24px",
+          padding: "calc(var(--safe-top) + 64px) 24px 24px",
           textAlign: "center",
           width: "100%",
           display: "flex",

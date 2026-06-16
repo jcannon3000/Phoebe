@@ -196,7 +196,7 @@ export default function ActionDetailPage() {
           every other Phoebe sub-screen. */}
       <header
         className="px-5 pb-2"
-        style={{ paddingTop: "max(1.25rem, calc(env(safe-area-inset-top) + 0.5rem))" }}
+        style={{ paddingTop: "max(1.25rem, calc(var(--safe-top) + 0.5rem))" }}
       >
         <button
           type="button"

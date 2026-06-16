@@ -773,7 +773,7 @@ export default function ContemplationPage() {
           className="fixed inset-0 flex flex-col items-center justify-center px-8"
           style={{
             background: "#0C1F12", zIndex: 60, overflow: "hidden",
-            paddingTop: "calc(env(safe-area-inset-top) + 24px)",
+            paddingTop: "calc(var(--safe-top) + 24px)",
             paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
           }}
         >
@@ -783,7 +783,7 @@ export default function ContemplationPage() {
             aria-label={t("common.close", { defaultValue: "Close" })}
             className="flex items-center justify-center"
             style={{
-              position: "absolute", top: "calc(env(safe-area-inset-top) + 16px)", right: 16,
+              position: "absolute", top: "calc(var(--safe-top) + 16px)", right: 16,
               width: 34, height: 34, borderRadius: 999,
               background: "rgba(255,255,255,0.06)", border: "1px solid rgba(182,210,188,0.22)",
               color: "rgba(182,210,188,0.72)", fontSize: 16, lineHeight: 1, zIndex: 2,

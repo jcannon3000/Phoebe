@@ -705,7 +705,7 @@ export function ContemplationTimer({
             aria-label="Close"
             className="absolute flex items-center justify-center rounded-full"
             style={{
-              top: "calc(env(safe-area-inset-top, 0px) + 12px)",
+              top: "calc(var(--safe-top) + 12px)",
               right: 16,
               width: 36, height: 36,
               background: "rgba(46,107,64,0.18)",

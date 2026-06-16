@@ -1059,7 +1059,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
             position: "fixed", inset: 0, zIndex: 70, fontFamily: FONT, color: "#F6F0E6",
             background: oSolid,
             display: "flex", flexDirection: "column", overflow: "hidden",
-            paddingTop: "max(0.75rem, env(safe-area-inset-top))",
+            paddingTop: "max(0.75rem, var(--safe-top))",
             paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))",
           }}
         >
@@ -1183,7 +1183,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
             position: "fixed", inset: 0, zIndex: 70, fontFamily: FONT, color: "#F0EDE6",
             background: "#0C1F12",
             display: "flex", flexDirection: "column",
-            paddingTop: "max(0.75rem, env(safe-area-inset-top))",
+            paddingTop: "max(0.75rem, var(--safe-top))",
             paddingBottom: "max(1.25rem, env(safe-area-inset-bottom))",
           }}
         >

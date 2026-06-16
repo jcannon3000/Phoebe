@@ -75,7 +75,7 @@ export function DesktopAppPrompt() {
       className="fixed left-0 right-0 z-50 px-4"
       style={{
         top: 0,
-        paddingTop: "max(0.75rem, env(safe-area-inset-top))",
+        paddingTop: "max(0.75rem, var(--safe-top))",
         paddingBottom: "0.75rem",
         animation: "phoebe-desktop-prompt-slide 360ms ease-out",
       }}
