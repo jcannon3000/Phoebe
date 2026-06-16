@@ -186,6 +186,21 @@ export function CobreatheBreath({
     sessionGlobeRef.current = GLOBES[gi];
     try { localStorage.setItem("phoebe:cobreathe-globe", String((gi + 1) % GLOBES.length)); } catch { /* ignore */ }
   }
+  // ── Draggable globe ──────────────────────────────────────────────────────
+  // The globe cluster can be dragged anywhere on screen (kept 24px clear of the
+  // edges + the top title and bottom labels). Released near its home (centre),
+  // it springs back with a soft haptic. The chosen spot persists across sits.
+  const [globeOffset, setGlobeOffset] = useState<{ x: number; y: number }>(() => {
+    try { const r = JSON.parse(localStorage.getItem("phoebe:cobreathe-globe-offset") || "null"); if (r && typeof r.x === "number" && typeof r.y === "number") return r; } catch { /* ignore */ }
+    return { x: 0, y: 0 };
+  });
+  const [globeSnapping, setGlobeSnapping] = useState(false);
+  const globeCellRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  // Captured at pointer-down: start pointer, offset at start, and the clamp
+  // bounds (from the cell's natural rect + the title/bottom content edges).
+  const globeDragRef = useRef<{ px: number; py: number; ox: number; oy: number; minX: number; maxX: number; minY: number; maxY: number } | null>(null);
   // Two stacked photo layers that crossfade, plus a group wrapper whose opacity
   // breathes with the cycle. The rAF loop ping-pongs between A and B: each breath
   // the incoming layer fades in over the outgoing (never a hard switch), and each
@@ -539,6 +554,48 @@ export function CobreatheBreath({
   const TEXT_DIM = "rgba(182,210,188,0.72)";
   const TEXT_FAINT = "rgba(182,210,188,0.48)";
 
+  // Drag-the-globe handlers (Pointer Events → touch + mouse). Bounds keep it
+  // 24px clear of the screen edges and the top/bottom text; releasing within
+  // 44px of home springs it back to centre with a soft haptic.
+  const onGlobeDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    const cell = globeCellRef.current; if (!cell) return;
+    try { cell.setPointerCapture(e.pointerId); } catch { /* unsupported */ }
+    setGlobeSnapping(false);
+    const rect = cell.getBoundingClientRect();
+    const natLeft = rect.left - globeOffset.x, natTop = rect.top - globeOffset.y;
+    const titleBottom = titleRef.current?.getBoundingClientRect().bottom ?? 0;
+    const bottomTop = bottomRef.current?.getBoundingClientRect().top ?? window.innerHeight;
+    globeDragRef.current = {
+      px: e.clientX, py: e.clientY, ox: globeOffset.x, oy: globeOffset.y,
+      minX: 24 - natLeft,
+      maxX: (window.innerWidth - 24) - (natLeft + rect.width),
+      minY: (titleBottom + 24) - natTop,
+      maxY: (bottomTop - 24) - (natTop + rect.height),
+    };
+  };
+  const onGlobeMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = globeDragRef.current; if (!d) return;
+    setGlobeOffset({
+      x: Math.min(d.maxX, Math.max(d.minX, d.ox + (e.clientX - d.px))),
+      y: Math.min(d.maxY, Math.max(d.minY, d.oy + (e.clientY - d.py))),
+    });
+  };
+  const onGlobeUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const d = globeDragRef.current; if (!d) return;
+    globeDragRef.current = null;
+    try { globeCellRef.current?.releasePointerCapture(e.pointerId); } catch { /* unsupported */ }
+    setGlobeOffset((cur) => {
+      if (Math.hypot(cur.x, cur.y) < 44) {
+        setGlobeSnapping(true);
+        try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } })); } catch { /* web */ }
+        try { localStorage.removeItem("phoebe:cobreathe-globe-offset"); } catch { /* ignore */ }
+        return { x: 0, y: 0 };
+      }
+      try { localStorage.setItem("phoebe:cobreathe-globe-offset", JSON.stringify(cur)); } catch { /* ignore */ }
+      return cur;
+    });
+  };
+
   // Portal to <body> so the full-screen overlay escapes any transformed
   // ancestor (page transitions, etc.) that would otherwise trap its fixed
   // positioning and let the app header show through at the top — the "edge of
@@ -654,7 +711,7 @@ export function CobreatheBreath({
       </div>
 
       {/* Title + Synced + participation — TOP, centred. */}
-      <div className="flex flex-col items-center" style={{ position: "relative" }}>
+      <div ref={titleRef} className="flex flex-col items-center" style={{ position: "relative" }}>
         <p className="text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "rgba(182,210,188,0.55)", fontFamily: SPACE_GROTESK }}>
           🌬️ {t("cobreathe.title", { defaultValue: "Cobreathe" })}
         </p>
@@ -677,10 +734,24 @@ export function CobreatheBreath({
         )}
       </div>
 
-      {/* Globe + rings — CENTRED, the still point of the screen. The outer ring
+      {/* Globe + rings — CENTRED, the still point of the screen, but DRAGGABLE:
+          grab it anywhere on screen (24px clear of the edges + the top/bottom
+          text); let go near home and it springs back to centre. The outer ring
           breathes (lighter green in, darker green out); the inner blue ring fills
           once across the whole set. */}
-      <div style={{ position: "relative", width: 158, height: 158, flexShrink: 0, zIndex: 2 }}>
+      <div
+        ref={globeCellRef}
+        onPointerDown={onGlobeDown}
+        onPointerMove={onGlobeMove}
+        onPointerUp={onGlobeUp}
+        onPointerCancel={onGlobeUp}
+        style={{
+          position: "relative", width: 158, height: 158, flexShrink: 0, zIndex: 3,
+          transform: `translate(${globeOffset.x}px, ${globeOffset.y}px)`,
+          transition: globeSnapping ? "transform 0.4s cubic-bezier(0.34, 1.3, 0.64, 1)" : "none",
+          touchAction: "none", cursor: "grab",
+        }}
+      >
         <svg
           aria-hidden="true"
           width={158} height={158} viewBox="0 0 128 128"
@@ -716,7 +787,7 @@ export function CobreatheBreath({
           count in the RIGHT corner. A Done pill rises above them once the full
           set is kept; before then there's no button (the ✕ top-right is the way
           out, and backgrounding the app still ends it). */}
-      <div className="w-full" style={{ paddingLeft: 28, paddingRight: 28, marginBottom: 8 }}>
+      <div ref={bottomRef} className="w-full" style={{ paddingLeft: 28, paddingRight: 28, marginBottom: 8 }}>
         {reachedNow && (
           <div className="flex justify-center" style={{ marginBottom: 18 }}>
             <button

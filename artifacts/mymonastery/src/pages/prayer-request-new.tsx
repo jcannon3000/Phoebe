@@ -233,7 +233,14 @@ export default function PrayerRequestNew() {
   }
 
   return (
-    <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh", background: BG, overflowX: "hidden" }}>
+    <motion.div
+      // Smooth fade + gentle rise as the screen pulls up into view (it's a
+      // full-screen route, so this is its entrance — no hard cut).
+      initial={{ opacity: 0, y: 26 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.44, ease: [0.22, 1, 0.36, 1] }}
+      style={{ position: "relative", isolation: "isolate", minHeight: "100dvh", background: BG, overflowX: "hidden" }}
+    >
 
       {/* Header — just a quiet Back. No progress bar (the flow is two short steps). */}
       <div style={{ paddingTop: "max(1rem, var(--safe-top))", paddingLeft: 20, paddingRight: 20, paddingBottom: 2 }}>
@@ -473,7 +480,7 @@ export default function PrayerRequestNew() {
 
         </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
