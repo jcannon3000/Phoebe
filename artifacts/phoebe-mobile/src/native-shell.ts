@@ -76,13 +76,13 @@ async function configureStatusBar() {
   // call guarantees the iOS-relevant ones (style + overlay) always run.
   try { await StatusBar.setStyle({ style: Style.Dark }); } catch { /* older iOS / mismatch */ }
   try { await StatusBar.setBackgroundColor({ color: "#091A10" }); } catch { /* Android-only; iOS rejects */ }
-  // Overlays OFF: the WebView sits BELOW the system status bar, whose strip is
-  // the root #091A10. This keeps the safe-area math simple and the chrome
-  // positioned correctly. (overlay:true was tried to kill the strip on the
-  // green splash, but iOS kept the WebView below the bar anyway — so it only
-  // double-counted the inset above the header WITHOUT removing the splash
-  // strip. Removing the strip needs a native WebView-frame change, not this.)
-  try { await StatusBar.setOverlaysWebView({ overlay: false }); } catch { /* older iOS / mismatch */ }
+  // Overlays ON: the WebView renders EDGE-TO-EDGE under a transparent status bar
+  // (MainViewController forces webView.frame = view.bounds, since the overlay
+  // flag alone didn't extend it), so each screen's OWN background fills the area
+  // behind the status bar — it adapts per surface instead of a fixed #091A10
+  // strip. The web side pads its chrome with var(--safe-top) =
+  // env(safe-area-inset-top) so nothing hides under the notch / Dynamic Island.
+  try { await StatusBar.setOverlaysWebView({ overlay: true }); } catch { /* older iOS / mismatch */ }
 }
 
 // ─── Splash screen ─────────────────────────────────────────────────────────
@@ -1248,57 +1248,6 @@ function wireContemplation() {
   });
 }
 
-// ─── Cobreathe music (Apple Music) ──────────────────────────────────────────
-// The Cobreathe breath can play ONE fixed, curated Apple Music playlist while
-// you breathe — playback ONLY, never reads listening history. The web app
-// dispatches `phoebe:cobreathe-music-start` when the breath begins (only if the
-// user enabled it) and `phoebe:cobreathe-music-stop` on every exit; we route to
-// the native CobreatheMusic plugin. Subscriber-gated; no-op on web / iOS < 16.
-//
-// Replace this with the real catalog playlist id from the Apple Music share
-// link (the "pl...." id — a public/curated playlist, NOT a personal "p...."
-// one). While it's the placeholder, play() resolves nothing and quietly no-ops.
-// Apple Music "Ambient Chill" (Apple-curated):
-// https://music.apple.com/us/playlist/ambient-chill/pl.bed492442a53481f98e98c6c4da9e01d
-const COBREATHE_PLAYLIST_ID = "pl.bed492442a53481f98e98c6c4da9e01d";
-
-function getCobreatheMusic(): {
-  authorize?: () => Promise<{ status: string }>;
-  getAuthorizationStatus?: () => Promise<{ status: string }>;
-  isAvailable?: () => Promise<{ available: boolean }>;
-  play?: (opts: { playlistId: string }) => Promise<{ playing: boolean; reason?: string }>;
-  stop?: () => Promise<void>;
-} | undefined {
-  const cap = (window as {
-    Capacitor?: { Plugins?: Record<string, unknown> };
-  }).Capacitor;
-  return cap?.Plugins?.["CobreatheMusic"] as ReturnType<typeof getCobreatheMusic>;
-}
-
-function wireCobreatheMusic() {
-  window.addEventListener("phoebe:cobreathe-music-start", async () => {
-    if (!COBREATHE_PLAYLIST_ID || COBREATHE_PLAYLIST_ID === "pl.PLACEHOLDER") return;
-    const music = getCobreatheMusic();
-    if (!music) return;
-    try {
-      // Ensure access (prompts on first run), then only play for subscribers;
-      // denied access / non-subscribers silently skip — the breath plays on.
-      const status = (await music.getAuthorizationStatus?.())?.status;
-      if (status !== "authorized") {
-        const res = await music.authorize?.();
-        if (res?.status !== "authorized") return;
-      }
-      const avail = await music.isAvailable?.();
-      if (!avail?.available) return;
-      await music.play?.({ playlistId: COBREATHE_PLAYLIST_ID });
-    } catch { /* best-effort — music is optional over the breath */ }
-  });
-
-  window.addEventListener("phoebe:cobreathe-music-stop", async () => {
-    try { await getCobreatheMusic()?.stop?.(); } catch { /* best-effort */ }
-  });
-}
-
 // ─── Persisted storage bridge ──────────────────────────────────────────────
 // Capacitor Preferences is more reliable than localStorage inside a
 // WKWebView cold start on iOS. The web app still uses localStorage; we
@@ -1635,7 +1584,6 @@ function exposePublicApi() {
   wireBiometricLock();
   wireLocalNotifications();
   wireContemplation();
-  wireCobreatheMusic();
   wireDurableStorage();
   wireLifecycle();
 })();

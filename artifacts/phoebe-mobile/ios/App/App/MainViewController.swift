@@ -23,9 +23,19 @@ import Capacitor
 class MainViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(MindfulHealthPlugin())
-        // Registered explicitly for the same dead-strip reason as MindfulHealth:
-        // nothing in Swift references CobreatheMusicPlugin, so the linker can
-        // drop it and it won't appear in window.Capacitor.Plugins otherwise.
-        bridge?.registerPluginInstance(CobreatheMusicPlugin())
+    }
+
+    // Edge-to-edge: render the WebView UNDER a transparent status bar
+    // (StatusBar.setOverlaysWebView(true)) so each screen's OWN background fills
+    // the area behind the status bar — it adapts per surface (green splash, dark
+    // home, black breath) instead of a fixed #091A10 strip. Capacitor's overlay
+    // flag alone did NOT extend the WebView frame on this build, so we force it
+    // to the full bounds here. The web side pads its chrome with
+    // env(safe-area-inset-top) (var(--safe-top)) so nothing hides under the
+    // notch / Dynamic Island.
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        webView?.frame = view.bounds
+        webView?.scrollView.contentInsetAdjustmentBehavior = .never
     }
 }
