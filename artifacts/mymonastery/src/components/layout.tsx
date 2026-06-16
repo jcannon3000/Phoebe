@@ -1345,7 +1345,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </div>
 
         {user && (
-          <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
+          <div className="flex items-center gap-2" style={{ marginTop: 8 }}>
             {/* Daily-progress pill — sits just left of Menu, replacing the
                 old Prayer-list pill (which now lives in the Menu drawer). The
                 four dots reflect today's rhythm; tapping opens /daily-progress.
