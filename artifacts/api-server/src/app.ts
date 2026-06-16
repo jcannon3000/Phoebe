@@ -361,6 +361,10 @@ if (fs.existsSync(frontendDist)) {
   // Tokens are 12-byte hex (24 chars) — see prayer.ts:680.
   const prayerSharePathRe = /^\/p\/([a-f0-9]{16,})\b/i;
 
+  // 1:1 prayer-dialogue invite link — /prayer-dialogue/join/:token. Token is
+  // 16-byte hex (32 chars) on the inviter's user row (prayer_partner_invite_token).
+  const prayerDialoguePathRe = /^\/prayer-dialogue\/join\/([a-f0-9]{32})\b/i;
+
   app.get("/{*path}", async (req, res) => {
     res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
 
@@ -465,6 +469,28 @@ if (fs.existsSync(frontendDist)) {
         }
       } catch (err) {
         logger.warn({ err, token }, "[og] prayer-share preview lookup failed");
+      }
+    }
+
+    // 3b) 1:1 prayer-dialogue invite → name the inviter so the iMessage card
+    // reads as a personal invitation to pray together, not a generic app link.
+    const dialogueMatch = prayerDialoguePathRe.exec(req.path);
+    if (dialogueMatch) {
+      const token = dialogueMatch[1]!.toLowerCase();
+      try {
+        const [owner] = await db
+          .select({ name: usersTable.name })
+          .from(usersTable)
+          .where(eq(usersTable.prayerPartnerInviteToken, token));
+        if (owner) {
+          const first = (owner.name || "").trim().split(/\s+/)[0] || "A friend";
+          const title = `${first} invited you to pray together`;
+          const description = "Walk through something together — a daily back-and-forth of prayer on Phoebe.";
+          res.type("html").send(renderIndexWithOg(title, description));
+          return;
+        }
+      } catch (err) {
+        logger.warn({ err, token }, "[og] prayer-dialogue preview lookup failed");
       }
     }
 

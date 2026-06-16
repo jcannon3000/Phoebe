@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { usePartnerInvites, useAcceptInvite, useDeclineInvite, useInvitePartner } from "@/hooks/useDailyPrayer";
 
 const WARM = "#F0EDE6";
@@ -26,6 +27,26 @@ export function PartnerPairing() {
   const invite = useInvitePartner();
   const [q, setQ] = useState("");
   const [invited, setInvited] = useState<Set<number>>(new Set());
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  // Share a personal invite link (like a group's). Mints/fetches the caller's
+  // token, then opens the best share surface — native sheet, Web Share, or
+  // clipboard. Whoever opens it can start a heart to heart with you.
+  const shareInviteLink = async () => {
+    try {
+      const { url } = await apiRequest<{ token: string; url: string }>("POST", "/api/prayer-partner/invite-link");
+      const detail = {
+        title: t("prayer_partner.share_title", { defaultValue: "Pray together on Phoebe" }),
+        text: t("prayer_partner.share_text", { defaultValue: "I'd love to share a daily prayer with you — a quiet back-and-forth, just us. Tap to start:" }),
+        url,
+      };
+      if (isNativeShell()) { window.dispatchEvent(new CustomEvent("phoebe:share", { detail })); return; }
+      const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
+      if (typeof nav.share === "function") { try { await nav.share(detail); return; } catch { /* user cancelled → clipboard */ } }
+      try { await navigator.clipboard.writeText(url); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }
+      catch { window.prompt("Copy this link", url); }
+    } catch { /* best-effort */ }
+  };
 
   const { data: search } = useQuery<{ users: UserHit[] }>({
     queryKey: ["/api/fellows/search", q],
@@ -60,6 +81,19 @@ export function PartnerPairing() {
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
           {t("prayer_partner.add_eyebrow", { defaultValue: "Start a heart to heart" })}
+        </p>
+        {/* Share a personal invite link — the easiest way to bring in someone
+            who isn't searchable yet. */}
+        <button
+          type="button"
+          onClick={shareInviteLink}
+          className="w-full rounded-2xl px-4 py-3 flex items-center justify-center gap-2 text-[14px] font-semibold active:scale-[0.99]"
+          style={{ background: `rgba(${G},0.16)`, border: `1px solid rgba(${G},0.4)`, color: WARM, fontFamily: FONT }}
+        >
+          🔗 {linkCopied ? t("prayer_partner.link_copied", { defaultValue: "Link copied ✓" }) : t("prayer_partner.share_link", { defaultValue: "Share an invite link" })}
+        </button>
+        <p className="text-[12px] mt-1.5 mb-3" style={{ color: SAGE, fontFamily: FONT }}>
+          {t("prayer_partner.share_link_sub", { defaultValue: "Send it to anyone — whoever opens it can start a heart to heart with you." })}
         </p>
         <input
           value={q} onChange={(e) => setQ(e.target.value)}

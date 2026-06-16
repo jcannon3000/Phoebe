@@ -190,6 +190,11 @@ export const usersTable = pgTable("users", {
   // YYYY-MM-DD (user TZ) of the last "step goal reached" push — one per local
   // day. NULL = never sent.
   dailyStepReachedDate: text("daily_step_reached_date"),
+  // A personal, shareable invite link for starting a 1:1 prayer dialogue (Heart
+  // to Hearts) — like a group's invite token, but per-person. Anyone who opens
+  // /prayer-dialogue/join/:token and accepts becomes a prayer partner. Minted
+  // lazily on first share, rotatable. NULL = never created one.
+  prayerPartnerInviteToken: text("prayer_partner_invite_token"),
   // Weekly Way of Love review (the Sunday-evening examen). Reminder on by
   // default; opt out in Settings. The sent-date (YYYY-MM-DD of the Sunday we
   // last nudged, user TZ) dedups the once-a-week push across 15-min ticks.

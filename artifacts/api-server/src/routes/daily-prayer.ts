@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import crypto from "node:crypto";
 import { eq, and, or, desc, ne, inArray, sql } from "drizzle-orm";
 import {
   db,
@@ -274,6 +275,85 @@ router.post("/prayer-partner/invite", perUserRateLimit("prayer_partner_invite", 
     path: "/prayer-partner", threadId: "prayer-dialogue",
   }).catch(() => {});
   res.status(201).json({ status: "pending_out", partnershipId, partner: recipient });
+});
+
+// ─── Shareable invite LINK (like a group's) ────────────────────────────────
+// A personal, reusable link the user can send (iMessage, etc.). Whoever opens
+// /prayer-dialogue/join/:token and accepts becomes a prayer partner. The token
+// lives on the inviter's user row, minted lazily on first share.
+
+// GET (or lazily create) the caller's invite token. Returns the token + the
+// full share URL so the client can drop it straight into the share sheet.
+router.post("/prayer-partner/invite-link", async (req, res): Promise<void> => {
+  const uid = uidOf(req);
+  if (!uid) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const [me] = await db.select({ token: usersTable.prayerPartnerInviteToken })
+    .from(usersTable).where(eq(usersTable.id, uid));
+  let token = me?.token ?? null;
+  if (!token) {
+    token = crypto.randomBytes(16).toString("hex");
+    await db.update(usersTable).set({ prayerPartnerInviteToken: token }).where(eq(usersTable.id, uid));
+  }
+  const base = process.env.PUBLIC_APP_ORIGIN || "https://withphoebe.app";
+  res.json({ token, url: `${base}/prayer-dialogue/join/${token}` });
+});
+
+// PUBLIC lookup — the landing page reads this (pre-auth) to show who invited
+// you before you accept. Never reveals anything beyond the inviter's card.
+router.get("/prayer-partner/invite-link/:token", async (req, res): Promise<void> => {
+  const token = String(req.params.token || "");
+  if (!/^[a-f0-9]{32}$/i.test(token)) { res.status(404).json({ error: "Invalid link" }); return; }
+  const [owner] = await db.select({ id: usersTable.id })
+    .from(usersTable).where(eq(usersTable.prayerPartnerInviteToken, token));
+  if (!owner) { res.status(404).json({ error: "Link not found" }); return; }
+  const card = await loadUserCard(owner.id);
+  // viewerIsOwner lets the client show "this is your own link" instead of an
+  // accept button when you open your own link.
+  const viewerIsOwner = uidOf(req) === owner.id;
+  res.json({ inviter: card, viewerIsOwner });
+});
+
+// ACCEPT via link — auth required. Opening the link IS mutual consent, so the
+// partnership goes straight to active (no separate pending step). Rate-limited
+// like the direct invite.
+router.post("/prayer-partner/invite-link/:token/accept", perUserRateLimit("prayer_partner_link_accept", {
+  max: 20, windowMs: 60 * 60 * 1000,
+  message: "You've joined a lot of dialogues recently. Please try again later.",
+}), async (req, res): Promise<void> => {
+  const uid = uidOf(req);
+  if (!uid) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const token = String(req.params.token || "");
+  if (!/^[a-f0-9]{32}$/i.test(token)) { res.status(404).json({ error: "Invalid link" }); return; }
+  const [owner] = await db.select({ id: usersTable.id })
+    .from(usersTable).where(eq(usersTable.prayerPartnerInviteToken, token));
+  if (!owner) { res.status(404).json({ error: "Link not found" }); return; }
+  const ownerId = owner.id;
+  if (ownerId === uid) { res.status(400).json({ error: "This is your own invite link." }); return; }
+  if (await areMuted(uid, ownerId)) { res.status(403).json({ error: "You can't partner with this person." }); return; }
+
+  const { lo, hi } = normPair(uid, ownerId);
+  const [existing] = await db.select().from(prayerPartnershipsTable).where(and(
+    eq(prayerPartnershipsTable.userLoId, lo), eq(prayerPartnershipsTable.userHiId, hi),
+  ));
+  let partnershipId: number;
+  if (existing && existing.status === "active") {
+    partnershipId = existing.id; // already partners → idempotent
+  } else if (existing) {
+    const [revived] = await db.update(prayerPartnershipsTable)
+      .set({ status: "active", invitedById: ownerId, acceptedAt: new Date(), endedAt: null, endedById: null })
+      .where(eq(prayerPartnershipsTable.id, existing.id)).returning();
+    partnershipId = revived.id;
+  } else {
+    const [created] = await db.insert(prayerPartnershipsTable)
+      .values({ userLoId: lo, userHiId: hi, invitedById: ownerId, status: "active", acceptedAt: new Date() }).returning();
+    partnershipId = created.id;
+  }
+  const [me] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, uid));
+  sendPushToUser(ownerId, {
+    title: `${(me?.name || "Someone").split(/\s+/)[0]} accepted your prayer invite`,
+    body: "Share your prayer for the day.", path: "/prayer-partner", threadId: "prayer-dialogue",
+  }).catch(() => {});
+  res.json({ status: "active", partnershipId, partner: await loadUserCard(ownerId) });
 });
 
 // ─── POST /api/prayer-partner/invites/:id/accept ───────────────────────────

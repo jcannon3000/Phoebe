@@ -1916,6 +1916,9 @@ export async function migrate() {
     // Daily steps goal (Apple Health) + one-per-day "reached" push dedupe.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_step_goal INTEGER NOT NULL DEFAULT 0`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS daily_step_reached_date TEXT`);
+    // Personal, shareable 1:1 prayer-dialogue invite token (Heart to Hearts).
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS prayer_partner_invite_token TEXT`);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS users_prayer_partner_invite_token_uk ON users (prayer_partner_invite_token)`);
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS contemplation_reminder_enabled BOOLEAN NOT NULL DEFAULT true`);
     // Weekly Way of Love review — Sunday-evening reminder (opt-out) + per-week dedup stamp.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_review_reminder BOOLEAN NOT NULL DEFAULT true`);

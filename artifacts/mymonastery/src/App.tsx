@@ -278,6 +278,7 @@ const CommunitySundayReflectionPage = lazy(() => import("./pages/community-sunda
 const SharePrayerPage = lazy(() => import("./pages/share-prayer"));
 const CommunitySettingsPage = lazy(() => import("./pages/community-settings"));
 const CommunityJoinPage = lazy(() => import("./pages/community-join"));
+const PrayerDialogueJoinPage = lazy(() => import("./pages/prayer-dialogue-join"));
 const BetaAdminPage = lazy(() => import("./pages/beta-admin"));
 const WaitlistAdminPage = lazy(() => import("./pages/waitlist-admin"));
 const BetaClaimPage = lazy(() => import("./pages/beta-claim"));
@@ -638,6 +639,9 @@ function ParishGate({ children }: { children: ReactNode }) {
         // group_members row exists, parishGate flips the derived
         // accessTier to "full" and the gate stops applying.
         location.startsWith("/communities/join/") ||
+        // 1:1 prayer-dialogue invite links — anyone opening a shared link
+        // should reach the accept page regardless of tier.
+        location.startsWith("/prayer-dialogue/join/") ||
         // Public Prayer Request share links — /p/:token. An offices-
         // only viewer landing on a friend's shared prayer request
         // should be able to read it + tap Amen, which auto-Fellows
@@ -908,6 +912,7 @@ function Router() {
       <Route path="/communities/browse" component={CommunitiesBrowsePage} />
       <Route path="/communities/new" component={CommunityNewPage} />
       <Route path="/communities/join/:slug/:token" component={CommunityJoinPage} />
+      <Route path="/prayer-dialogue/join/:token" component={PrayerDialogueJoinPage} />
       <Route path="/welcome" component={WelcomePage} />
       <Route path="/communities/:slug/requests" component={CommunityRequestsPage} />
       <Route path="/communities/:slug/settings" component={CommunitySettingsPage} />
