@@ -92,17 +92,23 @@ const GLOBES = ["🌍", "🌎", "🌏"] as const;
 // while breathing OUT. Resets to empty at every phase boundary.
 const RING_IN = "#86C79B";   // inhale — lighter green
 const RING_OUT = "#2E6B40";  // exhale — darker green
-// Inner SESSION ring — ONE slow blue circle that fills a single time across the
-// whole twelve-breath session (not per breath). When it completes, the globe
-// takes on a blue glow.
-const SESSION_BLUE = "#5B9DEF";
+// Inner SESSION rings — one slow blue circle per set of twelve breaths, nested
+// inward and DARKENING with each set. The first fills across breaths 1–12 (as
+// before); pass twelve and a second, slightly darker ring begins within, then a
+// third, fourth, fifth — up to five sets (sixty breaths), each filling once
+// across its own twelve. When the first set completes the globe takes on a blue
+// glow. Radii are viewBox units (the ring cell's viewBox is 128); sized so all
+// five clear the (slightly smaller) globe glyph at the centre.
+const SESSION_RADII = [52, 47, 42, 37, 32];
+const SESSION_COLORS = ["#5B9DEF", "#4E89D6", "#4175BD", "#3461A4", "#284E8B"];
+const SESSION_TRACK = "rgba(120,165,215,0.16)";
+const SESSION_SW = 3;
 // Vertical centre of the breath cluster (glow + globe + ring) — lowered toward
 // the bottom third of the screen so the breath sits low and there's room above.
 const BREATH_Y = "63%";
 const RING_R = 58;           // outer per-breath ring radius — wraps the globe…
 const RING_CIRC = 2 * Math.PI * RING_R;
-const SESSION_R = 47;        // …with the slow blue session ring nested inside
-const SESSION_CIRC = 2 * Math.PI * SESSION_R;
+const SESSION_CIRCS = SESSION_RADII.map((r) => 2 * Math.PI * r);  // …with the slow blue session rings nested inside
 
 // The bundled photo library — every image under src/assets/cobreathe is glob-
 // imported here so the breath ALWAYS has pictures, no matter which surface
@@ -174,7 +180,11 @@ export function CobreatheBreath({
   // the exhale; the darker one sweeps over the lighter on the exhale.
   const ringInRef = useRef<SVGCircleElement>(null);
   const ringOutRef = useRef<SVGCircleElement>(null);
-  const sessionRingRef = useRef<SVGCircleElement>(null);
+  // One <g> + fill <circle> per set of twelve (nested, darkening). The group's
+  // opacity gates whether a deeper ring is shown yet; the fill's dashoffset is
+  // its progress across its own twelve. Both driven from the rAF clock.
+  const sessionGroupRefs = useRef<(SVGGElement | null)[]>([]);
+  const sessionFillRefs = useRef<(SVGCircleElement | null)[]>([]);
   const labelRef = useRef<HTMLDivElement>(null);
   // Two stacked photo layers that crossfade, plus a group wrapper whose opacity
   // breathes with the cycle. The rAF loop ping-pongs between A and B: each breath
@@ -413,12 +423,21 @@ export function CobreatheBreath({
         const fOut = isCounting ? (inhale ? 0 : (pos - INHALE_MS) / EXHALE_MS) : 0;
         if (ringInRef.current) ringInRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fIn)).toFixed(2);
         if (ringOutRef.current) ringOutRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fOut)).toFixed(2);
-        // Inner blue session ring — one slow fill across all totalBreaths breaths.
-        if (sessionRingRef.current) {
-          const sFrac = isCounting
-            ? Math.min(1, Math.max(0, (now - countStartRef.current) / (totalBreaths * CYCLE_MS)))
-            : 0;
-          sessionRingRef.current.style.strokeDashoffset = (SESSION_CIRC * (1 - sFrac)).toFixed(2);
+        // Inner blue session rings — one slow fill per set of twelve, nested and
+        // darkening. Ring 0 fills over breaths 0–12; ring k>0 appears and fills
+        // over breaths (12k)–(12k+12). `elapsed` is fractional breaths so far.
+        {
+          const elapsed = isCounting ? Math.max(0, (now - countStartRef.current) / CYCLE_MS) : 0;
+          for (let k = 0; k < SESSION_RADII.length; k++) {
+            const fill = sessionFillRefs.current[k];
+            const grp = sessionGroupRefs.current[k];
+            const setStart = k * totalBreaths;
+            const frac = Math.min(1, Math.max(0, (elapsed - setStart) / totalBreaths));
+            if (fill) fill.style.strokeDashoffset = (SESSION_CIRCS[k] * (1 - frac)).toFixed(2);
+            // Set 0 is always present; a deeper ring only appears once you've
+            // crossed into its set (past the previous twelve).
+            if (grp) grp.style.opacity = (k === 0 || elapsed > setStart) ? "1" : "0";
+          }
         }
       }
       raf = requestAnimationFrame(loop);
@@ -669,9 +688,9 @@ export function CobreatheBreath({
           display: "flex", alignItems: "center", justifyContent: "space-between", zIndex: 2,
         }}
       >
-        {/* Left — "Breathe In" over "Breath n of 12", left-aligned. Kept
-            distraction-free during the practice: no social count here (the
-            "you cobreathed with N" line lives on the summary slide instead). */}
+        {/* Left — just the breathing word ("Breathe In" / "Breathe Out"),
+            left-aligned. The breath counter now lives at the bottom (where the
+            Cancel button used to be). */}
         <div className="flex flex-col items-start">
           <div ref={labelRef} style={{ willChange: "transform, opacity" }}>
             <span
@@ -683,20 +702,13 @@ export function CobreatheBreath({
               {centerLabel}
             </span>
           </div>
-          <p className="mt-0 text-[13px]" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, maxWidth: 175 }}>
-            {!counting
-              ? t("cobreathe.finding_rhythm", { defaultValue: "Syncing with the global breath…" })
-              : reachedNow
-                ? t("cobreathe.breath_counter_past", { current: breathNum, defaultValue: `🌿 Breath ${breathNum} — keep going as long as you like` })
-                : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `Breath ${breathNum} of ${totalBreaths}` })}
-          </p>
         </div>
 
         {/* Right — globe + progress rings, concentric in a fixed cell. Sized
             158 (132 +20%), anchored to the right edge by the row's space-between
-            then nudged 20px further LEFT. The viewBox stays 128 so the rings
-            simply render scaled up to the larger cell. */}
-        <div style={{ position: "relative", width: 158, height: 158, flexShrink: 0, transform: "translateX(-20px)" }}>
+            then nudged 12px further LEFT (8px right of the old 20px). The
+            viewBox stays 128 so the rings render scaled up to the larger cell. */}
+        <div style={{ position: "relative", width: 158, height: 158, flexShrink: 0, transform: "translateX(-12px)" }}>
           <svg
             aria-hidden="true"
             width={158} height={158} viewBox="0 0 128 128"
@@ -717,22 +729,33 @@ export function CobreatheBreath({
               fill="none" stroke={RING_OUT} strokeWidth={4} strokeLinecap="round"
               style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }}
             />
-            {/* inner SESSION ring — faint blue track + one slow blue fill across
-                all twelve breaths (driven in the rAF loop). */}
-            <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(91,157,239,0.16)" strokeWidth={4} />
-            <circle
-              ref={sessionRingRef}
-              cx={64} cy={64} r={SESSION_R}
-              fill="none" stroke={SESSION_BLUE} strokeWidth={4} strokeLinecap="round"
-              style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset" }}
-            />
+            {/* inner SESSION rings — one faint track + slow blue fill per set of
+                twelve, nested inward and darkening. Set 0 always shows; deeper
+                rings fade in as you pass each twelve (gated in the rAF loop). */}
+            {SESSION_RADII.map((r, k) => (
+              <g
+                key={k}
+                ref={(el) => { sessionGroupRefs.current[k] = el; }}
+                style={{ opacity: k === 0 ? 1 : 0, transition: "opacity 1.2s ease" }}
+              >
+                <circle cx={64} cy={64} r={r} fill="none" stroke={SESSION_TRACK} strokeWidth={SESSION_SW} />
+                <circle
+                  ref={(el) => { sessionFillRefs.current[k] = el; }}
+                  cx={64} cy={64} r={r}
+                  fill="none" stroke={SESSION_COLORS[k]} strokeWidth={SESSION_SW} strokeLinecap="round"
+                  style={{ strokeDasharray: SESSION_CIRCS[k], strokeDashoffset: SESSION_CIRCS[k], willChange: "stroke-dashoffset" }}
+                />
+              </g>
+            ))}
           </svg>
           <div
             ref={globeRef}
             aria-hidden="true"
             style={{
               position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 90, lineHeight: 1, pointerEvents: "none",
+              // Slightly smaller than before (was 90) to make centre room for the
+              // nested set rings as the breath count climbs past twelve.
+              fontSize: 80, lineHeight: 1, pointerEvents: "none",
               // Once the blue session ring completes (all twelve breaths kept) the
               // globe takes on a blue glow. Otherwise it carries a GREEN glow the
               // rAF crossfades per frame — lighter green at the top of the inhale,
@@ -750,22 +773,35 @@ export function CobreatheBreath({
         </div>
       </div>
 
-      {/* End / Finish — bottom */}
-      <button
-        type="button"
-        onClick={() => onEnd(Math.round((Date.now() - startRef.current) / 1000), reachedRef.current)}
-        className="text-[13px] py-2 px-6"
-        style={{
-          color: reachedNow ? "#EAF6F4" : TEXT_FAINT,
-          fontWeight: reachedNow ? 600 : 400,
-          fontFamily: SPACE_GROTESK, background: "none", border: "none", cursor: "pointer", position: "relative",
-          marginBottom: 24,
-        }}
-      >
-        {reachedNow
-          ? t("cobreathe.finish", { defaultValue: "Finish" })
-          : t("common.cancel", { defaultValue: "Cancel" })}
-      </button>
+      {/* Bottom — the breath counter (where the Cancel button used to be). Once
+          the full set of twelve is kept, a Done pill appears beneath it to
+          finish; before then there's no button here — the breath is a committed
+          sit (the small ✕ top-right is the only way out, and backgrounding the
+          app still ends it). */}
+      <div className="flex flex-col items-center" style={{ marginBottom: 24, gap: 14 }}>
+        <p className="text-[13px] text-center" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, maxWidth: 260 }}>
+          {!counting
+            ? t("cobreathe.finding_rhythm", { defaultValue: "Syncing with the global breath…" })
+            : reachedNow
+              ? t("cobreathe.breath_counter_past", { current: breathNum, defaultValue: `🌿 Breath ${breathNum} — keep going as long as you like` })
+              : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `Breath ${breathNum} of ${totalBreaths}` })}
+        </p>
+        {reachedNow && (
+          <button
+            type="button"
+            onClick={() => onEnd(Math.round((Date.now() - startRef.current) / 1000), reachedRef.current)}
+            className="rounded-full active:scale-[0.98] transition-transform"
+            style={{
+              background: "rgba(46,107,64,0.85)", color: "#EAF6F4",
+              border: "1px solid rgba(140,195,160,0.5)",
+              fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600,
+              padding: "10px 34px", cursor: "pointer",
+            }}
+          >
+            {t("cobreathe.done", { defaultValue: "Done" })}
+          </button>
+        )}
+      </div>
     </div>,
     document.body,
   );

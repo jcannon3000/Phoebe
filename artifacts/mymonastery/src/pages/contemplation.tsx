@@ -733,14 +733,28 @@ export default function ContemplationPage() {
           opens the full page on the Stats tab. Only in the immersive begin
           mode; the full page already carries the History/Stats/Learn tabs. */}
       {beginMode && (
-        <button
-          type="button"
-          onClick={() => { setTab("stats"); setLocation("/contemplation?tab=stats"); }}
-          className="w-full text-center mt-3.5 transition-opacity active:opacity-70"
-          style={{ background: "none", border: "none", color: "rgba(143,175,150,0.85)", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
-        >
-          {t("contemplation.view_stats", { defaultValue: "View stats" })} <span aria-hidden>→</span>
-        </button>
+        <div className="flex items-center justify-center gap-3 mt-3.5">
+          <button
+            type="button"
+            onClick={() => { setTab("stats"); setLocation("/contemplation?tab=stats"); }}
+            className="text-center transition-opacity active:opacity-70"
+            style={{ background: "none", border: "none", color: "rgba(143,175,150,0.85)", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+          >
+            {t("contemplation.view_stats", { defaultValue: "View stats" })} <span aria-hidden>→</span>
+          </button>
+          <span aria-hidden style={{ color: "rgba(143,175,150,0.4)" }}>·</span>
+          {/* Manual log — open the full page's History tab with the log form
+              already expanded, so a sit prayed elsewhere can be recorded
+              without first hunting for the History section. */}
+          <button
+            type="button"
+            onClick={() => { setTab("history"); setLogOpen(true); setLocation("/contemplation?tab=history"); }}
+            className="text-center transition-opacity active:opacity-70"
+            style={{ background: "none", border: "none", color: "rgba(143,175,150,0.85)", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+          >
+            {t("contemplation.log_prayer_time", { defaultValue: "Log prayer time" })}
+          </button>
+        </div>
       )}
 
       {/* Cobreathe pill — set apart with a space, straight into today's
