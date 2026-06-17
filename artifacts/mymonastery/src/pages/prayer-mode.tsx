@@ -21,6 +21,12 @@ import {
   markCacRead,
   markFddRead,
   markSsjeRead,
+  hasReadCacToday,
+  hasReadFddToday,
+  hasReadSsjeToday,
+  CAC_READ_EVENT,
+  FDD_READ_EVENT,
+  SSJE_READ_EVENT,
 } from "@/lib/cacReadState";
 import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/officePrefs";
 import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
@@ -2130,6 +2136,20 @@ function PrayerCompletedSlide({
     else if (refl === "ssje") { markSsjeRead(); openExternal(SSJE_TODAY_URL); }
     else { markCacRead(); openExternal(CAC_TODAY_URL); }
   };
+  // Has today's reflection been read? When so the card flips to a DONE state —
+  // a ✓ and a pulsing green border, the same freshly-completed cue the home
+  // daily-progress shows. Re-checks on the read events + return-to-app signals,
+  // so reading it (then coming back) flips the card live.
+  const reflRead = () => refl === "fdd" ? hasReadFddToday() : refl === "ssje" ? hasReadSsjeToday() : hasReadCacToday();
+  const [reflDone, setReflDone] = useState(() => (refl ? reflRead() : false));
+  useEffect(() => {
+    if (!refl) return;
+    const check = () => setReflDone(reflRead());
+    const evs = [CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT, "focus", "pageshow", "phoebe:appactive", "phoebe:browserfinished"];
+    evs.forEach((e) => window.addEventListener(e, check));
+    return () => evs.forEach((e) => window.removeEventListener(e, check));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refl]);
 
   const faceVariant = {
     hidden: { opacity: 0, y: 14 },
@@ -2177,16 +2197,33 @@ function PrayerCompletedSlide({
         <motion.button
           type="button" onClick={openReflection}
           initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.24 }}
-          className="w-full flex flex-col items-start gap-1.5 rounded-2xl px-5 py-4 text-left transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ maxWidth: 360, background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.45)", cursor: "pointer" }}
+          className={`w-full flex items-start gap-3 rounded-2xl px-5 py-4 text-left transition-opacity hover:opacity-90 active:scale-[0.98]${reflDone ? " dp-card-pulse" : ""}`}
+          style={{
+            maxWidth: 360, cursor: "pointer",
+            background: reflDone ? "rgba(46,107,64,0.30)" : "rgba(46,107,64,0.22)",
+            // The pulse class drives the border glow when done; keep a static
+            // border only when not-done (so the two don't fight).
+            border: reflDone ? undefined : "1px solid rgba(46,107,64,0.45)",
+          }}
         >
-          <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8FAF96" }}>
-            {t("prayer_mode.whats_next_eyebrow", { defaultValue: "What's next" })}
-          </span>
-          <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600, color: "#F0EDE6" }}>{reflName}</span>
-          <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600, color: "#A8C5A0", marginTop: 2 }}>
-            {t("common.read", { defaultValue: "Read" })} →
-          </span>
+          <div className="flex-1 min-w-0 flex flex-col items-start gap-1.5">
+            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8FAF96" }}>
+              {t("prayer_mode.whats_next_eyebrow", { defaultValue: "What's next" })}
+            </span>
+            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600, color: "#F0EDE6" }}>{reflName}</span>
+            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600, color: "#A8C5A0", marginTop: 2 }}>
+              {reflDone
+                ? `✓ ${t("prayer_mode.reflection_read", { defaultValue: "Read" })}`
+                : `${t("common.read", { defaultValue: "Read" })} →`}
+            </span>
+          </div>
+          {reflDone && (
+            <span
+              className="flex-shrink-0 rounded-full flex items-center justify-center text-[13px] font-bold"
+              style={{ width: 26, height: 26, background: "rgba(46,107,64,0.85)", color: "#EAF6F4" }}
+              aria-hidden
+            >✓</span>
+          )}
         </motion.button>
       )}
 

@@ -202,6 +202,19 @@
   .dp-dot-pulse { animation: none; }
 }
 
+/* Daily-progress CARD pulse: a green border + outward glow that breathes for a
+   few beats after a practice is freshly completed (the card-level companion to
+   the dot pulse). Used on the Prayer-completed close card once today's
+   reflection has been read. */
+@keyframes dp-card-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(46,107,64,0.55), 0 0 0 rgba(120,200,140,0); }
+  50%      { box-shadow: 0 0 0 1px rgba(150,205,160,0.95), 0 0 18px rgba(120,200,140,0.45); }
+}
+.dp-card-pulse { animation: dp-card-pulse 1.7s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .dp-card-pulse { animation: none; }
+}
+
 /* ── Global input styling ────────────────────────────────────────── */
 input[type="text"],
 input[type="email"],
