@@ -146,7 +146,7 @@ function initials(name: string): string {
 // back button). When unfocused, the card list is clamped to ~3.5 cards
 // tall with a fade-out gradient so overflow is obviously scrollable. When
 // focused, the clamp + fade lift and every card is shown at full height.
-type SectionKey = "intercessions" | "requests" | "prayers-for" | "prayers-from";
+type SectionKey = "intercessions" | "requests" | "prayers-for" | "prayers-from" | "one-to-ones";
 
 // Backlog row from GET /api/moments/past-intercessions — community
 // intercessions the viewer admins that have been retired (state =
@@ -185,6 +185,7 @@ function SectionShell({
   count,
   focused,
   onFocus,
+  maxRows = 3.5,
   children,
 }: {
   id: SectionKey;
@@ -192,14 +193,17 @@ function SectionShell({
   count: number;
   focused: SectionKey | null;
   onFocus: (id: SectionKey) => void;
+  /** Rows to show before the clamp + fade in the collapsed view. Defaults to
+   *  3.5 (a peek); the Requests + One-to-ones sections pass 7. */
+  maxRows?: number;
   children: React.ReactNode;
 }) {
   const isFocused = focused === id;
   const collapsed = focused === null;
-  // Clamp at ~3.5 card rows. Cards are ≈64px + 8px gap, so 3 full rows plus
-  // half a row of peek lands around 250–260px. We pad the bottom so the
-  // fade gradient doesn't sit on top of the last visible card's text.
-  const CLAMP = 260;
+  // Clamp to ~maxRows card rows. Cards are ≈64px + 8px gap (~74px/row); the
+  // trailing fade signals "more below, scroll." We pad the bottom so the fade
+  // gradient doesn't sit on top of the last visible card's text.
+  const CLAMP = Math.round(maxRows * 74);
   return (
     <section>
       <button
@@ -215,7 +219,7 @@ function SectionShell({
           {label}
         </h2>
         <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
-        {collapsed && count > 3 && (
+        {collapsed && count > maxRows && (
           <span
             className="text-[10px] font-semibold uppercase"
             style={{ color: "rgba(143,175,150,0.55)", letterSpacing: "0.12em" }}
@@ -243,7 +247,7 @@ function SectionShell({
         {/* Bottom fade — matches the dashboard's home-section pattern:
             64px tall, transparent→page background. The prior 24px @ 0.45
             was too subtle to read as "more below" on a long list. */}
-        {collapsed && count > 3 && (
+        {collapsed && count > maxRows && (
           <div
             className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
             style={{ background: "linear-gradient(to bottom, transparent 20%, #091A10)" }}
@@ -519,6 +523,12 @@ function RequestCard({ req, onOpen, viewerAvatarUrl, viewerName, isPast = false 
           )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Home-consistent ✓ — once you've left a word alongside someone
+              else's request you've prayed it; mark it done the way the home
+              screen marks its anchors. */}
+          {!isPast && !req.isOwnRequest && req.myWord && (
+            <span className="text-[13px] font-bold" style={{ color: "#7ED28C" }} aria-label="Prayed">✓</span>
+          )}
           {req.words.length > 0 && (
             <span className="flex items-center gap-1" style={{ color: req.myWord ? "#5C7A5F" : "rgba(143,175,150,0.45)" }}>
               <span className="text-[10px] tabular-nums">{req.words.length}</span>
@@ -1392,6 +1402,11 @@ export default function PrayerListPage() {
   // backlogs) so a request doesn't just vanish when its window closes.
   const pastRequests = pastMineRequests;
   const hasAnyRequests = activeRequests.length > 0 || pastRequests.length > 0;
+  // Own requests float to the top of the active list — the user asked to see
+  // their own asks first. Stable sort keeps server order within each group.
+  const sortedActiveRequests = [...activeRequests].sort(
+    (a, b) => Number(b.isOwnRequest) - Number(a.isOwnRequest),
+  );
 
   // Past prayers (expired or acknowledged) that aren't surfaced in
   // the live "Prayers for You" section. We compute this by filtering
@@ -1494,8 +1509,9 @@ export default function PrayerListPage() {
             count={activeRequests.length + pastRequests.length}
             focused={focused}
             onFocus={setFocused}
+            maxRows={7}
           >
-            {activeRequests.map((r) => (
+            {sortedActiveRequests.map((r) => (
               <RequestCard
                 key={r.id}
                 req={r}
@@ -1545,48 +1561,50 @@ export default function PrayerListPage() {
             this page per request — prayers-for-you now surface as the face stack
             on the home "Your prayer requests" section. */}
 
-        {/* Community intercessions — intercession practices.
-            Moved to the bottom of the page (was at the top): the manage
-            prayer list reads as a personal inbox of asks the user owes
-            engagement on, and intercessions are a different shape (ongoing
-            community practices, not one-off asks). Keeping them last lets
-            the personal stuff lead.
-            Past (archived / cycle-expired) intercessions land at the
-            bottom of the same section, faded — mirrors how past
-            "Prayers for You" cards sit in their section. Surfacing
-            them inline keeps the community's history of carries in
-            view without a separate header to scroll past. */}
-        {(intercessionsSorted.length > 0 || feedsToday.length > 0 || pastIntercessions.length > 0)
-          && (focused === null || focused === "intercessions") && (
+        {/* One-to-ones — the viewer's 1:1 prayer relationships: who is praying
+            for them, and who they're praying for. Restored here per request
+            (these were the "prayers for you" / "my prayers" sections) — the
+            prayer list is where the one-to-ones belong. Community intercessions
+            were removed from this page; they live in the communities now.
+            Active rows first, then a faded "Past" sub-group of prayers that have
+            run their course — same backlog treatment as the requests section. */}
+        {(prayersForMe.length > 0 || activePrayersFor.length > 0 || pastPrayersForMe.length > 0)
+          && (focused === null || focused === "one-to-ones") && (
           <SectionShell
-            id="intercessions"
-            label={t("prayer_list.section_community")}
-            count={intercessionsSorted.length + feedsToday.length + pastIntercessions.length}
+            id="one-to-ones"
+            label={t("prayer_list.section_one_to_ones", { defaultValue: "One-to-ones" })}
+            count={prayersForMe.length + activePrayersFor.length + pastPrayersForMe.length}
             focused={focused}
             onFocus={setFocused}
+            maxRows={7}
           >
-            {/* One card per subscribed prayer feed, listed first so
-                feed-authored intercessions read at the top of the
-                section. Each card collapses today's slot entries into
-                "N intercessions today". */}
-            {feedsToday.map((f) => (
-              <FeedCard key={`feed-${f.feedId}`} feed={f} />
+            {/* Someone is praying for you. */}
+            {prayersForMe.map((p) => (
+              <PrayerFromCard key={`from-${p.id}`} p={p} onOpen={() => setDetail({ kind: "prayer-from", id: p.id })} />
             ))}
-            {intercessionsSorted.map((m) => (
-              <IntercessionCard key={m.id} moment={m} viewerEmail={user.email ?? ""} />
+            {/* Prayers you're holding for others. */}
+            {activePrayersFor.map((p) => (
+              <PrayerForCard key={`for-${p.id}`} p={p} onOpen={() => setDetail({ kind: "prayer-for", id: p.id })} />
             ))}
-            {pastIntercessions.map((p) => (
-              <PastIntercessionCard key={`past-${p.id}`} p={p} />
+            {pastPrayersForMe.length > 0 && (
+              <div className="flex items-center gap-2 pt-3 pb-0.5">
+                <span
+                  className="text-[10px] font-semibold uppercase"
+                  style={{ color: "rgba(143,175,150,0.5)", letterSpacing: "0.14em" }}
+                >
+                  {t("prayer_list.past")}
+                </span>
+                <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.1)" }} />
+              </div>
+            )}
+            {pastPrayersForMe.map((p) => (
+              <PrayerFromCard key={`from-past-${p.id}`} p={p} isPast onOpen={() => setDetail({ kind: "prayer-from", id: p.id })} />
             ))}
           </SectionShell>
         )}
 
-        {/* Empty state — only when every section is empty, otherwise the
-            existing sections carry their own weight. */}
-        {intercessionsSorted.length === 0
-          && feedsToday.length === 0
-          && pastIntercessions.length === 0
-          && !hasAnyRequests
+        {/* Empty state — only when every section is empty. */}
+        {!hasAnyRequests
           && activePrayersFor.length === 0
           && prayersForMe.length === 0
           && pastPrayersForMe.length === 0 && (

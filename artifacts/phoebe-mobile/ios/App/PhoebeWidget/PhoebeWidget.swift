@@ -40,6 +40,8 @@ struct PhoebeStats {
     var reflectDone: Bool
     var eveningDone: Bool
     var reflectAvailable: Bool // false → user has no reflection source; skip that dot
+    var contemplationMin: Int      // today's contemplation minutes (sits + Health)
+    var contemplationGoalMin: Int  // daily contemplation goal (0 = no goal set)
 
     static let placeholder = PhoebeStats(
         kind: "office", eyebrow: "Book of Common Prayer", title: "Evening Devotion",
@@ -47,7 +49,8 @@ struct PhoebeStats {
         deepLink: "https://withphoebe.app/", streakDays: 4, prayedToday: false,
         nextOffice: "Evening Prayer", newPrayers: 0,
         doneCount: 2, totalAnchors: 3,
-        morningDone: true, reflectDone: true, eveningDone: false, reflectAvailable: true
+        morningDone: true, reflectDone: true, eveningDone: false, reflectAvailable: true,
+        contemplationMin: 7, contemplationGoalMin: 20
     )
 
     // Before the app has ever pushed data (or if the App Group store can't be
@@ -67,7 +70,8 @@ struct PhoebeStats {
             nextOffice: morning ? "Morning Prayer" : "Evening Prayer",
             newPrayers: 0,
             doneCount: 0, totalAnchors: 3,
-            morningDone: false, reflectDone: false, eveningDone: false, reflectAvailable: true
+            morningDone: false, reflectDone: false, eveningDone: false, reflectAvailable: true,
+            contemplationMin: 0, contemplationGoalMin: 0
         )
     }
 
@@ -103,12 +107,15 @@ struct PhoebeStats {
         let reflectDone = (obj["reflectDone"] as? NSNumber)?.boolValue ?? false
         let eveningDone = (obj["eveningDone"] as? NSNumber)?.boolValue ?? false
         let reflectAvailable = (obj["reflectAvailable"] as? NSNumber)?.boolValue ?? true
+        let contemplationMin = (obj["contemplationMin"] as? NSNumber)?.intValue ?? 0
+        let contemplationGoalMin = (obj["contemplationGoalMin"] as? NSNumber)?.intValue ?? 0
         return PhoebeStats(kind: kind, eyebrow: eyebrow, title: title, subtitle: subtitle, cta: cta,
                            deepLink: deepLink, streakDays: streak, prayedToday: prayed,
                            nextOffice: nextOffice, newPrayers: newPrayers,
                            doneCount: doneCount, totalAnchors: totalAnchors,
                            morningDone: morningDone, reflectDone: reflectDone,
-                           eveningDone: eveningDone, reflectAvailable: reflectAvailable)
+                           eveningDone: eveningDone, reflectAvailable: reflectAvailable,
+                           contemplationMin: contemplationMin, contemplationGoalMin: contemplationGoalMin)
     }
 
     var streakText: String { streakDays > 0 ? "\(streakDays)-day streak" : "Begin a streak" }
@@ -309,6 +316,76 @@ struct PhoebeWidgetView: View {
     }
 }
 
+// ── "Today" view — contemplation progress + what's next ─────────────────────
+// The lock-screen companion to the hero: it LEADS with today's contemplation
+// minutes (and the goal, when one is set, as "N/M min" + a ring/bar) and TAILS
+// with the next thing in the rhythm. Accessory families render in the system's
+// vibrant monochrome, so this leans on SF Symbols, a trim ring, and a thin
+// ProgressView rather than colour.
+struct PhoebeTodayView: View {
+    @Environment(\.widgetFamily) var family
+    let stats: PhoebeStats
+
+    private var hasGoal: Bool { stats.contemplationGoalMin > 0 }
+    private var progress: Double {
+        guard hasGoal else { return stats.contemplationMin > 0 ? 1 : 0 }
+        return min(1.0, Double(stats.contemplationMin) / Double(stats.contemplationGoalMin))
+    }
+    // "7/20 min" with a goal, "7 min" without.
+    private var minutesLine: String {
+        hasGoal ? "\(stats.contemplationMin)/\(stats.contemplationGoalMin) min"
+                : "\(stats.contemplationMin) min"
+    }
+    private var nextLine: String { stats.todayLine }
+
+    var body: some View {
+        switch family {
+        case .accessoryInline:
+            Label("\(minutesLine) · \(nextLine)", systemImage: "leaf.fill")
+        case .accessoryCircular:
+            // A simple trim ring (avoids Gauge's availability constraints) with
+            // the minutes in the centre under a leaf.
+            ZStack {
+                Circle().stroke(lineWidth: 4).opacity(0.25)
+                Circle()
+                    .trim(from: 0, to: max(0.001, progress))
+                    .stroke(style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                VStack(spacing: -2) {
+                    Image(systemName: "leaf.fill").font(.system(size: 10))
+                    Text("\(stats.contemplationMin)").font(.system(size: 15, weight: .bold))
+                }
+            }
+        default:
+            rectangular
+        }
+    }
+
+    private var rectangular: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                Image(systemName: "leaf.fill").font(.system(size: 11))
+                Text("CONTEMPLATION")
+                    .font(.system(size: 10, weight: .semibold))
+                    .tracking(0.8)
+                Spacer(minLength: 0)
+                Text(minutesLine)
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            if hasGoal {
+                ProgressView(value: progress)
+                    .progressViewStyle(.linear)
+            }
+            Text("Next · \(nextLine)")
+                .font(.system(size: 12))
+                .opacity(0.85)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+}
+
 // ── Widget ────────────────────────────────────────────────────────────────
 struct PhoebeWidget: Widget {
     let kind = "PhoebeWidget"
@@ -331,9 +408,32 @@ struct PhoebeWidget: Widget {
     }
 }
 
+// ── "Today" widget — contemplation + next, lock-screen first ─────────────────
+// A second widget so the gallery offers TWO options: this rich "Contemplation
+// & next" (minutes/goal + what's next) and the leaner "What's next" above.
+// Lock-screen families only — the home hero already lives in PhoebeWidget.
+struct PhoebeTodayWidget: Widget {
+    let kind = "PhoebeTodayWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: PhoebeProvider()) { entry in
+            let view = PhoebeTodayView(stats: entry.stats)
+                .widgetURL(URL(string: entry.stats.deepLink))
+            if #available(iOS 17.0, *) {
+                view.containerBackground(phoebeGreen, for: .widget)
+            } else {
+                view.padding().background(phoebeGreen)
+            }
+        }
+        .configurationDisplayName("Contemplation & next")
+        .description("Today's contemplation minutes and what's next.")
+        .supportedFamilies([.accessoryInline, .accessoryCircular, .accessoryRectangular])
+    }
+}
+
 @main
 struct PhoebeWidgetBundle: WidgetBundle {
     var body: some Widget {
-        PhoebeWidget()
+        PhoebeWidget()        // "What's next" — home + lock screen
+        PhoebeTodayWidget()   // "Contemplation & next" — lock screen
     }
 }

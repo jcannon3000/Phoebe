@@ -44,6 +44,10 @@ type WidgetState = {
   reflectDone: boolean;
   eveningDone: boolean;
   reflectAvailable: boolean;
+  // Today's contemplation minutes + the daily goal (0 = no goal) — the
+  // lock-screen "Today" widget shows the minutes/goal + a progress ring.
+  contemplationMin: number;
+  contemplationGoalMin: number;
   updatedAt: string;
 };
 type WidgetBridge = { updateWidget?: (s: Partial<WidgetState>) => void };
@@ -126,11 +130,24 @@ export function useWidgetSync(): void {
   // Prayer level → so the office hero reads "Devotion"/"Prayer" exactly like the
   // home PrayerOfficeCard (the user prefers a Devotion, so the widget should
   // say "Evening Devotion", not "Evening Prayer").
-  const officePrefsQ = useQuery<{ defaultPrayerLevel?: "devotion" | "office" | "intercessions" }>({
+  const officePrefsQ = useQuery<{ defaultPrayerLevel?: "devotion" | "office" | "intercessions"; contemplationGoalMinutes?: number }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     enabled,
     staleTime: 60_000,
+  });
+  // Today's contemplation minutes (Phoebe sits + Apple Health mindful minutes,
+  // the same combination useRhythmState uses) — for the lock-screen "Today"
+  // widget's "N of M min" + progress ring. The goal comes from office-prefs.
+  const widgetStartOfDay = new Date();
+  widgetStartOfDay.setHours(0, 0, 0, 0);
+  const widgetTodaySince = widgetStartOfDay.toISOString();
+  const widgetTz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
+  const contStatsQ = useQuery<{ todaySeconds?: number; healthMinutesToday?: number }>({
+    queryKey: ["/api/me/contemplation-stats", widgetTodaySince.slice(0, 10), widgetTz],
+    queryFn: () => apiRequest("GET", `/api/me/contemplation-stats?todaySince=${encodeURIComponent(widgetTodaySince)}&tz=${encodeURIComponent(widgetTz)}`),
+    enabled,
+    staleTime: 30_000,
   });
 
   useEffect(() => {
@@ -222,6 +239,10 @@ export function useWidgetSync(): void {
     const totalAnchors = anchors.length;
     const doneCount = anchors.filter(Boolean).length;
 
+    // Today's contemplation minutes + goal for the lock-screen "Today" widget.
+    const contemplationMin = Math.floor((contStatsQ.data?.todaySeconds ?? 0) / 60) + (contStatsQ.data?.healthMinutesToday ?? 0);
+    const contemplationGoalMin = officePrefsQ.data?.contemplationGoalMinutes ?? 0;
+
     const bridge = (window as unknown as { PhoebeNative?: WidgetBridge }).PhoebeNative;
     bridge?.updateWidget?.({
       heroKind,
@@ -240,6 +261,8 @@ export function useWidgetSync(): void {
       reflectDone,
       eveningDone,
       reflectAvailable,
+      contemplationMin,
+      contemplationGoalMin,
       updatedAt: new Date().toISOString(),
     });
   }, [
@@ -253,6 +276,7 @@ export function useWidgetSync(): void {
     coPrayersQ.data,
     prayerReqsQ.data,
     officePrefsQ.data,
+    contStatsQ.data,
   ]);
 }
 

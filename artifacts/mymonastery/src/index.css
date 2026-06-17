@@ -101,8 +101,9 @@
      padding-top double-count in native.css; with that removed, the cap left the
      wordmark riding up INTO the status bar ("header too high"). Full inset is the
      correct single value; web / older phones fall back to the real (smaller)
-     inset or an 8px floor. */
-  --top-chrome: max(0.5rem, var(--safe-top));
+     inset or an 8px floor. Plus a 4px nudge so the wordmark sits a touch lower —
+     the full inset alone still read a hair high. */
+  --top-chrome: calc(max(0.5rem, var(--safe-top)) + 4px);
   /* Phoebe — a forest chapel at dusk */
   /* deep   #091A10 — page background, deep forest     */
   /* card   #0F2818 — card surface, dark emerald        */

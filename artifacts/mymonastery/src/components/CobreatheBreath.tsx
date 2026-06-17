@@ -169,6 +169,14 @@ export function CobreatheBreath({
   onSession?: (info: { startEpochMs: number; masterSeed: number }) => void;
 }) {
   const { t } = useTranslation();
+  // Entrance fade-up: false on mount, flipped on the next frame so the root
+  // eases from translateY(14px)/opacity 0 to rest — a smooth rise when arriving
+  // from the contemplation card (or an office slide) instead of a hard cut.
+  const [entered, setEntered] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
   // The breath is text + a softly breathing photo field — no centre globe or
   // progress rings. The phase word ("Breathe In/Out") is the only moving glyph.
   const labelRef = useRef<HTMLDivElement>(null);
@@ -635,15 +643,21 @@ export function CobreatheBreath({
               backgroundImage: `linear-gradient(${counting ? "rgba(8,32,20,0.62), rgba(4,13,8,0.72)" : "rgba(4,13,8,0.74), rgba(4,13,8,0.82)"}), url(${backgroundImage})`,
               backgroundSize: "cover",
               backgroundPosition: "center",
-              transition: "background-image 1.6s ease",
             }
           : {
               background: counting ? FIELD_LIVE : FIELD_DIM,
-              transition: "background-color 1.6s ease",
             }),
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "space-between",
         paddingTop: "calc(var(--safe-top) + 28px)",
         paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
+        // Entrance — the whole breath fades + slides up gently on mount, so
+        // arriving from the contemplation card (or an office slide) is a smooth
+        // rise rather than a hard cut. Combined into one transition with the
+        // slower background cross-fade so neither clobbers the other.
+        opacity: entered ? 1 : 0,
+        transform: entered ? "translateY(0)" : "translateY(14px)",
+        transition: `opacity 0.55s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), ${backgroundImage ? "background-image" : "background-color"} 1.6s ease`,
+        willChange: "opacity, transform",
       }}
     >
       {/* The breathing photos — images of life on earth, full-bleed behind the
@@ -723,7 +737,7 @@ export function CobreatheBreath({
       >
         <p style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: useWeil ? "clamp(20px, 5.8vw, 25px)" : "clamp(15px, 4.4vw, 18px)", lineHeight: 1.5, textAlign: "center", textShadow: "0 2px 18px rgba(8,30,18,0.6)" }}>
           {useWeil
-            ? t("cobreathe.sync_quote_weil", { defaultValue: "Absolutely unmixed attention is prayer." })
+            ? t("cobreathe.sync_quote_weil", { defaultValue: "Attention is the rarest and purest form of generosity." })
             : t("cobreathe.sync_quote", { defaultValue: "By paying attention, especially to the beauty of the world and to the suffering of others, we open the possibility for God to reach us, beginning the process of change whereby we allow ourselves to be decreated from egotists to lovers of God by loving the neighbor as ourselves." })}
         </p>
         <p style={{ color: "rgba(182,210,188,0.62)", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, letterSpacing: "0.06em", marginTop: 16, textAlign: "center" }}>
@@ -769,8 +783,14 @@ export function CobreatheBreath({
         onPointerUp={onGlobeUp}
         onPointerCancel={onGlobeUp}
         style={{
-          position: "relative", width: 158, height: 158, flexShrink: 0, zIndex: 3,
-          transform: `translate(${globeOffset.x}px, ${globeOffset.y}px)`,
+          // Positioned absolutely so the globe's CENTRE sits at 61.8% of the
+          // screen height (golden ratio) — lower than the old flex-centre. The
+          // −50%/−50% centres the box on that point; the drag offset composes on
+          // top (onGlobeDown/Move recover the natural position by subtracting the
+          // offset from the measured rect, so the drag clamp still bounds it).
+          position: "absolute", left: "50%", top: "61.8%",
+          width: 158, height: 158, zIndex: 3,
+          transform: `translate(-50%, -50%) translate(${globeOffset.x}px, ${globeOffset.y}px)`,
           transition: globeSnapping ? "transform 0.4s cubic-bezier(0.34, 1.3, 0.64, 1)" : "none",
           touchAction: "none", cursor: "grab",
         }}
@@ -842,7 +862,7 @@ export function CobreatheBreath({
           </div>
           {/* RIGHT corner — Breath n of 12 (only once the count is running). */}
           {counting && (
-            <p className="text-[13px] text-right" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, maxWidth: 160 }}>
+            <p className="text-right" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 600, letterSpacing: "0.04em", maxWidth: 160 }}>
               {reachedNow
                 ? t("cobreathe.breath_counter_past", { current: breathNum, defaultValue: `🌿 Breath ${breathNum}` })
                 : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `Breath ${breathNum} of ${totalBreaths}` })}

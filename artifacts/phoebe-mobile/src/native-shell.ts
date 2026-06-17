@@ -1384,6 +1384,10 @@ declare global {
         reflectDone?: boolean | null;
         eveningDone?: boolean | null;
         reflectAvailable?: boolean | null;
+        // Today's contemplation minutes + the daily goal (0 = no goal) — the
+        // lock-screen "Today" widget shows "N/M min" + a progress ring.
+        contemplationMin?: number | null;
+        contemplationGoalMin?: number | null;
         // Dynamic "what's next" hero (medium widget) — mirrors the home hero.
         heroKind?: string | null;       // "office" | "reflect" | "summary"
         heroEyebrow?: string | null;
@@ -1474,6 +1478,8 @@ function exposePublicApi() {
           reflectDone: state.reflectDone ?? null,
           eveningDone: state.eveningDone ?? null,
           reflectAvailable: state.reflectAvailable ?? null,
+          contemplationMin: state.contemplationMin ?? null,
+          contemplationGoalMin: state.contemplationGoalMin ?? null,
           updatedAt: state.updatedAt ?? null,
           heroKind: state.heroKind ?? null,
           heroEyebrow: state.heroEyebrow ?? null,
