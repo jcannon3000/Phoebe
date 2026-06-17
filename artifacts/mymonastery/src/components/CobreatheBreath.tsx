@@ -194,6 +194,12 @@ export function CobreatheBreath({
     sessionGlobeRef.current = GLOBES[gi];
     try { localStorage.setItem("phoebe:cobreathe-globe", String((gi + 1) % GLOBES.length)); } catch { /* ignore */ }
   }
+  // Which short sync quote this session shows — Simone Weil ↔ Thomas Merton,
+  // chosen once per sit so the short slot isn't always the same line.
+  const shortQuoteRef = useRef<"weil" | "merton" | null>(null);
+  if (shortQuoteRef.current === null) {
+    shortQuoteRef.current = Math.random() < 0.5 ? "weil" : "merton";
+  }
   // ── Draggable globe ──────────────────────────────────────────────────────
   // The globe cluster can be dragged anywhere on screen (kept 24px clear of the
   // edges + the top title and bottom labels). Released near its home (centre),
@@ -581,7 +587,10 @@ export function CobreatheBreath({
   // counts down. Under 5s of waiting → the short Simone Weil line; longer → the
   // fuller Sallie McFague one (there's more time to read it).
   const syncWaitMs = countStartRef.current - startRef.current;
-  const useWeil = syncWaitMs < 5000;
+  // A short wait shows a short, punchy line (Weil or Merton, per shortQuoteRef);
+  // a longer wait shows the fuller Sallie McFague passage — more time to read.
+  const shortWait = syncWaitMs < 5000;
+  const quoteKind: "weil" | "merton" | "mcfague" = shortWait ? (shortQuoteRef.current ?? "weil") : "mcfague";
 
   // Soft sage tones that sit calmly on the deep-green field.
   const TEXT_DIM = "rgba(182,210,188,0.72)";
@@ -735,15 +744,19 @@ export function CobreatheBreath({
           zIndex: 2, pointerEvents: "none", maxWidth: 540, marginLeft: "auto", marginRight: "auto",
         }}
       >
-        <p style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: useWeil ? "clamp(20px, 5.8vw, 25px)" : "clamp(15px, 4.4vw, 18px)", lineHeight: 1.5, textAlign: "center", textShadow: "0 2px 18px rgba(8,30,18,0.6)" }}>
-          {useWeil
+        <p style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: shortWait ? "clamp(20px, 5.8vw, 25px)" : "clamp(15px, 4.4vw, 18px)", lineHeight: 1.5, textAlign: "center", textShadow: "0 2px 18px rgba(8,30,18,0.6)", whiteSpace: "pre-line" }}>
+          {quoteKind === "weil"
             ? t("cobreathe.sync_quote_weil", { defaultValue: "Attention is the rarest and purest form of generosity." })
-            : t("cobreathe.sync_quote", { defaultValue: "By paying attention, especially to the beauty of the world and to the suffering of others, we open the possibility for God to reach us, beginning the process of change whereby we allow ourselves to be decreated from egotists to lovers of God by loving the neighbor as ourselves." })}
+            : quoteKind === "merton"
+              ? t("cobreathe.sync_quote_merton", { defaultValue: "What I wear is pants.\nWhat I do is live.\nHow I pray is breathe." })
+              : t("cobreathe.sync_quote", { defaultValue: "By paying attention, especially to the beauty of the world and to the suffering of others, we open the possibility for God to reach us, beginning the process of change whereby we allow ourselves to be decreated from egotists to lovers of God by loving the neighbor as ourselves." })}
         </p>
         <p style={{ color: "rgba(182,210,188,0.62)", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, letterSpacing: "0.06em", marginTop: 16, textAlign: "center" }}>
-          {useWeil
+          {quoteKind === "weil"
             ? t("cobreathe.sync_quote_weil_author", { defaultValue: "Simone Weil" })
-            : t("cobreathe.sync_quote_author", { defaultValue: "Sallie McFague" })}
+            : quoteKind === "merton"
+              ? t("cobreathe.sync_quote_merton_author", { defaultValue: "Thomas Merton" })
+              : t("cobreathe.sync_quote_author", { defaultValue: "Sallie McFague" })}
         </p>
       </div>
 

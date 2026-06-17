@@ -1561,53 +1561,16 @@ export default function PrayerListPage() {
             this page per request — prayers-for-you now surface as the face stack
             on the home "Your prayer requests" section. */}
 
-        {/* One-to-ones — the viewer's 1:1 prayer relationships: who is praying
-            for them, and who they're praying for. Restored here per request
-            (these were the "prayers for you" / "my prayers" sections) — the
-            prayer list is where the one-to-ones belong. Community intercessions
-            were removed from this page; they live in the communities now.
-            Active rows first, then a faded "Past" sub-group of prayers that have
-            run their course — same backlog treatment as the requests section. */}
-        {(prayersForMe.length > 0 || activePrayersFor.length > 0 || pastPrayersForMe.length > 0)
-          && (focused === null || focused === "one-to-ones") && (
-          <SectionShell
-            id="one-to-ones"
-            label={t("prayer_list.section_one_to_ones", { defaultValue: "One-to-ones" })}
-            count={prayersForMe.length + activePrayersFor.length + pastPrayersForMe.length}
-            focused={focused}
-            onFocus={setFocused}
-            maxRows={7}
-          >
-            {/* Someone is praying for you. */}
-            {prayersForMe.map((p) => (
-              <PrayerFromCard key={`from-${p.id}`} p={p} onOpen={() => setDetail({ kind: "prayer-from", id: p.id })} />
-            ))}
-            {/* Prayers you're holding for others. */}
-            {activePrayersFor.map((p) => (
-              <PrayerForCard key={`for-${p.id}`} p={p} onOpen={() => setDetail({ kind: "prayer-for", id: p.id })} />
-            ))}
-            {pastPrayersForMe.length > 0 && (
-              <div className="flex items-center gap-2 pt-3 pb-0.5">
-                <span
-                  className="text-[10px] font-semibold uppercase"
-                  style={{ color: "rgba(143,175,150,0.5)", letterSpacing: "0.14em" }}
-                >
-                  {t("prayer_list.past")}
-                </span>
-                <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.1)" }} />
-              </div>
-            )}
-            {pastPrayersForMe.map((p) => (
-              <PrayerFromCard key={`from-past-${p.id}`} p={p} isPast onOpen={() => setDetail({ kind: "prayer-from", id: p.id })} />
-            ))}
-          </SectionShell>
-        )}
+        {/* One-to-ones — the Snapchat-style 1:1 prayer EXCHANGE will live here:
+            send a prayer → it arrives the next day → the recipient opens an
+            unmarked "new prayer" to a prayer slide (standard UI + Amen) → after
+            Amen they write one back, building a streak of days walking together.
+            That's a dedicated feature (see artifacts/prayer-dialogue-plan.md);
+            the old prayer-for/prayer-from cards were removed since that
+            one-to-many model is retiring. Section gets wired in with the build. */}
 
-        {/* Empty state — only when every section is empty. */}
-        {!hasAnyRequests
-          && activePrayersFor.length === 0
-          && prayersForMe.length === 0
-          && pastPrayersForMe.length === 0 && (
+        {/* Empty state — when there are no requests to show. */}
+        {!hasAnyRequests && (
           <p className="text-sm italic mt-10 text-center" style={{ color: "rgba(143,175,150,0.6)" }}>
             Quiet today. Share a prayer above to start something.
           </p>
