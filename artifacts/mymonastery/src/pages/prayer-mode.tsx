@@ -3531,7 +3531,6 @@ export default function PrayerModePage() {
     // Haptic on slideshow open — pairs with the swell so a push tap feels
     // grounded the moment the first slide appears (not just when advancing).
     window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "medium" } }));
-    const t = setTimeout(() => setVisible(true), 30);
     return () => {
       body.style.overflow = prevBodyOverflow;
       body.style.backgroundColor = prevBodyBg;
@@ -3539,9 +3538,20 @@ export default function PrayerModePage() {
       meta?.setAttribute("content", prevMeta);
       // Hand the native status bar back to the app green on exit.
       setNativeStatusBarColor(APP_STATUS_BAR);
-      clearTimeout(t);
     };
   }, []);
+
+  // Fade the content in once it's actually ready (after the loading screen) —
+  // not 30ms after mount, which made the first slide POP in over the spinner
+  // instead of fading. Non-prayer phases (closing / blessing / etc.) have no
+  // slide list to wait on, so they fade in straight away. (gate + fade)
+  useEffect(() => {
+    if (phase !== "prayer" || (frozenSlides && index >= 0)) {
+      const t = setTimeout(() => setVisible(true), 30);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [phase, frozenSlides, index]);
 
   // Keep the status bar (native iOS strip + web theme-color + the body/html
   // ground) matched to the CURRENT phase's background — the closing slide is
@@ -3972,7 +3982,11 @@ export default function PrayerModePage() {
     }
   }, [phase, officesOnly]);
 
-  if (authLoading || !user) return null;
+  // While auth is still resolving, hold a dark field (NOT a blank white frame)
+  // so arriving on the web fades dark → dark into the loading screen and the
+  // first slide, instead of flashing white first.
+  if (authLoading) return <div style={{ background: "#0C1F12", minHeight: "100dvh" }} />;
+  if (!user) return null;
 
   // Hold a calm loading screen until the slide list is captured into
   // `frozenSlides` AND the resume index is computed. The snapshot is
