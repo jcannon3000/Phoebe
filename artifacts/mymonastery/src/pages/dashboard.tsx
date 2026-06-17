@@ -30,6 +30,7 @@ import { PrayerListComposeBar } from "@/pages/prayer-list";
 import { PartnerExchange } from "@/components/PartnerExchange";
 import { FellowPlans } from "@/components/FellowPlans";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
+import { BetaRhythmExtras } from "@/components/BetaRhythmExtras";
 import { ParishWeeklyCard } from "@/components/ParishWeeklyCard";
 import { RsvpBlock, RsvpSummaryStrip, useDashboardRsvpSummary } from "@/components/RsvpBlock";
 // Office-progress reading + LiturgyMode now live on /prayer-chooser
@@ -6921,6 +6922,13 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     list; the two models coexist. */}
                 {filter === null && !eventsOnly && (
                   <PartnerExchange hideWhenEmpty />
+                )}
+
+                {/* Beta practices in the MAIN flow — This week + Contemplation
+                    sessions (moved off the daily-progress page). Self-contained
+                    + beta-gated. */}
+                {filter === null && !eventsOnly && (
+                  <BetaRhythmExtras />
                 )}
 
                 {/* Prayer List — the requests carousel (title + divider +

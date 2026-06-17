@@ -157,6 +157,16 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   });
   const fellowRequestCount = fellowReqData?.count ?? 0;
 
+  // Something new from a friend (an unseen 🙌 encouragement) → adds to the
+  // People row badge so you see there's a new one waiting.
+  const { data: encData } = useQuery<{ encouragements: unknown[] }>({
+    queryKey: ["/api/encouragements"],
+    queryFn: () => apiRequest("GET", "/api/encouragements"),
+    enabled: open && !!user && rawIsBeta,
+    staleTime: 30_000,
+  });
+  const newFromFriends = encData?.encouragements?.length ?? 0;
+
   function navigate(path: string) {
     onClose();
     setLocation(path);
@@ -404,7 +414,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 <MenuRow
                   emoji="👥"
                   label={t("header.people")}
-                  count={fellowRequestCount}
+                  count={fellowRequestCount + newFromFriends}
                   onClick={() => navigate("/people")}
                 />
                 {/* Events — the upcoming schedule (services, gatherings,

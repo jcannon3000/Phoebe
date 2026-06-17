@@ -60,6 +60,8 @@ export default function MenuPage() {
       { emoji: "🕯️", label: t("menu.practices"), sub: t("menu.practices_sub"), onClick: () => go("/menu/practices") },
       { emoji: "🌅", label: t("menu.reflections"), sub: t("menu.reflections_sub"), onClick: () => go("/menu/reflections") },
       { emoji: "🎧", label: t("menu.podcasts", { defaultValue: "Podcasts" }), sub: t("menu.podcasts_sub", { defaultValue: "The full library" }), onClick: () => go("/podcasts") },
+      // Gratitude — its own surface now (was a card on the daily-progress page).
+      ...(rawIsBeta ? [{ emoji: "🙏", label: t("menu.gratitude", { defaultValue: "Gratitude" }), sub: t("menu.gratitude_sub", { defaultValue: "Thank three people today" }), badge: t("menu.beta_badge"), onClick: () => go("/thanks") }] : []),
     ],
   });
 
