@@ -543,8 +543,13 @@ export default function People() {
   // straight in; matched on activePrayerRequest body so a user
   // searching "moving" finds whoever asked for moving prayers.
   const trimmedQuery = searchQuery.trim().toLowerCase();
+  // Default view shows only your Fellows (your connections) — non-fellows are
+  // kept off the page. Searching lifts that gate and matches across your WHOLE
+  // garden (name + email + active-prayer text), so you can still find anyone you
+  // pray with. (Accepting a Heart to Heart invite makes that person a Fellow, so
+  // they show up here too.)
   const filtered = trimmedQuery.length === 0
-    ? sorted
+    ? sorted.filter(p => fellowEmails.has(p.email.toLowerCase()))
     : sorted.filter(p => {
         if (p.name.toLowerCase().includes(trimmedQuery)) return true;
         if (p.email.toLowerCase().includes(trimmedQuery)) return true;
@@ -701,12 +706,27 @@ export default function People() {
             >
               <span style={{ fontSize: "28px" }}>🔍</span>
               <div>
-                <p className="font-semibold" style={{ color: "#F0EDE6", fontSize: "15px", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {t("people.no_matches_title")}
-                </p>
-                <p className="mt-0.5" style={{ color: "#8FAF96", fontSize: "13px" }}>
-                  {t("people.no_matches_body", { query: searchQuery.trim() })}
-                </p>
+                {trimmedQuery.length === 0 ? (
+                  // Default view with no Fellows yet — point them at search
+                  // (the garden is still there, just behind the search bar).
+                  <>
+                    <p className="font-semibold" style={{ color: "#F0EDE6", fontSize: "15px", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      {t("people.search_garden_title", { defaultValue: "Search to find your people" })}
+                    </p>
+                    <p className="mt-0.5" style={{ color: "#8FAF96", fontSize: "13px" }}>
+                      {t("people.search_garden_body", { defaultValue: "Everyone you pray with is here — search by name to find them." })}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold" style={{ color: "#F0EDE6", fontSize: "15px", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      {t("people.no_matches_title")}
+                    </p>
+                    <p className="mt-0.5" style={{ color: "#8FAF96", fontSize: "13px" }}>
+                      {t("people.no_matches_body", { query: searchQuery.trim() })}
+                    </p>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

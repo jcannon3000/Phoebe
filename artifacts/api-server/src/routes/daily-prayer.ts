@@ -8,6 +8,7 @@ import {
   prayerPartnershipsTable,
   dailyPrayersTable,
   prayerAttentionsTable,
+  fellowsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
 import { sendPushToUser } from "../lib/pushSender";
@@ -48,6 +49,19 @@ function stepBack(ymd: string): string {
 
 function normPair(a: number, b: number): { lo: number; hi: number } {
   return a < b ? { lo: a, hi: b } : { lo: b, hi: a };
+}
+
+// Becoming prayer partners makes you Fellows. A Fellow link is the full-app
+// connection (shared prayer requests, the People page, the prayer feed), so a
+// Heart to Heart is also a standing relationship — once it's mutual, you see
+// each other's prayer requests like any other Fellow. Symmetric + idempotent
+// (the fellows UNIQUE(user_id, fellow_user_id) + onConflictDoNothing).
+async function linkPartnerFellows(a: number, b: number): Promise<void> {
+  if (a === b) return;
+  await db.insert(fellowsTable).values([
+    { userId: a, fellowUserId: b, source: "heart-to-heart" },
+    { userId: b, fellowUserId: a, source: "heart-to-heart" },
+  ]).onConflictDoNothing();
 }
 
 async function getUserTz(userId: number): Promise<string | null> {
@@ -259,6 +273,7 @@ router.post("/prayer-partner/invite", perUserRateLimit("prayer_partner_invite", 
     const [activated] = await db.update(prayerPartnershipsTable)
       .set({ status: "active", acceptedAt: new Date() })
       .where(eq(prayerPartnershipsTable.id, existing.id)).returning();
+    await linkPartnerFellows(uid, recipientId);
     sendPushToUser(recipientId, {
       title: `${firstName} is now your prayer partner`, body: "Share your prayer for the day.",
       path: "/prayer-partner", threadId: "prayer-dialogue",
@@ -355,6 +370,7 @@ router.post("/prayer-partner/invite-link/:token/accept", perUserRateLimit("praye
       .values({ userLoId: lo, userHiId: hi, invitedById: ownerId, status: "active", acceptedAt: new Date() }).returning();
     partnershipId = created.id;
   }
+  await linkPartnerFellows(uid, ownerId);
   const [me] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, uid));
   sendPushToUser(ownerId, {
     title: `${(me?.name || "Someone").split(/\s+/)[0]} accepted your prayer invite`,
@@ -378,6 +394,7 @@ router.post("/prayer-partner/invites/:id/accept", async (req, res): Promise<void
   const [activated] = await db.update(prayerPartnershipsTable)
     .set({ status: "active", acceptedAt: new Date() })
     .where(eq(prayerPartnershipsTable.id, id)).returning();
+  await linkPartnerFellows(uid, partnerIdOf(activated, uid));
 
   const [me] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, uid));
   sendPushToUser(row.invitedById, {

@@ -6072,7 +6072,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     // → Today" rule because they don't have a single windowOpenDate to
     // bucket against.
     const dashUserName = user?.name ?? "";
-    for (const c of (dashCorrespondences ?? [])) {
+    // Letters never surface on the HOME schedule for anyone — they live on the
+    // dedicated /letters page (and may appear on the Events page). Keeps the home
+    // focused on prayer. Gating the injection here empties every downstream home
+    // letter surface (inline cards + the passive-letters summary roll-up).
+    if (eventsOnly) for (const c of (dashCorrespondences ?? [])) {
       // Read prompt — always visible while there's something unread.
       if (c.unreadCount > 0) {
         todayItems.push({ kind: "letter", data: c });
