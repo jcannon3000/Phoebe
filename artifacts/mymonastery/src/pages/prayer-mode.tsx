@@ -2035,10 +2035,6 @@ function WhatsNextSlide({
         opacity: visible ? 1 : 0,
         transition: "opacity 0.4s ease",
         gap: 26,
-        // Soft top-down gradient wash behind the send-off.
-        background: "radial-gradient(120% 90% at 50% 0%, rgba(46,107,64,0.22) 0%, rgba(12,31,18,0) 72%)",
-        borderRadius: 24,
-        padding: "28px 18px 8px",
       }}
     >
       <motion.p
@@ -2136,9 +2132,6 @@ function BlessingSlide({
         opacity: visible ? 1 : 0,
         transition: "opacity 0.5s ease",
         gap: 30,
-        background: "radial-gradient(120% 90% at 50% 10%, rgba(46,107,64,0.20) 0%, rgba(17,41,28,0) 70%)",
-        borderRadius: 24,
-        padding: "34px 20px 12px",
       }}
     >
       <motion.p
