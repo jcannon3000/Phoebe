@@ -168,9 +168,16 @@ function PartnerCard({ p, onOpen, t }: { p: PartnerThreadSummary; onOpen: () => 
           <p className="text-[15.5px] font-bold truncate" style={{ color: WARM, fontFamily: FONT }}>{name}</p>
           {p.streak > 0 && <span className="text-[12px] flex-shrink-0" style={{ color: "#D4A046", fontFamily: FONT }}>🔥 {p.streak}</span>}
         </div>
-        <p className="text-[13px] truncate mt-0.5" style={{ color: p.isNew ? "#A8C5A0" : SAGE, fontFamily: FONT, fontStyle: has ? "italic" : "normal" }}>
+        {/* Sealed until opened — a new prayer shows only that it's there, never
+            the words, until the partner taps in (Snapchat-style). Once opened it
+            reads back as prayed (✓) or, if seen but not yet prayed, the text. */}
+        <p className="text-[13px] truncate mt-0.5" style={{ color: p.isNew ? "#A8C5A0" : SAGE, fontFamily: FONT, fontStyle: (has && !p.isNew && !p.myAttention.counted) ? "italic" : "normal" }}>
           {has
-            ? (p.myAttention.counted ? `✓ ${t("prayer_partner.you_prayed", { defaultValue: "You prayed this" })}` : p.theirLatest!.body)
+            ? (p.isNew
+                ? t("prayer_partner.new_prayer_sealed", { defaultValue: "🙏 New prayer — tap to open" })
+                : p.myAttention.counted
+                  ? `✓ ${t("prayer_partner.you_prayed", { defaultValue: "You prayed this" })}`
+                  : p.theirLatest!.body)
             : t("prayer_partner.no_prayer_yet", { defaultValue: "Hasn't shared today" })}
         </p>
       </div>
