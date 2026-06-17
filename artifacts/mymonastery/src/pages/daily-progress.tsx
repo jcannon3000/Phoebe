@@ -13,6 +13,7 @@ import { ChevronLeft, Sliders } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { DailyProgressBody } from "@/components/DailyProgressBody";
+import { BetaRhythmExtras } from "@/components/BetaRhythmExtras";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -54,6 +55,10 @@ export default function DailyProgressPage() {
         </p>
 
         <DailyProgressBody />
+
+        {/* Beta · new practices — Thank three people + This week (self-contained,
+            renders null off-beta). */}
+        <BetaRhythmExtras />
       </div>
     </Layout>
   );

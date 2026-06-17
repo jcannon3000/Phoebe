@@ -173,6 +173,8 @@ const GuestSchedule = lazy(() => import("./pages/guest-schedule"));
 const InvitePage = lazy(() => import("./pages/invite"));
 const People = lazy(() => import("./pages/people"));
 const FellowsPage = lazy(() => import("./pages/fellows"));
+const ThanksPage = lazy(() => import("./pages/thanks"));
+const WeeklyRoutinesPage = lazy(() => import("./pages/weekly"));
 const PersonProfile = lazy(() => import("./pages/person"));
 const ReportUserPage = lazy(() => import("./pages/report-user"));
 const ReportsAdminPage = lazy(() => import("./pages/reports-admin"));
@@ -858,6 +860,8 @@ function Router() {
       <Route path="/messages" component={MessagesPage} />
       <Route path="/people" component={People} />
       <Route path="/fellows" component={FellowsPage} />
+      <Route path="/thanks" component={ThanksPage} />
+      <Route path="/weekly" component={WeeklyRoutinesPage} />
       <Route path="/people/find" component={FindFriendsPage} />
       <Route path="/people/:email/report" component={ReportUserPage} />
       <Route path="/admin/reports" component={ReportsAdminPage} />
