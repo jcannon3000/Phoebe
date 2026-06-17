@@ -898,14 +898,7 @@ function SlideContent({
   }
 
   return (
-    <div
-      className="w-full flex flex-col items-center text-center gap-5"
-      style={slide.kind === "request" ? {
-        // Soft gradient wash behind a prayer-request slide — a gentle top-down
-        // green glow that fades into the page background (no hard card edge).
-        background: "radial-gradient(125% 75% at 50% 2%, rgba(46,107,64,0.22) 0%, rgba(12,31,18,0) 72%)",
-      } : undefined}
-    >
+    <div className="w-full flex flex-col items-center text-center gap-5">
       {/* Request slides: author avatar + name above the body, mirroring
           the "Praying for" slide's layout. The avatar anchors the slide
           to a specific person so the prayer doesn't read as anonymous
