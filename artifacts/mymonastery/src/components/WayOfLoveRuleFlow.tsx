@@ -429,7 +429,10 @@ export default function WayOfLoveRuleFlow({
   // goPrev, which steps back through the dynamic flow (or exits on the first
   // step). Tapping the right side of the screen also goes back (see shell).
   const ctaButton = (label: string, onClick: () => void) => (
-    <div style={{ marginTop: 32, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+    // marginTop:auto pins Continue (+ Back) to the BOTTOM of the flow's flex
+    // column, so it sits in the same spot on every slide instead of riding up and
+    // down with each step's content. paddingTop keeps a gap on the tall steps.
+    <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
       <button onClick={onClick} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
         {label}
       </button>

@@ -846,6 +846,25 @@ export function CobreatheBreath({
           set is kept; before then there's no button (the ✕ top-right is the way
           out, and backgrounding the app still ends it). */}
       <div ref={bottomRef} className="w-full" style={{ paddingLeft: 28, paddingRight: 28, marginBottom: 8 }}>
+        {/* Done — a PILL (styled like the home cards' Begin pill), sitting under
+            the globe / above the breath line once the full set is kept. */}
+        {reachedNow && (
+          <div className="flex justify-center" style={{ marginBottom: 18 }}>
+            <button
+              type="button"
+              onClick={() => onEnd(Math.round((Date.now() - startRef.current) / 1000), reachedRef.current)}
+              className="rounded-full active:scale-[0.98] transition-transform"
+              style={{
+                background: "rgba(46,107,64,0.85)", color: "#EAF6F4",
+                border: "1px solid rgba(140,195,160,0.5)",
+                fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600,
+                padding: "10px 32px", cursor: "pointer",
+              }}
+            >
+              {t("cobreathe.done", { defaultValue: "Done" })}
+            </button>
+          </div>
+        )}
         <div className="flex items-end" style={{ gap: 14 }}>
           {/* LEFT — Breathe In / Breathe Out. */}
           <div ref={labelRef} className="flex-1 min-w-0" style={{ willChange: "transform, opacity" }}>
@@ -858,22 +877,6 @@ export function CobreatheBreath({
               {centerLabel}
             </span>
           </div>
-          {/* CENTRE — Done is just centred TEXT on this same line (no pill, no
-              separate row above) once the full set is kept. Equal flex-1 on the
-              left and right columns keeps it centred between them. */}
-          {reachedNow && (
-            <button
-              type="button"
-              onClick={() => onEnd(Math.round((Date.now() - startRef.current) / 1000), reachedRef.current)}
-              className="flex-shrink-0 active:opacity-70 transition-opacity"
-              style={{
-                background: "none", border: "none", padding: 0, cursor: "pointer",
-                color: "#EAF6F4", fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 600, letterSpacing: "0.04em",
-              }}
-            >
-              {t("cobreathe.done", { defaultValue: "Done" })}
-            </button>
-          )}
           {/* RIGHT — just "n of 12" (no leading "Breath"), once counting. */}
           {counting && (
             <p className="flex-1 text-right" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 600, letterSpacing: "0.04em" }}>

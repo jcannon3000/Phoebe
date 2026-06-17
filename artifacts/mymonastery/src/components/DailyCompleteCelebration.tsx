@@ -25,6 +25,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useRhythmState } from "@/hooks/useRhythmState";
+import { WeeklyGridCard } from "@/components/DailyProgressBody";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -54,8 +55,7 @@ function markCelebrated(day: string): void {
   }
 }
 
-function CelebrationOverlay({ streak, doneCount, total, onClose }: {
-  streak: number;
+function CelebrationOverlay({ doneCount, total, onClose }: {
   doneCount: number;
   total: number;
   onClose: () => void;
@@ -74,13 +74,6 @@ function CelebrationOverlay({ streak, doneCount, total, onClose }: {
       y: Math.sin(angle) * distance,
     };
   });
-
-  const streakLabel = streak <= 1
-    ? t("daily_complete.day_one")
-    : t("daily_complete.streak", { count: streak });
-  const encouragement = streak > 1
-    ? t("daily_complete.encouragement_streak", { count: streak })
-    : t("daily_complete.encouragement");
 
   return (
     <motion.div
@@ -132,48 +125,45 @@ function CelebrationOverlay({ streak, doneCount, total, onClose }: {
         {t("daily_complete.title")}
       </motion.p>
 
-      {/* Streak number — spring scale-in */}
+      {/* Congratulation — a leaf payoff (no streak number), then the kept count. */}
       <motion.div
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 260, damping: 14, delay: 0.15 }}
-        className="flex items-baseline justify-center gap-2 relative z-10"
-      >
-        <span style={{ fontFamily: FONT, fontSize: 104, fontWeight: 700, color: WARM, lineHeight: 1, letterSpacing: "-0.03em" }}>
-          {Math.max(streak, 1)}
-        </span>
-        <motion.span
-          initial={{ rotate: -20, scale: 0.8 }}
-          animate={{ rotate: 0, scale: 1 }}
-          transition={{ type: "spring", stiffness: 180, damping: 10, delay: 0.35 }}
-          style={{ fontSize: 60 }}
-        >
-          🔥
-        </motion.span>
-      </motion.div>
-
-      {/* Streak label */}
-      <motion.p
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.55 }}
-        style={{ fontFamily: FONT, fontSize: 13, letterSpacing: "0.18em", textTransform: "uppercase", color: SAGE, marginTop: 10, zIndex: 10 }}
-      >
-        {streakLabel}
-      </motion.p>
-
-      {/* Kept-count + encouragement */}
-      <motion.p
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.75 }}
+        transition={{ type: "spring", stiffness: 220, damping: 15, delay: 0.15 }}
         className="relative z-10"
-        style={{ color: WARM, fontFamily: FONT, fontSize: 16, lineHeight: 1.5, maxWidth: 340, marginTop: 14 }}
+        style={{ fontSize: 64, lineHeight: 1, marginTop: 4 }}
+      >
+        🌿
+      </motion.div>
+      <motion.p
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: 0.4 }}
+        className="relative z-10"
+        style={{ color: WARM, fontFamily: FONT, fontSize: 24, fontWeight: 700, letterSpacing: "-0.01em", marginTop: 14 }}
+      >
+        {t("daily_complete.congrats_headline", { defaultValue: "The day is kept" })}
+      </motion.p>
+      <motion.p
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.55 }}
+        className="relative z-10"
+        style={{ color: SAGE, fontFamily: FONT, fontSize: 15, lineHeight: 1.5, maxWidth: 340, marginTop: 6 }}
       >
         {t("daily_complete.kept_count", { count: doneCount, total })}
-        <br />
-        {encouragement}
       </motion.p>
+
+      {/* Weekly progress card — the week's rhythm at a glance. */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.7 }}
+        className="relative z-10 w-full"
+        style={{ maxWidth: 460, marginTop: 22 }}
+      >
+        <WeeklyGridCard />
+      </motion.div>
 
       {/* Continue */}
       <motion.button
@@ -193,7 +183,6 @@ function CelebrationOverlay({ streak, doneCount, total, onClose }: {
 
 function DailyCompleteWatcher() {
   const rs = useRhythmState();
-  const streak = rs.streak;
   // Count the SAME set the home "day is kept" hero and the Daily-progress pill
   // count — the four core anchors plus EVERY optional practice the user added
   // (gratitude / examen / daily steps). Using rhythm's own totals keeps the
@@ -202,7 +191,7 @@ function DailyCompleteWatcher() {
   const totalAnchors = rs.totalAnchors;
   const doneCount = rs.doneCount;
 
-  const [shown, setShown] = useState<{ streak: number; doneCount: number; total: number } | null>(null);
+  const [shown, setShown] = useState<{ doneCount: number; total: number } | null>(null);
 
   // Baseline arming: ignore the initial query-load climb (counts climb 0 → N as
   // data lands). We arm ~1.4s after the counts settle. `armed` is STATE, not a
@@ -227,19 +216,18 @@ function DailyCompleteWatcher() {
 
     // Genuine completion — an in-session climb, or already complete at arm time.
     markCelebrated(day);
-    setShown({ streak, doneCount, total: totalAnchors });
+    setShown({ doneCount, total: totalAnchors });
     try {
       window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "celebration" } }));
     } catch {
       /* no native shell on web — silent */
     }
-  }, [armed, doneCount, totalAnchors, streak, shown]);
+  }, [armed, doneCount, totalAnchors, shown]);
 
   return (
     <AnimatePresence>
       {shown && (
         <CelebrationOverlay
-          streak={shown.streak}
           doneCount={shown.doneCount}
           total={shown.total}
           onClose={() => setShown(null)}

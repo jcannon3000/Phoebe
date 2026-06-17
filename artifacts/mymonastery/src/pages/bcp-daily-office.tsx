@@ -854,6 +854,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const isTitleCard =
     currentSlide.type === "office_intro"
     || currentSlide.type === "intercessions_portal"
+    || currentSlide.type === "intercessions"
     || currentSlide.type === "psalm_title"
     || currentSlide.type === "canticle_title"
     || currentSlide.type === "lesson_title";
@@ -1713,7 +1714,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                         </span>
                         <button
                           type="button"
-                          onClick={() => openExternal(readUrl)}
+                          onClick={() => {
+                            openExternal(readUrl);
+                            // Reader chose to read this lesson in NRSV (external),
+                            // so SKIP the WEB verse slides that follow this title —
+                            // jump straight to the next section.
+                            let j = slideIdx + 1;
+                            while (j < slides.length && slides[j].type === "lesson_verses") j++;
+                            setSlideIdx(Math.min(j, slides.length - 1));
+                          }}
                           style={{ padding: "7px 20px", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, color: "rgba(182,210,188,0.85)", background: "transparent", border: "none", cursor: "pointer" }}
                         >
                           NRSV

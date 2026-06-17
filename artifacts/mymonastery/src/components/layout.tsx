@@ -745,16 +745,70 @@ function DailyProgressPill() {
   const { t } = useTranslation();
   const { morningDone, reflectDone, silenceDone, eveningDone, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone } = useRhythmState();
   // Four core anchors, plus a dot for each optional practice the user added
-  // (gratitude, examen, and the daily-steps goal).
-  const dots = [
-    morningDone, reflectDone, silenceDone, eveningDone,
-    ...(gratitudeActive ? [gratitudeDone] : []),
-    ...(examenActive ? [examenDone] : []),
-    ...(stepsActive ? [stepsDone] : []),
+  // (gratitude, examen, and the daily-steps goal). Keyed so the "just completed"
+  // pulse below tracks the right dot even as the set changes.
+  const dotDefs = [
+    { key: "morning", done: morningDone },
+    { key: "reflect", done: reflectDone },
+    { key: "silence", done: silenceDone },
+    { key: "evening", done: eveningDone },
+    ...(gratitudeActive ? [{ key: "gratitude", done: gratitudeDone }] : []),
+    ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
+    ...(stepsActive ? [{ key: "steps", done: stepsDone }] : []),
   ];
-  // Every practice for the day kept → the dots gently pulse COLOR (not size) as
-  // a quiet "you held the whole day" cue. A staggered wave across the dots.
-  const allDone = dots.length > 0 && dots.every(Boolean);
+  // Every practice for the day kept → ALL dots gently pulse colour (a staggered
+  // "you held the whole day" wave).
+  const allDone = dotDefs.length > 0 && dotDefs.every((d) => d.done);
+
+  // Per-dot "just completed" pulse: when an activity flips done, its dot pulses
+  // for ~5 minutes. We stamp the completion time per local day in localStorage
+  // (so it survives the Layout remount on navigation) the moment a dot flips,
+  // then pulse while now − stamp < PULSE_MS.
+  const PULSE_MS = 5 * 60 * 1000;
+  const today = new Date().toLocaleDateString("en-CA");
+  const stampsRef = useRef<{ day: string; at: Record<string, number> } | null>(null);
+  if (stampsRef.current === null) {
+    let init: { day: string; at: Record<string, number> } = { day: today, at: {} };
+    try {
+      const raw = JSON.parse(localStorage.getItem("phoebe:dp-pulse") || "null");
+      if (raw && raw.day === today && raw.at && typeof raw.at === "object") init = { day: today, at: raw.at };
+    } catch { /* ignore */ }
+    stampsRef.current = init;
+  }
+  const prevDoneRef = useRef<Record<string, boolean> | null>(null);
+  const [, bumpPulse] = useState(0);
+  const doneSig = dotDefs.map((d) => `${d.key}${d.done ? "1" : "0"}`).join("|");
+  useEffect(() => {
+    const st = stampsRef.current!;
+    if (st.day !== today) { st.day = today; st.at = {}; }
+    const prev = prevDoneRef.current;
+    const cur: Record<string, boolean> = {};
+    let changed = false;
+    for (const d of dotDefs) {
+      cur[d.key] = d.done;
+      if (prev && d.done && prev[d.key] === false) { st.at[d.key] = Date.now(); changed = true; }
+    }
+    prevDoneRef.current = cur;
+    if (changed) {
+      try { localStorage.setItem("phoebe:dp-pulse", JSON.stringify(st)); } catch { /* ignore */ }
+      bumpPulse((n) => n + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doneSig, today]);
+
+  const nowMs = Date.now();
+  const recentlyDone = (key: string) => {
+    const at = stampsRef.current?.at[key];
+    return at != null && nowMs - at < PULSE_MS;
+  };
+  // While anything is pulsing, tick periodically so the pulse expires on its own.
+  const anyPulsing = allDone || dotDefs.some((d) => recentlyDone(d.key));
+  useEffect(() => {
+    if (!anyPulsing) return;
+    const id = setInterval(() => bumpPulse((n) => n + 1), 15_000);
+    return () => clearInterval(id);
+  }, [anyPulsing]);
+
   return (
     <Link
       href="/daily-progress"
@@ -770,21 +824,24 @@ function DailyProgressPill() {
     >
       {t("header.daily_progress", { defaultValue: "Daily Progress" })}
       <span className="inline-flex items-center gap-[3px]" aria-hidden>
-        {dots.map((done, i) => (
-          <span
-            key={i}
-            className={allDone ? "dp-dot-pulse" : undefined}
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: 999,
-              display: "inline-block",
-              background: done ? "rgba(110,180,130,0.95)" : "transparent",
-              border: done ? "none" : "1px solid rgba(143,175,150,0.5)",
-              animationDelay: allDone ? `${(i * 0.12).toFixed(2)}s` : undefined,
-            }}
-          />
-        ))}
+        {dotDefs.map((d, i) => {
+          const pulse = allDone || recentlyDone(d.key);
+          return (
+            <span
+              key={d.key}
+              className={pulse ? "dp-dot-pulse" : undefined}
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 999,
+                display: "inline-block",
+                background: d.done ? "rgba(110,180,130,0.95)" : "transparent",
+                border: d.done ? "none" : "1px solid rgba(143,175,150,0.5)",
+                animationDelay: allDone ? `${(i * 0.12).toFixed(2)}s` : undefined,
+              }}
+            />
+          );
+        })}
       </span>
     </Link>
   );
