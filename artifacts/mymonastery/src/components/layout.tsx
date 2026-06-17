@@ -743,11 +743,12 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 // Prayer list now lives in the side Menu drawer.
 function DailyProgressPill() {
   const { t } = useTranslation();
-  const { morningDone, reflectDone, silenceDone, eveningDone, morningActive, reflectActive, silenceActive, eveningActive, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone } = useRhythmState();
+  const { morningDone, reflectDone, silenceDone, eveningDone, morningActive, reflectActive, silenceActive, eveningActive, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, customAnchors } = useRhythmState();
   // The core anchors the user keeps (morning/reflection/contemplation/evening —
   // each dropped when its pref is off), plus a dot for each optional practice
-  // they added (gratitude, examen, the daily-steps goal). Keyed so the "just
-  // completed" pulse below tracks the right dot even as the set changes.
+  // they added (gratitude, examen, the daily-steps goal) and each user-defined
+  // custom practice. Keyed so the "just completed" pulse below tracks the right
+  // dot even as the set changes.
   const dotDefs = [
     ...(morningActive ? [{ key: "morning", done: morningDone }] : []),
     ...(reflectActive ? [{ key: "reflect", done: reflectDone }] : []),
@@ -756,6 +757,7 @@ function DailyProgressPill() {
     ...(gratitudeActive ? [{ key: "gratitude", done: gratitudeDone }] : []),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
     ...(stepsActive ? [{ key: "steps", done: stepsDone }] : []),
+    ...customAnchors.map((a) => ({ key: `custom-${a.id}`, done: a.done })),
   ];
   // Every practice for the day kept → ALL dots gently pulse colour (a staggered
   // "you held the whole day" wave).
