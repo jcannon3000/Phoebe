@@ -68,8 +68,10 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["/api/fellow-plans"] });
 
-  // Compose state
+  // Compose state — shared by "share a plan" (create) and editing an existing
+  // plan (editingId set). A host taps their own card to edit it.
   const [composing, setComposing] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [title, setTitle] = useState("");
   const [emoji, setEmoji] = useState<string | null>(null);
   // A real date+time pick (datetime-local "YYYY-MM-DDTHH:mm" in the user's tz);
@@ -77,15 +79,39 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
   const [startsAtLocal, setStartsAtLocal] = useState("");
   const [location, setLocation] = useState("");
 
-  const resetCompose = () => { setTitle(""); setEmoji(null); setStartsAtLocal(""); setLocation(""); setComposing(false); };
+  const resetCompose = () => { setTitle(""); setEmoji(null); setStartsAtLocal(""); setLocation(""); setComposing(false); setEditingId(null); };
 
-  const create = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/fellow-plans", {
-      title: title.trim(),
-      emoji: emoji || undefined,
-      startsAt: startsAtLocal ? new Date(startsAtLocal).toISOString() : undefined,
-      location: location.trim() || undefined,
-    }),
+  // datetime-local "YYYY-MM-DDTHH:mm" from an ISO instant, in the viewer's tz.
+  const isoToLocalInput = (iso: string | null): string => {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+  const startEdit = (p: Plan) => {
+    setEditingId(p.id);
+    setTitle(p.title);
+    setEmoji(p.emoji ?? null);
+    setStartsAtLocal(isoToLocalInput(p.startsAt));
+    setLocation(p.location ?? "");
+    setComposing(true);
+  };
+
+  // Create (POST) or edit (PATCH). When editing, send null to CLEAR a field;
+  // when creating, omit it.
+  const save = useMutation({
+    mutationFn: () => {
+      const body = {
+        title: title.trim(),
+        emoji: emoji || (editingId ? null : undefined),
+        startsAt: startsAtLocal ? new Date(startsAtLocal).toISOString() : (editingId ? null : undefined),
+        location: location.trim() || (editingId ? null : undefined),
+      };
+      return editingId
+        ? apiRequest("PATCH", `/api/fellow-plans/${editingId}`, body)
+        : apiRequest("POST", "/api/fellow-plans", body);
+    },
     onSuccess: () => { resetCompose(); invalidate(); },
   });
 
@@ -119,7 +145,7 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
         composing ? (
           <div className="rounded-2xl p-3.5 mb-3" style={{ background: CARD_BG, border: `1px solid ${CARD_B}` }}>
             <div className="flex items-center justify-between mb-2.5">
-              <p className="text-[13.5px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{t("plans.compose_title", { defaultValue: "What are you going to?" })}</p>
+              <p className="text-[13.5px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{editingId ? t("plans.edit_title", { defaultValue: "Edit your plan" }) : t("plans.compose_title", { defaultValue: "What are you going to?" })}</p>
               <button type="button" onClick={resetCompose} aria-label="Close"><X size={17} color={SAGE} /></button>
             </div>
             <input
@@ -165,12 +191,14 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
             />
             <button
               type="button"
-              disabled={!title.trim() || create.isPending}
-              onClick={() => create.mutate()}
+              disabled={!title.trim() || save.isPending}
+              onClick={() => save.mutate()}
               className="w-full rounded-full py-2.5 text-[14px] font-semibold transition-opacity active:scale-[0.99]"
-              style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT, opacity: !title.trim() || create.isPending ? 0.55 : 1 }}
+              style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT, opacity: !title.trim() || save.isPending ? 0.55 : 1 }}
             >
-              {create.isPending ? t("plans.sharing", { defaultValue: "Sharing…" }) : t("plans.share", { defaultValue: "Share with my fellows" })}
+              {save.isPending
+                ? (editingId ? t("plans.saving", { defaultValue: "Saving…" }) : t("plans.sharing", { defaultValue: "Sharing…" }))
+                : (editingId ? t("plans.save", { defaultValue: "Save changes" }) : t("plans.share", { defaultValue: "Share with my fellows" }))}
             </button>
           </div>
         ) : (
@@ -207,6 +235,14 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
                     ? t("plans.you_going", { defaultValue: "You're going to" })
                     : t("plans.someone_going", { defaultValue: "{{name}} is going to", name: p.host.name })}
                 </p>
+                {p.isMine && (
+                  <button
+                    type="button"
+                    onClick={() => startEdit(p)}
+                    className="shrink-0 text-[12px] font-medium px-2.5 py-1 rounded-full"
+                    style={{ color: "rgba(182,210,188,0.85)", border: "1px solid rgba(143,175,150,0.3)", fontFamily: FONT }}
+                  >{t("plans.edit", { defaultValue: "Edit" })}</button>
+                )}
                 {p.isMine && (
                   <button
                     type="button"

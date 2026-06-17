@@ -117,6 +117,36 @@ router.post("/fellow-plans", requireBeta, async (req, res): Promise<void> => {
   res.json({ plan: serializePlan(row) });
 });
 
+// ─── PATCH /api/fellow-plans/:id — edit your own plan ────────────────────────
+const patchSchema = z.object({
+  title: z.string().trim().min(1).max(140).optional(),
+  note: z.string().trim().max(500).nullable().optional(),
+  location: z.string().trim().max(140).nullable().optional(),
+  emoji: z.string().trim().max(8).nullable().optional(),
+  whenText: z.string().trim().max(80).nullable().optional(),
+  startsAt: z.string().datetime().nullable().optional(),
+});
+router.patch("/fellow-plans/:id", requireBeta, async (req, res): Promise<void> => {
+  const me = getUserId(req)!;
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const parsed = patchSchema.safeParse(req.body ?? {});
+  if (!parsed.success) { res.status(400).json({ error: "Invalid plan." }); return; }
+  const [existing] = await db.select().from(fellowPlansTable).where(eq(fellowPlansTable.id, id));
+  if (!existing || existing.userId !== me) { res.status(404).json({ error: "Plan not found" }); return; }
+  const d = parsed.data;
+  const update: Record<string, unknown> = {};
+  if (d.title !== undefined) update.title = d.title;
+  if (d.note !== undefined) update.note = d.note || null;
+  if (d.location !== undefined) update.location = d.location || null;
+  if (d.emoji !== undefined) update.emoji = d.emoji || null;
+  if (d.whenText !== undefined) update.whenText = d.whenText || null;
+  if (d.startsAt !== undefined) update.startsAt = d.startsAt ? new Date(d.startsAt) : null;
+  if (Object.keys(update).length === 0) { res.json({ plan: serializePlan(existing) }); return; }
+  const [row] = await db.update(fellowPlansTable).set(update).where(eq(fellowPlansTable.id, id)).returning();
+  res.json({ plan: serializePlan(row) });
+});
+
 // ─── GET /api/fellow-plans — the feed (my plans + my fellows' plans) ──────────
 router.get("/fellow-plans", async (req, res): Promise<void> => {
   const me = getUserId(req);
