@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { DEFAULT_TOTAL_BREATHS } from "@/components/CobreatheBreath";
 
 // ── CobreatheSummary ─────────────────────────────────────────────────────────
@@ -47,13 +46,15 @@ export function CobreatheSummary({
       onAnimationComplete={() => { if (fadeOut) onFadeOutComplete?.(); }}
       style={{
         position: "fixed", inset: 0, zIndex: 60,
-        background: "#0A1C14",
+        // STATIC gradient — the drifting AnimatedBackground was removed here
+        // because its blobs popped in as the summary mounted ("the background
+        // glitches in"). A still gradient gives depth with nothing to animate.
+        background: "radial-gradient(120% 80% at 50% 30%, #122E20 0%, #0A1C14 65%)",
         paddingTop: "var(--safe-top)",
         paddingBottom: "env(safe-area-inset-bottom)",
         overflow: "hidden",
       }}
     >
-      <AnimatedBackground base="#0A1C14" variant="pronounced" />
       <div className="flex-1 flex flex-col items-center justify-center text-center px-8 max-w-xl mx-auto relative">
         <div className="text-[46px] mb-3">🌍</div>
         {/* Breaths this session — the headline number. */}
@@ -65,10 +66,7 @@ export function CobreatheSummary({
           {weekBreaths} {t("cobreathe.breaths_this_week", { defaultValue: "breaths this week" })}
           {others > 0 ? ` · ${t("cobreathe.summary_with_today", { defaultValue: `with ${others} ${others === 1 ? "other" : "others"} today` })}` : ""}
         </p>
-        {/* Breathing with the planet + the climate-justice thanks. */}
-        <p className="text-[16px] leading-relaxed mb-3" style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic" }}>
-          {t("cobreathe.summary_planet", { defaultValue: "One breath, drawn with the whole creation — the forests exhaling, the seas, every lung on the planet rising and falling as one." })}
-        </p>
+        {/* The climate-justice thanks. */}
         <p className="text-[14px] leading-relaxed mb-9" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
           {t("cobreathe.summary_thanks", { defaultValue: "Thank you for praying for climate justice." })}
         </p>
