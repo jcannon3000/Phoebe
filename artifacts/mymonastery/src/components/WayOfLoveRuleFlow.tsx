@@ -22,6 +22,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { requestStepAuthorization } from "@/lib/appleHealth";
+import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, CUSTOM_ANCHORS_EVENT, type CustomAnchor } from "@/lib/customAnchors";
 import {
   setSideLevel,
   setSideReflection,
@@ -61,7 +62,7 @@ type Step =
   | "when"
   | "morning-way" | "morning-config"
   | "evening-way" | "evening-config"
-  | "listen" | "learn" | "extras" | "steps-goal" | "done";
+  | "listen" | "learn" | "extras" | "steps-goal" | "custom" | "done";
 // Contemplation goal options — a single dropdown in 5-minute increments.
 const GOAL_OPTIONS = Array.from({ length: 18 }, (_, i) => (i + 1) * 5); // 5…90
 // Daily-step goal presets (steps/day) — round numbers people recognize. Mirrors
@@ -224,6 +225,26 @@ export default function WayOfLoveRuleFlow({
       steps: homeCardOn(user.homeLayout, "steps"),
     });
   }, [user]);
+
+  // Custom practices — the user's own daily anchors (title + emoji). Created on
+  // the "custom" slide below (reached from a card in the extras step), stored
+  // per-device in lib/customAnchors. Each becomes a Daily-progress card + dot.
+  const [customList, setCustomList] = useState<CustomAnchor[]>(() => getCustomAnchors());
+  const [customTitle, setCustomTitle] = useState("");
+  const [customEmoji, setCustomEmoji] = useState("");
+  useEffect(() => {
+    const refresh = () => setCustomList(getCustomAnchors());
+    window.addEventListener(CUSTOM_ANCHORS_EVENT, refresh);
+    return () => window.removeEventListener(CUSTOM_ANCHORS_EVENT, refresh);
+  }, []);
+  const addCustom = () => {
+    const title = customTitle.trim();
+    if (!title) return;
+    addCustomAnchor(title, customEmoji.trim() || "🌿");
+    setCustomTitle("");
+    setCustomEmoji("");
+    setCustomList(getCustomAnchors());
+  };
   const toggleExtra = (k: "gratitude" | "examen" | "steps") => {
     touchedRef.current = true;
     setExtras((prev) => ({ ...prev, [k]: !prev[k] }));
@@ -695,6 +716,30 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(extras.gratitude, `🙏 ${t("wol_rule.extra_gratitude", { defaultValue: "Gratitude" })}`, t("wol_rule.extra_gratitude_sub", { defaultValue: "Name one gift from the day." }), () => toggleExtra("gratitude"))}
           {choiceRow(extras.examen, `🌗 ${t("wol_rule.extra_examen", { defaultValue: "The Examen" })}`, t("wol_rule.extra_examen_sub", { defaultValue: "St. Ignatius' end-of-day review of the day with God." }), () => toggleExtra("examen"))}
           {choiceRow(extras.steps, `👟 ${t("wol_rule.extra_steps", { defaultValue: "Daily steps" })}`, t("wol_rule.extra_steps_sub", { defaultValue: "Walk toward a daily step goal, counted from Apple Health." }), () => toggleExtra("steps"))}
+          {/* Create your own — its own card after Daily steps; leads to the
+              create slide (a walk, a stretch, a call — anything you keep). */}
+          <button
+            type="button"
+            onClick={() => { touchedRef.current = true; setStep("custom"); }}
+            style={{
+              background: CARD, border: `1px dashed ${CARD_B_ACTIVE}`, color: CREAM,
+              borderRadius: 14, padding: "14px 16px", textAlign: "left",
+              display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
+            }}
+          >
+            <span style={{ fontSize: 19, flexShrink: 0 }} aria-hidden>✏️</span>
+            <span style={{ minWidth: 0, flex: 1 }}>
+              <span style={{ display: "block", fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>
+                {customList.length > 0
+                  ? t("wol_rule.custom_card_some", { count: customList.length, defaultValue: `Your own practices · ${customList.length}` })
+                  : t("wol_rule.custom_card", { defaultValue: "Create your own" })}
+              </span>
+              <span style={{ display: "block", color: SAGE, fontSize: 13, fontFamily: FONT, marginTop: 2, lineHeight: 1.4 }}>
+                {t("wol_rule.custom_card_sub", { defaultValue: "A walk, a stretch, a phone call — keep anything you like." })}
+              </span>
+            </span>
+            <span style={{ marginLeft: "auto", color: SAGE, fontSize: 18, flexShrink: 0 }} aria-hidden>→</span>
+          </button>
         </div>
         {/* If they added Daily steps, Continue leads to the step-goal slide;
             otherwise this is the last slide and saves the rhythm. */}
@@ -742,6 +787,66 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.steps_goal_note", { defaultValue: "When you finish, we'll ask permission to read your step count from Apple Health. You can change the goal anytime on the Daily steps card." })}
         </p>
         {ctaButton(t("wol_rule.finish", { defaultValue: "Save my daily rhythm" }), commit)}
+      </>,
+    );
+  }
+
+  // ── Create-your-own — title + emoji → a custom Daily-progress anchor.
+  // Reached from the "Create your own" card in the extras step. ───────────────
+  if (step === "custom") {
+    return shell(
+      <>
+        {backRow(goPrev)}
+        {stepHeader(t("wol_rule.custom_eyebrow", { defaultValue: "Add to your day" }), t("wol_rule.custom_title", { defaultValue: "Create your own" }))}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 0" }}>
+          {t("wol_rule.custom_body", { defaultValue: "Keep anything you like — a walk, a stretch, a phone call. Name it, pick an emoji, and it becomes a card you check off each day." })}
+        </p>
+        {customList.length > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "20px 0 0" }}>
+            {customList.map((a) => (
+              <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "11px 14px" }}>
+                <span style={{ fontSize: 18, flexShrink: 0 }} aria-hidden>{a.emoji}</span>
+                <span style={{ flex: 1, minWidth: 0, color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</span>
+                <button type="button" onClick={() => { removeCustomAnchor(a.id); setCustomList(getCustomAnchors()); }} aria-label={t("common.remove", { defaultValue: "Remove" })} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", fontSize: 16, padding: "2px 6px" }}>✕</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8, margin: "16px 0 0" }}>
+          <input
+            value={customEmoji}
+            onChange={(e) => setCustomEmoji(e.target.value.slice(0, 2))}
+            aria-label={t("wol_rule.custom_emoji", { defaultValue: "Emoji" })}
+            placeholder="🌿"
+            style={{ width: 56, flexShrink: 0, textAlign: "center", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 0", fontSize: 18, color: CREAM, fontFamily: FONT }}
+          />
+          <input
+            value={customTitle}
+            onChange={(e) => setCustomTitle(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") addCustom(); }}
+            aria-label={t("wol_rule.custom_name", { defaultValue: "Practice name" })}
+            placeholder={t("wol_rule.custom_placeholder", { defaultValue: "e.g. Morning walk" })}
+            style={{ flex: 1, minWidth: 0, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", fontSize: 15, color: CREAM, fontFamily: FONT }}
+          />
+          <button
+            type="button"
+            onClick={addCustom}
+            disabled={!customTitle.trim()}
+            style={{ flexShrink: 0, background: customTitle.trim() ? CTA : CARD, border: `1px solid ${customTitle.trim() ? CARD_B_ACTIVE : CARD_B}`, color: CREAM, borderRadius: 12, padding: "0 18px", fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: customTitle.trim() ? "pointer" : "default" }}
+          >
+            {t("common.add", { defaultValue: "Add" })}
+          </button>
+        </div>
+        {/* Save commits the whole rhythm; Back returns to the extras step where
+            the "Create your own" card lives. */}
+        <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <button onClick={commit} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+            {t("wol_rule.finish", { defaultValue: "Save my daily rhythm" })}
+          </button>
+          <button onClick={() => setStep("extras")} style={{ marginTop: 4, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
+            <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
+          </button>
+        </div>
       </>,
     );
   }
