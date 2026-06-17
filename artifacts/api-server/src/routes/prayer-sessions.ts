@@ -59,7 +59,7 @@ router.get("/me/prayer-days", async (req, res): Promise<void> => {
     // stored profile zone, so "today" agrees with what the client recorded.
     // Both fall back to UTC. todayDateInTz never throws on a bad zone.
     const [meTz] = await db
-      .select({ timezone: usersTable.timezone })
+      .select({ timezone: usersTable.timezone, createdAt: usersTable.createdAt })
       .from(usersTable)
       .where(eq(usersTable.id, sessionUserId));
     const tzParam = typeof req.query.tz === "string" && isValidTimeZone(req.query.tz) ? req.query.tz : null;
@@ -74,6 +74,13 @@ router.get("/me/prayer-days", async (req, res): Promise<void> => {
       return dt.toISOString().slice(0, 10);
     };
     const windowStart = ymdMinus(400); // bound for both reads
+    // The streak only counts back to when the routine was in place — never
+    // before the account itself existed. We bound it to the account-creation
+    // day (the earliest a routine could exist), so a streak can't be inflated
+    // by seeded / pre-routine history.
+    const createdYmd = meTz?.createdAt
+      ? new Date(meTz.createdAt).toLocaleDateString("en-CA", { timeZone: tz })
+      : "0000-00-00";
 
     // Distinct local-day strings from prayer sessions in the window. Cast the
     // session's ended_at into the user's tz before taking the date, so an
@@ -114,7 +121,9 @@ router.get("/me/prayer-days", async (req, res): Promise<void> => {
     // the session lookback (~400 days) so the loop always terminates.
     let streak = 0;
     for (let i = keptToday ? 0 : 1; i < 400; i++) {
-      if (kept.has(ymdMinus(i))) streak++;
+      const ymd = ymdMinus(i);
+      if (ymd < createdYmd) break; // don't count days before the account/routine existed
+      if (kept.has(ymd)) streak++;
       else break;
     }
 

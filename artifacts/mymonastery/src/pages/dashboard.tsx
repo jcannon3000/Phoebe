@@ -6775,7 +6775,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       return aDone - bDone;
                     });
                   return (
-                    <div style={{ marginTop: 0 }}>
+                    <div style={{ marginTop: -12 }}>
                       <PrayerListCarousel
                         requests={carouselRows}
                         viewerName={userName || null}

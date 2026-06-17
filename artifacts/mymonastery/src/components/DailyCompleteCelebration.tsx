@@ -194,19 +194,13 @@ function CelebrationOverlay({ streak, doneCount, total, onClose }: {
 function DailyCompleteWatcher() {
   const rs = useRhythmState();
   const streak = rs.streak;
-  // The celebration marks completing your daily PRACTICES (the prayer rhythm):
-  // the four core anchors + the optional SPIRITUAL extras (gratitude / examen).
-  // It deliberately EXCLUDES the daily-steps health goal — otherwise finishing
-  // all your prayer + contemplation wouldn't trigger it on a day you didn't hit
-  // your step count, and once steps is active the celebration would almost never
-  // fire. (The home "day is kept" hero already excludes steps too.)
-  const practiceFlags = [
-    rs.morningDone, rs.reflectDone, rs.silenceDone, rs.eveningDone,
-    ...(rs.gratitudeActive ? [rs.gratitudeDone] : []),
-    ...(rs.examenActive ? [rs.examenDone] : []),
-  ];
-  const totalAnchors = practiceFlags.length;
-  const doneCount = practiceFlags.filter(Boolean).length;
+  // Count the SAME set the home "day is kept" hero and the Daily-progress pill
+  // count — the four core anchors plus EVERY optional practice the user added
+  // (gratitude / examen / daily steps). Using rhythm's own totals keeps the
+  // celebration's "N of M" identical to the pill, so it reads 5 of 5 (not 4 of
+  // 4) when steps is one of the active practices.
+  const totalAnchors = rs.totalAnchors;
+  const doneCount = rs.doneCount;
 
   const [shown, setShown] = useState<{ streak: number; doneCount: number; total: number } | null>(null);
 
