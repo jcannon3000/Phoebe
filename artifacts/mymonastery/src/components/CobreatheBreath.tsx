@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { playOpeningSwell, primeAudio } from "@/lib/amenFeedback";
+import { playBreathTone, primeAudio } from "@/lib/amenFeedback";
 import { buildCanonical, photoForGlobalIndex, randomSeed, type Canonical } from "@/lib/cobreatheOrder";
 
 // ── CobreatheBreath ─────────────────────────────────────────────────────────
@@ -347,7 +347,7 @@ export function CobreatheBreath({
             // Start on the lowest octave, then rotate 0,1,2 per breath.
             const octave = inhaleToneCountRef.current % 3;
             inhaleToneCountRef.current += 1;
-            try { playOpeningSwell(octave); } catch { /* audio locked — non-fatal */ }
+            try { playBreathTone(octave); } catch { /* audio locked — non-fatal */ }
           }
         }
       }
@@ -525,7 +525,7 @@ export function CobreatheBreath({
         try {
           window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "breath-complete" } }));
         } catch { /* no native shell on web — silent */ }
-        try { playOpeningSwell(); } catch { /* audio locked — non-fatal */ }
+        try { playBreathTone(); } catch { /* audio locked — non-fatal */ }
         onReachTarget?.(Math.round((now - startRef.current) / 1000));
       }
       setTick((n) => n + 1);
@@ -580,7 +580,7 @@ export function CobreatheBreath({
   // While syncing (before the count begins), the centre word reads "Syncing"
   // with an animated ellipsis instead of "Breathe in / out".
   const syncDots = ".".repeat(Math.floor(now / 450) % 4);
-  const centerLabel = counting ? phaseLabel : `${t("cobreathe.syncing", { defaultValue: "Syncing" })}${syncDots}`;
+  const centerLabel = counting ? phaseLabel : `${t("cobreathe.syncing", { defaultValue: "Syncing to the global breath" })}${syncDots}`;
   const completed = counting ? Math.floor(sinceCount / CYCLE_MS) : 0;
   const breathNum = completed + 1;
   const reachedNow = counting && completed >= totalBreaths;

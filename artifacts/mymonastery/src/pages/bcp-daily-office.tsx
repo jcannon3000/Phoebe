@@ -9,7 +9,6 @@ import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import i18n from "@/i18n";
-import { playOfficeChime } from "@/lib/amenFeedback";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -675,7 +674,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         // prayer-mode plays on its first slide.
         if (!openingChimeRef.current) {
           openingChimeRef.current = true;
-          playOfficeChime(initialIdx % 3);
         }
         // If we're resuming PAST the intercessions portal (a
         // localStorage in-progress index, or a ?slide= deep link that
@@ -972,7 +970,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // matching the prayer-mode swell's pattern — keyed off the
     // landing slide so a slide jump (e.g. portal-skip) lands on
     // the right octave step rather than a stale one.
-    playOfficeChime(nextIdx % 3);
     setSlideIdx(nextIdx);
   }
   function prev() {
@@ -985,7 +982,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     ) {
       prevIdx -= 1;
     }
-    playOfficeChime(prevIdx % 3);
     setSlideIdx(prevIdx);
   }
 
@@ -1097,7 +1093,6 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     if (!atEnd) {
       // Same chapel chime Next/tap/swipe play — the Amen button is just
       // another advance, so it shouldn't be the one silent path.
-      playOfficeChime((slideIdx + 1) % 3);
       setSlideIdx(slideIdx + 1);
       return;
     }

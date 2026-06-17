@@ -403,7 +403,7 @@ export function triggerSubmitFeedback() {
  * Call fire-and-forget. Safe on web (plays) and iOS (plays once the
  * AudioContext resumes on the user gesture that triggered it).
  */
-export function playOpeningSwell(octaveStep: number = 0) {
+export function playBreathTone(octaveStep: number = 0) {
   try {
     // Build (or revive) the context up front so we can detect a locked
     // state even before any oscillators are scheduled. If we're locked,
@@ -421,7 +421,7 @@ export function playOpeningSwell(octaveStep: number = 0) {
     ensureAppActiveResume();
     if (isAudioStillLocked()) {
       void ctx.resume().then(drainPendingAudio).catch(() => { /* ignore */ });
-      _pendingAudio.push(() => playOpeningSwell(octaveStep));
+      _pendingAudio.push(() => playBreathTone(octaveStep));
       return;
     }
     if (ctx.state === "suspended") void ctx.resume();
@@ -490,18 +490,15 @@ export function playOpeningSwell(octaveStep: number = 0) {
   }
 }
 
-/**
- * Office slide chime — same chapel-exhale envelope as the prayer-
- * mode opening swell, just rooted at D instead of A so the two
- * surfaces have their own pitched identity. The octaveStep argument
- * matches playOpeningSwell's contract — caller passes
- * `slideIdx % 3` so the chord climbs and resolves across the
- * office's slide list the same way it does in /prayer-mode.
- *
- * Plumbing (autoplay-policy unlock, queue-and-drain, visibility
- * resume) is shared with playOpeningSwell. Call fire-and-forget
- * from a click handler.
- */
+// Navigation swells + the office slide chime are removed per product direction
+// (no sound on opening a prayer or advancing slides). Both stay exported as
+// no-ops so their many call sites keep compiling; the chapel tone lives on as
+// playBreathTone above, which the Cobreathe breath still uses.
+export function playOpeningSwell(_octaveStep: number = 0) { /* no-op — navigation sound removed */ }
+
+// NOTE: kept exported but no longer called — the office slide chime (a
+// navigation sound) was removed per product direction by dropping its call
+// sites in bcp-daily-office. Left here in case the chime is ever reinstated.
 export function playOfficeChime(octaveStep: number = 0) {
   try {
     const ctx = getOrCreateAudioCtx();
