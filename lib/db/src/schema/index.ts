@@ -31,6 +31,7 @@ export * from "./practice_completion";
 export * from "./office_audio_alignments";
 export * from "./fellow_invites";
 export * from "./fellow_plans";
+export * from "./fellow_encouragements";
 export * from "./fellow_plan_rsvps";
 export * from "./prayers_for";
 export * from "./waitlist";

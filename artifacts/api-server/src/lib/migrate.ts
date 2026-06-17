@@ -3104,6 +3104,18 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_fellow_plan_rsvp_plan_user ON fellow_plan_rsvps (plan_id, user_id)`);
 
+    // One-tap "🙌 encouragement" between Fellows (direct, no pairing).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS fellow_encouragements (
+        id SERIAL PRIMARY KEY,
+        from_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        to_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        seen_at TIMESTAMPTZ
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_fellow_encouragements_to ON fellow_encouragements (to_user_id)`);
+
     // Verify shared_moments columns exist
     const colCheck = await client.query(`
       SELECT column_name FROM information_schema.columns

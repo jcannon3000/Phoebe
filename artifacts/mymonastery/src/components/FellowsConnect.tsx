@@ -95,6 +95,13 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
   const [optReq, setOptReq] = useState<Set<number>>(() => new Set());
   const addFellow = (id: number) => { sendReq.mutate(id); setOptReq((s) => new Set(s).add(id)); };
 
+  // One-tap 🙌 encouragement — direct, no opt-in. Sends "{You} encouraged you —
+  // keep growing with Phoebe." to any fellow. Optimistic: the pill flips to
+  // "Encouraged" the instant you tap, server dedupes a double-send within an hour.
+  const [encouraged, setEncouraged] = useState<Set<number>>(() => new Set());
+  const encourage = useMutation({ mutationFn: (userId: number) => apiRequest("POST", "/api/encouragements", { toUserId: userId }) });
+  const sendEncourage = (id: number) => { encourage.mutate(id); setEncouraged((s) => new Set(s).add(id)); };
+
   // Share a personal invite link — mint/fetch the caller's token, then open the
   // best share surface (native sheet, Web Share, or clipboard). Whoever opens it
   // and accepts becomes a Fellow (the link rides the Heart to Hearts join flow,
@@ -178,6 +185,9 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
   const fellowRow = (f: Fellow) => row(f.name ?? "Someone", f.avatarUrl,
     <div className="flex items-center gap-2.5 shrink-0">
       {f.streak > 0 && <span className="text-[13px] font-semibold" style={{ color: "#E8B45E", fontFamily: FONT }} title={t("fellows_c.streak_title", { defaultValue: "Prayer rhythm" })}>🔥 {f.streak}</span>}
+      {encouraged.has(f.userId)
+        ? <Pill label={t("fellows_c.encouraged", { defaultValue: "Encouraged 🙌" })} kind="muted" disabled />
+        : <Pill label={t("fellows_c.encourage", { defaultValue: "🙌 Encourage" })} kind="solid" onClick={() => sendEncourage(f.userId)} />}
       <Pill label={t("fellows_c.remove", { defaultValue: "Remove" })} kind="muted" onClick={() => { if (window.confirm(t("fellows_c.remove_confirm", { defaultValue: "Remove this fellow?" }))) remove.mutate(f.userId); }} />
     </div>, `f-${f.userId}`);
 
@@ -283,6 +293,9 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
           {fellows.map((f) => row(f.name ?? "Someone", f.avatarUrl,
             <div className="flex items-center gap-2.5 shrink-0">
               {f.streak > 0 && <span className="text-[13px] font-semibold" style={{ color: "#E8B45E", fontFamily: FONT }} title={t("fellows_c.streak_title", { defaultValue: "Prayer rhythm" })}>🔥 {f.streak}</span>}
+              {encouraged.has(f.userId)
+                ? <Pill label={t("fellows_c.encouraged", { defaultValue: "Encouraged 🙌" })} kind="muted" disabled />
+                : <Pill label={t("fellows_c.encourage", { defaultValue: "🙌 Encourage" })} kind="solid" onClick={() => sendEncourage(f.userId)} />}
               <Pill label={t("fellows_c.remove", { defaultValue: "Remove" })} kind="muted" onClick={() => { if (window.confirm(t("fellows_c.remove_confirm", { defaultValue: "Remove this fellow?" }))) remove.mutate(f.userId); }} />
             </div>, `f-${f.userId}`))}
         </>

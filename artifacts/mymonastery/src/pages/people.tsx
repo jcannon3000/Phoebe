@@ -10,6 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { FellowsConnect } from "@/components/FellowsConnect";
 import { WalkTogether } from "@/components/WalkTogether";
+import { EncouragementBanner } from "@/components/EncouragementBanner";
 import { useBetaStatus } from "@/hooks/useDemo";
 import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
 
@@ -572,6 +573,9 @@ export default function People() {
             {t("people.title")} 🌿
           </h1>
         </div>
+
+        {/* A fellow's 🙌 encouragement, if one's waiting. */}
+        <EncouragementBanner />
 
         {/* Fellows — your 1:1 prayer connections, prioritized at the very
             top of the page so your closest people lead before search or the
