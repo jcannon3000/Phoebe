@@ -394,6 +394,8 @@ type FellowPlanEvent = {
   comingCount: number;
   maybeCount: number;
   myRsvp: "coming" | "maybe" | null;
+  // Up to 6 faces of fellows who RSVP'd "coming" (from /api/fellow-plans).
+  comingPreview?: Array<{ userId: number; name: string; avatarUrl: string | null }>;
 };
 
 // One upcoming action across the user's communities — shape returned by
@@ -1824,56 +1826,84 @@ function PlanEventCard({ p, keyPrefix }: { p: FellowPlanEvent; keyPrefix: string
   try { eventDate = p.startsAt ? parseISO(p.startsAt) : null; } catch { /* ignore */ }
   const isToday_ = eventDate ? isToday(eventDate) : false;
   const timeLabel = eventDate ? `${nextDayLabel(eventDate)} · ${format(eventDate, "h:mm a")}` : null;
+  const whereLine = [timeLabel, p.location].filter(Boolean).join(" · ");
+  const firstName = p.host.name.trim().split(/\s+/)[0] || p.host.name;
+  const planByLine = p.isMine ? "Your plan" : `A plan from ${firstName}`;
 
-  const respondingCount = p.comingCount + p.maybeCount;
-  const rsvpLabel =
-    p.myRsvp === "coming"
-      ? "You're coming"
-      : p.myRsvp === "maybe"
-        ? "You might come"
-        : respondingCount > 0
-          ? `${respondingCount} ${respondingCount === 1 ? "fellow" : "fellows"} coming`
-          : null;
+  // Compact event card (mirrors a prayer-request row): the host's face with a
+  // calendar badge tucked into the corner, a one-line title, and a second line
+  // that gently rotates between the when/where and whose plan it is. Tap → the
+  // Events page where you can see details / edit / RSVP.
+  const lines = whereLine ? [whereLine, planByLine] : [planByLine];
+  const [lineIdx, setLineIdx] = useState(0);
+  useEffect(() => {
+    if (lines.length < 2) return;
+    const id = setInterval(() => setLineIdx((i) => (i + 1) % lines.length), 3600);
+    return () => clearInterval(id);
+  }, [lines.length]);
+  const sub = lines[lineIdx % lines.length];
 
   return (
     <Link key={`${keyPrefix}-${p.id}`} href="/events" className="block w-full text-left">
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isToday_ ? colors.pulseClass : ""}`}
+        className={`relative flex items-center gap-3 rounded-xl overflow-hidden cursor-pointer px-3.5 py-2.5 ${isToday_ ? colors.pulseClass : ""}`}
         style={{
           background: colors.bg,
           border: "1px solid rgba(111,175,133,0.35)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
       >
-        <div
-          className={`w-1 flex-shrink-0 ${isToday_ ? colors.barPulseClass : ""}`}
-          style={{ background: isToday_ ? undefined : colors.bar }}
-        />
-        <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
-          <div className="flex items-start justify-between gap-3">
-            <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
-              {p.emoji ? p.emoji + " " : ""}{p.title}
-            </span>
-            <span
-              className="text-[10px] font-semibold uppercase shrink-0 mt-1"
-              style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
-            >
-              {p.isMine ? "You" : p.host.name}
-            </span>
-          </div>
-          {timeLabel && (
-            <div className="mt-2 text-xs font-medium" style={{ color: "#C8D4C0", letterSpacing: "-0.01em" }}>
-              🗓 {timeLabel}{p.location ? ` · ${p.location}` : ""}
+        {/* Host face + calendar badge (Duolingo-style corner overlay) */}
+        <div className="relative shrink-0" style={{ width: 40, height: 40 }}>
+          {p.host.avatarUrl ? (
+            <img src={p.host.avatarUrl} alt={p.host.name} className="rounded-full object-cover" style={{ width: 40, height: 40, border: "1px solid rgba(46,107,64,0.4)" }} />
+          ) : (
+            <div className="rounded-full flex items-center justify-center font-semibold" style={{ width: 40, height: 40, background: "#1A4A2E", color: "#A8C5A0", fontSize: 15 }}>
+              {(p.host.name?.trim()?.[0] ?? "·").toUpperCase()}
             </div>
           )}
-          {rsvpLabel && (
-            <div className="mt-1 text-[11px]" style={{ color: "rgba(143,175,150,0.85)" }}>
-              {rsvpLabel}
-            </div>
-          )}
+          <span
+            className="absolute flex items-center justify-center rounded-full"
+            style={{ right: -3, bottom: -3, width: 19, height: 19, background: "#163A24", border: "2px solid #0E2016", fontSize: 10, lineHeight: 1 }}
+            aria-hidden
+          >📅</span>
         </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] font-semibold truncate" style={{ color: "#F0EDE6" }}>
+            {p.emoji ? p.emoji + " " : ""}{p.title}
+          </p>
+          <div style={{ height: 16, overflow: "hidden" }}>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.p
+                key={sub}
+                initial={{ opacity: 0, y: 7 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -7 }}
+                transition={{ duration: 0.3 }}
+                className="text-[12px] truncate"
+                style={{ color: "#A8C5A0" }}
+              >{sub}</motion.p>
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* Who's coming — a couple of faces, compact */}
+        {(p.comingPreview?.length ?? 0) > 0 && (
+          <div className="flex items-center shrink-0" aria-hidden>
+            {p.comingPreview!.slice(0, 3).map((c, i) => (
+              c.avatarUrl ? (
+                <img key={c.userId} src={c.avatarUrl} alt={c.name} className="rounded-full object-cover" style={{ width: 20, height: 20, marginLeft: i === 0 ? 0 : -6, border: "1.5px solid #0E2016" }} />
+              ) : (
+                <span key={c.userId} className="rounded-full inline-flex items-center justify-center font-semibold" style={{ width: 20, height: 20, marginLeft: i === 0 ? 0 : -6, border: "1.5px solid #0E2016", background: "#1A4A2E", color: "#A8C5A0", fontSize: 8 }}>
+                  {(c.name?.trim()?.[0] ?? "·").toUpperCase()}
+                </span>
+              )
+            ))}
+          </div>
+        )}
       </motion.div>
     </Link>
   );
@@ -6838,11 +6868,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
             if (filter === "practices") return item.kind === "moment";
             return true;
           };
-          const fToday = todayItems.filter(byFilter);
-          const fTomorrow = tomorrowItems.filter(byFilter);
-          const fWeek = weekItems.filter(byFilter);
-          const fMonth = monthItems.filter(byFilter);
-          const filteredEmpty = filter !== null && fToday.length === 0 && fTomorrow.length === 0 && fWeek.length === 0 && fMonth.length === 0;
 
           // "Coming up" — surfaced ONLY once the whole daily routine is done, so
           // the day's practices lead uninterrupted until then. When every anchor
@@ -6855,6 +6880,17 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
           const nextEventItem: DashboardItem | null = allHabitsDone
             ? ([todayItems, tomorrowItems, weekItems, monthItems].map((b) => b.find(isEventItem)).find(Boolean) ?? null)
             : null;
+
+          // Exclude whatever is surfaced in "Coming up" from the day buckets so
+          // it isn't listed twice (the plan/gathering appeared in both "Coming
+          // up" AND its date section). Reference-equality: nextEventItem IS the
+          // bucket item object.
+          const keep = (item: DashboardItem) => byFilter(item) && item !== nextEventItem;
+          const fToday = todayItems.filter(keep);
+          const fTomorrow = tomorrowItems.filter(keep);
+          const fWeek = weekItems.filter(keep);
+          const fMonth = monthItems.filter(keep);
+          const filteredEmpty = filter !== null && fToday.length === 0 && fTomorrow.length === 0 && fWeek.length === 0 && fMonth.length === 0;
 
           return (
             <AnimatePresence mode="wait">
