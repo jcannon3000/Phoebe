@@ -1126,6 +1126,35 @@ router.post("/prayer-requests/:id/word", rateLimit({
       .returning();
   }
 
+  // A word of comfort IS an act of prayer — count it as an amen too, so the
+  // commenter shows up in the request's amen total and their own "prayed
+  // today" reflects it. Idempotent on the same one-per-user-per-day rule the
+  // amen endpoint enforces (judged in the VIEWER's tz, matching the read):
+  // insert only when this user has no amen logged today. We deliberately
+  // SKIP the amen push cascade (first-amen / third-today / held-in-prayer) —
+  // the word push below already tells the owner, so firing amen pushes too
+  // would double-notify. Best-effort: a failure here never blocks the word.
+  try {
+    const [viewerRow] = await db.select({ timezone: usersTable.timezone })
+      .from(usersTable).where(eq(usersTable.id, sessionUserId));
+    const viewerTz = viewerRow?.timezone || "UTC";
+    const viewerYmd = new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(new Date());
+    const myAmens = await db.select({ prayedAt: prayerRequestAmensTable.prayedAt })
+      .from(prayerRequestAmensTable)
+      .where(and(
+        eq(prayerRequestAmensTable.requestId, id),
+        eq(prayerRequestAmensTable.userId, sessionUserId),
+      ));
+    const alreadyAmenedToday = myAmens.some(r =>
+      r.prayedAt &&
+      new Intl.DateTimeFormat("en-CA", { timeZone: viewerTz }).format(r.prayedAt) === viewerYmd);
+    if (!alreadyAmenedToday) {
+      await db.insert(prayerRequestAmensTable).values({ requestId: id, userId: sessionUserId });
+    }
+  } catch (err) {
+    console.warn("[prayer/word] amen-from-word failed:", err);
+  }
+
   // Merge with the first-amen push when this author is ALSO the request's
   // first amen-er: the recipient already got "the first amen just went up
   // by {Name}" — a separate word banner from the same person reads as a
