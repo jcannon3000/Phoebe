@@ -22,9 +22,9 @@ import {
 } from "@workspace/db";
 import { sendDailyPrayerPush } from "./pushSender";
 
-// Prayers land at 7am local — just before the default 7:30 morning reminder, so
-// it's already waiting when the partner starts their day.
-const DELIVERY_HOUR = 7;
+// Prayers land at 5am local — before the partner is up, so it's already waiting
+// the moment they wake (and well before the default 7:30 morning reminder).
+const DELIVERY_HOUR = 5;
 
 // The UTC offset (ms that local time is ahead of UTC) for a tz at a given
 // instant — derived from Intl, so DST is handled without a tz library.
