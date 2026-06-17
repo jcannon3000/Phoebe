@@ -374,7 +374,27 @@ type DashboardItem =
   // Community "action" — an advocacy / community-action event. Taps
   // through to a full detail page (/actions/:id), unlike gatherings
   // which open a modal.
-  | { kind: "action"; data: ActionFeedItem; nextDate: Date };
+  | { kind: "action"; data: ActionFeedItem; nextDate: Date }
+  // Fellow "plan" ("How About") — something a fellow shared they're going
+  // to. A dated plan surfaces in the timeline as a real event for the host
+  // and every fellow the server returns it to. Tap → /events, where the
+  // editable "How About" card (edit / RSVP) lives.
+  | { kind: "plan"; data: FellowPlanEvent; nextDate: Date };
+
+// One plan from GET /api/fellow-plans (the dated subset that becomes a
+// timeline event). Mirrors the Plan shape in FellowPlans.tsx.
+type FellowPlanEvent = {
+  id: number;
+  title: string;
+  location: string | null;
+  emoji: string | null;
+  startsAt: string | null;
+  isMine: boolean;
+  host: { name: string; avatarUrl: string | null };
+  comingCount: number;
+  maybeCount: number;
+  myRsvp: "coming" | "maybe" | null;
+};
 
 // One upcoming action across the user's communities — shape returned by
 // GET /api/me/actions.
@@ -1782,6 +1802,70 @@ function ActionCard({ a, keyPrefix }: { a: ActionFeedItem; keyPrefix: string }) 
           {timeLabel && (
             <div className="mt-2 text-xs font-medium" style={{ color: "#C8D4C0", letterSpacing: "-0.01em" }}>
               📣 {timeLabel}
+            </div>
+          )}
+          {rsvpLabel && (
+            <div className="mt-1 text-[11px]" style={{ color: "rgba(143,175,150,0.85)" }}>
+              {rsvpLabel}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </Link>
+  );
+}
+
+// A fellow's "How About" plan, rendered as a real timeline event. Same
+// chrome as ActionCard so a plan sits naturally beside gatherings and
+// services. Taps through to /events, where the editable card + RSVP live.
+function PlanEventCard({ p, keyPrefix }: { p: FellowPlanEvent; keyPrefix: string }) {
+  const colors = CATEGORY_COLORS.gatherings;
+  let eventDate: Date | null = null;
+  try { eventDate = p.startsAt ? parseISO(p.startsAt) : null; } catch { /* ignore */ }
+  const isToday_ = eventDate ? isToday(eventDate) : false;
+  const timeLabel = eventDate ? `${nextDayLabel(eventDate)} · ${format(eventDate, "h:mm a")}` : null;
+
+  const respondingCount = p.comingCount + p.maybeCount;
+  const rsvpLabel =
+    p.myRsvp === "coming"
+      ? "You're coming"
+      : p.myRsvp === "maybe"
+        ? "You might come"
+        : respondingCount > 0
+          ? `${respondingCount} ${respondingCount === 1 ? "fellow" : "fellows"} coming`
+          : null;
+
+  return (
+    <Link key={`${keyPrefix}-${p.id}`} href="/events" className="block w-full text-left">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isToday_ ? colors.pulseClass : ""}`}
+        style={{
+          background: colors.bg,
+          border: "1px solid rgba(111,175,133,0.35)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
+        }}
+      >
+        <div
+          className={`w-1 flex-shrink-0 ${isToday_ ? colors.barPulseClass : ""}`}
+          style={{ background: isToday_ ? undefined : colors.bar }}
+        />
+        <div className="flex-1 px-4 pt-3 pb-3 min-w-0">
+          <div className="flex items-start justify-between gap-3">
+            <span className="text-base font-semibold truncate" style={{ color: "#F0EDE6" }}>
+              {p.emoji ? p.emoji + " " : ""}{p.title}
+            </span>
+            <span
+              className="text-[10px] font-semibold uppercase shrink-0 mt-1"
+              style={{ color: "#C8D4C0", letterSpacing: "0.08em" }}
+            >
+              {p.isMine ? "You" : p.host.name}
+            </span>
+          </div>
+          {timeLabel && (
+            <div className="mt-2 text-xs font-medium" style={{ color: "#C8D4C0", letterSpacing: "-0.01em" }}>
+              🗓 {timeLabel}{p.location ? ` · ${p.location}` : ""}
             </div>
           )}
           {rsvpLabel && (
@@ -4834,6 +4918,14 @@ function TimeSection({
           keyPrefix={label}
         />,
       );
+    } else if (item.kind === "plan") {
+      renderedNodes.push(
+        <PlanEventCard
+          key={`${label}-p-${item.data.id}`}
+          p={item.data}
+          keyPrefix={label}
+        />,
+      );
     } else if (item.kind === "moment") {
       renderedNodes.push(
         <MomentCard
@@ -5620,6 +5712,16 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   });
   const actions = actionsData?.actions ?? [];
 
+  // Fellow "How About" plans — the same feed the events-page card uses
+  // (mine + my fellows'). Dated ones drop into the timeline as events.
+  const { data: fellowPlansData } = useQuery<{ plans: FellowPlanEvent[] }>({
+    queryKey: ["/api/fellow-plans"],
+    queryFn: () => apiRequest("GET", "/api/fellow-plans"),
+    staleTime: 20_000,
+    enabled: !!user,
+  });
+  const fellowPlans = fellowPlansData?.plans ?? [];
+
   // Prayer-list streak (consecutive days finishing a full slideshow) — used
   // by the Today-empty fallback card to reward the habit.
   const { data: prayerStreakData } = useQuery<{ streak: number; lastPrayedDate: string | null; loggedToday?: boolean; gardenPrayedTodayCount?: number }>({
@@ -6229,6 +6331,26 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
       else monthItems.push(item);
     }
 
+    // ── Fellow plans placement
+    // A dated plan becomes a real timeline event for the host and every
+    // fellow the feed returns it to. Home only: the events page already
+    // lists plans in its dedicated "How About" card, so don't double them.
+    if (!eventsOnly) {
+      for (const p of fellowPlans) {
+        if (!p.startsAt) continue; // undated plans stay in the How About list only
+        let eventDate: Date | null = null;
+        try { eventDate = parseISO(p.startsAt); } catch { /* ignore */ }
+        if (!eventDate || !Number.isFinite(eventDate.getTime())) continue;
+        const item: DashboardItem = { kind: "plan", data: p, nextDate: eventDate };
+        const nextMs = startOfDay(eventDate).getTime();
+        if (nextMs < _todayMs) continue;
+        if (nextMs === todayStart) todayItems.push(item);
+        else if (nextMs === tomorrowStart) tomorrowItems.push(item);
+        else if (nextMs < sevenDaysOutMs) weekItems.push(item);
+        else monthItems.push(item);
+      }
+    }
+
     // Chronological sort for Upcoming / This month so cards line up by next
     // occurrence including time of day — a 9am Lectio lands before the same
     // day's 6:30pm gathering, and a Sunday service drops to last when its
@@ -6251,7 +6373,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
         const d = computeNextGatheringDate(item.data);
         return d ? d.getTime() : Number.POSITIVE_INFINITY;
       }
-      if (item.kind === "action") {
+      if (item.kind === "action" || item.kind === "plan") {
         return item.nextDate ? item.nextDate.getTime() : Number.POSITIVE_INFINITY;
       }
       if (item.kind === "letter") {
@@ -6286,7 +6408,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     monthItems.sort((a, b) => itemSortMs(a) - itemSortMs(b));
 
     return { todayItems, tomorrowItems, weekItems, monthItems, totalCount };
-  }, [momentsData, user, dashCorrespondences, serviceSchedules, subscribedFeeds, rituals, actions, isBeta, eventsOnly]);
+  }, [momentsData, user, dashCorrespondences, serviceSchedules, subscribedFeeds, rituals, actions, fellowPlans, isBeta, eventsOnly]);
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
@@ -6729,7 +6851,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
           // calendar (the buckets are already today→month chronological, so the
           // first event-kind item across them is the soonest).
           const isEventItem = (it: DashboardItem) =>
-            it.kind === "gathering" || it.kind === "service" || it.kind === "services" || it.kind === "action";
+            it.kind === "gathering" || it.kind === "service" || it.kind === "services" || it.kind === "action" || it.kind === "plan";
           const oneCardLeft = rhythm.ready && rhythm.totalAnchors > 0 && (rhythm.totalAnchors - rhythm.doneCount) === 1;
           const nextEventItem: DashboardItem | null = oneCardLeft
             ? ([todayItems, tomorrowItems, weekItems, monthItems].map((b) => b.find(isEventItem)).find(Boolean) ?? null)
