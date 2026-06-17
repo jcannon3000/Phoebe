@@ -4102,7 +4102,7 @@ function PrayerListCarousel({
             // open its detail page so the tap always lands somewhere. The
             // checkbox circle on the right is a quick one-tap "pray".
             return (
-              <Link key={req.id} href={amened ? `/prayer-requests/${req.id}` : `/prayer-mode?queue=new&focus=${req.id}`} className="block">
+              <Link key={req.id} href={`/prayer-mode?focus=${req.id}`} className="block">
                 <motion.div
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
