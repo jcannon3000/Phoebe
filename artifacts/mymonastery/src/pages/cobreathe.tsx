@@ -249,8 +249,10 @@ export default function CobreathePage() {
   const handleEnd = useCallback((secondsKept: number, reached: boolean) => {
     const fromContemplation = fromContemplationRef.current;
     if (!reached) {
-      // Cancelled / bailed early — does not count. Just exit.
-      if (fromContemplation) setLocation("/contemplation"); else setMode("intro");
+      // X / bailed early — does not count. Go to the home screen. (The office
+      // slideshow runs Cobreathe as a separate overlay (CobreatheOverlay) whose
+      // X returns to the slideshow — "unless you're in the slideshow, go back".)
+      setLocation("/dashboard");
       return;
     }
     logSit(secondsKept);
