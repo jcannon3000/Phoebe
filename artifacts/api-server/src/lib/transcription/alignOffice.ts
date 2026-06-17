@@ -49,6 +49,19 @@ const SILENT_TYPES = new Set<string>([
 ]);
 // The scripture lessons — read aloud, but the text isn't in the slide.
 const LESSON_TYPES = new Set<string>(["lesson", "lesson_verses"]);
+// Psalm sections — the spoken-section title should read as the PSALM REFERENCE
+// ("Psalm 78", "Psalm 72:1-3"), NOT the psalter's Latin incipit (which lives on
+// the slide's `title`). The reference is on the slide's eyebrow ("PSALM 78").
+const PSALM_TYPES = new Set<string>(["psalm", "psalm_verses", "invitatory_psalm", "psalm_gloria"]);
+
+// Turn a psalm slide's eyebrow into the section title: "PSALM 78" → "Psalm 78",
+// "PSALMS 75 & 76" → "Psalms 75 & 76", "PSALM 72:1-3" → "Psalm 72:1-3". Anything
+// without a numbered reference (e.g. "PASCHA NOSTRUM") → "The Psalm Appointed".
+function psalmSectionTitle(eyebrow: string | null | undefined): string {
+  const m = (eyebrow ?? "").trim().match(/^(psalms?)\b(.*)$/i);
+  if (!m) return "The Psalm Appointed";
+  return `${m[1].toLowerCase() === "psalms" ? "Psalms" : "Psalm"}${m[2]}`;
+}
 
 const WORDS_PER_SECOND = 2.4; // ~145 wpm — unhurried liturgical reading
 const SECONDS_PER_VERSE = 12; // rough spoken length of one Bible verse
@@ -115,7 +128,8 @@ export function buildSections(slides: OfficeSlideLite[]): Section[] {
     out.push({
       id: s.id,
       type: s.type,
-      title: s.title,
+      // Psalm parts read as their reference ("Psalm 78"), not the Latin incipit.
+      title: PSALM_TYPES.has(s.type) ? psalmSectionTitle(s.eyebrow) : s.title,
       // The part's OWN opening words, from the text Phoebe assembled (the same
       // translation the reader speaks). More words = a more precise anchor for
       // where this part begins in the transcript. The heuristic only reads the

@@ -397,8 +397,9 @@ function PracticeCard({
           {pill}
         </div>
         {/* Progress bar spans the full width below the row — so "Begin" sits
-            above it rather than beside it. */}
-        {progress && progress.goal > 0 && (
+            above it rather than beside it. Hidden once the card is DONE (a full
+            bar under a ✓ is just noise). */}
+        {progress && progress.goal > 0 && !done && (
           <div className="mt-3 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
             <div
               className="h-full rounded-full"

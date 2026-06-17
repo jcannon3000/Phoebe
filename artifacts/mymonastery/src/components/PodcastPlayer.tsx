@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { useOfficePrefs, setOfficeAudioSource, type OfficeAudioSource } from "@/lib/officePrefs";
+import { isNativeShell } from "@/lib/isNativeShell";
 
 // ── Global podcast player ────────────────────────────────────────────────
 //
@@ -172,6 +173,10 @@ function makeReverbIR(ctx: AudioContext): AudioBuffer {
 function humanizeSectionType(type: string): string {
   return type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+// Psalm section types — these read as the psalm REFERENCE ("Psalm 78"), never
+// the Latin incipit. Mirrors PSALM_TYPES in the server alignment builder.
+const PSALM_SECTION_TYPES = new Set(["psalm", "psalm_verses", "invitatory_psalm", "psalm_gloria"]);
 
 // A daily-office alignment section (from /api/podcast/office/:side/timestamps).
 type AlignSection = { id: string; type: string; title: string | null; startSeconds: number; endSeconds: number | null };
@@ -794,6 +799,28 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const sourceSwitchingRef = useRef(false);
   const [sourceSwitching, setSourceSwitching] = useState(false);
 
+  // ── Preload today's office so tapping play starts fast ─────────────────────
+  // The <audio> src isn't set until play, and iOS ignores <audio preload> until
+  // a user gesture — so we warm the OPENING of the time-appropriate office audio
+  // into the HTTP cache with a plain ranged fetch (which iOS honours). First
+  // ~512KB ≈ the opening minute, so playback starts with no download wait.
+  // Native only, best-effort, once per URL.
+  const preloadSide = new Date().getHours() < 17 ? "morning" : "evening";
+  const { data: preloadEp } = useQuery<{ audioUrl: string | null }>({
+    queryKey: [`/api/podcast/${preloadSide}-office/today`, officeAudioSource, "preload"],
+    queryFn: () => apiRequest("GET", `/api/podcast/${preloadSide}-office/today?source=${encodeURIComponent(officeAudioSource)}`),
+    enabled: !!user && isNativeShell(),
+    staleTime: 30 * 60_000,
+  });
+  const warmedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const url = preloadEp?.audioUrl;
+    if (!url || warmedRef.current === url) return;
+    warmedRef.current = url;
+    try { void fetch(url, { headers: { Range: "bytes=0-524287" } }).catch(() => { /* best-effort */ }); }
+    catch { /* ignore */ }
+  }, [preloadEp?.audioUrl]);
+
   const switchOfficeSource = useCallback(async (newSource: OfficeAudioSource) => {
     if (!current || sourceSwitchingRef.current) return;
     setOfficeAudioSource(newSource);
@@ -1016,8 +1043,15 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       // Past the end of the last matched part with nothing after — hold it.
     }
     if (!active) return null;
-    return (active.title && active.title.trim()) || humanizeSectionType(active.type);
-  }, [isOffice, alignData, currentTime]);
+    const title = (active.title && active.title.trim()) || "";
+    // Psalm parts always read as the reference ("Psalm 78"). New alignments
+    // serve that directly; for an older cached title that's still the Latin
+    // incipit (or empty), fall back to "The Psalm Appointed" — never show Latin.
+    if (PSALM_SECTION_TYPES.has(active.type)) {
+      return /^psalms?\b/i.test(title) ? title : t("podcasts.psalm_appointed", { defaultValue: "The Psalm Appointed" });
+    }
+    return title || humanizeSectionType(active.type);
+  }, [isOffice, alignData, currentTime, t]);
   // The title shown on the immersive office player: the live liturgy part when
   // we have one, else the episode title.
   const officeTitle = officeSectionTitle ?? current?.title ?? t("podcasts.now_playing_fallback");
@@ -1045,7 +1079,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         onPlay={onPlayEv}
         onPause={onPauseEv}
         onEnded={onEndedEv}
-        preload="metadata"
+        preload="auto"
       />
 
       {current && (
