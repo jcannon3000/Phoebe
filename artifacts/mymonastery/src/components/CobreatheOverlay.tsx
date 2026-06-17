@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { writeMindfulSession } from "@/lib/appleHealth";
 import { CobreatheBreath, DEFAULT_TOTAL_BREATHS } from "@/components/CobreatheBreath";
 import { CobreatheSummary } from "@/components/CobreatheSummary";
 import { addBreathsThisWeek } from "@/lib/cobreatheTally";
@@ -98,7 +97,6 @@ export function CobreatheOverlay({
         queryClient.invalidateQueries({ queryKey: ["/api/me/contemplation-sessions"] });
       })
       .catch(() => { /* best-effort */ });
-    void writeMindfulSession(startedAt, endedAt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

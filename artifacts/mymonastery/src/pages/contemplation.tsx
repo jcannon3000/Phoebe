@@ -12,7 +12,7 @@ import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { getSideMinutes } from "@/lib/officePrefs";
 import { openExternal } from "@/lib/openExternal";
 import { primeAudio } from "@/lib/amenFeedback";
-import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday, getMindfulSessionsToday, writeMindfulSession, type MindfulSession } from "@/lib/appleHealth";
+import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday, getMindfulSessionsToday, type MindfulSession } from "@/lib/appleHealth";
 
 // Curated "Learn" resources — talks, videos, and guides on contemplative /
 // centering prayer. Opened externally (SFSafariViewController on iOS via
@@ -456,9 +456,9 @@ export default function ContemplationPage() {
 
   // Apple Health is OPT-IN: we no longer auto-prompt for Mindful access when the
   // Contemplation page opens. Per request, don't ask for health data unless the
-  // user has chosen a health practice. Mindful sync still works for anyone who
-  // already connected (their grant persists; writeMindfulSession just no-ops
-  // without it), and the Daily steps practice requests its own access on opt-in.
+  // user has chosen a health practice. Phoebe no longer writes Mindful Minutes
+  // to Apple Health at all (simpler Health ask); the Daily steps practice
+  // requests its own step access on opt-in.
   // Always launched with an explicit length now (the Begin pill passes the
   // chosen minutes), so the timer skips its own picker and starts straight
   // into the sit. The six-box picker phase is reserved for the prayer-
@@ -603,9 +603,7 @@ export default function ContemplationPage() {
       const mins = Math.min(720, parseInt(logMinutes, 10) || 0);
       const start = new Date(logWhen);
       const secs = Math.round(mins * 60);
-      // Mirror the manually-logged time into Apple Health too (iOS only,
-      // best-effort). Spans start → start + minutes.
-      void writeMindfulSession(start, new Date(start.getTime() + secs * 1000));
+      // (No longer mirrored into Apple Health — keeps the Health ask simple.)
       const res = await apiRequest("POST", "/api/me/contemplation-sessions", {
         durationSeconds: secs,
         occurredAt: start.toISOString(),
