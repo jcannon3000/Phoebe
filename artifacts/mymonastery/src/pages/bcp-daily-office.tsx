@@ -494,6 +494,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const openingChimeRef = useRef(false);
   const queryClient = useQueryClient();
   const [, setViewerLocation] = useLocation();
+  // In Spanish, the full Morning/Evening offices are prayed as the read-aloud
+  // (podcast) office — send the reader straight to the player rather than the
+  // English text slideshow. (Devotions/Compline keep the text deck.)
+  const spanishOfficeRedirect =
+    !!i18n.language?.startsWith("es") && (resolvedMode === "morning" || resolvedMode === "evening");
+  useEffect(() => {
+    if (spanishOfficeRedirect) setViewerLocation(`/podcast/${officeSide}-office`);
+  }, [spanishOfficeRedirect, officeSide, setViewerLocation]);
   // Once-per-mount guard so a user who navigates BACK to the
   // intercessions portal doesn't get instantly bounced into prayer
   // mode again — once we've handed off, we treat the portal as a
@@ -765,6 +773,12 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slides, slideIdx, resolvedMode, isDevotion]);
+
+  // Spanish full office → hold a calm dark field while the effect above redirects
+  // to the podcast player (so the versicle/slideshow never flashes first).
+  if (spanishOfficeRedirect) {
+    return <div style={{ minHeight: "100dvh", background: BG }} />;
+  }
 
   if (loading || !minLoadDone) {
     // Re-entry (already opened today — e.g. back from the intercessions): show a
