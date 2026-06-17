@@ -1,13 +1,13 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
 import { writeMindfulSession } from "@/lib/appleHealth";
-import { CobreatheBreath, CYCLE_MS, DEFAULT_TOTAL_BREATHS } from "@/components/CobreatheBreath";
-import { useRhythmState } from "@/hooks/useRhythmState";
+import { CobreatheBreath, DEFAULT_TOTAL_BREATHS } from "@/components/CobreatheBreath";
+import { CobreatheSummary } from "@/components/CobreatheSummary";
+import { addBreathsThisWeek } from "@/lib/cobreatheTally";
 import { COBREATHE_INTRO_SEEN_KEY } from "@/pages/cobreathe-about";
 import { useAuth } from "@/hooks/useAuth";
 import { usePeople } from "@/hooks/usePeople";
@@ -180,16 +180,15 @@ export default function CobreathePage() {
 
   // State returned by the POST — fresher than the GET cache on the done screen.
   const [doneState, setDoneState] = useState<BreathState | null>(null);
+  // This week's running breath tally (per-device), shown on the concluding
+  // screen — the same number the slideshow's Cobreathe close shows.
+  const [weekBreaths, setWeekBreaths] = useState(0);
+  const talliedRef = useRef(false);
 
   const { data: today } = useQuery<BreathState>({
     queryKey: ["/api/breath/today", day],
     queryFn: () => apiRequest("GET", `/api/breath/today?day=${day}`),
   });
-
-  // Today's contemplation progress, for the done screen's goal line (Cobreathe
-  // logs a contemplation sit, so it counts toward the same daily goal). logSit
-  // invalidates contemplation-stats, so this reflects the breath just finished.
-  const rhythm = useRhythmState();
 
   const record = useMutation({
     mutationFn: (seconds: number) =>
@@ -261,6 +260,13 @@ export default function CobreathePage() {
     if (fromContemplation) setMode("done"); else setLocation("/contemplation");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // On reaching the concluding screen, add this set to the week's tally once —
+  // mirrors the slideshow overlay so both closes show the same count.
+  useEffect(() => {
+    if (mode !== "done") return;
+    if (!talliedRef.current) { talliedRef.current = true; setWeekBreaths(addBreathsThisWeek(DEFAULT_TOTAL_BREATHS)); }
+  }, [mode]);
 
   // Prefer the POST's snapshot once it lands; fall back to the GET while in
   // flight. The count includes me once recorded.
@@ -437,14 +443,10 @@ export default function CobreathePage() {
         )}
 
         {mode === "done" && (() => {
-          const s = doneState;
-          const othersDone = Math.max(0, (s?.count ?? 1) - 1);
-          const line = s ? companionLine(s.companions, s.companionCount) : "";
-          // The breath POST failed and we never got a count back. Without
-          // this branch the screen sits on "Breath held" forever and the
-          // breath silently never recorded — offer a retry (re-sends the
-          // same seconds) and a way out.
-          if (!s && record.isError) {
+          const othersDone = Math.max(0, (doneState?.count ?? 1) - 1);
+          // The breath POST failed and we never got a count back — offer a
+          // retry (re-sends the same seconds) instead of a stuck screen.
+          if (!doneState && record.isError) {
             return (
               <div className="flex flex-col items-center text-center flex-1 justify-center py-10">
                 <div className="text-5xl mb-5">🌬️</div>
@@ -484,80 +486,17 @@ export default function CobreathePage() {
               </div>
             );
           }
+          // The concluding screen — the SAME component the slideshow overlay
+          // renders (CobreatheSummary), so the close is identical whether you
+          // came from the contemplation card or finished a cobreathe inside an
+          // office / prayer slideshow. It's a full-screen fixed overlay, so it
+          // covers the page chrome here just like it does in the slideshow.
           return (
-            <motion.div
-              className="flex flex-col items-center text-center flex-1 justify-center py-10"
-              initial={{ opacity: 0, y: -14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-            >
-              <div className="text-4xl mb-4">🌬️</div>
-              {/* Eyebrow → big italic-serif headline → italic supporting lines —
-                  the same shape as the Contemplation closing summary. */}
-              <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-3" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
-                {t("cobreathe.done_eyebrow", { defaultValue: "Breathed together" })}
-              </p>
-              <p className="text-[26px] leading-[1.3] font-medium italic mb-2 px-4" style={{ color: WARM, fontFamily: SERIF }}>
-                {!s
-                  ? t("cobreathe.done_counting", { defaultValue: "Breath held" })
-                  : othersDone === 0
-                    ? t("cobreathe.done_first", { defaultValue: "You are the first breath today" })
-                    : t("cobreathe.done_with", { count: othersDone, defaultValue: `You cobreathed with ${othersDone} other ${othersDone === 1 ? "person" : "people"}` })}
-              </p>
-              <p className="text-[13px] leading-relaxed px-6 mb-5" style={{ color: "rgba(143,175,150,0.65)", fontFamily: SERIF, fontStyle: "italic", maxWidth: 300 }}>
-                {othersDone === 0 && s
-                  ? t("cobreathe.done_first_sub", { defaultValue: "Others will join their breath to yours as the day goes on." })
-                  : t("cobreathe.done_sub", { defaultValue: "Not at the same hour — but one body, one breath, held across the day." })}
-              </p>
-              <p className="text-[12px] px-6 mb-1.5" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SERIF, fontStyle: "italic", maxWidth: 290 }}>
-                {t("cobreathe.done_focus", { focus: t(`cobreathe.focus.${focus.key}.title`, { defaultValue: focus.title }).toLowerCase(), defaultValue: `Held this week for ${t(`cobreathe.focus.${focus.key}.title`, { defaultValue: focus.title }).toLowerCase()}.` })}
-              </p>
-              <p className="text-[12px] px-6 mb-8" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SERIF, fontStyle: "italic", maxWidth: 290 }}>
-                {t("cobreathe.done_charge", { defaultValue: "Now let the conspiring continue — breathing together is how working together begins." })}
-              </p>
-
-              {/* Breaths held + today's contemplation goal — the "how far did I
-                  get" payoff, mirroring the Contemplation closing summary. */}
-              {(() => {
-                const perBreathSec = CYCLE_MS / 1000;
-                const breaths = Math.max(DEFAULT_TOTAL_BREATHS, Math.floor((record.variables ?? DEFAULT_TOTAL_BREATHS * perBreathSec) / perBreathSec));
-                return (
-                  <div className="flex flex-col items-center gap-1 mb-8">
-                    <p className="text-[17px]" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontWeight: 600 }}>
-                      {t("cobreathe.done_breaths", { count: breaths, defaultValue: `${breaths} ${breaths === 1 ? "breath" : "breaths"} held` })}
-                    </p>
-                    {rhythm.contemplationGoalMin > 0 && (
-                      <p className="text-[13px]" style={{ color: "rgba(143,175,150,0.75)", fontFamily: SERIF, fontStyle: "italic" }}>
-                        {t("cobreathe.done_goal", { current: rhythm.contemplationMin, goal: rhythm.contemplationGoalMin, defaultValue: `${rhythm.contemplationMin} of ${rhythm.contemplationGoalMin} min today` })}
-                      </p>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* "With you" face block — eyebrow + overlapping faces + names,
-                  matching the Contemplation summary's companions block. */}
-              {s && s.companions.length > 0 && (
-                <div className="flex flex-col items-center mb-8" style={{ maxWidth: 320 }}>
-                  <p className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
-                    {t("cobreathe.with_you", { defaultValue: "With you" })}
-                  </p>
-                  <div className="mb-2"><Faces companions={s.companions} /></div>
-                  <p className="text-[12px] text-center" style={{ color: "rgba(200,212,192,0.75)", fontFamily: SPACE_GROTESK }}>
-                    {line}
-                  </p>
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={() => { if (fromContemplationRef.current) setLocation("/contemplation"); else setMode("intro"); }}
-                className="rounded-full px-10 py-3.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-                style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: SPACE_GROTESK, cursor: "pointer" }}
-              >
-                {t("common.done", { defaultValue: "Done" })}
-              </button>
-            </motion.div>
+            <CobreatheSummary
+              weekBreaths={weekBreaths}
+              others={othersDone}
+              onContinue={() => { if (fromContemplationRef.current) setLocation("/contemplation"); else setMode("intro"); }}
+            />
           );
         })()}
       </div>
