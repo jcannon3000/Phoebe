@@ -27,15 +27,8 @@ export default function DailyPracticePage() {
   const [, setLocation] = useLocation();
   const { isBeta, isLoading: betaLoading } = useBetaStatus();
 
-  // Way of Love launch pad — beta-only, and follows the beta-view toggle.
-  // Previously ungated, so a non-beta user (or a beta user previewing the
-  // regular experience) could land here and see the Way of Love. Send them
-  // home and render nothing so none of it is reachable outside beta.
-  useEffect(() => {
-    if (!betaLoading && !isBeta) setLocation("/dashboard");
-  }, [betaLoading, isBeta, setLocation]);
-
-  if (!betaLoading && !isBeta) return null;
+  // Public — the daily-practice page is open to all users (the beta gate that
+  // redirected non-beta users to /dashboard was removed per request).
 
   return (
     <Layout>

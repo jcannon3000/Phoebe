@@ -323,13 +323,9 @@ export default function RuleOfLifePage() {
   const [, setLocation] = useLocation();
   const { isBeta, isLoading: betaLoading } = useBetaStatus();
 
-  // Gate on isBeta so the Rule of Life follows the beta-view toggle and the
-  // dashboard: hidden whenever a beta user previews the regular (non-beta)
-  // experience, and never shown to non-beta users. Redirect home rather than
-  // to /daily-practice, which is itself a beta-gated Way of Love page.
-  useEffect(() => {
-    if (!betaLoading && !isBeta) setLocation("/dashboard");
-  }, [betaLoading, isBeta, setLocation]);
+  // Public — the Rule of Life / customizer is open to all users. The beta gate
+  // that redirected non-beta users to /dashboard was removed per request, so
+  // the daily-routine + customizer features are available to everyone.
 
   // Skip the questionnaire — open straight on the Way of Love sections.
   // (The questionnaire phases below stay in the file but are no longer

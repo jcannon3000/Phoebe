@@ -88,12 +88,8 @@ export default function RuleOfLifeViewPage() {
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
 
-  // Gate on isBeta so this follows the beta-view toggle and the dashboard:
-  // hidden when a beta user previews the regular experience, never shown to
-  // non-beta. Redirect home rather than to /daily-practice (also gated).
-  useEffect(() => {
-    if (!betaLoading && !isBeta) setLocation("/dashboard");
-  }, [betaLoading, isBeta, setLocation]);
+  // Public — open to all users (the beta gate that redirected non-beta users to
+  // /dashboard was removed per request).
 
   const [applyDone, setApplyDone] = useState(false);
   const [showEmail, setShowEmail] = useState(false);
