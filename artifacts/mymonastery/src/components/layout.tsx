@@ -836,7 +836,6 @@ function OpeningSplash() {
   const { t } = useTranslation();
   const native = isNativeShell();
   const [, splashGoTo] = useLocation();
-  const rhythm = useRhythmState();
   // The routine nudge sends people to /rule-of-life, which is beta-gated (it
   // bounces non-beta users to /dashboard). Match that gate exactly so the
   // "Design my routine" button never dead-ends.
@@ -881,9 +880,11 @@ function OpeningSplash() {
     } catch { /* ignore */ }
     return { uid: null, people: [] };
   });
-  // The splash rotates among THREE blocks each app open — the faces, the
-  // "What's next" card, and a quote — instead of all at once. A localStorage
-  // counter advances it; read + increment once on mount (one splash per launch).
+  // The splash ALTERNATES between two blocks each app open — the faces and a
+  // quote — instead of showing all at once. ("What's next" was the third block;
+  // it was taken out of rotation because, when its card had nothing to show, it
+  // fell back to the quote AFTER a settle delay, flashing the bare greeting
+  // first.) A localStorage counter advances it; read + increment once on mount.
   const [splashOpenN] = useState<number>(() => {
     try {
       const n = Number(localStorage.getItem("phoebe:splash-alt") || "0");
@@ -891,31 +892,15 @@ function OpeningSplash() {
       return n;
     } catch { return 0; }
   });
-  // Brief settle so a still-loading What's-next card wins over the quote
-  // fallback — without it the quote can flash in then get replaced by the card.
-  const [splashSettled, setSplashSettled] = useState(false);
-  useEffect(() => { const id = setTimeout(() => setSplashSettled(true), 650); return () => clearTimeout(id); }, []);
-  const splashVariant = splashOpenN % 3;     // 0 = faces, 1 = What's next, 2 = quote
-  // The "What's next" card — Morning → (before 5pm) Contemplation → (5pm onward)
-  // Evening. Null when the current step is already done (the day is kept) or the
-  // rhythm hasn't resolved yet.
+  const splashVariant = splashOpenN % 2;     // 0 = faces, 1 = quote
   const hour = new Date().getHours();
-  const nextKind: "morning" | "contemplation" | "evening" | null = !rhythm.ready
-    ? null
-    : !rhythm.morningDone
-      ? "morning"
-      : hour < 17
-        ? (!rhythm.silenceDone ? "contemplation" : null)
-        : (!rhythm.eveningDone ? "evening" : null);
   const showFaces = splashVariant === 0;
-  // If the "What's next" slot has no card to show, skip it in the rotation and
-  // let the quote take this open — never dwell on a bare greeting. Gated on
-  // rhythm.ready so a card that's still loading isn't prematurely swapped for
-  // the quote (which would flicker quote → card once the rhythm lands).
-  const showNext = splashVariant === 1 && rhythm.ready && nextKind !== null;
-  const showQuote = splashVariant === 2 || (splashVariant === 1 && rhythm.ready && nextKind === null && splashSettled);
-  // The quote advances each time the quote slide comes up (every third open).
-  const quote = SPLASH_QUOTES[Math.floor(splashOpenN / 3) % SPLASH_QUOTES.length]!;
+  // The quote shows IMMEDIATELY on its open — its content is a static line, ready
+  // on the first render, so the greeting never flashes ahead of it and nothing
+  // waits to "settle".
+  const showQuote = splashVariant === 1;
+  // The quote advances each time the quote slide comes up (every other open).
+  const quote = SPLASH_QUOTES[Math.floor(splashOpenN / 2) % SPLASH_QUOTES.length]!;
   useEffect(() => {
     if (data === undefined) return;
     let cancelled = false;
@@ -1032,15 +1017,6 @@ function OpeningSplash() {
       : t("splash.evening", { defaultValue: "Good evening" });
   const firstName = (user.name ?? "").trim().split(/\s+/)[0] || "";
 
-  // nextKind (and the hour it needs) is computed above, before the variant
-  // selection, so the "What's next" slot can be skipped when there's no card.
-  const nextEmoji = nextKind === "morning" ? "🌅" : nextKind === "evening" ? "🌙" : "🕯️";
-  const nextTitle = !nextKind ? ""
-    : nextKind === "contemplation" ? t("rhythm.card_contemplation", { defaultValue: "Contemplation" })
-    : rhythm.prayerKind === "community" ? t("rhythm.card_community", { defaultValue: "Pray together" })
-    : `${nextKind === "morning" ? "Morning" : "Evening"} ${rhythm.prayerKind === "devotion" ? "Devotion" : "Prayer"}`;
-  // Contemplation opens its own begin slide; the offices go through /begin-prayer.
-  const nextHref = nextKind === "contemplation" ? "/contemplation?begin=1" : "/begin-prayer";
   return (
     <motion.div
       // Tapping the backdrop advances from the faces (to the routine slide or
@@ -1097,8 +1073,8 @@ function OpeningSplash() {
         </motion.div>
       ) : (
       <>
-      {/* Greeting — on the faces + What's-next variants. The quote stands on
-          its own (no "Good evening" over it). */}
+      {/* Greeting — on the faces variant only. The quote stands on its own (no
+          "Good evening" flashing ahead of it). */}
       {!showQuote && (
         <p
           className="text-center px-8 mb-8 relative"
@@ -1170,68 +1146,14 @@ function OpeningSplash() {
           </motion.div>
         );
       })()}
-      {/* What's next — the next office to pray, mirroring the home, so the load
-          screen hands you straight into the day's first prayer. Shown only on
-          the opens where the faces aren't (they alternate). */}
-      {showNext && nextKind && (
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.45, ease: "easeOut" }}
-          onClick={(e) => { e.stopPropagation(); setPhase("out"); splashGoTo(nextHref); }}
-          // No faces above it now (they alternate), so a tight top margin keeps
-          // the single card vertically centered with the greeting.
-          className="relative w-full mt-0 cursor-pointer active:scale-[0.99]"
-          style={{ maxWidth: 420 }}
-        >
-          <p className="text-[11px] font-semibold uppercase tracking-widest mb-2 text-center" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>
-            {t("splash.whats_next", { defaultValue: "What's next" })}
-          </p>
-          <div className="flex items-stretch rounded-3xl overflow-hidden" style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.42)" }}>
-            <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
-            <div className="flex-1 px-5 py-4">
-              <div className="flex items-center gap-3.5">
-                <span className="text-[30px] leading-none flex-shrink-0">{nextEmoji}</span>
-                <p className="flex-1 text-left text-[18px] font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{nextTitle}</p>
-                <span className="flex-shrink-0 rounded-full px-5 py-2 text-[14px] font-semibold" style={{ background: "rgba(46,107,64,0.9)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {t("rhythm.begin", { defaultValue: "Begin" })} →
-                </span>
-              </div>
-              {/* Contemplation tracks a daily minutes goal — show today's progress
-                  (caption + bar) so the splash card mirrors the home contemplation
-                  card. Only contemplation has a goal; the offices are binary. */}
-              {nextKind === "contemplation" && (() => {
-                // Always show the bar on the contemplation card. If the user
-                // hasn't set a daily contemplation goal (contemplationGoalMin
-                // is 0), fall back to a sensible 5-min default so the bar still
-                // renders rather than vanishing.
-                const goal = rhythm.contemplationGoalMin > 0 ? rhythm.contemplationGoalMin : 5;
-                const pct = Math.min(100, Math.round((rhythm.contemplationMin / goal) * 100));
-                return (
-                  <div className="mt-3.5">
-                    <p className="text-[11.5px] mb-1.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                      {t("rhythm.contemplation_progress", { current: rhythm.contemplationMin, goal, defaultValue: `${rhythm.contemplationMin} of ${goal} min today` })}
-                    </p>
-                    <div className="rounded-full overflow-hidden" style={{ height: 5, background: "rgba(143,175,150,0.16)" }}>
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${pct}%`, background: "rgba(46,107,64,0.9)", transition: "width 0.3s" }}
-                      />
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        </motion.div>
-      )}
-      {/* Quote — the third alternate. A single contemplative line + attribution,
-          centred under the greeting. */}
+      {/* Quote — the other alternate. A single contemplative line + attribution,
+          centred; it rises in immediately on a quote open (no greeting flash,
+          no settle delay). */}
       {showQuote && (
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
           className="relative w-full text-center"
           style={{ maxWidth: 460 }}
         >
