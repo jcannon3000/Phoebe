@@ -62,7 +62,16 @@ export function PartnerExchange({ hideWhenEmpty = false }: { hideWhenEmpty?: boo
       {data.mine ? (
         <div className="rounded-3xl px-5 py-4 mb-6" style={{ background: `rgba(${G},0.12)`, border: `1px solid rgba(${G},0.32)` }}>
           <p style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 17, lineHeight: 1.5 }}>{data.mine.body}</p>
-          <Receipts receipts={data.shareReceipts} t={t} />
+          {/* Sealed until it's delivered the next morning (the volley cadence) —
+              reassure the author it's on its way rather than showing receipts
+              for a prayer no partner can see yet. Once delivered, receipts show. */}
+          {data.mine.deliverAfter && new Date(data.mine.deliverAfter).getTime() > Date.now() ? (
+            <p className="text-[12px] mt-3 pt-3" style={{ borderTop: "1px solid rgba(143,175,150,0.14)", color: SAGE, fontFamily: FONT }}>
+              🌅 {t("prayer_partner.delivers_tomorrow", { defaultValue: "They'll receive it tomorrow morning" })}
+            </p>
+          ) : (
+            <Receipts receipts={data.shareReceipts} t={t} />
+          )}
         </div>
       ) : (
         <button

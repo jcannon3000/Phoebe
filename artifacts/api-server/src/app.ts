@@ -234,6 +234,13 @@ app.get("/.well-known/apple-app-site-association", (_req, res) => {
               // ── Communities ──────────────────────────────────────
               { "/": "/communities/join/*" },
               { "/": "/communities/*" },
+              // ── Heart to Hearts (1:1 prayer dialogue) ────────────
+              // The shareable invite link (/prayer-dialogue/join/:token)
+              // must open the app — where the recipient is signed in —
+              // so accepting forms the partnership in one tap, like the
+              // community join link above.
+              { "/": "/prayer-dialogue/join/*" },
+              { "/": "/prayer-dialogue/*" },
               // ── Prayer feeds + public feed ───────────────────────
               { "/": "/prayer-feeds/*" },
               { "/": "/feed/*" },

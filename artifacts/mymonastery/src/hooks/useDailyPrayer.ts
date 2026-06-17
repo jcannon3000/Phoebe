@@ -15,6 +15,9 @@ export interface DailyPrayerRow {
   ymd: string;
   body: string;
   createdAt: string;
+  // Next-morning delivery: the instant this prayer unseals to partners (ISO).
+  // null on legacy rows (delivered immediately).
+  deliverAfter?: string | null;
 }
 
 export interface MyAttention { counted: boolean; seconds: number }

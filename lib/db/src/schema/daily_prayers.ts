@@ -18,6 +18,13 @@ export const dailyPrayersTable = pgTable("daily_prayers", {
   ymd: text("ymd").notNull(),
   body: text("body").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  // Next-morning delivery: the prayer is sealed from partners until this instant
+  // (the next morning in the author's tz), so they wake up to it. NULL = legacy
+  // row → immediately visible. The author always sees their own right away.
+  deliverAfter: timestamp("deliver_after", { withTimezone: true }),
+  // When the deferred "new prayer" push went out (stamped by the morning sweep
+  // so it fires exactly once). NULL while still pending, or on legacy rows.
+  notifiedAt: timestamp("notified_at", { withTimezone: true }),
 }, (t) => ({
   // One prayer per author per local day.
   uniquePerDay: uniqueIndex("daily_prayers_author_ymd").on(t.authorId, t.ymd),

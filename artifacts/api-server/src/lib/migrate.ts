@@ -1217,6 +1217,16 @@ export async function migrate() {
     await run(client, `DROP INDEX IF EXISTS daily_prayers_partner`);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS daily_prayers_author_ymd ON daily_prayers (author_id, ymd)`);
     await run(client, `CREATE INDEX IF NOT EXISTS daily_prayers_author ON daily_prayers (author_id, created_at)`);
+    // Next-morning delivery: a shared prayer is sealed until the next morning
+    // in the author's timezone, so a partner wakes up to it (Snapchat-style).
+    // deliver_after = the absolute instant it becomes visible to partners;
+    // notified_at = when the deferred "new prayer" push was sent (the morning
+    // sweep stamps it so it fires once). Both NULL on legacy rows → those stay
+    // immediately visible and are never re-pushed (the sweep skips NULLs).
+    await run(client, `ALTER TABLE daily_prayers ADD COLUMN IF NOT EXISTS deliver_after TIMESTAMPTZ`);
+    await run(client, `ALTER TABLE daily_prayers ADD COLUMN IF NOT EXISTS notified_at TIMESTAMPTZ`);
+    // The morning sweep scans for due-but-unnotified rows; index that predicate.
+    await run(client, `CREATE INDEX IF NOT EXISTS daily_prayers_delivery ON daily_prayers (deliver_after) WHERE notified_at IS NULL`);
 
     // prayer_attentions — the attention/"view receipt" (>=3s = counted/prayed).
     await run(client, `

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import crypto from "node:crypto";
-import { eq, and, or, desc, ne, inArray, sql } from "drizzle-orm";
+import { eq, and, or, desc, ne, inArray, sql, isNull, lte } from "drizzle-orm";
 import {
   db,
   usersTable,
@@ -10,8 +10,9 @@ import {
   prayerAttentionsTable,
 } from "@workspace/db";
 import { z } from "zod/v4";
-import { sendPushToUser, sendDailyPrayerPush } from "../lib/pushSender";
+import { sendPushToUser } from "../lib/pushSender";
 import { perUserRateLimit } from "../lib/rate-limit";
+import { nextDeliveryInstant } from "../lib/dailyPrayerDelivery";
 
 // ── Prayer Dialogue: the 1:1 "prayer for the day" ──────────────────────────
 //
@@ -138,8 +139,14 @@ router.get("/daily-prayer/today", async (req, res): Promise<void> => {
   const partnerResults = await Promise.all(partnerships.map(async (p) => {
     const partnerId = partnerIdOf(p, uid);
     const partner = await loadUserCard(partnerId);
+    // Only their DELIVERED prayers (next-morning gate): a prayer they wrote
+    // today stays sealed until tomorrow morning, so their "latest" I see is the
+    // most recent one whose delivery moment has passed. Legacy rows (NULL) show.
     const [theirLatest] = await db.select().from(dailyPrayersTable)
-      .where(eq(dailyPrayersTable.authorId, partnerId))
+      .where(and(
+        eq(dailyPrayersTable.authorId, partnerId),
+        or(isNull(dailyPrayersTable.deliverAfter), lte(dailyPrayersTable.deliverAfter, new Date())),
+      ))
       .orderBy(desc(dailyPrayersTable.createdAt)).limit(1);
     const myAtt = theirLatest ? (await db.select().from(prayerAttentionsTable).where(and(
       eq(prayerAttentionsTable.dailyPrayerId, theirLatest.id), eq(prayerAttentionsTable.viewerId, uid))))[0] : undefined;
@@ -426,29 +433,29 @@ router.post("/daily-prayer", perUserRateLimit("daily_prayer_share", {
 
   const partnerIds = await getActivePartnerIds(uid);
   if (partnerIds.length === 0) { res.status(409).json({ error: "no_partner", message: "You need a prayer partner first." }); return; }
-  const ymd = todayInTz(await getUserTz(uid));
+  const tz = await getUserTz(uid);
+  const ymd = todayInTz(tz);
 
   const [existing] = await db.select().from(dailyPrayersTable).where(and(
     eq(dailyPrayersTable.authorId, uid), eq(dailyPrayersTable.ymd, ymd)));
   if (existing) { res.status(409).json({ error: "already_shared_today", prayer: existing }); return; }
 
+  // Next-morning delivery: the prayer is sealed from partners until the next
+  // morning in the author's tz, so they wake up to it. We DON'T push now — the
+  // morning sweep (dailyPrayerDelivery) notifies each partner when deliver_after
+  // arrives. The author still sees their own prayer immediately.
+  const deliverAfter = nextDeliveryInstant(new Date(), tz);
+
   let created;
   try {
     [created] = await db.insert(dailyPrayersTable)
-      .values({ authorId: uid, ymd, body: parsed.data.body }).returning();
+      .values({ authorId: uid, ymd, body: parsed.data.body, deliverAfter }).returning();
   } catch {
     const [row] = await db.select().from(dailyPrayersTable).where(and(
       eq(dailyPrayersTable.authorId, uid), eq(dailyPrayersTable.ymd, ymd)));
     res.status(409).json({ error: "already_shared_today", prayer: row }); return;
   }
 
-  const [me] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, uid));
-  const myName = me?.name || "Your partner";
-  for (const partnerId of partnerIds) {
-    if (!(await areMuted(uid, partnerId))) {
-      sendDailyPrayerPush(partnerId, myName, created.id).catch(() => {});
-    }
-  }
   res.status(201).json(created);
 });
 
@@ -469,6 +476,10 @@ router.post("/daily-prayer/:id/attention", async (req, res): Promise<void> => {
   if (prayer.authorId === uid) { res.status(400).json({ error: "That's your own prayer." }); return; }
   // Only an active partner of the author may attend (and record a receipt).
   if (!(await arePartners(uid, prayer.authorId))) { res.status(403).json({ error: "Forbidden" }); return; }
+  // Sealed until its delivery morning — can't pray it before it's delivered.
+  if (prayer.deliverAfter && prayer.deliverAfter.getTime() > Date.now()) {
+    res.status(409).json({ error: "not_yet_delivered" }); return;
+  }
 
   const [existing] = await db.select().from(prayerAttentionsTable).where(and(
     eq(prayerAttentionsTable.dailyPrayerId, id), eq(prayerAttentionsTable.viewerId, uid)));
@@ -502,8 +513,18 @@ router.get("/prayer-thread/:partnerId", async (req, res): Promise<void> => {
 
   const partner = await loadUserCard(partnerId);
   const streak = await computeStreak(uid, partnerId, await getUserTz(uid));
+  // My prayers always show; the partner's only once delivered (next-morning
+  // gate) — so their not-yet-delivered prayer for today stays sealed in the
+  // thread until tomorrow morning, just like the home card.
   const prayers = await db.select().from(dailyPrayersTable)
-    .where(inArray(dailyPrayersTable.authorId, [uid, partnerId]))
+    .where(and(
+      inArray(dailyPrayersTable.authorId, [uid, partnerId]),
+      or(
+        eq(dailyPrayersTable.authorId, uid),
+        isNull(dailyPrayersTable.deliverAfter),
+        lte(dailyPrayersTable.deliverAfter, new Date()),
+      ),
+    ))
     .orderBy(desc(dailyPrayersTable.createdAt));
   if (prayers.length === 0) { res.json({ partner, streak, items: [] }); return; }
 
