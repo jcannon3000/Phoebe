@@ -505,9 +505,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       title: t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
       blurb: contemplationBlurb,
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-      // Even once the goal is met (card sits under Done), keep inviting more —
-      // contemplation has no ceiling; tap to sit again past the goal.
-      doneCta: t("rhythm.sit_again", { defaultValue: "Sit again" }),
+      // When done, show a plain ✓ like the other anchors — no "Sit again" pill.
       progress: { current: contemplationMin, goal: contemplationGoalMin },
     },
     ...(gratitudeActive ? [{
@@ -612,7 +610,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       progress={"progress" in c ? c.progress : undefined}
       blurbCycle={"blurbCycle" in c ? c.blurbCycle : undefined}
       onClick={"onClick" in c ? c.onClick : undefined}
-      doneCta={"doneCta" in c ? c.doneCta : undefined}
+      doneCta={(c as { doneCta?: string }).doneCta}
       pulse={pulse}
     />
   );

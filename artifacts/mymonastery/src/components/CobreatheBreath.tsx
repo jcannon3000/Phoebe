@@ -814,14 +814,16 @@ export function CobreatheBreath({
           style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none", filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))" }}
         >
           <circle cx={64} cy={64} r={RING_R} fill="none" stroke="rgba(143,175,150,0.14)" strokeWidth={RING_SW} />
-          <circle ref={ringInRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={RING_SW} strokeLinecap="round"
-            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }} />
-          <circle ref={ringOutRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeLinecap="round"
-            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }} />
+          {/* Progress strokes — 80% opacity, each with a soft outer glow in its
+              own colour (drop-shadow). */}
+          <circle ref={ringInRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
+            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 5px rgba(134,199,155,0.85))" }} />
+          <circle ref={ringOutRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
+            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 5px rgba(46,107,64,0.9))" }} />
           {/* inner blue session ring — faint track + slow fill, thickness matched to the outer */}
           <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(91,157,239,0.16)" strokeWidth={RING_SW} />
-          <circle ref={sessionRingRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_BLUE} strokeWidth={RING_SW} strokeLinecap="round"
-            style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset" }} />
+          <circle ref={sessionRingRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_BLUE} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
+            style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 5px rgba(91,157,239,0.85))" }} />
         </svg>
         <div
           ref={globeRef}
