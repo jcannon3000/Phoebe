@@ -454,17 +454,11 @@ export default function ContemplationPage() {
   const { t, i18n } = useTranslation();
   const [timerOpen, setTimerOpen] = useState(false);
 
-  // Auto-configure Apple Health (iOS only): request read + write access on
-  // first open so Mindful Minutes sync automatically — no connect button.
-  // requestAuthorization is a no-op after the user has already responded, so
-  // calling it on mount is safe; HealthKit shows its sheet at most once. Stamp
-  // the connected flag so the shared useHealthMindfulToday surfaces light up.
-  useEffect(() => {
-    if (!appleHealthAvailable()) return;
-    void requestMindfulAuthorization()
-      .then(() => { try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* private mode */ } })
-      .catch(() => { /* user may decline */ });
-  }, []);
+  // Apple Health is OPT-IN: we no longer auto-prompt for Mindful access when the
+  // Contemplation page opens. Per request, don't ask for health data unless the
+  // user has chosen a health practice. Mindful sync still works for anyone who
+  // already connected (their grant persists; writeMindfulSession just no-ops
+  // without it), and the Daily steps practice requests its own access on opt-in.
   // Always launched with an explicit length now (the Begin pill passes the
   // chosen minutes), so the timer skips its own picker and starts straight
   // into the sit. The six-box picker phase is reserved for the prayer-

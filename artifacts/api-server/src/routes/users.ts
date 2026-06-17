@@ -356,13 +356,16 @@ router.get("/me/office-prefs", async (req, res): Promise<void> => {
     }
 
     res.json({
-      morning: u?.morning ?? "none",
+      // Default daily practice for un-set-up users (null columns): Morning
+      // Devotion at 7:30, Evening off, a 5-minute contemplation goal, a
+      // Devotion-depth office. An explicit choice (non-null column) still wins.
+      morning: u?.morning ?? "devotion",
       evening: u?.evening ?? "none",
-      morningTime: u?.morningTime ?? null,
+      morningTime: u?.morningTime ?? "07:30",
       eveningTime: u?.eveningTime ?? null,
       showConfession: u?.showConfession ?? false,
-      defaultPrayerLevel: u?.defaultPrayerLevel ?? "ask",
-      contemplationGoalMinutes: u?.contemplationGoalMinutes ?? 0,
+      defaultPrayerLevel: u?.defaultPrayerLevel ?? "devotion",
+      contemplationGoalMinutes: u?.contemplationGoalMinutes ?? 5,
       contemplationReminderEnabled: u?.contemplationReminderEnabled ?? true,
       dailyStepGoal: u?.dailyStepGoal ?? 0,
       dailyStepReachedDate: u?.dailyStepReachedDate ?? null,

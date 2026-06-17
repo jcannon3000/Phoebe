@@ -431,7 +431,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, silenceDone, eveningDone, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, stepsToday, stepsGoal } = useRhythmState();
+  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, stepsToday, stepsGoal } = useRhythmState();
   const hour = new Date().getHours();
   const kept = t("rhythm.kept", { defaultValue: "Kept today" });
   const prayed = t("rhythm.prayed", { defaultValue: "Prayed today" });
@@ -529,10 +529,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.view", { defaultValue: "View" }), later: false,
       progress: { current: stepsToday, goal: stepsGoal },
     }] : []),
-    {
+    ...(eveningActive ? [{
       // Evening sits last and stays a quiet "later" card until 3 PM, so the
       // morning rhythm (reflection → contemplation) leads the day; from 3 PM on
-      // it becomes the office hero.
+      // it becomes the office hero. Opt-in — off by default (evening pref
+      // "none"), so an un-set-up user has three anchors, not four.
       key: "evening", emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: hour >= 20 ? "/examen" : "/begin-prayer",
       title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
       // After 8 PM the title is "Close the day"; the second line names the actual
@@ -543,7 +544,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurbCycle: (eveningDone || hour >= 20) ? undefined : [eveningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
       later: hour < 15,
-    },
+    }] : []),
   ];
 
   // When a dedicated office hero is supplied (the beta home), the office shows

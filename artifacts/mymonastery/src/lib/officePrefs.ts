@@ -140,12 +140,13 @@ export function getExplicitReflectionSource(): ReflectionSource | null {
   return null;
 }
 
-// Backward-compatible reader: explicit pick, else the FDD default.
+// Backward-compatible reader: explicit pick, else the CAC default.
 // Does NOT consult the home screen (no access to the server user here);
 // React call sites that want the full precedence use
-// useEffectiveReflectionSource() below.
+// useEffectiveReflectionSource() below. Default is CAC (the un-set-up
+// reflection) per the default daily practice.
 export function getReflectionSource(): ReflectionSource {
-  return getExplicitReflectionSource() ?? "fdd";
+  return getExplicitReflectionSource() ?? "cac";
 }
 
 // Home layout shape we care about (mirror of AuthUser.homeLayout).
@@ -169,11 +170,13 @@ function visibleHomeReflection(homeLayout: HomeLayoutLike): ReflectionSource | n
   return null;
 }
 
-// Full precedence: explicit settings pick → visible home card → FDD.
+// Full precedence: explicit settings pick → visible home card → CAC.
+// CAC is the default reflection for un-set-up users (per the default daily
+// practice); an explicit pick or a visible home reflection card still wins.
 export function deriveReflectionSource(homeLayout: HomeLayoutLike): ReflectionSource {
   const explicit = getExplicitReflectionSource();
   if (explicit) return explicit;
-  return visibleHomeReflection(homeLayout) ?? "fdd";
+  return visibleHomeReflection(homeLayout) ?? "cac";
 }
 
 export function setReflectionSource(v: ReflectionSource): void {
@@ -232,10 +235,14 @@ export function setIncludeGratitudeSlide(v: boolean): void { writeBool(KEY_INCLU
 // preset sit length the Contemplation "Begin" uses to skip the picker.
 export function getDefaultContemplationMinutes(): number {
   try {
-    const n = parseInt(localStorage.getItem(KEY_CONTEMPLATION_MINUTES) ?? "", 10);
+    const raw = localStorage.getItem(KEY_CONTEMPLATION_MINUTES);
+    // Unset → default to a 5-minute sit (the default daily practice) so Begin
+    // skips the picker. An explicit "0" still means off / show the picker.
+    if (raw === null) return 5;
+    const n = parseInt(raw, 10);
     return Number.isFinite(n) && n > 0 ? n : 0;
   } catch {
-    return 0;
+    return 5;
   }
 }
 export function setDefaultContemplationMinutes(minutes: number): void {

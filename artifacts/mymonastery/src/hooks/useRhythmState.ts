@@ -52,6 +52,9 @@ export type RhythmState = {
   reflectDone: boolean;
   silenceDone: boolean;
   eveningDone: boolean;
+  /** Whether the evening office is part of the rhythm (evening pref != "none").
+   *  Off by default, so an un-set-up user's rhythm is 3 anchors, not 4. */
+  eveningActive: boolean;
   /** Optional practices the user added from the Customize flow (visible on the
    *  home layout) — each adds a checkmark to Daily progress. */
   gratitudeActive: boolean;
@@ -273,7 +276,7 @@ export function useRhythmState(): RhythmState {
   // What the user prays for the office — global default (office-prefs) OR a
   // per-side override. Mirrors the home prayer card's resolution, so the
   // Morning/Evening anchors read "Devotion"/"Prayer"/"Pray together" to match.
-  const { data: officePrefs } = useQuery<{ defaultPrayerLevel?: "devotion" | "office" | "intercessions"; contemplationGoalMinutes?: number; dailyStepGoal?: number; dailyStepReachedDate?: string | null }>({
+  const { data: officePrefs } = useQuery<{ defaultPrayerLevel?: "devotion" | "office" | "intercessions"; contemplationGoalMinutes?: number; dailyStepGoal?: number; dailyStepReachedDate?: string | null; morning?: string; evening?: string }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     staleTime: 60_000,
@@ -316,7 +319,12 @@ export function useRhythmState(): RhythmState {
   const stepsDone = stepsActive && (stepsReachedToday || stepsToday >= stepsGoal);
 
   // The four core anchors plus whichever optional practices the user added.
-  const coreFlags = [morningDone, reflectDone, silenceDone, eveningDone];
+  // Evening is an OPT-IN anchor — off by default (evening office pref "none"),
+  // so an un-set-up user keeps three dots: morning · contemplation · reflection.
+  // The customizer (rule-of-life) sets the evening pref to a level when enabled,
+  // which flips this on. While prefs load, treat evening as off (no flash).
+  const eveningActive = (officePrefs?.evening ?? "none") !== "none";
+  const coreFlags = [morningDone, reflectDone, silenceDone, ...(eveningActive ? [eveningDone] : [])];
   const extraFlags = [
     ...(gratitudeActive ? [gratitudeDone] : []),
     ...(examenActive ? [examenDone] : []),
@@ -345,6 +353,7 @@ export function useRhythmState(): RhythmState {
     reflectDone,
     silenceDone,
     eveningDone,
+    eveningActive,
     gratitudeActive,
     examenActive,
     stepsActive,
