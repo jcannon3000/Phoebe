@@ -394,6 +394,8 @@ function SlideContent({
 }) {
   const { i18n } = useTranslation();
   const [askBody, setAskBody] = useState("");
+  // Selected length (minutes) for the pause slide's contemplation dropdown.
+  const [pauseMin, setPauseMin] = useState(10);
   const bcpPrayer = slide.kind === "intercession" ? findBcpPrayer(slide.text) : undefined;
   // Resolve the locale-aware view of the BCP prayer once; the body
   // card below picks `localizedBcp.text` so Spanish readers see the
@@ -589,110 +591,82 @@ function SlideContent({
       // toward center by reserving most of the slide's vertical space
       // and centring the contents inside.
       <div
-        className="w-full flex flex-col items-center text-center gap-6"
+        className="w-full flex flex-col items-center text-center gap-7"
         style={{ minHeight: "calc(100dvh - 32dvh)", justifyContent: "center" }}
       >
-        <p
-          className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-          style={{ color: "rgba(143,175,150,0.45)" }}
-        >
-          A moment to pause
-        </p>
-        <p
-          className="text-[22px] leading-[1.55] font-medium italic"
-          style={{
-            color: "#E8E4D8",
-            fontFamily: "Georgia, 'Times New Roman', serif",
-            maxWidth: 380,
-          }}
-        >
-          Take a breath. Bring anything else on your heart to prayer.
-        </p>
-        <p
-          className="text-[13px] leading-relaxed"
-          style={{ color: "rgba(143,175,150,0.65)", maxWidth: 320 }}
-        >
-          Someone you haven&rsquo;t named, a worry that surfaced this morning, the world that needs holding.
-        </p>
-        <button
-          onClick={onAdvance}
-          className="mt-2 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
-        >
-          Continue →
-        </button>
-        <p
-          className="text-[13px]"
-          style={{ color: "rgba(143,175,150,0.6)", fontFamily: "Georgia, serif", fontStyle: "italic" }}
-        >
-          or pause for a time of contemplative prayer
-        </p>
-        {/* Contemplation card — the moment to pause can become a timed,
-            silent sit. Quick 5/10/20-min buttons start immediately;
-            "Begin contemplation" opens the full picker. A bell opens and
-            closes the sit; the time is logged to Contemplation stats. */}
-        <div
-          className="w-full rounded-2xl p-4"
-          style={{
-            maxWidth: 360,
-            background: "rgba(46,107,64,0.12)",
-            border: "1px solid rgba(46,107,64,0.3)",
-          }}
-        >
-          <div className="grid grid-cols-3 gap-2.5 mb-2.5">
-            {[5, 10, 20].map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => onStartContemplation(m)}
-                className="rounded-xl py-2.5 transition-opacity hover:opacity-90 active:scale-[0.98]"
+        {/* Existing pause copy — eyebrow + the invitation to pause. */}
+        <div className="flex flex-col items-center gap-3">
+          <p
+            className="text-[10px] uppercase tracking-[0.18em] font-semibold"
+            style={{ color: "rgba(143,175,150,0.45)" }}
+          >
+            🕯️ A moment to pause
+          </p>
+          <p
+            className="text-[22px] leading-[1.5] font-medium italic"
+            style={{ color: "#E8E4D8", fontFamily: "Georgia, 'Times New Roman', serif", maxWidth: 360 }}
+          >
+            Take a breath. Bring anything else on your heart to prayer.
+          </p>
+        </div>
+
+        {/* Choose a length → contemplate, or breathe together. Mirrors the
+            Contemplation start screen (length dropdown + Start, then Cobreathe
+            set apart) — no stats / log links. */}
+        <div className="w-full" style={{ maxWidth: 340 }}>
+          <div className="flex flex-col gap-2.5">
+            <div className="relative">
+              <select
+                value={String(pauseMin)}
+                onChange={(e) => setPauseMin(parseInt(e.target.value, 10))}
+                aria-label="Length"
+                className="w-full rounded-full"
                 style={{
-                  background: "rgba(46,107,64,0.2)",
+                  background: "rgba(46,107,64,0.18)",
                   border: "1px solid rgba(46,107,64,0.4)",
-                  color: "#F0EDE6",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                  fontWeight: 600,
-                  fontSize: 15,
-                  cursor: "pointer",
+                  color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600,
+                  padding: "15px 40px", outline: "none", colorScheme: "dark",
+                  appearance: "none", WebkitAppearance: "none", cursor: "pointer",
+                  textAlign: "center", textAlignLast: "center",
                 }}
               >
-                {m}
-                <span className="block text-[10px] font-normal mt-0.5" style={{ color: "rgba(143,175,150,0.85)" }}>min</span>
-              </button>
-            ))}
+                {Array.from({ length: 12 }, (_, i) => (i + 1) * 5).map((m) => (
+                  <option key={m} value={String(m)}>{m} minutes</option>
+                ))}
+              </select>
+              <span aria-hidden style={{ position: "absolute", right: 18, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: "rgba(143,175,150,0.85)", fontSize: 12 }}>▾</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => onStartContemplation(pauseMin)}
+              className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+              style={{ background: "#2D5E3F", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.7)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600, padding: 15, cursor: "pointer" }}
+            >
+              Start contemplation <span aria-hidden>→</span>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => onStartContemplation()}
-            className="w-full rounded-xl py-3 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-            style={{
-              background: "rgba(46,107,64,0.28)",
-              border: "1px solid rgba(46,107,64,0.5)",
-              color: "#F0EDE6",
-              fontFamily: "'Space Grotesk', sans-serif",
-              cursor: "pointer",
-            }}
-          >
-            🕯️ Begin contemplation
-          </button>
-          {/* Cobreathe — the silence can be a shared one. Twelve breaths
-              paced by a common clock, held as prayer for justice. */}
+          {/* Cobreathe — set apart with a space. */}
           <button
             type="button"
             onClick={onStartCobreathe}
-            className="w-full rounded-xl py-3 mt-2.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-            style={{
-              background: "rgba(62,124,122,0.18)",
-              border: "1px solid rgba(62,124,122,0.45)",
-              color: "#F0EDE6",
-              fontFamily: "'Space Grotesk', sans-serif",
-              cursor: "pointer",
-            }}
+            className="w-full rounded-full mt-6 transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{ background: "rgba(62,124,122,0.18)", border: "1px solid rgba(62,124,122,0.45)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600, padding: 15, cursor: "pointer" }}
           >
-            <CobreatheGlobe size={15} style={{ marginRight: 6, verticalAlign: "-2px" }} />
-            Cobreathe — breathe together
+            <CobreatheGlobe size={16} style={{ marginRight: 8, verticalAlign: "-3px" }} />
+            Cobreathe
           </button>
         </div>
+
+        {/* Continue — a quiet text button (no pill) at the foot; advances past
+            the pause without contemplating. */}
+        <button
+          type="button"
+          onClick={onAdvance}
+          className="transition-opacity active:opacity-70"
+          style={{ background: "none", border: "none", color: "rgba(143,175,150,0.85)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600, cursor: "pointer", padding: "8px 12px" }}
+        >
+          Continue <span aria-hidden>→</span>
+        </button>
       </div>
     );
   }
