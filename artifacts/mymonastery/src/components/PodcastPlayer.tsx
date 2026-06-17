@@ -315,6 +315,17 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // scrubbingRef gates the move handler so stray pointermoves don't jump it.
   const [scrubFrac, setScrubFrac] = useState<number | null>(null);
   const scrubbingRef = useRef(false);
+  // Backstop: if a scrub's pointerup lands off the bar (e.g. setPointerCapture
+  // failed and the finger left the 5px strip), the bar's own onScrubUp never
+  // fires and the drag state would stick (a later stray pointermove could then
+  // move the bar). Clear it on ANY window pointerup/cancel — on a normal release
+  // the bar's onScrubUp has already run, so this is a no-op then.
+  useEffect(() => {
+    const clear = () => { if (scrubbingRef.current) { scrubbingRef.current = false; setScrubFrac(null); } };
+    window.addEventListener("pointerup", clear);
+    window.addEventListener("pointercancel", clear);
+    return () => { window.removeEventListener("pointerup", clear); window.removeEventListener("pointercancel", clear); };
+  }, []);
   const [rate, setRate] = useState(1);
   const [artBroken, setArtBroken] = useState(false);
   // Full-screen "now playing" listener (vs. the bottom mini-bar).

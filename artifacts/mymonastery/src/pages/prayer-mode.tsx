@@ -4029,9 +4029,12 @@ export default function PrayerModePage() {
         open={cobreatheOpen}
         onSummary={seamlessFlow ? undefined : () => advance()}
         immediateClose={seamlessFlow}
-        onClose={() => {
+        onClose={(result) => {
           setCobreatheOpen(false);
-          if (seamlessFlow) advance();
+          // Only advance the office on a COMPLETED breath. Cancelling (✕) or
+          // backgrounding out calls onClose() with no result — that should just
+          // return to the pause slide, not navigate forward to the office close.
+          if (seamlessFlow && result?.completed) advance();
         }}
       />
     </div>

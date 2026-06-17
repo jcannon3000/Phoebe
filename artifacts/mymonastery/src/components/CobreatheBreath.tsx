@@ -201,6 +201,31 @@ export function CobreatheBreath({
   // Captured at pointer-down: start pointer, offset at start, and the clamp
   // bounds (from the cell's natural rect + the title/bottom content edges).
   const globeDragRef = useRef<{ px: number; py: number; ox: number; oy: number; minX: number; maxX: number; minY: number; maxY: number } | null>(null);
+  // Re-clamp the (persisted) offset to the CURRENT viewport on mount + on
+  // resize/rotate — a value saved on a larger screen could otherwise strand the
+  // globe off-view or over the title/labels with no way back but a blind drag.
+  useEffect(() => {
+    const clamp = () => {
+      const cell = globeCellRef.current; if (!cell) return;
+      const rect = cell.getBoundingClientRect();
+      setGlobeOffset((cur) => {
+        const natLeft = rect.left - cur.x, natTop = rect.top - cur.y;
+        const titleBottom = titleRef.current?.getBoundingClientRect().bottom ?? 0;
+        const bottomTop = bottomRef.current?.getBoundingClientRect().top ?? window.innerHeight;
+        let minX = 24 - natLeft, maxX = (window.innerWidth - 24) - (natLeft + rect.width);
+        let minY = (titleBottom + 24) - natTop, maxY = (bottomTop - 24) - (natTop + rect.height);
+        if (minX > maxX) minX = maxX = (minX + maxX) / 2;   // screen too narrow → lock to centre
+        if (minY > maxY) minY = maxY = (minY + maxY) / 2;   // too short → lock to centre
+        const nx = Math.min(maxX, Math.max(minX, cur.x));
+        const ny = Math.min(maxY, Math.max(minY, cur.y));
+        return (nx === cur.x && ny === cur.y) ? cur : { x: nx, y: ny };
+      });
+    };
+    clamp();
+    window.addEventListener("resize", clamp);
+    window.addEventListener("orientationchange", clamp);
+    return () => { window.removeEventListener("resize", clamp); window.removeEventListener("orientationchange", clamp); };
+  }, []);
   // Two stacked photo layers that crossfade, plus a group wrapper whose opacity
   // breathes with the cycle. The rAF loop ping-pongs between A and B: each breath
   // the incoming layer fades in over the outgoing (never a hard switch), and each
@@ -565,13 +590,11 @@ export function CobreatheBreath({
     const natLeft = rect.left - globeOffset.x, natTop = rect.top - globeOffset.y;
     const titleBottom = titleRef.current?.getBoundingClientRect().bottom ?? 0;
     const bottomTop = bottomRef.current?.getBoundingClientRect().top ?? window.innerHeight;
-    globeDragRef.current = {
-      px: e.clientX, py: e.clientY, ox: globeOffset.x, oy: globeOffset.y,
-      minX: 24 - natLeft,
-      maxX: (window.innerWidth - 24) - (natLeft + rect.width),
-      minY: (titleBottom + 24) - natTop,
-      maxY: (bottomTop - 24) - (natTop + rect.height),
-    };
+    let minX = 24 - natLeft, maxX = (window.innerWidth - 24) - (natLeft + rect.width);
+    let minY = (titleBottom + 24) - natTop, maxY = (bottomTop - 24) - (natTop + rect.height);
+    if (minX > maxX) minX = maxX = (minX + maxX) / 2;   // screen too narrow → lock X to centre
+    if (minY > maxY) minY = maxY = (minY + maxY) / 2;   // too short → lock Y to centre
+    globeDragRef.current = { px: e.clientX, py: e.clientY, ox: globeOffset.x, oy: globeOffset.y, minX, maxX, minY, maxY };
   };
   const onGlobeMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const d = globeDragRef.current; if (!d) return;

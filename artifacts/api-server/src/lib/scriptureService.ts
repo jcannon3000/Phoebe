@@ -173,7 +173,7 @@ function parseSegment(
   if (rangeParts.length === 1) {
     // Single: "1:1" or "40" or "5"
     if (seg.includes(":")) {
-      const [ch, vs] = seg.split(":").map(Number);
+      const [ch, vs] = seg.split(":").map((s) => parseInt(s, 10));
       return { startChapter: ch, startVerse: vs, endChapter: ch, endVerse: vs };
     }
     const num = parseInt(seg, 10);
@@ -202,7 +202,7 @@ function parseSegment(
   let startChapter: number;
   let startVerse: number;
   if (startStr.includes(":")) {
-    const [ch, vs] = startStr.split(":").map(Number);
+    const [ch, vs] = startStr.split(":").map((s) => parseInt(s, 10));
     startChapter = ch;
     startVerse = vs;
   } else {
@@ -219,7 +219,7 @@ function parseSegment(
   let endChapter: number;
   let endVerse: number;
   if (endStr.includes(":")) {
-    const [ch, vs] = endStr.split(":").map(Number);
+    const [ch, vs] = endStr.split(":").map((s) => parseInt(s, 10));
     endChapter = ch;
     endVerse = vs;
   } else {
@@ -249,11 +249,19 @@ function parseReference(reference: string): {
   // Strip parenthetical optional verses: "1:1-7(8-10)" → "1:1-7"
   const ref = reference
     .trim()
-    .replace(/–/g, "-")
+    // Normalize em/en dashes to a hyphen, then collapse the lectionary's
+    // chapter-spanning double-hyphen ("1 Cor. 10:14--11:1") to a single "-" so
+    // the segment splitter sees a clean two-part range. The "--" used to split
+    // into THREE parts ("10:14","","11:1") — the parser handled only two, so it
+    // rendered ch.10 to its end and silently dropped ch.11 (no fallback).
+    .replace(/[—–]/g, "-")
+    .replace(/-{2,}/g, "-")
     .replace(/\([^)]*\)/g, "");
 
-  // Match: optional number prefix + book name, then locator
-  const match = ref.match(/^(\d?\s*[A-Za-z][A-Za-z.\s]*?)\s+([\d:,\-\s]+)$/);
+  // Match: optional number prefix + book name, then locator. The locator allows
+  // ";" (separates ranges: "10:14-17; 11:27-32") and a/b/c verse-part suffixes
+  // ("14:20-33a", "2:1b-10") so those refs parse inline instead of falling back.
+  const match = ref.match(/^(\d?\s*[A-Za-z][A-Za-z.\s]*?)\s+([\d:,;\-\sa-c]+)$/);
   if (!match) return null;
 
   const rawBook = match[1].trim();
@@ -269,8 +277,8 @@ function parseReference(reference: string): {
     };
   }
 
-  // Split comma-separated segments
-  const segments = location.split(",").map((s) => s.trim()).filter(Boolean);
+  // Split comma- or semicolon-separated segments.
+  const segments = location.split(/[,;]/).map((s) => s.trim()).filter(Boolean);
   const ranges: VerseRange[] = [];
   let lastChapter = 0;
   let hasColonContext = false;
