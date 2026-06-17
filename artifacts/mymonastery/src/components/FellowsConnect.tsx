@@ -8,8 +8,9 @@
  */
 
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, Users } from "lucide-react";
+import { Search, Users, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -57,7 +58,13 @@ async function sha256Hex(text: string): Promise<string> {
 // `canManage` (beta) gates the add / search / contacts / requests surface;
 // the fellows list itself is read-only and shown to everyone (fellows can be
 // created via shared-prayer signup for non-beta users too).
-export function FellowsConnect({ canManage = false }: { canManage?: boolean }) {
+//
+// `variant` splits the surface in two:
+//   • "people"  (default) — just your fellows + an "Add a fellow" pill that
+//     routes to the manage page. Keeps the People page clean (no big add card).
+//   • "manage"  — the full add surface (search + contacts + requests + your
+//     fellows with remove), shown on the dedicated /fellows page.
+export function FellowsConnect({ canManage = false, variant = "people" }: { canManage?: boolean; variant?: "people" | "manage" }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const [q, setQ] = useState("");
@@ -146,6 +153,35 @@ export function FellowsConnect({ canManage = false }: { canManage?: boolean }) {
       <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
     </div>
   );
+
+  const fellowRow = (f: Fellow) => row(f.name ?? "Someone", f.avatarUrl,
+    <div className="flex items-center gap-2.5 shrink-0">
+      {f.streak > 0 && <span className="text-[13px] font-semibold" style={{ color: "#E8B45E", fontFamily: FONT }} title={t("fellows_c.streak_title", { defaultValue: "Prayer rhythm" })}>🔥 {f.streak}</span>}
+      <Pill label={t("fellows_c.remove", { defaultValue: "Remove" })} kind="muted" onClick={() => { if (window.confirm(t("fellows_c.remove_confirm", { defaultValue: "Remove this fellow?" }))) remove.mutate(f.userId); }} />
+    </div>, `f-${f.userId}`);
+
+  // People page: just your fellows, then an "Add a fellow" pill → /fellows
+  // (where the full add card lives). The outer section header ("Fellows") is
+  // supplied by the People page, so we don't repeat it here.
+  if (variant === "people") {
+    return (
+      <div className="mb-2">
+        {fellows.map(fellowRow)}
+        {canManage && (
+          <Link
+            href="/fellows"
+            className="inline-flex items-center gap-2 rounded-full px-4 py-2 mt-1 text-[13px] font-semibold transition-opacity active:scale-[0.98]"
+            style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
+          >
+            <Plus size={15} /> {t("fellows_c.add_a_fellow", { defaultValue: "Add a fellow" })}
+            {requests.length > 0 && (
+              <span className="rounded-full px-1.5" style={{ background: "#E8B45E", color: "#0C1F12", fontSize: 11, fontWeight: 700, lineHeight: "16px", minWidth: 16, textAlign: "center" }}>{requests.length}</span>
+            )}
+          </Link>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="mb-2">
