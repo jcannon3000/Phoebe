@@ -720,10 +720,9 @@ export function CobreatheBreath({
         </div>
       )}
 
-      {/* Top-right control — "Cancel" while breathing, switching to a green
-          "Done" pill once the full set is kept (the Done moved here from the
-          bottom). onClick passes reachedRef either way: cancel doesn't count,
-          Done finishes. */}
+      {/* Top-right control — a quiet round ✕ (cancel) while breathing, switching
+          to a green "Done" pill once the full set is kept. onClick passes
+          reachedRef either way: cancel doesn't count, Done finishes. */}
       <button
         type="button"
         aria-label={reachedNow ? t("cobreathe.done", { defaultValue: "Done" }) : t("common.cancel", { defaultValue: "Cancel" })}
@@ -732,15 +731,15 @@ export function CobreatheBreath({
           position: "absolute", top: "calc(var(--safe-top) + 16px)", right: 16,
           borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
           fontFamily: SPACE_GROTESK, fontWeight: 600, lineHeight: 1, cursor: "pointer", zIndex: 2,
-          transition: "background 0.4s ease, color 0.4s ease, padding 0.3s ease",
+          transition: "background 0.4s ease, color 0.4s ease, padding 0.3s ease, width 0.3s ease, height 0.3s ease",
           ...(reachedNow
             ? { background: "rgba(46,107,64,0.85)", border: "1px solid rgba(140,195,160,0.5)", color: "#EAF6F4", fontSize: 14, padding: "9px 22px" }
-            // Cancel is a quiet plain-text control — no pill — so only the green
-            // "Done" reads as an affordance once the set is kept.
-            : { background: "transparent", border: "none", color: TEXT_DIM, fontSize: 13, padding: "8px 6px" }),
+            // Cancel is a round ✕ button — a quiet close affordance — so only the
+            // green "Done" pill reads as the finish once the set is kept.
+            : { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(200,225,210,0.28)", color: TEXT_DIM, fontSize: 17, width: 38, height: 38, padding: 0 }),
         }}
       >
-        {reachedNow ? t("cobreathe.done", { defaultValue: "Done" }) : t("common.cancel", { defaultValue: "Cancel" })}
+        {reachedNow ? t("cobreathe.done", { defaultValue: "Done" }) : "✕"}
       </button>
 
       {/* While SYNCING, a quote rests in the upper third — centred. A short wait
