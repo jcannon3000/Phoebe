@@ -22,6 +22,7 @@ import {
   markFddRead,
   markSsjeRead,
 } from "@/lib/cacReadState";
+import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/officePrefs";
 import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
 import NewsClosingSlide, { useUnseenNews } from "@/components/NewsClosingSlide";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
@@ -897,7 +898,14 @@ function SlideContent({
   }
 
   return (
-    <div className="w-full flex flex-col items-center text-center gap-5">
+    <div
+      className="w-full flex flex-col items-center text-center gap-5"
+      style={slide.kind === "request" ? {
+        // Soft gradient wash behind a prayer-request slide — a gentle top-down
+        // green glow that fades into the page background (no hard card edge).
+        background: "radial-gradient(125% 75% at 50% 2%, rgba(46,107,64,0.22) 0%, rgba(12,31,18,0) 72%)",
+      } : undefined}
+    >
       {/* Request slides: author avatar + name above the body, mirroring
           the "Praying for" slide's layout. The avatar anchors the slide
           to a specific person so the prayer doesn't read as anonymous
@@ -1141,7 +1149,14 @@ function SlideContent({
           existing word if they've already left one, otherwise a one-line
           compose field with a send button. */}
       {slide.kind === "request" && typeof slide.requestId === "number" && (
-        <RequestWordField requestId={slide.requestId} initialWord={slide.myWord ?? null} />
+        <motion.div
+          className="w-full flex justify-center"
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.18, ease: "easeOut" }}
+        >
+          <RequestWordField requestId={slide.requestId} initialWord={slide.myWord ?? null} />
+        </motion.div>
       )}
 
       {/* Custom intercession — show the user's own prayer text. When the
@@ -1983,6 +1998,110 @@ function ClosingSlide({
         {effectiveDoneLabel}
       </button>
 
+    </div>
+  );
+}
+
+// The MORNING office/devotion send-off. When the user keeps a daily reflection
+// ("newsletter" — CAC / FDD / SSJE), the close ends not on the community recap
+// but on a single "what's next" card: today's reflection, tap to open. Fades up
+// over a soft gradient. Evening (and reflection-off) closes are handled
+// elsewhere — see endOnReflection / fadeHomeNoNewsletter in PrayerModePage.
+function WhatsNextSlide({
+  source,
+  onDone,
+  visible,
+}: {
+  source: Exclude<ReflectionSource, "none">;
+  onDone: () => void;
+  visible: boolean;
+}) {
+  const { t } = useTranslation();
+  const name =
+    source === "fdd" ? "Forward Day by Day"
+      : source === "ssje" ? "Brother, Give Us a Word"
+        : "CAC Daily Meditation";
+  const url = source === "fdd" ? FDD_TODAY_URL : source === "ssje" ? SSJE_TODAY_URL : CAC_TODAY_URL;
+  const openReflection = () => {
+    if (source === "fdd") markFddRead();
+    else if (source === "ssje") markSsjeRead();
+    else markCacRead();
+    openExternal(url);
+  };
+  return (
+    <div
+      className="w-full flex flex-col items-center text-center"
+      style={{
+        opacity: visible ? 1 : 0,
+        transition: "opacity 0.4s ease",
+        gap: 26,
+        // Soft top-down gradient wash behind the send-off.
+        background: "radial-gradient(120% 90% at 50% 0%, rgba(46,107,64,0.22) 0%, rgba(12,31,18,0) 72%)",
+        borderRadius: 24,
+        padding: "28px 18px 8px",
+      }}
+    >
+      <motion.p
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45 }}
+        style={{
+          fontFamily: "'Space Grotesk', sans-serif", fontSize: 12,
+          letterSpacing: "0.22em", textTransform: "uppercase", color: "#8FAF96",
+        }}
+      >
+        {t("prayer_mode.as_you_go", { defaultValue: "As you go" })}
+      </motion.p>
+
+      <motion.p
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.12 }}
+        style={{
+          fontFamily: "'Space Grotesk', sans-serif", fontSize: 22, fontWeight: 700,
+          color: "#F0EDE6", letterSpacing: "-0.01em", maxWidth: 320, lineHeight: 1.3,
+        }}
+      >
+        {t("prayer_mode.whats_next_headline", { defaultValue: "Carry the day with you" })}
+      </motion.p>
+
+      {/* Today's reflection — tap to open. */}
+      <motion.button
+        type="button"
+        onClick={openReflection}
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.24 }}
+        className="w-full flex flex-col items-start gap-1.5 rounded-2xl px-5 py-4 text-left transition-opacity hover:opacity-90 active:scale-[0.98]"
+        style={{
+          maxWidth: 360,
+          background: "rgba(46,107,64,0.22)",
+          border: "1px solid rgba(46,107,64,0.45)",
+          cursor: "pointer",
+        }}
+      >
+        <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8FAF96" }}>
+          {t("offices.todays_reflection", { defaultValue: "Today's reflection" })}
+        </span>
+        <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600, color: "#F0EDE6" }}>
+          {name}
+        </span>
+        <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600, color: "#A8C5A0", marginTop: 2 }}>
+          {t("common.read", { defaultValue: "Read" })} →
+        </span>
+      </motion.button>
+
+      <motion.button
+        type="button"
+        onClick={onDone}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, delay: 0.36 }}
+        className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+      >
+        {t("common.done")}
+      </motion.button>
     </div>
   );
 }
@@ -3182,6 +3301,16 @@ export default function PrayerModePage() {
   // office slideshow — they live only on the home screen now. The office
   // close goes straight to the celebration summary.
   const showReflectionGate = false;
+  // Morning office/devotion send-off. The recap ("who you prayed with this
+  // week") is replaced on the MORNING close by a "what's next → today's
+  // reflection" hand-off when the user keeps a reflection ("newsletter").
+  // If they keep no reflection, we don't park them on the recap either —
+  // the close just fades smoothly back to the home screen (see the effect
+  // below). Evening closes are unaffected and still show the recap.
+  const reflectionSource = useEffectiveReflectionSource(closingIsEvening ? "evening" : "morning");
+  const isMorningClose = (closingOnly || afterOffice) && !closingIsEvening;
+  const endOnReflection = isMorningClose && reflectionSource !== "none";
+  const fadeHomeNoNewsletter = isMorningClose && reflectionSource === "none";
   // Contemplation timer overlay — opened from the pause slide's
   // quick-start card. Rendered at the page root below so it covers the
   // whole screen regardless of which slide is showing. startMinutes is
@@ -3368,6 +3497,20 @@ export default function PrayerModePage() {
       setTimeout(() => setLocation(finishHref), 500);
     }, 300);
   };
+
+  // Morning close with no daily reflection ("newsletter"): skip the community
+  // recap entirely and fade smoothly back to the home screen. Fires once when
+  // we land on the closing phase for that case (reflection-on closes render the
+  // WhatsNextSlide instead; evening closes keep the recap).
+  const fadedHomeRef = useRef(false);
+  useEffect(() => {
+    if (phase === "closing" && fadeHomeNoNewsletter && !fadedHomeRef.current) {
+      fadedHomeRef.current = true;
+      exitToFinish();
+    }
+    // exitToFinish is stable for our purposes (only reads refs/state setters).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, fadeHomeNoNewsletter]);
 
   // Move to the next slide without recording an amen / check-in.
   // Used by the "Not today" hyperlink under the Amen button — gives
@@ -3896,7 +4039,14 @@ export default function PrayerModePage() {
             office-handoff path) AND offices-only feed walks — that's
             where the user's morning/evening rhythm grid lives, and
             we want feed prayer to feed into it. */}
-        {phase === "closing" && !showReflectionGate && (
+        {phase === "closing" && endOnReflection && (
+          <WhatsNextSlide
+            source={reflectionSource as Exclude<ReflectionSource, "none">}
+            onDone={handleDone}
+            visible={slideVisible}
+          />
+        )}
+        {phase === "closing" && !showReflectionGate && !endOnReflection && !fadeHomeNoNewsletter && (
           <ClosingSlide
             celebration={celebration}
             streak={celebration?.streak ?? streakData?.streak ?? 0}
