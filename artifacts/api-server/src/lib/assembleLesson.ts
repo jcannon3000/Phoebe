@@ -19,11 +19,12 @@ import { lookupLessonVerses, type LessonVerse } from "./scriptureService";
 import { bibleGatewayUrl } from "./bibleGatewayUrl";
 import type { Slide } from "./assembleMorningPrayer";
 
-// 6 verses per slide. Lessons are NOT split tightly like the psalms (which go
-// in short ~4-verse chunks for their poetic cadence) — scripture prose is read
-// continuously, so grouping 6 verses reads as a passage rather than a stack of
-// one-liners, with fewer slides to tap through.
-const LESSON_VERSES_PER_CHUNK = 6;
+// Pack whole verses onto a slide up to a CHARACTER BUDGET, then break at the
+// verse boundary and continue on the next slide — so a slide never cuts a verse
+// mid-sentence and long narrative verses don't overflow the page, while short
+// verses still group several per slide (scripture prose reads continuously).
+// Tuned to fit a phone page; a single over-budget verse still gets its own slide.
+const LESSON_CHUNK_BUDGET_CHARS = 650;
 
 export type LessonKind =
   | "first_morning"
@@ -74,17 +75,31 @@ const LESSON_BODY_PROMPT_FALLBACK =
   "Open your Bible, or read this passage online.";
 
 /**
- * Group consecutive verses into N-per-chunk slices. Stable across
- * chapter boundaries — a chapter transition mid-passage doesn't
- * reset the chunk position; the renderer surfaces the chapter via
- * the verse marker (e.g. "15:1") when it changes.
+ * Group consecutive verses into slides up to a CHARACTER BUDGET, breaking only
+ * at whole-verse boundaries so a slide never cuts a verse mid-sentence. A lone
+ * verse longer than the budget still gets its own slide (never an empty one).
+ * Stable across chapter boundaries — a chapter transition mid-passage doesn't
+ * reset the position; the renderer surfaces the chapter via the verse marker
+ * (e.g. "15:1") when it changes.
  */
-function chunkVerses(verses: LessonVerse[], n: number): LessonVerse[][] {
-  if (n <= 0) return [verses];
+function chunkVerses(verses: LessonVerse[], budgetChars: number): LessonVerse[][] {
+  if (budgetChars <= 0) return [verses];
   const chunks: LessonVerse[][] = [];
-  for (let i = 0; i < verses.length; i += n) {
-    chunks.push(verses.slice(i, i + n));
+  let cur: LessonVerse[] = [];
+  let len = 0;
+  for (const v of verses) {
+    const vLen = (v.text ?? "").length;
+    // Break to a new slide when this verse would push it past the budget — but
+    // only if the slide already holds a verse (a lone over-budget verse stays).
+    if (cur.length > 0 && len + vLen > budgetChars) {
+      chunks.push(cur);
+      cur = [];
+      len = 0;
+    }
+    cur.push(v);
+    len += vLen;
   }
+  if (cur.length > 0) chunks.push(cur);
   return chunks;
 }
 
@@ -180,7 +195,7 @@ export function buildLessonSlides(
   // stamped onto each slide's metadata so the renderer can lay them
   // out as numbered rows (verse number left, text right) without
   // re-parsing a string blob.
-  const chunks = chunkVerses(verses, LESSON_VERSES_PER_CHUNK);
+  const chunks = chunkVerses(verses, LESSON_CHUNK_BUDGET_CHARS);
   const slides: Slide[] = [titleSlide];
   chunks.forEach((chunk, i) => {
     slides.push({
