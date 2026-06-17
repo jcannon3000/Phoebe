@@ -547,6 +547,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   }, [slideIdx, slides.length, resolvedMode]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // A held "breath into the office" opening screen: the office's opening
+  // versicle on a gradient, shown for at least ~2.8s (even when slides load
+  // instantly) so the office begins with a calm, deliberate beat instead of a
+  // flashy spinner. The loading gate below waits on BOTH this and the fetch.
+  const [minLoadDone, setMinLoadDone] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setMinLoadDone(true), 2800);
+    return () => clearTimeout(t);
+  }, []);
 
   // The "way to pray" chooser on the welcome slide — a dropdown (replacing the
   // old alternate-route pills) that lets the reader switch between the short
@@ -747,10 +756,36 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slides, slideIdx, resolvedMode, isDevotion]);
 
-  if (loading) {
+  if (loading || !minLoadDone) {
+    // The office opens on its classic opening versicle (Morning: Ps 51:15;
+    // Evening: Ps 141:2; Compline: a quiet-night blessing), set on a soft
+    // gradient and faded in — a held breath into the office rather than a
+    // flashing spinner. Stays until BOTH the slides have loaded and the minimum
+    // ~2.8s has passed, then the office fades up over it.
+    const versicle =
+      (resolvedMode === "evening" || resolvedMode === "early-evening-devotion")
+        ? "Let my prayer rise before you as incense, the lifting up of my hands as the evening sacrifice."
+        : resolvedMode === "compline"
+          ? "The Lord grant us a quiet night and a peaceful end."
+          : "O Lord, open my lips, and my mouth shall proclaim your praise.";
     return (
-      <div style={{ minHeight: "100vh", background: BG, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: SPACE_GROTESK }}>
-        <p style={{ color: MUTED_GREEN, fontSize: 14, letterSpacing: "0.06em" }}>Preparing today's office…</p>
+      <div style={{ minHeight: "100dvh", background: BG, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 40px", overflow: "hidden" }}>
+        <div aria-hidden style={{ position: "absolute", inset: 0, background: "radial-gradient(120% 80% at 50% 32%, rgba(46,107,64,0.24) 0%, rgba(9,26,16,0) 70%)" }} />
+        <p
+          style={{
+            position: "relative",
+            fontFamily: "Georgia, 'Times New Roman', serif",
+            fontStyle: "italic",
+            fontSize: 24,
+            lineHeight: 1.55,
+            color: "#E8E4D8",
+            textAlign: "center",
+            maxWidth: 460,
+            animation: "office-enter 1s ease backwards",
+          }}
+        >
+          {versicle}
+        </p>
       </div>
     );
   }
