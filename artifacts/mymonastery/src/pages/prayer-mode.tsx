@@ -4045,8 +4045,8 @@ export default function PrayerModePage() {
       <button
         onClick={handleExit}
         aria-label="Exit prayer mode"
-        className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full z-10 text-xl"
-        style={{ color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}
+        className="absolute right-6 w-10 h-10 flex items-center justify-center rounded-full z-10 text-xl"
+        style={{ top: "calc(var(--safe-top) + 12px)", color: "rgba(200,212,192,0.4)", background: "rgba(200,212,192,0.06)" }}
       >
         ×
       </button>
