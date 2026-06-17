@@ -151,10 +151,16 @@ export default function WayOfLoveRuleFlow({
     return { morning: true, evening: true };
   });
   const toggleSide = (s: "morning" | "evening") => {
+    const turningOn = !sides[s];
+    touchedRef.current = true;
     setSides((prev) => {
       const next = { ...prev, [s]: !prev[s] };
       return next.morning || next.evening ? next : prev; // keep at least one
     });
+    // Turning a side ON defaults its daily reminder ON, so the notification
+    // step shows it enabled — re-enabling a side shouldn't inherit its old
+    // "off" from a previous save.
+    if (turningOn) setReminderOnBySide((r) => ({ ...r, [s]: true }));
   };
   // Preload from the user's current settings so Customize reflects what they
   // already chose, not the first-run defaults. localStorage per-side levels +

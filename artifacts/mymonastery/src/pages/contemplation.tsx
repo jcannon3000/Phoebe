@@ -152,6 +152,9 @@ function avgPerDay(seconds: number, days: number): string {
 function humanMinutes(seconds: number): string {
   if (!seconds || seconds < 60) return seconds > 0 ? "<1 min" : "—";
   const m = Math.round(seconds / 60);
+  // Past ~1000 minutes the count reads better in hours — an all-time total of
+  // "1,240 min" is clearer as "21 hr".
+  if (m >= 1000) return `${Math.round(m / 60)} hr`;
   return `${m} min`;
 }
 

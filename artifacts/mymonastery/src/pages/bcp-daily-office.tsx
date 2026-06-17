@@ -2985,9 +2985,13 @@ function buildBookSections(slides: Slide[]): BookSection[] {
         });
         break;
       }
+      case "lesson_title":
       case "lesson": {
         // Lessons are read from the user's own Bible — the card carries
-        // the citation plus the read-online fallback the slide ships.
+        // the citation plus the read-online fallback the slide ships. Lessons
+        // now ship as a single `lesson_title` slide (no separate body), so the
+        // book guide reads the citation off that too — otherwise the lectionary
+        // reading was silently dropped from the physical-book guide.
         const lmeta = s.metadata as { readUrl?: unknown } | undefined;
         sections.push({
           key: s.id,

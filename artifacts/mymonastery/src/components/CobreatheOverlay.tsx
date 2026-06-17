@@ -51,6 +51,10 @@ export function CobreatheOverlay({
   // True once the user taps Continue — fades the overlay out onto the office
   // slide that onSummary already advanced to behind it.
   const [closing, setClosing] = useState(false);
+  // Keeps the breath screen mounted UNDER the summary through the
+  // breathing→done hand-off, so the summary cross-fades in over it (a dissolve,
+  // not a hard cut). Flipped off once the summary has fully faded in.
+  const [breathVisible, setBreathVisible] = useState(true);
   // This week's running breath tally (per-device), shown on the summary.
   const [weekBreaths, setWeekBreaths] = useState(0);
   const talliedRef = useRef(false);
@@ -73,7 +77,7 @@ export function CobreatheOverlay({
   // lands straight on the stale "you cobreathed with N" done screen.
   const sitLoggedRef = useRef(false);
   useEffect(() => {
-    if (open) { setPhase("breathing"); setResp(null); sitLoggedRef.current = false; setClosing(false); talliedRef.current = false; }
+    if (open) { setPhase("breathing"); setResp(null); sitLoggedRef.current = false; setClosing(false); talliedRef.current = false; setBreathVisible(true); }
   }, [open]);
 
   // Log the breathed time as a contemplation sit — exactly once per open — so a
@@ -150,27 +154,32 @@ export function CobreatheOverlay({
 
   // While breathing, CobreatheBreath is itself a full-screen deep-blue
   // takeover — render it directly, no wrapper or header to peek around it.
-  if (phase === "breathing") {
-    return (
-      <CobreatheBreath
-        othersToday={liveOthers}
-        todayCount={liveState?.count ?? 0}
-        onReachTarget={handleReachTarget}
-        onEnd={handleEnd}
-      />
-    );
-  }
-
-  // The office slide underneath was already advanced (onSummary), so fading the
-  // summary to 0 on Continue reveals a ready slide — a smooth hand-off.
+  // The breath stays mounted (same position) through breathing→done so the
+  // summary can cross-fade IN over it — a dissolve, not a hard cut. Once the
+  // summary has faded in (onEntered) the breath unmounts. On Continue the
+  // summary fades to 0, revealing the office slide onSummary advanced behind it.
   return (
-    <CobreatheSummary
-      weekBreaths={weekBreaths}
-      others={others}
-      continueDisabled={closing}
-      fadeOut={closing}
-      onFadeOutComplete={() => onClose()}
-      onContinue={() => { if (immediateClose) onClose({ completed: true }); else setClosing(true); }}
-    />
+    <>
+      {breathVisible && (
+        <CobreatheBreath
+          othersToday={liveOthers}
+          todayCount={liveState?.count ?? 0}
+          onReachTarget={handleReachTarget}
+          onEnd={handleEnd}
+        />
+      )}
+      {phase === "done" && (
+        <CobreatheSummary
+          weekBreaths={weekBreaths}
+          others={others}
+          continueDisabled={closing}
+          fadeIn
+          fadeOut={closing}
+          onEntered={() => setBreathVisible(false)}
+          onFadeOutComplete={() => onClose()}
+          onContinue={() => { if (immediateClose) onClose({ completed: true }); else setClosing(true); }}
+        />
+      )}
+    </>
   );
 }

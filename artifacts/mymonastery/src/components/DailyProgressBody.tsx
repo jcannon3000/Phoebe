@@ -476,7 +476,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
 
   const cards = [
     ...(morningActive ? [{
-      key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer",
+      key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer?side=morning",
       title: officeTitle("Morning"),
       blurb: morningDone ? prayed : morningBlurb,
       blurbCycle: morningDone ? undefined : [morningBlurb, ...officeCycle],
@@ -545,7 +545,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // morning rhythm (reflection → contemplation) leads the day; from 3 PM on
       // it becomes the office hero. Opt-in — off by default (evening pref
       // "none"), so an un-set-up user has three anchors, not four.
-      key: "evening", emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: hour >= 20 ? "/examen" : "/begin-prayer",
+      key: "evening", emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: hour >= 20 ? "/examen" : "/begin-prayer?side=evening",
       title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
       // After 8 PM the title is "Close the day"; the second line names the actual
       // evening method (Evening Prayer / Evening Devotion / Pray together).

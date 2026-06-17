@@ -22,6 +22,8 @@ export function CobreatheSummary({
   continueDisabled = false,
   fadeOut = false,
   onFadeOutComplete,
+  fadeIn = false,
+  onEntered,
 }: {
   // This week's running breath tally (per-device).
   weekBreaths: number;
@@ -35,15 +37,22 @@ export function CobreatheSummary({
   // finishes. The standalone page leaves this off (it navigates away instead).
   fadeOut?: boolean;
   onFadeOutComplete?: () => void;
+  // When true, the summary fades IN (opacity 0→1) instead of appearing
+  // instantly. The host keeps the breath screen mounted underneath until
+  // onEntered fires, so the breath→summary hand-off is a dissolve, not a hard
+  // cut. (The standalone page leaves this off — it has no breath to dissolve
+  // from once it returns to its Layout.)
+  fadeIn?: boolean;
+  onEntered?: () => void;
 }) {
   const { t } = useTranslation();
   return (
     <motion.div
       className="flex flex-col"
-      initial={{ opacity: 1 }}
+      initial={{ opacity: fadeIn ? 0 : 1 }}
       animate={{ opacity: fadeOut ? 0 : 1 }}
       transition={{ duration: 0.6, ease: "easeInOut" }}
-      onAnimationComplete={() => { if (fadeOut) onFadeOutComplete?.(); }}
+      onAnimationComplete={() => { if (fadeOut) onFadeOutComplete?.(); else onEntered?.(); }}
       style={{
         position: "fixed", inset: 0, zIndex: 60,
         // STATIC gradient — the drifting AnimatedBackground was removed here

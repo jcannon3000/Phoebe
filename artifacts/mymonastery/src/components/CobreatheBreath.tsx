@@ -728,7 +728,7 @@ export function CobreatheBreath({
         aria-label={reachedNow ? t("cobreathe.done", { defaultValue: "Done" }) : t("common.cancel", { defaultValue: "Cancel" })}
         onClick={() => onEnd(Math.round((Date.now() - startRef.current) / 1000), reachedRef.current)}
         style={{
-          position: "absolute", top: "calc(var(--safe-top) + 16px)", right: 16,
+          position: "absolute", top: "calc(var(--safe-top) + 60px)", right: 16,
           borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
           fontFamily: SPACE_GROTESK, fontWeight: 600, lineHeight: 1, cursor: "pointer", zIndex: 2,
           transition: "background 0.4s ease, color 0.4s ease, padding 0.3s ease, width 0.3s ease, height 0.3s ease",

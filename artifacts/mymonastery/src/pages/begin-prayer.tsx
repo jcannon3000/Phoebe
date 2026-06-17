@@ -49,10 +49,16 @@ export default function BeginPrayerPage() {
     }
     if (prefsLoading || historyLoading) return;
 
-    // Time-of-day buckets (same as the dashboard CTA) — also decide which
-    // side's per-side default to honor for the Morning/Evening split.
+    // Which side to pray. An explicit ?side= (set by a Morning/Evening card)
+    // WINS over the clock, so tapping "Morning Devotion" after noon still opens
+    // the MORNING office instead of the time-of-day default flipping it to
+    // evening. Falls back to the clock (before noon → morning) otherwise.
     const hourNow = new Date().getHours();
-    const isMorning = hourNow < 12;
+    const sideParam = (() => {
+      try { return new URLSearchParams(window.location.search).get("side"); }
+      catch { return null; }
+    })();
+    const isMorning = sideParam === "morning" ? true : sideParam === "evening" ? false : hourNow < 12;
     const side: OfficeSide = isMorning ? "morning" : "evening";
 
     // Per-side depth override (Morning/Evening split) wins; otherwise the
