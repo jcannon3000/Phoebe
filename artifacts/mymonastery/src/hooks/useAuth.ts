@@ -22,6 +22,8 @@ export interface AuthUser {
   avatarUrl: string | null;
   googleId: string | null;
   showPresence: boolean;
+  // Opt-in coarse "same air" location for Cobreathe (default false).
+  shareBreathLocation?: boolean;
   correspondenceImprintCompleted: boolean;
   gatheringImprintCompleted: boolean;
   onboardingCompleted: boolean;

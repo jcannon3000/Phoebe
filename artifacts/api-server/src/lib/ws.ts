@@ -34,6 +34,12 @@ interface CobreatheSession {
   startEpochMs: number;
   masterSeed: number;
   fingerprint: string;
+  // OPT-IN coarse location ("same air"): a 5-char geohash (~5km cell) the
+  // breather attached if they enabled shareBreathLocation AND the OS granted
+  // location. In-memory only — NEVER broadcast to clients (stripped in
+  // getCobreatheSessions) and NEVER stored. The server derives only a count +
+  // coarse band from it, and evaporates it when the session ends.
+  geohash?: string;
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -95,8 +101,11 @@ function broadcastPresenceSync() {
 // their connections by userId (the page passes garden user-ids), so email never
 // needs to cross the wire to every connected client. (email is kept server-side
 // in the Map but never broadcast — a privacy fix vs. the original design.)
-function getCobreatheSessions(): Array<Omit<CobreatheSession, "email">> {
-  return Array.from(cobreatheSessions.values()).map(({ email: _email, ...rest }) => rest);
+function getCobreatheSessions(): Array<Omit<CobreatheSession, "email" | "geohash">> {
+  // Strip BOTH the server-only email AND the coarse geohash — a breather's
+  // bucket must never reach another client (the server alone derives a count +
+  // band from it). Garden filtering still happens client-side by userId.
+  return Array.from(cobreatheSessions.values()).map(({ email: _email, geohash: _geohash, ...rest }) => rest);
 }
 
 function broadcastCobreatheSync() {
@@ -239,6 +248,97 @@ async function recomputeBreathNotifications() {
   }
 }
 
+// ── "Same air" — who's breathing near you right now ─────────────────────────
+//
+// When a breather opts in (shareBreathLocation + OS grant), the client attaches
+// a COARSE 5-char geohash (~5km cell) to their cobreathe-start. The server keeps
+// it in memory only and, on any change, sends each opted-in breather a PRIVATE
+// `cobreathe-near` message with: a COUNT of others in the same cell (strangers
+// stay an anonymous +1) and, for those who are their Fellows, a first name +
+// avatar + a coarse distance BAND. No client ever receives another user's
+// geohash, coordinates, or exact distance. All state is in-memory + ephemeral.
+
+const GEOHASH_RE = /^[0-9bcdefghjkmnpqrstuvwxyz]{1,5}$/; // base32 (geohash alphabet), ≤ precision 5
+const NEAR_FELLOWS_SHOWN = 6;
+
+// Coarse band from how much two geohashes share. Beta matches whole 5-char
+// cells, so matched Fellows are always "near you"; the finer bands are
+// forward-compatible for when neighbor-cell matching lands.
+function geoBand(a: string, b: string): "near" | "blocks" | "town" {
+  let shared = 0;
+  for (let i = 0; i < Math.min(a.length, b.length); i++) { if (a[i] === b[i]) shared++; else break; }
+  if (shared >= 5) return "near";
+  if (shared >= 4) return "blocks";
+  return "town";
+}
+
+async function peopleForUsers(ids: number[]): Promise<Map<number, { name: string; avatarUrl: string | null }>> {
+  const map = new Map<number, { name: string; avatarUrl: string | null }>();
+  if (ids.length === 0) return map;
+  try {
+    const rows = await db.select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+      .from(usersTable).where(inArray(usersTable.id, ids));
+    for (const r of rows) map.set(r.id, { name: r.name, avatarUrl: r.avatarUrl });
+  } catch { /* faces are best-effort */ }
+  return map;
+}
+
+// Send each opted-in breather their private "near" view. O(sessions²) over a
+// small live set; fellow + name lookups are cached per recompute.
+async function computeAndBroadcastNear() {
+  // Sessions that shared a bucket this round (one per ws), keyed by ws.
+  const located: Array<{ ws: WebSocket; userId: number; geohash: string }> = [];
+  for (const [ws, s] of cobreatheSessions) {
+    if (s.geohash && ws.readyState === WebSocket.OPEN) located.push({ ws, userId: s.userId, geohash: s.geohash });
+  }
+  if (located.length === 0) return;
+
+  // Fellow ids for every located breather (so we can name only relationships).
+  const fellowIdsOf = new Map<number, Set<number>>();
+  await Promise.all(Array.from(new Set(located.map((l) => l.userId))).map(async (uid) => {
+    try { fellowIdsOf.set(uid, new Set(await getFellowUserIds(uid))); } catch { fellowIdsOf.set(uid, new Set()); }
+  }));
+
+  // Pre-fetch names/avatars for everyone who could appear as a near Fellow.
+  const facesNeeded = new Set<number>();
+  for (const me of located) {
+    const myFellows = fellowIdsOf.get(me.userId) ?? new Set<number>();
+    for (const other of located) {
+      if (other.userId === me.userId) continue;
+      if (other.geohash === me.geohash && myFellows.has(other.userId)) facesNeeded.add(other.userId);
+    }
+  }
+  const faces = await peopleForUsers([...facesNeeded]);
+
+  for (const me of located) {
+    const myFellows = fellowIdsOf.get(me.userId) ?? new Set<number>();
+    const nearUserIds = new Set<number>();
+    const nearFellows: Array<{ userId: number; name: string; avatarUrl: string | null; band: string }> = [];
+    for (const other of located) {
+      if (other.userId === me.userId) continue;          // not myself
+      if (other.geohash !== me.geohash) continue;        // same ~5km cell only (beta)
+      if (nearUserIds.has(other.userId)) continue;        // distinct people
+      nearUserIds.add(other.userId);
+      if (myFellows.has(other.userId) && nearFellows.length < NEAR_FELLOWS_SHOWN) {
+        const f = faces.get(other.userId);
+        nearFellows.push({ userId: other.userId, name: breathFirstName(f?.name ?? ""), avatarUrl: f?.avatarUrl ?? null, band: geoBand(me.geohash, other.geohash) });
+      }
+    }
+    if (me.ws.readyState === WebSocket.OPEN) {
+      me.ws.send(JSON.stringify({ type: "cobreathe-near", nearCount: nearUserIds.size, nearFellows }));
+    }
+  }
+}
+
+let breathNearTimer: ReturnType<typeof setTimeout> | null = null;
+function scheduleBreathNear() {
+  if (breathNearTimer) return;
+  breathNearTimer = setTimeout(() => {
+    breathNearTimer = null;
+    computeAndBroadcastNear().catch((err) => logger.warn({ err }, "[cobreathe] near recompute failed"));
+  }, 800);
+}
+
 // ── Setup ────────────────────────────────────────────────────────────────────
 
 export function attachWebSocketServer(server: HttpServer) {
@@ -308,20 +408,26 @@ export function attachWebSocketServer(server: HttpServer) {
               typeof p.masterSeed === "number" &&
               typeof p.fingerprint === "string"
             ) {
+              // Coarse "same air" bucket — accept only a valid ≤5-char geohash
+              // (the client coarsens on-device before sending). Anything else is
+              // dropped silently, leaving the session location-less.
+              const geohash = typeof p.geohash === "string" && GEOHASH_RE.test(p.geohash) ? p.geohash : undefined;
               cobreatheSessions.set(ws, {
                 userId: authedUserId,
                 email: "",
                 startEpochMs: p.startEpochMs,
                 masterSeed: p.masterSeed,
                 fingerprint: p.fingerprint,
+                geohash,
               });
               broadcastCobreatheSync();
               scheduleBreathRecompute();
+              scheduleBreathNear();
             }
           }
 
           if (msg.type === "cobreathe-stop") {
-            if (cobreatheSessions.delete(ws)) { broadcastCobreatheSync(); scheduleBreathRecompute(); }
+            if (cobreatheSessions.delete(ws)) { broadcastCobreatheSync(); scheduleBreathRecompute(); scheduleBreathNear(); }
           }
         } catch {
           // ignore malformed messages
@@ -338,6 +444,7 @@ export function attachWebSocketServer(server: HttpServer) {
         if (hadCobreathe) {
           broadcastCobreatheSync();
           scheduleBreathRecompute();
+          scheduleBreathNear();
         }
       });
 
@@ -347,6 +454,7 @@ export function attachWebSocketServer(server: HttpServer) {
         if (hadCobreathe) {
           broadcastCobreatheSync();
           scheduleBreathRecompute();
+          scheduleBreathNear();
         }
       });
     });

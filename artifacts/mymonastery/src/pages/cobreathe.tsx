@@ -11,6 +11,8 @@ import { COBREATHE_INTRO_SEEN_KEY } from "@/pages/cobreathe-about";
 import { useAuth } from "@/hooks/useAuth";
 import { usePeople } from "@/hooks/usePeople";
 import { useCobreatheSync } from "@/hooks/useCobreatheSync";
+import { useBetaStatus } from "@/hooks/useDemo";
+import { BreathNearInvite } from "@/components/BreathNearInvite";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { computeFingerprint } from "@/lib/cobreatheOrder";
 
@@ -172,10 +174,48 @@ export default function CobreathePage() {
     () => new Set((people ?? []).map((p) => p.userId).filter((x): x is number => x != null)),
     [people],
   );
+  // "Same air" (beta): share a coarse location bucket while breathing so we can
+  // surface who's nearby. Only when beta AND the user has opted in.
+  const { isBeta } = useBetaStatus();
+  const shareBreathLocation = isBeta && !!user?.shareBreathLocation;
   const breathSync = useCobreatheSync(user, gardenUserIds, {
     fingerprint: COBREATHE_FINGERPRINT,
     active: mode === "breathing",
+    shareLocation: shareBreathLocation,
   });
+
+  // "Same air" peak for the after-glow: nearby state clears the moment breathing
+  // stops, so hold onto the high-water mark of this sit to show on the summary.
+  const [peakNear, setPeakNear] = useState<{ count: number; fellows: typeof breathSync.nearbyFellows }>({ count: 0, fellows: [] });
+  useEffect(() => {
+    if (mode === "breathing" && breathSync.nearbyCount > peakNear.count) {
+      setPeakNear({ count: breathSync.nearbyCount, fellows: breathSync.nearbyFellows });
+    }
+  }, [mode, breathSync.nearbyCount, breathSync.nearbyFellows, peakNear.count]);
+
+  // Who you cobreathed WITH: capture every garden-mate seen breathing live during
+  // this sit, so the first to finish still sees the others on the summary even
+  // after their session ends (mirrors the contemplation co-presence capture).
+  const peopleById = useMemo(
+    () => new Map((people ?? []).filter((p) => p.userId != null).map((p) => [p.userId as number, p])),
+    [people],
+  );
+  const [coBreathed, setCoBreathed] = useState<Map<number, Companion>>(() => new Map());
+  useEffect(() => {
+    if (mode !== "breathing" || breathSync.coBreatherIds.length === 0) return;
+    setCoBreathed((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      for (const id of breathSync.coBreatherIds) {
+        if (!next.has(id)) {
+          const p = peopleById.get(id);
+          next.set(id, { userId: id, name: p?.name ?? null, avatarUrl: p?.avatarUrl ?? null });
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [mode, breathSync.coBreatherIds, peopleById]);
 
   // State returned by the POST — fresher than the GET cache on the done screen.
   const [doneState, setDoneState] = useState<BreathState | null>(null);
@@ -290,6 +330,8 @@ export default function CobreathePage() {
         followSeed={breathSync.leader?.masterSeed}
         followStartEpochMs={breathSync.leader?.startEpochMs}
         onSession={(info) => breathSync.announceSession(info.startEpochMs, info.masterSeed)}
+        nearbyCount={breathSync.nearbyCount}
+        nearbyFellows={breathSync.nearbyFellows}
       />
     );
   }
@@ -383,7 +425,7 @@ export default function CobreathePage() {
             {/* ── CTA — right under the stats, above the teaching. */}
             <button
               type="button"
-              onClick={() => setMode("breathing")}
+              onClick={() => { setPeakNear({ count: 0, fellows: [] }); setCoBreathed(new Map()); setMode("breathing"); }}
               className="w-full rounded-xl py-3.5 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
               style={{
                 background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)",
@@ -395,9 +437,14 @@ export default function CobreathePage() {
                 : t("cobreathe.begin", { defaultValue: "Cobreathe — twelve breaths" })}
             </button>
 
-            <p className="text-[12px] mt-3 mb-6 text-center px-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SERIF, fontStyle: "italic" }}>
+            <p className="text-[12px] mt-3 text-center px-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SERIF, fontStyle: "italic" }}>
               {t("cobreathe.caption", { defaultValue: "About two and a half minutes — it counts toward your contemplation goal. Sit comfortably; let the circle pace you." })}
             </p>
+
+            {/* "Same air" opt-in (beta) — shown once, only before the breath. */}
+            <BreathNearInvite />
+
+            <div className="mb-6" />
 
             {/* ── Information — the weekly intention, then the teaching. */}
 
@@ -444,6 +491,16 @@ export default function CobreathePage() {
 
         {mode === "done" && (() => {
           const othersDone = Math.max(0, (doneState?.count ?? 1) - 1);
+          // Faces for the summary: garden-mates who breathed today (recorded) +
+          // anyone we caught breathing live alongside us this sit (captured even
+          // if their session ended before ours), deduped by userId, self removed.
+          const summaryFaces: Companion[] = (() => {
+            const byId = new Map<number, Companion>();
+            for (const c of (doneState?.companions ?? state?.companions ?? [])) byId.set(c.userId, c);
+            for (const [id, c] of coBreathed) if (!byId.has(id)) byId.set(id, c);
+            if (user?.id != null) byId.delete(user.id);
+            return Array.from(byId.values());
+          })();
           // The breath POST failed and we never got a count back — offer a
           // retry (re-sends the same seconds) instead of a stuck screen.
           if (!doneState && record.isError) {
@@ -495,6 +552,9 @@ export default function CobreathePage() {
             <CobreatheSummary
               weekBreaths={weekBreaths}
               others={othersDone}
+              companions={summaryFaces}
+              nearCount={peakNear.count}
+              nearFellows={peakNear.fellows}
               onContinue={() => { if (fromContemplationRef.current) setLocation("/contemplation"); else setMode("intro"); }}
             />
           );

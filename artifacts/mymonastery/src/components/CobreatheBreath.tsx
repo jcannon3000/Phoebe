@@ -133,6 +133,8 @@ export function CobreatheBreath({
   followSeed,
   followStartEpochMs,
   onSession,
+  nearbyCount = 0,
+  nearbyFellows = [],
 }: {
   // Fired ONCE, when the target number of breaths has been kept. The breath
   // does NOT stop here — people can keep breathing as long as they like.
@@ -170,6 +172,11 @@ export function CobreatheBreath({
   // that keeps the chain alive when the original leader leaves (those following us
   // keep flowing, and new joiners can still pick up the same plan from us).
   onSession?: (info: { startEpochMs: number; masterSeed: number }) => void;
+  // "Same air" (opt-in, beta) — how many others are breathing in your coarse
+  // area right now, and any Fellows among them (first name + avatar). Revealed
+  // quietly mid-breath; 0 → nothing shown (falls back to the global count).
+  nearbyCount?: number;
+  nearbyFellows?: Array<{ userId: number; name: string; avatarUrl: string | null; band: string }>;
 }) {
   const { t } = useTranslation();
   // Entrance fade-up: false on mount, flipped on the next frame so the root
@@ -612,11 +619,9 @@ export function CobreatheBreath({
   // once from the two anchor refs (set at mount), so it doesn't flip as it
   // counts down. Under 5s of waiting → the short Simone Weil line; longer → the
   // fuller Sallie McFague one (there's more time to read it).
-  const syncWaitMs = countStartRef.current - startRef.current;
-  // A short wait shows a short, punchy line (Weil or Merton, per shortQuoteRef);
-  // a longer wait shows the fuller Sallie McFague passage — more time to read.
-  const shortWait = syncWaitMs < 5000;
-  const quoteKind: "weil" | "merton" | "mcfague" = shortWait ? (shortQuoteRef.current ?? "weil") : "mcfague";
+  // Always a short, punchy line — Weil or Merton (per shortQuoteRef). The longer
+  // Sallie McFague passage was removed from the load per request.
+  const quoteKind: "weil" | "merton" | "mcfague" = shortQuoteRef.current ?? "weil";
 
   // Soft sage tones that sit calmly on the deep-green field.
   const TEXT_DIM = "rgba(182,210,188,0.72)";
@@ -749,7 +754,7 @@ export function CobreatheBreath({
         aria-label={reachedNow ? t("cobreathe.done", { defaultValue: "Done" }) : t("common.cancel", { defaultValue: "Cancel" })}
         onClick={() => onEnd(Math.round((syncedNow() - startRef.current) / 1000), reachedRef.current)}
         style={{
-          position: "absolute", top: "calc(var(--safe-top) + 60px)", right: 16,
+          position: "absolute", top: "calc(var(--safe-top) + 16px)", right: 16,
           borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
           fontFamily: SPACE_GROTESK, fontWeight: 600, lineHeight: 1, cursor: "pointer", zIndex: 2,
           transition: "background 0.4s ease, color 0.4s ease, padding 0.3s ease, width 0.3s ease, height 0.3s ease",
@@ -777,7 +782,7 @@ export function CobreatheBreath({
           zIndex: 2, pointerEvents: "none", maxWidth: 540, marginLeft: "auto", marginRight: "auto",
         }}
       >
-        <p style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: shortWait ? "clamp(20px, 5.8vw, 25px)" : "clamp(15px, 4.4vw, 18px)", lineHeight: 1.5, textAlign: "center", textShadow: "0 2px 18px rgba(8,30,18,0.6)", whiteSpace: "pre-line" }}>
+        <p style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: "clamp(20px, 5.8vw, 25px)", lineHeight: 1.5, textAlign: "center", textShadow: "0 2px 18px rgba(8,30,18,0.6)", whiteSpace: "pre-line" }}>
           {quoteKind === "weil"
             ? t("cobreathe.sync_quote_weil", { defaultValue: "Attention is the rarest and purest form of generosity." })
             : quoteKind === "merton"
@@ -881,6 +886,39 @@ export function CobreatheBreath({
           {globe}
         </div>
       </div>
+
+      {/* "Same air" — a quiet realization that arrives mid-breath (breath ≥ 3),
+          fading IN with the inhale so the count feels inhaled, not displayed.
+          Strangers stay an anonymous count; Fellows get a first name. */}
+      {counting && breathNum >= 3 && nearbyCount > 0 && (
+        <div
+          className="w-full flex flex-col items-center"
+          style={{
+            paddingLeft: 28, paddingRight: 28, marginBottom: 10,
+            opacity: phase === "in" ? 0.92 : 0.5,
+            transition: "opacity 2.4s ease-in-out",
+          }}
+        >
+          <p style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 15, letterSpacing: "0.01em", textAlign: "center", textShadow: "0 2px 18px rgba(8,30,18,0.6)" }}>
+            {nearbyFellows.length > 0
+              ? `breathing the same air as ${nearbyFellows[0].name}${nearbyCount > 1 ? ` and ${nearbyCount - 1} ${nearbyCount - 1 === 1 ? "other" : "others"} near you` : " near you"}`
+              : `breathing the same air as ${nearbyCount} ${nearbyCount === 1 ? "person" : "people"} near you`}
+          </p>
+          {nearbyFellows.length > 0 && (
+            <div className="flex items-center" style={{ marginTop: 8 }}>
+              {nearbyFellows.slice(0, 4).map((f, i) => (
+                f.avatarUrl ? (
+                  <img key={f.userId} src={f.avatarUrl} alt={f.name} style={{ width: 26, height: 26, borderRadius: 999, objectFit: "cover", border: "1.5px solid rgba(12,36,23,0.9)", marginLeft: i === 0 ? 0 : -6 }} />
+                ) : (
+                  <span key={f.userId} style={{ width: 26, height: 26, borderRadius: 999, background: "#1A4A2E", color: "#A8C5A0", fontSize: 10, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1.5px solid rgba(12,36,23,0.9)", marginLeft: i === 0 ? 0 : -6, fontFamily: SPACE_GROTESK }}>
+                    {(f.name[0] ?? "?").toUpperCase()}
+                  </span>
+                )
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Bottom — the breathing word in the LEFT corner (smaller) + the breath
           count in the RIGHT corner. The Cancel / Done control lives top-right. */}

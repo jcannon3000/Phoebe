@@ -73,3 +73,4 @@ export * from "./bless_week";
 export * from "./gather";
 export * from "./reflection_thoughts";
 export * from "./forum";
+export * from "./walk_pairings";

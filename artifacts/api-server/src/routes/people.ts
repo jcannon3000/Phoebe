@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, or, sql, inArray, and, isNull, ne, gt } from "drizzle-orm";
-import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerRequestAmensTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable, fellowsTable } from "@workspace/db";
+import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerRequestAmensTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable, fellowsTable, walkPairingsTable } from "@workspace/db";
 import { computeStreak } from "../lib/streak";
 import { getCorrespondentUserIds } from "../lib/correspondents";
 
@@ -883,6 +883,16 @@ router.delete("/fellows/:userId", async (req, res): Promise<void> => {
       .where(or(
         and(eq(fellowsTable.userId, sessionUserId), eq(fellowsTable.fellowUserId, otherId)),
         and(eq(fellowsTable.userId, otherId), eq(fellowsTable.fellowUserId, sessionUserId)),
+      ));
+    // "Walking together" sits ON TOP of the Fellow bond — when the bond is
+    // removed, end any walk pairing too (any status), so a removed fellow can
+    // never keep seeing today's rhythm dots. The pair is one normalized row
+    // regardless of orientation; match both ids on either column.
+    await db
+      .delete(walkPairingsTable)
+      .where(and(
+        inArray(walkPairingsTable.userLoId, [sessionUserId, otherId]),
+        inArray(walkPairingsTable.userHiId, [sessionUserId, otherId]),
       ));
     res.json({ ok: true });
   } catch (err) {

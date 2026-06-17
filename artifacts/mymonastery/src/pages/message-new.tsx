@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -59,6 +59,18 @@ export default function MessageNewPage() {
       setLocation(`/messages/${res.conversationId}`);
     },
   });
+
+  // Deep-link: /messages/new?to=<userId> (e.g. from Walking together) starts or
+  // reuses the 1:1 thread and drops straight in — fire once when authed beta.
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStarted.current || !user || !isBeta) return;
+    const to = parseInt(new URLSearchParams(window.location.search).get("to") || "", 10);
+    if (Number.isInteger(to) && to > 0 && to !== user.id) {
+      autoStarted.current = true;
+      start.mutate(to);
+    }
+  }, [user, isBeta]);
 
   if (authLoading || betaLoading || !user) return null;
 

@@ -983,6 +983,49 @@ export function ContemplationTimer({
                   )}
                 </>
               )}
+
+              {/* Public / private — chosen up front (default public), styled like
+                  the office podcast's source toggle. Public lets garden-mates see
+                  you sat alongside them; private keeps the sit to you. The choice
+                  is still flippable on the closing screen. Hidden in the custom-
+                  entry sub-views to keep those focused. */}
+              {!customMode && !fddCustomMode && (
+                <div className="flex flex-col items-center" style={{ marginTop: 28 }}>
+                  <div
+                    role="tablist"
+                    aria-label={t("contemplation_timer.privacy_aria", { defaultValue: "Who can see this sit" })}
+                    style={{ display: "inline-flex", gap: 4, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 999, padding: 4 }}
+                  >
+                    {([false, true] as const).map((priv) => {
+                      const active = isPrivate === priv;
+                      return (
+                        <button
+                          key={String(priv)}
+                          type="button"
+                          role="tab"
+                          aria-selected={active}
+                          onClick={() => { if (isPrivate !== priv) togglePrivacy(); }}
+                          style={{
+                            borderRadius: 999, padding: "6px 18px", fontSize: 12, fontWeight: 600, fontFamily: SPACE_GROTESK,
+                            letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer", whiteSpace: "nowrap",
+                            background: active ? "rgba(255,255,255,0.18)" : "transparent",
+                            border: `1px solid ${active ? "rgba(255,255,255,0.3)" : "transparent"}`,
+                            color: active ? "#FFFFFF" : "rgba(246,240,230,0.55)",
+                            transition: "background 0.15s, color 0.15s",
+                          }}
+                        >
+                          {priv ? t("contemplation_timer.private", { defaultValue: "Private" }) : t("contemplation_timer.public", { defaultValue: "Public" })}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[11px] mt-2 text-center" style={{ color: "rgba(143,175,150,0.5)", fontFamily: "Georgia, serif", fontStyle: "italic", maxWidth: 260 }}>
+                    {isPrivate
+                      ? t("contemplation_timer.privacy_private_blurb")
+                      : t("contemplation_timer.privacy_public_blurb")}
+                  </p>
+                </div>
+              )}
             </>
           )}
 
@@ -1357,14 +1400,18 @@ export function ContemplationTimer({
               className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.98]"
               style={{
                 padding: "13px 44px",
-                background: "rgba(46,107,64,0.18)",
-                border: "1px solid rgba(46,107,64,0.5)",
-                color: WARM,
+                // Once the bell has rung, "Done" is the primary action — a solid,
+                // opaque blue so it reads clearly. Before then, "End" stays a
+                // quiet affordance that shouldn't pull the eye out of the silence.
+                background: reachedGoal ? "rgba(96,141,209,0.92)" : "rgba(46,107,64,0.18)",
+                border: `1px solid ${reachedGoal ? "rgba(140,178,232,0.7)" : "rgba(46,107,64,0.5)"}`,
+                color: reachedGoal ? "#FFFFFF" : WARM,
                 fontFamily: SPACE_GROTESK,
                 fontSize: 15,
                 fontWeight: 600,
                 letterSpacing: "0.02em",
                 cursor: "pointer",
+                boxShadow: reachedGoal ? "0 6px 20px rgba(96,141,209,0.35)" : "none",
               }}
             >
               {reachedGoal ? t("common.done") : t("contemplation_timer.end")}

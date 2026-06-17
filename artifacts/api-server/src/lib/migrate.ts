@@ -1198,6 +1198,44 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS prayer_partnerships_lo ON prayer_partnerships (user_lo_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS prayer_partnerships_hi ON prayer_partnerships (user_hi_id)`);
 
+    // walk_pairings — "Walking together": mutual-opt-in layer on the Fellow
+    // bond; one normalized lo/hi row per pair. Today-only dots shared only when
+    // status='active'. Mirrors prayer_partnerships.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS walk_pairings (
+        id SERIAL PRIMARY KEY,
+        user_lo_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        user_hi_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        invited_by_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'pending',
+        intention TEXT,
+        paused_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        lo_celebrated_date TEXT,
+        hi_celebrated_date TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        accepted_at TIMESTAMPTZ,
+        ended_at TIMESTAMPTZ,
+        ended_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS walk_pairings_pair ON walk_pairings (user_lo_id, user_hi_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS walk_pairings_lo ON walk_pairings (user_lo_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS walk_pairings_hi ON walk_pairings (user_hi_id)`);
+    // walk_nudges — one-tap encouragement between companions (no threading).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS walk_nudges (
+        id SERIAL PRIMARY KEY,
+        pair_id INTEGER NOT NULL REFERENCES walk_pairings(id) ON DELETE CASCADE,
+        from_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        to_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL,
+        seen_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS walk_nudges_to ON walk_nudges (to_user_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS walk_nudges_pair ON walk_nudges (pair_id)`);
+
     // daily_prayers — one "prayer for the day" per author per local day,
     // shared with ALL the author's partners (author-scoped, not partner-scoped).
     await run(client, `
@@ -2814,6 +2852,7 @@ export async function migrate() {
     await run(client, `ALTER TABLE prayer_request_amens ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
     // Opt-in (default OFF) to attach a coarse location when you tap Amen.
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS share_pray_location BOOLEAN NOT NULL DEFAULT false`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS share_breath_location BOOLEAN NOT NULL DEFAULT false`);
 
     // ── CAC daily reflection: read presence + shared journal ────────────────
     // cac_reads: one row per (user, local day) recording that they opened the

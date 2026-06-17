@@ -6844,16 +6844,15 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
           const fMonth = monthItems.filter(byFilter);
           const filteredEmpty = filter !== null && fToday.length === 0 && fTomorrow.length === 0 && fWeek.length === 0 && fMonth.length === 0;
 
-          // "Coming up" — when the user is down to ONE daily practice left,
-          // surface the single soonest upcoming event (any day) in a section
-          // between Next and the Prayer List. Hidden entirely when nothing's
-          // left to do, more than one card remains, or there's no event on the
-          // calendar (the buckets are already today→month chronological, so the
-          // first event-kind item across them is the soonest).
+          // "Coming up" — surfaced ONLY once the whole daily routine is done, so
+          // the day's practices lead uninterrupted until then. When every anchor
+          // is kept, the single soonest upcoming event (any day) appears in a
+          // section between Next and the Prayer List. Hidden whenever any practice
+          // remains, or there's no event on the calendar (the buckets are already
+          // today→month chronological, so the first event-kind item is soonest).
           const isEventItem = (it: DashboardItem) =>
             it.kind === "gathering" || it.kind === "service" || it.kind === "services" || it.kind === "action" || it.kind === "plan";
-          const oneCardLeft = rhythm.ready && rhythm.totalAnchors > 0 && (rhythm.totalAnchors - rhythm.doneCount) === 1;
-          const nextEventItem: DashboardItem | null = oneCardLeft
+          const nextEventItem: DashboardItem | null = allHabitsDone
             ? ([todayItems, tomorrowItems, weekItems, monthItems].map((b) => b.find(isEventItem)).find(Boolean) ?? null)
             : null;
 
@@ -6866,8 +6865,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
-                {/* Coming up — one upcoming event, only when a single daily
-                    practice is left, sitting between Next and the Prayer List. */}
+                {/* Coming up — one upcoming event, only once the whole daily
+                    routine is done, sitting between Next and the Prayer List. */}
                 {filter === null && !eventsOnly && nextEventItem && (
                   <div className="mb-2">
                     <TimeSection

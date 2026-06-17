@@ -264,6 +264,12 @@ export const usersTable = pgTable("users", {
   // Location is sensitive, so this stays off until the user explicitly
   // enables it (Settings) and the OS permission prompt is granted.
   sharePrayLocation: boolean("share_pray_location").notNull().default(false),
+  // Opt-in, default OFF. When on AND the OS grants location, a live Cobreathe
+  // breath attaches a COARSE (~5km, 5-char geohash) bucket to the user's
+  // ephemeral ws session, so they see how many others nearby are breathing now
+  // ("the same air"). In-memory only — never stored on a session row, never
+  // broadcast to other clients; the server derives only a count + coarse band.
+  shareBreathLocation: boolean("share_breath_location").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

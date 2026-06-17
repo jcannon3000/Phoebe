@@ -226,7 +226,7 @@ router.get("/auth/me", async (req, res) => {
   }
   const u = req.user as {
     id: number; name: string; email: string; avatarUrl: string | null;
-    googleId: string | null; showPresence: boolean;
+    googleId: string | null; showPresence: boolean; shareBreathLocation: boolean;
     correspondenceImprintCompleted: boolean; gatheringImprintCompleted: boolean;
     onboardingCompleted: boolean; dailyBellTime: string | null;
     prayerInviteLastShownDate: string | null;
@@ -279,6 +279,7 @@ router.get("/auth/me", async (req, res) => {
     avatarUrl: u.avatarUrl,
     googleId: u.googleId,
     showPresence: u.showPresence,
+    shareBreathLocation: u.shareBreathLocation ?? false,
     correspondenceImprintCompleted: u.correspondenceImprintCompleted ?? false,
     gatheringImprintCompleted: u.gatheringImprintCompleted ?? false,
     onboardingCompleted: u.onboardingCompleted ?? false,
@@ -362,6 +363,23 @@ router.patch("/auth/me/presence", async (req, res): Promise<void> => {
   }
   await db.update(usersTable).set({ showPresence } as Record<string, unknown>).where(eq(usersTable.id, userId));
   res.json({ showPresence });
+});
+
+// PATCH /auth/me/breath-location — opt in/out of the Cobreathe "same air"
+// feature (coarse, in-memory-only proximity; see usersTable.shareBreathLocation).
+// Mirrors the presence toggle; the deserializeUser cache is busted after the
+// mutating request so the next /auth/me reflects it.
+router.patch("/auth/me/breath-location", async (req, res): Promise<void> => {
+  if (!req.user) { res.status(401).json({ error: "Not authenticated" }); return; }
+  const userId = (req.user as { id: number }).id;
+  const { shareBreathLocation } = req.body;
+  if (typeof shareBreathLocation !== "boolean") {
+    res.status(400).json({ error: "shareBreathLocation must be a boolean" });
+    return;
+  }
+  await db.update(usersTable).set({ shareBreathLocation } as Record<string, unknown>).where(eq(usersTable.id, userId));
+  if (req.user) (req.user as Record<string, unknown>).shareBreathLocation = shareBreathLocation;
+  res.json({ shareBreathLocation });
 });
 
 // PATCH /auth/me/bell-enabled — simple on/off for the daily push. The full

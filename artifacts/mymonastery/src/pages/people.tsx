@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { FellowsConnect } from "@/components/FellowsConnect";
+import { WalkTogether } from "@/components/WalkTogether";
 import { useBetaStatus } from "@/hooks/useDemo";
 import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
 
@@ -590,6 +591,34 @@ export default function People() {
           </div>
         )}
 
+        {/* Start a Heart to Heart — the deepest 1:1: share what's on your heart
+            each day and hold each other in prayer, back and forth. The dashboard
+            only surfaces this once you HAVE a partner (hideWhenEmpty), so this is
+            the discoverable way in to start one. Routes to the full experience. */}
+        <Link href="/prayer-partner" className="block mb-6">
+          <div
+            className="rounded-2xl px-4 py-3.5 flex items-center gap-3 transition-opacity active:scale-[0.99]"
+            style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}
+          >
+            <span style={{ fontSize: 26 }}>💛</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {t("people.h2h_title", { defaultValue: "Start a Heart to Heart" })}
+              </p>
+              <p className="text-[12.5px] mt-0.5" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {t("people.h2h_body", { defaultValue: "Pray back and forth with one person, a little each day." })}
+              </p>
+            </div>
+            <span style={{ color: "rgba(143,175,150,0.6)", fontSize: 18 }}>›</span>
+          </div>
+        </Link>
+
+        {/* Walking together — beta accountability layer on Fellows: opt in with
+            a fellow to see each other's today-only rhythm dots + send a word of
+            encouragement. The component renders its own header, and nothing at
+            all when there's nothing to show. */}
+        {rawIsBeta && <WalkTogether />}
+
         {/* Plans ("How About") moved to the Events page — share what you're
             going to there, and your fellows can come. (Lives in the Dashboard's
             eventsOnly view.) */}
@@ -666,7 +695,10 @@ export default function People() {
             /fellows page (reached from the "Add a fellow" pill), so the People
             page no longer carries a separate contacts card here. */}
 
-        {/* Section divider */}
+        {/* The garden list is SEARCH-ONLY now — your Fellows lead the page and the
+            default view no longer repeats them as a separate "garden" list below.
+            Searching lifts the gate and matches across everyone you pray with. */}
+        {trimmedQuery.length > 0 && (<>
         <div className="flex items-center gap-2 mb-3">
           <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>{t("people.your_garden")}</p>
           <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
@@ -789,6 +821,7 @@ export default function People() {
             })}
           </div>
         )}
+        </>)}
       </div>
     </Layout>
   );

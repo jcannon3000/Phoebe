@@ -24,11 +24,21 @@ export function CobreatheSummary({
   onFadeOutComplete,
   fadeIn = false,
   onEntered,
+  nearCount = 0,
+  nearFellows = [],
+  companions = [],
 }: {
   // This week's running breath tally (per-device).
   weekBreaths: number;
   // Others who have breathed today (excluding the caller).
   others: number;
+  // Garden-mates you breathed WITH — those who breathed today plus anyone caught
+  // breathing live alongside you this sit. Rendered as faces + first names.
+  companions?: Array<{ userId: number; name: string | null; avatarUrl: string | null }>;
+  // "Same air" (opt-in, beta) — the peak number who were breathing in your
+  // coarse area during the sit, and any Fellows among them. 0 → nothing shown.
+  nearCount?: number;
+  nearFellows?: Array<{ userId: number; name: string; avatarUrl: string | null; band: string }>;
   onContinue: () => void;
   continueLabel?: string;
   continueDisabled?: boolean;
@@ -75,6 +85,72 @@ export function CobreatheSummary({
           {weekBreaths} {t("cobreathe.breaths_this_week", { defaultValue: "breaths this week" })}
           {others > 0 ? ` · ${t("cobreathe.summary_with_today", { defaultValue: `with ${others} ${others === 1 ? "other" : "others"} today` })}` : ""}
         </p>
+        {/* Who you breathed with — garden faces (today's breathers + anyone caught
+            breathing live alongside you), so the first to finish still sees them. */}
+        {companions.length > 0 && (() => {
+          const names = companions.map((c) => (c.name ?? "").trim().split(/\s+/)[0]).filter(Boolean);
+          const shown = names.slice(0, 2);
+          const extra = companions.length - shown.length;
+          const line = shown.length === 0 ? ""
+            : extra > 0 ? `${shown.join(", ")}, and ${extra} other${extra === 1 ? "" : "s"}`
+            : shown.join(" and ");
+          return (
+            <div className="flex flex-col items-center mb-7 -mt-3">
+              <div className="flex items-center mb-2">
+                {companions.slice(0, 6).map((c, i) => (
+                  <div
+                    key={c.userId}
+                    className="rounded-full flex items-center justify-center overflow-hidden flex-shrink-0"
+                    style={{ width: 32, height: 32, marginLeft: i === 0 ? 0 : -8, border: "1.5px solid #0A1C14", background: "rgba(62,124,122,0.45)", zIndex: 10 - i }}
+                  >
+                    {c.avatarUrl
+                      ? <img src={c.avatarUrl} alt={c.name ?? ""} className="w-full h-full object-cover" />
+                      : <span style={{ color: WARM, fontSize: 11, fontWeight: 700, fontFamily: SPACE_GROTESK }}>{((c.name ?? "·").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("")) || "·"}</span>}
+                  </div>
+                ))}
+              </div>
+              {line && (
+                <p className="text-[13.5px]" style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic" }}>
+                  {t("cobreathe.summary_breathed_with", { names: line, defaultValue: `You breathed with ${line}.` })}
+                </p>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* "Same air" after-glow — the felt realization, anonymous for strangers,
+            named for Fellows. Only when someone was actually nearby. */}
+        {nearCount > 0 && (() => {
+          const bandWord = (b: string) => b === "near" ? "near you" : b === "blocks" ? "a few blocks away" : "across town";
+          const fellow = nearFellows[0];
+          const strangers = Math.max(0, nearCount - nearFellows.length);
+          return (
+            <div className="mb-7 -mt-3 flex flex-col items-center">
+              {nearFellows.length > 0 && (
+                <div className="flex items-center mb-2">
+                  {nearFellows.slice(0, 4).map((f, i) => (
+                    f.avatarUrl ? (
+                      <img key={f.userId} src={f.avatarUrl} alt={f.name} style={{ width: 30, height: 30, borderRadius: 999, objectFit: "cover", border: "1.5px solid rgba(10,28,20,0.9)", marginLeft: i === 0 ? 0 : -6 }} />
+                    ) : (
+                      <span key={f.userId} style={{ width: 30, height: 30, borderRadius: 999, background: "#1A4A2E", color: "#A8C5A0", fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1.5px solid rgba(10,28,20,0.9)", marginLeft: i === 0 ? 0 : -6, fontFamily: SPACE_GROTESK }}>{(f.name[0] ?? "?").toUpperCase()}</span>
+                    )
+                  ))}
+                </div>
+              )}
+              <p className="text-[14px] leading-relaxed px-2" style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic" }}>
+                {fellow
+                  ? `You breathed the same air as ${nearCount} ${nearCount === 1 ? "person" : "people"} near you — including ${fellow.name}, ${bandWord(fellow.band)}.`
+                  : `You breathed the same air as ${nearCount} ${nearCount === 1 ? "person" : "people"} near you.`}
+              </p>
+              {fellow && strangers > 0 && (
+                <p className="text-[12.5px] leading-relaxed px-2 mt-1" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
+                  and {strangers} {strangers === 1 ? "other" : "others"} nearby you don't know yet — held in the same air.
+                </p>
+              )}
+            </div>
+          );
+        })()}
+
         {/* The climate-justice thanks. */}
         <p className="text-[14px] leading-relaxed mb-9" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
           {t("cobreathe.summary_thanks", { defaultValue: "Thank you for praying for climate justice." })}
