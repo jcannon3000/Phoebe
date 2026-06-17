@@ -766,8 +766,10 @@ export function CobreatheBreath({
         </p>
       </div>
 
-      {/* Title + Synced + participation — TOP, centred. */}
-      <div ref={titleRef} className="flex flex-col items-center" style={{ position: "relative" }}>
+      {/* Title + Synced + participation — TOP-LEFT, left-aligned to counter-
+          balance the top-right Cancel / Done control (the Synced line + count
+          sit left-aligned under it, as the design always intended). */}
+      <div ref={titleRef} className="flex flex-col items-start" style={{ position: "relative", width: "100%", paddingLeft: 20, paddingRight: 96 }}>
         <p className="text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "rgba(182,210,188,0.55)", fontFamily: SPACE_GROTESK }}>
           🌬️ {t("cobreathe.title", { defaultValue: "Cobreathe" })}
         </p>
