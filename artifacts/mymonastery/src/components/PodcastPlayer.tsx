@@ -1022,7 +1022,10 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   const { data: alignData } = useQuery<{ status: string; sections: AlignSection[] }>({
     queryKey: [`/api/podcast/office/${alignSide}/timestamps`],
     queryFn: () => apiRequest("GET", `/api/podcast/office/${alignSide}/timestamps`),
-    enabled: isOffice && officeAudioSource === "forward-movement",
+    // Transcription (the live liturgy-section title that tracked the audio) is
+    // turned off for the offices — the player shows the plain episode title and
+    // we no longer poll the alignment.
+    enabled: false,
     staleTime: 5 * 60_000,
     refetchInterval: (q) => { const s = q.state.data?.status; return s === "done" || s === "failed" ? false : 6000; },
   });
