@@ -291,12 +291,15 @@ export default function WayOfLoveRuleFlow({
   useEffect(() => {
     if (hydrated.current || touchedRef.current || !prefs) return;
     hydrated.current = true;
-    // Seed each side's way from its saved level, falling back to the server's
-    // global default, then community.
-    const fromServer = prayFromLevel(prefs.defaultPrayerLevel);
+    // Seed each side's way from its EXPLICIT saved per-side level only; otherwise
+    // keep the standard (Devotion, the initial state). We deliberately do NOT
+    // seed from the server's global defaultPrayerLevel here — the old flow
+    // defaulted the pray-choice to "community" and saved that as the global
+    // defaultPrayerLevel ("intercessions"), so re-seeding from it would keep
+    // re-presetting Customize to Community for users who never chose it.
     setPrayBySide((prev) => ({
-      morning: prayFromLevel(getSideLevel("morning")) ?? fromServer ?? prev.morning,
-      evening: prayFromLevel(getSideLevel("evening")) ?? fromServer ?? prev.evening,
+      morning: prayFromLevel(getSideLevel("morning")) ?? prev.morning,
+      evening: prayFromLevel(getSideLevel("evening")) ?? prev.evening,
     }));
     // The server's contemplationGoalMinutes is the authoritative current goal —
     // prefill from it so Customize opens on what they actually have set (a stale

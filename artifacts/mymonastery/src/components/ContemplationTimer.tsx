@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient } from "@tanstack/react-query";
-import { playOpeningSwell, primeAudio } from "@/lib/amenFeedback";
+import { playOfficeChime, primeAudio } from "@/lib/amenFeedback";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
@@ -243,7 +243,10 @@ export function ContemplationTimer({
         sound: octave === 0 ? "PhoebeRising-low.caf" : "PhoebeRising-high.caf",
       });
     } else {
-      playOpeningSwell(octave);
+      // Web (and desktop): a real synthesized chime — the opening (octave 0) and
+      // closing (octave 2) bells. playOpeningSwell was retired to a no-op, which
+      // had silenced the web bell entirely.
+      playOfficeChime(octave);
     }
   }
 
@@ -666,6 +669,15 @@ export function ContemplationTimer({
             isolation:isolate keeps it contained so the content paints
             above it without per-element z-index. */}
         <AnimatedBackground base={BG} variant="pronounced" />
+        {/* A still landscape behind the sit — the world held quiet while you
+            rest in it. Heavily washed in the home green so the timer + text stay
+            legible. Shown during the silence + the closing summary. */}
+        {(phase === "running" || phase === "complete") && (
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none" }}>
+            <img src="/images/cobreathe-bg.avif" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.55 }} />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(9,26,16,0.5) 0%, rgba(9,26,16,0.72) 55%, rgba(9,26,16,0.86) 100%)" }} />
+          </div>
+        )}
         {audioUrl && (
           <audio
             ref={audioElRef}
@@ -708,6 +720,7 @@ export function ContemplationTimer({
               background: "rgba(46,107,64,0.18)",
               border: "1px solid rgba(46,107,64,0.35)",
               color: "#C8D4C0", fontSize: 18, lineHeight: 1, cursor: "pointer",
+              zIndex: 2,
             }}
           >
             ×
@@ -716,7 +729,7 @@ export function ContemplationTimer({
 
         <div
           className="flex-1 flex flex-col items-center justify-center text-center px-6 w-full"
-          style={{ maxWidth: 440 }}
+          style={{ maxWidth: 440, position: "relative", zIndex: 1 }}
         >
           {phase === "picker" && (
             <>
@@ -1088,7 +1101,7 @@ export function ContemplationTimer({
                     {t("fdd_sit.listening", { defaultValue: "Listen, and let it settle." })}
                   </p>
                 </div>
-              ) : (
+              ) : reachedGoal ? (
                 <p
                   className="text-[13px]"
                   style={{
@@ -1098,9 +1111,9 @@ export function ContemplationTimer({
                     marginTop: 20,
                   }}
                 >
-                  {reachedGoal ? t("contemplation_timer.stay_as_long") : t("contemplation_timer.be_still")}
+                  {t("contemplation_timer.stay_as_long")}
                 </p>
-              )}
+              ) : null}
               {/* Live companions — garden members sitting at the same moment,
                   refreshed every ~15s. "You're not alone in the silence." */}
               {liveCompanions.length > 0 && (

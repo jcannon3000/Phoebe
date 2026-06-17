@@ -190,7 +190,7 @@ export function WeeklyGridCard() {
     ...(silenceActive ? [{ key: "contemplation" as const, emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122" }] : []),
     ...(reflectActive ? [{ key: "reflection" as const, emoji: "📖", label: t("rhythm.row_reflection", { defaultValue: "Reflection" }), rgb: "96,141,209" }] : []),
     ...(eveningActive ? [{ key: "evening" as const, emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "124,116,196" }] : []),
-    ...(gratitudeActive ? [{ key: "gratitude" as const, emoji: "🙏", label: t("rhythm.row_gratitude", { defaultValue: "Gratitude" }), rgb: "182,140,90" }] : []),
+    ...(gratitudeActive ? [{ key: "gratitude" as const, emoji: "🙏", label: t("rhythm.row_gratitude", { defaultValue: "Gratitude" }), rgb: "108,162,124" }] : []),
     ...(examenActive ? [{ key: "examen" as const, emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180" }] : []),
     ...(stepsActive ? [{ key: "steps" as const, emoji: "👟", label: t("rhythm.row_steps", { defaultValue: "Steps" }), rgb: "82,140,222" }] : []),
   ];
@@ -525,7 +525,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     }] : []),
     ...customsForSlot("midday"),
     ...(gratitudeActive ? [{
-      key: "gratitude", emoji: "🙏", rgb: "182,140,90", done: gratitudeDone, href: "/gratitude",
+      key: "gratitude", emoji: "🙏", rgb: "108,162,124", done: gratitudeDone, href: "/gratitude",
       title: t("rhythm.card_gratitude", { defaultValue: "Gratitude" }),
       blurb: gratitudeDone ? kept : t("rhythm.blurb_gratitude", { defaultValue: "Name a gift from today" }),
       cta: t("rhythm.write", { defaultValue: "Write" }), later: false,

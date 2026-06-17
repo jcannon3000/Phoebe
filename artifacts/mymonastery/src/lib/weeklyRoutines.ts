@@ -34,8 +34,8 @@ export type WeeklyPractice = {
 // (Worship · Bless · Go · Rest). Worship leans toward Sunday; the rest are kept
 // any day of the week.
 export const WEEKLY_CATALOG: WeeklyPractice[] = [
-  { key: "worship", emoji: "⛪", title: "Worship", blurb: "Gather for the Eucharist with your community.", cta: "Mark kept", day: 0, rgb: "124,116,196" },
-  { key: "bless", emoji: "🤲", title: "Bless", blurb: "Be a blessing — a gift, a kindness, an encouragement.", cta: "Mark kept", day: null, rgb: "182,140,90" },
+  { key: "worship", emoji: "⛪", title: "Worship", blurb: "Gather for the Eucharist with your community.", cta: "Mark kept", day: 0, rgb: "92,157,239" },
+  { key: "bless", emoji: "🤲", title: "Bless", blurb: "Be a blessing — a gift, a kindness, an encouragement.", cta: "Mark kept", day: null, rgb: "108,162,124" },
   { key: "go", emoji: "🚶", title: "Go", blurb: "Cross a boundary — serve, listen, share your faith.", cta: "Mark kept", day: null, rgb: "96,141,209" },
   { key: "rest", emoji: "🕊️", title: "Rest", blurb: "Keep a sabbath — one day set apart.", cta: "Mark kept", day: null, rgb: "62,124,122" },
 ];

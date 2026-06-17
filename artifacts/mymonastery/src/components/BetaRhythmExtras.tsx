@@ -51,7 +51,7 @@ export function BetaRhythmExtras() {
       <div className="flex flex-col gap-2.5">
         {/* Thank three people */}
         <Link href="/thanks" className="block">
-          <div className="rounded-2xl px-4 py-3.5 active:scale-[0.99] transition-transform" style={{ background: "rgba(182,140,90,0.10)", border: "1px solid rgba(182,140,90,0.30)" }}>
+          <div className="rounded-2xl px-4 py-3.5 active:scale-[0.99] transition-transform" style={{ background: "rgba(108,162,124,0.10)", border: "1px solid rgba(108,162,124,0.30)" }}>
             <div className="flex items-center gap-3">
               <span className="text-[26px] leading-none shrink-0">🙏</span>
               <div className="flex-1 min-w-0">
@@ -65,14 +65,14 @@ export function BetaRhythmExtras() {
                 </p>
               </div>
               <span className="shrink-0 rounded-full text-[12px] font-semibold px-3 py-1.5" style={thanksDone
-                ? { background: "rgba(182,140,90,0.22)", color: "rgba(240,237,230,0.85)", border: "1px solid rgba(182,140,90,0.45)", fontFamily: FONT }
-                : { background: "rgba(182,140,90,0.85)", color: WARM, fontFamily: FONT }}>
+                ? { background: "rgba(108,162,124,0.22)", color: "rgba(240,237,230,0.85)", border: "1px solid rgba(108,162,124,0.45)", fontFamily: FONT }
+                : { background: "rgba(108,162,124,0.85)", color: WARM, fontFamily: FONT }}>
                 {thanksDone ? "✓" : `${t("thanks.add", { defaultValue: "Add" })} →`}
               </span>
             </div>
             {/* progress bar */}
             <div className="mt-3 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
-              <div className="h-full rounded-full" style={{ width: `${Math.round((thanks / THANKS_SLOTS) * 100)}%`, background: "rgba(182,140,90,0.85)", transition: "width 0.3s" }} />
+              <div className="h-full rounded-full" style={{ width: `${Math.round((thanks / THANKS_SLOTS) * 100)}%`, background: "rgba(108,162,124,0.85)", transition: "width 0.3s" }} />
             </div>
           </div>
         </Link>

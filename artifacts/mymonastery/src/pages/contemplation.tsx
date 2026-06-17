@@ -836,7 +836,7 @@ export default function ContemplationPage() {
         <ContemplationTimer
           open={timerOpen}
           startMinutes={startMinutes}
-          onClose={() => { setTimerOpen(false); setStartMinutes(undefined); }}
+          onClose={(r) => { setTimerOpen(false); setStartMinutes(undefined); if (r?.completed) setLocation("/dashboard"); }}
         />
       </>
     );
