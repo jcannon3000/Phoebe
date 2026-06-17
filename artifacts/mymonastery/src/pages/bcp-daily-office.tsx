@@ -762,30 +762,59 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // gradient and faded in — a held breath into the office rather than a
     // flashing spinner. Stays until BOTH the slides have loaded and the minimum
     // ~2.8s has passed, then the office fades up over it.
-    const versicle =
+    const opening =
       (resolvedMode === "evening" || resolvedMode === "early-evening-devotion")
-        ? "Let my prayer rise before you as incense, the lifting up of my hands as the evening sacrifice."
+        ? { text: "Let my prayer rise before you as incense, the lifting up of my hands as the evening sacrifice.", cite: "Psalm 141:2" }
         : resolvedMode === "compline"
-          ? "The Lord grant us a quiet night and a peaceful end."
-          : "O Lord, open my lips, and my mouth shall proclaim your praise.";
+          ? { text: "The Lord grant us a quiet night and a peaceful end.", cite: "Compline" }
+          : { text: "O Lord, open my lips, and my mouth shall proclaim your praise.", cite: "Psalm 51:15" };
     return (
-      <div style={{ minHeight: "100dvh", background: BG, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 40px", overflow: "hidden" }}>
+      <div style={{ minHeight: "100dvh", background: BG, position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 40px", overflow: "hidden" }}>
         <div aria-hidden style={{ position: "absolute", inset: 0, background: "radial-gradient(120% 80% at 50% 32%, rgba(46,107,64,0.24) 0%, rgba(9,26,16,0) 70%)" }} />
-        <p
+        <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, animation: "office-enter 1s ease backwards" }}>
+          <p
+            style={{
+              fontFamily: "Georgia, 'Times New Roman', serif",
+              fontStyle: "italic",
+              fontSize: 24,
+              lineHeight: 1.55,
+              color: "#E8E4D8",
+              textAlign: "center",
+              maxWidth: 460,
+              margin: 0,
+            }}
+          >
+            {opening.text}
+          </p>
+          <p
+            style={{
+              fontFamily: SPACE_GROTESK,
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              color: MUTED_GREEN,
+              margin: 0,
+            }}
+          >
+            {opening.cite}
+          </p>
+        </div>
+        {/* Quiet loading indicator at the foot — signals the office is still
+            preparing without competing with the versicle above. */}
+        <div
+          aria-hidden
+          className="animate-spin"
           style={{
-            position: "relative",
-            fontFamily: "Georgia, 'Times New Roman', serif",
-            fontStyle: "italic",
-            fontSize: 24,
-            lineHeight: 1.55,
-            color: "#E8E4D8",
-            textAlign: "center",
-            maxWidth: 460,
-            animation: "office-enter 1s ease backwards",
+            position: "absolute",
+            bottom: "calc(env(safe-area-inset-bottom, 0px) + 44px)",
+            width: 22,
+            height: 22,
+            borderRadius: "50%",
+            border: "2px solid rgba(143,175,150,0.25)",
+            borderTopColor: "rgba(143,175,150,0.75)",
           }}
-        >
-          {versicle}
-        </p>
+        />
       </div>
     );
   }
