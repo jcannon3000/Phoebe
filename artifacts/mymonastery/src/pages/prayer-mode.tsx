@@ -4058,26 +4058,22 @@ export default function PrayerModePage() {
         ×
       </button>
 
-      {/* Content — anchored toward the top of the viewport so short
-          slides (prayer requests, intercessions with no BCP block) don't
-          float down near the bottom of tall phone screens.
-          paddingTop is intentionally modest: the older 16dvh value
-          pushed the slide so far down that tall-content slides (long
-          intercession bodies + an action card) overflowed and the
-          Amen button collided with the absolute-positioned "Not
-          today" link below. paddingBottom is now large enough to
-          guarantee the in-flow Amen sits clearly ABOVE that link's
-          fixed position (env(safe) + 130px from the container's
-          bottom). */}
+      {/* Content — vertically CENTERED in the viewport (so a short prayer
+          request / intercession sits in the middle of the screen rather than
+          clinging to the top with a big empty gap below). The asymmetric
+          padding biases the centring upward: the larger paddingBottom reserves
+          the bottom band for the fixed "Not today" link + slide counter, so the
+          content centres within the area ABOVE them and a taller slide's Amen
+          still sits clear of that link. */}
       <div
         className="flex flex-col items-center text-center px-6 w-full"
         style={{
           maxWidth: 560,
           margin: "0 auto",
           minHeight: "100dvh",
-          justifyContent: "flex-start",
-          paddingTop: "clamp(36px, 8dvh, 88px)",
-          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 200px)",
+          justifyContent: "center",
+          paddingTop: "clamp(24px, 6dvh, 72px)",
+          paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 160px)",
         }}
       >
         {phase === "prayer" && slide && (
