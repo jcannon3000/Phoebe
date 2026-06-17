@@ -552,10 +552,22 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // instantly) so the office begins with a calm, deliberate beat instead of a
   // flashy spinner. The loading gate below waits on BOTH this and the fetch.
   const [minLoadDone, setMinLoadDone] = useState(false);
+  // …but only the FIRST time the office is opened today. Coming back to it
+  // (e.g. returning from the community intercessions) shouldn't replay the held
+  // psalm versicle — a re-entry gets a plain spinner if the fetch is still in
+  // flight, and otherwise drops straight into the office. Keyed per side+day in
+  // sessionStorage so it naturally resets tomorrow.
+  const openedKey = `phoebe:office-opened:${resolvedMode}:${new Date().toLocaleDateString("en-CA")}`;
+  const alreadyOpenedToday = useMemo(() => {
+    try { return sessionStorage.getItem(openedKey) === "1"; } catch { return false; }
+  }, [openedKey]);
   useEffect(() => {
+    if (alreadyOpenedToday) { setMinLoadDone(true); return; }
     const t = setTimeout(() => setMinLoadDone(true), 2800);
     return () => clearTimeout(t);
-  }, []);
+  }, [alreadyOpenedToday]);
+  // Remember the opening has been shown, so a later re-entry skips the psalm.
+  useEffect(() => { try { sessionStorage.setItem(openedKey, "1"); } catch { /* non-fatal */ } }, [openedKey]);
 
   // The "way to pray" chooser on the welcome slide — a dropdown (replacing the
   // old alternate-route pills) that lets the reader switch between the short
@@ -757,6 +769,16 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   }, [slides, slideIdx, resolvedMode, isDevotion]);
 
   if (loading || !minLoadDone) {
+    // Re-entry (already opened today — e.g. back from the intercessions): show a
+    // quiet plain spinner only while the fetch is still in flight, never the
+    // psalm versicle again. A cache hit makes this invisible (loading is false).
+    if (alreadyOpenedToday) {
+      return (
+        <div style={{ minHeight: "100dvh", background: BG, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div aria-hidden className="animate-spin" style={{ width: 22, height: 22, borderRadius: "50%", border: "2px solid rgba(143,175,150,0.25)", borderTopColor: "rgba(143,175,150,0.8)" }} />
+        </div>
+      );
+    }
     // The office opens on its classic opening versicle (Morning: Ps 51:15;
     // Evening: Ps 141:2; Compline: a quiet-night blessing), set on a soft
     // gradient and faded in — a held breath into the office rather than a
