@@ -550,15 +550,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
 
   // The "way to pray" chooser on the welcome slide — a dropdown (replacing the
   // old alternate-route pills) that lets the reader switch between the short
-  // Devotion, the Community Intercessions feed, and the full Office. It opens
-  // on the user's saved preference for this side (getSideLevel), falling back
-  // to whatever they're already on.
+  // Devotion, the Community Intercessions feed, and the full Office. It opens on
+  // the office the reader ACTUALLY opened — a devotion route → "devotion", a
+  // full-office route (Morning/Evening Prayer) → "office". They either tapped a
+  // specific card or the /begin-prayer routing brain already applied their
+  // default before landing here, so the ROUTE is the intent. (Seeding from the
+  // saved per-side default instead mislabeled an intentional "Morning Prayer" as
+  // the default "Morning Devotion" — they could switch, but it opened wrong.)
   type WayToPray = "devotion" | "intercessions" | "office";
-  const [wayToPray, setWayToPray] = useState<WayToPray>(() => {
-    const pref = getSideLevel(officeSide);
-    if (pref === "devotion" || pref === "intercessions" || pref === "office") return pref;
-    return isDevotion ? "devotion" : "office";
-  });
+  const [wayToPray, setWayToPray] = useState<WayToPray>(() => (isDevotion ? "devotion" : "office"));
   // How they want to pray it — the second row of the welcome chooser. Depends
   // on the way above: Community Intercessions is on-screen only. "watch" is a
   // morning-weekday-only option (the National Cathedral broadcast).
