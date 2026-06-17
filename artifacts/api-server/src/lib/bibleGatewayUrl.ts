@@ -123,46 +123,20 @@ export function bibleUrl(reference: string): string | null {
   const trimmed = reference.trim();
   if (!trimmed) return null;
 
-  const noParens = trimmed.replace(/\([^)]*\)/g, ",").replace(/\s+/g, " ").trim();
-  const cleaned = noParens
+  // oremus Bible Browser (bible.oremus.org) renders the NRSV and — unlike
+  // bible.com — handles cross-chapter ranges like "Romans 1:28-2:11" directly.
+  // It takes the passage string as a query param, so we just strip lectionary
+  // parentheticals, normalize dashes, collapse spaces, and pass it through
+  // URL-encoded.
+  const passage = trimmed
+    .replace(/\([^)]*\)/g, " ")
     .replace(/--/g, "-")
-    .replace(/[–—]/g, "-");
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!passage) return null;
 
-  const m = cleaned.match(/^([\dA-Za-z.\s]+?)\s+(\d.*)$/);
-  if (!m) return null;
-  const rawBook = m[1].trim();
-  const rest = m[2].trim();
-
-  const usfm = lookupUsfm(rawBook);
-  if (!usfm) return null;
-
-  const dotted = rest.replace(/:/g, ".");
-  const firstSegment = dotted.split(/[,;]/)[0].trim();
-
-  // Cross-chapter range ("1.18-2.13"). Bible.com can't render a range
-  // that spans chapters in a single URL — out-of-range upper bounds
-  // return "No Available Verses" — so fall back to the starting
-  // chapter so the link still opens to the right pericope.
-  if (/^\d+\.\d+-\d+\.\d+$/.test(firstSegment)) {
-    const chapterMatch = firstSegment.match(/^(\d+)/);
-    if (!chapterMatch) return null;
-    return `https://www.bible.com/bible/${NRSVUE_VERSION_ID}/${usfm}.${chapterMatch[1]}.NRSVUE`;
-  }
-
-  if (!/^\d+(\.\d+(-\d+(\.\d+)?)?)?$/.test(firstSegment)) {
-    const chapterMatch = firstSegment.match(/^(\d+)/);
-    if (!chapterMatch) return null;
-    return `https://www.bible.com/bible/${NRSVUE_VERSION_ID}/${usfm}.${chapterMatch[1]}.NRSVUE`;
-  }
-
-  return `https://www.bible.com/bible/${NRSVUE_VERSION_ID}/${usfm}.${firstSegment}.NRSVUE`;
-}
-
-function lookupUsfm(raw: string): string | null {
-  for (const [pattern, code] of BOOK_USFM) {
-    if (pattern.test(raw)) return code;
-  }
-  return null;
+  return `https://bible.oremus.org/?passage=${encodeURIComponent(passage)}`;
 }
 
 // Backwards-compat: existing call sites still import bibleGatewayUrl.

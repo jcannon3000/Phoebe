@@ -398,22 +398,15 @@ export async function assembleDevotion(
     }),
   );
 
-  // 7. Collect — pulled from the day's lectionary so the devotion
-  // closes with the same Collect of the Day that the full Daily
-  // Office uses. Falls back to the BCP rubric's fixed devotion
-  // collect (Lord God, almighty… in the morning / Lord Jesus,
-  // stay with us… at early evening) if the lectionary entry is
-  // missing for any reason. The fixed devotion collects are
-  // locale-aware via PRAYERS.devotion_collect_*; the lectionary
-  // Collect of the Day stays in its seeded language (English-only
-  // today; future Spanish seed pass to come).
-  const collectText =
-    collectOfTheDayRow?.content
-      ? collectOfTheDayRow.content
-      : (isMorning ? T.devotionCollectMorning : T.devotionCollectEarlyEvening);
-  const collectBcpRef =
-    collectOfTheDayRow?.bcpReference
-      ?? (isMorning ? "BCP p. 137" : "BCP p. 140");
+  // 7. Collect — the BCP "Daily Devotions for Individuals and Families" close
+  // with their OWN fixed collect for the hour (Lord God, almighty… in the
+  // morning, BCP p. 137; Lord Jesus, stay with us… in the early evening, p. 140)
+  // — NOT the lectionary Collect of the Day, which belongs to the full Office.
+  // Use the fixed devotion collect so the devotion is liturgically right. The
+  // fixed collects are locale-aware via PRAYERS.devotion_collect_*.
+  void collectOfTheDayRow;
+  const collectText = isMorning ? T.devotionCollectMorning : T.devotionCollectEarlyEvening;
+  const collectBcpRef = isMorning ? "BCP p. 137" : "BCP p. 140";
   slides.push(
     slide(id(), "collect", "🌿", T.eyebrowCollectOfTheDay, collectText, {
       bcpReference: collectBcpRef,
