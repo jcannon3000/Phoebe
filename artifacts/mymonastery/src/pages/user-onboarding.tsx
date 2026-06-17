@@ -638,7 +638,8 @@ const BASE_SLIDES: Slide[] = [
     calm: true,
     footnote: "user_onboarding.slides.safe_space_footnote",
   },
-  { kind: "prayer-request" },
+  // The "share your first prayer request" slide was removed — we don't ask a
+  // brand-new user to post a request during onboarding.
 ];
 
 const MOCK_COMPONENTS: Record<MockKey, () => React.ReactElement> = {
@@ -1598,8 +1599,14 @@ export default function UserOnboarding() {
   // post-signup welcome overlay. Scoped to same-origin paths (must
   // start with "/") to block arbitrary-URL redirects.
   const rawNext = params.get("next");
-  const nextDestination =
-    rawNext && rawNext.startsWith("/") ? rawNext : "/dashboard";
+  const nextDestination = (() => {
+    const n = rawNext && rawNext.startsWith("/") ? rawNext : "/dashboard";
+    // Joining from a group invite shouldn't dump a brand-new user back on the
+    // group page after onboarding — land them on home (the membership is already
+    // formed during sign-up).
+    if (n.startsWith("/communities") || n.startsWith("/community")) return "/dashboard";
+    return n;
+  })();
   const { user, isLoading } = useAuth();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
