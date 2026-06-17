@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { playBreathTone, primeAudio } from "@/lib/amenFeedback";
 import { buildCanonical, photoForGlobalIndex, randomSeed, type Canonical } from "@/lib/cobreatheOrder";
+import { syncedNow, ensureClockSynced } from "@/lib/serverClock";
 
 // ── CobreatheBreath ─────────────────────────────────────────────────────────
 //
@@ -27,10 +28,12 @@ const WARM = "#F0EDE6";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
 
-// Breath pacing — a simple in / out breath, 12s each: a long, slow inhale
-// and an equally long exhale, no holds. 20s per cycle; twelve cycles ≈ 4:00.
-const INHALE_MS = 10000;
-const EXHALE_MS = 10000;
+// Breath pacing — a simple in / out breath, 6s each: a slow inhale and an
+// equally slow exhale, no holds (five breaths a minute). 12s per cycle; twelve
+// cycles ≈ 2:24. The synced schedule below is derived from CYCLE_MS, so changing
+// these here re-times the global breath for everyone at once.
+const INHALE_MS = 6000;
+const EXHALE_MS = 6000;
 // Each phase (in, out) is one PHASE_MS slice of the cycle — used to derive a
 // globally-synced octave that rotates 0→1→2→3 across phases.
 const PHASE_MS = INHALE_MS;
@@ -297,8 +300,10 @@ export function CobreatheBreath({
 
   // Anchor points (fixed at mount): when the user arrived, and the next clean
   // cycle boundary where the count begins. There is NO end anchor — the rhythm
-  // runs on until the user chooses to finish.
-  const startRef = useRef(Date.now());
+  // runs on until the user chooses to finish. Anchored to the SERVER clock
+  // (syncedNow) — never the device's own clock — so every device's breath rides
+  // the same global schedule and two people are inhaling together to the ms.
+  const startRef = useRef(syncedNow());
   const countStartRef = useRef(Math.ceil(startRef.current / CYCLE_MS) * CYCLE_MS);
   const reachedRef = useRef(false);
   // Presence gate: a breath only counts if the page/app stayed open and
@@ -317,13 +322,29 @@ export function CobreatheBreath({
   // so we don't buzz mid-phase on mount.
   const lastPhaseRef = useRef<Phase | null>(null);
 
+  // Lock onto the SERVER clock before the count begins. On a warm load the
+  // offset is already known and the anchors above are already correct, so this
+  // is a no-op; on a cold open (offset still settling) it re-anchors to the
+  // accurate server time during the pre-roll — but never once the count has
+  // started (frozenRef), so a sync landing mid-sit can never jolt the rhythm.
+  useEffect(() => {
+    let cancelled = false;
+    ensureClockSynced().then(() => {
+      if (cancelled || frozenRef.current) return;
+      const n = syncedNow();
+      startRef.current = n;
+      countStartRef.current = Math.ceil(n / CYCLE_MS) * CYCLE_MS;
+    }).catch(() => { /* offline — fall back to the device clock */ });
+    return () => { cancelled = true; };
+  }, []);
+
   // A rAF loop writes transforms straight to the DOM from the global clock —
   // no React re-render per frame, perfectly synced for everyone, and only
   // transform/opacity (GPU-composited) so the swell stays glass-smooth.
   useEffect(() => {
     let raf = 0;
     const loop = () => {
-      const now = Date.now();
+      const now = syncedNow();
       const pos = now % CYCLE_MS;
       const isCounting = now - countStartRef.current >= 0;
       // Phase transitions (inhale ↔ exhale): a soft haptic on each, but the
@@ -483,7 +504,7 @@ export function CobreatheBreath({
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => {
-      const now = Date.now();
+      const now = syncedNow();
       // Presence guard, evaluated BEFORE the reach check so a backgrounded
       // session can never record. Two signals, covering both platforms:
       //   • document.hidden — a hidden web tab still fires throttled ticks.
@@ -551,7 +572,7 @@ export function CobreatheBreath({
         if (away > 1200 && !reachedRef.current) invalidRef.current = true;
         if (invalidRef.current && !reachedRef.current && !endedRef.current) {
           endedRef.current = true;
-          onEnd(Math.round((Date.now() - startRef.current) / 1000), false);
+          onEnd(Math.round((syncedNow() - startRef.current) / 1000), false);
         }
       }
     };
@@ -565,7 +586,7 @@ export function CobreatheBreath({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const now = Date.now();
+  const now = syncedNow();
   const pos = now % CYCLE_MS;
   const phase = phaseAt(pos);
   const phaseLabel =
@@ -726,7 +747,7 @@ export function CobreatheBreath({
       <button
         type="button"
         aria-label={reachedNow ? t("cobreathe.done", { defaultValue: "Done" }) : t("common.cancel", { defaultValue: "Cancel" })}
-        onClick={() => onEnd(Math.round((Date.now() - startRef.current) / 1000), reachedRef.current)}
+        onClick={() => onEnd(Math.round((syncedNow() - startRef.current) / 1000), reachedRef.current)}
         style={{
           position: "absolute", top: "calc(var(--safe-top) + 60px)", right: 16,
           borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",

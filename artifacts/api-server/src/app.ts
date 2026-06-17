@@ -185,6 +185,18 @@ if (runInWeb) {
   });
 }
 
+// ─── Shared server clock ───────────────────────────────────────────────────
+// Lets time-sensitive features — the Cobreathe global breath above all — anchor
+// every device to ONE clock instead of each phone's own (possibly skewed) one,
+// so two people's breaths start at the same instant. Tiny + unauthenticated;
+// registered BEFORE the /api router so it skips session auth, and no-store so a
+// proxy never serves a stale time. The client (lib/serverClock) corrects for
+// round-trip latency.
+app.get("/api/time", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ now: Date.now() });
+});
+
 app.use("/api", router);
 
 // ─── Universal Link association file ───────────────────────────────────────
