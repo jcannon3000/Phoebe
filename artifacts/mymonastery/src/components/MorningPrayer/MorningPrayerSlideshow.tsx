@@ -12,6 +12,7 @@ import { SlideView } from "./Slide";
 import { ProgressBar } from "./ProgressBar";
 import { useSlideshow } from "./useSlideshow";
 import { useOfficePrefs, getSideGratitude, getSideConfession } from "@/lib/officePrefs";
+import { apiRequest } from "@/lib/queryClient";
 
 // Build a synthetic gratitude slide that sits between the General
 // Thanksgiving and the closing. Reflective (prompt + Continue), not
@@ -67,6 +68,8 @@ export function MorningPrayerSlideshow({
   const [hasLogged, setHasLogged] = useState(false);
   const [logError, setLogError] = useState<string | null>(null);
   const [presenceData, setPresenceData] = useState<MemberPresence[]>([]);
+  // When the slideshow opened — used for an honest session duration on log.
+  const openedAtRef = useRef(Date.now());
 
   // Office-close prefs: per-side gratitude pause (Morning/Evening split).
   // This is the community Morning Prayer, so it's always the morning side.
@@ -173,18 +176,32 @@ export function MorningPrayerSlideshow({
     scrollableSlides: scrollableSet.current,
   });
 
+  // Record the finished Morning Prayer. This used to POST /api/moments/:id/log
+  // — an endpoint that no longer exists, so it ALWAYS 404'd and showed
+  // "Something went wrong. Tap to try again." after the office. We now log it
+  // as a real `morning-prayer` prayer session (counts toward the daily rhythm
+  // + streak, same surface the BCP path uses). The prayer was prayed regardless,
+  // so completion shows immediately and a failed record never throws a scary
+  // toast on the closing screen.
   async function handleLog() {
     setLogError(null);
+    setHasLogged(true);
+    const endedAt = new Date();
+    const durationSeconds = Math.min(
+      Math.max(Math.round((endedAt.getTime() - openedAtRef.current) / 1000), 0),
+      3600,
+    );
     try {
-      const res = await fetch(`/api/moments/${momentId}/log`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: memberToken, type: "morning_prayer" }),
+      await apiRequest("POST", "/api/prayer-sessions", {
+        surface: "morning-prayer",
+        durationSeconds,
+        slidesCompleted: displaySlides.length,
+        completed: true,
+        startedAt: new Date(openedAtRef.current).toISOString(),
+        endedAt: endedAt.toISOString(),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setHasLogged(true);
     } catch {
-      setLogError("Something went wrong. Tap to try again.");
+      /* best-effort — the close still reads as done; the rhythm reconciles on refetch */
     }
   }
 
