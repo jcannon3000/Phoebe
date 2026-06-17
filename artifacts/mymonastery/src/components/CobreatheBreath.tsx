@@ -777,15 +777,15 @@ export function CobreatheBreath({
           sit left-aligned under it, as the design always intended). */}
       <div ref={titleRef} className="flex flex-col items-start" style={{ position: "relative", width: "100%", paddingLeft: 20, paddingRight: 96 }}>
         <p className="text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ color: "rgba(182,210,188,0.55)", fontFamily: SPACE_GROTESK }}>
-          🌬️ {t("cobreathe.title", { defaultValue: "Cobreathe" })}
+          {t("cobreathe.title", { defaultValue: "Cobreathe" })} 🌬️
         </p>
-        {/* Live indicator — pulsing red dot + "Synced", on its OWN line UNDER the
-            title (left-aligned to it). Appears once the session joins the global
-            breath (counting). */}
+        {/* Live indicator — "Synced" + a pulsing red dot to its RIGHT, on its
+            OWN line UNDER the title (left-aligned to it). Appears once the
+            session joins the global breath (counting). */}
         {counting && (
           <span className="inline-flex items-center gap-1 mt-1 text-[12px] font-semibold uppercase tracking-[0.2em]" style={{ fontFamily: SPACE_GROTESK }}>
-            <span className="rounded-full animate-pulse" style={{ width: 7, height: 7, background: "#E5484D", boxShadow: "0 0 6px rgba(229,72,77,0.8)" }} />
             <span style={{ color: "#E58A8D", letterSpacing: "0.16em" }}>{t("cobreathe.synced", { defaultValue: "Synced" })}</span>
+            <span className="rounded-full animate-pulse" style={{ width: 7, height: 7, background: "#E5484D", boxShadow: "0 0 6px rgba(229,72,77,0.8)" }} />
           </span>
         )}
         {/* The social "N breathed today" count is a distraction DURING the
