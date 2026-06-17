@@ -942,12 +942,10 @@ function OpeningSplash() {
   // Is the "Design your daily routine" nudge due? Only when the user has no
   // routine yet AND we haven't shown it in the last week.
   const routineDue = (): boolean => {
-    if (!user || !isBeta || hasDesignedRoutine(user)) return false;
-    try {
-      const last = Number(localStorage.getItem(ROUTINE_PROMPT_KEY) || "0");
-      if (last && Date.now() - last < ROUTINE_PROMPT_INTERVAL_MS) return false;
-    } catch { /* ignore */ }
-    return true;
+    // Disabled per request — no pop-up inviting users to configure their
+    // routine. The splash fades straight to home; Customize lives on the Daily
+    // progress page (top-right pill) for anyone who wants it.
+    return false;
   };
   // Leaving the faces — detour to the routine slide if due (stamping the
   // week), otherwise fade out to the home as before. The functional updater

@@ -27,20 +27,15 @@ export default function DailyProgressPage() {
           <ChevronLeft size={14} /> {t("common.home", { defaultValue: "Home" })}
         </Link>
 
-        <h1 className="text-2xl font-bold mb-1" style={{ color: WARM, fontFamily: FONT }}>
-          {t("daily_progress.title", { defaultValue: "Daily progress" })}
-        </h1>
-        <p className="text-sm mb-5" style={{ color: SAGE }}>
-          {t("daily_progress.subtitle", { defaultValue: "Where you are in today's rhythm — and what's next." })}
-        </p>
-
-        <DailyProgressBody />
-
-        {/* Customize — shape which practices make up your rhythm. */}
-        <div className="flex justify-center mt-8">
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <h1 className="text-2xl font-bold" style={{ color: WARM, fontFamily: FONT }}>
+            {t("daily_progress.title", { defaultValue: "Daily progress" })}
+          </h1>
+          {/* Customize — shape which practices make up your rhythm. Top-right,
+              vertically aligned with the title. */}
           <Link
             href="/rule-of-life"
-            className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 transition-opacity hover:opacity-90"
+            className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 shrink-0 transition-opacity hover:opacity-90"
             style={{
               background: "rgba(46,107,64,0.10)",
               border: "1px solid rgba(46,107,64,0.28)",
@@ -53,6 +48,11 @@ export default function DailyProgressPage() {
             <Sliders size={14} /> {t("daily_progress.customize", { defaultValue: "Customize" })}
           </Link>
         </div>
+        <p className="text-sm mb-5" style={{ color: SAGE }}>
+          {t("daily_progress.subtitle", { defaultValue: "Where you are in today's rhythm — and what's next." })}
+        </p>
+
+        <DailyProgressBody />
       </div>
     </Layout>
   );
