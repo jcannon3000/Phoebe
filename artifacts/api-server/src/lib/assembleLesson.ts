@@ -25,6 +25,11 @@ import type { Slide } from "./assembleMorningPrayer";
 // verses still group several per slide (scripture prose reads continuously).
 // Tuned to fit a phone page; a single over-budget verse still gets its own slide.
 const LESSON_CHUNK_BUDGET_CHARS = 650;
+// Reverted per request: lessons show the reference + a "Read in your Bible"
+// prompt + an Open link (→ the external NRSV) rather than the inline WEB text.
+// Flip to true to bring inline WEB readings back — the chunker + verse slides
+// below still work; this is the single switch.
+const INLINE_WEB_LESSONS = false;
 
 export type LessonKind =
   | "first_morning"
@@ -129,9 +134,8 @@ export function buildLessonSlides(
   const emoji = LESSON_EMOJI[kind];
   const readUrl = bibleGatewayUrl(trimmed);
 
-  // Try to pull the actual verse text from the bundled WEB data. Falls
-  // back to a single reference-only slide when the book isn't locally
-  // available (deuterocanon).
+  // Try to pull the actual verse text from the bundled WEB data. Falls back to
+  // a reference-only slide when the book isn't locally available (deuterocanon).
   const verses = lookupLessonVerses(trimmed);
 
   // Title slide either way — the same big-headline experience as the
@@ -158,11 +162,11 @@ export function buildLessonSlides(
       // follow — the client then hides the "read in NRSV" link on THIS title
       // slide (the text is right here). On the fallback path (book not in the
       // local WEB data) this is false, so the read-online link stays.
-      inlineWeb: !!(verses && verses.length > 0),
+      inlineWeb: INLINE_WEB_LESSONS && !!(verses && verses.length > 0),
     },
   };
 
-  if (!verses || verses.length === 0) {
+  if (!INLINE_WEB_LESSONS || !verses || verses.length === 0) {
     // Fallback — book not in local data (e.g. Wisdom, Sirach). Emit
     // the title card + a single reference-only "open your bible"
     // slide so the reader still gets a deliberate breath into the

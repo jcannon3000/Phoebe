@@ -169,6 +169,14 @@
   0%, 100% { transform: translateY(0px); }
   50%      { transform: translateY(-5px); }
 }
+/* Office / devotion slideshow entrance — a gentle fade-up on mount so opening
+   from the home card doesn't hard-cut. `backwards` fill applies the start state
+   before the first frame (no flash) and leaves NO lingering transform (so the
+   slideshow's fixed header keeps its viewport positioning). */
+@keyframes office-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 @keyframes card-breathe {
   0%, 100% { box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
   50%      { box-shadow: 0 4px 20px rgba(0,0,0,0.5); }

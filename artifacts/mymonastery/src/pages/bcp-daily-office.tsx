@@ -1214,6 +1214,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         fontFamily: SPACE_GROTESK,
         position: "relative",
         isolation: "isolate",
+        // Gentle fade-up entrance (see @keyframes office-enter) so opening the
+        // office / devotion from the home card fades in instead of flashing.
+        animation: "office-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) backwards",
       }}
     >
       <AnimatedBackground base={BG} variant="subtle" fadeTop />
