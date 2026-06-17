@@ -236,7 +236,10 @@ struct PhoebeWidgetView: View {
                         .font(.system(size: 11, weight: .semibold))
                         .tracking(1.2)
                         .opacity(0.6)
-                    Text(stats.todayLine)
+                    // For the reflection, the lock screen shows the publication
+                    // ("CAC Daily Meditation"), NOT the day's specific title —
+                    // the small widget reads cleaner as the standing name.
+                    Text(stats.kind == "reflect" && !stats.eyebrow.isEmpty ? stats.eyebrow : stats.todayLine)
                         .font(.system(size: 16, weight: .semibold))
                         .lineLimit(1).minimumScaleFactor(0.6)
                 }

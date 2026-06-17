@@ -1122,8 +1122,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             fontSize: 14,
             fontWeight: 500,
             cursor: "pointer",
-            padding: "13px 40px 13px 18px",
+            // Center the selected value in the pill to match the Begin button.
+            // iOS WKWebView ignores `text-align` on a native <select> but honors
+            // `text-align-last`, so we set both; symmetric padding centers the
+            // text while the ▾ chevron sits (absolutely positioned) in the right
+            // padding, clear of these short labels.
+            padding: "13px 38px",
             textAlign: "center",
+            textAlignLast: "center",
           }}
         >
           {options}
