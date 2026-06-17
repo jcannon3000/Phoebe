@@ -19,6 +19,7 @@ import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/offic
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
 import { CAC_TODAY_URL, markCacRead } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
+import { toggleCustomDoneToday } from "@/lib/customAnchors";
 
 const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
@@ -431,7 +432,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, stepsToday, stepsGoal } = useRhythmState();
+  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, stepsToday, stepsGoal, customAnchors } = useRhythmState();
   const hour = new Date().getHours();
   const kept = t("rhythm.kept", { defaultValue: "Kept today" });
   const prayed = t("rhythm.prayed", { defaultValue: "Prayed today" });
@@ -529,6 +530,16 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.view", { defaultValue: "View" }), later: false,
       progress: { current: stepsToday, goal: stepsGoal },
     }] : []),
+    // User-defined custom practices — each a simple "did I do it today" card.
+    // Tapping it toggles today's check (no navigation), so it counts as a dot
+    // like the built-in anchors; checked → it slides into Done.
+    ...customAnchors.map((a) => ({
+      key: `custom-${a.id}`, emoji: a.emoji || "✅", rgb: "143,170,150", done: a.done, href: "",
+      onClick: () => toggleCustomDoneToday(a.id),
+      title: a.title,
+      blurb: a.done ? kept : t("rhythm.custom_blurb", { defaultValue: "Your daily practice" }),
+      cta: t("rhythm.mark_done", { defaultValue: "Mark done" }), later: false,
+    })),
     ...(eveningActive ? [{
       // Evening sits last and stays a quiet "later" card until 3 PM, so the
       // morning rhythm (reflection → contemplation) leads the day; from 3 PM on
