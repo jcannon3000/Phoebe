@@ -872,6 +872,34 @@ router.put("/me/daily-steps", async (req, res): Promise<void> => {
   } catch { /* best-effort — don't surface push errors to the client */ }
 });
 
+// GET /api/me/daily-steps?day=YYYY-MM-DD — today's step count the iOS app synced
+// via the PUT above. The web build has no HealthKit, so it reads the count from
+// here instead of showing 0, keeping web and app in agreement. `day` is the
+// caller's local day; falls back to the server's UTC day if absent/invalid.
+router.get("/me/daily-steps", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const q = typeof req.query.day === "string" ? req.query.day : "";
+  const now = new Date();
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(q)
+    ? q
+    : `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-${String(now.getUTCDate()).padStart(2, "0")}`;
+  try {
+    const [row] = await db
+      .select({ steps: dailyHealthStepsTable.steps })
+      .from(dailyHealthStepsTable)
+      .where(and(
+        eq(dailyHealthStepsTable.userId, sessionUserId),
+        eq(dailyHealthStepsTable.day, day),
+      ))
+      .limit(1);
+    res.json({ steps: row?.steps ?? 0, day });
+  } catch (err) {
+    console.error("[/me/daily-steps GET] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // PATCH /api/me/contemplation-sessions/:id/visibility — flip a sit's
 // is_private flag. Used by the contemplation summary's public/private
 // toggle, which records the sit with an initial value and then PATCHes

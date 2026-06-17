@@ -245,23 +245,35 @@ let lastStepsUpload = "";
  */
 export function useDailySteps(enabled = true): { steps: number } {
   const day = new Date().toLocaleDateString("en-CA");
+  const native = appleHealthAvailable();
+  // Native (iOS): read today's count straight from HealthKit. Web / any
+  // non-native shell has no HealthKit, so it reads the count the iOS app synced
+  // to the backend (PUT /api/me/daily-steps) — keeping web and app in agreement
+  // instead of the web always showing 0. Only read when the caller opted into
+  // the Daily steps practice (never as a side effect of the build).
   const q = useQuery<number | null>({
-    queryKey: ["apple-health-steps", day],
-    queryFn: () => getStepsToday(),
-    // Only read HealthKit steps when the caller has opted into the Daily steps
-    // practice — never as a side effect of just being on a native build.
-    enabled: enabled && appleHealthAvailable(),
-    staleTime: 5 * 60_000,
+    queryKey: native ? ["apple-health-steps", day] : ["server-daily-steps", day],
+    queryFn: native
+      ? () => getStepsToday()
+      : async () => {
+          const r = (await apiRequest("GET", `/api/me/daily-steps?day=${day}`)) as { steps?: number };
+          return r?.steps ?? 0;
+        },
+    enabled,
+    staleTime: native ? 5 * 60_000 : 60_000,
   });
   const steps = q.data ?? 0;
+  // Only the native build has a fresh HealthKit read to push up; the web read
+  // its number FROM the server, so it never re-uploads.
   useEffect(() => {
+    if (!native) return;
     if (steps <= 0) return;
     const key = `${day}:${steps}`;
     if (lastStepsUpload === key) return;
     lastStepsUpload = key;
     void apiRequest("PUT", "/api/me/daily-steps", { steps, day })
       .catch(() => { if (lastStepsUpload === key) lastStepsUpload = ""; }); // allow retry
-  }, [steps, day]);
+  }, [native, steps, day]);
   return { steps };
 }
 
