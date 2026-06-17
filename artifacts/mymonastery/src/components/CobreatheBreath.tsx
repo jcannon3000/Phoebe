@@ -458,10 +458,10 @@ export function CobreatheBreath({
       // blue ring fills once, slowly, across the whole set of breaths.
       {
         const inhale = pos < INHALE_MS;
-        const fIn = isCounting ? (inhale ? pos / INHALE_MS : 1) : 0;
-        const fOut = isCounting ? (inhale ? 0 : (pos - INHALE_MS) / EXHALE_MS) : 0;
+        // Light green fills clockwise over the dark base on the inhale, then
+        // recedes on the exhale — the dark green ring stays put underneath.
+        const fIn = isCounting ? (inhale ? pos / INHALE_MS : 1 - (pos - INHALE_MS) / EXHALE_MS) : 0;
         if (ringInRef.current) ringInRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fIn)).toFixed(2);
-        if (ringOutRef.current) ringOutRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fOut)).toFixed(2);
         if (sessionRingRef.current) {
           const sFrac = isCounting ? Math.min(1, Math.max(0, (now - countStartRef.current) / (totalBreaths * CYCLE_MS))) : 0;
           sessionRingRef.current.style.strokeDashoffset = (SESSION_CIRC * (1 - sFrac)).toFixed(2);
@@ -715,19 +715,25 @@ export function CobreatheBreath({
         </div>
       )}
 
-      {/* Cancel — top-right, exits the breath (no count unless already kept). */}
+      {/* Top-right control — "Cancel" while breathing, switching to a green
+          "Done" pill once the full set is kept (the Done moved here from the
+          bottom). onClick passes reachedRef either way: cancel doesn't count,
+          Done finishes. */}
       <button
         type="button"
-        aria-label={t("common.cancel", { defaultValue: "Cancel" })}
+        aria-label={reachedNow ? t("cobreathe.done", { defaultValue: "Done" }) : t("common.cancel", { defaultValue: "Cancel" })}
         onClick={() => onEnd(Math.round((Date.now() - startRef.current) / 1000), reachedRef.current)}
         style={{
           position: "absolute", top: "calc(var(--safe-top) + 16px)", right: 16,
-          width: 34, height: 34, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(255,255,255,0.06)", border: "1px solid rgba(182,210,188,0.22)",
-          color: TEXT_DIM, fontSize: 16, lineHeight: 1, cursor: "pointer", zIndex: 2,
+          borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
+          fontFamily: SPACE_GROTESK, fontWeight: 600, lineHeight: 1, cursor: "pointer", zIndex: 2,
+          transition: "background 0.4s ease, color 0.4s ease, padding 0.3s ease",
+          ...(reachedNow
+            ? { background: "rgba(46,107,64,0.85)", border: "1px solid rgba(140,195,160,0.5)", color: "#EAF6F4", fontSize: 14, padding: "9px 22px" }
+            : { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(182,210,188,0.22)", color: TEXT_DIM, fontSize: 13, padding: "8px 16px" }),
         }}
       >
-        ✕
+        {reachedNow ? t("cobreathe.done", { defaultValue: "Done" }) : t("common.cancel", { defaultValue: "Cancel" })}
       </button>
 
       {/* While SYNCING, a quote rests in the upper third — centred. A short wait
@@ -813,13 +819,14 @@ export function CobreatheBreath({
           width={158} height={158} viewBox="0 0 128 128"
           style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none", filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))" }}
         >
-          <circle cx={64} cy={64} r={RING_R} fill="none" stroke="rgba(143,175,150,0.14)" strokeWidth={RING_SW} />
-          {/* Progress strokes — 80% opacity, each with a soft outer glow in its
-              own colour (drop-shadow). */}
+          {/* Dark green BASE ring — a full circle that stays put each breath;
+              the light green progress stroke overlays it on the inhale. */}
+          <circle cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeOpacity={0.55}
+            style={{ filter: "drop-shadow(0 0 4px rgba(46,107,64,0.7))" }} />
+          {/* Light green progress — fills clockwise over the dark base on the
+              inhale, recedes on the exhale. 80% opacity + a soft outer glow. */}
           <circle ref={ringInRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
             style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 5px rgba(134,199,155,0.85))" }} />
-          <circle ref={ringOutRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
-            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 5px rgba(46,107,64,0.9))" }} />
           {/* inner blue session ring — faint track + slow fill, thickness matched to the outer */}
           <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(91,157,239,0.16)" strokeWidth={RING_SW} />
           <circle ref={sessionRingRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_BLUE} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
@@ -842,29 +849,8 @@ export function CobreatheBreath({
       </div>
 
       {/* Bottom — the breathing word in the LEFT corner (smaller) + the breath
-          count in the RIGHT corner. A Done pill rises above them once the full
-          set is kept; before then there's no button (the ✕ top-right is the way
-          out, and backgrounding the app still ends it). */}
+          count in the RIGHT corner. The Cancel / Done control lives top-right. */}
       <div ref={bottomRef} className="w-full" style={{ paddingLeft: 28, paddingRight: 28, marginBottom: 8 }}>
-        {/* Done — a PILL (styled like the home cards' Begin pill), sitting under
-            the globe / above the breath line once the full set is kept. */}
-        {reachedNow && (
-          <div className="flex justify-center" style={{ marginBottom: 18 }}>
-            <button
-              type="button"
-              onClick={() => onEnd(Math.round((Date.now() - startRef.current) / 1000), reachedRef.current)}
-              className="rounded-full active:scale-[0.98] transition-transform"
-              style={{
-                background: "rgba(46,107,64,0.85)", color: "#EAF6F4",
-                border: "1px solid rgba(140,195,160,0.5)",
-                fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600,
-                padding: "10px 32px", cursor: "pointer",
-              }}
-            >
-              {t("cobreathe.done", { defaultValue: "Done" })}
-            </button>
-          </div>
-        )}
         <div className="flex items-end" style={{ gap: 14 }}>
           {/* LEFT — Breathe In / Breathe Out. */}
           <div ref={labelRef} className="flex-1 min-w-0" style={{ willChange: "transform, opacity" }}>
