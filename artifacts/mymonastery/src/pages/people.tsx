@@ -10,6 +10,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
 import { FellowsConnect } from "@/components/FellowsConnect";
 import { WalkTogether } from "@/components/WalkTogether";
+import { FellowOnboardingPrompt } from "@/components/FellowOnboardingPrompt";
 import { EncouragementBanner } from "@/components/EncouragementBanner";
 import { useBetaStatus } from "@/hooks/useDemo";
 import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
@@ -468,6 +469,30 @@ export default function People() {
     enabled: !!user,
     staleTime: 30_000,
   });
+  // New-fellow onboarding: prompt once (same place? + share daily progress?) for
+  // a recently-formed fellowship we haven't set prefs for yet. Both parties see
+  // it next time they open People; answering creates the prefs row, which stops
+  // it re-appearing. Scoped to fellows added in the last week so existing fellows
+  // aren't flooded.
+  const { data: fellowPrefsData } = useQuery<{ prefs: Record<number, { samePlace: boolean; sharePlans: boolean }> }>({
+    queryKey: ["/api/fellow-prefs"],
+    queryFn: () => apiRequest("GET", "/api/fellow-prefs"),
+    enabled: !!user,
+    staleTime: 30_000,
+  });
+  const [onboardDismissed, setOnboardDismissed] = useState<Set<number>>(() => new Set());
+  const onboardFellow = useMemo(() => {
+    if (!rawIsBeta || !fellowPrefsData) return null;
+    const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const f = (fellowsData?.fellows ?? []).find((x) => {
+      if (onboardDismissed.has(x.userId)) return false;
+      if (fellowPrefsData.prefs[x.userId]) return false; // already onboarded
+      const created = x.createdAt ? new Date(x.createdAt).getTime() : 0;
+      return created >= weekAgo;
+    });
+    return f ? { userId: f.userId, name: f.name, avatarUrl: f.avatarUrl } : null;
+  }, [rawIsBeta, fellowPrefsData, fellowsData, onboardDismissed]);
+
   const fellowEmails = useMemo(
     () => new Set((fellowsData?.fellows ?? []).map(f => f.email.toLowerCase())),
     [fellowsData],
@@ -622,6 +647,12 @@ export default function People() {
             encouragement. The component renders its own header, and nothing at
             all when there's nothing to show. */}
         {rawIsBeta && <WalkTogether />}
+
+        {/* One-time new-fellow onboarding (same place? + share daily progress?). */}
+        <FellowOnboardingPrompt
+          fellow={onboardFellow}
+          onDone={() => { if (onboardFellow) setOnboardDismissed((s) => new Set(s).add(onboardFellow.userId)); }}
+        />
 
         {/* Plans ("How About") moved to the Events page — share what you're
             going to there, and your fellows can come. (Lives in the Dashboard's

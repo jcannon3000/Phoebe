@@ -8,7 +8,7 @@
 // Beta-gated, mirroring fellows-connect.ts (getUserId / requireBeta / areFellows).
 import { Router, type IRouter, type RequestHandler } from "express";
 import { eq, and, or, inArray, gte, sql } from "drizzle-orm";
-import { db, walkPairingsTable, walkNudgesTable, fellowsTable, usersTable, betaUsersTable, userMutesTable, type WalkPairing } from "@workspace/db";
+import { db, walkPairingsTable, walkNudgesTable, fellowsTable, usersTable, betaUsersTable, userMutesTable, dailyPrayersTable, prayerAttentionsTable, type WalkPairing } from "@workspace/db";
 import { z } from "zod/v4";
 import { sendPushToUser } from "../lib/pushSender";
 import { perUserRateLimit } from "../lib/rate-limit";
@@ -44,6 +44,32 @@ async function areFellows(a: number, b: number): Promise<boolean> {
   )).limit(1);
   return rows.length > 0;
 }
+// How long a freshly-accepted walk keeps showing progress unconditionally — a
+// grace week to let the relationship take root before the heart-to-heart gate
+// kicks in. After this, progress is only visible if the two have actually prayed
+// 1:1 recently (see recentHeartToHeartSet).
+const GRACE_MS = 7 * 24 * 60 * 60 * 1000;
+const HEART_TO_HEART_DAYS = 7;
+
+// Of `ids`, which have exchanged a 1:1 "Heart to Heart" prayer with me in the
+// last week — i.e. one of us actually PRAYED (counted attention) the other's
+// daily prayer. One query. Drives the post-grace progress gate.
+async function recentHeartToHeartSet(me: number, ids: number[]): Promise<Set<number>> {
+  if (ids.length === 0) return new Set();
+  const rows = await db.execute<{ other: number }>(sql`
+    SELECT CASE WHEN pa.viewer_id = ${me} THEN dp.author_id ELSE pa.viewer_id END AS other
+    FROM prayer_attentions pa
+    JOIN daily_prayers dp ON dp.id = pa.daily_prayer_id
+    WHERE pa.counted_at IS NOT NULL
+      AND pa.counted_at > NOW() - INTERVAL '7 days'
+      AND (
+        (pa.viewer_id = ${me} AND dp.author_id IN (${sql.join(ids, sql`, `)}))
+        OR (dp.author_id = ${me} AND pa.viewer_id IN (${sql.join(ids, sql`, `)}))
+      )
+  `);
+  return new Set(rows.rows.map((r) => Number(r.other)));
+}
+
 // Which of `ids` are STILL fellows with me — one query, so a companion whose
 // Fellow link vanished (via any path) is never shown their progress.
 async function fellowSubset(me: number, ids: number[]): Promise<Set<number>> {
@@ -109,12 +135,25 @@ router.get("/walk", requireBeta, async (req, res): Promise<void> => {
   const otherIds = Array.from(new Set([...active, ...paused, ...incoming, ...outgoing].map((r) => partnerOf(r, me))));
   const people = await peopleByIds(otherIds);
 
+  // Progress-visibility gate: for the FIRST WEEK after a walk is accepted, show
+  // each other's progress no matter what. After that, you only see it if you've
+  // shared a 1:1 Heart to Heart prayer in the last week — so the dots stay tied
+  // to a living relationship, not a stale opt-in. (Only the post-grace companions
+  // need the heart-to-heart lookup.)
+  const nowMs = Date.now();
+  const needHeart = active
+    .filter((r) => !(r.acceptedAt && nowMs - new Date(r.acceptedAt).getTime() < GRACE_MS))
+    .map((r) => partnerOf(r, me));
+  const heartSet = await recentHeartToHeartSet(me, needHeart);
+
   // Active companions carry today's progress (the whole point) + last word.
   const companions = (await Promise.all(active.map(async (r) => {
     const pid = partnerOf(r, me);
     const person = people.get(pid);
     if (!person) return null;
-    const progress = await getWalkProgressForToday(pid);
+    const inGrace = !!r.acceptedAt && nowMs - new Date(r.acceptedAt).getTime() < GRACE_MS;
+    const canSeeProgress = inGrace || heartSet.has(pid);
+    const progress = canSeeProgress ? await getWalkProgressForToday(pid) : null;
     const [lastFromThem] = await db.select({ kind: walkNudgesTable.kind, createdAt: walkNudgesTable.createdAt })
       .from(walkNudgesTable)
       .where(and(eq(walkNudgesTable.fromUserId, pid), eq(walkNudgesTable.toUserId, me)))
@@ -122,7 +161,10 @@ router.get("/walk", requireBeta, async (req, res): Promise<void> => {
     return {
       pairId: r.id, userId: pid, name: person.name, avatarUrl: person.avatarUrl,
       intention: r.intention ?? null, since: r.acceptedAt,
-      progress, lastNudge: lastFromThem ? { kind: lastFromThem.kind, at: lastFromThem.createdAt } : null,
+      // progress is null when locked — they're still your companion, but you need
+      // a recent 1:1 prayer to see today's dots again.
+      progress, progressLocked: !canSeeProgress,
+      lastNudge: lastFromThem ? { kind: lastFromThem.kind, at: lastFromThem.createdAt } : null,
     };
   }))).filter((x): x is NonNullable<typeof x> => x !== null);
 

@@ -555,7 +555,7 @@ export default function CobreathePage() {
               companions={summaryFaces}
               nearCount={peakNear.count}
               nearFellows={peakNear.fellows}
-              onContinue={() => { if (fromContemplationRef.current) setLocation("/contemplation"); else setMode("intro"); }}
+              onContinue={() => setLocation("/")}
             />
           );
         })()}

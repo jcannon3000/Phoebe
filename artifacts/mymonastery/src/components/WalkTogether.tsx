@@ -154,9 +154,10 @@ export function WalkTogether() {
             <div className="flex-1 min-w-0">
               <p className="truncate text-[15px] font-medium" style={{ color: WARM, fontFamily: FONT }}>{c.name ?? "Someone"}</p>
               <div className="flex items-center gap-2 mt-1">
-                {p && p.anchors.length > 0 && <Dots anchors={p.anchors} />}
+                {!c.progressLocked && p && p.anchors.length > 0 && <Dots anchors={p.anchors} />}
                 <span className="text-[12px]" style={{ color: SAGE, fontFamily: FONT }}>
-                  {!p || p.totalCount === 0 ? "Walking with you"
+                  {c.progressLocked ? "💛 Pray 1:1 to see today"
+                    : !p || p.totalCount === 0 ? "Walking with you"
                     : p.allKept ? "Kept the whole rhythm today 🌿"
                     : `${p.keptCount}/${p.totalCount} kept today`}
                 </span>

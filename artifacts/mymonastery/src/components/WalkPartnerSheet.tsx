@@ -21,6 +21,10 @@ export type WalkProgress = { ymd: string; tz: string; anchors: WalkAnchor[]; kep
 export type WalkCompanion = {
   pairId: number; userId: number; name: string | null; avatarUrl: string | null;
   intention: string | null; progress: WalkProgress | null;
+  // True when you're still walking together but the grace week is over and you
+  // haven't prayed a 1:1 Heart to Heart recently — so today's dots are hidden
+  // until you reconnect.
+  progressLocked?: boolean;
   lastNudge: { kind: string; at: string } | null;
 };
 
@@ -61,6 +65,9 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
   const name = companion?.name ?? "Someone";
   const first = name.split(/\s+/)[0] || name;
   const progress = companion?.progress ?? null;
+  const locked = !!companion?.progressLocked;
+  // You can only send a word of encouragement once they've completed their day.
+  const completed = !!progress?.allKept;
 
   return (
     <AnimatePresence>
@@ -101,50 +108,79 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
               <p className="text-[13.5px] italic mt-1 mb-1" style={{ color: "rgba(182,210,188,0.8)", fontFamily: "Georgia, serif" }}>“{companion.intention}”</p>
             )}
 
-            {/* Today's anchors — only the shared rhythm; personal practices never cross. */}
-            <div className="mt-4 mb-1">
-              {progress && progress.anchors.length > 0 ? progress.anchors.map((a) => (
-                <div key={a.key} className="flex items-center gap-3 py-2">
-                  <span style={{ fontSize: 18, width: 24, textAlign: "center", opacity: a.done ? 1 : 0.45 }}>{a.emoji}</span>
-                  <span className="flex-1 text-[15px]" style={{ color: a.done ? WARM : "rgba(182,210,188,0.6)", fontFamily: FONT }}>{a.label}</span>
-                  <span
-                    aria-hidden
-                    style={{
-                      width: 18, height: 18, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      background: a.done ? DOT_ON : "transparent", border: a.done ? "none" : "1px solid rgba(143,175,150,0.5)",
-                      color: "#0C2417", fontSize: 11, fontWeight: 800,
-                    }}
-                  >{a.done ? "✓" : ""}</span>
-                </div>
-              )) : (
-                <p className="text-[14px] py-2" style={{ color: SAGE, fontFamily: FONT }}>Their rhythm for today will appear here.</p>
-              )}
-            </div>
-            <p className="text-[11.5px] mt-1 mb-4" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
-              Personal and private practices stay between {first} and God.
-            </p>
-
-            {/* Respond — the whole point: a warm, one-tap word. */}
-            <div className="flex items-center gap-2">
-              {NUDGES.map((n) => (
+            {locked ? (
+              /* Grace week is over and no recent Heart to Heart — dots are hidden
+                 until they reconnect 1:1. A gentle nudge toward prayer, not a wall. */
+              <div className="mt-5 mb-2 rounded-2xl px-4 py-5 text-center" style={{ background: "rgba(46,107,64,0.12)", border: `1px solid ${CARD_B}` }}>
+                <div style={{ fontSize: 26 }}>💛</div>
+                <p className="text-[14px] mt-2" style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+                  It's been a little while. Pray a Heart to Heart with {first} this week to see each other's days again.
+                </p>
                 <button
-                  key={n.kind}
                   type="button"
-                  disabled={nudge.isPending || sent !== null}
-                  onClick={() => nudge.mutate(n.kind)}
-                  className="flex-1 flex flex-col items-center justify-center gap-1 rounded-2xl py-3 transition-opacity active:scale-[0.97]"
-                  style={{
-                    background: sent === n.kind ? "rgba(46,107,64,0.55)" : "rgba(46,107,64,0.16)",
-                    border: `1px solid ${sent === n.kind ? "rgba(110,180,130,0.7)" : CARD_B}`,
-                    opacity: sent !== null && sent !== n.kind ? 0.45 : 1, fontFamily: FONT,
-                  }}
+                  onClick={() => { onClose(); setLocation(`/prayer-partner`); }}
+                  className="inline-flex items-center justify-center rounded-full px-5 py-2.5 mt-4 text-[13px] font-semibold transition-opacity active:scale-[0.98]"
+                  style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
                 >
-                  <span style={{ fontSize: 20 }}>{n.emoji}</span>
-                  <span className="text-[11.5px] font-semibold" style={{ color: WARM }}>{n.label}</span>
+                  Pray a Heart to Heart
                 </button>
-              ))}
-            </div>
-            {sent && <p className="text-[12.5px] text-center mt-2.5" style={{ color: "#A8C5A0", fontFamily: FONT }}>Sent to {first} 🌿</p>}
+              </div>
+            ) : (
+              <>
+                {/* Today's anchors — only the shared rhythm; personal practices never cross. */}
+                <div className="mt-4 mb-1">
+                  {progress && progress.anchors.length > 0 ? progress.anchors.map((a) => (
+                    <div key={a.key} className="flex items-center gap-3 py-2">
+                      <span style={{ fontSize: 18, width: 24, textAlign: "center", opacity: a.done ? 1 : 0.45 }}>{a.emoji}</span>
+                      <span className="flex-1 text-[15px]" style={{ color: a.done ? WARM : "rgba(182,210,188,0.6)", fontFamily: FONT }}>{a.label}</span>
+                      <span
+                        aria-hidden
+                        style={{
+                          width: 18, height: 18, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          background: a.done ? DOT_ON : "transparent", border: a.done ? "none" : "1px solid rgba(143,175,150,0.5)",
+                          color: "#0C2417", fontSize: 11, fontWeight: 800,
+                        }}
+                      >{a.done ? "✓" : ""}</span>
+                    </div>
+                  )) : (
+                    <p className="text-[14px] py-2" style={{ color: SAGE, fontFamily: FONT }}>Their rhythm for today will appear here.</p>
+                  )}
+                </div>
+                <p className="text-[11.5px] mt-1 mb-4" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
+                  Personal and private practices stay between {first} and God.
+                </p>
+
+                {/* Respond — a warm, one-tap word, unlocked once they've kept the whole day. */}
+                {completed ? (
+                  <>
+                    <div className="flex items-center gap-2">
+                      {NUDGES.map((n) => (
+                        <button
+                          key={n.kind}
+                          type="button"
+                          disabled={nudge.isPending || sent !== null}
+                          onClick={() => nudge.mutate(n.kind)}
+                          className="flex-1 flex flex-col items-center justify-center gap-1 rounded-2xl py-3 transition-opacity active:scale-[0.97]"
+                          style={{
+                            background: sent === n.kind ? "rgba(46,107,64,0.55)" : "rgba(46,107,64,0.16)",
+                            border: `1px solid ${sent === n.kind ? "rgba(110,180,130,0.7)" : CARD_B}`,
+                            opacity: sent !== null && sent !== n.kind ? 0.45 : 1, fontFamily: FONT,
+                          }}
+                        >
+                          <span style={{ fontSize: 20 }}>{n.emoji}</span>
+                          <span className="text-[11.5px] font-semibold" style={{ color: WARM }}>{n.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {sent && <p className="text-[12.5px] text-center mt-2.5" style={{ color: "#A8C5A0", fontFamily: FONT }}>Sent to {first} 🌿</p>}
+                  </>
+                ) : (
+                  <p className="text-[12.5px] text-center py-2" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
+                    You can send {first} a word of encouragement once they've kept their whole day 🌿
+                  </p>
+                )}
+              </>
+            )}
 
             <button
               type="button"
