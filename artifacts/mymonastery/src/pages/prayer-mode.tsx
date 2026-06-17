@@ -2095,6 +2095,113 @@ function WhatsNextSlide({
   );
 }
 
+// "Prayer completed" — the close mirrors the home splash: a "Prayer completed"
+// heading, the rail of people you prayed with THIS MONTH + the count, and (on a
+// morning close with a daily reflection) a WHAT'S NEXT card to read it. Replaces
+// the older "Carry the day with you" slide and the blessing send-off, so the
+// finish reads like the app's own home hero.
+function PrayerCompletedSlide({
+  onDone,
+  visible,
+  doneLabel,
+  reflectionSource = null,
+}: {
+  onDone: () => void;
+  visible: boolean;
+  doneLabel?: string;
+  reflectionSource?: Exclude<ReflectionSource, "none"> | null;
+}) {
+  const { t } = useTranslation();
+  // Same source the home splash uses, so it says "this month" and matches.
+  const { data } = useQuery<{ people?: Array<{ id: number; name: string | null; avatarUrl: string | null }>; total?: number }>({
+    queryKey: ["/api/prayer-streak/community-prayed-month"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-month"),
+    staleTime: 60_000,
+  });
+  const people = data?.people ?? [];
+  const faces = people.slice(0, 7);
+  const overflow = Math.max(0, people.length - faces.length);
+  const total = data?.total ?? people.length;
+
+  const refl = reflectionSource;
+  const reflName = refl === "fdd" ? "Forward Day by Day" : refl === "ssje" ? "Brother, Give Us a Word" : "CAC Daily Meditation";
+  const openReflection = () => {
+    if (refl === "fdd") { markFddRead(); openExternal(FDD_TODAY_URL); }
+    else if (refl === "ssje") { markSsjeRead(); openExternal(SSJE_TODAY_URL); }
+    else { markCacRead(); openExternal(CAC_TODAY_URL); }
+  };
+
+  const faceVariant = {
+    hidden: { opacity: 0, y: 14 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" as const } },
+  };
+
+  return (
+    <div className="w-full flex flex-col items-center text-center" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.4s ease", gap: 26 }}>
+      <motion.p
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+        style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}
+      >
+        {t("prayer_mode.prayer_completed", { defaultValue: "Prayer completed" })}
+      </motion.p>
+
+      {faces.length > 0 && (
+        <motion.div
+          className="flex flex-col items-center w-full" style={{ maxWidth: 420 }}
+          initial="hidden" animate="show"
+          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.12 } } }}
+        >
+          <div className="flex items-center justify-center -space-x-3">
+            {faces.map((p) => (
+              p.avatarUrl ? (
+                <motion.img key={p.id} variants={faceVariant} src={p.avatarUrl} alt={(p.name ?? "").trim().split(/\s+/)[0] || "Someone"} loading="eager" decoding="async" className="w-12 h-12 rounded-full object-cover" style={{ border: "2px solid #0C1F12", backgroundColor: "#1A4A2E" }} />
+              ) : (
+                <motion.div key={p.id} variants={faceVariant} className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "2px solid #0C1F12" }}>
+                  {(p.name ?? "?").trim().split(/\s+/).slice(0, 2).map((s) => s[0] ?? "").join("").toUpperCase().slice(0, 2) || "?"}
+                </motion.div>
+              )
+            ))}
+            {overflow > 0 && (
+              <motion.div variants={faceVariant} className="w-12 h-12 rounded-full flex items-center justify-center text-[12px] font-semibold" style={{ background: "rgba(46,107,64,0.35)", color: "#C8D4C0", border: "2px solid #0C1F12" }}>
+                +{overflow}
+              </motion.div>
+            )}
+          </div>
+          <motion.p variants={faceVariant} className="text-[15px] mt-5 text-center" style={{ color: "#C8D4C0", fontFamily: "'Space Grotesk', sans-serif" }}>
+            {t("splash.prayed_with_you_total", { count: total, defaultValue: `You prayed with ${total} ${total === 1 ? "person" : "people"} this month` })}
+          </motion.p>
+        </motion.div>
+      )}
+
+      {refl && (
+        <motion.button
+          type="button" onClick={openReflection}
+          initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.24 }}
+          className="w-full flex flex-col items-start gap-1.5 rounded-2xl px-5 py-4 text-left transition-opacity hover:opacity-90 active:scale-[0.98]"
+          style={{ maxWidth: 360, background: "rgba(46,107,64,0.22)", border: "1px solid rgba(46,107,64,0.45)", cursor: "pointer" }}
+        >
+          <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8FAF96" }}>
+            {t("prayer_mode.whats_next_eyebrow", { defaultValue: "What's next" })}
+          </span>
+          <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600, color: "#F0EDE6" }}>{reflName}</span>
+          <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600, color: "#A8C5A0", marginTop: 2 }}>
+            {t("common.read", { defaultValue: "Read" })} →
+          </span>
+        </motion.button>
+      )}
+
+      <motion.button
+        type="button" onClick={onDone}
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.36 }}
+        className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+      >
+        {doneLabel ?? t("common.done")}
+      </motion.button>
+    </div>
+  );
+}
+
 // The blessing — the universal final beat of a prayer close. An office ends not
 // on a tally but on a gift: a benediction spoken over you, then you are sent on.
 // The Aaronic blessing (Numbers 6) by day; a Compline rest at night. This is
@@ -4123,8 +4230,8 @@ export default function PrayerModePage() {
             where the user's morning/evening rhythm grid lives, and
             we want feed prayer to feed into it. */}
         {phase === "closing" && endOnReflection && (
-          <WhatsNextSlide
-            source={reflectionSource as Exclude<ReflectionSource, "none">}
+          <PrayerCompletedSlide
+            reflectionSource={reflectionSource as Exclude<ReflectionSource, "none">}
             onDone={handleDone}
             visible={slideVisible}
           />
@@ -4170,7 +4277,7 @@ export default function PrayerModePage() {
           <HabitSlide onDone={handleDone} visible={slideVisible} isEvening={closingIsEvening} coPrayers={coPrayersData?.people ?? []} />
         )}
         {phase === "blessing" && (
-          <BlessingSlide isEvening={closingIsEvening} onDone={exitToFinish} visible={slideVisible} />
+          <PrayerCompletedSlide onDone={exitToFinish} visible={slideVisible} />
         )}
       </div>
 
