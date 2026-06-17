@@ -1,16 +1,18 @@
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { useAttention } from "@/hooks/useAttention";
+import { apiRequest } from "@/lib/queryClient";
 
 const BG = "#0C1F12";
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const RING = "168,197,160"; // soft sage-green
 
-// PrayerAttentionView — the heart of the model. Open a partner's prayer for the
-// day full-screen and still; a breathing ring gently fills over 3 seconds (the
-// timer freezes if you leave the app), then settles to "held in prayer". No
-// amen, no button to tap — the attention itself is the prayer.
+// PrayerAttentionView — open a partner's prayer for the day full-screen, read it,
+// and tap Amen to pray it. Amen records the prayed moment (an in-app receipt the
+// author sees; never a push), then volleys straight on to the reply — "share
+// your prayer back", the second slide. (Per the user's vision: a standard prayer
+// slide + an Amen button, replacing the older hold-to-pray attention ring.)
 export function PrayerAttentionView({
   dailyPrayerId, body, partnerName, partnerAvatarUrl, alreadyCounted, canSendBack, onClose, onSendBack,
 }: {
@@ -24,13 +26,25 @@ export function PrayerAttentionView({
   onSendBack: () => void;
 }) {
   const { t } = useTranslation();
-  const { progress, counted } = useAttention({ dailyPrayerId, enabled: !alreadyCounted });
-  const held = alreadyCounted || counted;
-
-  // Ring geometry.
-  const R = 54, C = 2 * Math.PI * R;
-  const shown = held ? 1 : progress;
+  const [held, setHeld] = useState(alreadyCounted);
+  const [amening, setAmening] = useState(false);
   const first = (partnerName || "").trim().split(/\s+/)[0] || partnerName;
+
+  // Amen — record the prayed moment (a ≥3s attention receipt the server counts
+  // as prayed), then volley on to the reply composer when you can still share
+  // today. Optimistic: flip to held at once; the receipt is best-effort.
+  const amen = () => {
+    if (held || amening) return;
+    setAmening(true);
+    setHeld(true);
+    void apiRequest("POST", `/api/daily-prayer/${dailyPrayerId}/attention`, { seconds: 3 })
+      .catch(() => { /* best-effort receipt */ });
+    if (canSendBack) setTimeout(() => onSendBack(), 450);
+  };
+
+  // Ring geometry — decorative now (no auto-fill): empty until Amen, full after.
+  const R = 54, C = 2 * Math.PI * R;
+  const shown = held ? 1 : 0;
 
   return (
     <motion.div
@@ -79,32 +93,41 @@ export function PrayerAttentionView({
         </p>
       </div>
 
-      {/* Footer — "held in prayer" fades in once attention is given; then the
-          gentle invitation to send your own prayer back. */}
+      {/* Footer — Amen to pray it (then straight on to the reply), or, once
+          held, the gentle invitation to share your prayer back. */}
       <div className="px-6" style={{ minHeight: 96 }}>
-        <AnimatePresence>
-          {held && (
-            <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-4">
-              <p className="text-[13px] tracking-wide" style={{ color: `rgba(${RING},0.9)`, fontFamily: "'Space Grotesk', sans-serif" }}>
-                {t("prayer_partner.held_in_prayer", { defaultValue: "Held in prayer" })}
-              </p>
-              {canSendBack ? (
-                <button
-                  onClick={onSendBack}
-                  className="rounded-full px-7 py-3 text-[15px] font-semibold active:scale-[0.98] transition-transform"
-                  style={{ background: `rgba(${RING},0.92)`, color: BG, fontFamily: "'Space Grotesk', sans-serif" }}
-                >
-                  {t("prayer_partner.send_yours_back", { defaultValue: "Share your prayer back" })} →
-                </button>
-              ) : (
-                <button onClick={onClose} className="rounded-full px-7 py-3 text-[15px] font-semibold active:scale-[0.98] transition-transform"
-                  style={{ background: "rgba(143,175,150,0.16)", color: WARM, fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {t("common.done", { defaultValue: "Done" })}
-                </button>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {!held ? (
+          <div className="flex flex-col items-center">
+            <button
+              onClick={amen}
+              disabled={amening}
+              className="rounded-full px-10 py-3.5 text-[16px] font-semibold active:scale-[0.98] transition-transform disabled:opacity-60"
+              style={{ background: `rgba(${RING},0.92)`, color: BG, fontFamily: "'Space Grotesk', sans-serif" }}
+            >
+              🙏 {t("prayer_partner.amen", { defaultValue: "Amen" })}
+            </button>
+          </div>
+        ) : (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center gap-4">
+            <p className="text-[13px] tracking-wide" style={{ color: `rgba(${RING},0.9)`, fontFamily: "'Space Grotesk', sans-serif" }}>
+              {t("prayer_partner.held_in_prayer", { defaultValue: "Held in prayer" })}
+            </p>
+            {canSendBack ? (
+              <button
+                onClick={onSendBack}
+                className="rounded-full px-7 py-3 text-[15px] font-semibold active:scale-[0.98] transition-transform"
+                style={{ background: `rgba(${RING},0.92)`, color: BG, fontFamily: "'Space Grotesk', sans-serif" }}
+              >
+                {t("prayer_partner.send_yours_back", { defaultValue: "Share your prayer back" })} →
+              </button>
+            ) : (
+              <button onClick={onClose} className="rounded-full px-7 py-3 text-[15px] font-semibold active:scale-[0.98] transition-transform"
+                style={{ background: "rgba(143,175,150,0.16)", color: WARM, fontFamily: "'Space Grotesk', sans-serif" }}>
+                {t("common.done", { defaultValue: "Done" })}
+              </button>
+            )}
+          </motion.div>
+        )}
       </div>
     </motion.div>
   );
