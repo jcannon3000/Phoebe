@@ -1270,7 +1270,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           WebkitOverflowScrolling: "touch",
           paddingTop: isTitleCard
             ? "max(24px, var(--safe-top))"
-            : "max(72px, calc(var(--safe-top) + 42px))",
+            : "max(110px, calc(var(--safe-top) + 80px))",
           paddingBottom: player.current
             ? "calc(env(safe-area-inset-bottom) + 176px)"
             : "calc(env(safe-area-inset-bottom) + 112px)",
@@ -1648,13 +1648,19 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             // psalm_title; the verses follow on lesson_verses chunks.
             (() => {
               const meta = currentSlide.metadata as
-                | { lessonSubtitle?: unknown }
+                | { lessonSubtitle?: unknown; readUrl?: unknown; inlineWeb?: unknown }
                 | undefined;
               const subtitle =
                 typeof meta?.lessonSubtitle === "string" && meta.lessonSubtitle.length > 0
                   ? meta.lessonSubtitle
                   : "A Lesson";
               const reference = currentSlide.title ?? "";
+              // The reading shows the WEB inline (the default, "present"); NRSV
+              // opens the passage in the external Bible page. Only offer the
+              // toggle when WEB is ACTUALLY shown inline — not the reference-only
+              // fallback (deuterocanon), where the read-online pill handles it.
+              const readUrl = typeof meta?.readUrl === "string" ? meta.readUrl : null;
+              const inlineWeb = meta?.inlineWeb === true;
               return (
                 <div
                   style={{
@@ -1693,6 +1699,28 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   >
                     {reference}
                   </h1>
+                  {/* Translation toggle — WEB (shown inline, current) on the
+                      left; NRSV on the right opens the passage in the external
+                      Bible page (NRSV can't be bundled). */}
+                  {inlineWeb && readUrl && (
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, marginTop: 8 }}>
+                      <p style={{ color: FAINT_GREEN, fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", margin: 0, fontWeight: 600 }}>
+                        Translation
+                      </p>
+                      <div style={{ display: "inline-flex", borderRadius: 999, overflow: "hidden", border: "1px solid rgba(140,195,160,0.3)" }}>
+                        <span style={{ padding: "7px 20px", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, color: WARM_TEXT, background: "rgba(46,107,64,0.85)" }}>
+                          WEB
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => openExternal(readUrl)}
+                          style={{ padding: "7px 20px", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, color: "rgba(182,210,188,0.85)", background: "transparent", border: "none", cursor: "pointer" }}
+                        >
+                          NRSV
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })()
@@ -2091,43 +2119,23 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   </p>
                 );
               }
+              // PARAGRAPH form — the reading flows as continuous prose (NOT
+              // broken into per-verse rows like the psalms), with small inline
+              // superscript verse numbers so references are still findable.
               return (
-                <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 600 }}>
+                <p style={{ fontSize: 19, lineHeight: 1.75, color: WARM_TEXT, margin: 0, fontFamily: SPACE_GROTESK, maxWidth: 600 }}>
                   {verses.map((v, i) => {
                     const prev = i > 0 ? verses[i - 1] : null;
                     const showChapter = !prev || prev.chapter !== v.chapter;
                     const label = showChapter ? `${v.chapter}:${v.verse}` : String(v.verse);
                     return (
-                      <div key={i} style={{ display: "flex", gap: 10 }}>
-                        <span
-                          style={{
-                            flex: "0 0 auto",
-                            minWidth: showChapter ? 36 : 22,
-                            color: FAINT_GREEN,
-                            fontSize: 13,
-                            fontFamily: SPACE_GROTESK,
-                            lineHeight: 1.6,
-                            paddingTop: 2,
-                          }}
-                        >
-                          {label}
-                        </span>
-                        <p
-                          style={{
-                            flex: 1,
-                            fontSize: 19,
-                            lineHeight: 1.6,
-                            color: WARM_TEXT,
-                            margin: 0,
-                            fontFamily: SPACE_GROTESK,
-                          }}
-                        >
-                          {v.text}
-                        </p>
-                      </div>
+                      <span key={i}>
+                        <sup style={{ color: FAINT_GREEN, fontSize: "0.6em", fontWeight: 600, marginRight: 3 }}>{label}</sup>
+                        {v.text}{i < verses.length - 1 ? " " : ""}
+                      </span>
                     );
                   })}
-                </div>
+                </p>
               );
             })()
           ) : currentSlide.type === "psalm" && currentSlide.content ? (
