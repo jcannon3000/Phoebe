@@ -22,7 +22,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { requestStepAuthorization } from "@/lib/appleHealth";
-import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, CUSTOM_ANCHORS_EVENT, type CustomAnchor } from "@/lib/customAnchors";
+import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, type CustomAnchor, type CustomSlot } from "@/lib/customAnchors";
 import {
   setSideLevel,
   setSideReflection,
@@ -238,6 +238,10 @@ export default function WayOfLoveRuleFlow({
   const [customList, setCustomList] = useState<CustomAnchor[]>(() => getCustomAnchors());
   const [customTitle, setCustomTitle] = useState("");
   const [customEmoji, setCustomEmoji] = useState("");
+  // Which part of the day a new custom practice belongs to — slots its card
+  // into the rhythm at the right point. Kept across adds (often several land in
+  // the same slot).
+  const [customSlot, setCustomSlot] = useState<CustomSlot>("morning");
   useEffect(() => {
     const refresh = () => setCustomList(getCustomAnchors());
     window.addEventListener(CUSTOM_ANCHORS_EVENT, refresh);
@@ -246,7 +250,7 @@ export default function WayOfLoveRuleFlow({
   const addCustom = () => {
     const title = customTitle.trim();
     if (!title) return;
-    addCustomAnchor(title, customEmoji.trim() || "🌿");
+    addCustomAnchor(title, customEmoji.trim() || "🌿", customSlot);
     setCustomTitle("");
     setCustomEmoji("");
     setCustomList(getCustomAnchors());
@@ -813,11 +817,43 @@ export default function WayOfLoveRuleFlow({
               <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "11px 14px" }}>
                 <span style={{ fontSize: 18, flexShrink: 0 }} aria-hidden>{a.emoji}</span>
                 <span style={{ flex: 1, minWidth: 0, color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</span>
+                <span style={{ flexShrink: 0, color: SAGE_DIM, fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: FONT }}>{a.slot}</span>
                 <button type="button" onClick={() => { removeCustomAnchor(a.id); setCustomList(getCustomAnchors()); }} aria-label={t("common.remove", { defaultValue: "Remove" })} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", fontSize: 16, padding: "2px 6px" }}>✕</button>
               </div>
             ))}
           </div>
         )}
+        {/* When in the day — so the card slots into the rhythm in the right
+            place (a morning walk near Morning Prayer, an evening stretch near
+            the evening office). */}
+        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 8px", fontFamily: FONT }}>
+          {t("wol_rule.custom_when", { defaultValue: "When in the day?" })}
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+          {CUSTOM_SLOTS.map((s) => {
+            const on = customSlot === s;
+            const label = s === "morning" ? t("wol_rule.slot_morning", { defaultValue: "Morning" })
+              : s === "midday" ? t("wol_rule.slot_midday", { defaultValue: "Midday" })
+                : s === "afternoon" ? t("wol_rule.slot_afternoon", { defaultValue: "Afternoon" })
+                  : t("wol_rule.slot_evening", { defaultValue: "Evening" });
+            return (
+              <button
+                key={s}
+                type="button"
+                onClick={() => { touchedRef.current = true; setCustomSlot(s); }}
+                style={{
+                  background: on ? CARD_ACTIVE : CARD,
+                  border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
+                  color: on ? CREAM : SAGE,
+                  borderRadius: 10, padding: "10px 4px", fontSize: 12.5, fontWeight: on ? 700 : 500,
+                  fontFamily: FONT, cursor: "pointer", textAlign: "center",
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
         <div style={{ display: "flex", gap: 8, margin: "16px 0 0" }}>
           <input
             value={customEmoji}

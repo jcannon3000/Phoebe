@@ -19,7 +19,7 @@ import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/offic
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
 import { CAC_TODAY_URL, markCacRead } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
-import { toggleCustomDoneToday } from "@/lib/customAnchors";
+import { toggleCustomDoneToday, type CustomSlot } from "@/lib/customAnchors";
 
 const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
@@ -474,6 +474,19 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         ? t(`rhythm.card_${side.toLowerCase()}_devotion`, { defaultValue: `${side} Devotion` })
         : t(`rhythm.card_${side.toLowerCase()}`, { defaultValue: `${side} Prayer` });
 
+  // Custom practices slot into the rhythm by their time-of-day: morning ones
+  // ride with Morning Prayer, midday after contemplation, afternoon after the
+  // optional practices, evening with the evening office. Tapping toggles today's
+  // check (no navigation), so each counts as a dot like the built-in anchors.
+  const customCard = (a: (typeof customAnchors)[number]) => ({
+    key: `custom-${a.id}`, emoji: a.emoji || "✅", rgb: "143,170,150", done: a.done, href: "",
+    onClick: () => toggleCustomDoneToday(a.id),
+    title: a.title,
+    blurb: a.done ? kept : t("rhythm.custom_blurb", { defaultValue: "Your daily practice" }),
+    cta: t("rhythm.mark_done", { defaultValue: "Mark done" }), later: false,
+  });
+  const customsForSlot = (slot: CustomSlot) => customAnchors.filter((a) => a.slot === slot).map(customCard);
+
   const cards = [
     ...(morningActive ? [{
       key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer?side=morning",
@@ -482,6 +495,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurbCycle: morningDone ? undefined : [morningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
+    ...customsForSlot("morning"),
     ...(reflectActive ? [{
       key: "reflect", emoji: "📖", rgb: "96,141,209", done: reflectDone, href: "/menu/reflections",
       title: t("rhythm.card_reflect", { defaultValue: "Today's reflection" }),
@@ -509,6 +523,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // When done, show a plain ✓ like the other anchors — no "Sit again" pill.
       progress: { current: contemplationMin, goal: contemplationGoalMin },
     }] : []),
+    ...customsForSlot("midday"),
     ...(gratitudeActive ? [{
       key: "gratitude", emoji: "🙏", rgb: "182,140,90", done: gratitudeDone, href: "/gratitude",
       title: t("rhythm.card_gratitude", { defaultValue: "Gratitude" }),
@@ -530,16 +545,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.view", { defaultValue: "View" }), later: false,
       progress: { current: stepsToday, goal: stepsGoal },
     }] : []),
-    // User-defined custom practices — each a simple "did I do it today" card.
-    // Tapping it toggles today's check (no navigation), so it counts as a dot
-    // like the built-in anchors; checked → it slides into Done.
-    ...customAnchors.map((a) => ({
-      key: `custom-${a.id}`, emoji: a.emoji || "✅", rgb: "143,170,150", done: a.done, href: "",
-      onClick: () => toggleCustomDoneToday(a.id),
-      title: a.title,
-      blurb: a.done ? kept : t("rhythm.custom_blurb", { defaultValue: "Your daily practice" }),
-      cta: t("rhythm.mark_done", { defaultValue: "Mark done" }), later: false,
-    })),
+    // Afternoon custom practices sit after the day's optional practices.
+    ...customsForSlot("afternoon"),
     ...(eveningActive ? [{
       // Evening sits last and stays a quiet "later" card until 3 PM, so the
       // morning rhythm (reflection → contemplation) leads the day; from 3 PM on
@@ -556,6 +563,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
       later: hour < 15,
     }] : []),
+    ...customsForSlot("evening"),
   ];
 
   // When a dedicated office hero is supplied (the beta home), the office shows

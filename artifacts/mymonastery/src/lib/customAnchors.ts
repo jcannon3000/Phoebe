@@ -8,7 +8,13 @@
 // round-trip. Two custom events let mounted surfaces (useRhythmState, the create
 // UI) re-read live: one when the LIST changes, one when a CHECK toggles.
 
-export type CustomAnchor = { id: string; title: string; emoji: string };
+// Where in the day this practice belongs — drives where its card slots into the
+// daily rhythm (a morning walk near Morning Prayer, an evening stretch near the
+// evening office, etc.). Defaults to "afternoon" (a neutral middle) for anchors
+// created before this field existed.
+export type CustomSlot = "morning" | "midday" | "afternoon" | "evening";
+export const CUSTOM_SLOTS: CustomSlot[] = ["morning", "midday", "afternoon", "evening"];
+export type CustomAnchor = { id: string; title: string; emoji: string; slot: CustomSlot };
 
 const DEFS_KEY = "phoebe:custom-anchors";
 const DONE_PREFIX = "phoebe:custom-done:";
@@ -29,24 +35,31 @@ export function getCustomAnchors(): CustomAnchor[] {
   try {
     const raw = JSON.parse(localStorage.getItem(DEFS_KEY) || "[]");
     if (!Array.isArray(raw)) return [];
-    return raw.filter(
-      (a): a is CustomAnchor =>
-        !!a && typeof a.id === "string" && typeof a.title === "string" && typeof a.emoji === "string",
-    );
+    return raw
+      .filter(
+        (a): a is { id: string; title: string; emoji: string; slot?: unknown } =>
+          !!a && typeof a.id === "string" && typeof a.title === "string" && typeof a.emoji === "string",
+      )
+      .map((a) => ({
+        id: a.id,
+        title: a.title,
+        emoji: a.emoji,
+        slot: CUSTOM_SLOTS.includes(a.slot as CustomSlot) ? (a.slot as CustomSlot) : "afternoon",
+      }));
   } catch {
     return [];
   }
 }
 
 /** Add a custom practice. Title is required; emoji defaults to ✅ if blank. */
-export function addCustomAnchor(title: string, emoji: string): void {
+export function addCustomAnchor(title: string, emoji: string, slot: CustomSlot = "afternoon"): void {
   const t = title.trim();
   if (!t) return;
   const list = getCustomAnchors();
   if (list.length >= MAX_CUSTOM) return;
   // Unique-ish id from time + a little entropy (no server ids needed).
   const id = `c${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
-  list.push({ id, title: t.slice(0, 40), emoji: (emoji.trim() || "✅").slice(0, 8) });
+  list.push({ id, title: t.slice(0, 40), emoji: (emoji.trim() || "✅").slice(0, 8), slot });
   saveDefs(list);
 }
 

@@ -6,7 +6,7 @@ import {
   CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT,
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
-import { getCustomAnchors, isCustomDoneToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT } from "@/lib/customAnchors";
+import { getCustomAnchors, isCustomDoneToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
 import { getSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { useDailySteps } from "@/lib/appleHealth";
@@ -76,7 +76,7 @@ export type RhythmState = {
   stepsGoal: number;
   /** User-defined custom practices (title + emoji + a per-day check) — each an
    *  extra anchor: shows as a Daily-progress card and counts as a dot. */
-  customAnchors: Array<{ id: string; title: string; emoji: string; done: boolean }>;
+  customAnchors: Array<{ id: string; title: string; emoji: string; slot: CustomSlot; done: boolean }>;
   /** How many anchors exist for this user — the four core ones plus any
    *  active optional practices (gratitude / examen). The denominator of the
    *  "N of X kept" header. */
