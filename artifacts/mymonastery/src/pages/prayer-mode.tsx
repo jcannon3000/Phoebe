@@ -4027,15 +4027,13 @@ export default function PrayerModePage() {
               instantly so we navigate straight from the stable summary. */}
       <CobreatheOverlay
         open={cobreatheOpen}
-        onSummary={seamlessFlow ? undefined : () => advance()}
-        immediateClose={seamlessFlow}
-        onClose={(result) => {
-          setCobreatheOpen(false);
-          // Only advance the office on a COMPLETED breath. Cancelling (✕) or
-          // backgrounding out calls onClose() with no result — that should just
-          // return to the pause slide, not navigate forward to the office close.
-          if (seamlessFlow && result?.completed) advance();
-        }}
+        // Advance the office UNDERNEATH the moment the summary appears (in BOTH
+        // flows) so the summary then fades out onto the next slide — the Lord's
+        // Prayer — instead of flashing the contemplation picker slide behind it.
+        // onSummary fires only on a COMPLETED breath; cancelling (✕) calls
+        // onClose with no summary, so it just returns to the pause slide.
+        onSummary={() => advance()}
+        onClose={() => setCobreatheOpen(false)}
       />
     </div>
   );
