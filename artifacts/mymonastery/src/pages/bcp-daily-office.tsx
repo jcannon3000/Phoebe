@@ -5,7 +5,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import type { Slide } from "@/components/MorningPrayer/types";
 import { openExternal } from "@/lib/openExternal";
-import { bibleUrlSegments } from "@/lib/bibleGatewayUrl";
+import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import i18n from "@/i18n";
@@ -2473,51 +2473,41 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             if (currentSlide.type === "lesson_title" && currentSlide.metadata?.inlineWeb) {
               return null;
             }
-            // A reference with more than one contiguous range — multi-range
-            // ("Num. 11:16-17, 24-29") or cross-chapter ("John 7:14-8:2") —
-            // gets one pill PER range, because Bible.com only resolves a
-            // single contiguous range per URL.
-            const segments = currentSlide.title
-              ? bibleUrlSegments(currentSlide.title)
-              : [];
-            if (segments.length === 0) return null;
-            const multi = segments.length > 1;
+            // ONE pill that opens the whole reading EXTERNALLY on oremus — it
+            // renders the NRSV and resolves the entire passage (cross-chapter
+            // and multi-range included) in a single page, so no splitting. Use
+            // the server-built oremus URL on the slide; fall back to building it
+            // from the reference if it's missing.
+            const meta = currentSlide.metadata as { readUrl?: unknown } | undefined;
+            const readHref = (typeof meta?.readUrl === "string" && meta.readUrl)
+              ? meta.readUrl
+              : (currentSlide.title ? bibleUrl(currentSlide.title) : null);
+            if (!readHref) return null;
             return (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 8,
-                  marginTop: 4,
-                }}
-              >
-                {segments.map((seg, i) => (
-                  <a
-                    key={`${seg.url}-${i}`}
-                    href={seg.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      openExternal(seg.url);
-                    }}
-                    style={{
-                      padding: "10px 18px",
-                      borderRadius: 999,
-                      background: "rgba(46,107,64,0.18)",
-                      border: "1px solid rgba(46,107,64,0.45)",
-                      color: WARM_TEXT,
-                      fontFamily: SPACE_GROTESK,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      textDecoration: "none",
-                      display: "inline-block",
-                    }}
-                  >
-                    {multi ? `Read ${seg.label} →` : "Read on Bible.com →"}
-                  </a>
-                ))}
+              <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+                <a
+                  href={readHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    openExternal(readHref);
+                  }}
+                  style={{
+                    padding: "10px 18px",
+                    borderRadius: 999,
+                    background: "rgba(46,107,64,0.18)",
+                    border: "1px solid rgba(46,107,64,0.45)",
+                    color: WARM_TEXT,
+                    fontFamily: SPACE_GROTESK,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    textDecoration: "none",
+                    display: "inline-block",
+                  }}
+                >
+                  Read in NRSV →
+                </a>
               </div>
             );
           })()}

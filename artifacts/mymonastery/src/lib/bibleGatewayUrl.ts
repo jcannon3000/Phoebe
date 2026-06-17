@@ -102,39 +102,21 @@ export function bibleUrl(reference: string): string | null {
   const trimmed = reference.trim();
   if (!trimmed) return null;
 
-  const noParens = trimmed.replace(/\([^)]*\)/g, ",").replace(/\s+/g, " ").trim();
-  const cleaned = noParens.replace(/--/g, "-").replace(/[–—]/g, "-");
+  // oremus Bible Browser (bible.oremus.org) renders the NRSV and — unlike
+  // bible.com — resolves the WHOLE reading in a single page, including
+  // cross-chapter ranges ("Romans 1:28-2:11") and multi-range refs. So one URL
+  // (one pill) covers the passage. Mirror of the server builder in
+  // api-server/src/lib/bibleGatewayUrl.ts. Strip lectionary parentheticals,
+  // normalize dashes, collapse spaces, then pass the passage through encoded.
+  const passage = trimmed
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/--/g, "-")
+    .replace(/[–—]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!passage) return null;
 
-  const m = cleaned.match(/^([\dA-Za-z.\s]+?)\s+(\d.*)$/);
-  if (!m) return null;
-  const rawBook = m[1].trim();
-  const rest = m[2].trim();
-
-  const usfm = lookupUsfm(rawBook);
-  if (!usfm) return null;
-
-  const dotted = rest.replace(/:/g, ".");
-  const firstSegment = dotted.split(/[,;]/)[0].trim();
-
-  // Cross-chapter range ("1.18-2.13"). Bible.com can't render a range
-  // that spans chapters in a single URL — out-of-range upper bounds
-  // return "No Available Verses" — so fall back to the starting
-  // chapter so the link still opens to the right pericope. The
-  // segment-aware builder below splits this into two pills; this
-  // single-URL path is the legacy entry point used by lectio.tsx.
-  if (/^\d+\.\d+-\d+\.\d+$/.test(firstSegment)) {
-    const chapterMatch = firstSegment.match(/^(\d+)/);
-    if (!chapterMatch) return null;
-    return `https://www.bible.com/bible/${NRSVUE_VERSION_ID}/${usfm}.${chapterMatch[1]}.NRSVUE`;
-  }
-
-  if (!/^\d+(\.\d+(-\d+(\.\d+)?)?)?$/.test(firstSegment)) {
-    const chapterMatch = firstSegment.match(/^(\d+)/);
-    if (!chapterMatch) return null;
-    return `https://www.bible.com/bible/${NRSVUE_VERSION_ID}/${usfm}.${chapterMatch[1]}.NRSVUE`;
-  }
-
-  return `https://www.bible.com/bible/${NRSVUE_VERSION_ID}/${usfm}.${firstSegment}.NRSVUE`;
+  return `https://bible.oremus.org/?passage=${encodeURIComponent(passage)}`;
 }
 
 function lookupUsfm(raw: string): string | null {

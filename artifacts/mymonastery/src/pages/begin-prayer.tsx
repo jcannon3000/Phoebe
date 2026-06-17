@@ -145,9 +145,9 @@ export default function BeginPrayerPage() {
     setLocation(ctaHref, { replace: true });
   }, [authLoading, user, officePrefs, officeHistory, prefsLoading, historyLoading, setLocation]);
 
-  // Render nothing — the user shouldn't perceive this page; on most
-  // devices the navigation lands before paint. If routing somehow
-  // stalls, the white frame is still less alarming than a flash of
-  // dashboard chrome we'd then redirect away from.
-  return null;
+  // Render a full-screen office-colored field (NOT a blank/white frame) while
+  // we resolve the destination. Tapping the home card then fades dark → dark
+  // into the office's own fade-up entrance, instead of flashing white between
+  // two dark screens — which is what made the hand-off feel abrupt.
+  return <div style={{ minHeight: "100dvh", background: "#091A10" }} />;
 }

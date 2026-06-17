@@ -134,13 +134,10 @@ export function buildLessonSlides(
   const emoji = LESSON_EMOJI[kind];
   const readUrl = bibleGatewayUrl(trimmed);
 
-  // Try to pull the actual verse text from the bundled WEB data. Falls back to
-  // a reference-only slide when the book isn't locally available (deuterocanon).
-  const verses = lookupLessonVerses(trimmed);
-
-  // Title slide either way — the same big-headline experience as the
-  // psalm_title slide, so even the fallback path gets a title card
-  // before the body.
+  // One slide per lesson: a title card whose single "read" pill opens the full
+  // passage EXTERNALLY on oremus (which renders the NRSV and handles
+  // cross-chapter ranges in a single page). No inline WEB text, no follow-on
+  // verse slides — per product direction.
   const titleSlide: Slide = {
     id: idGen(),
     type: "lesson_title",
@@ -158,80 +155,14 @@ export function buildLessonSlides(
       readUrl,
       lessonKind: kind,
       lessonSubtitle: subtitle,
-      // True when the WEB passage is shown inline on the verse slides that
-      // follow — the client then hides the "read in NRSV" link on THIS title
-      // slide (the text is right here). On the fallback path (book not in the
-      // local WEB data) this is false, so the read-online link stays.
-      inlineWeb: INLINE_WEB_LESSONS && !!(verses && verses.length > 0),
+      // No inline WEB text anymore — always false, so the client renders the
+      // single external "Read in NRSV" (oremus) pill on this title slide.
+      inlineWeb: false,
     },
   };
 
-  if (!INLINE_WEB_LESSONS || !verses || verses.length === 0) {
-    // Fallback — book not in local data (e.g. Wisdom, Sirach). Emit
-    // the title card + a single reference-only "open your bible"
-    // slide so the reader still gets a deliberate breath into the
-    // lesson and a tap-out to read it online if they want.
-    return [
-      titleSlide,
-      {
-        id: idGen(),
-        type: "lesson",
-        emoji,
-        eyebrow,
-        title: trimmed,
-        content: LESSON_BODY_PROMPT_FALLBACK,
-        isCallAndResponse: false,
-        callAndResponseLines: null,
-        bcpReference: null,
-        isScrollable: false,
-        scrollHint: null,
-        metadata: {
-          reference: trimmed,
-          readUrl,
-          readingNote: READING_NOTE_BIBLE,
-          lessonKind: kind,
-        },
-      },
-    ];
-  }
-
-  // Chunk verses + emit one slide per chunk. The verses array is
-  // stamped onto each slide's metadata so the renderer can lay them
-  // out as numbered rows (verse number left, text right) without
-  // re-parsing a string blob.
-  const chunks = chunkVerses(verses, LESSON_CHUNK_BUDGET_CHARS);
-  const slides: Slide[] = [titleSlide];
-  chunks.forEach((chunk, i) => {
-    slides.push({
-      id: idGen(),
-      type: "lesson_verses",
-      emoji,
-      eyebrow,
-      title: trimmed,
-      // Plain-text rendering for any client that doesn't read the
-      // verses metadata — a fallback only, the renderer prefers the
-      // structured array.
-      content: chunk.map((v) => `${v.verse} ${v.text}`).join("\n"),
-      isCallAndResponse: false,
-      callAndResponseLines: null,
-      bcpReference: null,
-      isScrollable: false,
-      scrollHint: null,
-      metadata: {
-        reference: trimmed,
-        readUrl,
-        lessonKind: kind,
-        lessonChunkIndex: i,
-        lessonChunkTotal: chunks.length,
-        // The structured verses are what the renderer renders. Each
-        // entry: { chapter, verse, text }. Chapter is included so a
-        // multi-chapter lesson (e.g. "Wisdom 14:27-15:3") can display
-        // a "15:1" marker at the chapter transition rather than
-        // re-numbering from 1 silently.
-        verses: chunk,
-      },
-    });
-  });
-
-  return slides;
+  // The single title slide IS the whole lesson — the reader taps its pill to
+  // read the passage on oremus. No fallback "open your Bible" slide, no inline
+  // verse slides.
+  return [titleSlide];
 }
