@@ -15,6 +15,7 @@ import {
 import {
   WEEKLY_SET_EVENT, WEEKLY_DONE_EVENT, getEnabledWeekly,
 } from "@/lib/weeklyRoutines";
+import { ContemplationSessionsCard } from "@/components/ContemplationSessionsCard";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -102,6 +103,9 @@ export function BetaRhythmExtras() {
             )}
           </div>
         </Link>
+
+        {/* Contemplation sessions — entry card, or the configured session cards. */}
+        <ContemplationSessionsCard />
       </div>
     </div>
   );

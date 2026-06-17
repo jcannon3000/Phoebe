@@ -493,7 +493,16 @@ export default function ContemplationPage() {
   // notification lands on the SAME page the card would.
   useEffect(() => {
     try {
-      const begin = new URLSearchParams(window.location.search).get("begin") === "1";
+      const params = new URLSearchParams(window.location.search);
+      // A contemplation SESSION deep-link (?sit=N) opens the silent timer at the
+      // chosen length straight away — explicitly silent, so it ignores the global
+      // Cobreathe style (a Cobreathe session deep-links to /cobreathe directly).
+      const sit = params.get("sit");
+      if (sit) {
+        const m = parseInt(sit, 10);
+        if (Number.isFinite(m) && m >= 1 && m <= 120) { start(m); return; }
+      }
+      const begin = params.get("begin") === "1";
       if (begin && localStorage.getItem("phoebe:contemplation-style") === "cobreathe") {
         setLocation("/cobreathe?start=1");
       }
