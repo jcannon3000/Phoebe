@@ -293,11 +293,22 @@ textarea:focus {
 
   html {
     background-color: #091A10;
+    /* Android Chrome auto-inflates ("text boosting") body text on narrow
+       viewports unless this is pinned, which throws our tuned spacing off
+       and makes the layout read as cramped/scrunched. iOS ignores it. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
     @apply font-sans antialiased text-foreground;
     background-color: #091A10;
+    /* Guard against a single overflowing element widening the layout
+       viewport: Android Chrome reacts by zooming the WHOLE page out to fit
+       (the "everything is scrunched" report), where iOS Safari just clips.
+       `clip` (not `hidden`) keeps the page from horizontal-scrolling WITHOUT
+       turning body into a scroll container — so sticky headers still stick. */
+    overflow-x: clip;
   }
 
   #root {

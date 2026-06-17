@@ -610,7 +610,8 @@ type Slide =
 // "praying for people in your group" beat was removed per user
 // direction. Now every user walks the same fixed deck: profile
 // picture → Daily Office intro (mirrors church-deck) → daily-habit
-// intro (mirrors church-deck) → safe-space → first prayer request.
+// intro (mirrors church-deck) → safe-space. (The old "share your first
+// prayer request" closing beat was removed per user direction.)
 // InfoSlide title/body/footnote hold i18n KEYS, not literal copy — they
 // are resolved through t() in InfoSlideView at render time so the deck
 // translates with the active language.
