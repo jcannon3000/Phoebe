@@ -9,6 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
 import { RequestWordField } from "@/components/RequestWordField";
+import { AvatarCropModal } from "@/components/AvatarCropModal";
 
 // ─── Palette (matches church-deck exactly) ───────────────────────────────────
 const C = {
@@ -1175,54 +1176,39 @@ function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
   // already resolved).
   const pendingSaveRef = useRef<Promise<void> | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Image being cropped (data URL) — from a file pick or re-editing the
+  // current photo. The crop modal is open while this is set.
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
+  // Pick a file → open the crop/zoom modal (no save yet).
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file || !file.type.startsWith("image/")) return;
-    setUploading(true);
     setSaveError(null);
     const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const maxWidth = 512;
-        const canvas = document.createElement("canvas");
-        let w = img.width;
-        let h = img.height;
-        if (w > maxWidth) { h = (h * maxWidth) / w; w = maxWidth; }
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) { setUploading(false); return; }
-        ctx.drawImage(img, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-        setPreview(dataUrl);
-
-        // Kick off the PATCH immediately so the save and the
-        // "Continue" tap race; whichever happens second wins (the
-        // continue handler awaits pendingSaveRef).
-        pendingSaveRef.current = apiRequest("PATCH", "/api/auth/me/profile", { avatarUrl: dataUrl })
-          .then(() => {
-            queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) => {
-              if (!prev) return prev;
-              return { ...prev, avatarUrl: dataUrl };
-            });
-          })
-          .catch((err) => {
-            // Surface it so the user can retry — otherwise a stale
-            // "Save & continue" button sits there doing nothing.
-            setSaveError(err?.message ?? t("user_onboarding.profile_picture.error_save"));
-            throw err;
-          })
-          .finally(() => {
-            setUploading(false);
-          });
-      };
-      img.onerror = () => { setUploading(false); setSaveError(t("user_onboarding.profile_picture.error_read")); };
-      img.src = reader.result as string;
-    };
-    reader.onerror = () => { setUploading(false); setSaveError(t("user_onboarding.profile_picture.error_read")); };
+    reader.onload = () => setCropSrc(reader.result as string);
+    reader.onerror = () => setSaveError(t("user_onboarding.profile_picture.error_read"));
     reader.readAsDataURL(file);
+  }
+
+  // Crop confirmed → preview + save. Races the Continue tap via pendingSaveRef.
+  function applyCrop(dataUrl: string) {
+    setUploading(true);
+    setSaveError(null);
+    setPreview(dataUrl);
+    pendingSaveRef.current = apiRequest("PATCH", "/api/auth/me/profile", { avatarUrl: dataUrl })
+      .then(() => {
+        queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) => {
+          if (!prev) return prev;
+          return { ...prev, avatarUrl: dataUrl };
+        });
+      })
+      .catch((err) => {
+        setSaveError(err?.message ?? t("user_onboarding.profile_picture.error_save"));
+        throw err;
+      })
+      .finally(() => { setUploading(false); setCropSrc(null); });
   }
 
   // Save & advance. Waits for any inflight PATCH to complete so we
@@ -1301,6 +1287,15 @@ function ProfilePictureSlide({ onNext }: { onNext: () => void }) {
         className="hidden"
         onChange={handlePhotoSelect}
       />
+
+      {cropSrc && (
+        <AvatarCropModal
+          src={cropSrc}
+          busy={uploading}
+          onCancel={() => setCropSrc(null)}
+          onConfirm={applyCrop}
+        />
+      )}
 
       <AnimatePresence mode="wait">
         {preview ? (

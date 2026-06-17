@@ -10,6 +10,7 @@ import { isNativeShell } from "@/lib/isNativeShell";
 import { appleHealthAvailable, requestMindfulAuthorization, getMindfulMinutesToday, openHealthApp } from "@/lib/appleHealth";
 import i18n from "@/i18n";
 import { LogOut, Camera, Pencil, Trash2, Download } from "lucide-react";
+import { AvatarCropModal } from "@/components/AvatarCropModal";
 import {
   useOfficePrefs,
   useEffectiveReflectionSource,
@@ -1430,6 +1431,9 @@ function AccountSection() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [uploading, setUploading] = useState(false);
+  // Source image being cropped (data URL) — set from a file pick or from
+  // re-cropping the current avatar; cleared when the modal closes.
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
 
   const profileMutation = useMutation({
     mutationFn: (data: { name?: string; avatarUrl?: string | null }) =>
@@ -1446,42 +1450,24 @@ function AccountSection() {
     },
   });
 
+  // Pick a file → open the crop/zoom modal. The actual upload happens once the
+  // user adjusts and confirms in applyCrop().
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = ""; // allow re-picking the same file
     if (!file) return;
     if (!file.type.startsWith("image/")) return;
-
-    setUploading(true);
     const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const maxWidth = 512;
-        const canvas = document.createElement("canvas");
-        let w = img.width;
-        let h = img.height;
-        if (w > maxWidth) { h = (h * maxWidth) / w; w = maxWidth; }
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) { setUploading(false); return; }
-        ctx.drawImage(img, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-        profileMutation.mutate({ avatarUrl: dataUrl }, {
-          onSettled: () => setUploading(false),
-        });
-      };
-      img.onerror = () => {
-        alert("Could not process this image. Try a different one.");
-        setUploading(false);
-      };
-      img.src = reader.result as string;
-    };
-    reader.onerror = () => {
-      alert("Could not read this image. Try a different one.");
-      setUploading(false);
-    };
+    reader.onload = () => setCropSrc(reader.result as string);
+    reader.onerror = () => alert("Could not read this image. Try a different one.");
     reader.readAsDataURL(file);
+  }
+
+  function applyCrop(dataUrl: string) {
+    setUploading(true);
+    profileMutation.mutate({ avatarUrl: dataUrl }, {
+      onSettled: () => { setUploading(false); setCropSrc(null); },
+    });
   }
 
   if (!user) return null;
@@ -1490,6 +1476,14 @@ function AccountSection() {
 
   return (
     <SettingsCard>
+      {cropSrc && (
+        <AvatarCropModal
+          src={cropSrc}
+          busy={uploading}
+          onCancel={() => setCropSrc(null)}
+          onConfirm={applyCrop}
+        />
+      )}
       <div className="flex items-center gap-4">
         {/* Avatar with upload overlay */}
         <div className="relative flex-shrink-0">
@@ -1497,7 +1491,9 @@ function AccountSection() {
             <img
               src={user.avatarUrl!}
               alt={user.name}
-              className="w-16 h-16 rounded-full object-cover"
+              onClick={() => setCropSrc(user.avatarUrl!)}
+              title="Reposition or zoom your photo"
+              className="w-16 h-16 rounded-full object-cover cursor-pointer"
               style={{ border: "2px solid rgba(46,107,64,0.3)" }}
             />
           ) : (

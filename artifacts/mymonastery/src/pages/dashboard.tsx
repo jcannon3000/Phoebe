@@ -29,6 +29,7 @@ import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
 import { PartnerExchange } from "@/components/PartnerExchange";
 import { FellowPlans } from "@/components/FellowPlans";
+import { AvatarCropModal } from "@/components/AvatarCropModal";
 import { ParishWeeklyCard } from "@/components/ParishWeeklyCard";
 import { RsvpBlock, RsvpSummaryStrip, useDashboardRsvpSummary } from "@/components/RsvpBlock";
 // Office-progress reading + LiturgyMode now live on /prayer-chooser
@@ -683,6 +684,7 @@ function ProfilePicturePrompt({ onDone }: { onDone: () => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   // Inflight PATCH so the Save & close button can await it and we
   // never dismiss with the server still un-saved. `null` = nothing
   // pending. Same pattern as the onboarding ProfilePictureSlide fix.
@@ -691,43 +693,31 @@ function ProfilePicturePrompt({ onDone }: { onDone: () => void }) {
 
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file || !file.type.startsWith("image/")) return;
-    setUploading(true);
     setSaveError(null);
     const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const maxWidth = 512;
-        const canvas = document.createElement("canvas");
-        let w = img.width;
-        let h = img.height;
-        if (w > maxWidth) { h = (h * maxWidth) / w; w = maxWidth; }
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) { setUploading(false); return; }
-        ctx.drawImage(img, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-        setPreview(dataUrl);
-        pendingSaveRef.current = apiRequest("PATCH", "/api/auth/me/profile", { avatarUrl: dataUrl })
-          .then(() => {
-            queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) => {
-              if (!prev) return prev;
-              return { ...prev, avatarUrl: dataUrl };
-            });
-          })
-          .catch((err) => {
-            setSaveError(err?.message ?? "Couldn't save your photo. Try again?");
-            throw err;
-          })
-          .finally(() => setUploading(false));
-      };
-      img.onerror = () => { setUploading(false); setSaveError("Couldn't read that image."); };
-      img.src = reader.result as string;
-    };
-    reader.onerror = () => { setUploading(false); setSaveError("Couldn't read that image."); };
+    reader.onload = () => setCropSrc(reader.result as string);
+    reader.onerror = () => setSaveError("Couldn't read that image.");
     reader.readAsDataURL(file);
+  }
+
+  function applyCrop(dataUrl: string) {
+    setUploading(true);
+    setSaveError(null);
+    setPreview(dataUrl);
+    pendingSaveRef.current = apiRequest("PATCH", "/api/auth/me/profile", { avatarUrl: dataUrl })
+      .then(() => {
+        queryClient.setQueryData(["/api/auth/me"], (prev: typeof user) => {
+          if (!prev) return prev;
+          return { ...prev, avatarUrl: dataUrl };
+        });
+      })
+      .catch((err) => {
+        setSaveError(err?.message ?? "Couldn't save your photo. Try again?");
+        throw err;
+      })
+      .finally(() => { setUploading(false); setCropSrc(null); });
   }
 
   async function handleSaveAndClose() {
@@ -814,6 +804,15 @@ function ProfilePicturePrompt({ onDone }: { onDone: () => void }) {
           className="hidden"
           onChange={handlePhotoSelect}
         />
+
+        {cropSrc && (
+          <AvatarCropModal
+            src={cropSrc}
+            busy={uploading}
+            onCancel={() => setCropSrc(null)}
+            onConfirm={applyCrop}
+          />
+        )}
 
         {preview ? (
           <button
