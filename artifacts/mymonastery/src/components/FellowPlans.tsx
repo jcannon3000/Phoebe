@@ -60,11 +60,16 @@ function whenLabel(p: Plan): string | null {
   return p.whenText?.trim() || null;
 }
 
-export function FellowPlans({ canManage = false }: { canManage?: boolean }) {
+export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canManage?: boolean; hideWhenEmpty?: boolean }) {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const plansQ = useQuery<{ plans: Plan[] }>({ queryKey: ["/api/fellow-plans"], queryFn: () => apiRequest("GET", "/api/fellow-plans"), staleTime: 20_000 });
   const plans = plansQ.data?.plans ?? [];
+
+  // On a surface that shouldn't show an empty shell (the Events page for a
+  // non-beta viewer with nothing to compose), render nothing until there's a
+  // plan to show. Beta hosts always see it so they can share one.
+  if (hideWhenEmpty && !canManage && plans.length === 0) return null;
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["/api/fellow-plans"] });
 

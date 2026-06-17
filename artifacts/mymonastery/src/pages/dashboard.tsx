@@ -28,6 +28,7 @@ import {
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
 import { PartnerExchange } from "@/components/PartnerExchange";
+import { FellowPlans } from "@/components/FellowPlans";
 import { ParishWeeklyCard } from "@/components/ParishWeeklyCard";
 import { RsvpBlock, RsvpSummaryStrip, useDashboardRsvpSummary } from "@/components/RsvpBlock";
 // Office-progress reading + LiturgyMode now live on /prayer-chooser
@@ -6451,6 +6452,20 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               ? null
               : <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />}
           </div>
+
+          {/* Plans ("How About") — share something you're going to and your
+              fellows can come. Moved here from the People page: it belongs with
+              the upcoming schedule. Beta hosts always see the compose surface;
+              everyone else sees it only when a fellow has shared a plan. */}
+          {eventsOnly && (
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>{t("people.plans", { defaultValue: "Plans" })}</p>
+                <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
+              </div>
+              <FellowPlans canManage={isBeta} hideWhenEmpty={!isBeta} />
+            </div>
+          )}
 
           {/* Today's Rhythm card moved off the home top: it now lives on the
               slideshow closing slide and on the /daily-progress page (reached
