@@ -171,7 +171,7 @@ function StreakCard() {
 // to render mirrors the practice cards above (four core + active extras).
 export function WeeklyGridCard() {
   const { t } = useTranslation();
-  const { gratitudeActive, examenActive, stepsActive } = useRhythmState();
+  const { morningActive, eveningActive, silenceActive, reflectActive, gratitudeActive, examenActive, stepsActive } = useRhythmState();
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   })();
@@ -185,10 +185,10 @@ export function WeeklyGridCard() {
   const { days } = data;
 
   const rows: Array<{ key: keyof Day; emoji: string; label: string; rgb: string }> = [
-    { key: "morning", emoji: "🌅", label: t("rhythm.row_morning", { defaultValue: "Morning" }), rgb: "46,107,64" },
-    { key: "contemplation", emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122" },
-    { key: "reflection", emoji: "📖", label: t("rhythm.row_reflection", { defaultValue: "Reflection" }), rgb: "96,141,209" },
-    { key: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "124,116,196" },
+    ...(morningActive ? [{ key: "morning" as const, emoji: "🌅", label: t("rhythm.row_morning", { defaultValue: "Morning" }), rgb: "46,107,64" }] : []),
+    ...(silenceActive ? [{ key: "contemplation" as const, emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122" }] : []),
+    ...(reflectActive ? [{ key: "reflection" as const, emoji: "📖", label: t("rhythm.row_reflection", { defaultValue: "Reflection" }), rgb: "96,141,209" }] : []),
+    ...(eveningActive ? [{ key: "evening" as const, emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "124,116,196" }] : []),
     ...(gratitudeActive ? [{ key: "gratitude" as const, emoji: "🙏", label: t("rhythm.row_gratitude", { defaultValue: "Gratitude" }), rgb: "182,140,90" }] : []),
     ...(examenActive ? [{ key: "examen" as const, emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180" }] : []),
     ...(stepsActive ? [{ key: "steps" as const, emoji: "👟", label: t("rhythm.row_steps", { defaultValue: "Steps" }), rgb: "82,140,222" }] : []),
@@ -431,7 +431,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, stepsToday, stepsGoal } = useRhythmState();
+  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, stepsToday, stepsGoal } = useRhythmState();
   const hour = new Date().getHours();
   const kept = t("rhythm.kept", { defaultValue: "Kept today" });
   const prayed = t("rhythm.prayed", { defaultValue: "Prayed today" });
@@ -474,14 +474,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         : t(`rhythm.card_${side.toLowerCase()}`, { defaultValue: `${side} Prayer` });
 
   const cards = [
-    {
+    ...(morningActive ? [{
       key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer",
       title: officeTitle("Morning"),
       blurb: morningDone ? prayed : morningBlurb,
       blurbCycle: morningDone ? undefined : [morningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-    },
-    {
+    }] : []),
+    ...(reflectActive ? [{
       key: "reflect", emoji: "📖", rgb: "96,141,209", done: reflectDone, href: "/menu/reflections",
       title: t("rhythm.card_reflect", { defaultValue: "Today's reflection" }),
       blurb: reflectionSubtitle,
@@ -495,8 +495,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         ? () => { markCacRead(); openExternal(CAC_TODAY_URL); }
         : undefined,
       cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
-    },
-    {
+    }] : []),
+    ...(silenceActive ? [{
       key: "silence", emoji: "🕯️", rgb: "62,124,122", done: silenceDone,
       // Cobreathe straight away if that's their chosen contemplation style;
       // otherwise jump to the Contemplation page's focused length chooser
@@ -507,7 +507,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
       // When done, show a plain ✓ like the other anchors — no "Sit again" pill.
       progress: { current: contemplationMin, goal: contemplationGoalMin },
-    },
+    }] : []),
     ...(gratitudeActive ? [{
       key: "gratitude", emoji: "🙏", rgb: "182,140,90", done: gratitudeDone, href: "/gratitude",
       title: t("rhythm.card_gratitude", { defaultValue: "Gratitude" }),
@@ -556,8 +556,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // belongs to reflection → contemplation (small cards); the evening office
   // stays a quiet "later" card and only becomes the hero from 3 PM on.
   const heroSide: "morning" | "evening" | null =
-    !morningDone ? "morning"
-    : (hour >= 15 && !eveningDone) ? "evening"
+    (morningActive && !morningDone) ? "morning"
+    : (eveningActive && hour >= 15 && !eveningDone) ? "evening"
     : null;
   const showOfficeHero = !!renderOfficeHero && heroSide !== null;
   const officeHero = showOfficeHero ? renderOfficeHero!(heroSide!) : null;

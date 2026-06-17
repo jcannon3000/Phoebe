@@ -7,7 +7,7 @@ import {
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
-import { getSideLevel } from "@/lib/officePrefs";
+import { getSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { useDailySteps } from "@/lib/appleHealth";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -55,6 +55,12 @@ export type RhythmState = {
   /** Whether the evening office is part of the rhythm (evening pref != "none").
    *  Off by default, so an un-set-up user's rhythm is 3 anchors, not 4. */
   eveningActive: boolean;
+  /** Whether each core anchor is part of the rhythm: morning prayer (morning
+   *  pref != "none"), contemplation (a goal is set), reflection (a source is
+   *  chosen). A user who turns one off drops its card + dot + weekly row. */
+  morningActive: boolean;
+  silenceActive: boolean;
+  reflectActive: boolean;
   /** Optional practices the user added from the Customize flow (visible on the
    *  home layout) — each adds a checkmark to Daily progress. */
   gratitudeActive: boolean;
@@ -323,8 +329,23 @@ export function useRhythmState(): RhythmState {
   // so an un-set-up user keeps three dots: morning · contemplation · reflection.
   // The customizer (rule-of-life) sets the evening pref to a level when enabled,
   // which flips this on. While prefs load, treat evening as off (no flash).
+  // Each core anchor is part of the rhythm only when the user keeps it:
+  // morning/evening prayer when the office pref isn't "none", contemplation
+  // when a goal is set, reflection when a source is chosen. While prefs load we
+  // fall back to each anchor's SERVER default (morning "devotion", goal 5 min,
+  // reflection on, evening off) so the default-on anchors don't pop in once the
+  // prefs query lands — only the genuinely-off ones stay hidden.
+  const reflectionSource = useEffectiveReflectionSource();
+  const morningActive = (officePrefs?.morning ?? "devotion") !== "none";
   const eveningActive = (officePrefs?.evening ?? "none") !== "none";
-  const coreFlags = [morningDone, reflectDone, silenceDone, ...(eveningActive ? [eveningDone] : [])];
+  const silenceActive = (officePrefs?.contemplationGoalMinutes ?? 5) > 0;
+  const reflectActive = reflectionSource !== "none";
+  const coreFlags = [
+    ...(morningActive ? [morningDone] : []),
+    ...(reflectActive ? [reflectDone] : []),
+    ...(silenceActive ? [silenceDone] : []),
+    ...(eveningActive ? [eveningDone] : []),
+  ];
   const extraFlags = [
     ...(gratitudeActive ? [gratitudeDone] : []),
     ...(examenActive ? [examenDone] : []),
@@ -354,6 +375,9 @@ export function useRhythmState(): RhythmState {
     silenceDone,
     eveningDone,
     eveningActive,
+    morningActive,
+    silenceActive,
+    reflectActive,
     gratitudeActive,
     examenActive,
     stepsActive,

@@ -743,15 +743,16 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 // Prayer list now lives in the side Menu drawer.
 function DailyProgressPill() {
   const { t } = useTranslation();
-  const { morningDone, reflectDone, silenceDone, eveningDone, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone } = useRhythmState();
-  // Four core anchors, plus a dot for each optional practice the user added
-  // (gratitude, examen, and the daily-steps goal). Keyed so the "just completed"
-  // pulse below tracks the right dot even as the set changes.
+  const { morningDone, reflectDone, silenceDone, eveningDone, morningActive, reflectActive, silenceActive, eveningActive, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone } = useRhythmState();
+  // The core anchors the user keeps (morning/reflection/contemplation/evening —
+  // each dropped when its pref is off), plus a dot for each optional practice
+  // they added (gratitude, examen, the daily-steps goal). Keyed so the "just
+  // completed" pulse below tracks the right dot even as the set changes.
   const dotDefs = [
-    { key: "morning", done: morningDone },
-    { key: "reflect", done: reflectDone },
-    { key: "silence", done: silenceDone },
-    { key: "evening", done: eveningDone },
+    ...(morningActive ? [{ key: "morning", done: morningDone }] : []),
+    ...(reflectActive ? [{ key: "reflect", done: reflectDone }] : []),
+    ...(silenceActive ? [{ key: "silence", done: silenceDone }] : []),
+    ...(eveningActive ? [{ key: "evening", done: eveningDone }] : []),
     ...(gratitudeActive ? [{ key: "gratitude", done: gratitudeDone }] : []),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
     ...(stepsActive ? [{ key: "steps", done: stepsDone }] : []),

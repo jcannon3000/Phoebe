@@ -5552,15 +5552,23 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     | { kind: "reflect"; key: HomeModule }
     | { kind: "summary" };
   const homeHero: HomeHero | null = !dynamicHero ? null : (() => {
-    if (rhythm.morningDone && rhythm.reflectDone && rhythm.eveningDone) return { kind: "summary" };
+    // Only anchors the user actually keeps drive the hero. A turned-off office
+    // (morning/evening pref "none") or reflection (source "none") never becomes
+    // the "what's next" card; with everything kept, the community summary shows.
+    const morningPending = rhythm.morningActive && !rhythm.morningDone;
+    const eveningPending = rhythm.eveningActive && !rhythm.eveningDone;
+    const reflectPending = rhythm.reflectActive && !rhythm.reflectDone && reflectAvailable;
+    if (!morningPending && !eveningPending && !reflectPending) return { kind: "summary" };
     if (!heroAfternoon) {
-      if (!rhythm.morningDone) return { kind: "office", side: "morning" };
-      if (!rhythm.reflectDone && reflectAvailable) return { kind: "reflect", key: reflectKey! };
-      return { kind: "office", side: "evening" };
+      if (morningPending) return { kind: "office", side: "morning" };
+      if (reflectPending) return { kind: "reflect", key: reflectKey! };
+      if (eveningPending) return { kind: "office", side: "evening" };
+      return { kind: "summary" };
     }
-    if (!rhythm.eveningDone) return { kind: "office", side: "evening" };
-    if (!rhythm.reflectDone && reflectAvailable) return { kind: "reflect", key: reflectKey! };
-    return { kind: "office", side: "evening" };
+    if (eveningPending) return { kind: "office", side: "evening" };
+    if (reflectPending) return { kind: "reflect", key: reflectKey! };
+    if (morningPending) return { kind: "office", side: "morning" };
+    return { kind: "summary" };
   })();
   const heroKey: HomeModule | null =
     homeHero?.kind === "office" ? "office" : homeHero?.kind === "reflect" ? homeHero.key : null;
