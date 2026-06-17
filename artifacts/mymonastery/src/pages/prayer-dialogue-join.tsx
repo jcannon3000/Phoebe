@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -51,6 +51,23 @@ export default function PrayerDialogueJoinPage() {
       try { localStorage.setItem(PENDING_KEY, token); } catch { /* ignore */ }
     }
   }, [authLoading, user, token]);
+
+  // Returning from sign-up / sign-in with THIS invite stashed → accept it
+  // automatically. The user already consented by tapping the link and creating
+  // an account; without this the partnership would silently never form. We clear
+  // the pending token up front so a persistent failure can't bounce-loop (the
+  // visible "Pray together" button stays as the manual retry). Owners just get
+  // the key cleared — there's nothing to accept on your own link.
+  const autoTried = useRef(false);
+  useEffect(() => {
+    if (autoTried.current || authLoading || !user || !data) return;
+    let pending: string | null = null;
+    try { pending = localStorage.getItem(PENDING_KEY); } catch { /* ignore */ }
+    if (pending !== token) return;
+    autoTried.current = true;
+    try { localStorage.removeItem(PENDING_KEY); } catch { /* ignore */ }
+    if (!data.viewerIsOwner && data.inviter) accept.mutate();
+  }, [authLoading, user, data, token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const inviterName = (data?.inviter?.name ?? "").trim().split(/\s+/)[0] || "A friend";
   const initial = (data?.inviter?.name ?? "?").trim()[0]?.toUpperCase() ?? "?";

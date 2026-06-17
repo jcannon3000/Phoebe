@@ -47,6 +47,27 @@ function ScrollToTopOnNavigate() {
   return null;
 }
 
+// A logged-out visitor who taps a Heart to Hearts invite link stashes the token
+// (prayer-dialogue-join) and goes off to sign in / create an account. Once
+// they're authenticated, send them back to the join page — which auto-accepts
+// the stashed invite — so the partnership actually forms. Without this the
+// invite silently dies for every brand-new invitee. (Mirrors how community
+// invites finish after signup; the join page clears the token, so no loop.)
+function PendingPrayerInviteRedirect() {
+  const { user, isLoading } = useAuthForGate();
+  const [location, setLocation] = useLocation();
+  useEffect(() => {
+    if (isLoading || !user) return;
+    if (location.startsWith("/prayer-dialogue/join/")) return;
+    let token: string | null = null;
+    try { token = localStorage.getItem("phoebe:pending-prayer-invite"); } catch { /* ignore */ }
+    if (token && /^[a-f0-9]{32}$/i.test(token)) {
+      setLocation(`/prayer-dialogue/join/${token}`);
+    }
+  }, [user, isLoading, location, setLocation]);
+  return null;
+}
+
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null; recovering: boolean }> {
   constructor(props: { children: ReactNode }) {
     super(props);
@@ -1060,6 +1081,7 @@ function App() {
           <PageFadeOverlay />
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <ScrollToTopOnNavigate />
+            <PendingPrayerInviteRedirect />
             <ReflectionReturnRedirect />
             <ReflectionPreheater />
             <NativeJournalOpener />
