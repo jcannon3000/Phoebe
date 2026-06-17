@@ -4,6 +4,10 @@ import { PersistQueryClientProvider, removeOldestQuery } from "@tanstack/react-q
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { hydrateIdbCache, attachIdbPersistence } from "@/lib/idbCache";
 import { ApiError } from "@/lib/queryClient";
+// Side-effect import: warms the server-clock offset on app load (re-syncs on
+// foreground / every 5 min) so the Cobreathe communal breath is already aligned
+// the instant a session opens — every device shares one schedule.
+import "@/lib/serverClock";
 import { toast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
