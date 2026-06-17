@@ -1142,7 +1142,10 @@ export function sendContemplationGoalReminderPush(
   return sendPushToUser(userId, {
     title: "Still time to hit your goal",
     body,
-    path: "/contemplation",
+    // Same destination as tapping the home Contemplation card: ?begin=1 opens
+    // straight into the sit (and the contemplation page redirects to Cobreathe
+    // when that's the user's chosen style, matching the card).
+    path: "/contemplation?begin=1",
     threadId: "contemplation-goal",
     collapseId: `contemplation-goal-${userId}`,
     sound: PHOEBE_SOUND_LOW,

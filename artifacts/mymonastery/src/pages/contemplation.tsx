@@ -489,6 +489,20 @@ export default function ContemplationPage() {
   });
   // Which supporting section shows under the Begin card.
   const [, setLocation] = useLocation();
+  // The "begin" entry — the home contemplation card AND the goal notification
+  // both point at /contemplation?begin=1 — should open the communal breath when
+  // the user's contemplation style is Cobreathe, exactly as the home card does.
+  // The card branches on this same localStorage flag; mirror it here so the
+  // notification lands on the SAME page the card would.
+  useEffect(() => {
+    try {
+      const begin = new URLSearchParams(window.location.search).get("begin") === "1";
+      if (begin && localStorage.getItem("phoebe:contemplation-style") === "cobreathe") {
+        setLocation("/cobreathe?start=1");
+      }
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [tab, setTab] = useState<"history" | "stats" | "learn">(() => {
     try {
       const v = new URLSearchParams(window.location.search).get("tab");
