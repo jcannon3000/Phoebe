@@ -1,0 +1,174 @@
+/**
+ * FellowSettingsSheet — per-fellow sharing settings, opened from a fellow row.
+ * Two things you control for each 1:1 fellow:
+ *   1. Share daily progress → Walking together (a MUTUAL opt-in; we drive it
+ *      through the existing /api/walk endpoints, showing the live status).
+ *   2. Sharing tied to place → a subjective "lives in the same place as me"
+ *      marker + whether your plans are visible to them (default on). Plans are
+ *      local, so the natural move is: on for nearby fellows, off for far ones.
+ */
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+
+const WARM = "#F0EDE6";
+const SAGE = "#8FAF96";
+const FONT = "'Space Grotesk', system-ui, sans-serif";
+const CARD_B = "rgba(46,107,64,0.3)";
+
+export type FellowLite = { userId: number; name: string | null; avatarUrl: string | null };
+
+type WalkData = {
+  companions: Array<{ pairId: number; userId: number }>;
+  incoming: Array<{ pairId: number; userId: number }>;
+  outgoing: Array<{ pairId: number; userId: number }>;
+  paused: Array<{ pairId: number; userId: number }>;
+  eligibleFellows: Array<{ userId: number }>;
+};
+type PrefsData = { prefs: Record<number, { samePlace: boolean; sharePlans: boolean }> };
+
+function initials(name: string): string {
+  return name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
+}
+function Avatar({ name, url, size = 44 }: { name: string; url: string | null; size?: number }) {
+  if (url) return <img src={url} alt={name} className="rounded-full object-cover shrink-0" style={{ width: size, height: size, border: `1px solid ${CARD_B}` }} />;
+  return <div className="rounded-full flex items-center justify-center font-semibold shrink-0" style={{ width: size, height: size, background: "#1A4A2E", color: "#A8C5A0", fontSize: size * 0.32, fontFamily: FONT }}>{initials(name)}</div>;
+}
+
+function Switch({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button" role="switch" aria-checked={on} disabled={disabled} onClick={onClick}
+      className="relative shrink-0 transition-colors"
+      style={{ width: 46, height: 28, borderRadius: 999, background: on ? "rgba(46,107,64,0.9)" : "rgba(143,175,150,0.25)", border: `1px solid ${on ? "rgba(110,180,130,0.7)" : "rgba(143,175,150,0.35)"}`, cursor: "pointer", opacity: disabled ? 0.5 : 1 }}
+    >
+      <span style={{ position: "absolute", top: 2, left: on ? 20 : 2, width: 22, height: 22, borderRadius: 999, background: "#F0EDE6", transition: "left 0.16s ease" }} />
+    </button>
+  );
+}
+
+export function FellowSettingsSheet({ fellow, onClose }: { fellow: FellowLite | null; onClose: () => void }) {
+  const qc = useQueryClient();
+  const open = !!fellow;
+  const fid = fellow?.userId;
+
+  const { data: walk } = useQuery<WalkData>({ queryKey: ["/api/walk"], queryFn: () => apiRequest("GET", "/api/walk"), enabled: open });
+  const { data: prefsData } = useQuery<PrefsData>({ queryKey: ["/api/fellow-prefs"], queryFn: () => apiRequest("GET", "/api/fellow-prefs"), enabled: open });
+
+  const invalidate = () => { qc.invalidateQueries({ queryKey: ["/api/walk"] }); };
+  const invalidatePrefs = () => { qc.invalidateQueries({ queryKey: ["/api/fellow-prefs"] }); qc.invalidateQueries({ queryKey: ["/api/fellow-plans"] }); };
+
+  // Walking-together status for this fellow.
+  const find = (arr?: Array<{ pairId: number; userId: number }>) => arr?.find((x) => x.userId === fid) ?? null;
+  const active = find(walk?.companions);
+  const paused = find(walk?.paused);
+  const incoming = find(walk?.incoming);
+  const outgoing = find(walk?.outgoing);
+  const walkStatus: "active" | "paused" | "incoming" | "outgoing" | "none" =
+    active ? "active" : paused ? "paused" : incoming ? "incoming" : outgoing ? "outgoing" : "none";
+
+  const startWalk = useMutation({ mutationFn: () => apiRequest("POST", "/api/walk/request", { userId: fid }), onSuccess: invalidate });
+  const acceptWalk = useMutation({ mutationFn: (pairId: number) => apiRequest("POST", `/api/walk/requests/${pairId}/accept`), onSuccess: invalidate });
+  const stopWalk = useMutation({ mutationFn: (pairId: number) => apiRequest("POST", `/api/walk/${pairId}/stop`), onSuccess: invalidate });
+  const resumeWalk = useMutation({ mutationFn: (pairId: number) => apiRequest("POST", `/api/walk/${pairId}/resume`), onSuccess: invalidate });
+
+  // Place prefs (default: not same place, plans shared).
+  const pref = fid != null ? prefsData?.prefs?.[fid] : undefined;
+  const samePlace = pref?.samePlace ?? false;
+  const sharePlans = pref?.sharePlans ?? true;
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const patchPref = (patch: { samePlace?: boolean; sharePlans?: boolean }, key: string) => {
+    if (fid == null) return;
+    setSavingKey(key);
+    apiRequest("PATCH", `/api/fellow-prefs/${fid}`, patch)
+      .then(() => invalidatePrefs())
+      .catch(() => undefined)
+      .finally(() => setSavingKey(null));
+  };
+
+  const name = fellow?.name ?? "Someone";
+  const first = name.split(/\s+/)[0] || name;
+  const walkPending = startWalk.isPending || acceptWalk.isPending || stopWalk.isPending || resumeWalk.isPending;
+
+  const Row = ({ title, sub, control }: { title: string; sub: string; control: React.ReactNode }) => (
+    <div className="flex items-center gap-3 py-3.5" style={{ borderTop: "1px solid rgba(200,212,192,0.1)" }}>
+      <div className="flex-1 min-w-0">
+        <p className="text-[14.5px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
+        <p className="text-[12px] mt-0.5" style={{ color: SAGE, fontFamily: FONT }}>{sub}</p>
+      </div>
+      {control}
+    </div>
+  );
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}
+            style={{ position: "fixed", inset: 0, background: "rgba(6,18,11,0.6)", zIndex: 60, backdropFilter: "blur(2px)" }} />
+          <motion.div
+            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 32, stiffness: 320 }}
+            style={{
+              position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 61, background: "#0C2417",
+              borderTopLeftRadius: 24, borderTopRightRadius: 24, border: "1px solid rgba(46,107,64,0.4)", borderBottom: "none",
+              padding: "10px 20px calc(env(safe-area-inset-bottom) + 22px)", maxHeight: "86vh", overflowY: "auto",
+            }}
+          >
+            <div style={{ width: 38, height: 4, borderRadius: 999, background: "rgba(143,175,150,0.4)", margin: "0 auto 16px" }} />
+
+            <div className="flex items-center gap-3.5 mb-4">
+              <Avatar name={name} url={fellow?.avatarUrl ?? null} />
+              <div className="flex-1 min-w-0">
+                <p className="truncate text-[18px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{name}</p>
+                <p className="text-[12.5px]" style={{ color: SAGE, fontFamily: FONT }}>Sharing settings</p>
+              </div>
+            </div>
+
+            {/* 1. Share daily progress → Walking together (mutual). */}
+            <Row
+              title="Share daily progress"
+              sub={
+                walkStatus === "active" ? "Walking together — you each see today's dots"
+                : walkStatus === "paused" ? "Paused"
+                : walkStatus === "incoming" ? `${first} invited you`
+                : walkStatus === "outgoing" ? "Invite sent — waiting on them"
+                : "Walking together · both must say yes"
+              }
+              control={
+                walkStatus === "active" ? (
+                  <button type="button" disabled={walkPending} onClick={() => active && stopWalk.mutate(active.pairId)} className="shrink-0 rounded-full text-[12.5px] font-semibold px-3.5 py-1.5" style={{ background: "transparent", color: "rgba(182,210,188,0.6)", border: "1px solid rgba(143,175,150,0.3)", fontFamily: FONT }}>Stop</button>
+                ) : walkStatus === "paused" ? (
+                  <button type="button" disabled={walkPending} onClick={() => paused && resumeWalk.mutate(paused.pairId)} className="shrink-0 rounded-full text-[12.5px] font-semibold px-3.5 py-1.5" style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.4)", fontFamily: FONT }}>Resume</button>
+                ) : walkStatus === "incoming" ? (
+                  <button type="button" disabled={walkPending} onClick={() => incoming && acceptWalk.mutate(incoming.pairId)} className="shrink-0 rounded-full text-[12.5px] font-semibold px-3.5 py-1.5" style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}>Accept</button>
+                ) : walkStatus === "outgoing" ? (
+                  <span className="shrink-0 rounded-full text-[12.5px] font-semibold px-3.5 py-1.5" style={{ color: "rgba(182,210,188,0.5)", border: "1px solid rgba(143,175,150,0.22)", fontFamily: FONT }}>Invited</span>
+                ) : (
+                  <button type="button" disabled={walkPending} onClick={() => startWalk.mutate()} className="shrink-0 rounded-full text-[12.5px] font-semibold px-3.5 py-1.5" style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}>Invite</button>
+                )
+              }
+            />
+
+            {/* 2. Lives in the same place (subjective). */}
+            <Row
+              title="Lives in the same place as me"
+              sub="You decide — it just helps you keep local plans local."
+              control={<Switch on={samePlace} disabled={savingKey === "samePlace"} onClick={() => patchPref({ samePlace: !samePlace }, "samePlace")} />}
+            />
+
+            {/* 3. Share my plans with them. */}
+            <Row
+              title="Share my plans with them"
+              sub={sharePlans ? `${first} can see plans you share` : `Your plans stay hidden from ${first}`}
+              control={<Switch on={sharePlans} disabled={savingKey === "sharePlans"} onClick={() => patchPref({ sharePlans: !sharePlans }, "sharePlans")} />}
+            />
+
+            <button type="button" onClick={onClose} className="w-full rounded-2xl py-3 mt-5 text-[14px] font-semibold" style={{ background: "transparent", color: "#C8D4C0", border: `1px solid ${CARD_B}`, fontFamily: FONT }}>Done</button>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}

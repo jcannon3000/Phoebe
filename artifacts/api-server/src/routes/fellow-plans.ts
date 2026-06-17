@@ -16,6 +16,7 @@ import {
   fellowPlansTable,
   fellowPlanRsvpsTable,
   fellowsTable,
+  fellowPrefsTable,
   usersTable,
   betaUsersTable,
   type FellowPlan,
@@ -166,6 +167,26 @@ router.get("/fellow-plans", async (req, res): Promise<void> => {
       sql`${fellowPlansTable.startsAt} > now() - interval '6 hours'`,
     ),
   )).orderBy(sql`(${fellowPlansTable.startsAt} IS NULL) ASC, ${fellowPlansTable.startsAt} ASC NULLS LAST, ${fellowPlansTable.createdAt} DESC`);
+
+  // Respect each host's per-fellow "share my plans" choice: a fellow's plan is
+  // hidden from me if THAT host turned sharePlans off toward me. My own plans
+  // always show. Default (no row) = shared, so this never hides anything unless
+  // a host explicitly scoped me out (e.g. "not in the same place").
+  if (fellowIds.length > 0) {
+    const hiddenRows = await db.select({ ownerId: fellowPrefsTable.ownerId })
+      .from(fellowPrefsTable)
+      .where(and(
+        inArray(fellowPrefsTable.ownerId, fellowIds),
+        eq(fellowPrefsTable.fellowUserId, me),
+        eq(fellowPrefsTable.sharePlans, false),
+      ));
+    if (hiddenRows.length > 0) {
+      const hideHosts = new Set(hiddenRows.map((r) => r.ownerId));
+      for (let i = plans.length - 1; i >= 0; i--) {
+        if (plans[i].userId !== me && hideHosts.has(plans[i].userId)) plans.splice(i, 1);
+      }
+    }
+  }
 
   if (plans.length === 0) { res.json({ plans: [] }); return; }
 

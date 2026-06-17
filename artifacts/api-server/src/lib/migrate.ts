@@ -1236,6 +1236,21 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS walk_nudges_to ON walk_nudges (to_user_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS walk_nudges_pair ON walk_nudges (pair_id)`);
 
+    // fellow_prefs — the owner's one-way per-fellow sharing settings: a
+    // subjective "same place" marker + whether my plans are visible to them.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS fellow_prefs (
+        id SERIAL PRIMARY KEY,
+        owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        fellow_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        same_place BOOLEAN NOT NULL DEFAULT FALSE,
+        share_plans BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS fellow_prefs_owner_fellow ON fellow_prefs (owner_id, fellow_user_id)`);
+
     // daily_prayers — one "prayer for the day" per author per local day,
     // shared with ALL the author's partners (author-scoped, not partner-scoped).
     await run(client, `

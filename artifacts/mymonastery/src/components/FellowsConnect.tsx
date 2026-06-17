@@ -10,10 +10,11 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, Users, Plus, Link2 as LinkIcon } from "lucide-react";
+import { Search, Users, Plus, Link2 as LinkIcon, Settings2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { FellowSettingsSheet, type FellowLite } from "@/components/FellowSettingsSheet";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -99,6 +100,10 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
   // keep growing with Phoebe." to any fellow. Optimistic: the pill flips to
   // "Encouraged" the instant you tap, server dedupes a double-send within an hour.
   const [encouraged, setEncouraged] = useState<Set<number>>(() => new Set());
+  // Per-fellow sharing settings sheet (daily progress + plans/same-place).
+  const [settingsFellow, setSettingsFellow] = useState<FellowLite | null>(null);
+  const openSettings = (f: { userId: number; name: string | null; avatarUrl: string | null }) =>
+    setSettingsFellow({ userId: f.userId, name: f.name, avatarUrl: f.avatarUrl });
   const encourage = useMutation({ mutationFn: (userId: number) => apiRequest("POST", "/api/encouragements", { toUserId: userId }) });
   const sendEncourage = (id: number) => { encourage.mutate(id); setEncouraged((s) => new Set(s).add(id)); };
 
@@ -188,6 +193,14 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
       {encouraged.has(f.userId)
         ? <Pill label={t("fellows_c.encouraged", { defaultValue: "Encouraged 🙌" })} kind="muted" disabled />
         : <Pill label={t("fellows_c.encourage", { defaultValue: "🙌 Encourage" })} kind="solid" onClick={() => sendEncourage(f.userId)} />}
+      {canManage && (
+        <button type="button" aria-label={t("fellows_c.settings", { defaultValue: "Sharing settings" })}
+          onClick={() => openSettings(f)}
+          className="shrink-0 rounded-full flex items-center justify-center transition-opacity active:scale-[0.95]"
+          style={{ width: 30, height: 30, background: "rgba(200,212,192,0.08)", border: "1px solid rgba(46,107,64,0.4)", color: "#C8D4C0" }}>
+          <Settings2 size={15} />
+        </button>
+      )}
       <Pill label={t("fellows_c.remove", { defaultValue: "Remove" })} kind="muted" onClick={() => { if (window.confirm(t("fellows_c.remove_confirm", { defaultValue: "Remove this fellow?" }))) remove.mutate(f.userId); }} />
     </div>, `f-${f.userId}`);
 
@@ -210,6 +223,7 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
             )}
           </Link>
         )}
+        <FellowSettingsSheet fellow={settingsFellow} onClose={() => setSettingsFellow(null)} />
       </div>
     );
   }
@@ -296,10 +310,19 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
               {encouraged.has(f.userId)
                 ? <Pill label={t("fellows_c.encouraged", { defaultValue: "Encouraged 🙌" })} kind="muted" disabled />
                 : <Pill label={t("fellows_c.encourage", { defaultValue: "🙌 Encourage" })} kind="solid" onClick={() => sendEncourage(f.userId)} />}
+              {canManage && (
+                <button type="button" aria-label={t("fellows_c.settings", { defaultValue: "Sharing settings" })}
+                  onClick={() => openSettings(f)}
+                  className="shrink-0 rounded-full flex items-center justify-center transition-opacity active:scale-[0.95]"
+                  style={{ width: 30, height: 30, background: "rgba(200,212,192,0.08)", border: "1px solid rgba(46,107,64,0.4)", color: "#C8D4C0" }}>
+                  <Settings2 size={15} />
+                </button>
+              )}
               <Pill label={t("fellows_c.remove", { defaultValue: "Remove" })} kind="muted" onClick={() => { if (window.confirm(t("fellows_c.remove_confirm", { defaultValue: "Remove this fellow?" }))) remove.mutate(f.userId); }} />
             </div>, `f-${f.userId}`))}
         </>
       )}
+      <FellowSettingsSheet fellow={settingsFellow} onClose={() => setSettingsFellow(null)} />
     </div>
   );
 }
