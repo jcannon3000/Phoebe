@@ -2440,6 +2440,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             if (currentSlide.type === "lesson" && currentSlide.metadata?.compline) {
               return null;
             }
+            // The WEB passage is shown inline on the verse slides that follow
+            // this title, so the "read in NRSV" link is redundant here — hide it
+            // on the title slide when the text is inline. (Still shown on the
+            // reference-only fallback title, where there's no inline text.)
+            if (currentSlide.type === "lesson_title" && currentSlide.metadata?.inlineWeb) {
+              return null;
+            }
             // A reference with more than one contiguous range — multi-range
             // ("Num. 11:16-17, 24-29") or cross-chapter ("John 7:14-8:2") —
             // gets one pill PER range, because Bible.com only resolves a

@@ -19,10 +19,11 @@ import { lookupLessonVerses, type LessonVerse } from "./scriptureService";
 import { bibleGatewayUrl } from "./bibleGatewayUrl";
 import type { Slide } from "./assembleMorningPrayer";
 
-// 4 verses per chunk matches the psalm cadence. Lesson verses are
-// usually denser than psalm verses, so this lands at "one screen of
-// reading" per slide rather than three sentences.
-const LESSON_VERSES_PER_CHUNK = 4;
+// 6 verses per slide. Lessons are NOT split tightly like the psalms (which go
+// in short ~4-verse chunks for their poetic cadence) — scripture prose is read
+// continuously, so grouping 6 verses reads as a passage rather than a stack of
+// one-liners, with fewer slides to tap through.
+const LESSON_VERSES_PER_CHUNK = 6;
 
 export type LessonKind =
   | "first_morning"
@@ -138,6 +139,11 @@ export function buildLessonSlides(
       readUrl,
       lessonKind: kind,
       lessonSubtitle: subtitle,
+      // True when the WEB passage is shown inline on the verse slides that
+      // follow — the client then hides the "read in NRSV" link on THIS title
+      // slide (the text is right here). On the fallback path (book not in the
+      // local WEB data) this is false, so the read-online link stays.
+      inlineWeb: !!(verses && verses.length > 0),
     },
   };
 
