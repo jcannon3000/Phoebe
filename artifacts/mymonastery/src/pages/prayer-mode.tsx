@@ -393,6 +393,9 @@ function SlideContent({
   onStartCobreathe: () => void;
 }) {
   const { i18n } = useTranslation();
+  // The viewer — used by the "praying for you" slide to show YOUR own picture
+  // (it's your prayer request being held).
+  const { user } = useAuth();
   const [askBody, setAskBody] = useState("");
   // Selected length (minutes) for the pause slide's contemplation dropdown.
   const [pauseMin, setPauseMin] = useState(10);
@@ -800,45 +803,45 @@ function SlideContent({
   // opens; multiple slides flow naturally if more than one person is
   // currently praying.
   if (slide.kind === "prayer-from") {
+    const youInitials = (user?.name ?? "")
+      .split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
     return (
-      <div className="w-full flex flex-col items-center text-center gap-5">
+      // Your prayer request, being held — fades up, themed BLUE (distinct from
+      // the green "pray for others" slides), and shows YOUR picture since it's
+      // your request. The person praying is credited in the caption below.
+      <motion.div
+        className="w-full flex flex-col items-center text-center gap-5"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+      >
         <p
           className="text-[10px] uppercase tracking-[0.18em] font-semibold"
-          style={{ color: "rgba(143,175,150,0.45)" }}
+          style={{ color: "rgba(150,178,214,0.6)" }}
         >
           Praying for you
         </p>
-        {slide.authorAvatarUrl ? (
+        {user?.avatarUrl ? (
           <img
-            src={slide.authorAvatarUrl}
-            alt={slide.authorName ?? "Prayer author"}
+            src={user.avatarUrl}
+            alt={user?.name ?? "You"}
             className="w-16 h-16 rounded-full object-cover prayer-avatar-pulse"
           />
         ) : (
           <div
             className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold prayer-avatar-pulse"
-            style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+            style={{ background: "#1A3A5E", color: "#A8C8E8" }}
           >
-            {(slide.authorName ?? "")
-              .split(" ")
-              .slice(0, 2)
-              .map(w => w[0]?.toUpperCase() ?? "")
-              .join("")}
+            {youInitials}
           </div>
         )}
-        <p
-          className="text-[22px] leading-[1.4] font-medium"
-          style={{ color: "#E8E4D8", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          {slide.authorName}
-        </p>
 
         {slide.fullText && (
           <div
             className="w-full rounded-2xl px-6 py-5 text-left mt-1"
             style={{
-              background: "rgba(46,107,64,0.12)",
-              border: "1px solid rgba(46,107,64,0.15)",
+              background: "rgba(96,141,209,0.12)",
+              border: "1px solid rgba(96,141,209,0.22)",
             }}
           >
             {(() => {
@@ -847,7 +850,7 @@ function SlideContent({
                 <p
                   className="italic whitespace-pre-wrap"
                   style={{
-                    color: "#C8D4C0",
+                    color: "#CDD9EC",
                     fontFamily: "Georgia, 'Times New Roman', serif",
                     fontSize: `${fit.size}px`,
                     lineHeight: fit.leading,
@@ -860,20 +863,20 @@ function SlideContent({
           </div>
         )}
 
-        {slide.prayingSinceLabel && (
-          <p className="text-[10px] uppercase tracking-[0.14em]" style={{ color: "rgba(143,175,150,0.35)" }}>
-            {slide.prayingSinceLabel}
+        {slide.authorName && (
+          <p className="text-[12px]" style={{ color: "rgba(150,178,214,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+            {slide.authorName} is praying for you{slide.prayingSinceLabel ? ` · ${slide.prayingSinceLabel}` : ""}
           </p>
         )}
 
         <button
           onClick={onAdvance}
           className="mt-2 px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
-          style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+          style={{ background: "#2E5C8F", color: "#F0EDE6" }}
         >
           Continue →
         </button>
-      </div>
+      </motion.div>
     );
   }
 
