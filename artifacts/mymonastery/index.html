@@ -4,6 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>Phoebe</title>
+
+    <!-- Android web zoom-out. Android Chrome renders Phoebe's tuned-for-iOS
+         layout cramped ("scrunched"); the user asked for it to sit at ~90%
+         like a browser zoom. Tag <html> here (before paint, no flash) and a
+         CSS rule applies `zoom: 0.9`. Scoped to Android web only — never the
+         native shell, never iOS. -->
+    <script>
+      (function () {
+        try {
+          var isAndroid = /Android/i.test(navigator.userAgent || "");
+          var isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+          if (isAndroid && !isNative) document.documentElement.classList.add("android-web");
+        } catch (e) { /* no-op */ }
+      })();
+    </script>
     <meta name="description" content="Be together with Phoebe." />
     <meta name="theme-color" content="#091A10" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

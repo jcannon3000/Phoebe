@@ -300,6 +300,13 @@ textarea:focus {
     text-size-adjust: 100%;
   }
 
+  /* Android web only (tagged in index.html): zoom the whole page out to ~90%
+     so the iOS-tuned layout breathes on Android Chrome, like a browser zoom.
+     Never applied on iOS or the native shell. */
+  html.android-web {
+    zoom: 0.9;
+  }
+
   body {
     @apply font-sans antialiased text-foreground;
     background-color: #091A10;
