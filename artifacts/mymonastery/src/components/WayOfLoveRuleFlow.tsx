@@ -111,7 +111,7 @@ const PRAY_REMINDER_PREF: Record<PrayChoice, "office" | "devotion"> = {
   offices: "office",
   contemplation: "devotion",
 };
-const DEFAULT_REMINDER_TIME = "07:00";
+const DEFAULT_REMINDER_TIME = "07:30";
 
 // Is a home module currently surfaced? Mirrors the dashboard's gate: only a
 // current-version layout counts, and the key must be in `order` and not
@@ -172,9 +172,11 @@ export default function WayOfLoveRuleFlow({
     return m > 0 ? String(m) : "5";
   });
   // Per-side configuration — each chosen side gets its own way + method + time.
+  // Standard preset is Morning Devotion (on screen, 7:30) — so a fresh user with
+  // no saved level defaults to "devotion", not the more involved "community".
   const [prayBySide, setPrayBySide] = useState<Record<OfficeSide, PrayChoice>>(() => ({
-    morning: prayFromLevel(getSideLevel("morning")) ?? prayFromLevel(getSideLevel("evening")) ?? "community",
-    evening: prayFromLevel(getSideLevel("evening")) ?? prayFromLevel(getSideLevel("morning")) ?? "community",
+    morning: prayFromLevel(getSideLevel("morning")) ?? prayFromLevel(getSideLevel("evening")) ?? "devotion",
+    evening: prayFromLevel(getSideLevel("evening")) ?? prayFromLevel(getSideLevel("morning")) ?? "devotion",
   }));
   const [methodBySide, setMethodBySide] = useState<Record<OfficeSide, DefaultOfficeEntry>>(() => ({
     morning: getSideEntry("morning"),
