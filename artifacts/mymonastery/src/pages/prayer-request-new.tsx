@@ -19,7 +19,7 @@ const SAGE_DIM = "rgba(148,168,198,0.6)";
 const SERIF = "Georgia, 'Times New Roman', serif";
 const SPACE = "'Space Grotesk', sans-serif";
 const GLASS = "rgba(9,16,34,0.6)";
-const GLASS_BORDER = "rgba(150,178,224,0.22)";
+const GLASS_BORDER = "rgba(255,255,255,0.08)";
 // Shared glass field styling (textarea + inputs). No box-shadow inline so
 // the global input :focus glow (index.css) still rings the field.
 const glassField = {
@@ -252,7 +252,7 @@ export default function PrayerRequestNew() {
         </button>
       </div>
 
-      <div style={{ maxWidth: 480, margin: "0 auto", width: "100%", padding: "22px 24px calc(env(safe-area-inset-bottom) + 48px)" }}>
+      <div style={{ maxWidth: 480, margin: "0 auto", width: "100%", padding: "22px 24px calc(env(safe-area-inset-bottom) + var(--kb-inset, 0px) + 24px)" }}>
         <AnimatePresence mode="wait">
 
           {/* Step 0 — Write the request */}
@@ -265,17 +265,12 @@ export default function PrayerRequestNew() {
               exit="exit"
               transition={{ duration: 0.2 }}
             >
-              {/* Eyebrow + title + serif subtitle — the contemplation / Cobreathe hierarchy. */}
-              <p style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 600, color: SAGE_DIM, fontFamily: SPACE, margin: 0, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
-                <span aria-hidden style={{ fontSize: 15 }}>{copy.emoji}</span>
-                {copy.eyebrow}
-              </p>
-              <h1 style={{ fontSize: 29, lineHeight: 1.18, fontWeight: 700, color: CREAM, fontFamily: SPACE, letterSpacing: "-0.02em", margin: 0, marginBottom: 12 }}>
+              {/* Title only — the "PRAYER REQUEST" eyebrow + serif subtitle were
+                  removed per request (redundant with the title + the placeholder
+                  prompt below). */}
+              <h1 style={{ fontSize: 29, lineHeight: 1.18, fontWeight: 700, color: CREAM, fontFamily: SPACE, letterSpacing: "-0.02em", margin: 0, marginBottom: 22 }}>
                 {copy.title}
               </h1>
-              <p style={{ fontSize: 16, lineHeight: 1.5, fontStyle: "italic", color: SAGE, fontFamily: SERIF, margin: 0, marginBottom: 26 }}>
-                {copy.subtitle}
-              </p>
 
               {/* Life-event: a short title + the date it happens. */}
               {isLifeEvent && (
@@ -308,19 +303,18 @@ export default function PrayerRequestNew() {
                 ref={bodyRef}
                 value={body}
                 onChange={(e) => { setBody(e.target.value.slice(0, 1000)); setError(""); }}
-                rows={5}
+                rows={4}
                 placeholder={copy.placeholder}
                 className="w-full px-5 py-4 text-base resize-none"
                 style={{
                   ...glassField,
-                  minHeight: 156,
-                  fontFamily: SERIF,
-                  fontStyle: "italic",
-                  fontSize: 17,
+                  minHeight: 140,
+                  fontFamily: SPACE,
+                  fontSize: 16,
                   lineHeight: 1.6,
                 }}
               />
-              <p className="text-[11px] mb-6 text-right" style={{ color: "rgba(148,168,198,0.5)", fontFamily: SPACE, marginTop: 8 }}>
+              <p className="text-[11px] mb-3 text-right" style={{ color: "rgba(148,168,198,0.5)", fontFamily: SPACE, marginTop: 6 }}>
                 {t("prayer_request.char_count", { count: body.length })}
               </p>
 
