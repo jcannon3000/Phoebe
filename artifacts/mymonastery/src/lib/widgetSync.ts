@@ -10,12 +10,16 @@
  * lands; react-query keeps the small fetches shared with the rest of the app.
  */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { useEffectiveReflectionSource, getSideLevel } from "@/lib/officePrefs";
+import {
+  hasReadCacToday, hasReadFddToday, hasReadSsjeToday,
+  CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT,
+} from "@/lib/cacReadState";
 
 type WidgetState = {
   // Dynamic "what's next" hero — the medium widget's headline card.
@@ -130,7 +134,7 @@ export function useWidgetSync(): void {
   // Prayer level → so the office hero reads "Devotion"/"Prayer" exactly like the
   // home PrayerOfficeCard (the user prefers a Devotion, so the widget should
   // say "Evening Devotion", not "Evening Prayer").
-  const officePrefsQ = useQuery<{ defaultPrayerLevel?: "devotion" | "office" | "intercessions"; contemplationGoalMinutes?: number }>({
+  const officePrefsQ = useQuery<{ defaultPrayerLevel?: "devotion" | "office" | "intercessions"; contemplationGoalMinutes?: number; morning?: string; evening?: string }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     enabled,
@@ -150,6 +154,19 @@ export function useWidgetSync(): void {
     staleTime: 30_000,
   });
 
+  // A reflection is read on another surface (often the in-app browser): it
+  // stamps localStorage + fires a read-event, but the server read-state query
+  // may still be stale. Bump on those signals (and office-pref changes) so the
+  // push effect re-runs and the widget drops the reflection from "what's next"
+  // the moment it's actually read.
+  const [readBump, setReadBump] = useState(0);
+  useEffect(() => {
+    const bump = () => setReadBump((n) => n + 1);
+    const evs = [CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT, "phoebe:appactive", "phoebe:browserfinished", "phoebe:office-prefs"];
+    evs.forEach((e) => window.addEventListener(e, bump));
+    return () => evs.forEach((e) => window.removeEventListener(e, bump));
+  }, []);
+
   useEffect(() => {
     if (!enabled) return;
     // Push even before office-history lands (or if it's empty) so the widget
@@ -163,25 +180,40 @@ export function useWidgetSync(): void {
     const morningDone = !!today?.morning;
     const eveningDone = !!today?.evening;
     const read = readQ.data ?? {};
-    const reflectDone = !!read.cac || !!read.fdd || !!read.ssje;
+    // Server read-state OR this device's localStorage — a reflection read in the
+    // in-app browser stamps localStorage instantly while the server query can
+    // lag, which is what left the widget showing a reflection already done as
+    // "next up". Mirrors useRhythmState so the widget agrees with the home.
+    const reflectDone = !!read.cac || !!read.fdd || !!read.ssje
+      || hasReadCacToday() || hasReadFddToday() || hasReadSsjeToday();
     const reflectAvailable = reflectionSource !== "none";
+    // An office is part of the rhythm only when its pref isn't "none" (defaults:
+    // morning "devotion", evening off) — the same gate as the home hero, so the
+    // widget never offers a turned-off office as "what's next".
+    const morningActive = (officePrefsQ.data?.morning ?? "devotion") !== "none";
+    const eveningActive = (officePrefsQ.data?.evening ?? "none") !== "none";
     const afternoon = new Date().getHours() >= 15;
 
-    // ── Mirror dashboard.tsx homeHero resolver exactly ──────────────────────
+    // ── Mirror dashboard.tsx homeHero resolver (active-gated) ───────────────
     type Hero =
       | { kind: "office"; side: "morning" | "evening" }
       | { kind: "reflect" }
       | { kind: "summary" };
     const hero: Hero = (() => {
-      if (morningDone && reflectDone && eveningDone) return { kind: "summary" };
+      const morningPending = morningActive && !morningDone;
+      const eveningPending = eveningActive && !eveningDone;
+      const reflectPending = reflectAvailable && !reflectDone;
+      if (!morningPending && !eveningPending && !reflectPending) return { kind: "summary" };
       if (!afternoon) {
-        if (!morningDone) return { kind: "office", side: "morning" };
-        if (!reflectDone && reflectAvailable) return { kind: "reflect" };
-        return { kind: "office", side: "evening" };
+        if (morningPending) return { kind: "office", side: "morning" };
+        if (reflectPending) return { kind: "reflect" };
+        if (eveningPending) return { kind: "office", side: "evening" };
+        return { kind: "summary" };
       }
-      if (!eveningDone) return { kind: "office", side: "evening" };
-      if (!reflectDone && reflectAvailable) return { kind: "reflect" };
-      return { kind: "office", side: "evening" };
+      if (eveningPending) return { kind: "office", side: "evening" };
+      if (reflectPending) return { kind: "reflect" };
+      if (morningPending) return { kind: "office", side: "morning" };
+      return { kind: "summary" };
     })();
 
     const withYou = prayedWithQ.data?.total ?? prayedWithQ.data?.people?.length ?? 0;
@@ -235,7 +267,11 @@ export function useWidgetSync(): void {
     // Daily-progress anchors: the two offices always count; the reflection
     // counts only when the user has a source set. doneCount/totalAnchors drive
     // the widget's progress dots + "X of Y today".
-    const anchors = [morningDone, eveningDone, ...(reflectAvailable ? [reflectDone] : [])];
+    const anchors = [
+      ...(morningActive ? [morningDone] : []),
+      ...(eveningActive ? [eveningDone] : []),
+      ...(reflectAvailable ? [reflectDone] : []),
+    ];
     const totalAnchors = anchors.length;
     const doneCount = anchors.filter(Boolean).length;
 
@@ -277,6 +313,7 @@ export function useWidgetSync(): void {
     prayerReqsQ.data,
     officePrefsQ.data,
     contStatsQ.data,
+    readBump,
   ]);
 }
 

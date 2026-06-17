@@ -285,6 +285,15 @@ export default function WayOfLoveRuleFlow({
       morning: prefs.morning !== "none",
       evening: prefs.evening !== "none",
     });
+    // Which sides are part of the rhythm comes from the SERVER office pref
+    // ("none" = off) — the authoritative on/off. The local per-side level has no
+    // "off" state, so seeding `sides` from it kept a side the user had turned
+    // off still looking selected. Fall back to morning-only if neither is on.
+    {
+      const mOn = prefs.morning !== "none";
+      const eOn = prefs.evening !== "none";
+      setSides(mOn || eOn ? { morning: mOn, evening: eOn } : { morning: true, evening: false });
+    }
   }, [prefs]);
 
   const goalMin = Math.max(0, Math.min(180, parseInt(goal, 10) || 0));

@@ -458,10 +458,15 @@ export function CobreatheBreath({
       // blue ring fills once, slowly, across the whole set of breaths.
       {
         const inhale = pos < INHALE_MS;
-        // Light green fills clockwise over the dark base on the inhale, then
-        // recedes on the exhale — the dark green ring stays put underneath.
-        const fIn = isCounting ? (inhale ? pos / INHALE_MS : 1 - (pos - INHALE_MS) / EXHALE_MS) : 0;
+        // Both strokes draw in the SAME clockwise direction. The light green
+        // fills over the inhale and HOLDS full; on the exhale the dark green
+        // sweeps FORWARD over it (same direction — it never recedes backwards),
+        // settling the ring back to the dark base by full exhale. Both reset
+        // under the static dark base at the cycle turn, so there's no jump.
+        const fIn = isCounting ? (inhale ? pos / INHALE_MS : 1) : 0;
+        const fOut = isCounting ? (inhale ? 0 : (pos - INHALE_MS) / EXHALE_MS) : 0;
         if (ringInRef.current) ringInRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fIn)).toFixed(2);
+        if (ringOutRef.current) ringOutRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fOut)).toFixed(2);
         if (sessionRingRef.current) {
           const sFrac = isCounting ? Math.min(1, Math.max(0, (now - countStartRef.current) / (totalBreaths * CYCLE_MS))) : 0;
           sessionRingRef.current.style.strokeDashoffset = (SESSION_CIRC * (1 - sFrac)).toFixed(2);
@@ -730,7 +735,9 @@ export function CobreatheBreath({
           transition: "background 0.4s ease, color 0.4s ease, padding 0.3s ease",
           ...(reachedNow
             ? { background: "rgba(46,107,64,0.85)", border: "1px solid rgba(140,195,160,0.5)", color: "#EAF6F4", fontSize: 14, padding: "9px 22px" }
-            : { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(182,210,188,0.22)", color: TEXT_DIM, fontSize: 13, padding: "8px 16px" }),
+            // Cancel is a quiet plain-text control — no pill — so only the green
+            // "Done" reads as an affordance once the set is kept.
+            : { background: "transparent", border: "none", color: TEXT_DIM, fontSize: 13, padding: "8px 6px" }),
         }}
       >
         {reachedNow ? t("cobreathe.done", { defaultValue: "Done" }) : t("common.cancel", { defaultValue: "Cancel" })}
@@ -829,6 +836,11 @@ export function CobreatheBreath({
               inhale, recedes on the exhale. 80% opacity + a soft outer glow. */}
           <circle ref={ringInRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
             style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 5px rgba(134,199,155,0.85))" }} />
+          {/* Dark green exhale sweep — draws FORWARD (same clockwise direction
+              as the inhale) over the light ring on the exhale, settling the
+              ring back to the dark base by full exhale. Never recedes. */}
+          <circle ref={ringOutRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.92}
+            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 5px rgba(46,107,64,0.85))" }} />
           {/* inner blue session ring — faint track + slow fill, thickness matched to the outer */}
           <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(91,157,239,0.16)" strokeWidth={RING_SW} />
           <circle ref={sessionRingRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_BLUE} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
