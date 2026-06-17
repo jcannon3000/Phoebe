@@ -9,6 +9,14 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="canonical" href="https://withphoebe.app/" />
 
+    <!-- Installable web app (PWA) — lets desktop (macOS "Add to Dock",
+         Chrome/Edge "Install") and mobile users run Phoebe as a standalone
+         windowed app, with the existing service worker + web push. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Phoebe" />
+
     <!-- Apple Smart App Banner — shows a thin "Get / Open" strip at the
          top of mobile Safari pointing at the App Store listing. iOS
          renders it natively for Safari users; harmless on every other

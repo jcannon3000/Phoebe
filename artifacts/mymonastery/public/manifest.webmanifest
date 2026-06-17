@@ -1,0 +1,18 @@
+{
+  "name": "Phoebe — Pray Together",
+  "short_name": "Phoebe",
+  "description": "Cultivate a daily practice of prayer — the Daily Office, contemplation, and your community, in one quiet rhythm.",
+  "id": "/",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#091A10",
+  "theme_color": "#091A10",
+  "categories": ["lifestyle", "health", "education"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
