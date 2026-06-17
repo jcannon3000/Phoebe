@@ -2106,6 +2106,81 @@ function WhatsNextSlide({
   );
 }
 
+// The blessing — the universal final beat of a prayer close. An office ends not
+// on a tally but on a gift: a benediction spoken over you, then you are sent on.
+// The Aaronic blessing (Numbers 6) by day; a Compline rest at night. This is
+// what replaced the old abrupt fade-to-home, so no close ends cold.
+function BlessingSlide({
+  isEvening,
+  onDone,
+  visible,
+}: {
+  isEvening: boolean;
+  onDone: () => void;
+  visible: boolean;
+}) {
+  const { t } = useTranslation();
+  const blessing = isEvening
+    ? t("prayer_mode.blessing_evening", {
+        defaultValue:
+          "Guide us waking, O Lord, and guard us sleeping; that awake we may watch with Christ, and asleep we may rest in peace.",
+      })
+    : t("prayer_mode.blessing_day", {
+        defaultValue:
+          "The Lord bless you and keep you; the Lord make his face to shine upon you, and be gracious to you; the Lord lift up his countenance upon you, and give you peace.",
+      });
+  return (
+    <div
+      className="w-full flex flex-col items-center text-center"
+      style={{
+        opacity: visible ? 1 : 0,
+        transition: "opacity 0.5s ease",
+        gap: 30,
+        background: "radial-gradient(120% 90% at 50% 10%, rgba(46,107,64,0.20) 0%, rgba(17,41,28,0) 70%)",
+        borderRadius: 24,
+        padding: "34px 20px 12px",
+      }}
+    >
+      <motion.p
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        style={{
+          fontFamily: "'Space Grotesk', sans-serif", fontSize: 12,
+          letterSpacing: "0.24em", textTransform: "uppercase", color: "#8FAF96",
+        }}
+      >
+        {t("prayer_mode.go_in_peace", { defaultValue: "Go in peace" })}
+      </motion.p>
+
+      <motion.p
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, delay: 0.2 }}
+        style={{
+          fontFamily: "Georgia, 'Times New Roman', serif",
+          fontStyle: "italic",
+          fontSize: 21, lineHeight: 1.55, color: "#E8E4D8", maxWidth: 340,
+        }}
+      >
+        {blessing}
+      </motion.p>
+
+      <motion.button
+        type="button"
+        onClick={onDone}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.55 }}
+        className="px-12 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+        style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
+      >
+        {t("prayer_mode.amen", { defaultValue: "Amen" })}
+      </motion.button>
+    </div>
+  );
+}
+
 export default function PrayerModePage() {
   const { user, isLoading: authLoading } = useAuth();
   const { t } = useTranslation();
@@ -3292,7 +3367,11 @@ export default function PrayerModePage() {
     ? officePrefsQuery.data?.morning
     : officePrefsQuery.data?.evening;
   const showSetReminder = closingOnly && sidePref === "none";
-  const [phase, setPhase] = useState<"prayer" | "closing" | "news" | "habit">(() => progressOnly ? "habit" : closingOnly ? "closing" : "prayer");
+  const [phase, setPhase] = useState<"prayer" | "closing" | "news" | "habit" | "blessing">(() => progressOnly ? "habit" : closingOnly ? "closing" : "prayer");
+  // A real prayer close ends on the blessing send-off (the universal final
+  // beat). Only "just viewing my rhythm" (?progressOnly=1) skips it and goes
+  // straight home.
+  const shouldBless = !progressOnly;
   // New stories from followed news sources, if any — gates the optional
   // "As you go" news slide between the closing summary and the habit
   // rhythm screen. Empty (and free) for anyone who follows nothing.
@@ -3476,7 +3555,7 @@ export default function PrayerModePage() {
   // the warmer #11291C, every other phase is #0C1F12 — so the top of the
   // screen never reads as a different color than the slide under it.
   useEffect(() => {
-    const phaseBg = phase === "closing" ? "#11291C" : "#0C1F12";
+    const phaseBg = phase === "closing" || phase === "blessing" ? "#11291C" : "#0C1F12";
     document.body.style.backgroundColor = phaseBg;
     document.documentElement.style.backgroundColor = phaseBg;
     document.querySelector('meta[name="theme-color"]')?.setAttribute("content", phaseBg);
@@ -3506,10 +3585,10 @@ export default function PrayerModePage() {
   useEffect(() => {
     if (phase === "closing" && fadeHomeNoNewsletter && !fadedHomeRef.current) {
       fadedHomeRef.current = true;
-      exitToFinish();
+      // No reflection hand-off to show, but don't end cold — go to the blessing
+      // send-off (its Amen fades home). Everyone gets a send-off.
+      setPhase("blessing");
     }
-    // exitToFinish is stable for our purposes (only reads refs/state setters).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, fadeHomeNoNewsletter]);
 
   // Move to the next slide without recording an amen / check-in.
@@ -3858,6 +3937,14 @@ export default function PrayerModePage() {
     // surface instead of the home screen they started from.
     setSlideVisible(false);
     setTimeout(() => {
+      // For a real prayer close, hand off to the blessing send-off rather than
+      // dropping straight home — the blessing's own Amen fades the rest of the
+      // way out (see BlessingSlide → exitToFinish).
+      if (shouldBless) {
+        setPhase("blessing");
+        setSlideVisible(true);
+        return;
+      }
       setVisible(false);
       setTimeout(() => setLocation(finishHref), 500);
     }, 300);
@@ -3937,11 +4024,11 @@ export default function PrayerModePage() {
       // slide is up. The pulse is implemented as a CSS animation on
       // the .closing-pulse class (see index.css). Other phases keep
       // the static background.
-      className={phase === "closing" ? "closing-pulse" : undefined}
+      className={phase === "closing" || phase === "blessing" ? "closing-pulse" : undefined}
       onTouchStart={handleSwipeTouchStart}
       onTouchEnd={handleSwipeTouchEnd}
       style={{
-        background: phase === "closing" ? undefined : "#0C1F12",
+        background: phase === "closing" || phase === "blessing" ? undefined : "#0C1F12",
         minHeight: "100dvh",
         opacity: visible ? 1 : 0,
         transition: "opacity 0.5s ease",
@@ -4085,6 +4172,9 @@ export default function PrayerModePage() {
         )}
         {phase === "habit" && (
           <HabitSlide onDone={handleDone} visible={slideVisible} isEvening={closingIsEvening} coPrayers={coPrayersData?.people ?? []} />
+        )}
+        {phase === "blessing" && (
+          <BlessingSlide isEvening={closingIsEvening} onDone={exitToFinish} visible={slideVisible} />
         )}
       </div>
 
