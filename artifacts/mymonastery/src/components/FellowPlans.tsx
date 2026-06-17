@@ -77,16 +77,18 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
   const [composing, setComposing] = useState(false);
   const [title, setTitle] = useState("");
   const [emoji, setEmoji] = useState<string | null>(null);
-  const [whenText, setWhenText] = useState("");
+  // A real date+time pick (datetime-local "YYYY-MM-DDTHH:mm" in the user's tz);
+  // converted to an absolute ISO instant for the server's startsAt on submit.
+  const [startsAtLocal, setStartsAtLocal] = useState("");
   const [location, setLocation] = useState("");
 
-  const resetCompose = () => { setTitle(""); setEmoji(null); setWhenText(""); setLocation(""); setComposing(false); };
+  const resetCompose = () => { setTitle(""); setEmoji(null); setStartsAtLocal(""); setLocation(""); setComposing(false); };
 
   const create = useMutation({
     mutationFn: () => apiRequest("POST", "/api/fellow-plans", {
       title: title.trim(),
       emoji: emoji || undefined,
-      whenText: whenText.trim() || undefined,
+      startsAt: startsAtLocal ? new Date(startsAtLocal).toISOString() : undefined,
       location: location.trim() || undefined,
     }),
     onSuccess: () => { resetCompose(); invalidate(); },
@@ -140,13 +142,15 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
                 >{e}</button>
               ))}
             </div>
+            <label className="block text-[12px] mb-1 px-0.5" style={{ color: SAGE, fontFamily: FONT }}>
+              {t("plans.when_label", { defaultValue: "When? (optional)" })}
+            </label>
             <input
-              value={whenText}
-              onChange={(e) => setWhenText(e.target.value)}
-              placeholder={t("plans.when_placeholder", { defaultValue: "When? e.g. Thursday 6pm (optional)" })}
-              maxLength={80}
+              type="datetime-local"
+              value={startsAtLocal}
+              onChange={(e) => setStartsAtLocal(e.target.value)}
               className="w-full rounded-xl px-3.5 py-2.5 text-[14px] outline-none mb-2"
-              style={inputStyle}
+              style={{ ...inputStyle, colorScheme: "dark" }}
             />
             <input
               value={location}

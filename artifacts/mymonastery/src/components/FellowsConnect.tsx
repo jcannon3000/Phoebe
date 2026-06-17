@@ -10,7 +10,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, Users, Plus } from "lucide-react";
+import { Search, Users, Plus, Link2 as LinkIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -94,6 +94,27 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
 
   const [optReq, setOptReq] = useState<Set<number>>(() => new Set());
   const addFellow = (id: number) => { sendReq.mutate(id); setOptReq((s) => new Set(s).add(id)); };
+
+  // Share a personal invite link — mint/fetch the caller's token, then open the
+  // best share surface (native sheet, Web Share, or clipboard). Whoever opens it
+  // and accepts becomes a Fellow (the link rides the Heart to Hearts join flow,
+  // and accepting a Heart to Heart creates the Fellow link).
+  const [linkCopied, setLinkCopied] = useState(false);
+  const shareInviteLink = async () => {
+    try {
+      const { url } = await apiRequest<{ token: string; url: string }>("POST", "/api/prayer-partner/invite-link");
+      const detail = {
+        title: t("fellows_c.invite_share_title", { defaultValue: "Connect with me on Phoebe" }),
+        text: t("fellows_c.invite_share_text", { defaultValue: "Join me on Phoebe — we can pray together and hold each other in prayer. Tap to connect:" }),
+        url,
+      };
+      if (isNativeShell()) { window.dispatchEvent(new CustomEvent("phoebe:share", { detail })); return; }
+      const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
+      if (typeof nav.share === "function") { try { await nav.share(detail); return; } catch { /* cancelled → clipboard */ } }
+      try { await navigator.clipboard.writeText(url); setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000); }
+      catch { window.prompt("Copy this link", url); }
+    } catch { /* best-effort */ }
+  };
 
   const row = (name: string, url: string | null, right: React.ReactNode, key: string | number) => (
     <div key={key} className="relative flex items-center gap-3 rounded-2xl px-4 py-3 mb-2" style={{ background: CARD_BG, border: `1px solid ${CARD_B}` }}>
@@ -185,6 +206,19 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
 
   return (
     <div className="mb-2">
+      {/* Share an invite link — send it to anyone (iMessage, etc.); opening it
+          and accepting connects you as Fellows. */}
+      {canManage && (
+        <button
+          type="button"
+          onClick={shareInviteLink}
+          className="w-full inline-flex items-center justify-center gap-2 rounded-2xl py-3 mb-3 text-[14px] font-semibold transition-opacity active:scale-[0.99]"
+          style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
+        >
+          <LinkIcon size={16} /> {linkCopied ? t("fellows_c.invite_copied", { defaultValue: "Link copied!" }) : t("fellows_c.invite_link", { defaultValue: "Share your invite link" })}
+        </button>
+      )}
+
       {/* Add a fellow — search + contacts (beta only) */}
       {canManage && (
       <div className="rounded-2xl p-3" style={{ background: CARD_BG, border: `1px solid ${CARD_B}` }}>

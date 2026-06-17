@@ -662,12 +662,9 @@ export default function People() {
           )}
         </div>
 
-        {/* Find friends entry — native-only. The underlying flow reads
-            iOS Contacts via the Capacitor plugin, which doesn't exist
-            on the plain web build; showing the card there dropped
-            users onto a "open Phoebe on iOS" dead-end. Gate on
-            PhoebeNative.isNative() and hide entirely on web. */}
-        <FindFriendsEntry />
+        {/* Finding people from your contacts now lives on the dedicated
+            /fellows page (reached from the "Add a fellow" pill), so the People
+            page no longer carries a separate contacts card here. */}
 
         {/* Section divider */}
         <div className="flex items-center gap-2 mb-3">
