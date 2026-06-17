@@ -6332,23 +6332,23 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     }
 
     // ── Fellow plans placement
-    // A dated plan becomes a real timeline event for the host and every
-    // fellow the feed returns it to. Home only: the events page already
-    // lists plans in its dedicated "How About" card, so don't double them.
-    if (!eventsOnly) {
-      for (const p of fellowPlans) {
-        if (!p.startsAt) continue; // undated plans stay in the How About list only
-        let eventDate: Date | null = null;
-        try { eventDate = parseISO(p.startsAt); } catch { /* ignore */ }
-        if (!eventDate || !Number.isFinite(eventDate.getTime())) continue;
-        const item: DashboardItem = { kind: "plan", data: p, nextDate: eventDate };
-        const nextMs = startOfDay(eventDate).getTime();
-        if (nextMs < _todayMs) continue;
-        if (nextMs === todayStart) todayItems.push(item);
-        else if (nextMs === tomorrowStart) tomorrowItems.push(item);
-        else if (nextMs < sevenDaysOutMs) weekItems.push(item);
-        else monthItems.push(item);
-      }
+    // A dated plan becomes a real timeline event — sitting in Today / This
+    // week alongside gatherings and services — for the host AND every fellow
+    // the feed returns it to. Shown on BOTH home and the Events page; the
+    // Events page also keeps a "Share a plan" composer above the schedule,
+    // but the plan itself lives in the calendar, not a separate list.
+    for (const p of fellowPlans) {
+      if (!p.startsAt) continue; // undated plans show only in the composer surface
+      let eventDate: Date | null = null;
+      try { eventDate = parseISO(p.startsAt); } catch { /* ignore */ }
+      if (!eventDate || !Number.isFinite(eventDate.getTime())) continue;
+      const item: DashboardItem = { kind: "plan", data: p, nextDate: eventDate };
+      const nextMs = startOfDay(eventDate).getTime();
+      if (nextMs < _todayMs) continue;
+      if (nextMs === todayStart) todayItems.push(item);
+      else if (nextMs === tomorrowStart) tomorrowItems.push(item);
+      else if (nextMs < sevenDaysOutMs) weekItems.push(item);
+      else monthItems.push(item);
     }
 
     // Chronological sort for Upcoming / This month so cards line up by next
