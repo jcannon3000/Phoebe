@@ -130,16 +130,29 @@ export default function PodcastShowPage() {
   });
   const playEpisode = (ep: Episode) => { if (ep.audioUrl) player.play(toPlaying(ep)); };
 
-  // Auto-open the ?ep=<id> episode once the feed loads (deep-link from a
-  // search / community result). Runs once.
+  // Auto-open an episode once the feed loads. ?ep=<id> opens a specific episode
+  // (deep-link from a search / community result); ?play=latest (or ?ep=latest)
+  // opens today's / the most recent episode straight in the player — used by the
+  // Jardín "Oración Matutina" entry so it lands right on the podcast player.
+  // Runs once.
   const autoSelectedRef = useRef(false);
   useEffect(() => {
     if (autoSelectedRef.current) return;
     const eps = data?.episodes ?? [];
     if (eps.length === 0) return;
     let epId: string | null = null;
-    try { epId = new URLSearchParams(window.location.search).get("ep"); } catch { /* ignore */ }
+    let playLatest = false;
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      epId = sp.get("ep");
+      playLatest = sp.get("play") === "latest" || epId === "latest";
+    } catch { /* ignore */ }
     autoSelectedRef.current = true;
+    if (playLatest) {
+      const first = eps.find((e) => e.audioUrl);
+      if (first) player.play(toPlaying(first));
+      return;
+    }
     if (!epId) return;
     const match = eps.find((e) => e.id === epId);
     if (match && match.audioUrl) player.play(toPlaying(match));
