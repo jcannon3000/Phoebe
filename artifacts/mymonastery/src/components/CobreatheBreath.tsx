@@ -99,12 +99,12 @@ const RING_IN = "#86C79B";
 const RING_OUT = "#2E6B40";
 const RING_R = 58;                       // outer ring radius (viewBox 128)
 const RING_CIRC = 2 * Math.PI * RING_R;
-const RING_SW = 4;                       // stroke width — the inner ring matches it
+const RING_SW = 4.8;                     // stroke width — 20% thicker; inner ring matches it (same thickness)
 // Inner blue SESSION ring — ONE slow circle filling once across the whole set
 // of breaths. Radius is 10% smaller than the old 47, and its thickness matches
 // the outer ring (RING_SW). The globe takes on a blue glow when the set is kept.
 const SESSION_BLUE = "#5B9DEF";
-const SESSION_R = 42;                     // ≈ 47 × 0.9 (10% smaller)
+const SESSION_R = RING_R / 1.618;         // inner radius — the outer (RING_R) is 1.618× (golden ratio) bigger
 const SESSION_CIRC = 2 * Math.PI * SESSION_R;
 
 // The bundled photo library — every image under src/assets/cobreathe is glob-
