@@ -66,11 +66,6 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
   const plansQ = useQuery<{ plans: Plan[] }>({ queryKey: ["/api/fellow-plans"], queryFn: () => apiRequest("GET", "/api/fellow-plans"), staleTime: 20_000 });
   const plans = plansQ.data?.plans ?? [];
 
-  // On a surface that shouldn't show an empty shell (the Events page for a
-  // non-beta viewer with nothing to compose), render nothing until there's a
-  // plan to show. Beta hosts always see it so they can share one.
-  if (hideWhenEmpty && !canManage && plans.length === 0) return null;
-
   const invalidate = () => qc.invalidateQueries({ queryKey: ["/api/fellow-plans"] });
 
   // Compose state
@@ -108,6 +103,14 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
     rsvp.mutate({ id: p.id, status: p.myRsvp === status ? null : status });
 
   const inputStyle = { background: "rgba(9,26,16,0.45)", border: `1px solid ${CARD_B}`, color: WARM, fontFamily: FONT } as const;
+
+  // On a surface that shouldn't show an empty shell (the Events page for a
+  // non-beta viewer with nothing to compose), render nothing until there's a
+  // plan to show. Beta hosts always see it so they can share one. NB: this
+  // guard MUST sit below every hook above — an early return between hooks
+  // changes the hook count when plans load (empty→non-empty) and crashes
+  // (React #310).
+  if (hideWhenEmpty && !canManage && plans.length === 0) return null;
 
   return (
     <div className="mb-2">

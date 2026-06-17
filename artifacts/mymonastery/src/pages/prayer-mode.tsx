@@ -3972,7 +3972,7 @@ export default function PrayerModePage() {
     setLocation(finishHref);
   };
 
-  const handleDone = async () => {
+  const handleDone = async (opts?: { skipBless?: boolean }) => {
     // Log a check-in for every intercession the user has just prayed
     // through — skipping ones we already logged per-slide in `advance`.
     // Server-side check-ins are idempotent per day anyway, but avoiding
@@ -4053,8 +4053,11 @@ export default function PrayerModePage() {
     setTimeout(() => {
       // For a real prayer close, hand off to the blessing send-off rather than
       // dropping straight home — the blessing's own Amen fades the rest of the
-      // way out (see BlessingSlide → exitToFinish).
-      if (shouldBless) {
+      // way out (see exitToFinish). SKIP it when the closing slide was ALREADY
+      // the "Prayer completed" hero (the morning-reflection path) — the blessing
+      // phase now renders that same hero, so blessing-after-hero would show it
+      // twice. Those callers pass skipBless and exit straight home.
+      if (shouldBless && !opts?.skipBless) {
         setPhase("blessing");
         setSlideVisible(true);
         return;
@@ -4243,7 +4246,9 @@ export default function PrayerModePage() {
         {phase === "closing" && endOnReflection && (
           <PrayerCompletedSlide
             reflectionSource={reflectionSource as Exclude<ReflectionSource, "none">}
-            onDone={handleDone}
+            // This closing slide IS the "Prayer completed" hero, so skip the
+            // blessing phase (which renders the same hero) — exit straight home.
+            onDone={() => handleDone({ skipBless: true })}
             visible={slideVisible}
           />
         )}
