@@ -6,6 +6,7 @@ import { ChevronLeft, X as CloseIcon, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
+import { PartnerExchange } from "@/components/PartnerExchange";
 import { apiRequest } from "@/lib/queryClient";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
@@ -1561,13 +1562,17 @@ export default function PrayerListPage() {
             this page per request — prayers-for-you now surface as the face stack
             on the home "Your prayer requests" section. */}
 
-        {/* One-to-ones — the Snapchat-style 1:1 prayer EXCHANGE will live here:
-            send a prayer → it arrives the next day → the recipient opens an
-            unmarked "new prayer" to a prayer slide (standard UI + Amen) → after
-            Amen they write one back, building a streak of days walking together.
-            That's a dedicated feature (see artifacts/prayer-dialogue-plan.md);
-            the old prayer-for/prayer-from cards were removed since that
-            one-to-many model is retiring. Section gets wired in with the build. */}
+        {/* One-to-ones — the Heart to Hearts 1:1 prayer exchange (the
+            Snapchat-style volley with streaks). Surfaced here from the shared
+            PartnerExchange so the prayer list carries your prayer for the day +
+            your partner threads, in sync with the home. The amen / next-morning
+            / sealed-until-opened adjustments layer onto that feature separately
+            (see artifacts/prayer-dialogue-plan.md). */}
+        {focused === null && (
+          <div className="mt-7">
+            <PartnerExchange />
+          </div>
+        )}
 
         {/* Empty state — when there are no requests to show. */}
         {!hasAnyRequests && (
