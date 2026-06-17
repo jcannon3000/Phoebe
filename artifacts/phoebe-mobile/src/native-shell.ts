@@ -404,29 +404,18 @@ function wireClearNotifications() {
   });
 }
 
-// ─── Daily-steps notification expiry ────────────────────────────────────────
-// The "Step goal reached 👟 — N steps today" banner is only meaningful for the
-// day it fired; iOS won't auto-remove a delivered notification at midnight, so
-// it would otherwise linger on the lock screen into the next day. We stamp the
-// local day on every app foreground/launch and, the first time we see the day
-// has rolled over, clear the "daily-steps" thread (reusing wireClearNotifications
-// above). This keeps the celebratory banner up through the day it was earned,
-// then removes it once the day is over.
+// ─── Daily-steps notification clears on app open ────────────────────────────
+// The "Step goal reached 👟 — N steps today" banner has done its job the moment
+// you open the app — the home already shows the goal met, so the lock-screen
+// copy is redundant. Clear the delivered "daily-steps" thread on every
+// foreground/launch (reusing wireClearNotifications above) so it disappears the
+// NEXT time the app is opened, rather than lingering on the lock screen.
 function wireStepsNotificationExpiry() {
-  const KEY = "phoebe:steps-notif-day";
-  const check = () => {
-    const today = new Date().toLocaleDateString("en-CA"); // local YYYY-MM-DD
-    let last: string | null = null;
-    try { last = localStorage.getItem(KEY); } catch { /* private mode */ }
-    try { localStorage.setItem(KEY, today); } catch { /* private mode */ }
-    if (last && last !== today) {
-      window.dispatchEvent(new CustomEvent("phoebe:clear-notifications", { detail: { threadId: "daily-steps" } }));
-    }
+  const clear = () => {
+    window.dispatchEvent(new CustomEvent("phoebe:clear-notifications", { detail: { threadId: "daily-steps" } }));
   };
-  check();
-  // Re-check whenever the app returns to the foreground (the day may have rolled
-  // over while it was backgrounded).
-  window.addEventListener("phoebe:appactive", check);
+  clear();
+  window.addEventListener("phoebe:appactive", clear);
 }
 
 // ─── Share sheet (native) ──────────────────────────────────────────────────
