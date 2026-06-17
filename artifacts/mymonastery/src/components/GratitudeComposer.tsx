@@ -66,33 +66,48 @@ export function GratitudeComposer({
           lineHeight: 1.5,
         }}
       />
-      <div className="flex items-center justify-between mt-2">
-        <span className="text-[11px]" style={{ color: wc > 50 ? "#E8B872" : "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
+      <div className="flex items-center justify-between gap-3 mt-2">
+        <span className="text-[11px] shrink-0" style={{ color: wc > 50 ? "#E8B872" : "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
           {wc === 0
             ? ""
             : wc > 50
               ? t("gratitude_composer.keep_under_50")
               : t("gratitude_composer.word_count", { count: wc })}
         </span>
-        <button
-          type="button"
-          onClick={() => setShared((s) => !s)}
-          className="flex items-center gap-2 text-[12px] transition-opacity hover:opacity-80"
-          style={{ color: shared ? "#A8C5A0" : "rgba(143,175,150,0.7)", background: "none", border: "none", cursor: "pointer", fontFamily: SPACE_GROTESK }}
+        {/* Private ↔ Public segmented toggle (private is the default). */}
+        <div
+          className="inline-flex items-center rounded-full p-0.5 shrink-0"
+          style={{ background: "rgba(15,40,24,0.6)", border: "1px solid rgba(46,107,64,0.4)" }}
+          role="group"
+          aria-label={t("gratitude_composer.visibility", { defaultValue: "Who can see this" })}
         >
-          <span
+          <button
+            type="button"
+            onClick={() => setShared(false)}
+            aria-pressed={!shared}
+            className="rounded-full px-3 py-1 text-[12px] font-semibold transition-colors"
             style={{
-              width: 16, height: 16, borderRadius: 4,
-              border: `1.5px solid ${shared ? "#A8C5A0" : "rgba(143,175,150,0.45)"}`,
-              background: shared ? "#A8C5A0" : "transparent",
-              display: "inline-flex", alignItems: "center", justifyContent: "center",
-              color: "#0C1F12", fontSize: 11, lineHeight: 1,
+              background: !shared ? "rgba(46,107,64,0.85)" : "transparent",
+              color: !shared ? WARM : "rgba(143,175,150,0.7)",
+              fontFamily: SPACE_GROTESK,
             }}
           >
-            {shared ? "✓" : ""}
-          </span>
-          {t("gratitude.share_with_community")}
-        </button>
+            🔒 {t("gratitude_composer.private", { defaultValue: "Private" })}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShared(true)}
+            aria-pressed={shared}
+            className="rounded-full px-3 py-1 text-[12px] font-semibold transition-colors"
+            style={{
+              background: shared ? "rgba(46,107,64,0.85)" : "transparent",
+              color: shared ? WARM : "rgba(143,175,150,0.7)",
+              fontFamily: SPACE_GROTESK,
+            }}
+          >
+            🌿 {t("gratitude_composer.public", { defaultValue: "Public" })}
+          </button>
+        </div>
       </div>
       <button
         type="button"
