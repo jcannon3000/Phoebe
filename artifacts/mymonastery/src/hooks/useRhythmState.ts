@@ -365,8 +365,18 @@ export function useRhythmState(): RhythmState {
   // reflection on, evening off) so the default-on anchors don't pop in once the
   // prefs query lands — only the genuinely-off ones stay hidden.
   const reflectionSource = useEffectiveReflectionSource();
-  const morningActive = (officePrefs?.morning ?? "devotion") !== "none";
-  const eveningActive = (officePrefs?.evening ?? "none") !== "none";
+  // Whether an office is part of the rhythm must come from its CHOSEN LEVEL
+  // (set by the customizer's setSideLevel), NOT the `morning`/`evening` reminder
+  // field — `commit` writes that reminder field to "none" whenever the user
+  // declines a reminder, which was hiding the office anchor for anyone who
+  // picked the office but no reminder. A real level (anything but "ask"/"none")
+  // means the office is in the rhythm; otherwise fall back to the server pref
+  // (cross-device + the un-set-up morning-on default).
+  // A chosen office level (anything but the "ask"/not-chosen sentinel or null)
+  // means the office is in the rhythm. null falls back to the server pref.
+  const isActiveLevel = (l: typeof ml) => l != null && l !== "ask";
+  const morningActive = isActiveLevel(ml) || (officePrefs?.morning ?? "devotion") !== "none";
+  const eveningActive = isActiveLevel(el) || (officePrefs?.evening ?? "none") !== "none";
   const silenceActive = (officePrefs?.contemplationGoalMinutes ?? 5) > 0;
   const reflectActive = reflectionSource !== "none";
   const coreFlags = [
