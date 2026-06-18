@@ -3,18 +3,20 @@
  * a fellow (VoiceMemoButton), and listen to ones sent to you (VoiceMemoInbox).
  * Audio is encrypted on-device before upload and deleted the moment you hear it.
  *
- * Recording is a calm 10-second beat: tap once to begin, a ring counts the ten
- * seconds down, and it sends itself at zero (tap again to send early). The mic
- * is captured with the platform's built-in enhancement — echo cancellation,
- * noise suppression, and auto gain — and, off iOS, lightly compressed so a
- * quiet prayer still carries.
+ * Flow: tap "Voice" → a calm sheet records a 10-second prayer → Phoebe Studio
+ * polishes it ON-DEVICE (studioVoice.ts: warmth, presence, even loudness — like
+ * a podcast mic) → the sender A/B's "As recorded" vs "Polished" and picks a
+ * voicing → the chosen take is encrypted and sent. The polish runs on the
+ * finished recording, before encryption, so the server still only ever sees
+ * ciphertext; any polish failure falls back to sending the raw take.
  */
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, Play } from "lucide-react";
+import { Mic, Play, Square, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { encryptVoice, decryptVoice, voiceSupported, type EncryptedMemo } from "@/lib/voiceCrypto";
+import { enhanceVoice, studioSupported, type StudioPreset, type EnhanceResult } from "@/lib/studioVoice";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -23,165 +25,307 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 const MAX_MS = 10_000; // a ten-second voice prayer
 const MAX_SECS = MAX_MS / 1000;
 
-function isNativeIOS(): boolean {
-  try {
-    const cap = (window as unknown as { Capacitor?: { getPlatform?: () => string } }).Capacitor;
-    return !!cap && typeof cap.getPlatform === "function" && cap.getPlatform() === "ios";
-  } catch { return false; }
-}
-
 function pickMime(): string | undefined {
   const types = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
   for (const t of types) { try { if (MediaRecorder.isTypeSupported(t)) return t; } catch { /* ignore */ } }
   return undefined;
 }
 
-// Open the mic with platform audio-enhancement on, and — everywhere the graph
-// is reliable (i.e. not iOS native, where a processed MediaStream can record
-// silence) — run it through a gentle high-pass + compressor so the level is
-// even and warm. Returns the stream to record and a cleanup that frees both
-// the raw tracks and the audio graph.
+// Open the mic for a CLEAN mono capture. We keep the platform's first pass
+// (echo-cancellation — our only free de-reverb — plus noise-suppression and
+// auto-gain so a phone held at any distance lands at a sane level for Phoebe
+// Studio to polish). Crucially there is NO realtime DSP graph here anymore —
+// all tone shaping happens offline on the finished recording (studioVoice.ts),
+// which is what sidesteps the iOS "live processed stream records silence" bug.
 async function openMic(): Promise<{ stream: MediaStream; cleanup: () => void }> {
   const raw = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true,
+      channelCount: 1,
+    },
   });
-  const stopRaw = () => { try { raw.getTracks().forEach((t) => t.stop()); } catch { /* ignore */ } };
-
-  if (isNativeIOS()) return { stream: raw, cleanup: stopRaw };
-
-  try {
-    const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AC) return { stream: raw, cleanup: stopRaw };
-    const ctx = new AC();
-    // A suspended context pulls no audio — the graph would record pure silence.
-    // Resume it (we're inside the record tap), and if it won't run, fall back
-    // to the raw constrained stream rather than send a silent prayer.
-    try { if (ctx.state === "suspended") await ctx.resume(); } catch { /* ignore */ }
-    if (ctx.state !== "running") { try { void ctx.close(); } catch { /* ignore */ } return { stream: raw, cleanup: stopRaw }; }
-    const source = ctx.createMediaStreamSource(raw);
-    const hp = ctx.createBiquadFilter();
-    hp.type = "highpass"; hp.frequency.value = 85; // shed room rumble
-    const comp = ctx.createDynamicsCompressor();
-    comp.threshold.value = -28; comp.knee.value = 24; comp.ratio.value = 3.5;
-    comp.attack.value = 0.005; comp.release.value = 0.25;
-    const gain = ctx.createGain();
-    gain.gain.value = 1.2; // makeup
-    const dest = ctx.createMediaStreamDestination();
-    source.connect(hp); hp.connect(comp); comp.connect(gain); gain.connect(dest);
-    return {
-      stream: dest.stream,
-      cleanup: () => { stopRaw(); try { void ctx.close(); } catch { /* ignore */ } },
-    };
-  } catch {
-    return { stream: raw, cleanup: stopRaw };
-  }
+  const cleanup = () => { try { raw.getTracks().forEach((t) => t.stop()); } catch { /* ignore */ } };
+  return { stream: raw, cleanup };
 }
 
-// ── Record + send to one fellow ──────────────────────────────────────────────
+// ── Phoebe Studio: presets ────────────────────────────────────────────────────
+const PRESET_KEY = "phoebe:voice-preset";
+const PRESETS: { id: Exclude<StudioPreset, "off">; label: string }[] = [
+  { id: "studio", label: "Studio" },
+  { id: "warm", label: "Warm" },
+  { id: "radio", label: "Radio" },
+  { id: "intimate", label: "Intimate" },
+];
+function loadPreset(): Exclude<StudioPreset, "off"> {
+  try {
+    const p = localStorage.getItem(PRESET_KEY);
+    if (p && PRESETS.some((x) => x.id === p)) return p as Exclude<StudioPreset, "off">;
+  } catch { /* ignore */ }
+  return "studio";
+}
+
+type Phase = "rec" | "polishing" | "preview" | "sending" | "sent" | "nokey" | "error";
+
+// ── Record + Studio-polish + send to one fellow ──────────────────────────────
+// The trigger is the small "Voice" pill; tapping it opens a calm bottom sheet
+// that records (10s), polishes the audio ON-DEVICE (studioVoice.ts), lets the
+// sender A/B "As recorded" vs "Polished" and pick a voicing, then encrypts the
+// chosen take and sends it. Enhancement is best-effort: any failure falls back
+// to sending the raw recording so a prayer is never blocked.
 export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: number; recipientName: string }) {
   const first = (recipientName ?? "them").trim().split(/\s+/)[0] || "them";
-  const [state, setState] = useState<"idle" | "rec" | "sending" | "sent" | "nokey" | "error">("idle");
+  const [open, setOpen] = useState(false);
+  const [phase, setPhase] = useState<Phase>("rec");
   const [remaining, setRemaining] = useState(MAX_SECS);
+  const [preset, setPreset] = useState<Exclude<StudioPreset, "off">>(loadPreset);
+  const [polished, setPolished] = useState<EnhanceResult | null>(null);
+  const [rePolishing, setRePolishing] = useState(false);
+  const [playing, setPlaying] = useState<"raw" | "polished" | null>(null);
+
   const recRef = useRef<MediaRecorder | null>(null);
-  const cleanupRef = useRef<(() => void) | null>(null);
+  const micCleanupRef = useRef<(() => void) | null>(null);
   const startedRef = useRef(0);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const busyRef = useRef(false);
+  const rawBlobRef = useRef<Blob | null>(null);
+  const rawDurRef = useRef(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const urlRef = useRef<string | null>(null);
 
-  // On unmount, tear everything down — clear the interval, stop the recorder,
-  // and release the mic/audio graph so the mic light never lingers.
-  useEffect(() => () => {
-    if (tickRef.current) clearInterval(tickRef.current);
+  const teardown = () => {
+    if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
     try { recRef.current?.stop(); } catch { /* ignore */ }
-    cleanupRef.current?.();
-  }, []);
+    recRef.current = null;
+    micCleanupRef.current?.(); micCleanupRef.current = null;
+    try { audioRef.current?.pause(); } catch { /* ignore */ }
+    audioRef.current = null;
+    if (urlRef.current) { try { URL.revokeObjectURL(urlRef.current); } catch { /* ignore */ } urlRef.current = null; }
+    busyRef.current = false;
+  };
+  useEffect(() => () => teardown(), []); // unmount safety
 
   if (!voiceSupported()) return null;
 
-  const send = async (blob: Blob, durationMs: number) => {
-    setState("sending");
+  const close = () => { teardown(); setOpen(false); setPlaying(null); setPolished(null); rawBlobRef.current = null; };
+
+  const doSend = async (useEnhanced: boolean) => {
+    const blob = (useEnhanced && polished) ? polished.blob : rawBlobRef.current;
+    if (!blob) { close(); return; }
+    setPhase("sending");
     try {
       let pub: { publicKeyJwk: string };
       try {
         pub = await apiRequest("GET", `/api/keys/public/${recipientId}`);
-      } catch { setState("nokey"); setTimeout(() => setState("idle"), 3500); return; }
+      } catch { setPhase("nokey"); return; }
       const enc: EncryptedMemo = await encryptVoice(pub.publicKeyJwk, await blob.arrayBuffer());
-      await apiRequest("POST", "/api/voice-memos", { recipientId, ...enc, mimeType: blob.type || "audio/mp4", durationMs });
-      setState("sent");
-      setTimeout(() => setState("idle"), 2500);
-    } catch { setState("error"); setTimeout(() => setState("idle"), 3000); }
+      await apiRequest("POST", "/api/voice-memos", { recipientId, ...enc, mimeType: blob.type || "audio/mp4", durationMs: rawDurRef.current });
+      setPhase("sent");
+      setTimeout(close, 1400);
+    } catch { setPhase("error"); }
   };
 
-  const stop = () => {
+  // Run the on-device studio polish for a given voicing. `initial` send-raw on
+  // first-attempt failure (never block); a failed preset re-render keeps the
+  // previous polished take.
+  const polish = async (p: Exclude<StudioPreset, "off">, initial: boolean) => {
+    if (!rawBlobRef.current) return;
+    setRePolishing(true);
+    try {
+      const res = await enhanceVoice(rawBlobRef.current, p);
+      setPolished(res);
+      if (initial) setPhase("preview");
+    } catch {
+      if (initial) { void doSend(false); } // polish failed on first pass → send the raw take
+    } finally { setRePolishing(false); }
+  };
+
+  const stopRec = () => {
     if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
     try { recRef.current?.stop(); } catch { /* ignore */ }
   };
 
   const start = async () => {
-    if (busyRef.current || state !== "idle") return; // no re-entry before the UI flips to "rec"
+    if (busyRef.current) return;
     busyRef.current = true;
+    setOpen(true); setPhase("rec"); setRemaining(MAX_SECS); setPolished(null); setPlaying(null);
     try {
       const { stream, cleanup } = await openMic();
-      cleanupRef.current = cleanup;
+      micCleanupRef.current = cleanup;
       const mime = pickMime();
       const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
       const chunks: Blob[] = [];
       rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
       rec.onstop = () => {
-        cleanupRef.current?.(); cleanupRef.current = null;
+        micCleanupRef.current?.(); micCleanupRef.current = null;
         busyRef.current = false;
         const durationMs = Math.min(MAX_MS, Date.now() - startedRef.current);
         const blob = new Blob(chunks, { type: rec.mimeType || mime || "audio/mp4" });
-        if (blob.size > 0) void send(blob, durationMs); else setState("idle");
+        if (blob.size === 0) { close(); return; }
+        rawBlobRef.current = blob; rawDurRef.current = durationMs;
+        if (!studioSupported()) { void doSend(false); return; } // no engine → send raw
+        setPhase("polishing");
+        void polish(preset, true);
       };
       recRef.current = rec;
       startedRef.current = Date.now();
-      setRemaining(MAX_SECS);
       rec.start();
-      setState("rec");
       tickRef.current = setInterval(() => {
         const elapsed = Date.now() - startedRef.current;
         setRemaining(Math.max(0, (MAX_MS - elapsed) / 1000));
-        if (elapsed >= MAX_MS) stop();
+        if (elapsed >= MAX_MS) stopRec();
       }, 80);
     } catch {
       busyRef.current = false;
-      cleanupRef.current?.(); cleanupRef.current = null;
-      setState("error"); setTimeout(() => setState("idle"), 3000);
+      micCleanupRef.current?.(); micCleanupRef.current = null;
+      setPhase("error");
     }
   };
 
-  if (state === "sent") return <span className="text-[12px] font-semibold" style={{ color: "#A8C5A0", fontFamily: FONT }}>Sent 🌿</span>;
-  if (state === "nokey") return <span className="text-[11.5px]" style={{ color: SAGE, fontFamily: FONT }}>Ask {first} to open Phoebe once</span>;
-  if (state === "sending") return <span className="text-[12px]" style={{ color: SAGE, fontFamily: FONT }}>Sending…</span>;
+  const choosePreset = (p: Exclude<StudioPreset, "off">) => {
+    if (p === preset) return;
+    setPreset(p);
+    try { localStorage.setItem(PRESET_KEY, p); } catch { /* ignore */ }
+    void polish(p, false);
+  };
 
-  if (state === "rec") {
-    const r = 14;
-    const C = 2 * Math.PI * r;
-    const frac = remaining / MAX_SECS; // 1 → 0 over the ten seconds
-    return (
-      <button type="button" onClick={stop} aria-label="Send now" title="Send now"
-        className="shrink-0 inline-flex items-center gap-2 rounded-full pl-1.5 pr-3 py-1 active:scale-[0.97]"
-        style={{ background: "rgba(196,122,101,0.18)", border: "1px solid rgba(196,122,101,0.45)", fontFamily: FONT }}>
-        <span className="relative inline-flex items-center justify-center" style={{ width: 34, height: 34 }}>
-          <svg width="34" height="34" viewBox="0 0 34 34" style={{ transform: "rotate(-90deg)" }}>
-            <circle cx="17" cy="17" r={r} fill="none" stroke="rgba(196,122,101,0.25)" strokeWidth="2.5" />
-            <circle cx="17" cy="17" r={r} fill="none" stroke={CLAY} strokeWidth="2.5" strokeLinecap="round"
-              strokeDasharray={C} strokeDashoffset={C * (1 - frac)} style={{ transition: "stroke-dashoffset 80ms linear" }} />
-          </svg>
-          <motion.span className="absolute" style={{ width: 7, height: 7, borderRadius: 999, background: CLAY }}
-            animate={{ opacity: [1, 0.35, 1] }} transition={{ duration: 1, repeat: Infinity }} />
-        </span>
-        <span className="text-[12.5px] font-semibold tabular-nums" style={{ color: WARM }}>{Math.ceil(remaining)}s · send</span>
-      </button>
-    );
-  }
+  const playTake = (which: "raw" | "polished") => {
+    try { audioRef.current?.pause(); } catch { /* ignore */ }
+    if (urlRef.current) { try { URL.revokeObjectURL(urlRef.current); } catch { /* ignore */ } urlRef.current = null; }
+    if (playing === which) { setPlaying(null); audioRef.current = null; return; } // toggle off
+    const blob = which === "polished" ? polished?.blob : rawBlobRef.current;
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    urlRef.current = url;
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    setPlaying(which);
+    const done = () => { if (urlRef.current === url) { try { URL.revokeObjectURL(url); } catch { /* ignore */ } urlRef.current = null; } setPlaying(null); audioRef.current = null; };
+    audio.onended = done; audio.onerror = done;
+    audio.play().catch(done);
+  };
+
+  const r = 32;
+  const C = 2 * Math.PI * r;
+  const frac = remaining / MAX_SECS;
 
   return (
-    <button type="button" onClick={start} aria-label={`Send ${first} a voice prayer`}
-      className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-opacity active:scale-[0.97]"
-      style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}>
-      <Mic size={13} /> Voice
+    <>
+      <button type="button" onClick={() => void start()} aria-label={`Send ${first} a voice prayer`}
+        className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-opacity active:scale-[0.97]"
+        style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}>
+        <Mic size={13} /> Voice
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div className="fixed inset-0 z-[120] flex items-end justify-center"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            style={{ background: "rgba(6,16,10,0.55)", backdropFilter: "blur(2px)" }}
+            onClick={() => { if (phase === "rec" || phase === "preview") close(); }}>
+            <motion.div role="dialog" aria-label="Voice prayer"
+              initial={{ y: 40, opacity: 0.6 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 320, damping: 32 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full"
+              style={{ maxWidth: 460, margin: "0 12px 12px", background: "#0E2316", border: "1px solid rgba(111,175,133,0.28)", borderRadius: 24, padding: "18px 18px 20px", fontFamily: FONT, boxShadow: "0 -8px 40px rgba(0,0,0,0.4)" }}>
+              {/* header */}
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-[13.5px] font-semibold" style={{ color: SAGE }}>
+                  {phase === "sent" ? "Sent 🌿" : `A voice prayer for ${first}`}
+                </p>
+                <button type="button" onClick={close} aria-label="Close" className="rounded-full p-1 active:scale-90" style={{ color: "rgba(143,175,150,0.7)" }}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              {phase === "rec" && (
+                <div className="flex flex-col items-center py-2">
+                  <button type="button" onClick={stopRec} aria-label="Finish recording" className="relative inline-flex items-center justify-center active:scale-95" style={{ width: 92, height: 92 }}>
+                    <svg width="92" height="92" viewBox="0 0 92 92" style={{ transform: "rotate(-90deg)" }}>
+                      <circle cx="46" cy="46" r={r} fill="none" stroke="rgba(196,122,101,0.22)" strokeWidth="4" />
+                      <circle cx="46" cy="46" r={r} fill="none" stroke={CLAY} strokeWidth="4" strokeLinecap="round"
+                        strokeDasharray={C} strokeDashoffset={C * (1 - frac)} style={{ transition: "stroke-dashoffset 80ms linear" }} />
+                    </svg>
+                    <span className="absolute inline-flex items-center justify-center rounded-full" style={{ width: 54, height: 54, background: "rgba(196,122,101,0.9)", color: WARM }}>
+                      <Square size={20} fill={WARM} />
+                    </span>
+                  </button>
+                  <p className="mt-4 text-[13px] tabular-nums" style={{ color: WARM }}>{Math.ceil(remaining)}s left</p>
+                  <p className="mt-1 text-[12px]" style={{ color: SAGE }}>Speak from the heart — tap to finish</p>
+                </div>
+              )}
+
+              {phase === "polishing" && (
+                <div className="flex flex-col items-center py-8">
+                  <motion.span style={{ width: 14, height: 14, borderRadius: 999, background: "#6FAF85" }}
+                    animate={{ opacity: [1, 0.3, 1], scale: [1, 0.85, 1] }} transition={{ duration: 1.1, repeat: Infinity }} />
+                  <p className="mt-4 text-[14px] font-semibold" style={{ color: WARM }}>Polishing your prayer…</p>
+                  <p className="mt-1 text-[12px]" style={{ color: SAGE }}>Warming it up like a studio mic</p>
+                </div>
+              )}
+
+              {phase === "preview" && (
+                <div className="flex flex-col gap-4">
+                  {/* A/B */}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <PreviewPlay label="As recorded" active={playing === "raw"} onClick={() => playTake("raw")} dim />
+                    <PreviewPlay label="Polished 🌿" active={playing === "polished"} busy={rePolishing} onClick={() => playTake("polished")} />
+                  </div>
+                  {/* preset chooser */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+                    {PRESETS.map((p) => {
+                      const on = p.id === preset;
+                      return (
+                        <button key={p.id} type="button" onClick={() => choosePreset(p.id)}
+                          className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors active:scale-95"
+                          style={{ background: on ? "rgba(111,175,133,0.9)" : "rgba(46,107,64,0.16)", color: on ? "#0E2316" : SAGE, border: `1px solid ${on ? "rgba(111,175,133,0.9)" : "rgba(111,175,133,0.25)"}` }}>
+                          {p.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* send */}
+                  <button type="button" onClick={() => void doSend(true)} disabled={rePolishing}
+                    className="w-full rounded-2xl py-3 text-[15px] font-semibold transition-opacity active:scale-[0.99]"
+                    style={{ background: "rgba(46,107,64,0.95)", color: WARM, border: "1px solid rgba(111,175,133,0.4)", opacity: rePolishing ? 0.6 : 1 }}>
+                    Send 🌿
+                  </button>
+                  <button type="button" onClick={() => void doSend(false)} className="text-[12px] -mt-1.5" style={{ color: "rgba(143,175,150,0.7)" }}>
+                    Send as recorded instead
+                  </button>
+                </div>
+              )}
+
+              {phase === "sending" && <p className="text-center py-8 text-[14px]" style={{ color: SAGE }}>Sending…</p>}
+              {phase === "sent" && <p className="text-center py-8 text-[15px] font-semibold" style={{ color: "#A8C5A0" }}>It's on its way 🌿</p>}
+              {phase === "nokey" && <p className="text-center py-7 text-[13px]" style={{ color: SAGE }}>Ask {first} to open Phoebe once so they can receive it.</p>}
+              {phase === "error" && <p className="text-center py-7 text-[13px]" style={{ color: CLAY }}>Something went off — please try again.</p>}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// A play button used in the A/B preview — shows animated bars while playing.
+function PreviewPlay({ label, active, busy, dim, onClick }: { label: string; active: boolean; busy?: boolean; dim?: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} disabled={busy}
+      className="flex items-center justify-center gap-2 rounded-2xl py-3 text-[13px] font-semibold transition-colors active:scale-[0.98]"
+      style={{ background: dim ? "rgba(46,107,64,0.12)" : "rgba(46,107,64,0.28)", color: dim ? SAGE : WARM, border: `1px solid ${dim ? "rgba(111,175,133,0.22)" : "rgba(111,175,133,0.45)"}` }}>
+      {busy
+        ? <motion.span style={{ width: 11, height: 11, borderRadius: 999, background: "#6FAF85" }} animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 0.9, repeat: Infinity }} />
+        : active
+          ? <span className="inline-flex items-end gap-[2px]" style={{ height: 13 }}>
+              {[0, 1, 2].map((i) => (
+                <motion.span key={i} style={{ width: 3, background: "currentColor", borderRadius: 2 }} animate={{ height: [4, 12, 4] }} transition={{ duration: 0.7, repeat: Infinity, delay: i * 0.14 }} />
+              ))}
+            </span>
+          : <Play size={14} />}
+      {label}
     </button>
   );
 }
