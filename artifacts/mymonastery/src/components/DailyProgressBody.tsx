@@ -31,6 +31,32 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
+// Practice-card palette: a calm cool gradient that walks the hue from green
+// through teal/blue to purple across the day's cards, by their order. Each user
+// gets a slightly different spread (their anchor set differs), but it always
+// reads as one harmonious analogous ramp — never a muddy or clashing pair.
+// Returns an "r,g,b" string (the format the cards' rgba() helpers expect).
+function rhythmGradientRgb(i: number, n: number): string {
+  const t = n <= 1 ? 0 : i / (n - 1);
+  const hue = 145 + (288 - 145) * t;   // 145° green → 288° violet (through teal/blue)
+  const sat = 0.46 - 0.04 * t;          // ease saturation down a touch toward purple
+  const light = 0.55;
+  // HSL → RGB.
+  const c = (1 - Math.abs(2 * light - 1)) * sat;
+  const hp = hue / 60;
+  const x = c * (1 - Math.abs((hp % 2) - 1));
+  let r = 0, g = 0, b = 0;
+  if (hp < 1) { r = c; g = x; }
+  else if (hp < 2) { r = x; g = c; }
+  else if (hp < 3) { g = c; b = x; }
+  else if (hp < 4) { g = x; b = c; }
+  else if (hp < 5) { r = x; b = c; }
+  else { r = c; b = x; }
+  const m = light - c / 2;
+  const to = (v: number) => Math.round((v + m) * 255);
+  return `${to(r)},${to(g)},${to(b)}`;
+}
+
 // A card subtitle that cycles between a few values, fading the old one DOWN and
 // out and the new one UP and in (a gentle vertical crossfade) — never a hard
 // switch. It's ONE truncating <p> animated with opacity + a tiny translateY:
@@ -584,9 +610,13 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     : null;
   const showOfficeHero = !!renderOfficeHero && heroSide !== null;
   const officeHero = showOfficeHero ? renderOfficeHero!(heroSide!) : null;
+  // Shade each card along the green→purple ramp by its position in the FULL day
+  // order (so a card keeps its colour whether it's Next or Done, and the ramp
+  // doesn't reshuffle as things get kept). The office hero keeps its own colour.
+  const coloredCards = cards.map((c, i) => ({ ...c, rgb: rhythmGradientRgb(i, cards.length) }));
   const visibleCards = showOfficeHero
-    ? cards.filter((c) => c.key !== heroSide)
-    : cards;
+    ? coloredCards.filter((c) => c.key !== heroSide)
+    : coloredCards;
 
   // Split into Next (to-do) and Done, then fade each card up in a gentle
   // stagger on mount. (The earlier "fly the card from Next into Done" replay —

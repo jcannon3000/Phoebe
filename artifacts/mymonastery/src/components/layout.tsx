@@ -844,16 +844,20 @@ function DailyProgressPill() {
       aria-label={t("header.daily_progress", { defaultValue: "Daily Progress" })}
     >
       {t("header.daily_progress", { defaultValue: "Daily Progress" })}
-      <span className="inline-flex items-center gap-[3px]" aria-hidden>
-        {dotDefs.map((d, i) => {
+      {(() => {
+        // Past 8 anchors a single row gets cramped — shrink the dots and wrap
+        // them into two balanced rows so the pill stays tidy.
+        const many = dotDefs.length > 8;
+        const sz = many ? 5 : 6;
+        const renderDot = (d: { key: string; done: boolean }, i: number) => {
           const pulse = allDone || recentlyDone(d.key);
           return (
             <span
               key={d.key}
               className={pulse ? "dp-dot-pulse" : undefined}
               style={{
-                width: 6,
-                height: 6,
+                width: sz,
+                height: sz,
                 borderRadius: 999,
                 display: "inline-block",
                 background: d.done ? "rgba(110,180,130,0.95)" : "transparent",
@@ -862,8 +866,18 @@ function DailyProgressPill() {
               }}
             />
           );
-        })}
-      </span>
+        };
+        if (!many) {
+          return <span className="inline-flex items-center gap-[3px]" aria-hidden>{dotDefs.map(renderDot)}</span>;
+        }
+        const mid = Math.ceil(dotDefs.length / 2);
+        return (
+          <span className="inline-flex flex-col" style={{ gap: 3 }} aria-hidden>
+            <span className="inline-flex items-center gap-[3px]">{dotDefs.slice(0, mid).map((d, i) => renderDot(d, i))}</span>
+            <span className="inline-flex items-center gap-[3px]">{dotDefs.slice(mid).map((d, i) => renderDot(d, mid + i))}</span>
+          </span>
+        );
+      })()}
     </Link>
   );
 }

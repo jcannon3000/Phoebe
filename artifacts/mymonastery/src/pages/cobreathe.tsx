@@ -336,6 +336,55 @@ export default function CobreathePage() {
     );
   }
 
+  // The concluding summary is ALSO a full-screen overlay rendered WITHOUT the
+  // Layout — so finishing the breath swaps one full overlay for another rather
+  // than mounting the whole home underneath (which flashed as it painted).
+  if (mode === "done") {
+    const othersDone = Math.max(0, (doneState?.count ?? 1) - 1);
+    const summaryFaces: Companion[] = (() => {
+      const byId = new Map<number, Companion>();
+      for (const c of (doneState?.companions ?? state?.companions ?? [])) byId.set(c.userId, c);
+      for (const [id, c] of coBreathed) if (!byId.has(id)) byId.set(id, c);
+      if (user?.id != null) byId.delete(user.id);
+      return Array.from(byId.values());
+    })();
+    if (!doneState && record.isError) {
+      return (
+        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center text-center px-6"
+          style={{ background: "radial-gradient(120% 80% at 50% 30%, #122E20 0%, #0A1C14 65%)", paddingTop: "var(--safe-top)", paddingBottom: "env(safe-area-inset-bottom)" }}>
+          <div className="text-5xl mb-5">🌬️</div>
+          <h2 className="text-[1.4rem] font-bold mb-3 px-4" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+            {t("cobreathe.save_failed", { defaultValue: "Your breath didn't save" })}
+          </h2>
+          <p className="text-[14px] leading-relaxed px-6 mb-8" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
+            {t("cobreathe.save_failed_sub", { defaultValue: "The breath you kept is real — we just couldn't reach the server to count it. Try again." })}
+          </p>
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => record.mutate(record.variables ?? 0)} disabled={record.isPending}
+              className="rounded-xl py-3 px-8"
+              style={{ background: "rgba(62,124,122,0.22)", color: WARM, border: "1px solid rgba(62,124,122,0.5)", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: record.isPending ? "default" : "pointer", opacity: record.isPending ? 0.6 : 1 }}>
+              {record.isPending ? t("common.saving", { defaultValue: "Saving…" }) : t("common.try_again", { defaultValue: "Try again" })}
+            </button>
+            <button type="button" onClick={() => setMode("intro")} className="rounded-xl py-3 px-6"
+              style={{ background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.4)", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+              {t("common.not_now", { defaultValue: "Not now" })}
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <CobreatheSummary
+        weekBreaths={weekBreaths}
+        others={othersDone}
+        companions={summaryFaces}
+        nearCount={peakNear.count}
+        nearFellows={peakNear.fellows}
+        onContinue={() => setLocation("/")}
+      />
+    );
+  }
+
   return (
     <Layout>
       <div className="max-w-xl mx-auto w-full flex flex-col flex-1">
@@ -489,76 +538,6 @@ export default function CobreathePage() {
           </>
         )}
 
-        {mode === "done" && (() => {
-          const othersDone = Math.max(0, (doneState?.count ?? 1) - 1);
-          // Faces for the summary: garden-mates who breathed today (recorded) +
-          // anyone we caught breathing live alongside us this sit (captured even
-          // if their session ended before ours), deduped by userId, self removed.
-          const summaryFaces: Companion[] = (() => {
-            const byId = new Map<number, Companion>();
-            for (const c of (doneState?.companions ?? state?.companions ?? [])) byId.set(c.userId, c);
-            for (const [id, c] of coBreathed) if (!byId.has(id)) byId.set(id, c);
-            if (user?.id != null) byId.delete(user.id);
-            return Array.from(byId.values());
-          })();
-          // The breath POST failed and we never got a count back — offer a
-          // retry (re-sends the same seconds) instead of a stuck screen.
-          if (!doneState && record.isError) {
-            return (
-              <div className="flex flex-col items-center text-center flex-1 justify-center py-10">
-                <div className="text-5xl mb-5">🌬️</div>
-                <h2 className="text-[1.4rem] font-bold mb-3 px-4" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                  {t("cobreathe.save_failed", { defaultValue: "Your breath didn't save" })}
-                </h2>
-                <p className="text-[14px] leading-relaxed px-6 mb-8" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
-                  {t("cobreathe.save_failed_sub", { defaultValue: "The breath you kept is real — we just couldn't reach the server to count it. Try again." })}
-                </p>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => record.mutate(record.variables ?? 0)}
-                    disabled={record.isPending}
-                    className="rounded-xl py-3 px-8"
-                    style={{
-                      background: "rgba(62,124,122,0.22)", color: WARM, border: "1px solid rgba(62,124,122,0.5)",
-                      fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: record.isPending ? "default" : "pointer", opacity: record.isPending ? 0.6 : 1,
-                    }}
-                  >
-                    {record.isPending
-                      ? t("common.saving", { defaultValue: "Saving…" })
-                      : t("common.try_again", { defaultValue: "Try again" })}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMode("intro")}
-                    className="rounded-xl py-3 px-6"
-                    style={{
-                      background: "transparent", color: SAGE, border: "1px solid rgba(143,175,150,0.4)",
-                      fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600, cursor: "pointer",
-                    }}
-                  >
-                    {t("common.not_now", { defaultValue: "Not now" })}
-                  </button>
-                </div>
-              </div>
-            );
-          }
-          // The concluding screen — the SAME component the slideshow overlay
-          // renders (CobreatheSummary), so the close is identical whether you
-          // came from the contemplation card or finished a cobreathe inside an
-          // office / prayer slideshow. It's a full-screen fixed overlay, so it
-          // covers the page chrome here just like it does in the slideshow.
-          return (
-            <CobreatheSummary
-              weekBreaths={weekBreaths}
-              others={othersDone}
-              companions={summaryFaces}
-              nearCount={peakNear.count}
-              nearFellows={peakNear.fellows}
-              onContinue={() => setLocation("/")}
-            />
-          );
-        })()}
       </div>
     </Layout>
   );

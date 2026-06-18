@@ -75,7 +75,19 @@ export function CobreatheSummary({
       }}
     >
       <div className="flex-1 flex flex-col items-center justify-center text-center px-8 max-w-xl mx-auto relative">
-        <div className="text-[46px] mb-3">🌍</div>
+        {/* Two equal circles overlapping vertically — "breathing together / the
+            same air." The overlap is the golden section: the non-overlapping
+            part of each circle is 1.618× the overlap (so total height = 1.618·D).
+            For diameter D, overlap o = D/2.618, centres offset by D − o = 0.618·D. */}
+        {(() => {
+          const D = 52, r = D / 2, off = 0.618 * D, H = D + off; // H = 1.618·D
+          return (
+            <svg width={D} height={H} viewBox={`0 0 ${D} ${H}`} className="mb-3" aria-hidden>
+              <circle cx={r} cy={r} r={r - 1} fill="rgba(111,175,133,0.45)" stroke="rgba(140,205,160,0.9)" strokeWidth={1.5} />
+              <circle cx={r} cy={r + off} r={r - 1} fill="rgba(150,135,200,0.45)" stroke="rgba(176,158,224,0.9)" strokeWidth={1.5} />
+            </svg>
+          );
+        })()}
         {/* Breaths this session — the headline number. */}
         <h2 className="text-[2.1rem] font-bold leading-none mb-1.5" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
           {DEFAULT_TOTAL_BREATHS} {t("cobreathe.breaths_word", { defaultValue: "breaths" })}
