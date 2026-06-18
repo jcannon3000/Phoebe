@@ -39,7 +39,7 @@ function Avatar({ name, url, size = 48 }: { name: string; url: string | null; si
 const NUDGES: Array<{ kind: "praying" | "cheer" | "thinking"; emoji: string; label: string }> = [
   { kind: "praying", emoji: "🙏", label: "Praying for you" },
   { kind: "cheer", emoji: "🌿", label: "Glad you're here" },
-  { kind: "thinking", emoji: "💛", label: "Thinking of you" },
+  { kind: "thinking", emoji: "💚", label: "Thinking of you" },
 ];
 
 export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompanion | null; onClose: () => void }) {
@@ -112,7 +112,7 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
               /* Grace week is over and no recent Heart to Heart — dots are hidden
                  until they reconnect 1:1. A gentle nudge toward prayer, not a wall. */
               <div className="mt-5 mb-2 rounded-2xl px-4 py-5 text-center" style={{ background: "rgba(46,107,64,0.12)", border: `1px solid ${CARD_B}` }}>
-                <div style={{ fontSize: 26 }}>💛</div>
+                <div style={{ fontSize: 26 }}>💚</div>
                 <p className="text-[14px] mt-2" style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
                   It's been a little while. Pray a Heart to Heart with {first} this week to see each other's days again.
                 </p>
@@ -181,15 +181,6 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
                 )}
               </>
             )}
-
-            <button
-              type="button"
-              onClick={() => { onClose(); setLocation(`/messages/new?to=${companion!.userId}`); }}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-2xl py-3 mt-3 text-[14px] font-semibold transition-opacity active:scale-[0.99]"
-              style={{ background: "transparent", color: "#C8D4C0", border: `1px solid ${CARD_B}`, fontFamily: FONT }}
-            >
-              ✉️ Send {first} a message
-            </button>
           </motion.div>
         </>
       )}
