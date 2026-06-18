@@ -1838,7 +1838,7 @@ function PlanEventCard({ p, keyPrefix }: { p: FellowPlanEvent; keyPrefix: string
   const [lineIdx, setLineIdx] = useState(0);
   useEffect(() => {
     if (lines.length < 2) return;
-    const id = setInterval(() => setLineIdx((i) => (i + 1) % lines.length), 5600);
+    const id = setInterval(() => setLineIdx((i) => (i + 1) % lines.length), 11200);
     return () => clearInterval(id);
   }, [lines.length]);
   const sub = lines[lineIdx % lines.length];
@@ -1890,25 +1890,21 @@ function PlanEventCard({ p, keyPrefix }: { p: FellowPlanEvent; keyPrefix: string
           </div>
         </div>
 
-        {/* Right: who's coming (faces) then a Details pill. */}
-        <div className="flex items-center gap-2 shrink-0">
-          {(p.comingPreview?.length ?? 0) > 0 && (
-            <div className="flex items-center" aria-hidden>
-              {p.comingPreview!.slice(0, 3).map((c, i) => (
-                c.avatarUrl ? (
-                  <img key={c.userId} src={c.avatarUrl} alt={c.name} className="rounded-full object-cover" style={{ width: 22, height: 22, marginLeft: i === 0 ? 0 : -6, border: "1.5px solid #0E2016" }} />
-                ) : (
-                  <span key={c.userId} className="rounded-full inline-flex items-center justify-center font-semibold" style={{ width: 22, height: 22, marginLeft: i === 0 ? 0 : -6, border: "1.5px solid #0E2016", background: "#1A4A2E", color: "#A8C5A0", fontSize: 9 }}>
-                    {(c.name?.trim()?.[0] ?? "·").toUpperCase()}
-                  </span>
-                )
-              ))}
-            </div>
-          )}
-          <span className="rounded-full text-[12px] font-semibold px-3.5 py-1.5" style={{ background: "rgba(46,107,64,0.85)", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}>
-            Details
-          </span>
-        </div>
+        {/* Right: who's coming (faces). The whole card taps through to the
+            Events page, so no separate "Details" pill is needed. */}
+        {(p.comingPreview?.length ?? 0) > 0 && (
+          <div className="flex items-center shrink-0" aria-hidden>
+            {p.comingPreview!.slice(0, 3).map((c, i) => (
+              c.avatarUrl ? (
+                <img key={c.userId} src={c.avatarUrl} alt={c.name} className="rounded-full object-cover" style={{ width: 22, height: 22, marginLeft: i === 0 ? 0 : -6, border: "1.5px solid #0E2016" }} />
+              ) : (
+                <span key={c.userId} className="rounded-full inline-flex items-center justify-center font-semibold" style={{ width: 22, height: 22, marginLeft: i === 0 ? 0 : -6, border: "1.5px solid #0E2016", background: "#1A4A2E", color: "#A8C5A0", fontSize: 9 }}>
+                  {(c.name?.trim()?.[0] ?? "·").toUpperCase()}
+                </span>
+              )
+            ))}
+          </div>
+        )}
       </motion.div>
     </Link>
   );
