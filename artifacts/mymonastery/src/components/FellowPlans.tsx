@@ -253,9 +253,9 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
                 )}
               </div>
 
-              {/* Title */}
+              {/* Title (no emoji prefix — the host's avatar leads the card now) */}
               <p className="text-[16px] font-semibold leading-snug" style={{ color: WARM, fontFamily: FONT }}>
-                {p.emoji ? p.emoji + " " : ""}{p.title}
+                {p.title}
               </p>
 
               {/* When / where */}

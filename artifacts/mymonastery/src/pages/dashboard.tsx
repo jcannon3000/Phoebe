@@ -1861,7 +1861,7 @@ function PlanEventCard({ p, keyPrefix }: { p: FellowPlanEvent; keyPrefix: string
         {/* Text leads on the left; profile pics live on the right. */}
         <div className="min-w-0 flex-1">
           <p className="text-[15px] font-semibold truncate" style={{ color: "#F0EDE6" }}>
-            {p.emoji ? p.emoji + " " : ""}{p.title}
+            {p.title}
           </p>
           <div style={{ height: 16, overflow: "hidden" }}>
             <AnimatePresence mode="wait" initial={false}>
