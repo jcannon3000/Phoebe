@@ -155,8 +155,13 @@ export function AvatarCropModal({
             step={0.01}
             value={zoom}
             onChange={(e) => setZoom(parseFloat(e.target.value))}
+            onPointerDown={(e) => e.stopPropagation()}
             className="flex-1 accent-[#6FAF85]"
             aria-label="Zoom"
+            // Without this, dragging the range on iOS is hijacked as a page
+            // pan/zoom gesture (the screen appeared to "minimize"). Lock the
+            // touch action so the slider owns the gesture.
+            style={{ touchAction: "none" }}
           />
           <span style={{ color: "#8FAF96", fontSize: 20 }}>＋</span>
         </div>
