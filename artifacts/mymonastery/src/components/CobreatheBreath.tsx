@@ -103,18 +103,25 @@ const RING_OUT = "#2E6B40";
 const RING_R = 58;                       // outer ring radius (viewBox 128)
 const RING_CIRC = 2 * Math.PI * RING_R;
 const RING_SW = 4.8;                     // stroke width — 20% thicker; inner ring matches it (same thickness)
-// Inner blue SESSION ring — ONE slow circle filling once across the whole set
-// of breaths. Radius is 10% smaller than the old 47, and its thickness matches
-// the outer ring (RING_SW). The globe takes on a blue glow when the set is kept.
+// Blue SESSION ring — the BOTTOM circle, filling once across the whole set of
+// breaths. It's now the SAME size as the breath ring (two equal circles), so it
+// shares RING_CIRC.
 const SESSION_BLUE = "#5B9DEF";
-const SESSION_R = RING_R / 1.618;         // inner radius — the outer (RING_R) is 1.618× (golden ratio) bigger
-const SESSION_CIRC = 2 * Math.PI * SESSION_R;
+const SESSION_CIRC = RING_CIRC;
 
-// The two centre breath circles — equal circles overlapping VERTICALLY at the
-// golden section (same construction as the Cobreathe summary): the non-
-// overlapping part of each is 1.618× the overlap, so total height = 1.618·D and
-// the centres are offset by 0.618·D. They breathe (scale + opacity) with pAnim.
-const C_D = 96, C_R = C_D / 2, C_OFF = 0.618 * C_D, C_H = C_D + C_OFF; // C_H = 1.618·C_D
+// The breath centre is TWO EQUAL RINGS stacked vertically, overlapping at the
+// golden section: the TOP ring is the in/out breath ring, the BOTTOM ring is the
+// 12-breath session ring. Centres are 0.618·D apart (D = ring diameter), so the
+// total height = 1.618·D — the non-overlapping part of each is 1.618× the
+// overlap. No fill, no glow; the rings show progress by their stroke, as before.
+const RING_PAD = 6;                                  // viewBox padding for the stroke
+const RING_D = 2 * RING_R;                            // ring diameter
+const RING_OFF = 0.618 * RING_D;                      // golden vertical offset between centres
+const RING_VBW = RING_D + 2 * RING_PAD;               // viewBox width
+const RING_VBH = RING_D + RING_OFF + 2 * RING_PAD;    // viewBox height
+const RING_CX = RING_R + RING_PAD;                    // shared x-centre
+const RING_TOP_CY = RING_R + RING_PAD;                // top ring centre y
+const RING_BOT_CY = RING_TOP_CY + RING_OFF;           // bottom ring centre y
 
 // The bundled photo library — every image under src/assets/cobreathe is glob-
 // imported here so the breath ALWAYS has pictures, no matter which surface
@@ -201,10 +208,6 @@ export function CobreatheBreath({
   const ringInRef = useRef<SVGCircleElement>(null);
   const ringOutRef = useRef<SVGCircleElement>(null);
   const sessionRingRef = useRef<SVGCircleElement>(null);
-  // The two overlapping breath circles (replaced the centre globe + rings) —
-  // they expand + brighten on the inhale, settle + dim on the exhale, driven by
-  // pAnim in the rAF loop below.
-  const circlesRef = useRef<SVGSVGElement>(null);
   // The globe is chosen ONCE per session and held for the whole sit; a
   // localStorage counter rotates 🌍 → 🌎 → 🌏 across sessions.
   const sessionGlobeRef = useRef<string | null>(null);
@@ -478,22 +481,6 @@ export function CobreatheBreath({
         const f = pos < INHALE_MS ? pos / INHALE_MS : (pos - INHALE_MS) / EXHALE_MS;
         labelRef.current.style.opacity = isCounting ? Math.sin(Math.PI * f).toFixed(4) : "1";
         labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;
-      }
-      // The two breath circles expand + brighten on the inhale (pAnim→1) and
-      // settle + dim on the exhale (pAnim→0) — the breath made visible. A soft
-      // green glow rides along, deepening to blue once the set is complete.
-      if (circlesRef.current) {
-        const scale = (0.9 + pAnim * 0.2).toFixed(4);
-        circlesRef.current.style.transform = `scale(${scale})`;
-        circlesRef.current.style.opacity = isCounting ? (0.5 + pAnim * 0.5).toFixed(3) : "0.5";
-        const done = reachedRef.current;
-        const gr = done ? 91 : Math.round(46 + (134 - 46) * pAnim);
-        const gg = done ? 157 : Math.round(107 + (199 - 107) * pAnim);
-        const gb = done ? 239 : Math.round(64 + (155 - 64) * pAnim);
-        const blur = (10 + pAnim * 14).toFixed(1);
-        const alpha = (0.4 + pAnim * 0.45).toFixed(2);
-        circlesRef.current.style.filter =
-          `drop-shadow(0 0 ${blur}px rgba(${gr},${gg},${gb},${alpha})) drop-shadow(0 3px 14px rgba(8,30,18,0.55))`;
       }
       // Breath-progress rings: the lighter ring fills over the inhale + holds; the
       // darker ring sweeps over it on the exhale; both reset each cycle. The inner
@@ -838,11 +825,13 @@ export function CobreatheBreath({
         )}
       </div>
 
-      {/* Two breath circles — CENTRED, the still point of the screen, but
+      {/* Two breath RINGS — CENTRED, the still point of the screen, but
           DRAGGABLE: grab them anywhere (24px clear of the edges + the top/bottom
-          text); let go near home and they spring back to centre. Equal circles
-          overlapping vertically at the golden section; they expand + brighten on
-          the inhale and settle + dim on the exhale (driven by pAnim above). */}
+          text); let go near home and they spring back to centre. Two equal ring
+          outlines overlapping vertically at the golden section — the TOP ring is
+          the in/out breath (fills green on the inhale, dark sweep on the exhale),
+          the BOTTOM ring fills blue once across the 12-breath set. No fill, no
+          glow; progress is shown by the stroke (driven by the rAF loop above). */}
       <div
         ref={globeCellRef}
         onPointerDown={onGlobeDown}
@@ -863,15 +852,27 @@ export function CobreatheBreath({
       >
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
           <svg
-            ref={circlesRef}
             aria-hidden="true"
-            width={C_D} height={C_H} viewBox={`0 0 ${C_D} ${C_H}`}
-            style={{ transformOrigin: "center", willChange: "transform, opacity", opacity: 0.5 }}
+            width={Math.round(RING_VBW * 0.78)} height={Math.round(RING_VBH * 0.78)}
+            viewBox={`0 0 ${RING_VBW} ${RING_VBH}`}
           >
-            {/* Top circle — green (the breath rising). */}
-            <circle cx={C_R} cy={C_R} r={C_R - 2} fill="rgba(111,175,133,0.42)" stroke="rgba(140,205,160,0.92)" strokeWidth={2.5} />
-            {/* Bottom circle — violet, overlapping at the golden section. */}
-            <circle cx={C_R} cy={C_R + C_OFF} r={C_R - 2} fill="rgba(150,135,200,0.42)" stroke="rgba(176,158,224,0.92)" strokeWidth={2.5} />
+            {/* TOP ring — the in / out breath. Dark base; light green fills on
+                the inhale and holds; dark green sweeps over it on the exhale.
+                Same behavior as the old outer ring, just up here. */}
+            <circle cx={RING_CX} cy={RING_TOP_CY} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeOpacity={0.5} />
+            <circle ref={ringInRef} cx={RING_CX} cy={RING_TOP_CY} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.85}
+              transform={`rotate(-90 ${RING_CX} ${RING_TOP_CY})`}
+              style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }} />
+            <circle ref={ringOutRef} cx={RING_CX} cy={RING_TOP_CY} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.92}
+              transform={`rotate(-90 ${RING_CX} ${RING_TOP_CY})`}
+              style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }} />
+            {/* BOTTOM ring — the 12-breath session. Faint blue track; blue fills
+                once across the whole set. The old inner blue ring, now the lower
+                circle of the golden-ratio pair. */}
+            <circle cx={RING_CX} cy={RING_BOT_CY} r={RING_R} fill="none" stroke="rgba(91,157,239,0.18)" strokeWidth={RING_SW} />
+            <circle ref={sessionRingRef} cx={RING_CX} cy={RING_BOT_CY} r={RING_R} fill="none" stroke={SESSION_BLUE} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.85}
+              transform={`rotate(-90 ${RING_CX} ${RING_BOT_CY})`}
+              style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset" }} />
           </svg>
         </div>
       </div>
