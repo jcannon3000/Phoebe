@@ -102,7 +102,7 @@ const RING_IN = "#86C79B";
 const RING_OUT = "#2E6B40";
 const RING_R = 58;                       // outer ring radius (viewBox 128)
 const RING_CIRC = 2 * Math.PI * RING_R;
-const RING_SW = 4.8;                     // stroke width — 20% thicker; inner ring matches it (same thickness)
+const RING_SW = 14.4;                     // stroke width — thick rings (3× the old 4.8)
 // Blue SESSION ring — the BOTTOM circle, filling once across the whole set of
 // breaths. It's now the SAME size as the breath ring (two equal circles), so it
 // shares RING_CIRC.
@@ -114,7 +114,7 @@ const SESSION_CIRC = RING_CIRC;
 // 12-breath session ring. Centres are 0.618·D apart (D = ring diameter), so the
 // total height = 1.618·D — the non-overlapping part of each is 1.618× the
 // overlap. No fill, no glow; the rings show progress by their stroke, as before.
-const RING_PAD = 6;                                  // viewBox padding for the stroke
+const RING_PAD = 10;                                 // viewBox padding ≥ half the (now thick) stroke so it never clips
 const RING_D = 2 * RING_R;                            // ring diameter
 const RING_OFF = 0.618 * RING_D;                      // golden vertical offset between centres
 const RING_VBW = RING_D + 2 * RING_PAD;               // viewBox width
@@ -853,13 +853,15 @@ export function CobreatheBreath({
         <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
           <svg
             aria-hidden="true"
-            width={Math.round(RING_VBW * 0.78)} height={Math.round(RING_VBH * 0.78)}
+            width={Math.round(RING_VBW * 0.74)} height={Math.round(RING_VBH * 0.74)}
             viewBox={`0 0 ${RING_VBW} ${RING_VBH}`}
           >
-            {/* TOP ring — the in / out breath. Dark base; light green fills on
-                the inhale and holds; dark green sweeps over it on the exhale.
-                Same behavior as the old outer ring, just up here. */}
-            <circle cx={RING_CX} cy={RING_TOP_CY} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeOpacity={0.5} />
+            {/* TOP ring — the in / out breath. The base is the FULL dark green at
+                the SAME opacity as the exhale sweep, so when the sweep resets at
+                the cycle turn the identical dark stays steady underneath (no flash
+                back to a dimmer color); the light green then fills over it on the
+                next inhale. */}
+            <circle cx={RING_CX} cy={RING_TOP_CY} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeOpacity={0.92} />
             <circle ref={ringInRef} cx={RING_CX} cy={RING_TOP_CY} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.85}
               transform={`rotate(-90 ${RING_CX} ${RING_TOP_CY})`}
               style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }} />
