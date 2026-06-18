@@ -246,7 +246,6 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
               <Settings2 size={15} />
             </button>
           )}
-          <Pill label={t("fellows_c.remove", { defaultValue: "Remove" })} kind="muted" onClick={() => { if (window.confirm(t("fellows_c.remove_confirm", { defaultValue: "Remove this fellow?" }))) remove.mutate(f.userId); }} />
         </div>
       </div>
     );
@@ -366,7 +365,6 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
                   <Settings2 size={15} />
                 </button>
               )}
-              <Pill label={t("fellows_c.remove", { defaultValue: "Remove" })} kind="muted" onClick={() => { if (window.confirm(t("fellows_c.remove_confirm", { defaultValue: "Remove this fellow?" }))) remove.mutate(f.userId); }} />
             </div>, `f-${f.userId}`))}
         </>
       )}

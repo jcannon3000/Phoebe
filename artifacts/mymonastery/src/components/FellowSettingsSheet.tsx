@@ -72,6 +72,16 @@ export function FellowSettingsSheet({ fellow, onClose }: { fellow: FellowLite | 
   const acceptWalk = useMutation({ mutationFn: (pairId: number) => apiRequest("POST", `/api/walk/requests/${pairId}/accept`), onSuccess: invalidate });
   const stopWalk = useMutation({ mutationFn: (pairId: number) => apiRequest("POST", `/api/walk/${pairId}/stop`), onSuccess: invalidate });
   const resumeWalk = useMutation({ mutationFn: (pairId: number) => apiRequest("POST", `/api/walk/${pairId}/resume`), onSuccess: invalidate });
+  // Remove this fellow entirely (also ends the walk via the server cascade).
+  const removeFellow = useMutation({
+    mutationFn: () => apiRequest("DELETE", `/api/fellows/${fid}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/fellows"] });
+      qc.invalidateQueries({ queryKey: ["/api/walk"] });
+      qc.invalidateQueries({ queryKey: ["/api/fellow-prefs"] });
+      onClose();
+    },
+  });
 
   // Place prefs (default: not same place, plans shared).
   const pref = fid != null ? prefsData?.prefs?.[fid] : undefined;
@@ -148,6 +158,17 @@ export function FellowSettingsSheet({ fellow, onClose }: { fellow: FellowLite | 
             />
 
             <button type="button" onClick={onClose} className="w-full rounded-2xl py-3 mt-5 text-[14px] font-semibold" style={{ background: "transparent", color: "#C8D4C0", border: `1px solid ${CARD_B}`, fontFamily: FONT }}>Done</button>
+
+            {/* Remove fellow — moved here from the row's pill. Always confirms. */}
+            <button
+              type="button"
+              disabled={removeFellow.isPending}
+              onClick={() => { if (window.confirm(`Remove ${name} as a fellow?`)) removeFellow.mutate(); }}
+              className="w-full rounded-2xl py-3 mt-2 text-[13.5px] font-semibold transition-opacity active:scale-[0.99]"
+              style={{ background: "transparent", color: "#C47A65", border: "none", fontFamily: FONT, opacity: removeFellow.isPending ? 0.6 : 1 }}
+            >
+              Remove fellow
+            </button>
           </motion.div>
         </>
       )}
