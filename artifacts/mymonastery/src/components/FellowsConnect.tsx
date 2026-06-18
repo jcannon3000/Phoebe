@@ -355,21 +355,27 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
       {fellows.length > 0 && (
         <>
           {sectionHeader(t("fellows_c.your_fellows", { defaultValue: "Your fellows" }))}
-          {fellows.map((f) => row(f.name ?? "Someone", f.avatarUrl,
-            <div className="flex items-center gap-2.5 shrink-0">
-              {f.streak > 0 && <span className="text-[13px] font-semibold" style={{ color: "#E8B45E", fontFamily: FONT }} title={t("fellows_c.streak_title", { defaultValue: "Prayer rhythm" })}>🔥 {f.streak}</span>}
-              {encouraged.has(f.userId)
-                ? <Pill label={t("fellows_c.encouraged", { defaultValue: "Encouraged 🙌" })} kind="muted" disabled />
-                : <Pill label={t("fellows_c.encourage", { defaultValue: "🙌 Encourage" })} kind="solid" onClick={() => sendEncourage(f.userId)} />}
-              {canManage && (
-                <button type="button" aria-label={t("fellows_c.settings", { defaultValue: "Sharing settings" })}
-                  onClick={() => openSettings(f)}
-                  className="shrink-0 rounded-full flex items-center justify-center transition-opacity active:scale-[0.95]"
-                  style={{ width: 30, height: 30, background: "rgba(200,212,192,0.08)", border: "1px solid rgba(46,107,64,0.4)", color: "#C8D4C0" }}>
-                  <Settings2 size={15} />
-                </button>
-              )}
-            </div>, `f-${f.userId}`))}
+          {fellows.map((f) => {
+            // Gate Encourage at two-thirds of today's practices, same as the
+            // People-page row — so the rule is consistent across both surfaces.
+            const p = walkByUser.get(f.userId)?.progress ?? null;
+            const keptEnough = !!p && p.totalCount > 0 && p.keptCount / p.totalCount >= 2 / 3;
+            return row(f.name ?? "Someone", f.avatarUrl,
+              <div className="flex items-center gap-2.5 shrink-0">
+                {f.streak > 0 && <span className="text-[13px] font-semibold" style={{ color: "#E8B45E", fontFamily: FONT }} title={t("fellows_c.streak_title", { defaultValue: "Prayer rhythm" })}>🔥 {f.streak}</span>}
+                {keptEnough && (encouraged.has(f.userId)
+                  ? <Pill label={t("fellows_c.encouraged", { defaultValue: "Encouraged 🙌" })} kind="muted" disabled />
+                  : <Pill label={t("fellows_c.encourage", { defaultValue: "🙌 Encourage" })} kind="solid" onClick={() => sendEncourage(f.userId)} />)}
+                {canManage && (
+                  <button type="button" aria-label={t("fellows_c.settings", { defaultValue: "Sharing settings" })}
+                    onClick={() => openSettings(f)}
+                    className="shrink-0 rounded-full flex items-center justify-center transition-opacity active:scale-[0.95]"
+                    style={{ width: 30, height: 30, background: "rgba(200,212,192,0.08)", border: "1px solid rgba(46,107,64,0.4)", color: "#C8D4C0" }}>
+                    <Settings2 size={15} />
+                  </button>
+                )}
+              </div>, `f-${f.userId}`);
+          })}
         </>
       )}
       <FellowSettingsSheet fellow={settingsFellow} onClose={() => setSettingsFellow(null)} />

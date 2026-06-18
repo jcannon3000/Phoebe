@@ -230,36 +230,82 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
             )}
           </motion.div>
 
-          {/* Heart to Heart composer — write a prayer and send it straight to
-              {first}. The first one delivers instantly; after that it follows
-              the next-morning volley. */}
+          {/* Heart to Heart composer — a considered, reverent place to write a
+              prayer for {first}, mirroring the prayer-request slide (author face
+              with the breathing pulse, eyebrow, italic body). The first one
+              delivers instantly; after that it follows the next-morning volley. */}
           <AnimatePresence>
             {composeOpen && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[280] flex flex-col" style={{ background: "rgba(9,26,16,0.97)", paddingTop: "calc(var(--safe-top) + 20px)" }}>
-                <div className="flex items-center justify-between px-5 mb-3">
-                  <button onClick={() => setComposeOpen(false)} className="text-[15px]" style={{ color: SAGE, fontFamily: FONT }}>Cancel</button>
-                  <button onClick={sendHeart} disabled={!draft.trim() || startHeart.isPending}
-                    className="rounded-full px-5 py-2 text-[14px] font-semibold disabled:opacity-40"
-                    style={{ background: "rgba(46,107,64,0.9)", color: WARM, fontFamily: FONT }}>
-                    {startHeart.isPending ? "Sending…" : "Send"}
+                className="fixed inset-0 z-[280] flex flex-col"
+                style={{
+                  background: "radial-gradient(130% 95% at 50% 22%, #163524 0%, #0C1F12 52%, #06120C 100%)",
+                  paddingTop: "calc(var(--safe-top) + 14px)",
+                  paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)",
+                }}>
+                {/* Quiet close in the top-left — the action lives at the bottom. */}
+                <div className="px-5">
+                  <button
+                    type="button"
+                    onClick={() => setComposeOpen(false)}
+                    aria-label="Cancel"
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-[18px] active:scale-[0.95]"
+                    style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.35)", color: "#C8D4C0", fontFamily: FONT }}
+                  >×</button>
+                </div>
+
+                <div className="flex-1 flex flex-col w-full max-w-lg mx-auto px-8 overflow-y-auto">
+                  {/* Who it's for — face with the soft prayer pulse + framing. */}
+                  <div className="flex flex-col items-center text-center mt-1 mb-5">
+                    {companion?.avatarUrl ? (
+                      <img src={companion.avatarUrl} alt={name} className="w-16 h-16 rounded-full object-cover prayer-avatar-pulse" />
+                    ) : (
+                      <div className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold prayer-avatar-pulse"
+                        style={{ background: "#1A4A2E", color: "#A8C5A0", fontFamily: FONT }}>{initials(name)}</div>
+                    )}
+                    <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mt-3" style={{ color: "rgba(143,175,150,0.5)", fontFamily: FONT }}>
+                      Heart to Heart
+                    </p>
+                    <p className="text-[16px] font-semibold mt-1" style={{ color: WARM, fontFamily: FONT }}>
+                      A prayer for {first}
+                    </p>
+                    {companion?.intention && (
+                      <p className="text-[13px] italic mt-1.5" style={{ color: "rgba(182,210,188,0.8)", fontFamily: "Georgia, serif" }}>
+                        “{companion.intention}”
+                      </p>
+                    )}
+                  </div>
+
+                  {/* The prayer itself — italic Georgia, the same voice the
+                      prayer-request body is written in. */}
+                  <textarea
+                    autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={2000}
+                    placeholder={`Lord, today I'm holding ${first}…`}
+                    className="flex-1 min-h-[120px] bg-transparent outline-none resize-none w-full"
+                    style={{ color: "#E8E4D8", fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 21, lineHeight: 1.55, textShadow: "0 1px 12px rgba(8,30,18,0.5)" }}
+                  />
+                </div>
+
+                {/* Footer — a quiet reassurance, any error, then the send. */}
+                <div className="w-full max-w-lg mx-auto px-8 flex flex-col items-center gap-2.5">
+                  {startHeart.isError && (
+                    <p className="text-[13px]" style={{ color: "#E0A87E", fontFamily: FONT }}>
+                      Couldn't send just now — please try again.
+                    </p>
+                  )}
+                  <p className="text-[11.5px]" style={{ color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>
+                    🌿 Held between you and {first}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={sendHeart}
+                    disabled={!draft.trim() || startHeart.isPending}
+                    className="w-full rounded-full py-3.5 text-[15px] font-semibold disabled:opacity-40 active:scale-[0.99]"
+                    style={{ background: "rgba(46,107,64,0.92)", color: WARM, border: "1px solid rgba(140,195,160,0.45)", fontFamily: FONT }}
+                  >
+                    {startHeart.isPending ? "Sending…" : `Send to ${first}`}
                   </button>
                 </div>
-                <div className="flex items-center gap-2.5 px-6 mb-2">
-                  <Avatar name={name} url={companion?.avatarUrl ?? null} size={30} />
-                  <p className="text-[13px]" style={{ color: SAGE, fontFamily: FONT }}>What's on your heart for {first}?</p>
-                </div>
-                {startHeart.isError && (
-                  <p className="px-6 mb-2 text-[13px]" style={{ color: "#E0A87E", fontFamily: FONT }}>
-                    Couldn't send just now — please try again.
-                  </p>
-                )}
-                <textarea
-                  autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={2000}
-                  placeholder="Lord, today I'm carrying…"
-                  className="flex-1 bg-transparent outline-none resize-none px-6"
-                  style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 21, lineHeight: 1.5 }}
-                />
               </motion.div>
             )}
           </AnimatePresence>

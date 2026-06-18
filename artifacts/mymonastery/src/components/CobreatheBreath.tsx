@@ -110,6 +110,12 @@ const SESSION_BLUE = "#5B9DEF";
 const SESSION_R = RING_R / 1.618;         // inner radius — the outer (RING_R) is 1.618× (golden ratio) bigger
 const SESSION_CIRC = 2 * Math.PI * SESSION_R;
 
+// The two centre breath circles — equal circles overlapping VERTICALLY at the
+// golden section (same construction as the Cobreathe summary): the non-
+// overlapping part of each is 1.618× the overlap, so total height = 1.618·D and
+// the centres are offset by 0.618·D. They breathe (scale + opacity) with pAnim.
+const C_D = 96, C_R = C_D / 2, C_OFF = 0.618 * C_D, C_H = C_D + C_OFF; // C_H = 1.618·C_D
+
 // The bundled photo library — every image under src/assets/cobreathe is glob-
 // imported here so the breath ALWAYS has pictures, no matter which surface
 // launches it (the /cobreathe page OR the office/devotion slideshow overlay).
@@ -195,6 +201,10 @@ export function CobreatheBreath({
   const ringInRef = useRef<SVGCircleElement>(null);
   const ringOutRef = useRef<SVGCircleElement>(null);
   const sessionRingRef = useRef<SVGCircleElement>(null);
+  // The two overlapping breath circles (replaced the centre globe + rings) —
+  // they expand + brighten on the inhale, settle + dim on the exhale, driven by
+  // pAnim in the rAF loop below.
+  const circlesRef = useRef<SVGSVGElement>(null);
   // The globe is chosen ONCE per session and held for the whole sit; a
   // localStorage counter rotates 🌍 → 🌎 → 🌏 across sessions.
   const sessionGlobeRef = useRef<string | null>(null);
@@ -469,17 +479,21 @@ export function CobreatheBreath({
         labelRef.current.style.opacity = isCounting ? Math.sin(Math.PI * f).toFixed(4) : "1";
         labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;
       }
-      // Globe GREEN glow crossfades with the breath — darker at the bottom of the
-      // exhale (pAnim→0), lighter at the top of the inhale (pAnim→1). Skipped once
-      // the set is complete, so the declarative blue glow takes over.
-      if (globeRef.current && !reachedRef.current) {
-        const gr = Math.round(46 + (134 - 46) * pAnim);
-        const gg = Math.round(107 + (199 - 107) * pAnim);
-        const gb = Math.round(64 + (155 - 64) * pAnim);
-        const blur = (10 + pAnim * 13).toFixed(1);
-        const alpha = (0.42 + pAnim * 0.42).toFixed(2);
-        globeRef.current.style.filter =
-          `drop-shadow(0 0 ${blur}px rgba(${gr},${gg},${gb},${alpha})) drop-shadow(0 3px 14px rgba(8,30,18,0.6))`;
+      // The two breath circles expand + brighten on the inhale (pAnim→1) and
+      // settle + dim on the exhale (pAnim→0) — the breath made visible. A soft
+      // green glow rides along, deepening to blue once the set is complete.
+      if (circlesRef.current) {
+        const scale = (0.9 + pAnim * 0.2).toFixed(4);
+        circlesRef.current.style.transform = `scale(${scale})`;
+        circlesRef.current.style.opacity = isCounting ? (0.5 + pAnim * 0.5).toFixed(3) : "0.5";
+        const done = reachedRef.current;
+        const gr = done ? 91 : Math.round(46 + (134 - 46) * pAnim);
+        const gg = done ? 157 : Math.round(107 + (199 - 107) * pAnim);
+        const gb = done ? 239 : Math.round(64 + (155 - 64) * pAnim);
+        const blur = (10 + pAnim * 14).toFixed(1);
+        const alpha = (0.4 + pAnim * 0.45).toFixed(2);
+        circlesRef.current.style.filter =
+          `drop-shadow(0 0 ${blur}px rgba(${gr},${gg},${gb},${alpha})) drop-shadow(0 3px 14px rgba(8,30,18,0.55))`;
       }
       // Breath-progress rings: the lighter ring fills over the inhale + holds; the
       // darker ring sweeps over it on the exhale; both reset each cycle. The inner
@@ -824,11 +838,11 @@ export function CobreatheBreath({
         )}
       </div>
 
-      {/* Globe + rings — CENTRED, the still point of the screen, but DRAGGABLE:
-          grab it anywhere on screen (24px clear of the edges + the top/bottom
-          text); let go near home and it springs back to centre. The outer ring
-          breathes (lighter green in, darker green out); the inner blue ring fills
-          once across the whole set. */}
+      {/* Two breath circles — CENTRED, the still point of the screen, but
+          DRAGGABLE: grab them anywhere (24px clear of the edges + the top/bottom
+          text); let go near home and they spring back to centre. Equal circles
+          overlapping vertically at the golden section; they expand + brighten on
+          the inhale and settle + dim on the exhale (driven by pAnim above). */}
       <div
         ref={globeCellRef}
         onPointerDown={onGlobeDown}
@@ -836,11 +850,10 @@ export function CobreatheBreath({
         onPointerUp={onGlobeUp}
         onPointerCancel={onGlobeUp}
         style={{
-          // Positioned absolutely so the globe's CENTRE sits at 61.8% of the
-          // screen height (golden ratio) — lower than the old flex-centre. The
-          // −50%/−50% centres the box on that point; the drag offset composes on
-          // top (onGlobeDown/Move recover the natural position by subtracting the
-          // offset from the measured rect, so the drag clamp still bounds it).
+          // Positioned absolutely so the circles' CENTRE sits at 61.8% of the
+          // screen height (golden ratio). The −50%/−50% centres the box on that
+          // point; the drag offset composes on top (onGlobeDown/Move recover the
+          // natural position by subtracting the offset from the measured rect).
           position: "absolute", left: "50%", top: "61.8%",
           width: 158, height: 158, zIndex: 3,
           transform: `translate(-50%, -50%) translate(${globeOffset.x}px, ${globeOffset.y}px)`,
@@ -848,42 +861,18 @@ export function CobreatheBreath({
           touchAction: "none", cursor: "grab",
         }}
       >
-        <svg
-          aria-hidden="true"
-          width={158} height={158} viewBox="0 0 128 128"
-          style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none", filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))" }}
-        >
-          {/* Dark green BASE ring — a full circle that stays put each breath;
-              the light green progress stroke overlays it on the inhale. */}
-          <circle cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeOpacity={0.55}
-            style={{ filter: "drop-shadow(0 0 4px rgba(46,107,64,0.7))" }} />
-          {/* Light green progress — fills clockwise over the dark base on the
-              inhale, recedes on the exhale. 80% opacity + a soft outer glow. */}
-          <circle ref={ringInRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
-            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 5px rgba(134,199,155,0.85))" }} />
-          {/* Dark green exhale sweep — draws FORWARD (same clockwise direction
-              as the inhale) over the light ring on the exhale, settling the
-              ring back to the dark base by full exhale. Never recedes. */}
-          <circle ref={ringOutRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.92}
-            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 5px rgba(46,107,64,0.85))" }} />
-          {/* inner blue session ring — faint track + slow fill, thickness matched to the outer */}
-          <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(91,157,239,0.16)" strokeWidth={RING_SW} />
-          <circle ref={sessionRingRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_BLUE} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
-            style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 5px rgba(91,157,239,0.85))" }} />
-        </svg>
-        <div
-          ref={globeRef}
-          aria-hidden="true"
-          style={{
-            position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 80, lineHeight: 1, pointerEvents: "none",
-            filter: reachedNow
-              ? "drop-shadow(0 0 18px rgba(91,157,239,0.9)) drop-shadow(0 2px 10px rgba(8,30,18,0.5))"
-              : "drop-shadow(0 0 13px rgba(90,150,110,0.55)) drop-shadow(0 3px 14px rgba(8,30,18,0.6))",
-            transition: reachedNow ? "filter 1.2s ease" : "none",
-          }}
-        >
-          {globe}
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
+          <svg
+            ref={circlesRef}
+            aria-hidden="true"
+            width={C_D} height={C_H} viewBox={`0 0 ${C_D} ${C_H}`}
+            style={{ transformOrigin: "center", willChange: "transform, opacity", opacity: 0.5 }}
+          >
+            {/* Top circle — green (the breath rising). */}
+            <circle cx={C_R} cy={C_R} r={C_R - 2} fill="rgba(111,175,133,0.42)" stroke="rgba(140,205,160,0.92)" strokeWidth={2.5} />
+            {/* Bottom circle — violet, overlapping at the golden section. */}
+            <circle cx={C_R} cy={C_R + C_OFF} r={C_R - 2} fill="rgba(150,135,200,0.42)" stroke="rgba(176,158,224,0.92)" strokeWidth={2.5} />
+          </svg>
         </div>
       </div>
 

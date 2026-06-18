@@ -4114,26 +4114,53 @@ export default function PrayerModePage() {
   // saw the first slide flash for a render, get replaced by the
   // spinner during the refetch, then come back identical.
   if (!frozenSlides || index < 0) {
+    // A calm "gathering" screen while the community intercession slideshow is
+    // assembled — a slow breathing glow + a reverent line, over the same
+    // drifting green backdrop the prayer slides use. Replaces the old bare
+    // spinner so the wait feels like the start of prayer, not a buffering app.
     return (
       <div
         style={{
           background: "#0C1F12",
           minHeight: "100dvh",
+          position: "relative",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          overflow: "hidden",
         }}
       >
+        <AnimatedBackground base="#0C1F12" variant="subtle" fadeTop />
         <div
-          className="animate-spin"
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: "50%",
-            border: "2px solid rgba(232,228,216,0.6)",
-            borderTopColor: "transparent",
-          }}
-        />
+          className="flex flex-col items-center"
+          style={{ position: "relative", zIndex: 1, padding: "0 32px" }}
+        >
+          <div
+            className="intercession-loader-orb"
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: "50%",
+              background:
+                "radial-gradient(circle at 50% 38%, rgba(150,205,170,0.55) 0%, rgba(46,107,64,0.35) 55%, rgba(46,107,64,0.08) 100%)",
+              boxShadow: "0 0 36px rgba(46,107,64,0.55), inset 0 0 18px rgba(140,205,160,0.35)",
+            }}
+          />
+          <p
+            className="mt-7 text-center"
+            style={{
+              color: "rgba(182,210,188,0.82)",
+              fontFamily: "Georgia, 'Times New Roman', serif",
+              fontStyle: "italic",
+              fontSize: 16,
+              lineHeight: 1.5,
+              textShadow: "0 2px 16px rgba(8,30,18,0.6)",
+              maxWidth: 320,
+            }}
+          >
+            {t("prayer_mode.gathering", { defaultValue: "Gathering the prayers of your community…" })}
+          </p>
+        </div>
       </div>
     );
   }

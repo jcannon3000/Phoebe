@@ -355,6 +355,15 @@ textarea:focus {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Prayer-mode "gathering" loader — a slow breathing glow while the community
+   intercession slideshow is assembled. ~3.4s per breath, calm and reverent. */
+@keyframes intercession-breathe {
+  0%, 100% { transform: scale(0.9); opacity: 0.55; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+.intercession-loader-orb { animation: intercession-breathe 3.4s ease-in-out infinite; will-change: transform, opacity; }
+.intercession-loader-copy { animation: intercession-breathe 3.4s ease-in-out infinite; animation-delay: 0.2s; }
+
 @keyframes presence-dot-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
