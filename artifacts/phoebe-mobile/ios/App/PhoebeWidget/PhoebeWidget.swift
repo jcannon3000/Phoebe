@@ -35,7 +35,8 @@ struct PhoebeStats {
     var nextOffice: String
     var newPrayers: Int        // prayer requests waiting for the viewer
     var doneCount: Int         // daily anchors completed today
-    var totalAnchors: Int      // daily anchors that count today (2 offices + reflection)
+    var totalAnchors: Int      // daily anchors that count today
+    var dots: [Int]            // 1/0 per ACTIVE anchor today, home-pill order
     var morningDone: Bool
     var reflectDone: Bool
     var eveningDone: Bool
@@ -48,7 +49,7 @@ struct PhoebeStats {
         subtitle: "9 people prayed with you this week", cta: "Begin prayer",
         deepLink: "https://withphoebe.app/", streakDays: 4, prayedToday: false,
         nextOffice: "Evening Prayer", newPrayers: 0,
-        doneCount: 2, totalAnchors: 3,
+        doneCount: 2, totalAnchors: 4, dots: [1, 1, 0, 1],
         morningDone: true, reflectDone: true, eveningDone: false, reflectAvailable: true,
         contemplationMin: 7, contemplationGoalMin: 20
     )
@@ -69,7 +70,7 @@ struct PhoebeStats {
             streakDays: 0, prayedToday: false,
             nextOffice: morning ? "Morning Prayer" : "Evening Prayer",
             newPrayers: 0,
-            doneCount: 0, totalAnchors: 3,
+            doneCount: 0, totalAnchors: 3, dots: [],
             morningDone: false, reflectDone: false, eveningDone: false, reflectAvailable: true,
             contemplationMin: 0, contemplationGoalMin: 0
         )
@@ -103,6 +104,7 @@ struct PhoebeStats {
         // payload renders "0 of 3 today" rather than "0 of 0".
         let doneCount = (obj["doneCount"] as? NSNumber)?.intValue ?? 0
         let totalAnchors = (obj["totalAnchors"] as? NSNumber)?.intValue ?? 3
+        let dots: [Int] = (obj["dots"] as? [Any])?.compactMap { ($0 as? NSNumber)?.intValue } ?? []
         let morningDone = (obj["morningDone"] as? NSNumber)?.boolValue ?? false
         let reflectDone = (obj["reflectDone"] as? NSNumber)?.boolValue ?? false
         let eveningDone = (obj["eveningDone"] as? NSNumber)?.boolValue ?? false
@@ -112,7 +114,7 @@ struct PhoebeStats {
         return PhoebeStats(kind: kind, eyebrow: eyebrow, title: title, subtitle: subtitle, cta: cta,
                            deepLink: deepLink, streakDays: streak, prayedToday: prayed,
                            nextOffice: nextOffice, newPrayers: newPrayers,
-                           doneCount: doneCount, totalAnchors: totalAnchors,
+                           doneCount: doneCount, totalAnchors: totalAnchors, dots: dots,
                            morningDone: morningDone, reflectDone: reflectDone,
                            eveningDone: eveningDone, reflectAvailable: reflectAvailable,
                            contemplationMin: contemplationMin, contemplationGoalMin: contemplationGoalMin)
@@ -120,6 +122,15 @@ struct PhoebeStats {
 
     var streakText: String { streakDays > 0 ? "\(streakDays)-day streak" : "Begin a streak" }
     var todayLine: String { !title.isEmpty ? title : (prayedToday ? "Prayed today" : "Time to pray") }
+    // The dots to render — the app-sent set when present, else a sensible
+    // fallback from the older morning/reflect/evening booleans.
+    var dotList: [Bool] {
+        if !dots.isEmpty { return dots.map { $0 == 1 } }
+        var d = [morningDone]
+        if reflectAvailable { d.append(reflectDone) }
+        d.append(eveningDone)
+        return d
+    }
 }
 
 // ── Timeline ──────────────────────────────────────────────────────────────
@@ -193,9 +204,9 @@ struct PhoebeWidgetView: View {
     // today's rhythm the user is.
     private var progressDots: some View {
         HStack(spacing: 5) {
-            anchorDot(done: stats.morningDone)
-            if stats.reflectAvailable { anchorDot(done: stats.reflectDone) }
-            anchorDot(done: stats.eveningDone)
+            ForEach(Array(stats.dotList.enumerated()), id: \.offset) { _, done in
+                anchorDot(done: done)
+            }
             Text("\(stats.doneCount)/\(stats.totalAnchors)")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(phoebeSage)
@@ -211,11 +222,11 @@ struct PhoebeWidgetView: View {
     var body: some View {
         switch family {
         case .accessoryInline:
-            Label(stats.streakText, systemImage: "flame.fill")
+            Label("\(stats.doneCount)/\(stats.totalAnchors) kept · \(stats.todayLine)", systemImage: "leaf.fill")
         case .accessoryCircular:
             VStack(spacing: -1) {
-                Image(systemName: "flame.fill").font(.system(size: 13))
-                Text("\(stats.streakDays)").font(.system(size: 17, weight: .bold))
+                Image(systemName: "leaf.fill").font(.system(size: 12))
+                Text("\(stats.doneCount)/\(stats.totalAnchors)").font(.system(size: 15, weight: .bold))
             }
         case .accessoryRectangular:
             // Leads with "N prayer requests waiting" when there are new ones,
@@ -301,16 +312,16 @@ struct PhoebeWidgetView: View {
     private var homeSmall: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 5) {
-                Image(systemName: "flame.fill").font(.system(size: 13)).foregroundColor(.orange)
+                Image(systemName: "leaf.fill").font(.system(size: 13)).foregroundColor(accentColor)
                 Text("Phoebe").font(.system(size: 13, weight: .semibold)).foregroundColor(phoebeWarm.opacity(0.75))
             }
             Spacer()
             Text("\(stats.doneCount) of \(stats.totalAnchors)").font(.system(size: 34, weight: .bold)).foregroundColor(phoebeWarm)
             Text("done today").font(.system(size: 12)).foregroundColor(phoebeWarm.opacity(0.75))
             HStack(spacing: 5) {
-                anchorDot(done: stats.morningDone)
-                if stats.reflectAvailable { anchorDot(done: stats.reflectDone) }
-                anchorDot(done: stats.eveningDone)
+                ForEach(Array(stats.dotList.enumerated()), id: \.offset) { _, done in
+                    anchorDot(done: done)
+                }
             }.padding(.top, 6)
             Spacer()
             Text(stats.todayLine).font(.system(size: 12, weight: .medium)).foregroundColor(phoebeWarm.opacity(0.85)).lineLimit(1)
@@ -407,7 +418,7 @@ struct PhoebeWidget: Widget {
             }
         }
         .configurationDisplayName("What's next")
-        .description("Your next prayer, reflection, or office — and your streak.")
+        .description("Your next prayer, reflection, or office — and today's rhythm.")
         .supportedFamilies([
             .accessoryInline, .accessoryCircular, .accessoryRectangular,
             .systemSmall, .systemMedium,
@@ -437,10 +448,67 @@ struct PhoebeTodayWidget: Widget {
     }
 }
 
+// ── "Daily progress" view — just your rhythm dots for today ──────────────────
+struct PhoebeDotsView: View {
+    @Environment(\.widgetFamily) var family
+    let stats: PhoebeStats
+    private var frac: Double { stats.totalAnchors > 0 ? Double(stats.doneCount) / Double(stats.totalAnchors) : 0 }
+    private func dot(_ done: Bool) -> some View {
+        Image(systemName: done ? "checkmark.circle.fill" : "circle").font(.system(size: 13))
+    }
+    var body: some View {
+        switch family {
+        case .accessoryInline:
+            Label("\(stats.doneCount)/\(stats.totalAnchors) kept today", systemImage: "leaf.fill")
+        case .accessoryCircular:
+            ZStack {
+                Circle().stroke(lineWidth: 4).opacity(0.25)
+                Circle().trim(from: 0, to: max(0.001, frac))
+                    .stroke(style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                Text("\(stats.doneCount)/\(stats.totalAnchors)").font(.system(size: 13, weight: .bold))
+            }
+        default:
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 4) {
+                    Image(systemName: "leaf.fill").font(.system(size: 11))
+                    Text("TODAY").font(.system(size: 10, weight: .semibold)).tracking(0.8)
+                    Spacer(minLength: 0)
+                    Text("\(stats.doneCount)/\(stats.totalAnchors)").font(.system(size: 12, weight: .semibold))
+                }
+                HStack(spacing: 7) {
+                    ForEach(Array(stats.dotList.enumerated()), id: \.offset) { _, done in dot(done) }
+                    Spacer(minLength: 0)
+                }
+            }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
+    }
+}
+
+// ── "Daily progress" widget — your rhythm dots (lock-screen). ────────────────
+struct PhoebeDotsWidget: Widget {
+    let kind = "PhoebeDotsWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: PhoebeProvider()) { entry in
+            let view = PhoebeDotsView(stats: entry.stats)
+                .widgetURL(URL(string: entry.stats.deepLink))
+            if #available(iOS 17.0, *) {
+                view.containerBackground(phoebeGreen, for: .widget)
+            } else {
+                view.padding().background(phoebeGreen)
+            }
+        }
+        .configurationDisplayName("Daily progress")
+        .description("Your rhythm dots for today.")
+        .supportedFamilies([.accessoryInline, .accessoryCircular, .accessoryRectangular])
+    }
+}
+
 @main
 struct PhoebeWidgetBundle: WidgetBundle {
     var body: some Widget {
         PhoebeWidget()        // "What's next" — home + lock screen
         PhoebeTodayWidget()   // "Contemplation & next" — lock screen
+        PhoebeDotsWidget()    // "Daily progress" — your dots, lock screen
     }
 }

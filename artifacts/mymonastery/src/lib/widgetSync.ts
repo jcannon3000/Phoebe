@@ -44,6 +44,9 @@ type WidgetState = {
   // has no reflection source, so the widget skips that anchor.
   doneCount: number;
   totalAnchors: number;
+  // One 1/0 per ACTIVE rhythm anchor today, in home-pill order (Morning ·
+  // Reflection · Silence · Evening · Steps) — drives the widget's dots.
+  dots: number[];
   morningDone: boolean;
   reflectDone: boolean;
   eveningDone: boolean;
@@ -134,7 +137,7 @@ export function useWidgetSync(): void {
   // Prayer level → so the office hero reads "Devotion"/"Prayer" exactly like the
   // home PrayerOfficeCard (the user prefers a Devotion, so the widget should
   // say "Evening Devotion", not "Evening Prayer").
-  const officePrefsQ = useQuery<{ defaultPrayerLevel?: "devotion" | "office" | "intercessions"; contemplationGoalMinutes?: number; morning?: string; evening?: string }>({
+  const officePrefsQ = useQuery<{ defaultPrayerLevel?: "devotion" | "office" | "intercessions"; contemplationGoalMinutes?: number; morning?: string; evening?: string; dailyStepGoal?: number; dailyStepReachedDate?: string | null }>({
     queryKey: ["/api/me/office-prefs"],
     queryFn: () => apiRequest("GET", "/api/me/office-prefs"),
     enabled,
@@ -264,20 +267,29 @@ export function useWidgetSync(): void {
       heroCta = "";
     }
 
-    // Daily-progress anchors: the two offices always count; the reflection
-    // counts only when the user has a source set. doneCount/totalAnchors drive
-    // the widget's progress dots + "X of Y today".
-    const anchors = [
-      ...(morningActive ? [morningDone] : []),
-      ...(eveningActive ? [eveningDone] : []),
-      ...(reflectAvailable ? [reflectDone] : []),
-    ];
-    const totalAnchors = anchors.length;
-    const doneCount = anchors.filter(Boolean).length;
-
-    // Today's contemplation minutes + goal for the lock-screen "Today" widget.
+    // Today's contemplation minutes + goal (also a rhythm anchor when a goal's set).
     const contemplationMin = Math.floor((contStatsQ.data?.todaySeconds ?? 0) / 60) + (contStatsQ.data?.healthMinutesToday ?? 0);
     const contemplationGoalMin = officePrefsQ.data?.contemplationGoalMinutes ?? 0;
+
+    // Daily-progress anchors — the FULL active set, in the same order + with the
+    // same done-rules as the home header pill: Morning · Reflection · Silence ·
+    // Evening · Steps. `dots` (1/0 per active anchor) drives the widget dots so
+    // they always match the home; doneCount/totalAnchors summarise it.
+    const silenceActive = contemplationGoalMin > 0;
+    const silenceDone = contemplationMin >= contemplationGoalMin;
+    const stepGoal = officePrefsQ.data?.dailyStepGoal ?? 0;
+    const stepsActive = stepGoal > 0;
+    const stepsTodayYmd = new Date().toLocaleDateString("en-CA");
+    const stepsDone = (officePrefsQ.data?.dailyStepReachedDate ?? null) === stepsTodayYmd;
+    const dots: number[] = [
+      ...(morningActive ? [morningDone ? 1 : 0] : []),
+      ...(reflectAvailable ? [reflectDone ? 1 : 0] : []),
+      ...(silenceActive ? [silenceDone ? 1 : 0] : []),
+      ...(eveningActive ? [eveningDone ? 1 : 0] : []),
+      ...(stepsActive ? [stepsDone ? 1 : 0] : []),
+    ];
+    const totalAnchors = dots.length;
+    const doneCount = dots.filter((d) => d === 1).length;
 
     const bridge = (window as unknown as { PhoebeNative?: WidgetBridge }).PhoebeNative;
     bridge?.updateWidget?.({
@@ -293,6 +305,7 @@ export function useWidgetSync(): void {
       newPrayersCount,
       doneCount,
       totalAnchors,
+      dots,
       morningDone,
       reflectDone,
       eveningDone,

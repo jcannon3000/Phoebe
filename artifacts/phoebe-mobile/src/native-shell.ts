@@ -1369,6 +1369,7 @@ declare global {
         // Daily rhythm progress (widget dots + "N of M today").
         doneCount?: number | null;
         totalAnchors?: number | null;
+        dots?: number[] | null;
         morningDone?: boolean | null;
         reflectDone?: boolean | null;
         eveningDone?: boolean | null;
@@ -1463,6 +1464,7 @@ function exposePublicApi() {
           newPrayersCount: state.newPrayersCount ?? null,
           doneCount: state.doneCount ?? null,
           totalAnchors: state.totalAnchors ?? null,
+          dots: state.dots ?? null,
           morningDone: state.morningDone ?? null,
           reflectDone: state.reflectDone ?? null,
           eveningDone: state.eveningDone ?? null,
