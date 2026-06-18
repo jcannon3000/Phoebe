@@ -238,19 +238,12 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
     } catch { /* diagnostic only — non-fatal */ }
     const everCount = stoneStateRow?.ever ?? 0;
     const liveCount = stoneStateRow?.live ?? 0;
-    let userEmail: string | null = null;
-    try {
-      const { usersTable } = await import("@workspace/db");
-      const [u] = await db.select({ email: usersTable.email })
-        .from(usersTable)
-        .where(eq(usersTable.id, userId));
-      userEmail = u?.email ?? null;
-    } catch { /* diagnostic only — non-fatal */ }
+    // Identify by userId + the static notification "kind" (threadId), never by
+    // email or the rendered title (which can carry a name or content).
     logger.info(
       {
         userId,
-        userEmail,
-        title: payload.title,
+        kind: payload.threadId ?? "generic",
         deviceTokensEver: everCount,
         deviceTokensLive: liveCount,
         reason:
@@ -265,7 +258,7 @@ export async function sendPushToUser(userId: number, payload: PushPayload): Prom
     return { attempted: 0, succeeded: 0, invalidated: 0 };
   }
   logger.info(
-    { userId, tokenCount: tokens.length, webSubCount: webSubs.length, title: payload.title },
+    { userId, tokenCount: tokens.length, webSubCount: webSubs.length, kind: payload.threadId ?? "generic" },
     "[push] sending"
   );
 
@@ -334,10 +327,15 @@ async function sendOneWebPush(
   payload: PushPayload,
 ): Promise<WebPushOutcome> {
   if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
+    // Log only the non-sensitive shape — never the payload (its title/body can
+    // carry a name or message/prayer text).
     logger.info({
       webpush: "stub",
       endpoint: sub.endpoint.slice(0, 40) + "…",
-      payload,
+      kind: payload.threadId ?? "generic",
+      path: payload.path ?? "/",
+      titleLen: payload.title?.length ?? 0,
+      bodyLen: payload.body?.length ?? 0,
     }, "[push] VAPID_* env vars not set — would have sent web push");
     return "stub";
   }
@@ -397,12 +395,17 @@ type ApnsOutcome = "ok" | "invalid" | "error" | "stub";
  */
 async function sendOneApns(deviceToken: string, payload: PushPayload): Promise<ApnsOutcome> {
   if (!CREDS.keyP8 || !CREDS.keyId || !CREDS.teamId) {
+    // Log only the non-sensitive shape — never the payload (its title/body can
+    // carry a name or message/prayer text).
     logger.info({
       apns: "stub",
       bundleId: CREDS.bundleId,
       host: APNS_HOST,
       deviceToken: deviceToken.slice(0, 8) + "…",
-      payload,
+      kind: payload.threadId ?? "generic",
+      path: payload.path ?? "/",
+      titleLen: payload.title?.length ?? 0,
+      bodyLen: payload.body?.length ?? 0,
     }, "[push] APNS_* env vars not set — would have sent");
     return "stub";
   }
@@ -1052,19 +1055,20 @@ export async function sendNewPrayerRequestPush(
 }
 
 // Beta Messages — a new 1:1 message landed. Title carries the sender's
-// first name; body is a short preview of the message. Tap deep-links to
-// the conversation thread. Threaded per-conversation so a back-and-forth
-// stacks under one thread on the lock screen rather than N banners.
+// first name; body is a GENERIC knock — the message text is deliberately
+// never put in the push payload, so it never transits Apple's APNs servers
+// (or lands in any push log). Tap deep-links to the conversation thread to
+// read it. Threaded per-conversation so a back-and-forth stacks under one
+// thread on the lock screen rather than N banners.
 export function sendBetaMessagePush(
   recipientUserId: number,
-  opts: { senderName: string; conversationId: number; preview: string },
+  opts: { senderName: string; conversationId: number },
 ) {
   if (!LETTERS_MESSAGES_ENABLED) return Promise.resolve();
   const firstName = (opts.senderName || "Someone").split(/\s+/)[0] || "Someone";
-  const preview = opts.preview.length > 140 ? opts.preview.slice(0, 139) + "…" : opts.preview;
   return sendPushToUser(recipientUserId, {
     title: `${firstName} sent you a message`,
-    body: preview,
+    body: "Open Phoebe to read.",
     path: `/messages/${opts.conversationId}`,
     threadId: `beta-message-${opts.conversationId}`,
     sound: PHOEBE_SOUND_MID,

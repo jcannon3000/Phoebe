@@ -1126,11 +1126,11 @@ router.post(
   // got my reset email" reports — the user still sees the generic ok:
   // true, so no enumeration leak.
   if (!user) {
-    console.info(`[forgot-password] No account for ${normalizedEmail} — silent no-op`);
+    console.info(`[forgot-password] No matching account — silent no-op`);
     res.json({ ok: true }); return;
   }
   if (!user.passwordHash) {
-    console.info(`[forgot-password] Account ${normalizedEmail} has no passwordHash (OAuth-only signup) — silent no-op`);
+    console.info(`[forgot-password] user ${user.id} is OAuth-only (no passwordHash) — silent no-op`);
     res.json({ ok: true }); return;
   }
 
@@ -1143,21 +1143,20 @@ router.post(
 
   const resetUrl = `${getInviteBaseUrl()}/reset-password?token=${token}`;
 
-  // sendPasswordResetEmail returns false on failure (it doesn't throw),
-  // so a try/catch alone would silently miss misconfiguration. Log the
-  // link to the server console as a fallback — useful in dev and in
-  // production when the Gmail OAuth refresh token has lapsed. The user
-  // still sees ok: true (no enumeration leak); ops can recover the link
-  // from logs to forward manually if the situation demands.
+  // sendPasswordResetEmail returns false on failure (it doesn't throw).
+  // NEVER log the resetUrl/token or the email: the token is a live ~1-hour
+  // account-takeover credential and the logs are operator-readable. On
+  // failure, log only the userId — an admin can re-trigger the reset email
+  // rather than reconstruct the link from logs.
   const sent = await sendPasswordResetEmail({
     to: normalizedEmail,
     name: user.name,
     resetUrl,
   });
   if (sent) {
-    console.info(`[forgot-password] Reset email sent to ${normalizedEmail}`);
+    console.info(`[forgot-password] reset email sent to user ${user.id}`);
   } else {
-    console.warn(`[forgot-password] Email send FAILED for ${normalizedEmail}; reset link: ${resetUrl}`);
+    console.warn(`[forgot-password] reset email send FAILED for user ${user.id}`);
   }
 
   res.json({ ok: true });

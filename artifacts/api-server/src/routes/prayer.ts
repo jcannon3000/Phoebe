@@ -9,6 +9,7 @@ import { getGardenUserIds } from "../lib/garden";
 import { sendPrayerWordPush, sendFirstAmenPush, sendNewPrayerRequestPush, sendLifeEventUpdatePush } from "../lib/pushSender";
 import { logger } from "../lib/logger";
 import { isParishOnlyUser } from "../lib/parishGate";
+import { canManageParish } from "./parish";
 import { rateLimit } from "../lib/rate-limit";
 
 // Per-user rate-limit key — throttles by account, not IP, so users
@@ -74,7 +75,17 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
       isNull(prayerRequestTagsTable.removedAt),
     ));
   const viewerIsTagged = taggedRow.length > 0;
-  if (!viewerIsOwner && !viewerIsTagged) {
+  // Parish "pastoral concerns" (parishFeedId set) are private to the requester
+  // + parish admins and must NEVER be reachable via the garden/tagged path —
+  // mirror the list route's exclusion (see ~line 416). Gate them explicitly.
+  if (r.parishFeedId != null) {
+    let allowed = viewerIsOwner;
+    if (!allowed) {
+      const { allowed: canManage } = await canManageParish(sessionUserId, r.parishFeedId);
+      allowed = canManage;
+    }
+    if (!allowed) { res.status(403).json({ error: "Forbidden" }); return; }
+  } else if (!viewerIsOwner && !viewerIsTagged) {
     const garden = await getGardenUserIds(sessionUserId);
     if (!garden.includes(r.ownerId)) {
       res.status(403).json({ error: "Forbidden" });
@@ -784,11 +795,13 @@ router.post("/prayer-requests", rateLimit({
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
+    // Log the field-level error shape only — never req.body, which carries the
+    // prayer text + event title (operator-readable logs).
     logger.warn({
       ua: req.headers["user-agent"],
       userId: sessionUserId,
       err: parsed.error.flatten(),
-      body: req.body,
+      bodyLen: typeof (req.body as { body?: unknown })?.body === "string" ? (req.body as { body: string }).body.length : undefined,
     }, "[prayer-requests:post] rejected — schema mismatch");
     res.status(400).json({ error: "Please share a non-empty prayer request." });
     return;
@@ -1111,6 +1124,12 @@ router.post("/prayer-requests/:id/word", rateLimit({
   const [request] = await db.select().from(prayerRequestsTable).where(eq(prayerRequestsTable.id, id));
   if (!request) { res.status(404).json({ error: "Not found" }); return; }
   if (request.closedAt) { res.status(400).json({ error: "Request is closed" }); return; }
+  // A parish "pastoral concern" is private to the requester + parish admins —
+  // don't let a guessed id attach a word from anyone else.
+  if (request.parishFeedId != null && request.ownerId !== sessionUserId) {
+    const { allowed } = await canManageParish(sessionUserId, request.parishFeedId);
+    if (!allowed) { res.status(403).json({ error: "Forbidden" }); return; }
+  }
 
   const [author] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, sessionUserId));
   const authorName = author?.name ?? "Someone";

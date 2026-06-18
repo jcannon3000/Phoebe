@@ -438,7 +438,7 @@ router.put("/parish/prefs", async (req, res) => {
 // Mirrors canEditFeed in prayer-feeds.ts but adapted for parishes
 // (we always require kind="parish" so a "general" feed doesn't
 // accidentally fall under parish admin tooling).
-async function canManageParish(userId: number, parishId: number): Promise<{
+export async function canManageParish(userId: number, parishId: number): Promise<{
   allowed: boolean;
   parish: typeof prayerFeedsTable.$inferSelect | null;
 }> {

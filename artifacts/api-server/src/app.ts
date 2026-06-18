@@ -44,6 +44,17 @@ app.set("trust proxy", 1);
 // registrar pointing www → withphoebe.app (or to the Railway domain).
 app.use((req: Request, res: Response, next: NextFunction) => {
   const host = req.hostname?.toLowerCase();
+  // Force HTTPS in production. `trust proxy` is set, so x-forwarded-proto is
+  // the reliable scheme behind Railway's edge. Don't redirect non-GET (would
+  // turn a POST into a GET) — HSTS handles those after the first GET.
+  if (
+    process.env["NODE_ENV"] === "production" &&
+    req.headers["x-forwarded-proto"] === "http" &&
+    (req.method === "GET" || req.method === "HEAD")
+  ) {
+    res.redirect(301, `https://${host ?? "withphoebe.app"}${req.originalUrl}`);
+    return;
+  }
   if (host === "www.withphoebe.app") {
     res.redirect(301, `https://withphoebe.app${req.originalUrl}`);
     return;
@@ -121,7 +132,7 @@ app.use((_req, res, next) => {
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
   if (process.env["NODE_ENV"] === "production") {
-    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
   }
   next();
 });
@@ -491,7 +502,7 @@ if (fs.existsSync(frontendDist)) {
           return;
         }
       } catch (err) {
-        logger.warn({ err, token }, "[og] prayer-share preview lookup failed");
+        logger.warn({ err, tokenPrefix: token.slice(0, 6) }, "[og] prayer-share preview lookup failed");
       }
     }
 
@@ -513,7 +524,7 @@ if (fs.existsSync(frontendDist)) {
           return;
         }
       } catch (err) {
-        logger.warn({ err, token }, "[og] prayer-dialogue preview lookup failed");
+        logger.warn({ err, tokenPrefix: token.slice(0, 6) }, "[og] prayer-dialogue preview lookup failed");
       }
     }
 

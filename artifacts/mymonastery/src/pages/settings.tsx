@@ -1203,17 +1203,12 @@ function PhoneSection() {
       // book than the user expects (iCloud sync incomplete, suggested
       // contacts excluded by the plugin, etc.) or the contact has the
       // email but no phone numbers attached to that card.
+      // Counts only — never log the user's address book (names/emails) or their
+      // own email/name, even to the tethered Web Inspector.
       console.log("[PhoneSection] iOS contacts read:", {
         total: contacts.length,
-        userEmail,
-        userName: userNameLower,
         matchedByEmail: contactsWithEmail.length,
         matchedByName: contactsWithName.length,
-        sampleEmails: contacts.slice(0, 3).map((c) => ({
-          name: c.name,
-          emails: c.emails,
-          phoneCount: c.phones?.length ?? 0,
-        })),
       });
 
       // Fold phones across any matching cards.

@@ -310,10 +310,11 @@ router.post("/beta-messages/conversations/:id/messages", requireBeta, async (req
           ne(betaConversationMembersTable.userId, me.id),
         ));
       if (other) {
+        // Generic knock only — the message text is never sent to Apple's
+        // push servers (or logged). The deep link opens the thread to read it.
         await sendBetaMessagePush(other.userId, {
           senderName: me.name || "Someone",
           conversationId: id,
-          preview: parsed.data.body.trim(),
         });
       }
     } catch { /* non-fatal */ }
