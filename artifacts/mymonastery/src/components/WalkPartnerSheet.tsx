@@ -190,29 +190,6 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
             >
               ✉️ Send {first} a message
             </button>
-
-            {/* Quiet management — pause (reversible) or stop walking together. */}
-            <div className="mt-3 text-center">
-              {!overflow ? (
-                <button type="button" onClick={() => setOverflow(true)} className="text-[12.5px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>
-                  Manage walking together
-                </button>
-              ) : (
-                <div className="flex items-center justify-center gap-3 mt-1">
-                  <button type="button" disabled={pause.isPending} onClick={() => pause.mutate()} className="text-[12.5px] font-semibold" style={{ color: "#C8D4C0", fontFamily: FONT }}>
-                    Pause sharing
-                  </button>
-                  <span style={{ color: "rgba(143,175,150,0.3)" }}>·</span>
-                  <button
-                    type="button" disabled={stop.isPending}
-                    onClick={() => { if (window.confirm(`Stop walking together with ${first}? You can start again anytime.`)) stop.mutate(); }}
-                    className="text-[12.5px] font-semibold" style={{ color: "#C47A65", fontFamily: FONT }}
-                  >
-                    Stop walking together
-                  </button>
-                </div>
-              )}
-            </div>
           </motion.div>
         </>
       )}

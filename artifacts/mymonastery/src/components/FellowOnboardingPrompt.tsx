@@ -47,12 +47,10 @@ export function FellowOnboardingPrompt({ fellow, onDone }: { fellow: OnboardFell
   const qc = useQueryClient();
   const open = !!fellow;
   const [samePlace, setSamePlace] = useState<boolean | null>(null);
-  const [shareProgress, setShareProgress] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
 
   const name = fellow?.name ?? "your fellow";
-  const first = name.split(/\s+/)[0] || name;
-  const ready = samePlace !== null && shareProgress !== null;
+  const ready = samePlace !== null;
 
   const finish = async () => {
     if (!fellow || !ready || saving) return;
@@ -60,11 +58,7 @@ export function FellowOnboardingPrompt({ fellow, onDone }: { fellow: OnboardFell
     try {
       // Creating the prefs row marks this fellow onboarded (won't prompt again).
       await apiRequest("PATCH", `/api/fellow-prefs/${fellow.userId}`, { samePlace: !!samePlace }).catch(() => undefined);
-      if (shareProgress) {
-        await apiRequest("POST", "/api/walk/request", { userId: fellow.userId }).catch(() => undefined);
-      }
       qc.invalidateQueries({ queryKey: ["/api/fellow-prefs"] });
-      qc.invalidateQueries({ queryKey: ["/api/walk"] });
     } finally {
       setSaving(false);
       onDone();
@@ -93,19 +87,13 @@ export function FellowOnboardingPrompt({ fellow, onDone }: { fellow: OnboardFell
                 ? <img src={fellow.avatarUrl} alt={name} className="rounded-full object-cover" style={{ width: 56, height: 56, border: `1px solid ${CARD_B}` }} />
                 : <div className="rounded-full flex items-center justify-center font-semibold" style={{ width: 56, height: 56, background: "#1A4A2E", color: "#A8C5A0", fontSize: 20, fontFamily: FONT }}>{initials(name)}</div>}
               <p className="text-[18px] font-semibold mt-3" style={{ color: WARM, fontFamily: FONT }}>You're fellows with {name}</p>
-              <p className="text-[13px] mt-1" style={{ color: SAGE, fontFamily: FONT }}>Two quick things to set how you'll share.</p>
-            </div>
-
-            <div className="rounded-2xl px-4 py-3.5 mb-3" style={{ background: "rgba(46,107,64,0.12)", border: `1px solid ${CARD_B}` }}>
-              <p className="text-[14.5px] font-semibold mb-2.5" style={{ color: WARM, fontFamily: FONT }}>Do you live in the same place?</p>
-              <YesNo value={samePlace} onPick={setSamePlace} />
-              <p className="text-[11.5px] mt-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>So local plans you share stay with the people nearby.</p>
+              <p className="text-[13px] mt-1" style={{ color: SAGE, fontFamily: FONT }}>You're walking together now — you'll see each other's daily rhythm. One quick thing:</p>
             </div>
 
             <div className="rounded-2xl px-4 py-3.5 mb-4" style={{ background: "rgba(46,107,64,0.12)", border: `1px solid ${CARD_B}` }}>
-              <p className="text-[14.5px] font-semibold mb-2.5" style={{ color: WARM, fontFamily: FONT }}>Share your daily progress with {first}?</p>
-              <YesNo value={shareProgress} onPick={setShareProgress} />
-              <p className="text-[11.5px] mt-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>Walking together — for encouragement and accountability. You'll each see the other's daily dots once you both say yes.</p>
+              <p className="text-[14.5px] font-semibold mb-2.5" style={{ color: WARM, fontFamily: FONT }}>Do you live in the same place?</p>
+              <YesNo value={samePlace} onPick={setSamePlace} />
+              <p className="text-[11.5px] mt-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: FONT }}>So local plans you share stay with the people nearby.</p>
             </div>
 
             <button

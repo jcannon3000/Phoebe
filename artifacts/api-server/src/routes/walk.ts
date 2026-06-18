@@ -113,45 +113,61 @@ async function loadMyPair(pairId: number, me: number): Promise<WalkPairing | nul
   return p;
 }
 
-// ─── GET /api/walk — companions + requests + invitable fellows ───────────────
+// ─── GET /api/walk — every fellow is inherently a walking companion ──────────
+// No invite/accept: being fellows IS walking together. We lazily keep an active
+// pairing row per fellow (the backing record for nudges + a stable id) and gate
+// each one's progress on the relationship: visible in the first week of the
+// FELLOWSHIP, then only after a 1:1 Heart to Heart in the last week.
 router.get("/walk", requireBeta, async (req, res): Promise<void> => {
   const me = getUserId(req)!;
-  const rows = await db.select().from(walkPairingsTable).where(or(
-    eq(walkPairingsTable.userLoId, me),
-    eq(walkPairingsTable.userHiId, me),
+
+  // My fellows + when each bond formed (drives the grace window).
+  const fellowRows = await db.select({ fid: fellowsTable.fellowUserId, since: fellowsTable.createdAt })
+    .from(fellowsTable).where(eq(fellowsTable.userId, me));
+  const fellowSince = new Map<number, Date | null>();
+  for (const r of fellowRows) if (r.fid !== me) fellowSince.set(r.fid, r.since ?? null);
+  const fellowIds = Array.from(fellowSince.keys());
+  if (fellowIds.length === 0) { res.json({ companions: [], incoming: [], outgoing: [], paused: [], eligibleFellows: [] }); return; }
+
+  // Ensure an ACTIVE pairing per fellow (create missing, re-activate any old
+  // paused/ended/pending ones — walking together is inherent, not opt-in).
+  const existing = await db.select().from(walkPairingsTable).where(or(
+    eq(walkPairingsTable.userLoId, me), eq(walkPairingsTable.userHiId, me),
   ));
+  const existingPartners = new Set(existing.map((p) => partnerOf(p, me)));
+  const toCreate = fellowIds.filter((id) => !existingPartners.has(id));
+  if (toCreate.length > 0) {
+    await db.insert(walkPairingsTable).values(
+      toCreate.map((id) => { const { lo, hi } = normalizePair(me, id); return { userLoId: lo, userHiId: hi, invitedById: me, status: "active", acceptedAt: new Date() }; }),
+    ).onConflictDoNothing();
+  }
+  for (const p of existing) {
+    if (fellowSince.has(partnerOf(p, me)) && p.status !== "active") {
+      await db.update(walkPairingsTable)
+        .set({ status: "active", acceptedAt: p.acceptedAt ?? new Date(), pausedById: null, endedAt: null, endedById: null })
+        .where(eq(walkPairingsTable.id, p.id));
+    }
+  }
+  // Reload so every fellow has a pairing id.
+  const allPairs = await db.select({ id: walkPairingsTable.id, lo: walkPairingsTable.userLoId, hi: walkPairingsTable.userHiId })
+    .from(walkPairingsTable).where(or(eq(walkPairingsTable.userLoId, me), eq(walkPairingsTable.userHiId, me)));
+  const pairIdByPartner = new Map<number, number>();
+  for (const p of allPairs) pairIdByPartner.set(p.lo === me ? p.hi : p.lo, p.id);
 
-  // Belt-and-suspenders: only surface ACTIVE companions who are STILL fellows.
-  // Removing a fellow already ends the walk (people.ts cascade); this also covers
-  // any other path that severs the bond, so progress never leaks post-un-fellow.
-  const activeAll = rows.filter((r) => r.status === "active");
-  const stillFellows = await fellowSubset(me, activeAll.map((r) => partnerOf(r, me)));
-  const active = activeAll.filter((r) => stillFellows.has(partnerOf(r, me)));
-  const paused = rows.filter((r) => r.status === "paused");
-  const incoming = rows.filter((r) => r.status === "pending" && r.invitedById !== me);
-  const outgoing = rows.filter((r) => r.status === "pending" && r.invitedById === me);
+  const people = await peopleByIds(fellowIds);
 
-  // Everyone we need a name/avatar for.
-  const otherIds = Array.from(new Set([...active, ...paused, ...incoming, ...outgoing].map((r) => partnerOf(r, me))));
-  const people = await peopleByIds(otherIds);
-
-  // Progress-visibility gate: for the FIRST WEEK after a walk is accepted, show
-  // each other's progress no matter what. After that, you only see it if you've
-  // shared a 1:1 Heart to Heart prayer in the last week — so the dots stay tied
-  // to a living relationship, not a stale opt-in. (Only the post-grace companions
-  // need the heart-to-heart lookup.)
+  // Grace (first week of the FELLOWSHIP) → progress always shown; after that,
+  // only with a recent Heart to Heart.
   const nowMs = Date.now();
-  const needHeart = active
-    .filter((r) => !(r.acceptedAt && nowMs - new Date(r.acceptedAt).getTime() < GRACE_MS))
-    .map((r) => partnerOf(r, me));
+  const needHeart = fellowIds.filter((id) => { const s = fellowSince.get(id); return !(s && nowMs - new Date(s).getTime() < GRACE_MS); });
   const heartSet = await recentHeartToHeartSet(me, needHeart);
 
-  // Active companions carry today's progress (the whole point) + last word.
-  const companions = (await Promise.all(active.map(async (r) => {
-    const pid = partnerOf(r, me);
+  const companions = (await Promise.all(fellowIds.map(async (pid) => {
     const person = people.get(pid);
-    if (!person) return null;
-    const inGrace = !!r.acceptedAt && nowMs - new Date(r.acceptedAt).getTime() < GRACE_MS;
+    const pairId = pairIdByPartner.get(pid);
+    if (!person || !pairId) return null;
+    const s = fellowSince.get(pid);
+    const inGrace = !!s && nowMs - new Date(s).getTime() < GRACE_MS;
     const canSeeProgress = inGrace || heartSet.has(pid);
     const progress = canSeeProgress ? await getWalkProgressForToday(pid) : null;
     const [lastFromThem] = await db.select({ kind: walkNudgesTable.kind, createdAt: walkNudgesTable.createdAt })
@@ -159,39 +175,17 @@ router.get("/walk", requireBeta, async (req, res): Promise<void> => {
       .where(and(eq(walkNudgesTable.fromUserId, pid), eq(walkNudgesTable.toUserId, me)))
       .orderBy(sql`${walkNudgesTable.createdAt} DESC`).limit(1);
     return {
-      pairId: r.id, userId: pid, name: person.name, avatarUrl: person.avatarUrl,
-      intention: r.intention ?? null, since: r.acceptedAt,
-      // progress is null when locked — they're still your companion, but you need
-      // a recent 1:1 prayer to see today's dots again.
+      pairId, userId: pid, name: person.name, avatarUrl: person.avatarUrl,
+      intention: null as string | null, since: s,
+      // progress is null when locked — still your companion, but you need a recent
+      // 1:1 prayer to see today's dots again.
       progress, progressLocked: !canSeeProgress,
       lastNudge: lastFromThem ? { kind: lastFromThem.kind, at: lastFromThem.createdAt } : null,
     };
   }))).filter((x): x is NonNullable<typeof x> => x !== null);
 
-  const mapLite = (r: WalkPairing) => {
-    const pid = partnerOf(r, me);
-    const person = people.get(pid);
-    return person ? { pairId: r.id, userId: pid, name: person.name, avatarUrl: person.avatarUrl, intention: r.intention ?? null, at: r.createdAt } : null;
-  };
-  const incomingOut = incoming.map(mapLite).filter((x): x is NonNullable<typeof x> => x !== null);
-  const outgoingOut = outgoing.map(mapLite).filter((x): x is NonNullable<typeof x> => x !== null);
-  const pausedOut = paused.map((r) => {
-    const lite = mapLite(r);
-    return lite ? { ...lite, pausedByMe: r.pausedById === me } : null;
-  }).filter((x): x is NonNullable<typeof x> => x !== null);
-
-  // Invitable = my fellows with no live pairing (none, or previously ended).
-  const fellowRows = await db.select({ fid: fellowsTable.fellowUserId }).from(fellowsTable).where(eq(fellowsTable.userId, me));
-  const fellowIds = Array.from(new Set(fellowRows.map((r) => r.fid))).filter((id) => id !== me);
-  const liveWith = new Set(rows.filter((r) => r.status !== "ended").map((r) => partnerOf(r, me)));
-  const eligibleIds = fellowIds.filter((id) => !liveWith.has(id));
-  const eligiblePeople = await peopleByIds(eligibleIds);
-  const eligibleFellows = eligibleIds
-    .map((id) => eligiblePeople.get(id))
-    .filter((p): p is Person => !!p)
-    .map((p) => ({ userId: p.id, name: p.name, avatarUrl: p.avatarUrl }));
-
-  res.json({ companions, incoming: incomingOut, outgoing: outgoingOut, paused: pausedOut, eligibleFellows });
+  // No invite/accept flow — every fellow is already walking with you.
+  res.json({ companions, incoming: [], outgoing: [], paused: [], eligibleFellows: [] });
 });
 
 // ─── POST /api/walk/request { userId, intention? } ───────────────────────────

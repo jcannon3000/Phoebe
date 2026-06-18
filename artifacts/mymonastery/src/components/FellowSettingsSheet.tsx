@@ -126,29 +126,11 @@ export function FellowSettingsSheet({ fellow, onClose }: { fellow: FellowLite | 
               </div>
             </div>
 
-            {/* 1. Share daily progress → Walking together (mutual). */}
+            {/* 1. Daily progress — inherent for fellows (no opt-in). Informational. */}
             <Row
-              title="Share daily progress"
-              sub={
-                walkStatus === "active" ? "Walking together — you each see today's dots"
-                : walkStatus === "paused" ? "Paused"
-                : walkStatus === "incoming" ? `${first} invited you`
-                : walkStatus === "outgoing" ? "Invite sent — waiting on them"
-                : "Walking together · both must say yes"
-              }
-              control={
-                walkStatus === "active" ? (
-                  <button type="button" disabled={walkPending} onClick={() => active && stopWalk.mutate(active.pairId)} className="shrink-0 rounded-full text-[12.5px] font-semibold px-3.5 py-1.5" style={{ background: "transparent", color: "rgba(182,210,188,0.6)", border: "1px solid rgba(143,175,150,0.3)", fontFamily: FONT }}>Stop</button>
-                ) : walkStatus === "paused" ? (
-                  <button type="button" disabled={walkPending} onClick={() => paused && resumeWalk.mutate(paused.pairId)} className="shrink-0 rounded-full text-[12.5px] font-semibold px-3.5 py-1.5" style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.4)", fontFamily: FONT }}>Resume</button>
-                ) : walkStatus === "incoming" ? (
-                  <button type="button" disabled={walkPending} onClick={() => incoming && acceptWalk.mutate(incoming.pairId)} className="shrink-0 rounded-full text-[12.5px] font-semibold px-3.5 py-1.5" style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}>Accept</button>
-                ) : walkStatus === "outgoing" ? (
-                  <span className="shrink-0 rounded-full text-[12.5px] font-semibold px-3.5 py-1.5" style={{ color: "rgba(182,210,188,0.5)", border: "1px solid rgba(143,175,150,0.22)", fontFamily: FONT }}>Invited</span>
-                ) : (
-                  <button type="button" disabled={walkPending} onClick={() => startWalk.mutate()} className="shrink-0 rounded-full text-[12.5px] font-semibold px-3.5 py-1.5" style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}>Invite</button>
-                )
-              }
+              title="Daily progress"
+              sub={`You're walking together — you each see the other's daily rhythm once you've prayed 1:1 recently.`}
+              control={<span className="shrink-0 rounded-full text-[11px] font-semibold px-3 py-1.5" style={{ background: "rgba(46,107,64,0.3)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.5)", fontFamily: FONT, textTransform: "uppercase", letterSpacing: "0.1em" }}>On</span>}
             />
 
             {/* 2. Lives in the same place (subjective). */}
