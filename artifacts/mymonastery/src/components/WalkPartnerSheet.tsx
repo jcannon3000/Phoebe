@@ -66,8 +66,9 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
   const first = name.split(/\s+/)[0] || name;
   const progress = companion?.progress ?? null;
   const locked = !!companion?.progressLocked;
-  // You can only send a word of encouragement once they've completed their day.
-  const completed = !!progress?.allKept;
+  // You can send a word of encouragement once they've kept at least two-thirds
+  // of today's practices (not the whole day).
+  const completed = !!progress && progress.totalCount > 0 && progress.keptCount / progress.totalCount >= 2 / 3;
 
   return (
     <AnimatePresence>
@@ -176,7 +177,7 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
                   </>
                 ) : (
                   <p className="text-[12.5px] text-center py-2" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
-                    You can send {first} a word of encouragement once they've kept their whole day 🌿
+                    You can send {first} a word of encouragement once they've kept most of today 🌿
                   </p>
                 )}
               </>

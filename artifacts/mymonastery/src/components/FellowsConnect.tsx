@@ -214,6 +214,8 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
     const p = w?.progress ?? null;
     const locked = !!w?.progressLocked;
     const keptWholeDay = !!p?.allKept;
+    // Encourage unlocks at two-thirds of the day's practices (not the whole day).
+    const keptEnough = !!p && p.totalCount > 0 && p.keptCount / p.totalCount >= 2 / 3;
     // Second line: dots + a status line, mirroring the Walking-together copy.
     const statusLine = !w ? null
       : locked ? t("fellows_c.walk_locked", { defaultValue: "💚 Pray 1:1 to see today" })
@@ -234,8 +236,8 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
         </div>
         <div className="flex items-center gap-2.5 shrink-0">
           {f.streak > 0 && <span className="text-[13px] font-semibold" style={{ color: "#E8B45E", fontFamily: FONT }} title={t("fellows_c.streak_title", { defaultValue: "Prayer rhythm" })}>🔥 {f.streak}</span>}
-          {/* Encourage only once they've kept their whole day today. */}
-          {keptWholeDay && (encouraged.has(f.userId)
+          {/* Encourage once they've kept at least two-thirds of today. */}
+          {keptEnough && (encouraged.has(f.userId)
             ? <Pill label={t("fellows_c.encouraged", { defaultValue: "Encouraged 🙌" })} kind="muted" disabled />
             : <Pill label={t("fellows_c.encourage", { defaultValue: "🙌 Encourage" })} kind="solid" onClick={() => sendEncourage(f.userId)} />)}
           {canManage && (
