@@ -6711,10 +6711,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // slot is retired along with the rest of the Podcasts feature).
                 if (noEvents) {
                   return (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
-                      {keptHeader}
-                      {contemplationAgainCard}
-                    </motion.div>
+                    <div>
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: 0 }}>{keptHeader}</motion.div>
+                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: 0.06 }}>{contemplationAgainCard}</motion.div>
+                    </div>
                   );
                 }
                 const evtProps = {
@@ -6723,15 +6723,22 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   onOpenConsolidatedServices: (schedules: ServiceSchedule[], nextDate: Date) => setOpenConsolidatedServices({ schedules, nextDate }),
                   onOpenGathering: (r: any) => setOpenGathering(r),
                 };
+                // Staggered fade-up — each card rises just after the one above,
+                // matching the Daily progress page's cascade.
+                const enterUp = (i: number) => ({
+                  initial: { opacity: 0, y: 10 },
+                  animate: { opacity: 1, y: 0 },
+                  transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const, delay: Math.min(i * 0.06, 0.42) },
+                });
                 return (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
-                    {keptHeader}
-                    {contemplationAgainCard}
-                    <TimeSection label={t("dashboard.today_section")} items={todayItems} {...evtProps} />
-                    <TimeSection label={t("dashboard.tomorrow_section")} items={tomorrowItems} {...evtProps} />
-                    <TimeSection label={t("dashboard.this_week_section")} items={weekItems} {...evtProps} />
-                    <TimeSection label={t("dashboard.upcoming_section")} items={monthItems} {...evtProps} />
-                  </motion.div>
+                  <div>
+                    <motion.div {...enterUp(0)}>{keptHeader}</motion.div>
+                    <motion.div {...enterUp(1)}>{contemplationAgainCard}</motion.div>
+                    <motion.div {...enterUp(2)}><TimeSection label={t("dashboard.today_section")} items={todayItems} {...evtProps} /></motion.div>
+                    <motion.div {...enterUp(3)}><TimeSection label={t("dashboard.tomorrow_section")} items={tomorrowItems} {...evtProps} /></motion.div>
+                    <motion.div {...enterUp(4)}><TimeSection label={t("dashboard.this_week_section")} items={weekItems} {...evtProps} /></motion.div>
+                    <motion.div {...enterUp(5)}><TimeSection label={t("dashboard.upcoming_section")} items={monthItems} {...evtProps} /></motion.div>
+                  </div>
                 );
               })() : (
                 /* A "prayer requests waiting" card leads when there's something
