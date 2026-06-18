@@ -82,7 +82,10 @@ export default function GratitudePage() {
     // this session (not just on next load). Self-terminates: the refetch
     // returns rows with isNew=false, so the effect re-runs to a no-op.
     apiRequest("POST", "/api/gratitude/seen", { responseIds: unseen })
-      .then(() => queryClient.invalidateQueries({ queryKey: ["/api/gratitude/responses"] }))
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/gratitude/responses"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/gratitude/unseen-count"] });
+      })
       .catch(() => {});
   }, [tab, gardenEntries, queryClient]);
 

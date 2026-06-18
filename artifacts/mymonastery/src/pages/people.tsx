@@ -12,6 +12,8 @@ import { FellowsConnect } from "@/components/FellowsConnect";
 import { WalkTogether } from "@/components/WalkTogether";
 import { FellowOnboardingPrompt } from "@/components/FellowOnboardingPrompt";
 import { EncouragementBanner } from "@/components/EncouragementBanner";
+import { VoiceMemoInbox } from "@/components/VoiceMemo";
+import { ensureVoiceKeysPublished } from "@/lib/voiceCrypto";
 import { useBetaStatus } from "@/hooks/useDemo";
 import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
 
@@ -432,6 +434,8 @@ export default function People() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
   const { data: people, isLoading } = usePeople(user?.id);
+  // Publish my voice-memo public key so fellows can send me an encrypted prayer.
+  useEffect(() => { if (user && rawIsBeta) ensureVoiceKeysPublished().catch(() => undefined); }, [user, rawIsBeta]);
   const highlightEmail = new URLSearchParams(location.includes("?") ? location.split("?")[1] : "").get("highlight") ?? null;
   const highlightRef = useRef<HTMLDivElement | null>(null);
   // Search query for the top-of-page filter. Lives in component state
@@ -601,6 +605,9 @@ export default function People() {
 
         {/* A fellow's 🙌 encouragement, if one's waiting. */}
         <EncouragementBanner />
+
+        {/* Voice prayers sent to me — encrypted, fade after I listen. */}
+        {rawIsBeta && <VoiceMemoInbox />}
 
         {/* Fellows — your 1:1 prayer connections, prioritized at the very
             top of the page so your closest people lead before search or the

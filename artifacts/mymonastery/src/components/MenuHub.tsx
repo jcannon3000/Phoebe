@@ -22,6 +22,8 @@ export interface MenuHubItem {
   label: string;
   sub?: string;
   badge?: string;
+  /** A small green dot to the right — "there's something new here". */
+  dot?: boolean;
   onClick: () => void;
 }
 export interface MenuHubGroup {
@@ -100,6 +102,9 @@ export function MenuHub({
                       </span>
                       {it.sub && <span style={{ display: "block", fontSize: 13, color: SAGE, marginTop: 3, lineHeight: 1.35 }}>{it.sub}</span>}
                     </span>
+                    {it.dot && (
+                      <span aria-label="new" style={{ width: 9, height: 9, borderRadius: 999, background: "#6FAF85", boxShadow: "0 0 0 3px rgba(111,175,133,0.22)", flexShrink: 0 }} />
+                    )}
                     <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 22, lineHeight: 1, flexShrink: 0 }}>›</span>
                   </button>
                 ))}

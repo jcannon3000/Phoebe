@@ -154,6 +154,30 @@ router.get("/gratitude/responses", async (req, res) => {
   }
 });
 
+// ── GET /api/gratitude/unseen-count — new community gratitudes ─────────────
+// Drives the menu dot: how many shared garden entries (last 7 days, by other
+// people) the viewer hasn't seen yet. Cheap COUNT, mirrors the /responses
+// "isNew" rule exactly so the dot clears the moment the garden is opened.
+router.get("/gratitude/unseen-count", async (req, res) => {
+  try {
+    const user = getUser(req);
+    if (!user) return res.status(401).json({ error: "Not authenticated" });
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const result = await pool.query(
+      `SELECT COUNT(*)::int AS count
+       FROM gratitude_responses gr
+       LEFT JOIN gratitude_seen gs ON gs.gratitude_id = gr.id AND gs.user_id = $1
+       WHERE gr.shared = TRUE AND gr.created_at > $2
+         AND gr.user_id <> $1 AND gs.id IS NULL`,
+      [user.id, since],
+    );
+    return res.json({ count: result.rows[0]?.count ?? 0 });
+  } catch (err) {
+    console.error("GET /gratitude/unseen-count error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // ── POST /api/gratitude/seen — mark garden entries as seen ─────────────────
 router.post("/gratitude/seen", async (req, res) => {
   try {

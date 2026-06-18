@@ -63,6 +63,8 @@
 	<string>Phoebe uses Face ID so only you can open your prayer intentions.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Phoebe uses your camera so you can take a profile photo.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Phoebe uses your microphone so you can record a short voice prayer for a fellow. It is encrypted on your device and deleted the moment they hear it.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Phoebe uses your photos so you can choose a profile picture.</string>
 	<key>NSHealthShareUsageDescription</key>

@@ -15,6 +15,7 @@ import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { FellowSettingsSheet, type FellowLite } from "@/components/FellowSettingsSheet";
+import { VoiceMemoButton } from "@/components/VoiceMemo";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -240,6 +241,7 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
           {keptEnough && (encouraged.has(f.userId)
             ? <Pill label={t("fellows_c.encouraged", { defaultValue: "Encouraged 🙌" })} kind="muted" disabled />
             : <Pill label={t("fellows_c.encourage", { defaultValue: "🙌 Encourage" })} kind="solid" onClick={() => sendEncourage(f.userId)} />)}
+          {canManage && <VoiceMemoButton recipientId={f.userId} recipientName={f.name ?? "Someone"} />}
           {canManage && (
             <button type="button" aria-label={t("fellows_c.settings", { defaultValue: "Sharing settings" })}
               onClick={() => openSettings(f)}

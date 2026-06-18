@@ -32,6 +32,14 @@ export default function MenuPage() {
     queryFn: () => apiRequest("GET", "/api/prayer-feeds/mine"),
     enabled: !!user && !officesOnly,
   });
+  // New community gratitudes the viewer hasn't seen → a dot on the Gratitude card.
+  const { data: gratUnseen } = useQuery<{ count: number }>({
+    queryKey: ["/api/gratitude/unseen-count"],
+    queryFn: () => apiRequest("GET", "/api/gratitude/unseen-count"),
+    enabled: !!user && !officesOnly && rawIsBeta,
+    staleTime: 60_000,
+  });
+  const hasNewGratitude = (gratUnseen?.count ?? 0) > 0;
 
   const isCommunityAdmin = (groupsData?.groups ?? []).some(
     (g) => g.myRole === "admin" || g.myRole === "hidden_admin",
@@ -60,8 +68,9 @@ export default function MenuPage() {
       { emoji: "🕯️", label: t("menu.practices"), sub: t("menu.practices_sub"), onClick: () => go("/menu/practices") },
       { emoji: "🌅", label: t("menu.reflections"), sub: t("menu.reflections_sub"), onClick: () => go("/menu/reflections") },
       { emoji: "🎧", label: t("menu.podcasts", { defaultValue: "Podcasts" }), sub: t("menu.podcasts_sub", { defaultValue: "The full library" }), onClick: () => go("/podcasts") },
-      // Gratitude — its own surface now (was a card on the daily-progress page).
-      ...(rawIsBeta ? [{ emoji: "🙏", label: t("menu.gratitude", { defaultValue: "Gratitude" }), sub: t("menu.gratitude_sub", { defaultValue: "Thank three people today" }), badge: t("menu.beta_badge"), onClick: () => go("/thanks") }] : []),
+      // Gratitude — its own surface (journal + the community garden). The dot
+      // lights when a fellow has shared a new thanksgiving you haven't seen.
+      ...(rawIsBeta ? [{ emoji: "🙏", label: t("menu.gratitude", { defaultValue: "Gratitude" }), sub: t("menu.gratitude_sub", { defaultValue: "Give thanks · see your community's" }), badge: t("menu.beta_badge"), dot: hasNewGratitude, onClick: () => go("/gratitude") }] : []),
     ],
   });
 
