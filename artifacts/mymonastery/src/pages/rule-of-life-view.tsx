@@ -117,14 +117,15 @@ export default function RuleOfLifeViewPage() {
     applyMutation.mutate();
     setApplyDone(true);
     const { morning, evening } = session.settings;
-    apiRequest("PUT", "/api/me/office-prefs", {
-      morning: morning.enabled ? (morning as SideSettings).level : "none",
-      evening: evening.enabled ? (evening as SideSettings).level : "none",
-      morningTime: morning.enabled ? (morning as SideSettings).reminderTime : null,
-      eveningTime: evening.enabled ? (evening as SideSettings).reminderTime : null,
+    // Additive apply — never silently turn a side OFF (that was disabling
+    // people's Morning office unexpectedly). Turning off lives in Settings.
+    const payload: Record<string, unknown> = {
       showConfession: (morning.enabled && (morning as SideSettings).confession) ||
                      (evening.enabled && (evening as SideSettings).confession),
-    }).catch(() => {});
+    };
+    if (morning.enabled) { payload.morning = (morning as SideSettings).level; payload.morningTime = (morning as SideSettings).reminderTime; }
+    if (evening.enabled) { payload.evening = (evening as SideSettings).level; payload.eveningTime = (evening as SideSettings).reminderTime; }
+    apiRequest("PUT", "/api/me/office-prefs", payload).catch(() => {});
   };
 
   if (isLoading) {

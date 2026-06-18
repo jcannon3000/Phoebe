@@ -430,14 +430,17 @@ export default function RuleOfLifePage() {
     setApplyDone(true);
     setPhase("result");
     const { morning, evening } = result.settings;
-    apiRequest("PUT", "/api/me/office-prefs", {
-      morning: morning.enabled ? (morning as SideSettings).level : "none",
-      evening: evening.enabled ? (evening as SideSettings).level : "none",
-      morningTime: morning.enabled ? (morning as SideSettings).reminderTime : null,
-      eveningTime: evening.enabled ? (evening as SideSettings).reminderTime : null,
+    // Additive apply: turn ON / adjust the sides the rule recommends, but NEVER
+    // silently turn a side OFF here. Writing "none" for a non-recommended side
+    // was quietly disabling people's Morning office when they ran Customize —
+    // turning a side off now lives only in Settings → office, an explicit choice.
+    const payload: Record<string, unknown> = {
       showConfession: (morning.enabled && (morning as SideSettings).confession) ||
                      (evening.enabled && (evening as SideSettings).confession),
-    }).catch(() => {});
+    };
+    if (morning.enabled) { payload.morning = (morning as SideSettings).level; payload.morningTime = (morning as SideSettings).reminderTime; }
+    if (evening.enabled) { payload.evening = (evening as SideSettings).level; payload.eveningTime = (evening as SideSettings).reminderTime; }
+    apiRequest("PUT", "/api/me/office-prefs", payload).catch(() => {});
   };
 
   const handleEmailSend = () => {
