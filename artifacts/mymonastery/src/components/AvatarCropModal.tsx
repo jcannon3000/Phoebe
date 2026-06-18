@@ -116,12 +116,19 @@ export function AvatarCropModal({
   const top = VIEW / 2 - dh / 2 + pan.y;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center px-5" style={{ background: "rgba(4,10,7,0.86)", backdropFilter: "blur(4px)" }}>
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center px-5"
+      // touch-action:none across the whole overlay so dragging the slider (or
+      // anything in the modal) can't be hijacked as a page pinch-zoom — that was
+      // making the popup "grow and shrink" on Android.
+      style={{ background: "rgba(4,10,7,0.86)", backdropFilter: "blur(4px)", touchAction: "none", overscrollBehavior: "contain" }}
+      onTouchMove={(e) => { if (e.touches.length > 1) e.preventDefault(); }}
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-sm rounded-3xl px-6 pt-6 pb-5"
-        style={{ background: "#0E2016", border: "1px solid rgba(46,107,64,0.4)", boxShadow: "0 12px 40px rgba(0,0,0,0.6)" }}
+        style={{ background: "#0E2016", border: "1px solid rgba(46,107,64,0.4)", boxShadow: "0 12px 40px rgba(0,0,0,0.6)", touchAction: "none" }}
       >
         <p className="text-center text-[15px] font-semibold mb-1" style={{ color: "#F0EDE6", fontFamily: FONT }}>Adjust your photo</p>
         <p className="text-center text-[12.5px] mb-4" style={{ color: "#8FAF96" }}>Drag to move · pinch the slider to zoom</p>
