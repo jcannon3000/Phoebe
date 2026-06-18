@@ -14,10 +14,37 @@
 // created before this field existed.
 export type CustomSlot = "morning" | "midday" | "afternoon" | "evening";
 export const CUSTOM_SLOTS: CustomSlot[] = ["morning", "midday", "afternoon", "evening"];
-export type CustomAnchor = { id: string; title: string; emoji: string; slot: CustomSlot };
+
+// A reading ritual is a custom anchor you LOG by an amount rather than a plain
+// check. The unit is how you measure a sitting — by chapter, by page, or by
+// time (minutes). An optional per-day goal gives the log a target; logging any
+// amount counts the dot for the day, and a running total remembers where you
+// left off so the next sitting picks up from there.
+export type ReadingUnit = "chapter" | "page" | "minute";
+export const READING_UNITS: ReadingUnit[] = ["chapter", "page", "minute"];
+export type ReadingConfig = { unit: ReadingUnit; goal?: number };
+
+export type CustomAnchor = {
+  id: string;
+  title: string;
+  emoji: string;
+  slot: CustomSlot;
+  // Present only for reading rituals; absent for plain check-off practices.
+  reading?: ReadingConfig;
+};
+
+/** Singular/plural label for a reading unit ("3 chapters", "1 page", "20 min"). */
+export function readingUnitLabel(unit: ReadingUnit, n: number): string {
+  if (unit === "minute") return n === 1 ? "minute" : "minutes";
+  if (unit === "page") return n === 1 ? "page" : "pages";
+  return n === 1 ? "chapter" : "chapters";
+}
 
 const DEFS_KEY = "phoebe:custom-anchors";
 const DONE_PREFIX = "phoebe:custom-done:";
+// Reading logs: today's amount (per local day) + an all-time running total.
+const READ_TODAY_PREFIX = "phoebe:custom-read:";   // value: `${ymd}|${amount}`
+const READ_TOTAL_PREFIX = "phoebe:custom-read-total:"; // value: cumulative number
 
 // List changed (added / removed) vs. a check toggled — separate so listeners can
 // react to just what they care about.
@@ -37,36 +64,68 @@ export function getCustomAnchors(): CustomAnchor[] {
     if (!Array.isArray(raw)) return [];
     return raw
       .filter(
-        (a): a is { id: string; title: string; emoji: string; slot?: unknown } =>
+        (a): a is { id: string; title: string; emoji: string; slot?: unknown; reading?: unknown } =>
           !!a && typeof a.id === "string" && typeof a.title === "string" && typeof a.emoji === "string",
       )
-      .map((a) => ({
-        id: a.id,
-        title: a.title,
-        emoji: a.emoji,
-        slot: CUSTOM_SLOTS.includes(a.slot as CustomSlot) ? (a.slot as CustomSlot) : "afternoon",
-      }));
+      .map((a) => {
+        const r = a.reading as { unit?: unknown; goal?: unknown } | undefined;
+        const reading: ReadingConfig | undefined =
+          r && READING_UNITS.includes(r.unit as ReadingUnit)
+            ? { unit: r.unit as ReadingUnit, goal: typeof r.goal === "number" && r.goal > 0 ? r.goal : undefined }
+            : undefined;
+        return {
+          id: a.id,
+          title: a.title,
+          emoji: a.emoji,
+          slot: CUSTOM_SLOTS.includes(a.slot as CustomSlot) ? (a.slot as CustomSlot) : "afternoon",
+          ...(reading ? { reading } : {}),
+        };
+      });
   } catch {
     return [];
   }
 }
 
-/** Add a custom practice. Title is required; emoji defaults to ✅ if blank. */
-export function addCustomAnchor(title: string, emoji: string, slot: CustomSlot = "afternoon"): void {
+/**
+ * Add a custom practice. Title is required; emoji defaults to ✅ if blank.
+ * Pass `reading` to make it a reading ritual (logged by chapter/page/time).
+ */
+export function addCustomAnchor(
+  title: string,
+  emoji: string,
+  slot: CustomSlot = "afternoon",
+  reading?: ReadingConfig,
+): void {
   const t = title.trim();
   if (!t) return;
   const list = getCustomAnchors();
   if (list.length >= MAX_CUSTOM) return;
   // Unique-ish id from time + a little entropy (no server ids needed).
   const id = `c${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
-  list.push({ id, title: t.slice(0, 40), emoji: (emoji.trim() || "✅").slice(0, 8), slot });
+  const clean: ReadingConfig | undefined =
+    reading && READING_UNITS.includes(reading.unit)
+      ? { unit: reading.unit, ...(reading.goal && reading.goal > 0 ? { goal: Math.round(reading.goal) } : {}) }
+      : undefined;
+  list.push({
+    id,
+    title: t.slice(0, 40),
+    emoji: (emoji.trim() || (clean ? "📖" : "✅")).slice(0, 8),
+    slot,
+    ...(clean ? { reading: clean } : {}),
+  });
   saveDefs(list);
 }
 
 export function removeCustomAnchor(id: string): void {
   saveDefs(getCustomAnchors().filter((a) => a.id !== id));
-  // Drop today's completion flag too so a re-added title doesn't inherit it.
-  try { localStorage.removeItem(DONE_PREFIX + id); } catch { /* ignore */ }
+  // Drop today's completion flag + any reading logs so a re-added title doesn't
+  // inherit them.
+  try {
+    localStorage.removeItem(DONE_PREFIX + id);
+    localStorage.removeItem(SKIP_PREFIX + id);
+    localStorage.removeItem(READ_TODAY_PREFIX + id);
+    localStorage.removeItem(READ_TOTAL_PREFIX + id);
+  } catch { /* ignore */ }
 }
 
 function saveDefs(list: CustomAnchor[]): void {
@@ -129,6 +188,62 @@ export function setCustomNotToday(id: string): void {
   try {
     localStorage.setItem(SKIP_PREFIX + id, todayISO());
     localStorage.removeItem(DONE_PREFIX + id);
+    // A reading skipped today drops today's logged amount too.
+    localStorage.removeItem(READ_TODAY_PREFIX + id);
+    window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
+  } catch {
+    /* non-fatal */
+  }
+}
+
+// ── Reading rituals — logged by amount (chapter / page / minute) ──────────────
+
+/** How much was logged for this reading today (0 if nothing / not today). */
+export function getReadingToday(id: string): number {
+  try {
+    const raw = localStorage.getItem(READ_TODAY_PREFIX + id);
+    if (!raw) return 0;
+    const [ymd, amt] = raw.split("|");
+    if (ymd !== todayISO()) return 0;
+    const n = Number(amt);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Running all-time total logged for this reading (where you've read up to). */
+export function getReadingTotal(id: string): number {
+  try {
+    const n = Number(localStorage.getItem(READ_TOTAL_PREFIX + id) || "0");
+    return Number.isFinite(n) && n > 0 ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Log a reading sitting of `amount` units for today. SETS today's amount (not
+ * additive across taps — re-logging corrects the day), keeps the all-time total
+ * in step, marks the anchor done for the day, and clears any "not today".
+ */
+export function logReadingToday(id: string, amount: number): void {
+  const amt = Math.max(0, Math.round(amount));
+  try {
+    const prevToday = getReadingToday(id);
+    const total = getReadingTotal(id);
+    // Replace today's contribution in the running total, then re-add the new one.
+    const nextTotal = Math.max(0, total - prevToday + amt);
+    if (amt > 0) {
+      localStorage.setItem(READ_TODAY_PREFIX + id, `${todayISO()}|${amt}`);
+      localStorage.setItem(DONE_PREFIX + id, todayISO());
+      localStorage.removeItem(SKIP_PREFIX + id);
+    } else {
+      // Logging zero clears today's check entirely.
+      localStorage.removeItem(READ_TODAY_PREFIX + id);
+      localStorage.removeItem(DONE_PREFIX + id);
+    }
+    localStorage.setItem(READ_TOTAL_PREFIX + id, String(nextTotal));
     window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
   } catch {
     /* non-fatal */

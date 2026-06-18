@@ -19,7 +19,7 @@ import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/offic
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
 import { CAC_TODAY_URL, markCacRead } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
-import { markCustomDoneToday, setCustomNotToday, type CustomSlot } from "@/lib/customAnchors";
+import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 
 const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
@@ -506,14 +506,30 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // ride with Morning Prayer, midday after contemplation, afternoon after the
   // optional practices, evening with the evening office. Tapping toggles today's
   // check (no navigation), so each counts as a dot like the built-in anchors.
-  const customCard = (a: (typeof customAnchors)[number]) => ({
-    key: `custom-${a.id}`, emoji: a.emoji || "✅", rgb: "143,170,150", done: a.done, href: "",
-    // Tapping opens the Log popup (Done / Not today) rather than toggling.
-    onClick: () => setLogAnchorId(a.id),
-    title: a.title,
-    blurb: a.done ? kept : t("rhythm.custom_blurb", { defaultValue: "Your daily practice" }),
-    cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
-  });
+  const customCard = (a: (typeof customAnchors)[number]) => {
+    const r = a.reading;
+    const todayAmt = r ? getReadingToday(a.id) : 0;
+    let blurb: string;
+    if (a.done) {
+      blurb = r && todayAmt > 0
+        ? t("rhythm.read_done", { amount: todayAmt, unit: readingUnitLabel(r.unit, todayAmt), defaultValue: `${todayAmt} ${readingUnitLabel(r.unit, todayAmt)} today` })
+        : kept;
+    } else if (r) {
+      blurb = r.goal
+        ? t("rhythm.read_goal", { amount: r.goal, unit: readingUnitLabel(r.unit, r.goal), defaultValue: `Goal: ${r.goal} ${readingUnitLabel(r.unit, r.goal)}` })
+        : t("rhythm.read_by", { unit: readingUnitLabel(r.unit, 2), defaultValue: `Log by ${readingUnitLabel(r.unit, 2)}` });
+    } else {
+      blurb = t("rhythm.custom_blurb", { defaultValue: "Your daily practice" });
+    }
+    return {
+      key: `custom-${a.id}`, emoji: a.emoji || (r ? "📖" : "✅"), rgb: "143,170,150", done: a.done, href: "",
+      // Tapping opens the Log popup (reading stepper, or Done / Not today).
+      onClick: () => setLogAnchorId(a.id),
+      title: a.title,
+      blurb,
+      cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
+    };
+  };
   // "Not today" customs are hidden for the day (not shown under Done).
   const customsForSlot = (slot: CustomSlot) => customAnchors.filter((a) => a.slot === slot && !a.skipped).map(customCard);
 
@@ -732,47 +748,125 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         </motion.div>
       )}
 
-      {/* Log popup for a custom practice — Done (counts + moves to Done) or
-          Not today (hides the card + drops its dot for the day). */}
+      {/* Log popup for a custom practice — a reading logs an amount
+          (chapter/page/time); a plain practice is just Done / Not today. */}
       {logAnchorId && (() => {
         const a = customAnchors.find((x) => x.id === logAnchorId);
         if (!a) return null;
-        const close = () => setLogAnchorId(null);
-        return (
-          <div
-            className="fixed inset-0 z-[120] flex items-end justify-center"
-            style={{ background: "rgba(6,18,11,0.6)", backdropFilter: "blur(2px)" }}
-            onClick={close}
-          >
-            <div
-              className="w-full"
-              style={{ maxWidth: 460, margin: "0 10px", background: "#0F2618", border: "1px solid rgba(111,175,133,0.25)", borderRadius: "20px 20px 0 0", padding: "20px 20px calc(env(safe-area-inset-bottom, 0px) + 18px)" }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <span style={{ fontSize: 26 }}>{a.emoji || "✅"}</span>
-                <p className="text-[17px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{a.title}</p>
+        return <LogSheet anchor={a} onClose={() => setLogAnchorId(null)} t={t} />;
+      })()}
+    </div>
+  );
+}
+
+// LogSheet — the bottom-sheet that records today's log for a custom anchor.
+// Plain anchors get Done / Not today. Reading rituals get a number stepper in
+// their unit (with the daily goal pre-filled and a running total for context),
+// a Log button, and Not today.
+function LogSheet({
+  anchor,
+  onClose,
+  t,
+}: {
+  anchor: { id: string; title: string; emoji: string; reading?: ReadingConfig };
+  onClose: () => void;
+  t: (k: string, o?: Record<string, unknown>) => string;
+}) {
+  const reading = anchor.reading;
+  const loggedToday = reading ? getReadingToday(anchor.id) : 0;
+  const total = reading ? getReadingTotal(anchor.id) : 0;
+  // Seed the stepper from what's already logged today, else the goal, else 1.
+  const [amount, setAmount] = useState<number>(
+    loggedToday > 0 ? loggedToday : reading?.goal && reading.goal > 0 ? reading.goal : 1,
+  );
+  const unit = reading?.unit ?? "chapter";
+  const isTime = unit === "minute";
+  const stepBy = isTime ? 5 : 1;
+  const bump = (d: number) => setAmount((n) => Math.max(0, n + d));
+
+  return (
+    <div
+      className="fixed inset-0 z-[120] flex items-end justify-center"
+      style={{ background: "rgba(6,18,11,0.6)", backdropFilter: "blur(2px)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full"
+        style={{ maxWidth: 460, margin: "0 10px", background: "#0F2618", border: "1px solid rgba(111,175,133,0.25)", borderRadius: "20px 20px 0 0", padding: "20px 20px calc(env(safe-area-inset-bottom, 0px) + 18px)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 mb-4">
+          <span style={{ fontSize: 26 }}>{anchor.emoji || (reading ? "📖" : "✅")}</span>
+          <p className="text-[17px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{anchor.title}</p>
+        </div>
+
+        {reading ? (
+          <>
+            <p className="text-[12.5px] mb-2" style={{ color: SAGE, fontFamily: FONT }}>
+              {isTime
+                ? t("rhythm.read_how_long", { defaultValue: "How long did you read today?" })
+                : t("rhythm.read_how_much", { defaultValue: `How much did you read today?` })}
+            </p>
+            {/* − [n unit] + stepper */}
+            <div className="flex items-center justify-center gap-4 mb-1.5">
+              <button
+                type="button"
+                onClick={() => bump(-stepBy)}
+                aria-label={t("common.decrease", { defaultValue: "Decrease" })}
+                className="rounded-full flex items-center justify-center active:scale-[0.95]"
+                style={{ width: 44, height: 44, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: WARM, fontSize: 22, fontFamily: FONT }}
+              >−</button>
+              <div className="text-center" style={{ minWidth: 120 }}>
+                <span className="text-[30px] font-bold" style={{ color: WARM, fontFamily: FONT }}>{amount}</span>
+                <span className="text-[14px] ml-1.5" style={{ color: SAGE, fontFamily: FONT }}>{readingUnitLabel(unit, amount)}</span>
               </div>
               <button
                 type="button"
-                onClick={() => { markCustomDoneToday(a.id); close(); }}
-                className="w-full rounded-2xl py-3.5 text-[15px] font-semibold active:scale-[0.99]"
-                style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
-              >
-                ✓ {t("rhythm.log_done", { defaultValue: "Done" })}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setCustomNotToday(a.id); close(); }}
-                className="w-full rounded-2xl py-3 mt-2 text-[14px] font-semibold active:scale-[0.99]"
-                style={{ background: "transparent", color: "rgba(182,210,188,0.85)", border: `1px solid ${"rgba(143,175,150,0.3)"}`, fontFamily: FONT }}
-              >
-                {t("rhythm.log_not_today", { defaultValue: "Not today" })}
-              </button>
+                onClick={() => bump(stepBy)}
+                aria-label={t("common.increase", { defaultValue: "Increase" })}
+                className="rounded-full flex items-center justify-center active:scale-[0.95]"
+                style={{ width: 44, height: 44, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", color: WARM, fontSize: 22, fontFamily: FONT }}
+              >+</button>
             </div>
-          </div>
-        );
-      })()}
+            {/* Running total — where they've read up to so far. */}
+            {(total > 0 || loggedToday > 0) && (
+              <p className="text-[12px] text-center mb-3" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
+                {t("rhythm.read_total", {
+                  amount: total - loggedToday + amount,
+                  unit: readingUnitLabel(unit, total - loggedToday + amount),
+                  defaultValue: `${total - loggedToday + amount} ${readingUnitLabel(unit, total - loggedToday + amount)} in all`,
+                })}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={() => { logReadingToday(anchor.id, amount); onClose(); }}
+              className="w-full rounded-2xl py-3.5 mt-1 text-[15px] font-semibold active:scale-[0.99]"
+              style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
+            >
+              ✓ {t("rhythm.log_reading", { defaultValue: "Log it" })}
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => { markCustomDoneToday(anchor.id); onClose(); }}
+            className="w-full rounded-2xl py-3.5 text-[15px] font-semibold active:scale-[0.99]"
+            style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
+          >
+            ✓ {t("rhythm.log_done", { defaultValue: "Done" })}
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={() => { setCustomNotToday(anchor.id); onClose(); }}
+          className="w-full rounded-2xl py-3 mt-2 text-[14px] font-semibold active:scale-[0.99]"
+          style={{ background: "transparent", color: "rgba(182,210,188,0.85)", border: "1px solid rgba(143,175,150,0.3)", fontFamily: FONT }}
+        >
+          {t("rhythm.log_not_today", { defaultValue: "Not today" })}
+        </button>
+      </div>
     </div>
   );
 }

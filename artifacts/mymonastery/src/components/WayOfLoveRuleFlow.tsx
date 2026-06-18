@@ -22,7 +22,7 @@ import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { requestStepAuthorization } from "@/lib/appleHealth";
-import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, type CustomAnchor, type CustomSlot } from "@/lib/customAnchors";
+import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import {
   setSideLevel,
   setSideReflection,
@@ -244,6 +244,11 @@ export default function WayOfLoveRuleFlow({
   // into the rhythm at the right point. Kept across adds (often several land in
   // the same slot).
   const [customSlot, setCustomSlot] = useState<CustomSlot>("morning");
+  // Reading ritual toggle — when on, the new practice is logged by an amount
+  // (chapter / page / time) instead of a plain check, with an optional daily goal.
+  const [customIsReading, setCustomIsReading] = useState(false);
+  const [customUnit, setCustomUnit] = useState<ReadingUnit>("chapter");
+  const [customGoal, setCustomGoal] = useState("");
   useEffect(() => {
     const refresh = () => setCustomList(getCustomAnchors());
     window.addEventListener(CUSTOM_ANCHORS_EVENT, refresh);
@@ -252,9 +257,14 @@ export default function WayOfLoveRuleFlow({
   const addCustom = () => {
     const title = customTitle.trim();
     if (!title) return;
-    addCustomAnchor(title, customEmoji.trim() || "🌿", customSlot);
+    const goalNum = parseInt(customGoal, 10);
+    const reading: ReadingConfig | undefined = customIsReading
+      ? { unit: customUnit, ...(Number.isFinite(goalNum) && goalNum > 0 ? { goal: goalNum } : {}) }
+      : undefined;
+    addCustomAnchor(title, customEmoji.trim() || (customIsReading ? "📖" : "🌿"), customSlot, reading);
     setCustomTitle("");
     setCustomEmoji("");
+    setCustomGoal("");
     setCustomList(getCustomAnchors());
   };
   const toggleExtra = (k: "gratitude" | "examen" | "steps") => {
@@ -822,6 +832,11 @@ export default function WayOfLoveRuleFlow({
               <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "11px 14px" }}>
                 <span style={{ fontSize: 18, flexShrink: 0 }} aria-hidden>{a.emoji}</span>
                 <span style={{ flex: 1, minWidth: 0, color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</span>
+                {a.reading && (
+                  <span style={{ flexShrink: 0, color: SAGE_DIM, fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: FONT }}>
+                    {a.reading.unit === "minute" ? t("wol_rule.unit_time", { defaultValue: "Time" }) : a.reading.unit === "page" ? t("wol_rule.unit_page", { defaultValue: "Page" }) : t("wol_rule.unit_chapter", { defaultValue: "Chapter" })}
+                  </span>
+                )}
                 <span style={{ flexShrink: 0, color: SAGE_DIM, fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: FONT }}>{a.slot}</span>
                 <button type="button" onClick={() => { removeCustomAnchor(a.id); setCustomList(getCustomAnchors()); }} aria-label={t("common.remove", { defaultValue: "Remove" })} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", fontSize: 16, padding: "2px 6px" }}>✕</button>
               </div>
@@ -859,6 +874,81 @@ export default function WayOfLoveRuleFlow({
             );
           })}
         </div>
+
+        {/* Reading ritual — log a book/scripture by chapter, page, or time
+            instead of a plain check. Optional daily goal gives the log a target;
+            a running total remembers where you left off. */}
+        <button
+          type="button"
+          onClick={() => { touchedRef.current = true; setCustomIsReading((v) => !v); }}
+          style={{
+            width: "100%", display: "flex", alignItems: "center", gap: 10, margin: "16px 0 0",
+            background: customIsReading ? CARD_ACTIVE : CARD, border: `1px solid ${customIsReading ? CARD_B_ACTIVE : CARD_B}`,
+            borderRadius: 12, padding: "12px 14px", cursor: "pointer", textAlign: "left",
+          }}
+        >
+          <span style={{ fontSize: 18 }} aria-hidden>📖</span>
+          <span style={{ flex: 1, color: CREAM, fontSize: 14.5, fontWeight: 600, fontFamily: FONT }}>
+            {t("wol_rule.reading_toggle", { defaultValue: "This is a reading I'll log" })}
+          </span>
+          <span style={{
+            width: 40, height: 24, borderRadius: 999, flexShrink: 0, position: "relative",
+            background: customIsReading ? CTA : "rgba(143,175,150,0.25)", transition: "background 160ms",
+          }}>
+            <span style={{
+              position: "absolute", top: 2, left: customIsReading ? 18 : 2, width: 20, height: 20,
+              borderRadius: 999, background: CREAM, transition: "left 160ms",
+            }} />
+          </span>
+        </button>
+
+        {customIsReading && (
+          <>
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "16px 0 8px", fontFamily: FONT }}>
+              {t("wol_rule.reading_track_by", { defaultValue: "Track it by" })}
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
+              {READING_UNITS.map((u) => {
+                const on = customUnit === u;
+                const label = u === "chapter" ? t("wol_rule.unit_chapter", { defaultValue: "Chapter" })
+                  : u === "page" ? t("wol_rule.unit_page", { defaultValue: "Page" })
+                    : t("wol_rule.unit_time", { defaultValue: "Time" });
+                return (
+                  <button
+                    key={u}
+                    type="button"
+                    onClick={() => { touchedRef.current = true; setCustomUnit(u); }}
+                    style={{
+                      background: on ? CARD_ACTIVE : CARD, border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
+                      color: on ? CREAM : SAGE, borderRadius: 10, padding: "10px 4px", fontSize: 13, fontWeight: on ? 700 : 500,
+                      fontFamily: FONT, cursor: "pointer", textAlign: "center",
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "12px 0 0" }}>
+              <input
+                value={customGoal}
+                onChange={(e) => setCustomGoal(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+                inputMode="numeric"
+                aria-label={t("wol_rule.reading_goal", { defaultValue: "Daily goal" })}
+                placeholder={customUnit === "minute" ? "20" : customUnit === "page" ? "10" : "1"}
+                style={{ width: 72, flexShrink: 0, textAlign: "center", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 0", fontSize: 15, color: CREAM, fontFamily: FONT }}
+              />
+              <span style={{ color: SAGE, fontSize: 13.5, fontFamily: FONT }}>
+                {customUnit === "minute"
+                  ? t("wol_rule.reading_goal_min", { defaultValue: "minutes a day (optional goal)" })
+                  : customUnit === "page"
+                    ? t("wol_rule.reading_goal_pages", { defaultValue: "pages a day (optional goal)" })
+                    : t("wol_rule.reading_goal_ch", { defaultValue: "chapters a day (optional goal)" })}
+              </span>
+            </div>
+          </>
+        )}
+
         <div style={{ display: "flex", gap: 8, margin: "16px 0 0" }}>
           <input
             value={customEmoji}
@@ -872,7 +962,9 @@ export default function WayOfLoveRuleFlow({
             onChange={(e) => setCustomTitle(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") addCustom(); }}
             aria-label={t("wol_rule.custom_name", { defaultValue: "Practice name" })}
-            placeholder={t("wol_rule.custom_placeholder", { defaultValue: "e.g. Morning walk" })}
+            placeholder={customIsReading
+              ? t("wol_rule.reading_placeholder", { defaultValue: "e.g. The Imitation of Christ" })
+              : t("wol_rule.custom_placeholder", { defaultValue: "e.g. Morning walk" })}
             style={{ flex: 1, minWidth: 0, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", fontSize: 15, color: CREAM, fontFamily: FONT }}
           />
           <button

@@ -793,8 +793,12 @@ export default function PrayerRequestDetailPage() {
                 <ShareLinkIconButton /> above. The old inline pill is
                 gone. */}
 
-            {/* Avatar rail — every distinct pray-er, most recent first. */}
-            {data.amens.length > 1 && (
+            {/* Avatar rail — every distinct pray-er, most recent first. Shown
+                whenever anyone has prayed (a single pray-er used to be hidden by
+                a `> 1` gate, so an owner who opened the request without ?amen=1
+                saw the count but never the face). Skipped only when the lone
+                amen is already the big featured pulse above (?amen=1). */}
+            {data.amens.length > 0 && !(fromAmenPush && data.amens.length === 1) && (
               <div className="flex items-center justify-center -mt-1">
                 {data.amens.slice(0, 8).map((a, i) => (
                   <div
