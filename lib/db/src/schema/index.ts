@@ -33,6 +33,8 @@ export * from "./fellow_invites";
 export * from "./fellow_plans";
 export * from "./fellow_plan_times";
 export * from "./fellow_encouragements";
+export * from "./user_public_keys";
+export * from "./voice_memos";
 export * from "./fellow_plan_rsvps";
 export * from "./prayers_for";
 export * from "./waitlist";

@@ -8,6 +8,7 @@ import {
   bellNotificationsTable,
   appOpensTable,
   breathSessionsTable,
+  voiceMemosTable,
 } from "@workspace/db";
 import { logger } from "./logger";
 
@@ -65,6 +66,10 @@ export async function runRetentionCleanupSender(opts: { forceNow?: boolean } = {
         db.select({ id: prayerRequestsTable.id }).from(prayerRequestsTable)
           .where(sql`COALESCE(${prayerRequestsTable.closedAt}, ${prayerRequestsTable.expiresAt}) < ${YEAR}`),
       ))],
+    // Ephemeral voice memos: hard-delete anything past its TTL (the recipient
+    // listening already deletes it immediately — this catches the unheard).
+    ["voice_memos past TTL", () =>
+      db.delete(voiceMemosTable).where(lt(voiceMemosTable.expiresAt, new Date()))],
   ];
 
   for (const [label, fn] of steps) {
