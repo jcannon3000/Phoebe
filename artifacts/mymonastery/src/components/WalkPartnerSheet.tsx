@@ -5,10 +5,10 @@
  * are no times, no history, no streaks-vs-you. The warm move is the response row.
  */
 import { useState } from "react";
-import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useStartHeartToHeart } from "@/hooks/useDailyPrayer";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -44,9 +44,13 @@ const NUDGES: Array<{ kind: "praying" | "cheer" | "thinking"; emoji: string; lab
 
 export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompanion | null; onClose: () => void }) {
   const qc = useQueryClient();
-  const [, setLocation] = useLocation();
   const [sent, setSent] = useState<string | null>(null);
   const [overflow, setOverflow] = useState(false);
+  // Heart to Heart composer — send a prayer straight to this person.
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [heartSent, setHeartSent] = useState(false);
+  const startHeart = useStartHeartToHeart();
 
   const nudge = useMutation({
     mutationFn: (kind: string) => apiRequest("POST", `/api/walk/${companion!.pairId}/nudge`, { kind }),
@@ -60,6 +64,15 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
     mutationFn: () => apiRequest("POST", `/api/walk/${companion!.pairId}/stop`),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/walk"] }); onClose(); },
   });
+
+  const sendHeart = () => {
+    const body = draft.trim();
+    if (!body || !companion || startHeart.isPending) return;
+    startHeart.mutate({ partnerUserId: companion.userId, body }, {
+      onSuccess: () => { setHeartSent(true); setDraft(""); setComposeOpen(false); },
+    });
+  };
+  const openCompose = () => { setHeartSent(false); setDraft(""); setComposeOpen(true); };
 
   const open = !!companion;
   const name = companion?.name ?? "Someone";
@@ -119,11 +132,11 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
                 </p>
                 <button
                   type="button"
-                  onClick={() => { onClose(); setLocation(`/prayer-partner?compose=1`); }}
+                  onClick={openCompose}
                   className="inline-flex items-center justify-center rounded-full px-5 py-2.5 mt-4 text-[13px] font-semibold transition-opacity active:scale-[0.98]"
                   style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
                 >
-                  Pray a Heart to Heart
+                  Send a Heart to Heart
                 </button>
               </div>
             ) : (
@@ -180,9 +193,57 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
                     You can send {first} a word of encouragement once they've kept most of today 🌿
                   </p>
                 )}
+
+                {/* Heart to Heart — start a private back-and-forth prayer with
+                    {first}, right here. The first one delivers instantly. */}
+                <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(143,175,150,0.14)" }}>
+                  {heartSent ? (
+                    <p className="text-[13px] text-center py-1.5" style={{ color: "#A8C5A0", fontFamily: FONT }}>
+                      💚 Your Heart to Heart is on its way to {first}
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={openCompose}
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-2xl py-3 text-[14px] font-semibold transition-opacity active:scale-[0.98]"
+                      style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
+                    >
+                      💚 Send {first} a Heart to Heart
+                    </button>
+                  )}
+                </div>
               </>
             )}
           </motion.div>
+
+          {/* Heart to Heart composer — write a prayer and send it straight to
+              {first}. The first one delivers instantly; after that it follows
+              the next-morning volley. */}
+          <AnimatePresence>
+            {composeOpen && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[280] flex flex-col" style={{ background: "rgba(9,26,16,0.97)", paddingTop: "calc(var(--safe-top) + 20px)" }}>
+                <div className="flex items-center justify-between px-5 mb-3">
+                  <button onClick={() => setComposeOpen(false)} className="text-[15px]" style={{ color: SAGE, fontFamily: FONT }}>Cancel</button>
+                  <button onClick={sendHeart} disabled={!draft.trim() || startHeart.isPending}
+                    className="rounded-full px-5 py-2 text-[14px] font-semibold disabled:opacity-40"
+                    style={{ background: "rgba(46,107,64,0.9)", color: WARM, fontFamily: FONT }}>
+                    {startHeart.isPending ? "Sending…" : "Send"}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2.5 px-6 mb-2">
+                  <Avatar name={name} url={companion?.avatarUrl ?? null} size={30} />
+                  <p className="text-[13px]" style={{ color: SAGE, fontFamily: FONT }}>What's on your heart for {first}?</p>
+                </div>
+                <textarea
+                  autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={2000}
+                  placeholder="Lord, today I'm carrying…"
+                  className="flex-1 bg-transparent outline-none resize-none px-6"
+                  style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 21, lineHeight: 1.5 }}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
     </AnimatePresence>

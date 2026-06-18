@@ -438,6 +438,85 @@ router.post("/prayer-partner/end", async (req, res): Promise<void> => {
   res.json({ ok: true });
 });
 
+// ─── POST /api/prayer-partner/start ────────────────────────────────────────
+// Start a Heart to Heart with one specific person and send them a prayer in a
+// single tap. Tapping a Fellow is consent enough, so the partnership goes
+// straight to active (like opening an invite link). The FIRST prayer of a brand
+// new dialogue delivers INSTANTLY (and pushes them now), so the connection feels
+// alive immediately; after that the normal next-morning volley cadence applies.
+router.post("/prayer-partner/start", perUserRateLimit("prayer_partner_start", {
+  max: 30, windowMs: 60 * 60 * 1000, message: "Too many attempts. Please try again later.",
+}), async (req, res): Promise<void> => {
+  const uid = uidOf(req);
+  if (!uid) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parsed = z.object({
+    partnerUserId: z.number().int().positive(),
+    body: z.string().min(1).max(2000),
+  }).safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const partnerId = parsed.data.partnerUserId;
+  if (partnerId === uid) { res.status(400).json({ error: "You can't pray with yourself." }); return; }
+
+  const partner = await loadUserCard(partnerId);
+  if (!partner) { res.status(404).json({ error: "Person not found" }); return; }
+  if (await areMuted(uid, partnerId)) { res.status(403).json({ error: "You can't pray with this person." }); return; }
+
+  // Ensure the partnership is active. New/revived → this is first contact, so
+  // the prayer delivers instantly. Already active → ongoing daily cadence.
+  const { lo, hi } = normPair(uid, partnerId);
+  const [existing] = await db.select().from(prayerPartnershipsTable).where(and(
+    eq(prayerPartnershipsTable.userLoId, lo), eq(prayerPartnershipsTable.userHiId, hi)));
+  let wasNewlyActive: boolean;
+  if (existing && existing.status === "active") {
+    wasNewlyActive = false;
+  } else if (existing) {
+    await db.update(prayerPartnershipsTable)
+      .set({ status: "active", invitedById: uid, acceptedAt: new Date(), endedAt: null, endedById: null })
+      .where(eq(prayerPartnershipsTable.id, existing.id));
+    wasNewlyActive = true;
+  } else {
+    await db.insert(prayerPartnershipsTable)
+      .values({ userLoId: lo, userHiId: hi, invitedById: uid, status: "active", acceptedAt: new Date() });
+    wasNewlyActive = true;
+  }
+  await linkPartnerFellows(uid, partnerId);
+
+  const tz = await getUserTz(uid);
+  const ymd = todayInTz(tz);
+  const [already] = await db.select().from(dailyPrayersTable).where(and(
+    eq(dailyPrayersTable.authorId, uid), eq(dailyPrayersTable.ymd, ymd)));
+  if (already) {
+    // Already shared a prayer today — the partnership is now active, so they'll
+    // see it on its normal delivery. Don't create a second one.
+    res.status(200).json({ prayer: already, partner, delivered: !already.deliverAfter || already.deliverAfter.getTime() <= Date.now() });
+    return;
+  }
+
+  // First contact delivers now; otherwise it waits for tomorrow morning.
+  const deliverNow = wasNewlyActive;
+  const deliverAfter = deliverNow ? null : nextDeliveryInstant(new Date(), tz);
+  let created;
+  try {
+    [created] = await db.insert(dailyPrayersTable)
+      .values({ authorId: uid, ymd, body: parsed.data.body, deliverAfter }).returning();
+  } catch {
+    const [row] = await db.select().from(dailyPrayersTable).where(and(
+      eq(dailyPrayersTable.authorId, uid), eq(dailyPrayersTable.ymd, ymd)));
+    res.status(200).json({ prayer: row, partner, delivered: false }); return;
+  }
+
+  if (deliverNow) {
+    const [me] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, uid));
+    const firstName = (me?.name || "Someone").split(/\s+/)[0];
+    sendPushToUser(partnerId, {
+      title: `${firstName} shared a Heart to Heart`, body: "Tap to open and pray it.",
+      path: "/prayer-partner", threadId: "prayer-dialogue",
+    }).catch(() => {});
+  }
+
+  res.status(201).json({ prayer: created, partner, delivered: deliverNow });
+});
+
 // ─── POST /api/daily-prayer ────────────────────────────────────────────────
 // Share your prayer for the day (one per local day). Notifies every partner.
 router.post("/daily-prayer", perUserRateLimit("daily_prayer_share", {

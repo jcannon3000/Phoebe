@@ -106,6 +106,18 @@ export function useShareDailyPrayer() {
     onSuccess: invalidate,
   });
 }
+// Start a Heart to Heart with one specific person and send them a prayer in a
+// single tap. Auto-pairs (active immediately) and the first prayer of a brand
+// new dialogue delivers instantly; afterward the next-morning cadence applies.
+export function useStartHeartToHeart() {
+  const invalidate = useInvalidateExchange();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { partnerUserId: number; body: string }) =>
+      apiRequest<{ delivered: boolean }>("POST", "/api/prayer-partner/start", v),
+    onSuccess: () => { invalidate(); qc.invalidateQueries({ queryKey: ["/api/walk"] }); },
+  });
+}
 export function useInvitePartner() {
   const invalidate = useInvalidateExchange();
   return useMutation({
