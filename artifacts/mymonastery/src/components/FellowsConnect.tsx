@@ -41,6 +41,22 @@ function Pill({ label, onClick, kind = "solid", disabled }: { label: string; onC
   }[kind];
   return <button type="button" onClick={onClick} disabled={disabled} className="shrink-0 rounded-full text-[12.5px] font-semibold px-3.5 py-1.5 transition-opacity active:scale-[0.97]" style={{ ...styles, fontFamily: FONT, opacity: disabled ? 0.6 : 1 }}>{label}</button>;
 }
+// Walking-together progress, folded into the fellow card. A companion is a
+// fellow you've both opted to walk with; their today-only rhythm dots + a
+// status line ride the second line of their fellow card.
+const DOT_ON = "rgba(110,180,130,0.95)";
+type WalkAnchorLite = { key: string; done: boolean };
+type WalkCompanionLite = { userId: number; progress: { keptCount: number; totalCount: number; allKept: boolean; anchors: WalkAnchorLite[] } | null; progressLocked?: boolean };
+function Dots({ anchors }: { anchors: WalkAnchorLite[] }) {
+  return (
+    <span className="inline-flex items-center gap-[3px]" aria-hidden>
+      {anchors.map((d) => (
+        <span key={d.key} style={{ width: 6, height: 6, borderRadius: 999, display: "inline-block", background: d.done ? DOT_ON : "transparent", border: d.done ? "none" : "1px solid rgba(143,175,150,0.5)" }} />
+      ))}
+    </span>
+  );
+}
+
 function normalizePhoneClient(raw: string): string | null {
   const trimmed = (raw ?? "").trim();
   if (!trimmed) return null;
@@ -92,6 +108,11 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
   const requests = requestsQ.data?.requests ?? [];
   const fellows = fellowsQ.data?.fellows ?? [];
   const results = searchQ.data?.users ?? [];
+
+  // Walking-together progress, keyed by fellow userId — converged onto the
+  // fellow card (dots + status on the second line). Beta-only.
+  const walkQ = useQuery<{ companions: WalkCompanionLite[] }>({ queryKey: ["/api/walk"], queryFn: () => apiRequest("GET", "/api/walk"), enabled: canManage, staleTime: 30_000 });
+  const walkByUser = new Map((walkQ.data?.companions ?? []).map((c) => [c.userId, c]));
 
   const [optReq, setOptReq] = useState<Set<number>>(() => new Set());
   const addFellow = (id: number) => { sendReq.mutate(id); setOptReq((s) => new Set(s).add(id)); };
@@ -187,22 +208,49 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
     </div>
   );
 
-  const fellowRow = (f: Fellow) => row(f.name ?? "Someone", f.avatarUrl,
-    <div className="flex items-center gap-2.5 shrink-0">
-      {f.streak > 0 && <span className="text-[13px] font-semibold" style={{ color: "#E8B45E", fontFamily: FONT }} title={t("fellows_c.streak_title", { defaultValue: "Prayer rhythm" })}>🔥 {f.streak}</span>}
-      {encouraged.has(f.userId)
-        ? <Pill label={t("fellows_c.encouraged", { defaultValue: "Encouraged 🙌" })} kind="muted" disabled />
-        : <Pill label={t("fellows_c.encourage", { defaultValue: "🙌 Encourage" })} kind="solid" onClick={() => sendEncourage(f.userId)} />}
-      {canManage && (
-        <button type="button" aria-label={t("fellows_c.settings", { defaultValue: "Sharing settings" })}
-          onClick={() => openSettings(f)}
-          className="shrink-0 rounded-full flex items-center justify-center transition-opacity active:scale-[0.95]"
-          style={{ width: 30, height: 30, background: "rgba(200,212,192,0.08)", border: "1px solid rgba(46,107,64,0.4)", color: "#C8D4C0" }}>
-          <Settings2 size={15} />
-        </button>
-      )}
-      <Pill label={t("fellows_c.remove", { defaultValue: "Remove" })} kind="muted" onClick={() => { if (window.confirm(t("fellows_c.remove_confirm", { defaultValue: "Remove this fellow?" }))) remove.mutate(f.userId); }} />
-    </div>, `f-${f.userId}`);
+  const fellowRow = (f: Fellow) => {
+    // Walking-together state folded onto the card.
+    const w = walkByUser.get(f.userId);
+    const p = w?.progress ?? null;
+    const locked = !!w?.progressLocked;
+    const keptWholeDay = !!p?.allKept;
+    // Second line: dots + a status line, mirroring the Walking-together copy.
+    const statusLine = !w ? null
+      : locked ? t("fellows_c.walk_locked", { defaultValue: "💚 Pray 1:1 to see today" })
+      : !p || p.totalCount === 0 ? t("fellows_c.walk_walking", { defaultValue: "Walking with you" })
+      : keptWholeDay ? t("fellows_c.walk_all_kept", { defaultValue: "Kept the whole rhythm today 🌿" })
+      : t("fellows_c.walk_kept_count", { kept: p.keptCount, total: p.totalCount, defaultValue: `${p.keptCount}/${p.totalCount} kept today` });
+    return (
+      <div key={`f-${f.userId}`} className="relative flex items-center gap-3 rounded-2xl px-4 py-3 mb-2" style={{ background: CARD_BG, border: `1px solid ${CARD_B}` }}>
+        <Avatar name={f.name ?? "Someone"} url={f.avatarUrl} />
+        <div className="flex-1 min-w-0">
+          <p className="truncate text-[15px] font-medium" style={{ color: WARM, fontFamily: FONT }}>{f.name ?? "Someone"}</p>
+          {statusLine && (
+            <div className="flex items-center gap-2 mt-0.5">
+              {!locked && p && p.anchors.length > 0 && <Dots anchors={p.anchors} />}
+              <span className="text-[12px] truncate" style={{ color: SAGE, fontFamily: FONT }}>{statusLine}</span>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-2.5 shrink-0">
+          {f.streak > 0 && <span className="text-[13px] font-semibold" style={{ color: "#E8B45E", fontFamily: FONT }} title={t("fellows_c.streak_title", { defaultValue: "Prayer rhythm" })}>🔥 {f.streak}</span>}
+          {/* Encourage only once they've kept their whole day today. */}
+          {keptWholeDay && (encouraged.has(f.userId)
+            ? <Pill label={t("fellows_c.encouraged", { defaultValue: "Encouraged 🙌" })} kind="muted" disabled />
+            : <Pill label={t("fellows_c.encourage", { defaultValue: "🙌 Encourage" })} kind="solid" onClick={() => sendEncourage(f.userId)} />)}
+          {canManage && (
+            <button type="button" aria-label={t("fellows_c.settings", { defaultValue: "Sharing settings" })}
+              onClick={() => openSettings(f)}
+              className="shrink-0 rounded-full flex items-center justify-center transition-opacity active:scale-[0.95]"
+              style={{ width: 30, height: 30, background: "rgba(200,212,192,0.08)", border: "1px solid rgba(46,107,64,0.4)", color: "#C8D4C0" }}>
+              <Settings2 size={15} />
+            </button>
+          )}
+          <Pill label={t("fellows_c.remove", { defaultValue: "Remove" })} kind="muted" onClick={() => { if (window.confirm(t("fellows_c.remove_confirm", { defaultValue: "Remove this fellow?" }))) remove.mutate(f.userId); }} />
+        </div>
+      </div>
+    );
+  };
 
   // People page: just your fellows, then an "Add a fellow" pill → /fellows
   // (where the full add card lives). The outer section header ("Fellows") is

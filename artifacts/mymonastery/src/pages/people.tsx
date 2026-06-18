@@ -646,7 +646,7 @@ export default function People() {
             a fellow to see each other's today-only rhythm dots + send a word of
             encouragement. The component renders its own header, and nothing at
             all when there's nothing to show. */}
-        {rawIsBeta && <WalkTogether />}
+        {rawIsBeta && <WalkTogether hideCompanions />}
 
         {/* One-time new-fellow onboarding (same place? + share daily progress?). */}
         <FellowOnboardingPrompt

@@ -65,7 +65,10 @@ function Dots({ anchors }: { anchors: Array<{ key: string; done: boolean }> }) {
   );
 }
 
-export function WalkTogether() {
+// `hideCompanions` — when the active companions are already shown on the
+// fellow cards (the People page converges them), this section drops the
+// companion list and keeps only invites / incoming / paused / words.
+export function WalkTogether({ hideCompanions = false }: { hideCompanions?: boolean } = {}) {
   const qc = useQueryClient();
   const [openId, setOpenId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
@@ -95,8 +98,9 @@ export function WalkTogether() {
   const paused = data?.paused ?? [];
   const eligible = data?.eligibleFellows ?? [];
 
-  // Nothing to show and nothing to start → render nothing (clean page).
-  if (companions.length === 0 && incoming.length === 0 && outgoing.length === 0 && paused.length === 0 && eligible.length === 0) {
+  // Nothing to show and nothing to start → render nothing (clean page). When
+  // companions live on the fellow cards, they don't keep this section alive.
+  if ((hideCompanions || companions.length === 0) && incoming.length === 0 && outgoing.length === 0 && paused.length === 0 && eligible.length === 0) {
     return null;
   }
 
@@ -140,8 +144,9 @@ export function WalkTogether() {
         </div>
       ))}
 
-      {/* Active companions — tap to see today + send a word. */}
-      {companions.map((c) => {
+      {/* Active companions — tap to see today + send a word. Hidden when the
+          fellow cards already carry each companion's progress. */}
+      {!hideCompanions && companions.map((c) => {
         const first = (c.name ?? "Someone").split(/\s+/)[0];
         const p = c.progress;
         return (
