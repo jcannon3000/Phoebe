@@ -25,7 +25,14 @@ import { z } from "zod/v4";
 import { getFellowUserIds } from "../lib/garden";
 import { sendPushToUser, sendPushToUsers } from "../lib/pushSender";
 
+import { rateLimit } from "../lib/rate-limit";
+
 const router: IRouter = Router();
+
+const byUser = (req: { user?: unknown }): string | null => {
+  const u = req.user as { id?: number } | undefined;
+  return u?.id ? `u:${u.id}` : null;
+};
 
 function getUserId(req: unknown): number | null {
   const u = (req as { user?: { id?: number } }).user;
@@ -82,7 +89,13 @@ const createSchema = z.object({
   whenText: z.string().trim().max(80).optional(),
   startsAt: z.string().datetime().optional(),
 });
-router.post("/fellow-plans", requireBeta, async (req, res): Promise<void> => {
+router.post("/fellow-plans", rateLimit({
+  name: "fellow_plan_create",
+  max: 20,
+  windowMs: 60 * 60 * 1000,
+  keyFn: byUser,
+  message: "You've shared a lot of plans. Take a breath and try again soon.",
+}), requireBeta, async (req, res): Promise<void> => {
   const me = getUserId(req)!;
   const parsed = createSchema.safeParse(req.body ?? {});
   if (!parsed.success) { res.status(400).json({ error: "A plan needs a title." }); return; }
@@ -238,7 +251,13 @@ router.get("/fellow-plans", async (req, res): Promise<void> => {
 
 // ─── PUT /api/fellow-plans/:id/rsvp — say you'll come (or clear) ──────────────
 const rsvpSchema = z.object({ status: z.enum(["coming", "maybe"]).nullable() });
-router.put("/fellow-plans/:id/rsvp", async (req, res): Promise<void> => {
+router.put("/fellow-plans/:id/rsvp", rateLimit({
+  name: "fellow_plan_rsvp",
+  max: 60,
+  windowMs: 60 * 60 * 1000,
+  keyFn: byUser,
+  message: "Slow down a moment, then try again.",
+}), async (req, res): Promise<void> => {
   const me = getUserId(req);
   if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
   const planId = Number(req.params.id);
