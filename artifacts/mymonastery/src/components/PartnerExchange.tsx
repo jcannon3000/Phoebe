@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -29,6 +29,21 @@ export function PartnerExchange({ hideWhenEmpty = false }: { hideWhenEmpty?: boo
   const [draft, setDraft] = useState("");
   const [attend, setAttend] = useState<{ id: number; body: string; name: string; avatar: string | null } | null>(null);
 
+  // Deep-link: /prayer-partner?compose=1 (e.g. "Pray a Heart to Heart with X")
+  // lands you straight on the "what's on your heart" composer. Strip the param
+  // so a later refresh doesn't reopen it.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("compose") === "1") {
+        setComposeOpen(true);
+        params.delete("compose");
+        const qs = params.toString();
+        window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   if (isLoading || !data) return null;
 
   // No partner yet. On the home we hide the section entirely; on the dedicated
@@ -38,7 +53,7 @@ export function PartnerExchange({ hideWhenEmpty = false }: { hideWhenEmpty?: boo
     return (
       <Link href="/prayer-partner" className="block">
         <div className="rounded-3xl px-5 py-6 text-center" style={{ background: `rgba(${G},0.10)`, border: `1px solid rgba(${G},0.30)` }}>
-          <div className="text-[30px] mb-2">💛</div>
+          <div className="text-[30px] mb-2">💚</div>
           <p className="text-[16px] font-bold" style={{ color: WARM, fontFamily: FONT }}>{t("prayer_partner.empty_title", { defaultValue: "Start a Heart to Heart" })}</p>
           <p className="text-[13px] mt-1" style={{ color: SAGE, fontFamily: FONT }}>{t("prayer_partner.empty_blurb", { defaultValue: "Share what's on your heart each day — and hold each other in prayer, back and forth." })}</p>
         </div>
@@ -56,7 +71,7 @@ export function PartnerExchange({ hideWhenEmpty = false }: { hideWhenEmpty?: boo
     <div>
       {/* ── Your prayer for the day ─────────────────────────────────── */}
       <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: FAINT, fontFamily: FONT }}>
-        💛 {t("prayer_partner.your_prayer_eyebrow", { defaultValue: "What's on your heart" })}
+        💚 {t("prayer_partner.your_prayer_eyebrow", { defaultValue: "What's on your heart" })}
       </p>
 
       {data.mine ? (

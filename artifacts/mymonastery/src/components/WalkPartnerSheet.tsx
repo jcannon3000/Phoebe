@@ -118,7 +118,7 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
                 </p>
                 <button
                   type="button"
-                  onClick={() => { onClose(); setLocation(`/prayer-partner`); }}
+                  onClick={() => { onClose(); setLocation(`/prayer-partner?compose=1`); }}
                   className="inline-flex items-center justify-center rounded-full px-5 py-2.5 mt-4 text-[13px] font-semibold transition-opacity active:scale-[0.98]"
                   style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
                 >
