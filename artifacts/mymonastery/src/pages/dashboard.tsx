@@ -1838,7 +1838,7 @@ function PlanEventCard({ p, keyPrefix }: { p: FellowPlanEvent; keyPrefix: string
   const [lineIdx, setLineIdx] = useState(0);
   useEffect(() => {
     if (lines.length < 2) return;
-    const id = setInterval(() => setLineIdx((i) => (i + 1) % lines.length), 3600);
+    const id = setInterval(() => setLineIdx((i) => (i + 1) % lines.length), 5600);
     return () => clearInterval(id);
   }, [lines.length]);
   const sub = lines[lineIdx % lines.length];
@@ -1879,10 +1879,10 @@ function PlanEventCard({ p, keyPrefix }: { p: FellowPlanEvent; keyPrefix: string
             <AnimatePresence mode="wait" initial={false}>
               <motion.p
                 key={sub}
-                initial={{ opacity: 0, y: 7 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -7 }}
-                transition={{ duration: 0.3 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.6, ease: "easeInOut" }}
                 className="text-[12px] truncate"
                 style={{ color: "#A8C5A0" }}
               >{sub}</motion.p>
@@ -1890,20 +1890,25 @@ function PlanEventCard({ p, keyPrefix }: { p: FellowPlanEvent; keyPrefix: string
           </div>
         </div>
 
-        {/* Who's coming — a couple of faces, compact */}
-        {(p.comingPreview?.length ?? 0) > 0 && (
-          <div className="flex items-center shrink-0" aria-hidden>
-            {p.comingPreview!.slice(0, 3).map((c, i) => (
-              c.avatarUrl ? (
-                <img key={c.userId} src={c.avatarUrl} alt={c.name} className="rounded-full object-cover" style={{ width: 20, height: 20, marginLeft: i === 0 ? 0 : -6, border: "1.5px solid #0E2016" }} />
-              ) : (
-                <span key={c.userId} className="rounded-full inline-flex items-center justify-center font-semibold" style={{ width: 20, height: 20, marginLeft: i === 0 ? 0 : -6, border: "1.5px solid #0E2016", background: "#1A4A2E", color: "#A8C5A0", fontSize: 8 }}>
-                  {(c.name?.trim()?.[0] ?? "·").toUpperCase()}
-                </span>
-              )
-            ))}
-          </div>
-        )}
+        {/* Right: who's coming (faces) then a Details pill. */}
+        <div className="flex items-center gap-2 shrink-0">
+          {(p.comingPreview?.length ?? 0) > 0 && (
+            <div className="flex items-center" aria-hidden>
+              {p.comingPreview!.slice(0, 3).map((c, i) => (
+                c.avatarUrl ? (
+                  <img key={c.userId} src={c.avatarUrl} alt={c.name} className="rounded-full object-cover" style={{ width: 22, height: 22, marginLeft: i === 0 ? 0 : -6, border: "1.5px solid #0E2016" }} />
+                ) : (
+                  <span key={c.userId} className="rounded-full inline-flex items-center justify-center font-semibold" style={{ width: 22, height: 22, marginLeft: i === 0 ? 0 : -6, border: "1.5px solid #0E2016", background: "#1A4A2E", color: "#A8C5A0", fontSize: 9 }}>
+                    {(c.name?.trim()?.[0] ?? "·").toUpperCase()}
+                  </span>
+                )
+              ))}
+            </div>
+          )}
+          <span className="rounded-full text-[12px] font-semibold px-3.5 py-1.5" style={{ background: "rgba(46,107,64,0.85)", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}>
+            Details
+          </span>
+        </div>
       </motion.div>
     </Link>
   );
@@ -6685,7 +6690,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                         <span className="text-[28px] leading-none flex-shrink-0">🕯️</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-[16px] font-bold leading-tight" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t("rhythm.card_contemplation", { defaultValue: "Contemplation" })}</p>
-                          <p className="text-[13px] mt-0.5 leading-snug" style={{ color: "#8FAF96" }}>{t("dashboard.contemplation_more_blurb", { defaultValue: "Sit a while longer" })}</p>
+                          <p className="text-[13px] mt-0.5 leading-snug" style={{ color: "#8FAF96" }}>
+                            {rhythm.contemplationGoalMin > 0
+                              ? t("dashboard.contemplation_min_of_goal", { done: rhythm.contemplationMin, goal: rhythm.contemplationGoalMin, defaultValue: `${rhythm.contemplationMin} of ${rhythm.contemplationGoalMin} min today` })
+                              : t("dashboard.contemplation_more_blurb", { defaultValue: "Sit a while longer" })}
+                          </p>
                         </div>
                         <span className="flex-shrink-0 inline-flex items-center gap-1 rounded-full text-[12px] font-semibold px-3.5 py-1.5" style={{ background: `rgba(${RGB},0.85)`, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                           <span aria-hidden style={{ opacity: 0.85 }}>✓</span> {t("rhythm.sit_again", { defaultValue: "Sit again" })} <span aria-hidden>→</span>
@@ -6881,11 +6890,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
             ? ([todayItems, tomorrowItems, weekItems, monthItems].map((b) => b.find(isEventItem)).find(Boolean) ?? null)
             : null;
 
-          // Exclude whatever is surfaced in "Coming up" from the day buckets so
-          // it isn't listed twice (the plan/gathering appeared in both "Coming
-          // up" AND its date section). Reference-equality: nextEventItem IS the
-          // bucket item object.
-          const keep = (item: DashboardItem) => byFilter(item) && item !== nextEventItem;
+          // The "day is kept" view above already lists the upcoming schedule
+          // (Today → Upcoming), so the separate "Coming up" section was removed to
+          // avoid showing the same event twice. No bucket dedup needed.
+          void nextEventItem;
+          const keep = (item: DashboardItem) => byFilter(item);
           const fToday = todayItems.filter(keep);
           const fTomorrow = tomorrowItems.filter(keep);
           const fWeek = weekItems.filter(keep);
@@ -6901,34 +6910,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
-                {/* Coming up — one upcoming event, only once the whole daily
-                    routine is done, sitting between Next and the Prayer List. */}
-                {filter === null && !eventsOnly && nextEventItem && (
-                  <div className="mb-2">
-                    <TimeSection
-                      label={t("dashboard.coming_up", { defaultValue: "Coming up" })}
-                      items={[nextEventItem]}
-                      userEmail={userEmail}
-                      userName={userName}
-                      onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
-                      onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })}
-                      onOpenGathering={(r) => setOpenGathering(r)}
-                    />
-                  </div>
-                )}
-
                 {/* One-to-one prayer — your prayer partners (the daily
                     attention-based exchange). Sits above the community prayer
                     list; the two models coexist. */}
                 {filter === null && !eventsOnly && (
                   <PartnerExchange hideWhenEmpty />
-                )}
-
-                {/* Beta practices in the MAIN flow — This week + Contemplation
-                    sessions (moved off the daily-progress page). Self-contained
-                    + beta-gated. */}
-                {filter === null && !eventsOnly && (
-                  <BetaRhythmExtras />
                 )}
 
                 {/* Prayer List — the requests carousel (title + divider +
