@@ -6,7 +6,7 @@ import {
   CAC_READ_EVENT, FDD_READ_EVENT, SSJE_READ_EVENT,
 } from "@/lib/cacReadState";
 import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceCompletion";
-import { getCustomAnchors, isCustomDoneToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot } from "@/lib/customAnchors";
+import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
 import { getSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { useDailySteps } from "@/lib/appleHealth";
@@ -76,7 +76,7 @@ export type RhythmState = {
   stepsGoal: number;
   /** User-defined custom practices (title + emoji + a per-day check) — each an
    *  extra anchor: shows as a Daily-progress card and counts as a dot. */
-  customAnchors: Array<{ id: string; title: string; emoji: string; slot: CustomSlot; done: boolean }>;
+  customAnchors: Array<{ id: string; title: string; emoji: string; slot: CustomSlot; done: boolean; skipped: boolean }>;
   /** How many anchors exist for this user — the four core ones plus any
    *  active optional practices (gratitude / examen). The denominator of the
    *  "N of X kept" header. */
@@ -192,11 +192,11 @@ export function useRhythmState(): RhythmState {
   // list AND each check on the custom-anchor events + return-to-app signals so a
   // tick — here or on another surface — flips the dot live.
   const [customAnchors, setCustomAnchors] = useState(() =>
-    getCustomAnchors().map((a) => ({ ...a, done: isCustomDoneToday(a.id) })),
+    getCustomAnchors().map((a) => ({ ...a, done: isCustomDoneToday(a.id), skipped: isCustomSkippedToday(a.id) })),
   );
   useEffect(() => {
     const recheck = () =>
-      setCustomAnchors(getCustomAnchors().map((a) => ({ ...a, done: isCustomDoneToday(a.id) })));
+      setCustomAnchors(getCustomAnchors().map((a) => ({ ...a, done: isCustomDoneToday(a.id), skipped: isCustomSkippedToday(a.id) })));
     window.addEventListener(CUSTOM_ANCHORS_EVENT, recheck);
     window.addEventListener(CUSTOM_DONE_EVENT, recheck);
     window.addEventListener("focus", recheck);
@@ -389,7 +389,8 @@ export function useRhythmState(): RhythmState {
     ...(gratitudeActive ? [gratitudeDone] : []),
     ...(examenActive ? [examenDone] : []),
     ...(stepsActive ? [stepsDone] : []),
-    ...customAnchors.map((a) => a.done),
+    // "Not today" customs drop out entirely — no dot, not counted.
+    ...customAnchors.filter((a) => !a.skipped).map((a) => a.done),
   ];
   const allFlags = [...coreFlags, ...extraFlags];
   const totalAnchors = allFlags.length;

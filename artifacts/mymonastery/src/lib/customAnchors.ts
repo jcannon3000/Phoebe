@@ -98,3 +98,39 @@ export function toggleCustomDoneToday(id: string): void {
     /* private mode / quota — non-fatal */
   }
 }
+
+// "Not today" — the user logged that they're skipping this practice today. A
+// skipped practice is HIDDEN for the day (not shown under Done) and drops out of
+// the day's anchor count + dots, rather than counting as undone.
+const SKIP_PREFIX = "phoebe:custom-skip:";
+
+/** True if this custom practice was marked "not today" for the local day. */
+export function isCustomSkippedToday(id: string): boolean {
+  try {
+    return localStorage.getItem(SKIP_PREFIX + id) === todayISO();
+  } catch {
+    return false;
+  }
+}
+
+/** Log this practice as DONE today (clears any "not today"). */
+export function markCustomDoneToday(id: string): void {
+  try {
+    localStorage.setItem(DONE_PREFIX + id, todayISO());
+    localStorage.removeItem(SKIP_PREFIX + id);
+    window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
+  } catch {
+    /* non-fatal */
+  }
+}
+
+/** Log this practice as "not today" — hides it + drops its dot for the day. */
+export function setCustomNotToday(id: string): void {
+  try {
+    localStorage.setItem(SKIP_PREFIX + id, todayISO());
+    localStorage.removeItem(DONE_PREFIX + id);
+    window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
+  } catch {
+    /* non-fatal */
+  }
+}

@@ -19,7 +19,7 @@ import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/offic
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
 import { CAC_TODAY_URL, markCacRead } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
-import { toggleCustomDoneToday, type CustomSlot } from "@/lib/customAnchors";
+import { markCustomDoneToday, setCustomNotToday, type CustomSlot } from "@/lib/customAnchors";
 
 const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
@@ -434,6 +434,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const { t } = useTranslation();
   const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, stepsToday, stepsGoal, customAnchors } = useRhythmState();
   const hour = new Date().getHours();
+  // The custom-practice "Log" popup — which anchor's popup is open (by id).
+  const [logAnchorId, setLogAnchorId] = useState<string | null>(null);
   const kept = t("rhythm.kept", { defaultValue: "Kept today" });
   const prayed = t("rhythm.prayed", { defaultValue: "Prayed today" });
   const reflectionSource = useEffectiveReflectionSource();
@@ -480,12 +482,14 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // check (no navigation), so each counts as a dot like the built-in anchors.
   const customCard = (a: (typeof customAnchors)[number]) => ({
     key: `custom-${a.id}`, emoji: a.emoji || "✅", rgb: "143,170,150", done: a.done, href: "",
-    onClick: () => toggleCustomDoneToday(a.id),
+    // Tapping opens the Log popup (Done / Not today) rather than toggling.
+    onClick: () => setLogAnchorId(a.id),
     title: a.title,
     blurb: a.done ? kept : t("rhythm.custom_blurb", { defaultValue: "Your daily practice" }),
-    cta: t("rhythm.mark_done", { defaultValue: "Mark done" }), later: false,
+    cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
   });
-  const customsForSlot = (slot: CustomSlot) => customAnchors.filter((a) => a.slot === slot).map(customCard);
+  // "Not today" customs are hidden for the day (not shown under Done).
+  const customsForSlot = (slot: CustomSlot) => customAnchors.filter((a) => a.slot === slot && !a.skipped).map(customCard);
 
   const cards = [
     ...(morningActive ? [{
@@ -697,6 +701,48 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           <WeeklyGridCard />
         </motion.div>
       )}
+
+      {/* Log popup for a custom practice — Done (counts + moves to Done) or
+          Not today (hides the card + drops its dot for the day). */}
+      {logAnchorId && (() => {
+        const a = customAnchors.find((x) => x.id === logAnchorId);
+        if (!a) return null;
+        const close = () => setLogAnchorId(null);
+        return (
+          <div
+            className="fixed inset-0 z-[120] flex items-end justify-center"
+            style={{ background: "rgba(6,18,11,0.6)", backdropFilter: "blur(2px)" }}
+            onClick={close}
+          >
+            <div
+              className="w-full"
+              style={{ maxWidth: 460, margin: "0 10px", background: "#0F2618", border: "1px solid rgba(111,175,133,0.25)", borderRadius: "20px 20px 0 0", padding: "20px 20px calc(env(safe-area-inset-bottom, 0px) + 18px)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <span style={{ fontSize: 26 }}>{a.emoji || "✅"}</span>
+                <p className="text-[17px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{a.title}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { markCustomDoneToday(a.id); close(); }}
+                className="w-full rounded-2xl py-3.5 text-[15px] font-semibold active:scale-[0.99]"
+                style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
+              >
+                ✓ {t("rhythm.log_done", { defaultValue: "Done" })}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setCustomNotToday(a.id); close(); }}
+                className="w-full rounded-2xl py-3 mt-2 text-[14px] font-semibold active:scale-[0.99]"
+                style={{ background: "transparent", color: "rgba(182,210,188,0.85)", border: `1px solid ${"rgba(143,175,150,0.3)"}`, fontFamily: FONT }}
+              >
+                {t("rhythm.log_not_today", { defaultValue: "Not today" })}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

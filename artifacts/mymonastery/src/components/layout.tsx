@@ -759,15 +759,23 @@ function DailyProgressPill() {
   // they added (gratitude, examen, the daily-steps goal) and each user-defined
   // custom practice. Keyed so the "just completed" pulse below tracks the right
   // dot even as the set changes.
+  // Custom-practice dots sit in their time-of-day SLOT (not lumped at the end) —
+  // a morning custom rides next to Morning, etc. — and a "not today" custom drops
+  // out entirely, matching the cards + the reduced count.
+  const cDots = (slot: string) =>
+    customAnchors.filter((a) => a.slot === slot && !a.skipped).map((a) => ({ key: `custom-${a.id}`, done: a.done }));
   const dotDefs = [
     ...(morningActive ? [{ key: "morning", done: morningDone }] : []),
+    ...cDots("morning"),
     ...(reflectActive ? [{ key: "reflect", done: reflectDone }] : []),
     ...(silenceActive ? [{ key: "silence", done: silenceDone }] : []),
-    ...(eveningActive ? [{ key: "evening", done: eveningDone }] : []),
+    ...cDots("midday"),
     ...(gratitudeActive ? [{ key: "gratitude", done: gratitudeDone }] : []),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
     ...(stepsActive ? [{ key: "steps", done: stepsDone }] : []),
-    ...customAnchors.map((a) => ({ key: `custom-${a.id}`, done: a.done })),
+    ...cDots("afternoon"),
+    ...(eveningActive ? [{ key: "evening", done: eveningDone }] : []),
+    ...cDots("evening"),
   ];
   // Every practice for the day kept → ALL dots gently pulse colour (a staggered
   // "you held the whole day" wave).
