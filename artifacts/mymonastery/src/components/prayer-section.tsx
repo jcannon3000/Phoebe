@@ -303,7 +303,10 @@ export function PrayerSection({
                               : isSelf ? (user?.name ?? t("prayer_section.you_fallback")) : (request.ownerName ?? t("prayer_section.someone_fallback"));
                             const displayAvatar = request.isAnonymous
                               ? null
-                              : isSelf ? (user?.avatarUrl ?? null) : (request.ownerAvatarUrl ?? null);
+                              // For my own rows, prefer the FRESH server avatar and fall back
+                              // to the (possibly stale/null) auth cache — a cold launch off a
+                              // stale cache was showing initials instead of my picture.
+                              : isSelf ? (request.ownerAvatarUrl ?? user?.avatarUrl ?? null) : (request.ownerAvatarUrl ?? null);
                             const initials = displayName
                               .split(" ")
                               .slice(0, 2)

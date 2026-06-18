@@ -49,12 +49,23 @@ if (GOOGLE_CONFIGURED) {
           const googleId = profile.id;
 
           // Calendar tokens no longer stored per-user — scheduler account handles all events.
+          // Never let a Google sign-in clobber a custom uploaded avatar. Only
+          // adopt Google's photo when the user has no avatar yet, or their
+          // current one is itself a Google photo (so it can refresh). A custom
+          // upload (data: URI or any non-Google URL) is preserved — otherwise
+          // every Google re-auth reverted the user's chosen picture everywhere.
+          const keepAvatar = (prev: { avatarUrl: string | null }): string | null => {
+            const cur = prev.avatarUrl;
+            const isGoogle = !!cur && cur.startsWith("https://lh3.googleusercontent.com");
+            if (cur && !isGoogle) return cur; // custom upload — keep it
+            return avatarUrl ?? cur;          // adopt Google's, but never null out
+          };
           const existing = await db.select().from(usersTable).where(eq(usersTable.googleId, googleId));
           if (existing.length > 0) {
             const prev = existing[0];
             const [user] = await db
               .update(usersTable)
-              .set({ avatarUrl })
+              .set({ avatarUrl: keepAvatar(prev) })
               .where(eq(usersTable.id, prev.id))
               .returning();
             return done(null, user);
@@ -72,7 +83,7 @@ if (GOOGLE_CONFIGURED) {
             }
             const [user] = await db
               .update(usersTable)
-              .set({ googleId, avatarUrl })
+              .set({ googleId, avatarUrl: keepAvatar(byEmail[0]) })
               .where(eq(usersTable.id, byEmail[0].id))
               .returning();
             return done(null, user);

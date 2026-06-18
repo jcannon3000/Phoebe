@@ -616,6 +616,23 @@ export default function PrayerRequestDetailPage() {
           // but the active surfaces below are amens / words / renew
           // controls instead of an Amen button.
           <div className="w-full flex flex-col items-center text-center gap-5">
+            {/* The owner's OWN face — this surface previously rendered everyone
+                else's avatar (pray-ers, word authors) but never the owner's, so
+                they "didn't see their profile picture where it should be". */}
+            {data.ownerAvatarUrl ? (
+              <img
+                src={data.ownerAvatarUrl}
+                alt={data.ownerName ?? t("prayer_request_detail.prayer_author_alt")}
+                className="w-16 h-16 rounded-full object-cover prayer-avatar-pulse"
+              />
+            ) : (
+              <div
+                className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold prayer-avatar-pulse"
+                style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+              >
+                {initials(data.ownerName ?? "")}
+              </div>
+            )}
             <div className="flex flex-col items-center gap-1.5">
               <p
                 className="text-[10px] uppercase tracking-[0.18em] font-semibold"

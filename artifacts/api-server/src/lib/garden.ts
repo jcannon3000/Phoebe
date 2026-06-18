@@ -17,21 +17,28 @@
 //      community. Mirror of the existing rule that group members
 //      can't see hidden_admins.
 
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db, groupMembersTable, usersTable, fellowsTable } from "@workspace/db";
 import { getCorrespondentUserIds } from "./correspondents";
 
-// Helper — returns the user IDs of the viewer's Fellows. Each Fellow
-// pair is stored as two directional rows (A→B, B→A) so a single-side
-// `WHERE user_id = me` returns the right set without needing
-// `OR fellow_user_id = me`. Exported so other surfaces (push fan-out,
-// /api/people garden union) can reuse it.
+// Helper — returns the user IDs of the viewer's Fellows. A Fellow pair is
+// MEANT to be stored as two directional rows (A→B, B→A), but legacy/early
+// accounts can have a one-sided row (only ever created forward, never
+// backfilled). Reading BOTH directions (user_id = me OR fellow_user_id = me)
+// makes a one-sided bond still grant visibility either way — this is the fix
+// for "I'm fellows with an early account but get no notifications from them".
+// Exported so other surfaces (push fan-out, /api/people garden union) reuse it.
 export async function getFellowUserIds(userId: number): Promise<number[]> {
   const rows = await db
-    .select({ id: fellowsTable.fellowUserId })
+    .select({ a: fellowsTable.userId, b: fellowsTable.fellowUserId })
     .from(fellowsTable)
-    .where(eq(fellowsTable.userId, userId));
-  return rows.map(r => r.id).filter(id => id !== userId);
+    .where(or(eq(fellowsTable.userId, userId), eq(fellowsTable.fellowUserId, userId)));
+  const ids = new Set<number>();
+  for (const r of rows) {
+    if (r.a !== userId) ids.add(r.a);
+    if (r.b !== userId) ids.add(r.b);
+  }
+  return [...ids];
 }
 
 // Short-TTL per-process cache. The computation below runs ~5 queries and is

@@ -2045,6 +2045,28 @@ export async function migrate() {
     // Phone-sabbath rest days (weekday numbers 0=Sun..6=Sat).
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS rest_days JSONB`);
 
+    // Backfill: a word of comfort now counts as an amen, but words written
+    // before that shipped (2026-06-17) have no amen row, so their authors never
+    // appeared in the "who prayed for me" rail. Create the missing amen rows,
+    // bucketed by the OWNER's timezone (matching the read-side dedup), using the
+    // word's created_at as prayed_at so it lands on the right day. Idempotent
+    // (NOT EXISTS) and skips owner self-words (excluded from the rail anyway).
+    await run(client, `
+      INSERT INTO prayer_request_amens (request_id, user_id, prayed_at)
+      SELECT w.request_id, w.author_user_id, w.created_at
+      FROM prayer_words w
+      JOIN prayer_requests r ON r.id = w.request_id
+      LEFT JOIN users ou ON ou.id = r.owner_id
+      WHERE w.author_user_id <> r.owner_id
+        AND NOT EXISTS (
+          SELECT 1 FROM prayer_request_amens a
+          WHERE a.request_id = w.request_id
+            AND a.user_id = w.author_user_id
+            AND (a.prayed_at AT TIME ZONE COALESCE(ou.timezone, 'UTC'))::date
+              = (w.created_at AT TIME ZONE COALESCE(ou.timezone, 'UTC'))::date
+        )
+    `);
+
     // Master notifications switch (Settings → Notifications). Default
     // true so existing users keep their notifications; sendPushToUser
     // suppresses every push when false.

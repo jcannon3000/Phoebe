@@ -177,6 +177,37 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
       });
     }
     amenCountTotal = userDayKeys.size;
+
+    // Also surface anonymous share-link amens — people who tapped Amen on the
+    // public /p/:token link while logged out (e.g. a friend who isn't on Phoebe
+    // yet). These live in a SEPARATE table and were never shown to the owner, so
+    // the owner's page under-counted vs. the very link they shared (this is the
+    // "Kyle prayed but doesn't show up" bug). Unclaimed only — a claimed row has
+    // already become a real prayer_request_amens row above, so it'd double-count.
+    // One row per visitor session (UNIQUE request_id+session_id); no prayed_at,
+    // so created_at is the tap time.
+    const anonAmens = await db
+      .select({
+        sessionId: anonymousAmensTable.sessionId,
+        visitorName: anonymousAmensTable.visitorName,
+        createdAt: anonymousAmensTable.createdAt,
+      })
+      .from(anonymousAmensTable)
+      .where(and(
+        eq(anonymousAmensTable.requestId, id),
+        isNull(anonymousAmensTable.claimedAt),
+      ));
+    for (const a of anonAmens) {
+      amens.push({
+        userId: 0, // sentinel — no real account behind an anonymous amen
+        userName: a.visitorName ?? null, // renders as their name, or "Someone"
+        userAvatarUrl: null,
+        prayedAt: a.createdAt.toISOString(),
+      });
+      amenCountTotal += 1;
+    }
+    // Keep the merged rail newest-first.
+    amens.sort((x, y) => (y.prayedAt ?? "").localeCompare(x.prayedAt ?? ""));
   }
 
   // Viewer-side bits the deep-link page needs to behave like the
