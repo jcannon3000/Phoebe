@@ -344,12 +344,6 @@ struct PhoebeTodayView: View {
         return "\(stats.contemplationMin)/\(stats.contemplationGoalMin) min"
     }
     private var nextLine: String { stats.todayLine }
-    // True once the whole rhythm is done — then the footer reads "The day is
-    // kept", not the contradictory "Next · The day is kept".
-    private var dayKept: Bool {
-        stats.eyebrow.localizedCaseInsensitiveContains("kept")
-            || nextLine.localizedCaseInsensitiveContains("kept")
-    }
 
     var body: some View {
         switch family {
@@ -375,7 +369,7 @@ struct PhoebeTodayView: View {
     }
 
     private var rectangular: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 3) {
             HStack(spacing: 4) {
                 Image(systemName: "leaf.fill").font(.system(size: 11))
                 Text("CONTEMPLATION")
@@ -383,22 +377,19 @@ struct PhoebeTodayView: View {
                     .tracking(0.8)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                    .layoutPriority(-1)
-                Spacer(minLength: 4)
-                Text(minutesLine)
-                    .font(.system(size: 12, weight: .semibold))
-                    .lineLimit(1)
-                    .fixedSize()
+                Spacer(minLength: 0)
             }
             if hasGoal {
                 ProgressView(value: progress)
                     .progressViewStyle(.linear)
             }
-            Text(dayKept ? nextLine : "Next · \(nextLine)")
-                .font(.system(size: 12))
-                .opacity(0.85)
+            // Minutes sit UNDER the bar now; the "Next · the day is kept" footer
+            // is gone (it read as contradictory once the day was complete).
+            Text(minutesLine)
+                .font(.system(size: 12, weight: .semibold))
+                .opacity(0.9)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
