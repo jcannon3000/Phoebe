@@ -29,11 +29,35 @@ export function AvatarCropModal({
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const drag = useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null);
+  // The image actually displayed/exported. Defaults to the source, but an
+  // oversized photo is downscaled first so a huge file can't spike memory
+  // (we only ever export a 512px crop anyway).
+  const [workingSrc, setWorkingSrc] = useState(src);
 
-  // Natural image dimensions drive the cover-fit base scale.
+  // Natural dimensions drive the cover-fit base scale. Cap very large sources
+  // to MAX_DIM on the longest side before cropping.
   useEffect(() => {
+    const MAX_DIM = 2400;
     const img = new Image();
-    img.onload = () => setNat({ w: img.width, h: img.height });
+    img.onload = () => {
+      const longest = Math.max(img.width, img.height);
+      if (longest > MAX_DIM) {
+        const k = MAX_DIM / longest;
+        const w = Math.round(img.width * k);
+        const h = Math.round(img.height * k);
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, w, h);
+          setWorkingSrc(canvas.toDataURL("image/jpeg", 0.9));
+          setNat({ w, h });
+          return;
+        }
+      }
+      setWorkingSrc(src);
+      setNat({ w: img.width, h: img.height });
+    };
     img.src = src;
   }, [src]);
 
@@ -85,7 +109,7 @@ export function AvatarCropModal({
       ctx.drawImage(img, sx, sy, sSize, sSize, 0, 0, OUT, OUT);
       onConfirm(canvas.toDataURL("image/jpeg", 0.85));
     };
-    img.src = src;
+    img.src = workingSrc;
   };
 
   const left = VIEW / 2 - dw / 2 + pan.x;
@@ -113,7 +137,7 @@ export function AvatarCropModal({
         >
           {nat && (
             <img
-              src={src}
+              src={workingSrc}
               alt="Crop preview"
               draggable={false}
               style={{ position: "absolute", left, top, width: dw, height: dh, maxWidth: "none" }}

@@ -19,6 +19,7 @@ import {
 import { z } from "zod/v4";
 import { getFellowUserIds } from "../lib/garden";
 import { sendPushToUser } from "../lib/pushSender";
+import { rateLimit } from "../lib/rate-limit";
 
 const router: IRouter = Router();
 
@@ -26,6 +27,11 @@ function getUserId(req: unknown): number | null {
   const u = (req as { user?: { id?: number } }).user;
   return u && typeof u.id === "number" ? u.id : null;
 }
+
+const byUser = (req: { user?: unknown }): string | null => {
+  const u = req.user as { id?: number } | undefined;
+  return u?.id ? `u:${u.id}` : null;
+};
 
 function firstName(name: string | null | undefined): string {
   const n = (name ?? "").trim();
@@ -39,7 +45,13 @@ const sendSchema = z.object({ toUserId: z.number().int().positive() });
 // connection. Deduped: if you already encouraged this person in the last hour
 // we no-op (keeps a double-tap from sending two pushes) but still report ok so
 // the client shows its confirmed state.
-router.post("/encouragements", async (req, res): Promise<void> => {
+router.post("/encouragements", rateLimit({
+  name: "encouragement_send",
+  max: 30,
+  windowMs: 60 * 60 * 1000,
+  keyFn: byUser,
+  message: "You've sent a lot of encouragements. Take a breath and try again soon.",
+}), async (req, res): Promise<void> => {
   const me = getUserId(req);
   if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = sendSchema.safeParse(req.body ?? {});
