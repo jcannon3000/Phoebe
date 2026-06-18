@@ -334,12 +334,22 @@ struct PhoebeTodayView: View {
         guard hasGoal else { return stats.contemplationMin > 0 ? 1 : 0 }
         return min(1.0, Double(stats.contemplationMin) / Double(stats.contemplationGoalMin))
     }
-    // "7/20 min" with a goal, "7 min" without.
+    // "7/20 min" with a goal; once the goal is met it reads "✓ 20 min" rather
+    // than overshooting ("66/60 min"). No goal → just the minutes.
     private var minutesLine: String {
-        hasGoal ? "\(stats.contemplationMin)/\(stats.contemplationGoalMin) min"
-                : "\(stats.contemplationMin) min"
+        guard hasGoal else { return "\(stats.contemplationMin) min" }
+        if stats.contemplationMin >= stats.contemplationGoalMin {
+            return "✓ \(stats.contemplationGoalMin) min"
+        }
+        return "\(stats.contemplationMin)/\(stats.contemplationGoalMin) min"
     }
     private var nextLine: String { stats.todayLine }
+    // True once the whole rhythm is done — then the footer reads "The day is
+    // kept", not the contradictory "Next · The day is kept".
+    private var dayKept: Bool {
+        stats.eyebrow.localizedCaseInsensitiveContains("kept")
+            || nextLine.localizedCaseInsensitiveContains("kept")
+    }
 
     var body: some View {
         switch family {
@@ -371,15 +381,20 @@ struct PhoebeTodayView: View {
                 Text("CONTEMPLATION")
                     .font(.system(size: 10, weight: .semibold))
                     .tracking(0.8)
-                Spacer(minLength: 0)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .layoutPriority(-1)
+                Spacer(minLength: 4)
                 Text(minutesLine)
                     .font(.system(size: 12, weight: .semibold))
+                    .lineLimit(1)
+                    .fixedSize()
             }
             if hasGoal {
                 ProgressView(value: progress)
                     .progressViewStyle(.linear)
             }
-            Text("Next · \(nextLine)")
+            Text(dayKept ? nextLine : "Next · \(nextLine)")
                 .font(.system(size: 12))
                 .opacity(0.85)
                 .lineLimit(1)
