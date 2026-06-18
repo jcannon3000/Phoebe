@@ -3100,9 +3100,13 @@ export async function migrate() {
         starts_at TIMESTAMPTZ,
         when_text TEXT,
         status TEXT NOT NULL DEFAULT 'open',
+        share_token TEXT,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    // Lazily-minted public share token (existing tables predate the column).
+    await run(client, `ALTER TABLE fellow_plans ADD COLUMN IF NOT EXISTS share_token TEXT`);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_fellow_plans_share_token ON fellow_plans (share_token) WHERE share_token IS NOT NULL`);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_fellow_plans_user ON fellow_plans (user_id)`);
     // The feed query filters by host IN (...) AND status='open' — a composite
     // index serves that directly.

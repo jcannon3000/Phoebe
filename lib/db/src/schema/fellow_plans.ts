@@ -24,6 +24,10 @@ export const fellowPlansTable = pgTable("fellow_plans", {
   // "open" | "cancelled". Cancelled plans drop out of the feed but the row
   // is kept so anyone who'd RSVP'd can still see it was called off.
   status: text("status").notNull().default("open"),
+  // Public share token — minted lazily the first time the host shares the
+  // plan (e.g. texting a fellow). The /plans/:token landing reads it pre-auth
+  // to show the plan card; a signed-in fellow can RSVP from there.
+  shareToken: text("share_token"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   byHost: index("idx_fellow_plans_user").on(t.userId),

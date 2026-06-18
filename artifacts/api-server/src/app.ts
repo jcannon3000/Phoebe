@@ -253,6 +253,10 @@ app.get("/.well-known/apple-app-site-association", (_req, res) => {
               // community join link above.
               { "/": "/prayer-dialogue/join/*" },
               { "/": "/prayer-dialogue/*" },
+              // ── Plans (How About) ────────────────────────────────
+              // /plans/:token is the shareable plan landing — opens the
+              // app so a signed-in fellow can RSVP in one tap.
+              { "/": "/plans/*" },
               // ── Prayer feeds + public feed ───────────────────────
               { "/": "/prayer-feeds/*" },
               { "/": "/feed/*" },

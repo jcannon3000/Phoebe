@@ -12,8 +12,9 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Plus, MapPin, X } from "lucide-react";
+import { Plus, MapPin, X, Share as ShareIcon } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { isNativeShell } from "@/lib/isNativeShell";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -128,6 +129,27 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
   const toggleRsvp = (p: Plan, status: "coming" | "maybe") =>
     rsvp.mutate({ id: p.id, status: p.myRsvp === status ? null : status });
 
+  // Share a plan link — mint the public token, then open the best share
+  // surface (native sheet, Web Share, or clipboard). Whoever opens it (a
+  // fellow) lands on /plans/:token and can RSVP in one tap.
+  const [sharedId, setSharedId] = useState<number | null>(null);
+  const sharePlan = async (p: Plan) => {
+    try {
+      const { url } = await apiRequest<{ token: string; url: string }>("POST", `/api/fellow-plans/${p.id}/share-link`);
+      const when = whenLabel(p);
+      const detail = {
+        title: t("plans.share_title", { defaultValue: "A plan on Phoebe" }),
+        text: t("plans.share_text", { defaultValue: "How about {{title}}{{when}}? Tap to come along:", title: p.title, when: when ? ` — ${when}` : "" }),
+        url,
+      };
+      if (isNativeShell()) { window.dispatchEvent(new CustomEvent("phoebe:share", { detail })); return; }
+      const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
+      if (typeof nav.share === "function") { try { await nav.share(detail); return; } catch { /* cancelled → clipboard */ } }
+      try { await navigator.clipboard.writeText(url); setSharedId(p.id); setTimeout(() => setSharedId(null), 2000); }
+      catch { window.prompt("Copy this link", url); }
+    } catch { /* best-effort */ }
+  };
+
   const inputStyle = { background: "rgba(9,26,16,0.45)", border: `1px solid ${CARD_B}`, color: WARM, fontFamily: FONT } as const;
 
   // On a surface that shouldn't show an empty shell (the Events page for a
@@ -235,6 +257,17 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
                     ? t("plans.you_going", { defaultValue: "You're going to" })
                     : t("plans.someone_going", { defaultValue: "{{name}} is going to", name: p.host.name })}
                 </p>
+                {p.isMine && (
+                  <button
+                    type="button"
+                    onClick={() => sharePlan(p)}
+                    aria-label={t("plans.share", { defaultValue: "Share" })}
+                    className="shrink-0 inline-flex items-center gap-1 text-[12px] font-medium px-2.5 py-1 rounded-full"
+                    style={{ color: "rgba(182,210,188,0.85)", border: "1px solid rgba(143,175,150,0.3)", fontFamily: FONT }}
+                  >
+                    <ShareIcon size={12} /> {sharedId === p.id ? t("plans.share_copied", { defaultValue: "Copied" }) : t("plans.share", { defaultValue: "Share" })}
+                  </button>
+                )}
                 {p.isMine && (
                   <button
                     type="button"

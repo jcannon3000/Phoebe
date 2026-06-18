@@ -10,6 +10,7 @@
 // can still see and join a beta host's plan.
 
 import { Router, type IRouter, type RequestHandler } from "express";
+import crypto from "crypto";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
 import {
   db,
@@ -320,6 +321,61 @@ router.delete("/fellow-plans/:id", async (req, res): Promise<void> => {
   if (plan.userId !== me) { res.status(403).json({ error: "Not your plan." }); return; }
   await db.delete(fellowPlansTable).where(eq(fellowPlansTable.id, planId));
   res.json({ ok: true });
+});
+
+// ─── Shareable plan link ─────────────────────────────────────────────────────
+// POST /fellow-plans/:id/share-link — host-only. Mints (lazily) a public token
+// and returns the /plans/:token URL for the share sheet (e.g. texting a fellow).
+router.post("/fellow-plans/:id/share-link", async (req, res): Promise<void> => {
+  const me = getUserId(req);
+  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [plan] = await db.select().from(fellowPlansTable).where(eq(fellowPlansTable.id, id));
+  if (!plan || plan.userId !== me) { res.status(404).json({ error: "Plan not found" }); return; }
+  let token = plan.shareToken ?? null;
+  if (!token) {
+    token = crypto.randomBytes(16).toString("hex");
+    await db.update(fellowPlansTable).set({ shareToken: token }).where(eq(fellowPlansTable.id, id));
+  }
+  const base = process.env.PUBLIC_APP_ORIGIN || "https://withphoebe.app";
+  res.json({ token, url: `${base}/plans/${token}` });
+});
+
+// GET /fellow-plans/share/:token — PUBLIC (pre-auth) plan card for the landing
+// page. Returns only safe, shareable fields — no emails, no RSVP roster, just
+// the host's name/avatar + a count. A signed-in fellow RSVPs via PUT
+// /fellow-plans/:id/rsvp using the `id` returned here.
+router.get("/fellow-plans/share/:token", async (req, res): Promise<void> => {
+  const token = String(req.params.token || "");
+  if (!/^[a-f0-9]{32}$/i.test(token)) { res.status(404).json({ error: "Invalid link" }); return; }
+  const [plan] = await db.select().from(fellowPlansTable).where(eq(fellowPlansTable.shareToken, token));
+  if (!plan || plan.status !== "open") { res.status(404).json({ error: "Plan not found" }); return; }
+  const [host] = await db.select({ name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+    .from(usersTable).where(eq(usersTable.id, plan.userId));
+  const coming = await db.select({ id: fellowPlanRsvpsTable.id })
+    .from(fellowPlanRsvpsTable)
+    .where(and(eq(fellowPlanRsvpsTable.planId, plan.id), eq(fellowPlanRsvpsTable.status, "coming")));
+  // Is the (maybe signed-in) viewer a fellow of the host → can they RSVP here?
+  const me = getUserId(req);
+  let viewerCanRsvp = false;
+  let viewerIsHost = false;
+  if (me) {
+    viewerIsHost = me === plan.userId;
+    if (!viewerIsHost) {
+      const fellowIds = await getFellowUserIds(me);
+      viewerCanRsvp = fellowIds.includes(plan.userId);
+    }
+  }
+  res.json({
+    plan: {
+      ...serializePlan(plan),
+      host: { name: host?.name ?? "A fellow", avatarUrl: host?.avatarUrl ?? null },
+      comingCount: coming.length,
+    },
+    viewerIsHost,
+    viewerCanRsvp,
+  });
 });
 
 export default router;
