@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useLocation } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -15,11 +15,13 @@ const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const G = "46,107,64";
 
+type PlanTime = { id: number; startsAt: string; comingCount: number; maybeCount: number; myStatus: "coming" | "maybe" | null };
 type Lookup = {
   plan: {
     id: number; title: string; emoji: string | null; location: string | null;
     startsAt: string | null; whenText: string | null;
     host: { name: string | null; avatarUrl: string | null }; comingCount: number;
+    deciding?: boolean; times?: PlanTime[]; leadingTimeId?: number | null;
   };
   viewerIsHost: boolean;
   viewerCanRsvp: boolean;
@@ -52,6 +54,12 @@ export default function PlanSharePage() {
   const rsvp = useMutation({
     mutationFn: (status: "coming" | "maybe") => apiRequest("PUT", `/api/fellow-plans/${data!.plan.id}/rsvp`, { status }),
     onSuccess: (_r, status) => setRsvped(status),
+  });
+  const qc = useQueryClient();
+  const timeRsvp = useMutation({
+    mutationFn: ({ timeId, status }: { timeId: number; status: "coming" | "maybe" | null }) =>
+      apiRequest("PUT", `/api/fellow-plans/${data!.plan.id}/times/${timeId}/rsvp`, { status }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/fellow-plans/share", token] }),
   });
 
   const Shell = ({ children }: { children: React.ReactNode }) => (
@@ -96,14 +104,43 @@ export default function PlanSharePage() {
           {[when ? `🗓 ${when}` : null, p.location].filter(Boolean).join("  ·  ")}
         </p>
       )}
-      {p.comingCount > 0 && (
+      {!p.deciding && p.comingCount > 0 && (
         <p className="text-[12.5px] mt-1.5" style={{ color: SAGE, fontFamily: FONT }}>{p.comingCount} {p.comingCount === 1 ? "fellow" : "fellows"} coming</p>
+      )}
+
+      {/* Candidate times — the host is still finding a time. */}
+      {p.deciding && p.times && p.times.length > 0 && (
+        <div className="mt-5 flex flex-col gap-2 text-left">
+          <p className="text-[13px] text-center" style={{ color: SAGE, fontFamily: FONT }}>
+            {data.viewerCanRsvp ? "Which times work for you?" : "A time is being decided"}
+          </p>
+          {p.times.map((tm) => {
+            const fill = Math.min(0.8, 0.10 + tm.comingCount * 0.18);
+            const lead = p.leadingTimeId === tm.id && tm.comingCount > 0;
+            const lbl = new Date(tm.startsAt).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+            return (
+              <div key={tm.id} className="rounded-2xl px-4 py-3" style={{ background: `rgba(${G},${fill})`, border: `1px solid ${lead ? "rgba(111,175,133,0.55)" : `rgba(${G},0.3)`}`, transition: "background 0.4s" }}>
+                <p className="text-[14px] font-medium" style={{ color: WARM, fontFamily: FONT }}>🗓 {lbl}</p>
+                {data.viewerCanRsvp && (
+                  <div className="flex gap-2 mt-2">
+                    <button disabled={timeRsvp.isPending} onClick={() => timeRsvp.mutate({ timeId: tm.id, status: tm.myStatus === "coming" ? null : "coming" })}
+                      className="flex-1 rounded-full py-1.5 text-[13px] font-semibold" style={tm.myStatus === "coming" ? { background: `rgba(${G},0.95)`, color: WARM, border: `1px solid rgba(${G},0.6)`, fontFamily: FONT } : { background: "rgba(200,212,192,0.08)", color: "#C8D4C0", border: `1px solid rgba(${G},0.4)`, fontFamily: FONT }}>Works</button>
+                    <button disabled={timeRsvp.isPending} onClick={() => timeRsvp.mutate({ timeId: tm.id, status: tm.myStatus === "maybe" ? null : "maybe" })}
+                      className="rounded-full px-4 py-1.5 text-[13px] font-semibold" style={tm.myStatus === "maybe" ? { background: "rgba(143,175,150,0.3)", color: WARM, border: "1px solid rgba(143,175,150,0.5)", fontFamily: FONT } : { background: "transparent", color: "rgba(182,210,188,0.7)", border: "1px solid rgba(143,175,150,0.22)", fontFamily: FONT }}>Maybe</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
 
       {/* Action */}
       <div className="mt-7">
         {data.viewerIsHost ? (
-          <button onClick={() => setLocation("/events")} className="w-full rounded-full py-3 text-[15px] font-semibold" style={{ background: `rgba(${G},0.9)`, color: WARM, border: `1px solid rgba(${G},0.6)`, fontFamily: FONT }}>Manage in Phoebe</button>
+          <button onClick={() => setLocation("/events")} className="w-full rounded-full py-3 text-[15px] font-semibold" style={{ background: `rgba(${G},0.9)`, color: WARM, border: `1px solid rgba(${G},0.6)`, fontFamily: FONT }}>{p.deciding ? "Pick a time in Phoebe" : "Manage in Phoebe"}</button>
+        ) : p.deciding && data.viewerCanRsvp ? (
+          <p className="text-[13px]" style={{ color: SAGE, fontFamily: FONT }}>Your picks save as you tap. <button onClick={() => setLocation("/events")} className="underline" style={{ color: SAGE }}>See your plans</button></p>
         ) : rsvped ? (
           <p className="text-[16px] font-semibold" style={{ color: "#A8C5A0", fontFamily: FONT }}>{rsvped === "coming" ? "You're going 🌿" : "Marked maybe"} — <button onClick={() => setLocation("/events")} className="underline" style={{ color: SAGE }}>see your plans</button></p>
         ) : data.viewerCanRsvp ? (

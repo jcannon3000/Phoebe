@@ -3111,17 +3111,34 @@ export async function migrate() {
     // The feed query filters by host IN (...) AND status='open' — a composite
     // index serves that directly.
     await run(client, `CREATE INDEX IF NOT EXISTS idx_fellow_plans_user_status ON fellow_plans (user_id, status)`);
+    // Candidate times for a plan that's still being scheduled (the time organizer).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS fellow_plan_times (
+        id SERIAL PRIMARY KEY,
+        plan_id INTEGER NOT NULL REFERENCES fellow_plans(id) ON DELETE CASCADE,
+        starts_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS idx_fellow_plan_times_plan ON fellow_plan_times (plan_id)`);
     await run(client, `
       CREATE TABLE IF NOT EXISTS fellow_plan_rsvps (
         id SERIAL PRIMARY KEY,
         plan_id INTEGER NOT NULL REFERENCES fellow_plans(id) ON DELETE CASCADE,
         user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        plan_time_id INTEGER REFERENCES fellow_plan_times(id) ON DELETE CASCADE,
         status TEXT NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
-    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_fellow_plan_rsvp_plan_user ON fellow_plan_rsvps (plan_id, user_id)`);
+    // Existing tables predate per-time leanings: add the column + relax the
+    // unique index into two partials (one whole-plan RSVP per user, one leaning
+    // per user+time). The OLD plain unique is dropped once (new names differ).
+    await run(client, `ALTER TABLE fellow_plan_rsvps ADD COLUMN IF NOT EXISTS plan_time_id INTEGER REFERENCES fellow_plan_times(id) ON DELETE CASCADE`);
+    await run(client, `DROP INDEX IF EXISTS uniq_fellow_plan_rsvp_plan_user`);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_fellow_plan_rsvp_plan_user_whole ON fellow_plan_rsvps (plan_id, user_id) WHERE plan_time_id IS NULL`);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS uniq_fellow_plan_rsvp_plan_user_time ON fellow_plan_rsvps (plan_id, user_id, plan_time_id) WHERE plan_time_id IS NOT NULL`);
 
     // One-tap "🙌 encouragement" between Fellows (direct, no pairing).
     await run(client, `

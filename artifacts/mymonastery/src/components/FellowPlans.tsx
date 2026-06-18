@@ -25,6 +25,14 @@ const CARD_B = "rgba(46,107,64,0.3)";
 const EMOJI_CHOICES = ["⛪", "☕", "🍽️", "🚶", "📖", "🎶", "🙏", "🕯️", "✨"];
 
 type Brief = { userId: number; name: string; avatarUrl: string | null };
+type PlanTime = {
+  id: number;
+  startsAt: string;
+  comingCount: number;
+  maybeCount: number;
+  comingPreview: Brief[];
+  myStatus: "coming" | "maybe" | null;
+};
 type Plan = {
   id: number;
   title: string;
@@ -40,6 +48,10 @@ type Plan = {
   maybeCount: number;
   comingPreview: Brief[];
   myRsvp: "coming" | "maybe" | null;
+  // Time organizer: when present, the plan is still being scheduled.
+  deciding?: boolean;
+  times?: PlanTime[];
+  leadingTimeId?: number | null;
 };
 
 function initials(name: string): string {
@@ -79,8 +91,11 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
   // converted to an absolute ISO instant for the server's startsAt on submit.
   const [startsAtLocal, setStartsAtLocal] = useState("");
   const [location, setLocation] = useState("");
+  // Time organizer: extra candidate times beyond the first. When the host
+  // offers 2+ total, the plan opens "deciding" and fellows lean toward times.
+  const [extraTimes, setExtraTimes] = useState<string[]>([]);
 
-  const resetCompose = () => { setTitle(""); setEmoji(null); setStartsAtLocal(""); setLocation(""); setComposing(false); setEditingId(null); };
+  const resetCompose = () => { setTitle(""); setEmoji(null); setStartsAtLocal(""); setLocation(""); setExtraTimes([]); setComposing(false); setEditingId(null); };
 
   // datetime-local "YYYY-MM-DDTHH:mm" from an ISO instant, in the viewer's tz.
   const isoToLocalInput = (iso: string | null): string => {
@@ -103,10 +118,14 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
   // when creating, omit it.
   const save = useMutation({
     mutationFn: () => {
+      // All candidate times (first + extras), in order, as ISO instants.
+      const allTimes = [startsAtLocal, ...extraTimes].filter(Boolean).map((v) => new Date(v).toISOString());
+      const offeringMany = !editingId && allTimes.length >= 2;
       const body = {
         title: title.trim(),
         emoji: emoji || (editingId ? null : undefined),
-        startsAt: startsAtLocal ? new Date(startsAtLocal).toISOString() : (editingId ? null : undefined),
+        startsAt: offeringMany ? undefined : (startsAtLocal ? new Date(startsAtLocal).toISOString() : (editingId ? null : undefined)),
+        times: offeringMany ? allTimes : undefined,
         location: location.trim() || (editingId ? null : undefined),
       };
       return editingId
@@ -125,9 +144,22 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
     mutationFn: (id: number) => apiRequest("DELETE", `/api/fellow-plans/${id}`),
     onSuccess: invalidate,
   });
+  // Time organizer: lean toward one candidate time, and (host) resolve to a time.
+  const timeRsvp = useMutation({
+    mutationFn: ({ id, timeId, status }: { id: number; timeId: number; status: "coming" | "maybe" | null }) =>
+      apiRequest("PUT", `/api/fellow-plans/${id}/times/${timeId}/rsvp`, { status }),
+    onSuccess: invalidate,
+  });
+  const resolve = useMutation({
+    mutationFn: ({ id, timeId }: { id: number; timeId: number }) =>
+      apiRequest("POST", `/api/fellow-plans/${id}/resolve`, { timeId }),
+    onSuccess: invalidate,
+  });
 
   const toggleRsvp = (p: Plan, status: "coming" | "maybe") =>
     rsvp.mutate({ id: p.id, status: p.myRsvp === status ? null : status });
+  const toggleTime = (p: Plan, t: PlanTime, status: "coming" | "maybe") =>
+    timeRsvp.mutate({ id: p.id, timeId: t.id, status: t.myStatus === status ? null : status });
 
   // Share a plan link — mint the public token, then open the best share
   // surface (native sheet, Web Share, or clipboard). Whoever opens it (a
@@ -194,7 +226,9 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
               ))}
             </div>
             <label className="block text-[12px] mb-1 px-0.5" style={{ color: SAGE, fontFamily: FONT }}>
-              {t("plans.when_label", { defaultValue: "When? (optional)" })}
+              {editingId ? t("plans.when_label", { defaultValue: "When? (optional)" })
+                : extraTimes.length > 0 ? t("plans.offer_times_label", { defaultValue: "Offer a few times — your fellows lean toward what works" })
+                : t("plans.when_label", { defaultValue: "When? (optional)" })}
             </label>
             <input
               type="datetime-local"
@@ -203,6 +237,30 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
               className="w-full rounded-xl px-3.5 py-2.5 text-[14px] outline-none mb-2"
               style={{ ...inputStyle, colorScheme: "dark" }}
             />
+            {/* Extra candidate times (only when creating — the time organizer). */}
+            {!editingId && extraTimes.map((val, i) => (
+              <div key={i} className="flex items-center gap-2 mb-2">
+                <input
+                  type="datetime-local"
+                  value={val}
+                  onChange={(e) => setExtraTimes((arr) => arr.map((v, j) => j === i ? e.target.value : v))}
+                  className="flex-1 rounded-xl px-3.5 py-2.5 text-[14px] outline-none"
+                  style={{ ...inputStyle, colorScheme: "dark" }}
+                />
+                <button type="button" onClick={() => setExtraTimes((arr) => arr.filter((_, j) => j !== i))}
+                  aria-label={t("plans.remove_time", { defaultValue: "Remove time" })}
+                  className="shrink-0 rounded-full flex items-center justify-center" style={{ width: 30, height: 30, color: "rgba(182,210,188,0.6)", border: `1px solid ${CARD_B}` }}>
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+            {!editingId && startsAtLocal && extraTimes.length < 3 && (
+              <button type="button" onClick={() => setExtraTimes((arr) => [...arr, ""])}
+                className="w-full rounded-xl py-2 mb-2 text-[12.5px] font-medium inline-flex items-center justify-center gap-1.5"
+                style={{ color: "rgba(182,210,188,0.85)", border: `1px dashed ${CARD_B}`, fontFamily: FONT }}>
+                <Plus size={13} /> {t("plans.add_time", { defaultValue: "Offer another time" })}
+              </button>
+            )}
             <input
               value={location}
               onChange={(e) => setLocation(e.target.value)}
@@ -303,8 +361,65 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
                 </div>
               )}
 
+              {/* Time organizer — candidate times to converge on. The host
+                  picks; fellows lean Works/Maybe. The leading time grows greener. */}
+              {p.deciding && p.times && p.times.length > 0 && (
+                <div className="mt-2.5 flex flex-col gap-2">
+                  <p className="text-[12px]" style={{ color: SAGE, fontFamily: FONT }}>
+                    {p.isMine ? t("plans.finding_time_mine", { defaultValue: "Pick a time once your fellows weigh in." })
+                      : t("plans.finding_time", { defaultValue: "Which times work for you?" })}
+                  </p>
+                  {p.times.map((tm) => {
+                    const leading = p.leadingTimeId === tm.id && tm.comingCount > 0;
+                    const fill = Math.min(0.8, 0.10 + tm.comingCount * 0.18);
+                    const lbl = new Date(tm.startsAt).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+                    return (
+                      <div key={tm.id} className="rounded-2xl px-3.5 py-2.5" style={{ background: `rgba(46,107,64,${fill})`, border: `1px solid ${leading ? "rgba(111,175,133,0.55)" : CARD_B}`, transition: "background 0.4s" }}>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[13.5px] font-medium" style={{ color: WARM, fontFamily: FONT }}>🗓 {lbl}</span>
+                          {tm.comingPreview.length > 0 && (
+                            <div className="flex items-center shrink-0">
+                              {tm.comingPreview.slice(0, 4).map((c, i) => (
+                                <div key={c.userId} style={{ marginLeft: i === 0 ? 0 : -7 }}><Avatar name={c.name} url={c.avatarUrl} size={20} /></div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {p.isMine ? (
+                          <button type="button" disabled={resolve.isPending}
+                            onClick={() => { if (window.confirm(t("plans.resolve_confirm", { defaultValue: "Set the plan to this time?" }))) resolve.mutate({ id: p.id, timeId: tm.id }); }}
+                            className="mt-2 w-full rounded-full py-1.5 text-[12.5px] font-semibold transition-opacity active:scale-[0.98]"
+                            style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}>
+                            {t("plans.lets_do_this", { defaultValue: "Let's do this one" })}
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-2 mt-2">
+                            <button type="button" disabled={timeRsvp.isPending} onClick={() => toggleTime(p, tm, "coming")}
+                              className="flex-1 rounded-full py-1.5 text-[12.5px] font-semibold transition-opacity active:scale-[0.98]"
+                              style={tm.myStatus === "coming" ? { background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT } : { background: "rgba(200,212,192,0.08)", color: "#C8D4C0", border: `1px solid ${CARD_B}`, fontFamily: FONT }}>
+                              {t("plans.works", { defaultValue: "Works" })}
+                            </button>
+                            <button type="button" disabled={timeRsvp.isPending} onClick={() => toggleTime(p, tm, "maybe")}
+                              className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-opacity active:scale-[0.98]"
+                              style={tm.myStatus === "maybe" ? { background: "rgba(143,175,150,0.3)", color: WARM, border: "1px solid rgba(143,175,150,0.5)", fontFamily: FONT } : { background: "transparent", color: "rgba(182,210,188,0.7)", border: "1px solid rgba(143,175,150,0.22)", fontFamily: FONT }}>
+                              {t("plans.maybe", { defaultValue: "Maybe" })}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {(() => {
+                    const lead = p.leadingTimeId ? p.times!.find((tm) => tm.id === p.leadingTimeId) : null;
+                    if (!lead || lead.comingCount === 0) return null;
+                    const day = new Date(lead.startsAt).toLocaleDateString(undefined, { weekday: "long" });
+                    return <p className="text-[12px]" style={{ color: SAGE, fontFamily: FONT }}>{t("plans.looking_good", { day, defaultValue: `${day}'s looking good 🌿` })}</p>;
+                  })()}
+                </div>
+              )}
+
               {/* Coming row */}
-              {p.comingCount > 0 && (
+              {!p.deciding && p.comingCount > 0 && (
                 <div className="flex items-center gap-2 mt-2.5">
                   <div className="flex items-center">
                     {p.comingPreview.map((c, i) => (
@@ -320,8 +435,9 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
                 </div>
               )}
 
-              {/* RSVP control — fellows' plans only (host is implicitly attending) */}
-              {!p.isMine && (
+              {/* RSVP control — fellows' plans only (host is implicitly attending).
+                  Hidden while deciding — the per-time leanings stand in. */}
+              {!p.isMine && !p.deciding && (
                 <div className="flex items-center gap-2 mt-3">
                   <button
                     type="button"
