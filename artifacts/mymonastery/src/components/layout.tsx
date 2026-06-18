@@ -996,7 +996,7 @@ function OpeningSplash() {
   // The quote advances each time the quote slide comes up (every third open).
   const quote = SPLASH_QUOTES[Math.floor(splashOpenN / 3) % SPLASH_QUOTES.length]!;
   // Fellows' today progress — only fetched on the fellows variant.
-  const { data: walkData } = useQuery<{ companions: Array<{ userId: number; name: string | null; avatarUrl: string | null; progress: { anchors: Array<{ key: string; done: boolean }>; keptCount: number; totalCount: number; allKept: boolean } | null; progressLocked?: boolean }> }>({
+  const { data: walkData } = useQuery<{ companions: Array<{ userId: number; name: string | null; avatarUrl: string | null; progress: { anchors: Array<{ key: string; done: boolean }>; keptCount: number; totalCount: number; allKept: boolean } | null; progressLocked?: boolean; sabbath?: boolean }> }>({
     queryKey: ["/api/walk"],
     queryFn: () => apiRequest("GET", "/api/walk"),
     staleTime: 60_000,
@@ -1304,7 +1304,9 @@ function OpeningSplash() {
                     </div>
                   )}
                   <span className="flex-1 min-w-0 truncate text-[15px] font-medium" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{fn(c.name)}</span>
-                  {p && p.anchors.length > 0 ? (
+                  {c.sabbath ? (
+                    <span className="text-[16px] shrink-0" aria-hidden title="On a phone sabbath">🌙</span>
+                  ) : p && p.anchors.length > 0 ? (
                     // Only the first three dots are shared — bigger, calmer.
                     <span className="inline-flex items-center gap-[6px] shrink-0" aria-hidden>
                       {p.anchors.slice(0, 3).map((a) => (

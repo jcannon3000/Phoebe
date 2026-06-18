@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 import { WalkPartnerSheet, type WalkCompanion } from "@/components/WalkPartnerSheet";
 
 const WARM = "#F0EDE6";
@@ -19,6 +20,54 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 const CARD_BG = "rgba(46,107,64,0.12)";
 const CARD_B = "rgba(46,107,64,0.3)";
 const DOT_ON = "rgba(110,180,130,0.95)";
+
+// Phone sabbath — the days you rest from your phone. On those days fellows see
+// "on a sabbath" instead of "fell behind", so a quiet weekend isn't worrying.
+const DAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+function PhoneSabbathPicker() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [days, setDays] = useState<number[]>(() => user?.restDays ?? []);
+  useEffect(() => { if (Array.isArray(user?.restDays)) setDays(user!.restDays); }, [user?.restDays]);
+  const save = useMutation({
+    mutationFn: (next: number[]) => apiRequest("PUT", "/api/me/rest-days", { days: next }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }),
+  });
+  const toggle = (d: number) => {
+    const next = days.includes(d) ? days.filter((x) => x !== d) : [...days, d].sort((a, b) => a - b);
+    setDays(next);
+    save.mutate(next);
+  };
+  return (
+    <div className="rounded-2xl px-4 py-3 mb-3" style={{ background: CARD_BG, border: `1px solid ${CARD_B}` }}>
+      <div className="flex items-center gap-2">
+        <span style={{ fontSize: 15 }}>🌙</span>
+        <p className="text-[13px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>Phone sabbath</p>
+      </div>
+      <p className="text-[11.5px] mt-0.5 mb-2.5" style={{ color: SAGE, fontFamily: FONT }}>
+        Days you rest from your phone — fellows see “on a sabbath”, not “behind”.
+      </p>
+      <div className="flex items-center gap-1.5">
+        {DAY_LABELS.map((lab, d) => {
+          const on = days.includes(d);
+          return (
+            <button
+              key={d}
+              type="button"
+              onClick={() => toggle(d)}
+              aria-pressed={on}
+              aria-label={["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][d]}
+              className="flex-1 rounded-full py-2 text-[12.5px] font-semibold transition-opacity active:scale-[0.97]"
+              style={{ background: on ? "rgba(46,107,64,0.85)" : "rgba(143,175,150,0.1)", color: on ? WARM : SAGE, border: `1px solid ${on ? "rgba(110,180,130,0.6)" : "rgba(143,175,150,0.25)"}`, fontFamily: FONT }}
+            >
+              {lab}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 type Lite = { pairId: number; userId: number; name: string | null; avatarUrl: string | null; intention: string | null };
 type Paused = Lite & { pausedByMe: boolean };
@@ -101,7 +150,10 @@ export function WalkTogether({ hideCompanions = false }: { hideCompanions?: bool
   // Nothing to show and nothing to start → render nothing (clean page). When
   // companions live on the fellow cards, they don't keep this section alive.
   if ((hideCompanions || companions.length === 0) && incoming.length === 0 && outgoing.length === 0 && paused.length === 0 && eligible.length === 0) {
-    return null;
+    // On the People page the companions live on the fellow cards, so this section
+    // is otherwise empty — but the user should still be able to set their phone
+    // sabbath here when they have fellows.
+    return companions.length > 0 ? <div className="mb-6"><PhoneSabbathPicker /></div> : null;
   }
 
   const addInvite = (id: number) => { invite.mutate(id); setOptInvited((s) => new Set(s).add(id)); };
@@ -221,6 +273,8 @@ export function WalkTogether({ hideCompanions = false }: { hideCompanions?: bool
           </button>
         )
       )}
+
+      <PhoneSabbathPicker />
 
       <WalkPartnerSheet companion={openCompanion} onClose={() => setOpenId(null)} />
     </div>

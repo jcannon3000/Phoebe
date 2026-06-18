@@ -2042,6 +2042,8 @@ export async function migrate() {
     // Custom rituals (user-defined daily anchors) + per-day state, synced across
     // devices — an opaque blob owned by the client (lib/customAnchors).
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_anchors JSONB`);
+    // Phone-sabbath rest days (weekday numbers 0=Sun..6=Sat).
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS rest_days JSONB`);
 
     // Master notifications switch (Settings → Notifications). Default
     // true so existing users keep their notifications; sendPushToUser

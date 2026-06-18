@@ -2222,6 +2222,25 @@ router.put("/me/custom-anchors", async (req, res): Promise<void> => {
   }
 });
 
+// ── Phone sabbath (rest days) ────────────────────────────────────────────────
+// Weekday numbers (0=Sun..6=Sat) the user rests from their phone. On those days
+// fellows see a calm "on a sabbath" state instead of "fell behind". Body:
+// { days: number[] }.
+router.put("/me/rest-days", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const raw = (req.body as { days?: unknown })?.days;
+  if (!Array.isArray(raw)) { res.status(400).json({ error: "days must be an array" }); return; }
+  const days = [...new Set(raw.filter((d): d is number => typeof d === "number" && Number.isInteger(d) && d >= 0 && d <= 6))].sort();
+  try {
+    await db.update(usersTable).set({ restDays: days }).where(eq(usersTable.id, sessionUserId));
+    res.json({ days });
+  } catch (err) {
+    console.error("[/me/rest-days PUT] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // ── Master notifications switch ──────────────────────────────────────
 // Settings → Notifications. Body: { enabled: boolean }. When off,
 // sendPushToUser suppresses every push for this user. Returns the saved

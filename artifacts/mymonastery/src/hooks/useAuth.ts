@@ -65,6 +65,8 @@ export interface AuthUser {
   // Custom rituals + per-day state, synced across devices (lib/customAnchors).
   // An opaque blob the client owns; null = none synced yet.
   customAnchors: { defs: unknown[]; log?: Record<string, unknown>; updatedAt?: number } | null;
+  // Phone-sabbath rest days (weekday numbers 0=Sun..6=Sat); [] = none.
+  restDays: number[];
   // Master notifications switch (Settings → Notifications).
   pushEnabled: boolean;
   // Master switch for non-essential email (Settings → Emails / the

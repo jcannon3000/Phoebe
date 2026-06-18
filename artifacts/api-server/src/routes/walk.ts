@@ -156,6 +156,19 @@ router.get("/walk", requireBeta, async (req, res): Promise<void> => {
 
   const people = await peopleByIds(fellowIds);
 
+  // Phone-sabbath: which fellows are resting today (a weekday they chose), in
+  // THEIR timezone — so a quiet rest day shows as "on a sabbath", not "behind".
+  const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const restRows = await db.select({ id: usersTable.id, tz: usersTable.timezone, restDays: usersTable.restDays })
+    .from(usersTable).where(inArray(usersTable.id, fellowIds));
+  const sabbathToday = new Set<number>();
+  for (const r of restRows) {
+    const days = Array.isArray(r.restDays) ? r.restDays : [];
+    if (days.length === 0) continue;
+    const wd = WEEKDAYS.indexOf(new Date().toLocaleDateString("en-US", { timeZone: r.tz || "UTC", weekday: "short" }));
+    if (days.includes(wd)) sabbathToday.add(r.id);
+  }
+
   // Grace (first week of the FELLOWSHIP) → progress always shown; after that,
   // only with a recent Heart to Heart.
   const nowMs = Date.now();
@@ -180,6 +193,9 @@ router.get("/walk", requireBeta, async (req, res): Promise<void> => {
       // progress is null when locked — still your companion, but you need a recent
       // 1:1 prayer to see today's dots again.
       progress, progressLocked: !canSeeProgress,
+      // True when today is one of their chosen phone-sabbath days — the UI shows
+      // a calm "on a sabbath" state instead of "behind".
+      sabbath: sabbathToday.has(pid),
       lastNudge: lastFromThem ? { kind: lastFromThem.kind, at: lastFromThem.createdAt } : null,
     };
   }))).filter((x): x is NonNullable<typeof x> => x !== null);

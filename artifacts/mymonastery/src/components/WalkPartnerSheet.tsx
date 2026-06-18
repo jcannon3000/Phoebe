@@ -25,6 +25,9 @@ export type WalkCompanion = {
   // haven't prayed a 1:1 Heart to Heart recently — so today's dots are hidden
   // until you reconnect.
   progressLocked?: boolean;
+  // True when today is one of their chosen phone-sabbath days — show a calm
+  // "taking a sabbath" state instead of progress/behind.
+  sabbath?: boolean;
   lastNudge: { kind: string; at: string } | null;
 };
 
@@ -90,6 +93,7 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
   const first = name.split(/\s+/)[0] || name;
   const progress = companion?.progress ?? null;
   const locked = !!companion?.progressLocked;
+  const onSabbath = !!companion?.sabbath;
   // Accountability sharing shows only the FIRST THREE dots — never the full
   // count of someone's practices. You can send encouragement once those three
   // shared dots are kept (all of the shown set).
@@ -137,7 +141,19 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
               <p className="text-[13.5px] italic mt-1 mb-1" style={{ color: "rgba(182,210,188,0.8)", fontFamily: "Georgia, serif" }}>“{companion.intention}”</p>
             )}
 
-            {locked ? (
+            {onSabbath ? (
+              /* On a phone sabbath — a calm rest state, no progress, no nudge, so
+                 a quiet day reads as rest rather than "fell behind". */
+              <div className="mt-5 mb-2 rounded-2xl px-4 py-6 text-center" style={{ background: "rgba(46,107,64,0.10)", border: `1px solid ${CARD_B}` }}>
+                <div style={{ fontSize: 30 }}>🌙</div>
+                <p className="text-[15px] mt-2.5" style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+                  {first} is taking a phone sabbath today.
+                </p>
+                <p className="text-[12.5px] mt-2" style={{ color: SAGE, fontFamily: FONT }}>
+                  Resting on purpose — nothing to worry about. 🌿
+                </p>
+              </div>
+            ) : locked ? (
               /* Grace week is over and no recent Heart to Heart — dots are hidden
                  until they reconnect 1:1. A gentle nudge toward prayer, not a wall. */
               <div className="mt-5 mb-2 rounded-2xl px-4 py-5 text-center" style={{ background: "rgba(46,107,64,0.12)", border: `1px solid ${CARD_B}` }}>

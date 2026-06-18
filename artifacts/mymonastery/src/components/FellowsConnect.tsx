@@ -47,7 +47,7 @@ function Pill({ label, onClick, kind = "solid", disabled }: { label: string; onC
 // status line ride the second line of their fellow card.
 const DOT_ON = "rgba(110,180,130,0.95)";
 type WalkAnchorLite = { key: string; done: boolean };
-type WalkCompanionLite = { userId: number; progress: { keptCount: number; totalCount: number; allKept: boolean; anchors: WalkAnchorLite[] } | null; progressLocked?: boolean };
+type WalkCompanionLite = { userId: number; progress: { keptCount: number; totalCount: number; allKept: boolean; anchors: WalkAnchorLite[] } | null; progressLocked?: boolean; sabbath?: boolean };
 // Accountability sharing shows only the FIRST THREE dots for everyone — not the
 // full count of someone's practices. Bigger, calmer dots; three is the shared
 // goal regardless of how many anchors a person actually keeps.
@@ -219,14 +219,17 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
     const w = walkByUser.get(f.userId);
     const p = w?.progress ?? null;
     const locked = !!w?.progressLocked;
+    // On a phone sabbath today → show a calm rest state, never "behind".
+    const onSabbath = !!w?.sabbath;
     // Only the first three dots are shared. Encourage unlocks once those three
     // dots are kept (all of the shown set) — not based on their full practice
-    // count, which we never reveal.
+    // count, which we never reveal. No encouraging while they rest.
     const shown = p?.anchors?.slice(0, SHARED_DOTS) ?? [];
     const keptShown = shown.filter((a) => a.done).length;
-    const keptEnough = shown.length > 0 && keptShown === shown.length;
+    const keptEnough = !onSabbath && shown.length > 0 && keptShown === shown.length;
     // Second line: the three shared dots + a status line (never reveals totals).
     const statusLine = !w ? null
+      : onSabbath ? t("fellows_c.walk_sabbath", { defaultValue: "🌙 On a phone sabbath" })
       : locked ? t("fellows_c.walk_locked", { defaultValue: "💚 Pray 1:1 to see today" })
       : shown.length === 0 ? t("fellows_c.walk_walking", { defaultValue: "Walking with you" })
       : keptEnough ? t("fellows_c.walk_all_kept", { defaultValue: "Kept today 🌿" })
@@ -238,7 +241,7 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
           <p className="truncate text-[15px] font-medium" style={{ color: WARM, fontFamily: FONT }}>{f.name ?? "Someone"}</p>
           {statusLine && (
             <div className="flex items-center gap-2 mt-0.5">
-              {!locked && p && p.anchors.length > 0 && <Dots anchors={p.anchors} />}
+              {!locked && !onSabbath && p && p.anchors.length > 0 && <Dots anchors={p.anchors} />}
               <span className="text-[12px] truncate" style={{ color: SAGE, fontFamily: FONT }}>{statusLine}</span>
             </div>
           )}
