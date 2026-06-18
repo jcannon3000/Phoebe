@@ -694,6 +694,11 @@ export async function runPrayerRenewalNudgeSender(opts: { forceNow?: boolean } =
         isNull(prayerRequestsTable.renewalNudgeSentAt),
         eq(prayerRequestsTable.isAnswered, false),
         sql`${prayerRequestsTable.expiresAt} IS NOT NULL`,
+        // Life events get their own "how did it go?" follow-up on the event
+        // day — that's the only notification they should fire. Skip the
+        // "wrapping up tomorrow" renewal nudge for them so the owner isn't
+        // double-pinged. (IS DISTINCT FROM keeps NULL-kind regular requests.)
+        sql`${prayerRequestsTable.kind} IS DISTINCT FROM 'life-event'`,
       ),
     );
 
