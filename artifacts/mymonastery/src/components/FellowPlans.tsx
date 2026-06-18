@@ -151,10 +151,12 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
     onSuccess: invalidate,
   });
   const resolve = useMutation({
-    mutationFn: ({ id, timeId }: { id: number; timeId: number }) =>
-      apiRequest("POST", `/api/fellow-plans/${id}/resolve`, { timeId }),
+    mutationFn: ({ id, timeId, promoteMaybe }: { id: number; timeId: number; promoteMaybe?: boolean }) =>
+      apiRequest("POST", `/api/fellow-plans/${id}/resolve`, { timeId, promoteMaybe: promoteMaybe ?? false }),
     onSuccess: invalidate,
   });
+  // Host's "bring the maybes too" choice when locking in a time.
+  const [promoteMaybe, setPromoteMaybe] = useState(false);
 
   const toggleRsvp = (p: Plan, status: "coming" | "maybe") =>
     rsvp.mutate({ id: p.id, status: p.myRsvp === status ? null : status });
@@ -365,10 +367,21 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
                   picks; fellows lean Works/Maybe. The leading time grows greener. */}
               {p.deciding && p.times && p.times.length > 0 && (
                 <div className="mt-2.5 flex flex-col gap-2">
-                  <p className="text-[12px]" style={{ color: SAGE, fontFamily: FONT }}>
-                    {p.isMine ? t("plans.finding_time_mine", { defaultValue: "Pick a time once your fellows weigh in." })
-                      : t("plans.finding_time", { defaultValue: "Which times work for you?" })}
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[12px]" style={{ color: SAGE, fontFamily: FONT }}>
+                      {p.isMine ? t("plans.finding_time_mine", { defaultValue: "Pick a time once your fellows weigh in." })
+                        : t("plans.finding_time", { defaultValue: "Which times work for you?" })}
+                    </p>
+                    {p.isMine && (
+                      <button type="button" onClick={() => setPromoteMaybe((v) => !v)}
+                        className="shrink-0 text-[11.5px] font-medium px-2 py-0.5 rounded-full"
+                        style={promoteMaybe
+                          ? { background: "rgba(143,175,150,0.25)", color: WARM, border: "1px solid rgba(143,175,150,0.5)", fontFamily: FONT }
+                          : { background: "transparent", color: "rgba(182,210,188,0.6)", border: `1px solid ${CARD_B}`, fontFamily: FONT }}>
+                        {promoteMaybe ? t("plans.maybes_in", { defaultValue: "Maybes ✓" }) : t("plans.bring_maybes", { defaultValue: "Bring maybes" })}
+                      </button>
+                    )}
+                  </div>
                   {p.times.map((tm) => {
                     const leading = p.leadingTimeId === tm.id && tm.comingCount > 0;
                     const fill = Math.min(0.8, 0.10 + tm.comingCount * 0.18);
@@ -387,7 +400,7 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
                         </div>
                         {p.isMine ? (
                           <button type="button" disabled={resolve.isPending}
-                            onClick={() => { if (window.confirm(t("plans.resolve_confirm", { defaultValue: "Set the plan to this time?" }))) resolve.mutate({ id: p.id, timeId: tm.id }); }}
+                            onClick={() => { if (window.confirm(t("plans.resolve_confirm", { defaultValue: "Set the plan to this time?" }))) resolve.mutate({ id: p.id, timeId: tm.id, promoteMaybe }); }}
                             className="mt-2 w-full rounded-full py-1.5 text-[12.5px] font-semibold transition-opacity active:scale-[0.98]"
                             style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}>
                             {t("plans.lets_do_this", { defaultValue: "Let's do this one" })}
