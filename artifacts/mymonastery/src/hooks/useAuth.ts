@@ -62,6 +62,9 @@ export interface AuthUser {
   // HOME_LAYOUT_VERSION is ignored (treated as the new default), which is how
   // a global home reset rolls out without a destructive migration.
   homeLayout: { order: string[]; hidden: string[]; v?: number } | null;
+  // Custom rituals + per-day state, synced across devices (lib/customAnchors).
+  // An opaque blob the client owns; null = none synced yet.
+  customAnchors: { defs: unknown[]; log?: Record<string, unknown>; updatedAt?: number } | null;
   // Master notifications switch (Settings → Notifications).
   pushEnabled: boolean;
   // Master switch for non-essential email (Settings → Emails / the

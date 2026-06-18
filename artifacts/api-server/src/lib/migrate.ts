@@ -2039,6 +2039,9 @@ export async function migrate() {
     // NULL = not customized (dashboard derives a default from
     // feed_first_home, preserving the existing layout).
     await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS home_layout JSONB`);
+    // Custom rituals (user-defined daily anchors) + per-day state, synced across
+    // devices — an opaque blob owned by the client (lib/customAnchors).
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_anchors JSONB`);
 
     // Master notifications switch (Settings → Notifications). Default
     // true so existing users keep their notifications; sendPushToUser

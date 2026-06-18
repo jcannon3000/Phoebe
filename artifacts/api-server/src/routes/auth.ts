@@ -244,6 +244,7 @@ router.get("/auth/me", async (req, res) => {
     homeFeedId: number | null;
     feedFirstHome: boolean;
     homeLayout: { order: string[]; hidden: string[]; v?: number } | null;
+    customAnchors: { defs: unknown[]; log: Record<string, unknown>; updatedAt?: number } | null;
     pushEnabled: boolean;
     emailEnabled: boolean;
   };
@@ -316,6 +317,8 @@ router.get("/auth/me", async (req, res) => {
     // Home-screen layout (Customize page). null = not customized; the
     // dashboard derives a default from feedFirstHome.
     homeLayout: u.homeLayout ?? null,
+    // Custom rituals + per-day state, synced across devices (lib/customAnchors).
+    customAnchors: u.customAnchors ?? null,
     // Master notifications switch (Settings → Notifications).
     pushEnabled: u.pushEnabled ?? true,
     // Master switch for non-essential email (Settings → Emails / the

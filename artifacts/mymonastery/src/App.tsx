@@ -29,7 +29,8 @@ import { PullToRefresh } from "@/components/PullToRefresh";
 import { PageFadeOverlay } from "@/components/PageFadeOverlay";
 import { WidgetSync } from "@/lib/widgetSync";
 import { PodcastPlayerProvider } from "@/components/PodcastPlayer";
-import { Component, useEffect, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
+import { Component, useEffect, useRef, lazy, Suspense, type ReactNode, type ErrorInfo } from "react";
+import { syncCustomAnchorsFromServer, type CustomAnchorSnapshot } from "@/lib/customAnchors";
 import { isChunkLoadError, recoverFromStaleChunk } from "@/lib/staleChunk";
 
 // Scroll the window to (0, 0) on every route change. Without this,
@@ -69,6 +70,23 @@ function PendingPrayerInviteRedirect() {
       setLocation(`/prayer-dialogue/join/${token}`);
     }
   }, [user, isLoading, location, setLocation]);
+  return null;
+}
+
+// Sync the user's custom rituals from the server once they're logged in, so a
+// ritual created on one device shows on every device (the "I see it on the
+// phone but not the web" gap). localStorage stays the instant cache; this pulls
+// the authoritative snapshot down (or migrates existing local rituals up the
+// first time). Runs once per signed-in user.
+function CustomAnchorServerSync() {
+  const { user, isLoading } = useAuthForGate();
+  const syncedForRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (isLoading || !user) return;
+    if (syncedForRef.current === user.id) return;
+    syncedForRef.current = user.id;
+    syncCustomAnchorsFromServer(user.customAnchors as unknown as CustomAnchorSnapshot | null);
+  }, [user, isLoading]);
   return null;
 }
 
@@ -1099,6 +1117,7 @@ function App() {
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <ScrollToTopOnNavigate />
             <PendingPrayerInviteRedirect />
+            <CustomAnchorServerSync />
             <ReflectionReturnRedirect />
             <ReflectionPreheater />
             <NativeJournalOpener />

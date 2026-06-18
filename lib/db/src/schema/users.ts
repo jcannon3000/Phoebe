@@ -252,6 +252,11 @@ export const usersTable = pgTable("users", {
   // off. NULL = the user hasn't customized, so the dashboard derives a
   // sensible default from feed_first_home (preserving today's layout).
   homeLayout: jsonb("home_layout").$type<{ order: string[]; hidden: string[] }>(),
+  // Custom rituals (user-defined daily anchors) + their per-day state, an
+  // opaque blob the client owns (lib/customAnchors CustomAnchorSnapshot). Stored
+  // here so a person's rituals are their DATA and sync across devices (phone /
+  // web), with localStorage as the offline cache. NULL = none synced yet.
+  customAnchors: jsonb("custom_anchors").$type<{ defs: unknown[]; log: Record<string, unknown>; updatedAt?: number }>(),
   // BCP-47 locale code (e.g. "en", "es"). Drives i18next on the client
   // and template selection in pushSender / email senders. Beta users
   // can flip this to "es" via Settings → Language; non-beta accounts

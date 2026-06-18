@@ -3,10 +3,15 @@
 // tick it off → it slides into Done and counts as a dot, exactly like the built-
 // in optional practices. No special logic — it's purely "did I do this today."
 //
-// Stored per-device in localStorage (definitions + per-day completion), mirroring
-// the officePrefs / practiceCompletion pattern: instant, offline-safe, no server
-// round-trip. Two custom events let mounted surfaces (useRhythmState, the create
-// UI) re-read live: one when the LIST changes, one when a CHECK toggles.
+// Stored in localStorage (definitions + per-day state) as the instant, offline-
+// safe cache AND mirrored to the SERVER (users.custom_anchors) so a person's
+// rituals live in their data and show on every device — phone, web, anywhere.
+// localStorage is written first (synchronous, never wiped); a debounced push
+// syncs it up, and on login the server snapshot syncs back down. Two custom
+// events let mounted surfaces (useRhythmState, the create UI) re-read live: one
+// when the LIST changes, one when a CHECK toggles.
+
+import { apiRequest } from "@/lib/queryClient";
 
 // Where in the day this practice belongs — drives where its card slots into the
 // daily rhythm (a morning walk near Morning Prayer, an evening stretch near the
@@ -255,4 +260,123 @@ export function logReadingToday(id: string, amount: number): void {
   } catch {
     /* non-fatal */
   }
+}
+
+// ── Server sync ───────────────────────────────────────────────────────────────
+// A person's rituals are their DATA, not a device setting: they must show on
+// every device (the "I see my custom ritual on the phone but not the web" bug).
+// We keep localStorage as the instant, offline-safe cache and mirror the whole
+// thing — definitions + today's per-day state + reading totals — to the server
+// (users.custom_anchors, GET via /auth/me, PUT /api/me/custom-anchors). On login
+// the server snapshot syncs DOWN; every local change pushes UP (debounced).
+
+export type CustomAnchorSnapshot = {
+  defs: CustomAnchor[];
+  // Per-anchor state, keyed by anchor id: today's done/skip day-stamps, today's
+  // reading log ("ymd|amount"), and the all-time reading total.
+  log: Record<string, { done?: string; skip?: string; readToday?: string; readTotal?: number }>;
+  updatedAt: number;
+};
+
+// True only while we're WRITING the server snapshot into localStorage, so the
+// change-events that fire during import don't immediately push it back up.
+let suppressPush = false;
+
+/** Build the full snapshot (defs + per-day state) from localStorage. */
+export function exportCustomAnchorSnapshot(): CustomAnchorSnapshot {
+  const defs = getCustomAnchors();
+  const log: CustomAnchorSnapshot["log"] = {};
+  for (const a of defs) {
+    const entry: { done?: string; skip?: string; readToday?: string; readTotal?: number } = {};
+    try {
+      const done = localStorage.getItem(DONE_PREFIX + a.id); if (done) entry.done = done;
+      const skip = localStorage.getItem(SKIP_PREFIX + a.id); if (skip) entry.skip = skip;
+      const rt = localStorage.getItem(READ_TODAY_PREFIX + a.id); if (rt) entry.readToday = rt;
+      const total = localStorage.getItem(READ_TOTAL_PREFIX + a.id);
+      if (total) { const n = Number(total); if (Number.isFinite(n) && n > 0) entry.readTotal = n; }
+    } catch { /* ignore */ }
+    if (Object.keys(entry).length > 0) log[a.id] = entry;
+  }
+  return { defs, log, updatedAt: Date.now() };
+}
+
+function setOrRemove(key: string, value: string | undefined): void {
+  try {
+    if (value == null || value === "") localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch { /* ignore */ }
+}
+
+/** Write a server snapshot DOWN into localStorage (server is authoritative). */
+export function importCustomAnchorSnapshot(snap: CustomAnchorSnapshot | null | undefined): void {
+  if (!snap || !Array.isArray(snap.defs)) return;
+  suppressPush = true;
+  try {
+    // Replace the definition list (handles cross-device adds/removes), then
+    // re-stamp each anchor's per-day state + reading total.
+    saveDefs(snap.defs);
+    for (const a of snap.defs) {
+      const e = snap.log?.[a.id] ?? {};
+      setOrRemove(DONE_PREFIX + a.id, e.done);
+      setOrRemove(SKIP_PREFIX + a.id, e.skip);
+      setOrRemove(READ_TODAY_PREFIX + a.id, e.readToday);
+      setOrRemove(READ_TOTAL_PREFIX + a.id, e.readTotal != null ? String(e.readTotal) : undefined);
+    }
+    window.dispatchEvent(new Event(CUSTOM_ANCHORS_EVENT));
+    window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
+  } finally {
+    suppressPush = false;
+  }
+}
+
+let pushTimer: ReturnType<typeof setTimeout> | null = null;
+function doPush(): void {
+  try {
+    apiRequest("PUT", "/api/me/custom-anchors", exportCustomAnchorSnapshot()).catch(() => { /* best-effort */ });
+  } catch { /* ignore */ }
+}
+/** Debounced push of the local snapshot up to the server. */
+export function pushCustomAnchors(): void {
+  if (suppressPush) return;
+  if (pushTimer) clearTimeout(pushTimer);
+  pushTimer = setTimeout(() => { pushTimer = null; doPush(); }, 800);
+}
+
+/**
+ * Reconcile with the server snapshot at login by UNION-MERGING definitions by
+ * id — so a ritual never disappears, whether it was created on this device or
+ * another. Server state wins for shared ids (most recent cross-device truth);
+ * local-only rituals are kept and pushed up. If the merge added anything the
+ * server didn't have (incl. the first-time migration of existing local
+ * rituals), the union is pushed up so the person's data ends up complete.
+ */
+export function syncCustomAnchorsFromServer(server: CustomAnchorSnapshot | null | undefined): void {
+  const localDefs = getCustomAnchors();
+  const serverDefs = (Array.isArray(server?.defs) ? server!.defs : []) as CustomAnchor[];
+  if (serverDefs.length === 0 && localDefs.length === 0) return; // nothing anywhere
+
+  // Union by id: server defs first (authoritative order), then any local-only.
+  const byId = new Map<string, CustomAnchor>();
+  for (const d of serverDefs) if (d && typeof d.id === "string") byId.set(d.id, d);
+  for (const d of localDefs) if (!byId.has(d.id)) byId.set(d.id, d);
+  const mergedDefs = Array.from(byId.values());
+
+  // Merge per-day state: local first, server overriding shared ids.
+  const localLog = exportCustomAnchorSnapshot().log;
+  const serverLog = (server?.log && typeof server.log === "object" ? server.log : {}) as CustomAnchorSnapshot["log"];
+  const mergedLog = { ...localLog, ...serverLog };
+
+  importCustomAnchorSnapshot({ defs: mergedDefs, log: mergedLog, updatedAt: Date.now() });
+
+  // If the union added anything beyond what the server had, push it up so the
+  // server holds the complete set (covers the first-time migration too).
+  if (mergedDefs.length > serverDefs.length) doPush();
+}
+
+// Any local change (list add/remove via saveDefs, or a check/skip/reading log)
+// fires one of these events — mirror it up to the server (suppressed during a
+// server→local import so it doesn't echo).
+if (typeof window !== "undefined") {
+  window.addEventListener(CUSTOM_ANCHORS_EVENT, pushCustomAnchors);
+  window.addEventListener(CUSTOM_DONE_EVENT, pushCustomAnchors);
 }

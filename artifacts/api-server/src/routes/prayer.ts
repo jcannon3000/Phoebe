@@ -2192,6 +2192,36 @@ router.put("/me/home-layout", async (req, res): Promise<void> => {
   }
 });
 
+// ── Custom rituals (user-defined daily anchors) ──────────────────────────────
+// Backs lib/customAnchors server sync so a person's rituals are their DATA and
+// show on every device, not just where they were created. Body is the client's
+// opaque snapshot { defs: [...], log: {...}, updatedAt }. We don't interpret it
+// (the client owns the shape) — we only sanity-cap the size and store it.
+router.put("/me/custom-anchors", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const body = req.body as { defs?: unknown; log?: unknown; updatedAt?: unknown };
+  if (!body || !Array.isArray(body.defs)) { res.status(400).json({ error: "defs must be an array" }); return; }
+  // Guardrails: cap the ritual count (the client caps at 8) and the serialized
+  // size so a runaway client can't bloat the row.
+  if (body.defs.length > 64) { res.status(400).json({ error: "too many rituals" }); return; }
+  const snapshot = {
+    defs: body.defs,
+    log: (body.log && typeof body.log === "object") ? body.log as Record<string, unknown> : {},
+    ...(typeof body.updatedAt === "number" ? { updatedAt: body.updatedAt } : {}),
+  };
+  try {
+    if (JSON.stringify(snapshot).length > 64_000) { res.status(413).json({ error: "snapshot too large" }); return; }
+  } catch { res.status(400).json({ error: "invalid snapshot" }); return; }
+  try {
+    await db.update(usersTable).set({ customAnchors: snapshot }).where(eq(usersTable.id, sessionUserId));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[/me/custom-anchors PUT] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 // ── Master notifications switch ──────────────────────────────────────
 // Settings → Notifications. Body: { enabled: boolean }. When off,
 // sendPushToUser suppresses every push for this user. Returns the saved
