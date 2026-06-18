@@ -53,6 +53,11 @@ async function openMic(): Promise<{ stream: MediaStream; cleanup: () => void }> 
     const AC = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AC) return { stream: raw, cleanup: stopRaw };
     const ctx = new AC();
+    // A suspended context pulls no audio — the graph would record pure silence.
+    // Resume it (we're inside the record tap), and if it won't run, fall back
+    // to the raw constrained stream rather than send a silent prayer.
+    try { if (ctx.state === "suspended") await ctx.resume(); } catch { /* ignore */ }
+    if (ctx.state !== "running") { try { void ctx.close(); } catch { /* ignore */ } return { stream: raw, cleanup: stopRaw }; }
     const source = ctx.createMediaStreamSource(raw);
     const hp = ctx.createBiquadFilter();
     hp.type = "highpass"; hp.frequency.value = 85; // shed room rumble
@@ -81,8 +86,15 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
   const cleanupRef = useRef<(() => void) | null>(null);
   const startedRef = useRef(0);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const busyRef = useRef(false);
 
-  useEffect(() => () => { if (tickRef.current) clearInterval(tickRef.current); }, []);
+  // On unmount, tear everything down — clear the interval, stop the recorder,
+  // and release the mic/audio graph so the mic light never lingers.
+  useEffect(() => () => {
+    if (tickRef.current) clearInterval(tickRef.current);
+    try { recRef.current?.stop(); } catch { /* ignore */ }
+    cleanupRef.current?.();
+  }, []);
 
   if (!voiceSupported()) return null;
 
@@ -106,6 +118,8 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
   };
 
   const start = async () => {
+    if (busyRef.current || state !== "idle") return; // no re-entry before the UI flips to "rec"
+    busyRef.current = true;
     try {
       const { stream, cleanup } = await openMic();
       cleanupRef.current = cleanup;
@@ -115,6 +129,7 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
       rec.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
       rec.onstop = () => {
         cleanupRef.current?.(); cleanupRef.current = null;
+        busyRef.current = false;
         const durationMs = Math.min(MAX_MS, Date.now() - startedRef.current);
         const blob = new Blob(chunks, { type: rec.mimeType || mime || "audio/mp4" });
         if (blob.size > 0) void send(blob, durationMs); else setState("idle");
@@ -129,7 +144,11 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
         setRemaining(Math.max(0, (MAX_MS - elapsed) / 1000));
         if (elapsed >= MAX_MS) stop();
       }, 80);
-    } catch { setState("error"); setTimeout(() => setState("idle"), 3000); }
+    } catch {
+      busyRef.current = false;
+      cleanupRef.current?.(); cleanupRef.current = null;
+      setState("error"); setTimeout(() => setState("idle"), 3000);
+    }
   };
 
   if (state === "sent") return <span className="text-[12px] font-semibold" style={{ color: "#A8C5A0", fontFamily: FONT }}>Sent 🌿</span>;
@@ -173,6 +192,7 @@ type InMemo = { id: number; senderId: number; name: string | null; avatarUrl: st
 export function VoiceMemoInbox() {
   const qc = useQueryClient();
   const [playingId, setPlayingId] = useState<number | null>(null);
+  const [failedId, setFailedId] = useState<number | null>(null);
   const [progress, setProgress] = useState(0); // 0..1 for the playing memo
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { data } = useQuery<{ memos: InMemo[] }>({
@@ -190,6 +210,7 @@ export function VoiceMemoInbox() {
   const play = async (m: InMemo) => {
     if (playingId) return; // one at a time
     setPlayingId(m.id);
+    setFailedId(null);
     setProgress(0);
     try {
       const buf = await decryptVoice({ ciphertext: m.ciphertext, iv: m.iv, ephemeralPublicJwk: m.ephemeralPublicJwk });
@@ -212,7 +233,11 @@ export function VoiceMemoInbox() {
       audio.onended = cleanup;
       audio.onerror = cleanup;
       await audio.play();
-    } catch { audioRef.current = null; setPlayingId(null); setProgress(0); }
+    } catch {
+      // Couldn't decrypt/play (e.g. it was encrypted to a key this device no
+      // longer holds). Surface it rather than resetting silently.
+      audioRef.current = null; setPlayingId(null); setProgress(0); setFailedId(m.id);
+    }
   };
 
   return (
@@ -239,7 +264,9 @@ export function VoiceMemoInbox() {
               </span>
               <div className="relative z-10 flex-1 min-w-0">
                 <p className="text-[14px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{first} sent a voice prayer</p>
-                <p className="text-[12px]" style={{ color: SAGE, fontFamily: FONT }}>{isPlaying ? "Playing… it fades after this" : `Tap to listen · ${sec}s · then it's gone`}</p>
+                <p className="text-[12px]" style={{ color: failedId === m.id ? CLAY : SAGE, fontFamily: FONT }}>
+                  {failedId === m.id ? "Couldn't open this one" : isPlaying ? "Playing… it fades after this" : `Tap to listen · ${sec}s · then it's gone`}
+                </p>
               </div>
               <span className="relative z-10 shrink-0 rounded-full flex items-center justify-center" style={{ width: 34, height: 34, background: "rgba(46,107,64,0.85)", color: WARM }}>
                 {isPlaying

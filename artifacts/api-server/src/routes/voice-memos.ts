@@ -48,7 +48,13 @@ router.post("/keys/public", async (req, res): Promise<void> => {
 });
 
 // ─── GET /api/keys/public/:userId — a fellow's public key (to encrypt to them) ─
-router.get("/keys/public/:userId", async (req, res): Promise<void> => {
+router.get("/keys/public/:userId", rateLimit({
+  name: "voice_key_fetch",
+  max: 120,
+  windowMs: 60 * 60 * 1000,
+  keyFn: byUser,
+  message: "Slow down a moment.",
+}), async (req, res): Promise<void> => {
   const me = getUserId(req);
   if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
   const userId = Number(req.params.userId);
@@ -118,7 +124,13 @@ router.post("/voice-memos", rateLimit({
 });
 
 // ─── GET /api/voice-memos — my unheard received memos (opaque ciphertext) ─────
-router.get("/voice-memos", async (req, res): Promise<void> => {
+router.get("/voice-memos", rateLimit({
+  name: "voice_memo_inbox",
+  max: 240,
+  windowMs: 60 * 60 * 1000,
+  keyFn: byUser,
+  message: "Slow down a moment.",
+}), async (req, res): Promise<void> => {
   const me = getUserId(req);
   if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
   const rows = await db.select({

@@ -28,7 +28,9 @@ export const fellowPlanRsvpsTable = pgTable(
   },
   (t) => ({
     // Partial so per-time rows don't collide with the one whole-plan row.
-    uniqPlanUser: uniqueIndex("uniq_fellow_plan_rsvp_plan_user").on(t.planId, t.userId).where(sql`${t.planTimeId} IS NULL`),
+    // Name matches migrate.ts (the prod DDL) — the old non-partial index of the
+    // bare name is dropped there before this partial is created.
+    uniqPlanUser: uniqueIndex("uniq_fellow_plan_rsvp_plan_user_whole").on(t.planId, t.userId).where(sql`${t.planTimeId} IS NULL`),
     uniqPlanUserTime: uniqueIndex("uniq_fellow_plan_rsvp_plan_user_time").on(t.planId, t.userId, t.planTimeId).where(sql`${t.planTimeId} IS NOT NULL`),
   }),
 );

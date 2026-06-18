@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
+import { useBetaStatus } from "@/hooks/useDemo";
 import { GratitudeComposer } from "@/components/GratitudeComposer";
 
 // Gratitude — a personal daily practice (private journal) with the option
@@ -56,6 +58,8 @@ function StatTile({ label, value }: { label: string; value: string }) {
 export default function GratitudePage() {
   const queryClient = useQueryClient();
   const { t, i18n } = useTranslation();
+  const [, setLocation] = useLocation();
+  const { rawIsBeta } = useBetaStatus();
   // "mine" = my journal + composer; "community" = others' shared thanks.
   const [tab, setTab] = useState<"mine" | "community">("mine");
 
@@ -71,6 +75,18 @@ export default function GratitudePage() {
   const entries = mine?.entries ?? [];
   const stats = computeStats(entries);
   const gardenEntries = garden?.responses ?? [];
+
+  // If they arrived with new community thanks waiting (the menu dot was lit),
+  // open straight to the garden so they actually see it — and so the seen-
+  // marking below runs and clears the dot. One-shot: never fights a manual tap.
+  const didAutoTab = useRef(false);
+  useEffect(() => {
+    if (didAutoTab.current) return;
+    if (gardenEntries.some((g) => g.isNew && !g.isYou)) {
+      didAutoTab.current = true;
+      setTab("community");
+    }
+  }, [gardenEntries]);
 
   // Mark others' new community entries as seen once the Community tab is
   // open (so the "new" dot on the tab clears when they actually look).
@@ -156,6 +172,25 @@ export default function GratitudePage() {
               </p>
               <GratitudeComposer />
             </div>
+
+            {/* Outward gratitude — the "thank three people" practice. */}
+            {rawIsBeta && (
+              <button
+                type="button"
+                onClick={() => setLocation("/thanks")}
+                className="w-full rounded-2xl px-4 py-3 mb-6 flex items-center justify-between text-left transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
+              >
+                <span className="flex items-center gap-3 min-w-0">
+                  <span style={{ fontSize: 20 }} aria-hidden>🤝</span>
+                  <span className="min-w-0">
+                    <span className="block text-[14px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{t("gratitude.thank_three_title", { defaultValue: "Thank three people today" })}</span>
+                    <span className="block text-[12px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{t("gratitude.thank_three_sub", { defaultValue: "Reach out and tell them" })}</span>
+                  </span>
+                </span>
+                <span aria-hidden style={{ color: "rgba(143,175,150,0.5)", fontSize: 20 }}>›</span>
+              </button>
+            )}
 
             {/* Your journal */}
             {entries.length > 0 && (
