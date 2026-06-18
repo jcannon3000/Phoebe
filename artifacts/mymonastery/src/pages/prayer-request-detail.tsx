@@ -796,45 +796,51 @@ export default function PrayerRequestDetailPage() {
             {/* Avatar rail — every distinct pray-er, most recent first. Shown
                 whenever anyone has prayed (a single pray-er used to be hidden by
                 a `> 1` gate, so an owner who opened the request without ?amen=1
-                saw the count but never the face). Skipped only when the lone
-                amen is already the big featured pulse above (?amen=1). */}
-            {data.amens.length > 0 && !(fromAmenPush && data.amens.length === 1) && (
-              <div className="flex items-center justify-center -mt-1">
-                {data.amens.slice(0, 8).map((a, i) => (
-                  <div
-                    key={`${a.userId}-${a.prayedAt}`}
-                    className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden border-2"
-                    style={{
-                      borderColor: SLIDE_BG,
-                      marginLeft: i === 0 ? 0 : -8,
-                      background: "#1A4A2E",
-                      color: "#A8C5A0",
-                    }}
-                    title={a.userName ?? t("prayer_request_detail.someone")}
-                  >
-                    {a.userAvatarUrl ? (
-                      <img
-                        src={a.userAvatarUrl}
-                        alt={a.userName ?? t("prayer_request_detail.someone")}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-[11px] font-semibold">
-                        {initials(a.userName ?? "")}
-                      </span>
-                    )}
-                  </div>
-                ))}
-                {data.amens.length > 8 && (
-                  <span
-                    className="ml-2 text-[11px]"
-                    style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
-                  >
-                    +{data.amens.length - 8}
-                  </span>
-                )}
-              </div>
-            )}
+                saw the count but never the face). When the viewer arrived from
+                the first-amen push, amens[0] is ALREADY the big featured pulse
+                above, so we drop it from the rail to avoid showing that face
+                twice. */}
+            {(() => {
+              const railAmens = fromAmenPush ? data.amens.slice(1) : data.amens;
+              if (railAmens.length === 0) return null;
+              return (
+                <div className="flex items-center justify-center -mt-1">
+                  {railAmens.slice(0, 8).map((a, i) => (
+                    <div
+                      key={`${a.userId}-${a.prayedAt}`}
+                      className="w-9 h-9 rounded-full flex items-center justify-center overflow-hidden border-2"
+                      style={{
+                        borderColor: SLIDE_BG,
+                        marginLeft: i === 0 ? 0 : -8,
+                        background: "#1A4A2E",
+                        color: "#A8C5A0",
+                      }}
+                      title={a.userName ?? t("prayer_request_detail.someone")}
+                    >
+                      {a.userAvatarUrl ? (
+                        <img
+                          src={a.userAvatarUrl}
+                          alt={a.userName ?? t("prayer_request_detail.someone")}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-[11px] font-semibold">
+                          {initials(a.userName ?? "")}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  {railAmens.length > 8 && (
+                    <span
+                      className="ml-2 text-[11px]"
+                      style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
+                    >
+                      +{railAmens.length - 8}
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Every word of comfort, newest first. */}
             {data.words.length > 0 && (

@@ -483,6 +483,17 @@ router.post("/prayer-partner/start", perUserRateLimit("prayer_partner_start", {
 
   const tz = await getUserTz(uid);
   const ymd = todayInTz(tz);
+
+  // Instant first-contact delivery is only safe when this partner is the user's
+  // ONLY active partner. daily_prayers is author-scoped — one row per author per
+  // day, with a single deliverAfter shared by every partner — so an instant
+  // (null deliverAfter) row would also unseal today's prayer EARLY to any other
+  // partners (and the morning sweep would then skip their push). When other
+  // partners exist we fall back to the next-morning cadence and tell the client
+  // (delivered:false) so the UI can say "they'll receive it tomorrow."
+  const activeIds = await getActivePartnerIds(uid);
+  const hasOtherPartners = activeIds.some((pid) => pid !== partnerId);
+
   const [already] = await db.select().from(dailyPrayersTable).where(and(
     eq(dailyPrayersTable.authorId, uid), eq(dailyPrayersTable.ymd, ymd)));
   if (already) {
@@ -492,8 +503,8 @@ router.post("/prayer-partner/start", perUserRateLimit("prayer_partner_start", {
     return;
   }
 
-  // First contact delivers now; otherwise it waits for tomorrow morning.
-  const deliverNow = wasNewlyActive;
+  // First contact with your only partner delivers now; otherwise next morning.
+  const deliverNow = wasNewlyActive && !hasOtherPartners;
   const deliverAfter = deliverNow ? null : nextDeliveryInstant(new Date(), tz);
   let created;
   try {

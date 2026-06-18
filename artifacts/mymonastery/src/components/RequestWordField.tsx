@@ -59,6 +59,9 @@ export function RequestWordField({
       setWord(content);
       setDraft("");
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      // A word now also records an amen server-side, so refresh the detail page
+      // (its amen rail / count / "Amen sent" state) — not just the list.
+      queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${requestId}`] });
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : String(err);
       const friendly = /closed|expired|answered/i.test(raw)
@@ -102,6 +105,7 @@ export function RequestWordField({
         isPrivate: isPrivateRef.current,
       }).then(() => {
         queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+        queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${prevReqId}`] });
       }).catch((err) => {
         console.warn("[RequestWordField] background flush failed:", err);
       });
@@ -132,6 +136,7 @@ export function RequestWordField({
       setWord(null);
       setDraft("");
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${requestId}`] });
     } catch (err: unknown) {
       const raw = err instanceof Error ? err.message : String(err);
       setError(t("word_of_comfort.couldnt_remove"));

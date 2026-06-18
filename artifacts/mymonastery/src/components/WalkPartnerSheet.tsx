@@ -50,6 +50,9 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
   const [composeOpen, setComposeOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [heartSent, setHeartSent] = useState(false);
+  // Whether the sent prayer reached them now (instant first contact) or is
+  // sealed until tomorrow morning (the volley cadence) — drives honest copy.
+  const [heartDelivered, setHeartDelivered] = useState(false);
   const startHeart = useStartHeartToHeart();
 
   const nudge = useMutation({
@@ -68,11 +71,19 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
   const sendHeart = () => {
     const body = draft.trim();
     if (!body || !companion || startHeart.isPending) return;
+    startHeart.reset();
     startHeart.mutate({ partnerUserId: companion.userId, body }, {
-      onSuccess: () => { setHeartSent(true); setDraft(""); setComposeOpen(false); },
+      onSuccess: (data) => {
+        setHeartDelivered(!!data?.delivered);
+        setHeartSent(true);
+        setDraft("");
+        setComposeOpen(false);
+      },
+      // onError: leave the composer open with the text intact; the error banner
+      // below surfaces what happened so the send isn't silently swallowed.
     });
   };
-  const openCompose = () => { setHeartSent(false); setDraft(""); setComposeOpen(true); };
+  const openCompose = () => { setHeartSent(false); startHeart.reset(); setDraft(""); setComposeOpen(true); };
 
   const open = !!companion;
   const name = companion?.name ?? "Someone";
@@ -128,7 +139,7 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
               <div className="mt-5 mb-2 rounded-2xl px-4 py-5 text-center" style={{ background: "rgba(46,107,64,0.12)", border: `1px solid ${CARD_B}` }}>
                 <div style={{ fontSize: 26 }}>💚</div>
                 <p className="text-[14px] mt-2" style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-                  It's been a little while. Pray a Heart to Heart with {first} this week to see each other's days again.
+                  It's been a little while. Reach back out with a Heart to Heart — your days reappear here once you're praying together again.
                 </p>
                 <button
                   type="button"
@@ -187,6 +198,7 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
                       ))}
                     </div>
                     {sent && <p className="text-[12.5px] text-center mt-2.5" style={{ color: "#A8C5A0", fontFamily: FONT }}>Sent to {first} 🌿</p>}
+                    {nudge.isError && !sent && <p className="text-[12.5px] text-center mt-2.5" style={{ color: "#E0A87E", fontFamily: FONT }}>Couldn't send — tap to try again</p>}
                   </>
                 ) : (
                   <p className="text-[12.5px] text-center py-2" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
@@ -199,7 +211,9 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
                 <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(143,175,150,0.14)" }}>
                   {heartSent ? (
                     <p className="text-[13px] text-center py-1.5" style={{ color: "#A8C5A0", fontFamily: FONT }}>
-                      💚 Your Heart to Heart is on its way to {first}
+                      {heartDelivered
+                        ? `💚 Your Heart to Heart reached ${first}`
+                        : `🌅 ${first} will receive it tomorrow morning`}
                     </p>
                   ) : (
                     <button
@@ -235,6 +249,11 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
                   <Avatar name={name} url={companion?.avatarUrl ?? null} size={30} />
                   <p className="text-[13px]" style={{ color: SAGE, fontFamily: FONT }}>What's on your heart for {first}?</p>
                 </div>
+                {startHeart.isError && (
+                  <p className="px-6 mb-2 text-[13px]" style={{ color: "#E0A87E", fontFamily: FONT }}>
+                    Couldn't send just now — please try again.
+                  </p>
+                )}
                 <textarea
                   autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={2000}
                   placeholder="Lord, today I'm carrying…"

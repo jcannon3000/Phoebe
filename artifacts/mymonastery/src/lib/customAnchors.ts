@@ -186,9 +186,16 @@ export function markCustomDoneToday(id: string): void {
 /** Log this practice as "not today" — hides it + drops its dot for the day. */
 export function setCustomNotToday(id: string): void {
   try {
+    // A reading skipped today drops today's logged amount — and that amount must
+    // come back OUT of the running all-time total, or "X in all" drifts upward
+    // every time a logged reading is later retracted.
+    const todayAmt = getReadingToday(id);
+    if (todayAmt > 0) {
+      const total = getReadingTotal(id);
+      localStorage.setItem(READ_TOTAL_PREFIX + id, String(Math.max(0, total - todayAmt)));
+    }
     localStorage.setItem(SKIP_PREFIX + id, todayISO());
     localStorage.removeItem(DONE_PREFIX + id);
-    // A reading skipped today drops today's logged amount too.
     localStorage.removeItem(READ_TODAY_PREFIX + id);
     window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
   } catch {

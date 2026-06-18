@@ -840,8 +840,9 @@ function LogSheet({
             )}
             <button
               type="button"
-              onClick={() => { logReadingToday(anchor.id, amount); onClose(); }}
-              className="w-full rounded-2xl py-3.5 mt-1 text-[15px] font-semibold active:scale-[0.99]"
+              disabled={amount <= 0}
+              onClick={() => { if (amount > 0) { logReadingToday(anchor.id, amount); onClose(); } }}
+              className="w-full rounded-2xl py-3.5 mt-1 text-[15px] font-semibold active:scale-[0.99] disabled:opacity-40"
               style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
             >
               ✓ {t("rhythm.log_reading", { defaultValue: "Log it" })}

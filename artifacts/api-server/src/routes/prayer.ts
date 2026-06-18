@@ -149,6 +149,11 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     const seenUser = new Set<number>();
     const userDayKeys = new Set<string>();
     for (const a of rawAmens) {
+      // Never surface the owner's OWN amen here. The rail/count means "who
+      // prayed FOR you", so a self-amen would both inflate the count and — on
+      // an anonymous request — leak the owner's real name+face to tagged
+      // viewers. (Owner self-amens still count toward the separate metrics.)
+      if (a.userId === r.ownerId) continue;
       const ymd = ymdInOwnerTz(a.prayedAt);
       userDayKeys.add(`${a.userId}|${ymd}`);
       if (seenUser.has(a.userId)) continue;
@@ -260,13 +265,18 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     // on viewerIsOwner client-side).
     shareToken: viewerIsOwner ? r.shareToken ?? null : null,
     words: wordRows
-      .map(w => ({
-        id: w.id,
-        authorName: w.authorName,
-        authorAvatarUrl: w.authorAvatarUrl ?? null,
-        content: w.content,
-        createdAt: w.createdAt ? w.createdAt.toISOString() : null,
-      }))
+      .map(w => {
+        // If the request is anonymous and this word is the OWNER's own, mask the
+        // author so a tagged viewer can't unmask the anonymous poster.
+        const maskOwner = r.isAnonymous && w.authorUserId === r.ownerId;
+        return {
+          id: w.id,
+          authorName: maskOwner ? "Someone" : w.authorName,
+          authorAvatarUrl: maskOwner ? null : (w.authorAvatarUrl ?? null),
+          content: w.content,
+          createdAt: w.createdAt ? w.createdAt.toISOString() : null,
+        };
+      })
       .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")),
     amens,
     amenCountTotal,
