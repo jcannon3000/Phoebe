@@ -18,6 +18,7 @@ import { Mic, Play, Pause, Square, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { encryptVoice, decryptVoice, voiceSupported, type EncryptedMemo } from "@/lib/voiceCrypto";
 import { enhanceVoice, studioSupported, type StudioPreset, type EnhanceResult } from "@/lib/studioVoice";
+import { tapeClick } from "@/lib/tapeSfx";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -118,6 +119,7 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
   const doSend = async (useEnhanced: boolean) => {
     const blob = (useEnhanced && polished) ? polished.blob : rawBlobRef.current;
     if (!blob) { close(); return; }
+    tapeClick("send");
     setPhase("sending");
     try {
       let pub: { publicKeyJwk: string };
@@ -147,6 +149,7 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
   };
 
   const stopRec = () => {
+    tapeClick("stop");
     if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
     try { recRef.current?.stop(); } catch { /* ignore */ }
   };
@@ -154,6 +157,7 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
   const start = async () => {
     if (busyRef.current) return;
     busyRef.current = true;
+    tapeClick("record");
     setOpen(true); setPhase("rec"); setRemaining(MAX_SECS); setPolished(null); setPlaying(null);
     try {
       const { stream, cleanup } = await openMic();
@@ -213,7 +217,8 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
 
   const r = 32;
   const C = 2 * Math.PI * r;
-  const frac = remaining / MAX_SECS;
+  const elapsed = MAX_SECS - remaining;
+  const frac = elapsed / MAX_SECS; // ring fills as the time is used
 
   return (
     <>
@@ -225,22 +230,25 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
 
       <AnimatePresence>
         {open && (
-          <motion.div className="fixed inset-0 z-[120] flex items-end justify-center"
+          <motion.div className="fixed inset-0 z-[60]"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ background: "rgba(6,16,10,0.55)", backdropFilter: "blur(2px)" }}
+            style={{ background: "rgba(6,18,11,0.6)", backdropFilter: "blur(2px)" }}
             onClick={() => { if (phase === "rec" || phase === "preview") close(); }}>
             <motion.div role="dialog" aria-label="Voice prayer"
-              initial={{ y: 40, opacity: 0.6 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
+              initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
               transition={{ type: "spring", stiffness: 320, damping: 32 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full"
-              style={{ maxWidth: 460, margin: "0 12px 12px", background: "#0E2316", border: "1px solid rgba(111,175,133,0.28)", borderRadius: 24, padding: "18px 18px 20px", fontFamily: FONT, boxShadow: "0 -8px 40px rgba(0,0,0,0.4)" }}>
+              className="z-[61] overflow-y-auto"
+              style={{ position: "fixed", left: 0, right: 0, bottom: 0, maxHeight: "86vh", background: "#0C2417", borderTop: "1px solid rgba(46,107,64,0.4)", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: "10px 20px calc(env(safe-area-inset-bottom) + 22px)", fontFamily: FONT, boxShadow: "0 -8px 40px rgba(0,0,0,0.4)" }}>
+              {/* grabber */}
+              <div style={{ width: 38, height: 4, borderRadius: 999, background: "rgba(143,175,150,0.4)", margin: "0 auto 16px" }} />
               {/* header */}
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-[13.5px] font-semibold" style={{ color: SAGE }}>
-                  {phase === "sent" ? "Sent 🌿" : `A voice prayer for ${first}`}
-                </p>
-                <button type="button" onClick={close} aria-label="Close" className="rounded-full p-1 active:scale-90" style={{ color: "rgba(143,175,150,0.7)" }}>
+              <div className="flex items-start justify-between mb-4">
+                <div className="min-w-0">
+                  <p className="text-[18px] font-semibold" style={{ color: WARM }}>Voice prayer</p>
+                  <p className="text-[13px] mt-0.5 truncate" style={{ color: SAGE }}>for {first}</p>
+                </div>
+                <button type="button" onClick={close} aria-label="Close" className="shrink-0 rounded-full p-1 active:scale-90" style={{ color: "rgba(143,175,150,0.7)" }}>
                   <X size={18} />
                 </button>
               </div>
@@ -253,11 +261,11 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
                       <circle cx="46" cy="46" r={r} fill="none" stroke={CLAY} strokeWidth="4" strokeLinecap="round"
                         strokeDasharray={C} strokeDashoffset={C * (1 - frac)} style={{ transition: "stroke-dashoffset 80ms linear" }} />
                     </svg>
-                    <span className="absolute inline-flex items-center justify-center rounded-full" style={{ width: 54, height: 54, background: "rgba(196,122,101,0.9)", color: WARM }}>
+                    <span className="absolute inline-flex items-center justify-center rounded-full" style={{ width: 54, height: 54, background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)" }}>
                       <Square size={20} fill={WARM} />
                     </span>
                   </button>
-                  <p className="mt-4 text-[15px] font-semibold tabular-nums" style={{ color: WARM }}>{fmt(MAX_SECS - remaining)}</p>
+                  <p className="mt-4 text-[15px] font-semibold tabular-nums" style={{ color: WARM }}>{fmt(elapsed)} / {fmt(MAX_SECS)}</p>
                   <p className="mt-1 text-[12px]" style={{ color: SAGE }}>Speak from the heart — tap to finish</p>
                 </div>
               )}
@@ -284,8 +292,8 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
                       const on = p.id === preset;
                       return (
                         <button key={p.id} type="button" onClick={() => choosePreset(p.id)}
-                          className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors active:scale-95"
-                          style={{ background: on ? "rgba(111,175,133,0.9)" : "rgba(46,107,64,0.16)", color: on ? "#0E2316" : SAGE, border: `1px solid ${on ? "rgba(111,175,133,0.9)" : "rgba(111,175,133,0.25)"}` }}>
+                          className="shrink-0 rounded-full px-3.5 py-1.5 text-[12px] font-semibold transition-colors active:scale-95"
+                          style={{ background: on ? "rgba(46,107,64,0.85)" : "rgba(46,107,64,0.08)", color: on ? WARM : SAGE, border: `1px solid ${on ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.2)"}` }}>
                           {p.label}
                         </button>
                       );
@@ -294,17 +302,17 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
                   {/* send */}
                   <button type="button" onClick={() => void doSend(true)} disabled={rePolishing}
                     className="w-full rounded-2xl py-3 text-[15px] font-semibold transition-opacity active:scale-[0.99]"
-                    style={{ background: "rgba(46,107,64,0.95)", color: WARM, border: "1px solid rgba(111,175,133,0.4)", opacity: rePolishing ? 0.6 : 1 }}>
+                    style={{ background: "rgba(46,107,64,0.95)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", opacity: rePolishing ? 0.6 : 1 }}>
                     Send 🌿
                   </button>
-                  <button type="button" onClick={() => void doSend(false)} className="text-[12px] -mt-1.5" style={{ color: "rgba(143,175,150,0.7)" }}>
+                  <button type="button" onClick={() => void doSend(false)} className="text-[12px] -mt-1.5 text-center" style={{ color: "rgba(143,175,150,0.7)" }}>
                     Send as recorded instead
                   </button>
                 </div>
               )}
 
               {phase === "sending" && <p className="text-center py-8 text-[14px]" style={{ color: SAGE }}>Sending…</p>}
-              {phase === "sent" && <p className="text-center py-8 text-[15px] font-semibold" style={{ color: "#A8C5A0" }}>It's on its way 🌿</p>}
+              {phase === "sent" && <p className="text-center py-8 text-[15px] font-semibold" style={{ color: WARM }}>It's on its way 🌿</p>}
               {phase === "nokey" && <p className="text-center py-7 text-[13px]" style={{ color: SAGE }}>Ask {first} to open Phoebe once so they can receive it.</p>}
               {phase === "error" && <p className="text-center py-7 text-[13px]" style={{ color: CLAY }}>Something went off — please try again.</p>}
             </motion.div>
@@ -315,12 +323,13 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
   );
 }
 
-// A play button used in the A/B preview — shows animated bars while playing.
+// A play button used in the A/B preview — a pill/toggle that shows animated
+// bars while playing. "dim" = the secondary (As recorded) take.
 function PreviewPlay({ label, active, busy, dim, onClick }: { label: string; active: boolean; busy?: boolean; dim?: boolean; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} disabled={busy}
-      className="flex items-center justify-center gap-2 rounded-2xl py-3 text-[13px] font-semibold transition-colors active:scale-[0.98]"
-      style={{ background: dim ? "rgba(46,107,64,0.12)" : "rgba(46,107,64,0.28)", color: dim ? SAGE : WARM, border: `1px solid ${dim ? "rgba(111,175,133,0.22)" : "rgba(111,175,133,0.45)"}` }}>
+      className="flex items-center justify-center gap-2 rounded-full py-3 text-[13px] font-semibold transition-colors active:scale-[0.98]"
+      style={{ background: dim ? "rgba(46,107,64,0.08)" : "rgba(46,107,64,0.25)", color: dim ? SAGE : WARM, border: `1px solid ${dim ? "rgba(46,107,64,0.2)" : "rgba(46,107,64,0.4)"}` }}>
       {busy
         ? <motion.span style={{ width: 11, height: 11, borderRadius: 999, background: "#6FAF85" }} animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 0.9, repeat: Infinity }} />
         : active
@@ -419,7 +428,12 @@ export function VoiceMemoInbox() {
 
   const toggle = (m: InMemo) => {
     const a = getAudio();
-    if (activeId === m.id) { if (a.paused) void a.play().catch(() => setFailedId(m.id)); else a.pause(); return; }
+    if (activeId === m.id) {
+      if (a.paused) { tapeClick("play"); void a.play().catch(() => setFailedId(m.id)); }
+      else { tapeClick("pause"); a.pause(); }
+      return;
+    }
+    tapeClick("play");
     void load(m);
   };
 
@@ -447,33 +461,34 @@ export function VoiceMemoInbox() {
             <motion.div key={m.id}
               initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
               className="rounded-2xl px-3.5 py-3"
-              style={{ background: active ? "rgba(46,107,64,0.26)" : "rgba(46,107,64,0.16)", border: `1px solid ${active ? "rgba(111,175,133,0.5)" : "rgba(111,175,133,0.32)"}` }}>
+              style={{ background: active ? "rgba(46,107,64,0.22)" : "rgba(46,107,64,0.12)", border: `1px solid ${active ? "rgba(168,197,160,0.7)" : "rgba(46,107,64,0.3)"}` }}>
               <div className="flex items-center gap-3">
                 <span className="shrink-0 relative">
                   {m.avatarUrl
-                    ? <img src={m.avatarUrl} alt={first} className="rounded-full object-cover" style={{ width: 34, height: 34 }} />
-                    : <div className="rounded-full flex items-center justify-center font-semibold" style={{ width: 34, height: 34, background: "#1A4A2E", color: "#A8C5A0", fontSize: 13, fontFamily: FONT }}>{first[0]?.toUpperCase() ?? "?"}</div>}
-                  {isNew && <span className="absolute -top-0.5 -right-0.5 rounded-full" style={{ width: 10, height: 10, background: "#6FAF85", border: "2px solid #0E2316" }} />}
+                    ? <img src={m.avatarUrl} alt={first} className="rounded-full object-cover" style={{ width: 40, height: 40, border: "1px solid rgba(46,107,64,0.3)" }} />
+                    : <div className="rounded-full flex items-center justify-center font-semibold" style={{ width: 40, height: 40, background: "#1A4A2E", color: "#A8C5A0", fontSize: 13, fontFamily: FONT, border: "1px solid rgba(46,107,64,0.3)" }}>{first[0]?.toUpperCase() ?? "?"}</div>}
+                  {isNew && <span className="absolute -top-0.5 -right-0.5 rounded-full" style={{ width: 10, height: 10, background: "#6FAF85", border: "2px solid #091A10" }} />}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13.5px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{first} sent a voice prayer</p>
-                  <p className="text-[11.5px]" style={{ color: failedId === m.id ? CLAY : SAGE, fontFamily: FONT }}>
+                  <p className="text-[15px] font-medium" style={{ color: WARM, fontFamily: FONT }}>{first} sent a voice prayer</p>
+                  <p className="text-[12px]" style={{ color: failedId === m.id ? CLAY : SAGE, fontFamily: FONT }}>
                     {failedId === m.id ? "Couldn't open this one" : isNew ? "New · tap to listen" : "Tap to listen back"}
                   </p>
                 </div>
-                <button type="button" onClick={() => remove(m)} aria-label="Remove" className="shrink-0 rounded-full p-1 active:scale-90" style={{ color: "rgba(143,175,150,0.45)" }}>
+                <button type="button" onClick={() => remove(m)} aria-label="Remove" className="shrink-0 rounded-full flex items-center justify-center active:scale-90" style={{ width: 30, height: 30, color: "rgba(143,175,150,0.6)", background: "rgba(200,212,192,0.06)" }}>
                   <X size={15} />
                 </button>
               </div>
               {/* player row */}
               <div className="flex items-center gap-2.5 mt-2.5">
                 <button type="button" onClick={() => toggle(m)} aria-label={active && playing ? "Pause" : "Play"}
-                  className="shrink-0 rounded-full flex items-center justify-center active:scale-95" style={{ width: 34, height: 34, background: "rgba(46,107,64,0.95)", color: WARM }}>
+                  className="shrink-0 rounded-full flex items-center justify-center active:scale-95" style={{ width: 34, height: 34, background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)" }}>
                   {active && playing ? <Pause size={15} fill={WARM} /> : <Play size={15} fill={WARM} />}
                 </button>
                 <input type="range" min={0} max={1000} value={Math.round(frac * 1000)} aria-label="Scrub"
                   onChange={(e) => void load(m, Number(e.target.value) / 1000)}
-                  className="flex-1 h-1.5 cursor-pointer" style={{ accentColor: "#6FAF85" }} />
+                  className="voice-scrub flex-1 cursor-pointer"
+                  style={{ background: `linear-gradient(to right, rgba(110,180,130,0.95) ${frac * 100}%, rgba(46,107,64,0.22) ${frac * 100}%)` }} />
                 <span className="shrink-0 text-[11px] tabular-nums" style={{ color: SAGE, fontFamily: FONT, minWidth: 74, textAlign: "right" }}>
                   {clock(cur)} / {clock(total)}
                 </span>

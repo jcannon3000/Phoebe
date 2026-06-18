@@ -674,3 +674,31 @@ a:active,
   -webkit-mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
   mask-image: linear-gradient(to right, transparent, #000 8%, #000 92%, transparent);
 }
+
+/* Phoebe Studio voice scrubber — themed range so it reads on-system (sage
+   "done" green fill, warm round thumb, hairline track) instead of the OS skin. */
+.voice-scrub {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  outline: none;
+}
+.voice-scrub::-webkit-slider-runnable-track { height: 4px; background: transparent; border-radius: 999px; }
+.voice-scrub::-moz-range-track { height: 4px; background: transparent; border-radius: 999px; }
+.voice-scrub::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px; height: 14px; margin-top: -5px;
+  border-radius: 999px;
+  background: #F0EDE6;
+  border: 1px solid rgba(46, 107, 64, 0.6);
+  cursor: pointer;
+}
+.voice-scrub::-moz-range-thumb {
+  width: 14px; height: 14px;
+  border-radius: 999px;
+  background: #F0EDE6;
+  border: 1px solid rgba(46, 107, 64, 0.6);
+  cursor: pointer;
+}

@@ -152,7 +152,7 @@ export default function GratitudePage() {
                 }}
               >
                 {tab2.label}
-                {dot && <span aria-hidden style={{ width: 7, height: 7, borderRadius: "50%", background: "#D98C4A", display: "inline-block" }} />}
+                {dot && <span aria-hidden style={{ width: 7, height: 7, borderRadius: "50%", background: "#6FAF85", display: "inline-block" }} />}
               </button>
             );
           })}
@@ -178,17 +178,15 @@ export default function GratitudePage() {
               <button
                 type="button"
                 onClick={() => setLocation("/thanks")}
-                className="w-full rounded-2xl px-4 py-3 mb-6 flex items-center justify-between text-left transition-opacity hover:opacity-90 active:scale-[0.99]"
-                style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}
+                className="w-full rounded-2xl mb-6 flex items-center text-left transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.25)", gap: 14, padding: "16px 18px" }}
               >
-                <span className="flex items-center gap-3 min-w-0">
-                  <span style={{ fontSize: 20 }} aria-hidden>🤝</span>
-                  <span className="min-w-0">
-                    <span className="block text-[14px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{t("gratitude.thank_three_title", { defaultValue: "Thank three people today" })}</span>
-                    <span className="block text-[12px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{t("gratitude.thank_three_sub", { defaultValue: "Reach out and tell them" })}</span>
-                  </span>
+                <span aria-hidden style={{ fontSize: 24, width: 28, textAlign: "center", flexShrink: 0, lineHeight: 1 }}>🤝</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[16px] font-bold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{t("gratitude.thank_three_title", { defaultValue: "Thank three people today" })}</span>
+                  <span className="block text-[13px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK, marginTop: 3 }}>{t("gratitude.thank_three_sub", { defaultValue: "Reach out and tell them" })}</span>
                 </span>
-                <span aria-hidden style={{ color: "rgba(143,175,150,0.5)", fontSize: 20 }}>›</span>
+                <span aria-hidden style={{ color: "rgba(143,175,150,0.4)", fontSize: 22, lineHeight: 1, flexShrink: 0 }}>›</span>
               </button>
             )}
 

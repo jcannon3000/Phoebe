@@ -5,3 +5,8 @@ declare module "@jitsi/rnnoise-wasm/dist/rnnoise-sync" {
   const createRNNWasmModuleSync: () => unknown;
   export default createRNNWasmModuleSync;
 }
+
+declare module "*.mp3" {
+  const src: string;
+  export default src;
+}
