@@ -962,15 +962,24 @@ function OpeningSplash() {
       return n;
     } catch { return 0; }
   });
-  const splashVariant = splashOpenN % 2;     // 0 = faces, 1 = quote
+  const splashVariant = splashOpenN % 3;     // 0 = faces, 1 = quote, 2 = fellows
   const hour = new Date().getHours();
   const showFaces = splashVariant === 0;
   // The quote shows IMMEDIATELY on its open — its content is a static line, ready
   // on the first render, so the greeting never flashes ahead of it and nothing
   // waits to "settle".
   const showQuote = splashVariant === 1;
-  // The quote advances each time the quote slide comes up (every other open).
-  const quote = SPLASH_QUOTES[Math.floor(splashOpenN / 2) % SPLASH_QUOTES.length]!;
+  // Third in rotation: your fellows' progress for the day (faces + dots).
+  const showFellows = splashVariant === 2;
+  // The quote advances each time the quote slide comes up (every third open).
+  const quote = SPLASH_QUOTES[Math.floor(splashOpenN / 3) % SPLASH_QUOTES.length]!;
+  // Fellows' today progress — only fetched on the fellows variant.
+  const { data: walkData } = useQuery<{ companions: Array<{ userId: number; name: string | null; avatarUrl: string | null; progress: { anchors: Array<{ key: string; done: boolean }>; keptCount: number; totalCount: number; allKept: boolean } | null; progressLocked?: boolean }> }>({
+    queryKey: ["/api/walk"],
+    queryFn: () => apiRequest("GET", "/api/walk"),
+    staleTime: 60_000,
+    enabled: phase !== "gone" && !!user && native && showFellows,
+  });
   useEffect(() => {
     if (data === undefined) return;
     let cancelled = false;
@@ -1072,8 +1081,12 @@ function OpeningSplash() {
     if (showFaces && phase === "in" && data !== undefined && (data.people?.length ?? 0) === 0) {
       advanceFromFaces();
     }
+    // Fellows variant with no walking companions → nothing to show, dismiss.
+    if (showFellows && phase === "in" && walkData !== undefined && (walkData.companions?.length ?? 0) === 0) {
+      advanceFromFaces();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, phase, showFaces]);
+  }, [data, walkData, phase, showFaces, showFellows]);
 
   // Web (or logged out) → no splash at all.
   if (!native || !user || phase === "gone") return null;
@@ -1239,6 +1252,51 @@ function OpeningSplash() {
           </p>
         </motion.div>
       )}
+      {/* Fellows' progress for the day — up to 5, each with picture, name + dots.
+          Third in the splash rotation. */}
+      {showFellows && (() => {
+        const companions = (walkData?.companions ?? []).slice(0, 5);
+        if (companions.length === 0) return null; // dismiss effect handles the empty case
+        const fn = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "Someone";
+        const rowV = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" as const } } };
+        return (
+          <motion.div
+            className="flex flex-col items-stretch w-full relative"
+            style={{ maxWidth: 380 }}
+            initial="hidden"
+            animate="show"
+            variants={{ hidden: {}, show: { transition: { staggerChildren: 0.09, delayChildren: 0.12 } } }}
+          >
+            <motion.p variants={rowV} className="text-center text-[12px] font-semibold uppercase tracking-[0.16em] mb-4" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
+              {t("splash.fellows_today", { defaultValue: "Your fellows today" })}
+            </motion.p>
+            {companions.map((c) => {
+              const p = c.progress;
+              return (
+                <motion.div key={c.userId} variants={rowV} className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 mb-2" style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.3)" }}>
+                  {c.avatarUrl ? (
+                    <img src={c.avatarUrl} alt={fn(c.name)} className="w-10 h-10 rounded-full object-cover shrink-0" style={{ border: "1.5px solid #0C1F12", backgroundColor: "#1A4A2E" }} />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-semibold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid #0C1F12" }}>
+                      {(c.name ?? "?").trim().split(/\s+/).slice(0, 2).map((s) => s[0] ?? "").join("").toUpperCase() || "?"}
+                    </div>
+                  )}
+                  <span className="flex-1 min-w-0 truncate text-[15px] font-medium" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{fn(c.name)}</span>
+                  {p && p.anchors.length > 0 ? (
+                    <span className="inline-flex items-center gap-[3px] shrink-0" aria-hidden>
+                      {p.anchors.map((a) => (
+                        <span key={a.key} style={{ width: 6, height: 6, borderRadius: 999, display: "inline-block", background: a.done ? "rgba(110,180,130,0.95)" : "transparent", border: a.done ? "none" : "1px solid rgba(143,175,150,0.5)" }} />
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="text-[11px] shrink-0" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>—</span>
+                  )}
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        );
+      })()}
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); advanceFromFaces(); }}
@@ -1258,15 +1316,10 @@ function OpeningSplash() {
 // smoothing the seam between the native launch ("Be together with Phoebe") and
 // the home. Plays once per app session (the module flag resets on reload).
 function LoadReveal() {
-  const [location] = useLocation();
-  const isHome = location === "/dashboard";
   const [show, setShow] = useState(false);
   const [token, setToken] = useState(0); // bump to (re)start the animation
-  // Play whenever you ARRIVE at the home page…
-  useEffect(() => {
-    if (isHome) { setShow(true); setToken((n) => n + 1); }
-  }, [isHome]);
-  // …and when the opening splash ("the flash") starts going down.
+  // No longer plays on arriving home — that green overlay fade on the home was
+  // removed per request. It only plays when explicitly asked (phoebe:home-reveal).
   useEffect(() => {
     const play = () => { setShow(true); setToken((n) => n + 1); };
     window.addEventListener("phoebe:home-reveal", play);
