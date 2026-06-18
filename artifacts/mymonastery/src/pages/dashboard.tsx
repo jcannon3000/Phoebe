@@ -1858,7 +1858,23 @@ function PlanEventCard({ p, keyPrefix }: { p: FellowPlanEvent; keyPrefix: string
         {/* Thick left accent bar — same format as the prayer-request card. */}
         <div className={`w-1 flex-shrink-0 ${isToday_ ? colors.barPulseClass : ""}`} style={isToday_ ? undefined : { background: colors.bar }} />
         <div className="flex-1 flex items-center gap-3 px-3.5 py-2.5 min-w-0">
-        {/* Text leads on the left; profile pics live on the right. */}
+        {/* Host face + calendar badge — on the left, like the prayer-request
+            avatar. The face stands in for the old leading emoji. */}
+        <div className="relative shrink-0" style={{ width: 40, height: 40 }}>
+          {p.host.avatarUrl ? (
+            <img src={p.host.avatarUrl} alt={p.host.name} className="rounded-full object-cover" style={{ width: 40, height: 40, border: "1px solid rgba(46,107,64,0.4)" }} />
+          ) : (
+            <div className="rounded-full flex items-center justify-center font-semibold" style={{ width: 40, height: 40, background: "#1A4A2E", color: "#A8C5A0", fontSize: 15 }}>
+              {(p.host.name?.trim()?.[0] ?? "·").toUpperCase()}
+            </div>
+          )}
+          <span
+            className="absolute flex items-center justify-center rounded-full"
+            style={{ right: -3, bottom: -3, width: 19, height: 19, background: "#163A24", border: "2px solid #0E2016", fontSize: 10, lineHeight: 1 }}
+            aria-hidden
+          >📅</span>
+        </div>
+
         <div className="min-w-0 flex-1">
           <p className="text-[15px] font-semibold truncate" style={{ color: "#F0EDE6" }}>
             {p.title}
@@ -1878,33 +1894,20 @@ function PlanEventCard({ p, keyPrefix }: { p: FellowPlanEvent; keyPrefix: string
           </div>
         </div>
 
-        {/* Right: who's coming, then the host face with the calendar badge. */}
-        <div className="flex items-center shrink-0" aria-hidden>
-          {(p.comingPreview?.length ?? 0) > 0 && p.comingPreview!.slice(0, 3).map((c, i) => (
-            c.avatarUrl ? (
-              <img key={c.userId} src={c.avatarUrl} alt={c.name} className="rounded-full object-cover" style={{ width: 22, height: 22, marginRight: -6, border: "1.5px solid #0E2016" }} />
-            ) : (
-              <span key={c.userId} className="rounded-full inline-flex items-center justify-center font-semibold" style={{ width: 22, height: 22, marginRight: -6, border: "1.5px solid #0E2016", background: "#1A4A2E", color: "#A8C5A0", fontSize: 9 }}>
-                {(c.name?.trim()?.[0] ?? "·").toUpperCase()}
-              </span>
-            )
-          ))}
-          {/* Host face + calendar badge (Duolingo-style corner overlay) */}
-          <div className="relative shrink-0 ml-1" style={{ width: 40, height: 40 }}>
-            {p.host.avatarUrl ? (
-              <img src={p.host.avatarUrl} alt={p.host.name} className="rounded-full object-cover" style={{ width: 40, height: 40, border: "1px solid rgba(46,107,64,0.4)" }} />
-            ) : (
-              <div className="rounded-full flex items-center justify-center font-semibold" style={{ width: 40, height: 40, background: "#1A4A2E", color: "#A8C5A0", fontSize: 15 }}>
-                {(p.host.name?.trim()?.[0] ?? "·").toUpperCase()}
-              </div>
-            )}
-            <span
-              className="absolute flex items-center justify-center rounded-full"
-              style={{ right: -3, bottom: -3, width: 19, height: 19, background: "#163A24", border: "2px solid #0E2016", fontSize: 10, lineHeight: 1 }}
-              aria-hidden
-            >📅</span>
+        {/* Who's coming — a couple of faces on the right. */}
+        {(p.comingPreview?.length ?? 0) > 0 && (
+          <div className="flex items-center shrink-0" aria-hidden>
+            {p.comingPreview!.slice(0, 3).map((c, i) => (
+              c.avatarUrl ? (
+                <img key={c.userId} src={c.avatarUrl} alt={c.name} className="rounded-full object-cover" style={{ width: 22, height: 22, marginLeft: i === 0 ? 0 : -6, border: "1.5px solid #0E2016" }} />
+              ) : (
+                <span key={c.userId} className="rounded-full inline-flex items-center justify-center font-semibold" style={{ width: 22, height: 22, marginLeft: i === 0 ? 0 : -6, border: "1.5px solid #0E2016", background: "#1A4A2E", color: "#A8C5A0", fontSize: 9 }}>
+                  {(c.name?.trim()?.[0] ?? "·").toUpperCase()}
+                </span>
+              )
+            ))}
           </div>
-        </div>
+        )}
         </div>
       </motion.div>
     </Link>
@@ -6371,6 +6374,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     // but the plan itself lives in the calendar, not a separate list.
     for (const p of fellowPlans) {
       if (!p.startsAt) continue; // undated plans show only in the composer surface
+      // Don't surface YOUR OWN plan on the home — you made it, you know about it.
+      // It still appears on the Events page (where you manage/RSVP it).
+      if (p.isMine && !eventsOnly) continue;
       let eventDate: Date | null = null;
       try { eventDate = parseISO(p.startsAt); } catch { /* ignore */ }
       if (!eventDate || !Number.isFinite(eventDate.getTime())) continue;
