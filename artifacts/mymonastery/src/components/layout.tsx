@@ -1305,9 +1305,10 @@ function OpeningSplash() {
                   )}
                   <span className="flex-1 min-w-0 truncate text-[15px] font-medium" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{fn(c.name)}</span>
                   {p && p.anchors.length > 0 ? (
-                    <span className="inline-flex items-center gap-[3px] shrink-0" aria-hidden>
-                      {p.anchors.map((a) => (
-                        <span key={a.key} style={{ width: 6, height: 6, borderRadius: 999, display: "inline-block", background: a.done ? "rgba(110,180,130,0.95)" : "transparent", border: a.done ? "none" : "1px solid rgba(143,175,150,0.5)" }} />
+                    // Only the first three dots are shared — bigger, calmer.
+                    <span className="inline-flex items-center gap-[6px] shrink-0" aria-hidden>
+                      {p.anchors.slice(0, 3).map((a) => (
+                        <span key={a.key} style={{ width: 11, height: 11, borderRadius: 999, display: "inline-block", background: a.done ? "rgba(110,180,130,0.95)" : "transparent", border: a.done ? "none" : "1.5px solid rgba(143,175,150,0.55)" }} />
                       ))}
                     </span>
                   ) : (

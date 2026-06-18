@@ -48,11 +48,16 @@ function Pill({ label, onClick, kind = "solid", disabled }: { label: string; onC
 const DOT_ON = "rgba(110,180,130,0.95)";
 type WalkAnchorLite = { key: string; done: boolean };
 type WalkCompanionLite = { userId: number; progress: { keptCount: number; totalCount: number; allKept: boolean; anchors: WalkAnchorLite[] } | null; progressLocked?: boolean };
+// Accountability sharing shows only the FIRST THREE dots for everyone — not the
+// full count of someone's practices. Bigger, calmer dots; three is the shared
+// goal regardless of how many anchors a person actually keeps.
+const SHARED_DOTS = 3;
 function Dots({ anchors }: { anchors: WalkAnchorLite[] }) {
+  const shown = anchors.slice(0, SHARED_DOTS);
   return (
-    <span className="inline-flex items-center gap-[3px]" aria-hidden>
-      {anchors.map((d) => (
-        <span key={d.key} style={{ width: 6, height: 6, borderRadius: 999, display: "inline-block", background: d.done ? DOT_ON : "transparent", border: d.done ? "none" : "1px solid rgba(143,175,150,0.5)" }} />
+    <span className="inline-flex items-center gap-[6px]" aria-hidden>
+      {shown.map((d) => (
+        <span key={d.key} style={{ width: 11, height: 11, borderRadius: 999, display: "inline-block", background: d.done ? DOT_ON : "transparent", border: d.done ? "none" : "1.5px solid rgba(143,175,150,0.55)" }} />
       ))}
     </span>
   );
@@ -214,15 +219,18 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
     const w = walkByUser.get(f.userId);
     const p = w?.progress ?? null;
     const locked = !!w?.progressLocked;
-    const keptWholeDay = !!p?.allKept;
-    // Encourage unlocks at two-thirds of the day's practices (not the whole day).
-    const keptEnough = !!p && p.totalCount > 0 && p.keptCount / p.totalCount >= 2 / 3;
-    // Second line: dots + a status line, mirroring the Walking-together copy.
+    // Only the first three dots are shared. Encourage unlocks once those three
+    // dots are kept (all of the shown set) — not based on their full practice
+    // count, which we never reveal.
+    const shown = p?.anchors?.slice(0, SHARED_DOTS) ?? [];
+    const keptShown = shown.filter((a) => a.done).length;
+    const keptEnough = shown.length > 0 && keptShown === shown.length;
+    // Second line: the three shared dots + a status line (never reveals totals).
     const statusLine = !w ? null
       : locked ? t("fellows_c.walk_locked", { defaultValue: "💚 Pray 1:1 to see today" })
-      : !p || p.totalCount === 0 ? t("fellows_c.walk_walking", { defaultValue: "Walking with you" })
-      : keptWholeDay ? t("fellows_c.walk_all_kept", { defaultValue: "Kept the whole rhythm today 🌿" })
-      : t("fellows_c.walk_kept_count", { kept: p.keptCount, total: p.totalCount, defaultValue: `${p.keptCount}/${p.totalCount} kept today` });
+      : shown.length === 0 ? t("fellows_c.walk_walking", { defaultValue: "Walking with you" })
+      : keptEnough ? t("fellows_c.walk_all_kept", { defaultValue: "Kept today 🌿" })
+      : t("fellows_c.walk_kept_count", { kept: keptShown, total: shown.length, defaultValue: `${keptShown} of ${shown.length} kept today` });
     return (
       <div key={`f-${f.userId}`} className="relative flex items-center gap-3 rounded-2xl px-4 py-3 mb-2" style={{ background: CARD_BG, border: `1px solid ${CARD_B}` }}>
         <Avatar name={f.name ?? "Someone"} url={f.avatarUrl} />
@@ -356,10 +364,11 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
         <>
           {sectionHeader(t("fellows_c.your_fellows", { defaultValue: "Your fellows" }))}
           {fellows.map((f) => {
-            // Gate Encourage at two-thirds of today's practices, same as the
+            // Gate Encourage on the three shared dots being kept, same as the
             // People-page row — so the rule is consistent across both surfaces.
             const p = walkByUser.get(f.userId)?.progress ?? null;
-            const keptEnough = !!p && p.totalCount > 0 && p.keptCount / p.totalCount >= 2 / 3;
+            const shown = p?.anchors?.slice(0, SHARED_DOTS) ?? [];
+            const keptEnough = shown.length > 0 && shown.every((a) => a.done);
             return row(f.name ?? "Someone", f.avatarUrl,
               <div className="flex items-center gap-2.5 shrink-0">
                 {f.streak > 0 && <span className="text-[13px] font-semibold" style={{ color: "#E8B45E", fontFamily: FONT }} title={t("fellows_c.streak_title", { defaultValue: "Prayer rhythm" })}>🔥 {f.streak}</span>}

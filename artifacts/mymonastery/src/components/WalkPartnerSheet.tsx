@@ -90,9 +90,13 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
   const first = name.split(/\s+/)[0] || name;
   const progress = companion?.progress ?? null;
   const locked = !!companion?.progressLocked;
-  // You can send a word of encouragement once they've kept at least two-thirds
-  // of today's practices (not the whole day).
-  const completed = !!progress && progress.totalCount > 0 && progress.keptCount / progress.totalCount >= 2 / 3;
+  // Accountability sharing shows only the FIRST THREE dots — never the full
+  // count of someone's practices. You can send encouragement once those three
+  // shared dots are kept (all of the shown set).
+  const SHARED_DOTS = 3;
+  const shownAnchors = progress?.anchors.slice(0, SHARED_DOTS) ?? [];
+  const keptShown = shownAnchors.filter((a) => a.done).length;
+  const completed = shownAnchors.length > 0 && keptShown === shownAnchors.length;
 
   return (
     <AnimatePresence>
@@ -122,9 +126,9 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
                 <p className="truncate text-[18px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{name}</p>
                 {progress && (
                   <p className="text-[13px]" style={{ color: SAGE, fontFamily: FONT }}>
-                    {progress.totalCount === 0 ? "Walking with you"
-                      : progress.allKept ? `Kept the whole rhythm today · ${progress.keptCount}/${progress.totalCount}`
-                      : `${progress.keptCount} of ${progress.totalCount} kept today`}
+                    {shownAnchors.length === 0 ? "Walking with you"
+                      : completed ? "Kept today 🌿"
+                      : `${keptShown} of ${shownAnchors.length} kept today`}
                   </p>
                 )}
               </div>
@@ -152,18 +156,20 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
               </div>
             ) : (
               <>
-                {/* Today's anchors — only the shared rhythm; personal practices never cross. */}
+                {/* Today's progress — only the FIRST THREE shared dots (we never
+                    reveal how many practices someone keeps); personal/private
+                    practices never cross. Bigger dots, three at most. */}
                 <div className="mt-4 mb-1">
-                  {progress && progress.anchors.length > 0 ? progress.anchors.map((a) => (
-                    <div key={a.key} className="flex items-center gap-3 py-2">
-                      <span style={{ fontSize: 18, width: 24, textAlign: "center", opacity: a.done ? 1 : 0.45 }}>{a.emoji}</span>
-                      <span className="flex-1 text-[15px]" style={{ color: a.done ? WARM : "rgba(182,210,188,0.6)", fontFamily: FONT }}>{a.label}</span>
+                  {shownAnchors.length > 0 ? shownAnchors.map((a) => (
+                    <div key={a.key} className="flex items-center gap-3.5 py-2.5">
+                      <span style={{ fontSize: 20, width: 26, textAlign: "center", opacity: a.done ? 1 : 0.45 }}>{a.emoji}</span>
+                      <span className="flex-1 text-[15.5px]" style={{ color: a.done ? WARM : "rgba(182,210,188,0.6)", fontFamily: FONT }}>{a.label}</span>
                       <span
                         aria-hidden
                         style={{
-                          width: 18, height: 18, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center",
-                          background: a.done ? DOT_ON : "transparent", border: a.done ? "none" : "1px solid rgba(143,175,150,0.5)",
-                          color: "#0C2417", fontSize: 11, fontWeight: 800,
+                          width: 24, height: 24, borderRadius: 999, display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          background: a.done ? DOT_ON : "transparent", border: a.done ? "none" : "1.5px solid rgba(143,175,150,0.55)",
+                          color: "#0C2417", fontSize: 13, fontWeight: 800,
                         }}
                       >{a.done ? "✓" : ""}</span>
                     </div>
