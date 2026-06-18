@@ -31,9 +31,10 @@ const byUser = (req: { user?: unknown }): string | null => {
   return u?.id ? `u:${u.id}` : null;
 };
 
-const MEMO_TTL_HOURS = 48;
-// base64 ciphertext cap: ~60s of Opus/AAC is ~250 KB → ~340 KB base64; allow headroom.
-const MAX_CIPHERTEXT = 900_000;
+const MEMO_TTL_HOURS = 72; // keep voice prayers for up to three days (replayable)
+// base64 ciphertext cap. A 144 s full-band 128 kbps MP3 is ~2.3 MB → ~3.1 MB
+// base64 — well under the 10 MB JSON body limit in app.ts; allow headroom.
+const MAX_CIPHERTEXT = 5_000_000;
 
 // ─── POST /api/keys/public — publish my static ECDH public key ───────────────
 router.post("/keys/public", async (req, res): Promise<void> => {
@@ -76,7 +77,7 @@ const sendSchema = z.object({
   iv: z.string().min(1).max(64),
   ephemeralPublicJwk: z.string().min(1).max(4000),
   mimeType: z.string().min(1).max(64),
-  durationMs: z.number().int().min(0).max(65_000).optional(),
+  durationMs: z.number().int().min(0).max(150_000).optional(),
 });
 router.post("/voice-memos", rateLimit({
   name: "voice_memo_send",
@@ -123,7 +124,10 @@ router.post("/voice-memos", rateLimit({
   res.json({ ok: true });
 });
 
-// ─── GET /api/voice-memos — my unheard received memos (opaque ciphertext) ─────
+// ─── GET /api/voice-memos — my received memos (opaque ciphertext) ─────────────
+// Returns everything still within its 3-day window — heard OR unheard — so the
+// recipient can listen back, scrub, and replay. `listenedAt` lets the client
+// badge the new ones.
 router.get("/voice-memos", rateLimit({
   name: "voice_memo_inbox",
   max: 240,
@@ -142,27 +146,48 @@ router.get("/voice-memos", rateLimit({
     mimeType: voiceMemosTable.mimeType,
     durationMs: voiceMemosTable.durationMs,
     createdAt: voiceMemosTable.createdAt,
+    listenedAt: voiceMemosTable.listenedAt,
+    expiresAt: voiceMemosTable.expiresAt,
     name: usersTable.name,
     avatarUrl: usersTable.avatarUrl,
   }).from(voiceMemosTable)
     .innerJoin(usersTable, eq(usersTable.id, voiceMemosTable.senderId))
     .where(and(
       eq(voiceMemosTable.recipientId, me),
-      isNull(voiceMemosTable.listenedAt),
       gt(voiceMemosTable.expiresAt, new Date()),
     ))
     .orderBy(desc(voiceMemosTable.createdAt))
-    .limit(30);
-  res.json({ memos: rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() })) });
+    .limit(60);
+  res.json({ memos: rows.map((r) => ({
+    ...r,
+    createdAt: r.createdAt.toISOString(),
+    listenedAt: r.listenedAt ? r.listenedAt.toISOString() : null,
+    expiresAt: r.expiresAt.toISOString(),
+  })) });
 });
 
-// ─── POST /api/voice-memos/:id/listened — recipient heard it → delete now ─────
+// ─── POST /api/voice-memos/:id/listened — mark heard (KEEP until TTL) ─────────
+// We no longer delete on listen — the recipient can replay within the 3-day
+// window. This just stamps listenedAt so the "new" badge clears. The retention
+// cron + the hard TTL still guarantee it's gone within three days.
 router.post("/voice-memos/:id/listened", async (req, res): Promise<void> => {
   const me = getUserId(req);
   if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Bad id" }); return; }
-  // Only the recipient can clear it; deletion is immediate (we never keep it).
+  // Only the recipient can mark their own; don't overwrite an earlier stamp.
+  await db.update(voiceMemosTable)
+    .set({ listenedAt: new Date() })
+    .where(and(eq(voiceMemosTable.id, id), eq(voiceMemosTable.recipientId, me), isNull(voiceMemosTable.listenedAt)));
+  res.json({ ok: true });
+});
+
+// ─── DELETE /api/voice-memos/:id — recipient removes a memo early ─────────────
+router.delete("/voice-memos/:id", async (req, res): Promise<void> => {
+  const me = getUserId(req);
+  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) { res.status(400).json({ error: "Bad id" }); return; }
   await db.delete(voiceMemosTable).where(and(eq(voiceMemosTable.id, id), eq(voiceMemosTable.recipientId, me)));
   res.json({ ok: true });
 });

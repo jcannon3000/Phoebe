@@ -1,9 +1,10 @@
 /**
- * VoiceMemo — record + send an ephemeral, end-to-end-encrypted voice prayer to
- * a fellow (VoiceMemoButton), and listen to ones sent to you (VoiceMemoInbox).
- * Audio is encrypted on-device before upload and deleted the moment you hear it.
+ * VoiceMemo — record + send an end-to-end-encrypted voice prayer to a fellow
+ * (VoiceMemoButton), and listen to ones sent to you (VoiceMemoInbox). Audio is
+ * encrypted on-device before upload; the server only ever holds ciphertext, and
+ * memos are kept for up to three days so they can be replayed and scrubbed.
  *
- * Flow: tap "Voice" → a calm sheet records a 10-second prayer → Phoebe Studio
+ * Flow: tap "Voice" → a calm sheet records up to 144s → Phoebe Studio
  * polishes it ON-DEVICE (studioVoice.ts: warmth, presence, even loudness — like
  * a podcast mic) → the sender A/B's "As recorded" vs "Polished" and picks a
  * voicing → the chosen take is encrypted and sent. The polish runs on the
@@ -13,7 +14,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, Play, Square, X } from "lucide-react";
+import { Mic, Play, Pause, Square, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { encryptVoice, decryptVoice, voiceSupported, type EncryptedMemo } from "@/lib/voiceCrypto";
 import { enhanceVoice, studioSupported, type StudioPreset, type EnhanceResult } from "@/lib/studioVoice";
@@ -22,8 +23,12 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const CLAY = "#C47A65";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
-const MAX_MS = 10_000; // a ten-second voice prayer
+const MAX_MS = 144_000; // up to 2 min 24 s
 const MAX_SECS = MAX_MS / 1000;
+function fmt(sec: number): string {
+  const s = Math.max(0, Math.ceil(sec));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
 
 function pickMime(): string | undefined {
   const types = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
@@ -252,7 +257,7 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
                       <Square size={20} fill={WARM} />
                     </span>
                   </button>
-                  <p className="mt-4 text-[13px] tabular-nums" style={{ color: WARM }}>{Math.ceil(remaining)}s left</p>
+                  <p className="mt-4 text-[15px] font-semibold tabular-nums" style={{ color: WARM }}>{fmt(MAX_SECS - remaining)}</p>
                   <p className="mt-1 text-[12px]" style={{ color: SAGE }}>Speak from the heart — tap to finish</p>
                 </div>
               )}
@@ -330,15 +335,24 @@ function PreviewPlay({ label, active, busy, dim, onClick }: { label: string; act
   );
 }
 
-// ── Inbox: voice prayers sent to me ──────────────────────────────────────────
-type InMemo = { id: number; senderId: number; name: string | null; avatarUrl: string | null; mimeType: string; durationMs: number; createdAt: string } & EncryptedMemo;
+// ── Inbox: voice prayers sent to me — replayable + scrubbable for 3 days ──────
+type InMemo = { id: number; senderId: number; name: string | null; avatarUrl: string | null; mimeType: string; durationMs: number; createdAt: string; listenedAt: string | null; expiresAt: string } & EncryptedMemo;
+
+function clock(sec: number): string {
+  const s = Math.max(0, Math.floor(sec));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
 
 export function VoiceMemoInbox() {
   const qc = useQueryClient();
-  const [playingId, setPlayingId] = useState<number | null>(null);
+  const [activeId, setActiveId] = useState<number | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [pos, setPos] = useState(0);
+  const [dur, setDur] = useState(0);
   const [failedId, setFailedId] = useState<number | null>(null);
-  const [progress, setProgress] = useState(0); // 0..1 for the playing memo
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const urlCache = useRef<Map<number, string>>(new Map());
+
   const { data } = useQuery<{ memos: InMemo[] }>({
     queryKey: ["/api/voice-memos"],
     queryFn: () => apiRequest("GET", "/api/voice-memos"),
@@ -347,41 +361,76 @@ export function VoiceMemoInbox() {
   });
   const memos = data?.memos ?? [];
 
-  useEffect(() => () => { try { audioRef.current?.pause(); } catch { /* ignore */ } }, []);
+  useEffect(() => () => {
+    try { audioRef.current?.pause(); } catch { /* ignore */ }
+    urlCache.current.forEach((u) => { try { URL.revokeObjectURL(u); } catch { /* ignore */ } });
+    urlCache.current.clear();
+  }, []);
 
   if (memos.length === 0) return null;
 
-  const play = async (m: InMemo) => {
-    if (playingId) return; // one at a time
-    setPlayingId(m.id);
-    setFailedId(null);
-    setProgress(0);
-    try {
-      const buf = await decryptVoice({ ciphertext: m.ciphertext, iv: m.iv, ephemeralPublicJwk: m.ephemeralPublicJwk });
-      const url = URL.createObjectURL(new Blob([buf], { type: m.mimeType || "audio/mp4" }));
-      const audio = new Audio(url);
-      audioRef.current = audio;
-      const cleanup = () => {
-        URL.revokeObjectURL(url);
-        audioRef.current = null;
-        setPlayingId(null);
-        setProgress(0);
-        // Heard it → delete from the server, then drop from the list.
-        apiRequest("POST", `/api/voice-memos/${m.id}/listened`).catch(() => undefined)
-          .finally(() => qc.invalidateQueries({ queryKey: ["/api/voice-memos"] }));
-      };
-      audio.ontimeupdate = () => {
-        const d = audio.duration && isFinite(audio.duration) ? audio.duration : (m.durationMs || 1) / 1000;
-        if (d > 0) setProgress(Math.min(1, audio.currentTime / d));
-      };
-      audio.onended = cleanup;
-      audio.onerror = cleanup;
-      await audio.play();
-    } catch {
-      // Couldn't decrypt/play (e.g. it was encrypted to a key this device no
-      // longer holds). Surface it rather than resetting silently.
-      audioRef.current = null; setPlayingId(null); setProgress(0); setFailedId(m.id);
+  const getAudio = (): HTMLAudioElement => {
+    if (!audioRef.current) {
+      const a = new Audio();
+      a.ontimeupdate = () => setPos(a.currentTime);
+      a.onloadedmetadata = () => { if (isFinite(a.duration)) setDur(a.duration); };
+      a.onplay = () => setPlaying(true);
+      a.onpause = () => setPlaying(false);
+      a.onended = () => { setPlaying(false); setPos(a.duration || 0); };
+      audioRef.current = a;
     }
+    return audioRef.current;
+  };
+
+  // Decrypt once, cache the object URL so replay + scrub never re-decrypt.
+  const ensureUrl = async (m: InMemo): Promise<string> => {
+    const hit = urlCache.current.get(m.id);
+    if (hit) return hit;
+    const buf = await decryptVoice({ ciphertext: m.ciphertext, iv: m.iv, ephemeralPublicJwk: m.ephemeralPublicJwk });
+    const url = URL.createObjectURL(new Blob([buf], { type: m.mimeType || "audio/mpeg" }));
+    urlCache.current.set(m.id, url);
+    return url;
+  };
+
+  const markHeard = (m: InMemo) => {
+    if (m.listenedAt) return;
+    apiRequest("POST", `/api/voice-memos/${m.id}/listened`).catch(() => undefined);
+    qc.setQueryData<{ memos: InMemo[] }>(["/api/voice-memos"], (old) =>
+      old ? { memos: old.memos.map((x) => (x.id === m.id ? { ...x, listenedAt: new Date().toISOString() } : x)) } : old);
+  };
+
+  const load = async (m: InMemo, atFrac = 0): Promise<void> => {
+    const a = getAudio();
+    setFailedId(null);
+    try {
+      if (activeId !== m.id) {
+        const url = await ensureUrl(m);
+        a.src = url;
+        setActiveId(m.id);
+        setDur((m.durationMs || 0) / 1000);
+        setPos(0);
+      }
+      const total = a.duration && isFinite(a.duration) ? a.duration : (m.durationMs || 0) / 1000;
+      if (atFrac > 0 && total > 0) { a.currentTime = atFrac * total; setPos(a.currentTime); }
+      await a.play();
+      markHeard(m);
+    } catch { setFailedId(m.id); }
+  };
+
+  const toggle = (m: InMemo) => {
+    const a = getAudio();
+    if (activeId === m.id) { if (a.paused) void a.play().catch(() => setFailedId(m.id)); else a.pause(); return; }
+    void load(m);
+  };
+
+  const remove = (m: InMemo) => {
+    const a = audioRef.current;
+    if (activeId === m.id && a) { try { a.pause(); } catch { /* ignore */ } setActiveId(null); setPlaying(false); }
+    const u = urlCache.current.get(m.id);
+    if (u) { try { URL.revokeObjectURL(u); } catch { /* ignore */ } urlCache.current.delete(m.id); }
+    apiRequest("DELETE", `/api/voice-memos/${m.id}`).catch(() => undefined);
+    qc.setQueryData<{ memos: InMemo[] }>(["/api/voice-memos"], (old) =>
+      old ? { memos: old.memos.filter((x) => x.id !== m.id) } : old);
   };
 
   return (
@@ -389,40 +438,47 @@ export function VoiceMemoInbox() {
       <AnimatePresence>
         {memos.map((m) => {
           const first = (m.name ?? "A fellow").trim().split(/\s+/)[0] || "A fellow";
-          const sec = Math.max(1, Math.round((m.durationMs || 0) / 1000));
-          const isPlaying = playingId === m.id;
+          const active = activeId === m.id;
+          const total = active && dur > 0 ? dur : (m.durationMs || 0) / 1000;
+          const cur = active ? pos : 0;
+          const frac = total > 0 ? Math.min(1, cur / total) : 0;
+          const isNew = !m.listenedAt;
           return (
-            <motion.button key={m.id} type="button" onClick={() => play(m)} disabled={playingId !== null && !isPlaying}
+            <motion.div key={m.id}
               initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
-              className="relative w-full flex items-center gap-3 rounded-2xl px-4 py-3 text-left overflow-hidden active:scale-[0.99]"
-              style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(111,175,133,0.4)" }}>
-              {/* playback progress wash */}
-              {isPlaying && (
-                <span aria-hidden className="absolute inset-y-0 left-0 pointer-events-none"
-                  style={{ width: `${progress * 100}%`, background: "rgba(46,107,64,0.35)", transition: "width 120ms linear" }} />
-              )}
-              <span className="relative z-10 shrink-0">
-                {m.avatarUrl
-                  ? <img src={m.avatarUrl} alt={first} className="rounded-full object-cover" style={{ width: 34, height: 34 }} />
-                  : <div className="rounded-full flex items-center justify-center font-semibold" style={{ width: 34, height: 34, background: "#1A4A2E", color: "#A8C5A0", fontSize: 13, fontFamily: FONT }}>{first[0]?.toUpperCase() ?? "?"}</div>}
-              </span>
-              <div className="relative z-10 flex-1 min-w-0">
-                <p className="text-[14px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{first} sent a voice prayer</p>
-                <p className="text-[12px]" style={{ color: failedId === m.id ? CLAY : SAGE, fontFamily: FONT }}>
-                  {failedId === m.id ? "Couldn't open this one" : isPlaying ? "Playing… it fades after this" : `Tap to listen · ${sec}s · then it's gone`}
-                </p>
+              className="rounded-2xl px-3.5 py-3"
+              style={{ background: active ? "rgba(46,107,64,0.26)" : "rgba(46,107,64,0.16)", border: `1px solid ${active ? "rgba(111,175,133,0.5)" : "rgba(111,175,133,0.32)"}` }}>
+              <div className="flex items-center gap-3">
+                <span className="shrink-0 relative">
+                  {m.avatarUrl
+                    ? <img src={m.avatarUrl} alt={first} className="rounded-full object-cover" style={{ width: 34, height: 34 }} />
+                    : <div className="rounded-full flex items-center justify-center font-semibold" style={{ width: 34, height: 34, background: "#1A4A2E", color: "#A8C5A0", fontSize: 13, fontFamily: FONT }}>{first[0]?.toUpperCase() ?? "?"}</div>}
+                  {isNew && <span className="absolute -top-0.5 -right-0.5 rounded-full" style={{ width: 10, height: 10, background: "#6FAF85", border: "2px solid #0E2316" }} />}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13.5px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{first} sent a voice prayer</p>
+                  <p className="text-[11.5px]" style={{ color: failedId === m.id ? CLAY : SAGE, fontFamily: FONT }}>
+                    {failedId === m.id ? "Couldn't open this one" : isNew ? "New · tap to listen" : "Tap to listen back"}
+                  </p>
+                </div>
+                <button type="button" onClick={() => remove(m)} aria-label="Remove" className="shrink-0 rounded-full p-1 active:scale-90" style={{ color: "rgba(143,175,150,0.45)" }}>
+                  <X size={15} />
+                </button>
               </div>
-              <span className="relative z-10 shrink-0 rounded-full flex items-center justify-center" style={{ width: 34, height: 34, background: "rgba(46,107,64,0.85)", color: WARM }}>
-                {isPlaying
-                  ? <span className="inline-flex items-end gap-[2px]" style={{ height: 14 }}>
-                      {[0, 1, 2].map((i) => (
-                        <motion.span key={i} style={{ width: 3, background: WARM, borderRadius: 2 }}
-                          animate={{ height: [4, 13, 4] }} transition={{ duration: 0.7, repeat: Infinity, delay: i * 0.15 }} />
-                      ))}
-                    </span>
-                  : <Play size={15} />}
-              </span>
-            </motion.button>
+              {/* player row */}
+              <div className="flex items-center gap-2.5 mt-2.5">
+                <button type="button" onClick={() => toggle(m)} aria-label={active && playing ? "Pause" : "Play"}
+                  className="shrink-0 rounded-full flex items-center justify-center active:scale-95" style={{ width: 34, height: 34, background: "rgba(46,107,64,0.95)", color: WARM }}>
+                  {active && playing ? <Pause size={15} fill={WARM} /> : <Play size={15} fill={WARM} />}
+                </button>
+                <input type="range" min={0} max={1000} value={Math.round(frac * 1000)} aria-label="Scrub"
+                  onChange={(e) => void load(m, Number(e.target.value) / 1000)}
+                  className="flex-1 h-1.5 cursor-pointer" style={{ accentColor: "#6FAF85" }} />
+                <span className="shrink-0 text-[11px] tabular-nums" style={{ color: SAGE, fontFamily: FONT, minWidth: 74, textAlign: "right" }}>
+                  {clock(cur)} / {clock(total)}
+                </span>
+              </div>
+            </motion.div>
           );
         })}
       </AnimatePresence>
