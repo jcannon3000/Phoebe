@@ -1848,13 +1848,16 @@ function PlanEventCard({ p, keyPrefix }: { p: FellowPlanEvent; keyPrefix: string
       <motion.div
         initial={{ opacity: 0, y: 6 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`relative flex items-center gap-3 rounded-xl overflow-hidden cursor-pointer px-3.5 py-2.5 ${isToday_ ? colors.pulseClass : ""}`}
+        className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-transform active:scale-[0.99] ${isToday_ ? colors.pulseClass : ""}`}
         style={{
           background: colors.bg,
           border: "1px solid rgba(111,175,133,0.35)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
       >
+        {/* Thick left accent bar — same format as the prayer-request card. */}
+        <div className={`w-1 flex-shrink-0 ${isToday_ ? colors.barPulseClass : ""}`} style={isToday_ ? undefined : { background: colors.bar }} />
+        <div className="flex-1 flex items-center gap-3 px-3.5 py-2.5 min-w-0">
         {/* Host face + calendar badge (Duolingo-style corner overlay) */}
         <div className="relative shrink-0" style={{ width: 40, height: 40 }}>
           {p.host.avatarUrl ? (
@@ -1905,6 +1908,7 @@ function PlanEventCard({ p, keyPrefix }: { p: FellowPlanEvent; keyPrefix: string
             ))}
           </div>
         )}
+        </div>
       </motion.div>
     </Link>
   );
