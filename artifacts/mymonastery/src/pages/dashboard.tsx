@@ -5604,19 +5604,17 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // anchor — it gets the full office card / the feed hero card.
   const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "steps", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
-  // Home-layout version (keep in sync with customize-home.tsx). A saved layout
-  // whose `v` is below this is ignored and the user resets to DEFAULT_ORDER /
-  // DEFAULT_HIDDEN — the one-time global reset, no DB migration. Re-customizing
-  // stamps the current version and sticks.
-  const HOME_LAYOUT_VERSION = 2;
   // The default everyone starts at: prayer requests pinned on top, then
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.
   // Everything else is hidden but addable from Customize.
   const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "gratitude", "examen", "steps", "cac", "ssje", "ncmp", "podcasts"];
   const DEFAULT_HIDDEN = ["feeds", "gratitude", "examen", "steps", "cac", "ssje", "ncmp", "podcasts"];
-  // Only a current-version saved layout counts; anything older falls back to
-  // the default (that's the reset).
-  const savedLayout = user?.homeLayout && user.homeLayout.v === HOME_LAYOUT_VERSION ? user.homeLayout : null;
+  // Honor ANY saved layout regardless of its version — bumping the version must
+  // NEVER discard the user's customization (that was the "every code change
+  // wipes my home / I lose my cards" bug). The order-merge below keeps the
+  // user's order + hidden and appends any modules added since they customized,
+  // so a code change migrates their layout forward instead of resetting it.
+  const savedLayout = user?.homeLayout ?? null;
   // Prayer requests always leads — never hidden. A current-version saved
   // `hidden` set is the source of truth; otherwise the default applies.
   const homeHidden = (() => {

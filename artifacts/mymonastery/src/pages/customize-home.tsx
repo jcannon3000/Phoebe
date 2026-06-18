@@ -128,10 +128,11 @@ function buildOrder(saved: string[] | null | undefined, fallback: HomeModule[]):
 
 function useHomeLayout(user: AuthUser) {
   const queryClient = useQueryClient();
-  // Ignore a layout saved under an older version — that's how the one-time
-  // global reset to DEFAULT_ORDER/DEFAULT_HIDDEN rolls out. Once the user
-  // re-customizes, the save stamps the current version and sticks.
-  const saved = user?.homeLayout && user.homeLayout.v === HOME_LAYOUT_VERSION ? user.homeLayout : null;
+  // Honor ANY saved layout regardless of version — a version mismatch must
+  // never discard the user's customization (the "editing the customizer deletes
+  // my practices" bug). buildOrder() reconciles new/removed modules, so an old
+  // layout migrates forward; saving re-stamps the current version.
+  const saved = user?.homeLayout ?? null;
 
   const [order, setOrder] = useState<HomeModule[]>(() => buildOrder(saved?.order, DEFAULT_ORDER));
   const [hidden, setHidden] = useState<Set<string>>(() => {

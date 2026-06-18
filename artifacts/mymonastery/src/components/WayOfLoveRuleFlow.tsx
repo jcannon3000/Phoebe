@@ -120,7 +120,11 @@ function homeCardOn(
   hl: { order?: string[]; hidden?: string[]; v?: number } | null | undefined,
   key: string,
 ): boolean {
-  if (!hl || hl.v !== HOME_LAYOUT_VERSION) return false;
+  // Read the saved layout REGARDLESS of its version — a version mismatch must
+  // never discard the user's choices (that was the "every code change wipes my
+  // home" bug). New/removed modules are reconciled by the order-merge on the
+  // home + customize pages; the key is on iff it's in order and not hidden.
+  if (!hl) return false;
   return (hl.order ?? []).includes(key) && !new Set(hl.hidden ?? []).has(key);
 }
 
