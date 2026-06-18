@@ -334,14 +334,12 @@ struct PhoebeTodayView: View {
         guard hasGoal else { return stats.contemplationMin > 0 ? 1 : 0 }
         return min(1.0, Double(stats.contemplationMin) / Double(stats.contemplationGoalMin))
     }
-    // "7/20 min" with a goal; once the goal is met it reads "✓ 20 min" rather
-    // than overshooting ("66/60 min"). No goal → just the minutes.
+    // Always show the ACTUAL minutes done over the goal — "74/60 min" if you sat
+    // 74 against a 60-min goal — with a ✓ once you've met it. No goal → just mins.
     private var minutesLine: String {
         guard hasGoal else { return "\(stats.contemplationMin) min" }
-        if stats.contemplationMin >= stats.contemplationGoalMin {
-            return "✓ \(stats.contemplationGoalMin) min"
-        }
-        return "\(stats.contemplationMin)/\(stats.contemplationGoalMin) min"
+        let met = stats.contemplationMin >= stats.contemplationGoalMin
+        return "\(met ? "✓ " : "")\(stats.contemplationMin)/\(stats.contemplationGoalMin) min"
     }
     private var nextLine: String { stats.todayLine }
 
