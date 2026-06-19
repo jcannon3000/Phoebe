@@ -91,6 +91,10 @@ export default function MenuPage() {
     explore.items.push({ emoji: "📅", label: t("menu.events", { defaultValue: "Events" }), sub: t("menu.events_sub", { defaultValue: "Services, gatherings & practices" }), onClick: () => go("/events") });
   }
   explore.items.push({ emoji: "📚", label: t("menu.resources"), sub: t("menu.resources_sub"), onClick: () => go("/menu/resources") });
+  // Prayer Feeds — discover + subscribe to daily intercession feeds (e.g. the
+  // Diocese of New York's Calendar of Intercession). Public feeds are open to
+  // every tier, including offices-only, so this is unconditional.
+  explore.items.push({ emoji: "🌍", label: t("menu.prayer_feeds", { defaultValue: "Prayer Feeds" }), sub: t("menu.prayer_feeds_sub", { defaultValue: "Pray for the world, one day at a time" }), onClick: () => go("/prayer-feeds") });
   if (showLetters) explore.items.push({ emoji: "📮", label: t("menu.letters"), badge: t("menu.beta_badge"), onClick: () => go("/letters") });
   if (rawIsBeta) explore.items.push({ emoji: "✉️", label: t("menu.messages"), badge: t("menu.beta_badge"), onClick: () => go("/messages") });
   groups.push(explore);

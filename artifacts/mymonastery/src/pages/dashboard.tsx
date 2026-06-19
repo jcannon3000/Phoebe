@@ -5618,7 +5618,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.
   // Everything else is hidden but addable from Customize.
   const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
-  const DEFAULT_HIDDEN = ["feeds", "gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  // "feeds" is intentionally NOT hidden by default: the home feeds slot renders
+  // nothing until you've subscribed to a prayer feed, so leaving it visible just
+  // means a subscribed feed shows up on home automatically (no customizer trip).
+  const DEFAULT_HIDDEN = ["gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
   // Honor ANY saved layout regardless of its version — bumping the version must
   // NEVER discard the user's customization (that was the "every code change
   // wipes my home / I lose my cards" bug). The order-merge below keeps the

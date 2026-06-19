@@ -396,7 +396,8 @@ export default function WayOfLoveRuleFlow({
     const extrasOn = [...(extras.gratitude ? ["gratitude"] : []), ...(extras.examen ? ["examen"] : []), ...(extras.listening ? ["listening"] : []), ...(extras.journaling ? ["journaling"] : [])];
     const extrasOff = [...(extras.gratitude ? [] : ["gratitude"]), ...(extras.examen ? [] : ["examen"]), ...(extras.listening ? [] : ["listening"]), ...(extras.journaling ? [] : ["journaling"])];
     const order = ["requests", "office", "contemplation", ...newsletters, ...extrasOn, "feeds", "ncmp", "podcasts", ...extrasOff, ...others];
-    const hidden = ["feeds", "ncmp", "podcasts", ...extrasOff, ...others];
+    // "feeds" stays visible (self-hides until you subscribe to a prayer feed).
+    const hidden = ["ncmp", "podcasts", ...extrasOff, ...others];
     apiRequest("PUT", "/api/me/home-layout", { order, hidden, v: HOME_LAYOUT_VERSION })
       .then(() => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }))
       .catch(() => {/* ignore */});

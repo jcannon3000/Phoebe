@@ -274,7 +274,8 @@ export async function applyRhythm(rec: RecommendedRhythm): Promise<void> {
   const extrasOn = ALL_EXTRAS.filter((e) => onMap[e]);
   const extrasOff = ALL_EXTRAS.filter((e) => !onMap[e]);
   const order = ["requests", "office", "contemplation", ...newsletters, ...extrasOn, "feeds", "ncmp", "podcasts", ...extrasOff, ...otherReflections];
-  const hidden = ["feeds", "ncmp", "podcasts", ...extrasOff, ...otherReflections];
+  // "feeds" stays visible (self-hides until you subscribe to a prayer feed).
+  const hidden = ["ncmp", "podcasts", ...extrasOff, ...otherReflections];
   await apiRequest("PUT", "/api/me/home-layout", { order, hidden, v: HOME_LAYOUT_VERSION }).catch(() => { /* best-effort */ });
 
   // Per-device choices the customizer also sets.
