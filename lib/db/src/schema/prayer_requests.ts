@@ -17,6 +17,12 @@ export const prayerRequestsTable = pgTable("prayer_requests", {
   // avoid a circular import with prayer_feeds. Mutually exclusive
   // with groupId in practice — a row should set at most one scope.
   parishFeedId: integer("parish_feed_id"),
+  // When true, this request is DIRECTED privately to specific fellows (the
+  // tagged users): like a 1:1, only the owner + tagged recipients can see it.
+  // It never enters the garden feed, the office slideshow, or any other
+  // connection's surface — mirrors the parishFeedId exclusion at every
+  // broadcast site. When false (default) it's shared with the whole garden.
+  directOnly: boolean("direct_only").notNull().default(false),
   body: text("body").notNull(),
   // The author's framing when they submitted: "request" (default), "life-event",
   // or "justice". Drives the optional pill on cards / slideshow ("Life event"

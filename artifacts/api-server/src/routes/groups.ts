@@ -2234,6 +2234,8 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
           // community wall, even when the requester is a member of
           // this group.
           isNull(prayerRequestsTable.parishFeedId),
+          // Directed ("to a fellow") requests are private — never on a wall.
+          eq(prayerRequestsTable.directOnly, false),
           or(
             eq(prayerRequestsTable.groupId, group.id),
             inArray(prayerRequestsTable.ownerId, memberUserIds),
@@ -2257,6 +2259,8 @@ router.get("/groups/:slug/prayer-requests", async (req, res): Promise<void> => {
           sql`${prayerRequestsTable.closedAt} IS NULL`,
           notExpired,
           isNull(prayerRequestsTable.parishFeedId),
+          // Directed ("to a fellow") requests are private — never on a wall.
+          eq(prayerRequestsTable.directOnly, false),
           eq(prayerRequestsTable.groupId, group.id),
         ))
         .orderBy(desc(prayerRequestsTable.createdAt));

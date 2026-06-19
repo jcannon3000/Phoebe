@@ -85,6 +85,10 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
       allowed = canManage;
     }
     if (!allowed) { res.status(403).json({ error: "Forbidden" }); return; }
+  } else if (r.directOnly) {
+    // Directed ("to a fellow") request — private to the owner + tagged
+    // recipients. Garden membership grants nothing here.
+    if (!viewerIsOwner && !viewerIsTagged) { res.status(403).json({ error: "Forbidden" }); return; }
   } else if (!viewerIsOwner && !viewerIsTagged) {
     const garden = await getGardenUserIds(sessionUserId);
     if (!garden.includes(r.ownerId)) {
@@ -305,7 +309,9 @@ router.get("/prayer-requests/by-id/:id", async (req, res): Promise<void> => {
     // Only sent on the owner's view of the row; non-owners get
     // null (the share button hides itself anyway since it's gated
     // on viewerIsOwner client-side).
-    shareToken: viewerIsOwner ? r.shareToken ?? null : null,
+    // Suppressed for directed ("to a fellow") requests — a private request
+    // isn't publicly shareable, so the share affordance never appears.
+    shareToken: (viewerIsOwner && !r.directOnly) ? r.shareToken ?? null : null,
     words: wordRows
       .map(w => {
         // If the request is anonymous and this word is the OWNER's own, mask the
@@ -459,6 +465,18 @@ router.get("/prayer-requests", async (req, res): Promise<void> => {
       isNull(prayerRequestsTable.parishFeedId),
       eq(prayerRequestsTable.ownerId, sessionUserId),
     ),
+    // Directed ("to a fellow") requests are private: only the owner or a tagged
+    // recipient sees them — never the rest of the garden.
+    taggedInIds.length > 0
+      ? or(
+          eq(prayerRequestsTable.directOnly, false),
+          eq(prayerRequestsTable.ownerId, sessionUserId),
+          inArray(prayerRequestsTable.id, taggedInIds),
+        )
+      : or(
+          eq(prayerRequestsTable.directOnly, false),
+          eq(prayerRequestsTable.ownerId, sessionUserId),
+        ),
   ];
   if (mutedIds.length > 0) baseFilters.push(notInArray(prayerRequestsTable.ownerId, mutedIds));
   const requests = await db.select().from(prayerRequestsTable)
@@ -823,6 +841,11 @@ router.post("/prayer-requests", rateLimit({
     // missing array = no one tagged; the rest of the flow behaves
     // exactly like a normal request.
     taggedUserIds: z.array(z.number().int().positive()).optional().default([]),
+    // When true, this is a PRIVATE request directed only to the tagged
+    // fellow(s): owner + tagged see it, nobody else (no garden / slideshow).
+    // Requires at least one tag to be meaningful; ignored (forced false) if
+    // no one is tagged so an empty "direct" request can't silently vanish.
+    directOnly: z.boolean().optional().default(false),
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) {
@@ -888,6 +911,11 @@ router.post("/prayer-requests", rateLimit({
   // enforced by the partial UNIQUE index in migrate.ts.
   const shareToken = crypto.randomBytes(12).toString("hex");
 
+  // A "to a fellow" request is private (directOnly) — but only if it actually
+  // names someone. An empty tag list forces it back to a normal garden request
+  // so a directed request can never silently reach no one.
+  const directOnly = parsed.data.directOnly && parsed.data.taggedUserIds.length > 0;
+
   const [created] = await db.insert(prayerRequestsTable)
     .values({
       ownerId: sessionUserId,
@@ -899,6 +927,7 @@ router.post("/prayer-requests", rateLimit({
       eventTitle: parsed.data.kind === "life-event" ? (parsed.data.eventTitle?.trim() || null) : null,
       expiresAt,
       shareToken,
+      directOnly,
     })
     .returning();
 
@@ -1160,6 +1189,16 @@ router.post("/prayer-requests/:id/word", rateLimit({
   if (request.parishFeedId != null && request.ownerId !== sessionUserId) {
     const { allowed } = await canManageParish(sessionUserId, request.parishFeedId);
     if (!allowed) { res.status(403).json({ error: "Forbidden" }); return; }
+  }
+  // A directed ("to a fellow") request is private — only the owner + tagged
+  // recipients can leave a word on it.
+  if (request.directOnly && request.ownerId !== sessionUserId) {
+    const [tag] = await db.select({ id: prayerRequestTagsTable.id }).from(prayerRequestTagsTable).where(and(
+      eq(prayerRequestTagsTable.requestId, id),
+      eq(prayerRequestTagsTable.taggedUserId, sessionUserId),
+      isNull(prayerRequestTagsTable.removedAt),
+    ));
+    if (!tag) { res.status(403).json({ error: "Forbidden" }); return; }
   }
 
   const [author] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, sessionUserId));
@@ -2343,6 +2382,7 @@ router.get("/prayer-requests/share/:token", async (req, res): Promise<void> => {
         closedAt: prayerRequestsTable.closedAt,
         isAnswered: prayerRequestsTable.isAnswered,
         createdAt: prayerRequestsTable.createdAt,
+        directOnly: prayerRequestsTable.directOnly,
       })
       .from(prayerRequestsTable)
       .where(eq(prayerRequestsTable.shareToken, token));
@@ -2353,6 +2393,8 @@ router.get("/prayer-requests/share/:token", async (req, res): Promise<void> => {
       // shareable link to a request they've already wrapped up.
       res.status(404).json({ error: "Not found" }); return;
     }
+    // A directed ("to a fellow") request is private — never publicly shareable.
+    if (row.directOnly) { res.status(404).json({ error: "Not found" }); return; }
 
     // Owner display fields. Anonymous requests redact name + avatar.
     const [owner] = await db
@@ -2421,10 +2463,12 @@ router.post("/prayer-requests/share/:token/amen", async (req, res): Promise<void
 
   try {
     const [row] = await db
-      .select({ id: prayerRequestsTable.id, ownerId: prayerRequestsTable.ownerId })
+      .select({ id: prayerRequestsTable.id, ownerId: prayerRequestsTable.ownerId, directOnly: prayerRequestsTable.directOnly })
       .from(prayerRequestsTable)
       .where(eq(prayerRequestsTable.shareToken, token));
     if (!row) { res.status(404).json({ error: "Not found" }); return; }
+    // A directed ("to a fellow") request is private — no public-link amens.
+    if (row.directOnly) { res.status(404).json({ error: "Not found" }); return; }
 
     const viewerUserId = req.user ? (req.user as { id: number }).id : null;
 

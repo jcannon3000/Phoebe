@@ -757,6 +757,8 @@ router.get("/people/:email", async (req, res): Promise<void> => {
         // Parish-scoped pastoral concerns are private to the parish
         // admin; never surface them on a peer's public profile.
         isNull(prayerRequestsTable.parishFeedId),
+        // Directed ("to a fellow") requests are private to owner + recipient.
+        eq(prayerRequestsTable.directOnly, false),
       )
     ).orderBy(desc(prayerRequestsTable.createdAt)).limit(1);
     if (req) {

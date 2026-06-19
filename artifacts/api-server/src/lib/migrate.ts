@@ -2426,6 +2426,10 @@ export async function migrate() {
     // request is visible only to the requester + parish admin(s); never
     // surfaces in garden / slideshow / other parishioners' lists.
     await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS parish_feed_id INTEGER`);
+    // direct_only — a request DIRECTED privately to specific fellows (the tagged
+    // users): only the owner + tagged recipients can see it; never enters the
+    // garden / slideshow / other connections' surfaces (mirrors parish_feed_id).
+    await run(client, `ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS direct_only BOOLEAN NOT NULL DEFAULT false`);
     await run(
       client,
       `DO $$ BEGIN

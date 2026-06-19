@@ -127,6 +127,8 @@ export async function buildIntercessionsSlide(
             // Parish "pastoral concerns" are private to the requester
             // + parish admin and never enter the office intercessions.
             isNull(prayerRequestsTable.parishFeedId),
+            // Directed ("to a fellow") requests are private — never in the office.
+            eq(prayerRequestsTable.directOnly, false),
           ),
         )
         .limit(20)
@@ -386,6 +388,8 @@ export async function buildIntercessionSlides(
             // mode slideshow — they're admin-only and live in the
             // parish concerns inbox.
             isNull(prayerRequestsTable.parishFeedId),
+            // Directed ("to a fellow") requests are private — never in the office.
+            eq(prayerRequestsTable.directOnly, false),
           ),
         )
         .limit(20)

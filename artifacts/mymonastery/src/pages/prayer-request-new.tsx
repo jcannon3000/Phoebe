@@ -6,7 +6,6 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
-import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 import { DrumPicker } from "@/components/DrumPicker";
 
 // ── Visual language ─────────────────────────────────────────────────
@@ -168,9 +167,10 @@ export default function PrayerRequestNew() {
           eventTitle: eventTitle.trim(),
           eventDate: eventDate ? new Date(`${eventDate}T12:00:00`).toISOString() : undefined,
         } : {}),
-        // Server accepts an empty / missing array — it's only meaningful
-        // when the user picked tags via the TagPicker below.
+        // Server accepts an empty / missing array. A non-empty selection means
+        // "to a fellow" — directOnly makes the request private to them + you.
         taggedUserIds,
+        directOnly: taggedUserIds.length > 0,
       }),
     onSuccess: () => {
       triggerSubmitFeedback();
@@ -309,14 +309,10 @@ export default function PrayerRequestNew() {
                 {t("prayer_request.char_count", { count: body.length })}
               </p>
 
-              {/* Tag people — the "praying for my friend Matthew"
-                  signal. Selected users get visibility on this
-                  request (regardless of garden / community), a push
-                  on creation, and pushes on the first amen + every
-                  word of comfort. Optional; an empty selection is
-                  the default. */}
-              <TagPicker
-                ownerId={user?.id}
+              {/* Audience — to a fellow (private, just between you two) or to
+                  everyone you're connected with (the default garden feed).
+                  Picking a fellow tags them + makes the request directOnly. */}
+              <AudiencePicker
                 selectedIds={taggedUserIds}
                 onChange={setTaggedUserIds}
               />
@@ -449,182 +445,99 @@ export default function PrayerRequestNew() {
   );
 }
 
-// ── Tag picker ─────────────────────────────────────────────────────
+// ── Audience picker ────────────────────────────────────────────────
 //
-// Inline picker beneath the prayer-request textarea. Renders:
-//   • "Tag someone" pill — opens / closes the suggestion list.
-//   • Selected chips — each removable via the small "×".
-//   • Search-as-you-type from the viewer's garden (the same set
-//     /people surfaces, scoped to people they already know).
-//
-// Designed to add zero friction when not used — collapsed by
-// default, an empty selection is the no-op default state.
-function TagPicker({
-  ownerId,
+// "Who is this for?" — the request goes to everyone you're connected with
+// (the default garden feed) OR privately to a fellow (wide pills with their
+// photo + name; multi-select allowed). Picking a fellow makes the request
+// directOnly server-side, so only they + you can ever see it.
+type FellowLite = { userId: number; name: string | null; avatarUrl: string | null };
+function AudiencePicker({
   selectedIds,
   onChange,
 }: {
-  ownerId: number | undefined;
   selectedIds: number[];
   onChange: (next: number[]) => void;
 }) {
   const { t } = useTranslation();
-  const { data: people = [] } = usePeople(ownerId);
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-
-  // Only people with a real user account can be tagged (server
-  // enforces this too — we just hide the rest to avoid a confusing
-  // "Tagged ✓ — except no, it didn't take" interaction).
-  const eligible = useMemo(
-    () => people.filter((p): p is PersonSummary & { userId: number } => typeof p.userId === "number"),
-    [people],
-  );
-
-  const selected = useMemo(
-    () => eligible.filter(p => selectedIds.includes(p.userId)),
-    [eligible, selectedIds],
-  );
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return eligible;
-    return eligible.filter(p =>
-      (p.name ?? "").toLowerCase().includes(q) ||
-      (p.email ?? "").toLowerCase().includes(q),
-    );
-  }, [eligible, query]);
+  const { data } = useQuery<{ fellows: FellowLite[] }>({
+    queryKey: ["/api/fellows"],
+    queryFn: () => apiRequest("GET", "/api/fellows"),
+  });
+  const fellows = data?.fellows ?? [];
+  // "fellow" mode the moment anyone's picked; otherwise the everyone default.
+  const [mode, setMode] = useState<"everyone" | "fellow">(selectedIds.length > 0 ? "fellow" : "everyone");
 
   const toggle = (uid: number) => {
-    if (selectedIds.includes(uid)) {
-      onChange(selectedIds.filter(x => x !== uid));
-    } else {
-      onChange([...selectedIds, uid]);
-    }
+    onChange(selectedIds.includes(uid) ? selectedIds.filter(x => x !== uid) : [...selectedIds, uid]);
   };
+
+  const Option = ({ active, emoji, title, sub, onClick }: { active: boolean; emoji: string; title: string; sub: string; onClick: () => void }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition-colors"
+      style={{ background: active ? "rgba(52,95,158,0.28)" : GLASS, border: `1px solid ${active ? "rgba(150,178,224,0.55)" : GLASS_BORDER}` }}
+    >
+      <span style={{ fontSize: 20 }} aria-hidden>{emoji}</span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-[14px] font-semibold" style={{ color: CREAM, fontFamily: SPACE }}>{title}</span>
+        <span className="block text-[12px]" style={{ color: SAGE, fontFamily: SPACE }}>{sub}</span>
+      </span>
+      {active && <span style={{ color: "#A6C0E6" }} aria-hidden>✓</span>}
+    </button>
+  );
 
   return (
     <div className="mb-6">
-      {/* Trigger + selected chips on the same row. */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <button
-          type="button"
-          onClick={() => setOpen(o => !o)}
-          className="text-[12px] font-medium px-3 py-1.5 rounded-full transition-opacity hover:opacity-90"
-          style={{
-            background: "rgba(52,95,158,0.18)",
-            border: "1px solid rgba(52,95,158,0.4)",
-            color: "#C2CFE2",
-            fontFamily: "'Space Grotesk', sans-serif",
-          }}
-        >
-          {selected.length > 0
-            ? t("prayer_request.tagged_count_pill", { count: selected.length })
-            : t("prayer_request.tag_someone_pill")}
-        </button>
-        {selected.map(p => (
-          <span
-            key={p.userId}
-            className="inline-flex items-center gap-1 text-[12px] px-2.5 py-1 rounded-full"
-            style={{
-              background: "rgba(52,95,158,0.28)",
-              border: "1px solid rgba(52,95,158,0.5)",
-              color: "#F0EDE6",
-              fontFamily: "'Space Grotesk', sans-serif",
-            }}
-          >
-            {p.name}
-            <button
-              type="button"
-              onClick={() => toggle(p.userId)}
-              aria-label={t("prayer_request.untag_aria", { name: p.name ?? "" })}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "rgba(148,168,198,0.85)",
-                cursor: "pointer",
-                padding: 0,
-                marginLeft: 2,
-                fontSize: 14,
-                lineHeight: 1,
-              }}
-            >
-              ×
-            </button>
-          </span>
-        ))}
+      <p className="text-[12px] font-semibold mb-2" style={{ color: SAGE, fontFamily: SPACE }}>
+        {t("prayer_request.audience_q", { defaultValue: "Who is this for?" })}
+      </p>
+      <div className="flex flex-col gap-2">
+        <Option
+          active={mode === "everyone"}
+          emoji="🌿"
+          title={t("prayer_request.audience_everyone", { defaultValue: "Everyone you're connected with" })}
+          sub={t("prayer_request.audience_everyone_sub", { defaultValue: "Shared with your circle's prayer feed" })}
+          onClick={() => { setMode("everyone"); onChange([]); }}
+        />
+        <Option
+          active={mode === "fellow"}
+          emoji="💚"
+          title={t("prayer_request.audience_fellow", { defaultValue: "A fellow" })}
+          sub={t("prayer_request.audience_fellow_sub", { defaultValue: "Private — just between you and them" })}
+          onClick={() => setMode("fellow")}
+        />
       </div>
 
-      {open && (
-        <div
-          className="mt-3 rounded-xl"
-          style={{
-            background: "#0E2138",
-            border: "1px solid rgba(52,95,158,0.35)",
-            padding: 8,
-          }}
-        >
-          <input
-            type="text"
-            placeholder={t("prayer_request.tag_search_placeholder")}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="w-full text-sm px-3 py-2 rounded-lg mb-2 outline-none"
-            style={{
-              background: "rgba(14,30,52,0.7)",
-              border: "1px solid rgba(52,95,158,0.3)",
-              color: "#F0EDE6",
-              fontFamily: "'Space Grotesk', sans-serif",
-            }}
-          />
-          <div style={{ maxHeight: 200, overflowY: "auto" }}>
-            {filtered.length === 0 && (
-              <p className="text-xs italic text-center py-2" style={{ color: "rgba(148,168,198,0.55)" }}>
-                {eligible.length === 0
-                  ? t("prayer_request.no_one_in_community")
-                  : t("prayer_request.no_one_matches_name")}
-              </p>
-            )}
-            {filtered.map(p => {
-              const isSelected = selectedIds.includes(p.userId);
-              return (
-                <button
-                  key={p.userId}
-                  type="button"
-                  onClick={() => toggle(p.userId)}
-                  className="w-full flex items-center gap-3 px-2 py-2 rounded-lg text-left transition-colors"
-                  style={{
-                    background: isSelected ? "rgba(52,95,158,0.25)" : "transparent",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = "rgba(194,207,226,0.06)";
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                  }}
-                >
-                  {p.avatarUrl ? (
-                    <img
-                      src={p.avatarUrl}
-                      alt={p.name}
-                      className="w-7 h-7 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold"
-                      style={{ background: "#1C3A5C", color: "#A6C0E6" }}
-                    >
-                      {(p.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
-                    </div>
-                  )}
-                  <span className="text-sm flex-1 truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                    {p.name}
-                  </span>
-                  {isSelected && <span className="text-sm" style={{ color: "#A6C0E6" }}>✓</span>}
-                </button>
-              );
-            })}
-          </div>
+      {mode === "fellow" && (
+        <div className="mt-2 flex flex-col gap-2">
+          {fellows.length === 0 ? (
+            <p className="text-[12px] italic px-1 py-2" style={{ color: SAGE_DIM, fontFamily: SPACE }}>
+              {t("prayer_request.audience_no_fellows", { defaultValue: "You don't have any fellows yet." })}
+            </p>
+          ) : fellows.map((f) => {
+            const isSel = selectedIds.includes(f.userId);
+            return (
+              <button
+                key={f.userId}
+                type="button"
+                onClick={() => toggle(f.userId)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left transition-colors"
+                style={{ background: isSel ? "rgba(52,95,158,0.28)" : GLASS, border: `1px solid ${isSel ? "rgba(150,178,224,0.55)" : GLASS_BORDER}` }}
+              >
+                {f.avatarUrl ? (
+                  <img src={f.avatarUrl} alt={f.name ?? ""} className="w-9 h-9 rounded-full object-cover" />
+                ) : (
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-semibold" style={{ background: "#1C3A5C", color: "#A6C0E6" }}>
+                    {(f.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
+                  </div>
+                )}
+                <span className="text-[14px] flex-1 truncate" style={{ color: CREAM, fontFamily: SPACE }}>{f.name ?? "Someone"}</span>
+                {isSel && <span style={{ color: "#A6C0E6" }} aria-hidden>✓</span>}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
