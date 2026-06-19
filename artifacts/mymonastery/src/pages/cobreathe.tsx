@@ -14,6 +14,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { BreathNearInvite } from "@/components/BreathNearInvite";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { computeFingerprint } from "@/lib/cobreatheOrder";
+import { COBREATHE_INTRO_SEEN_KEY } from "@/pages/cobreathe-about";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
 // (hashed + optimized by Vite) and rotated through during the breath, one photo
@@ -33,6 +34,10 @@ const COBREATHE_FINGERPRINT = computeFingerprint(COBREATHE_PHOTOS);
 
 function wantsStart(): boolean {
   try { return new URLSearchParams(window.location.search).get("start") === "1"; } catch { return false; }
+}
+// True once the user has seen the one-page Cobreathe intro at least once.
+function introSeen(): boolean {
+  try { return localStorage.getItem(COBREATHE_INTRO_SEEN_KEY) === "1"; } catch { return false; }
 }
 // Launched from the contemplation page / sit? Those entry points pass
 // ?from=contemplation, and finishing then shows the summary screen (and returns
@@ -148,14 +153,18 @@ export default function CobreathePage() {
   // Opened with ?start=1 → go straight into the breath, BUT only once the user
   // has been through the intro slideshow. First-timers are sent through the
   // slideshow first (the effect below), which begins the breath at its end.
-  // New users no longer get routed through the /cobreathe/about slideshow — if
-  // they came to start, they go straight into the breath.
+  // First-time users see a single intro page (the practice + the why) before the
+  // breath; after that, starting goes straight in.
   const [mode, setMode] = useState<"intro" | "breathing" | "done">(() =>
-    wantsStart() ? "breathing" : "intro",
+    wantsStart() && introSeen() ? "breathing" : "intro",
   );
   // Hold the screen on while breathing — the breath has no touch input, so the
   // idle timer would otherwise dim/sleep the phone mid-sit.
   useKeepAwake(mode === "breathing");
+  useEffect(() => {
+    if (wantsStart() && !introSeen()) setLocation("/cobreathe/about");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Garden-mate photo sync: while breathing, follow the earliest online garden-
   // mate's photo order (or lead if first). Gated on showPresence inside the hook.
