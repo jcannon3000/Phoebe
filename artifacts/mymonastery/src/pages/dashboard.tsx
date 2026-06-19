@@ -6688,7 +6688,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // Contemplation has no ceiling — keep it on the home even once the
                 // day is "done" so the reader can always sit again if they want.
                 const RGB = "62,124,122";
-                const contemplationHref = (() => { try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "/cobreathe?start=1" : "/contemplation?begin=1"; } catch { return "/contemplation?begin=1"; } })();
+                // Always open the begin slide (never skip into Cobreathe); the
+                // Cobreathe pill there leads to its own in-person options slide.
+                const contemplationHref = "/contemplation?begin=1";
                 const contemplationAgainCard = (
                   <Link href={contemplationHref} className="block mb-5">
                     <div className="relative flex rounded-3xl overflow-hidden transition-opacity hover:opacity-95 active:scale-[0.99]" style={{ background: `rgba(${RGB},0.12)`, border: `1px solid rgba(${RGB},0.42)` }}>

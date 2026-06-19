@@ -561,10 +561,10 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     }),
     ...(silenceActive ? [{
       key: "silence", emoji: "🕯️", rgb: "62,124,122", done: silenceDone,
-      // Cobreathe straight away if that's their chosen contemplation style;
-      // otherwise jump to the Contemplation page's focused length chooser
-      // (just the three pills — length, Start, Cobreathe — no stats/history).
-      href: (() => { try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "/cobreathe?start=1" : "/contemplation?begin=1"; } catch { return "/contemplation?begin=1"; } })(),
+      // Always open the begin slide (length, Start contemplation, Cobreathe) —
+      // never skip straight into Cobreathe, even when that's the saved style.
+      // Choosing Cobreathe there leads to its own in-person options slide.
+      href: "/contemplation?begin=1",
       title: t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
       blurb: contemplationBlurb,
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,

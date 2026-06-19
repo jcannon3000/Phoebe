@@ -502,10 +502,10 @@ export default function ContemplationPage() {
         const m = parseInt(sit, 10);
         if (Number.isFinite(m) && m >= 1 && m <= 120) { start(m); return; }
       }
-      const begin = params.get("begin") === "1";
-      if (begin && localStorage.getItem("phoebe:contemplation-style") === "cobreathe") {
-        setLocation("/cobreathe?start=1");
-      }
+      // The contemplation card always opens the begin slide below (Length +
+      // Start contemplation + a Cobreathe pill). It no longer auto-skips to
+      // Cobreathe when that's the saved style — the picker is always shown, and
+      // the Cobreathe pill there leads to its own in-person options slide.
     } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

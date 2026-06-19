@@ -703,11 +703,11 @@ export function ContemplationTimer({
             }}
           />
         )}
-        {/* Close (×) — top right, safe-area aware. Hidden mid-sit so a
-            stray tap doesn't abandon the silence; an explicit "End"
-            sits at the bottom instead. Shown in the reflection phase so
-            the listener can back out before the silence begins. */}
-        {phase !== "running" && (
+        {/* Close (×) — top right, safe-area aware. Shown in ALL phases now
+            (including mid-sit, per request) so there's always a clear way out;
+            it exits without logging the partial sit, while the bottom "End"
+            finishes and logs it. */}
+        {(
           <button
             type="button"
             onClick={handleClose}
@@ -1399,19 +1399,19 @@ export function ContemplationTimer({
               onClick={endSit}
               className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.98]"
               style={{
-                padding: "13px 44px",
-                // Once the bell has rung, "Done" is the primary action — solid
-                // black at 80% so it reads clearly. Before then, "End" stays a
-                // quiet affordance that shouldn't pull the eye out of the silence.
-                background: reachedGoal ? "rgba(0,0,0,0.8)" : "rgba(46,107,64,0.18)",
-                border: `1px solid ${reachedGoal ? "rgba(255,255,255,0.22)" : "rgba(46,107,64,0.5)"}`,
+                padding: "14px 48px",
+                // Once the bell has rung, "Done" is solid black at 80%. Before
+                // then, "End" is a clearly-visible solid green pill (it used to
+                // be near-invisible) so there's always an obvious way to finish.
+                background: reachedGoal ? "rgba(0,0,0,0.8)" : "rgba(46,107,64,0.7)",
+                border: `1px solid ${reachedGoal ? "rgba(255,255,255,0.22)" : "rgba(140,195,160,0.6)"}`,
                 color: reachedGoal ? "#FFFFFF" : WARM,
                 fontFamily: SPACE_GROTESK,
-                fontSize: 15,
+                fontSize: 15.5,
                 fontWeight: 600,
                 letterSpacing: "0.02em",
                 cursor: "pointer",
-                boxShadow: reachedGoal ? "0 6px 20px rgba(0,0,0,0.35)" : "none",
+                boxShadow: reachedGoal ? "0 6px 20px rgba(0,0,0,0.35)" : "0 4px 16px rgba(0,0,0,0.3)",
               }}
             >
               {reachedGoal ? t("common.done") : t("contemplation_timer.end")}
