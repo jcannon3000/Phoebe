@@ -1,11 +1,12 @@
 /**
  * FellowSettingsSheet — per-fellow sharing settings, opened from a fellow row.
  * Two things you control for each 1:1 fellow:
- *   1. Share daily progress → Walking together (a MUTUAL opt-in; we drive it
- *      through the existing /api/walk endpoints, showing the live status).
- *   2. Sharing tied to place → a subjective "lives in the same place as me"
- *      marker + whether your plans are visible to them (default on). Plans are
- *      local, so the natural move is: on for nearby fellows, off for far ones.
+ *   1. Daily progress → a one-way toggle for whether this fellow can see your
+ *      today-only rhythm dots in Walking together (default on; still gated by a
+ *      recent Heart to Heart). Backed by fellow_prefs.shareProgress.
+ *   2. Lives in the same place as me → a subjective marker that keeps local
+ *      plans local (also where plan-sharing now lives — there's no separate
+ *      "share plans" switch).
  */
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,7 +27,7 @@ type WalkData = {
   paused: Array<{ pairId: number; userId: number }>;
   eligibleFellows: Array<{ userId: number }>;
 };
-type PrefsData = { prefs: Record<number, { samePlace: boolean; sharePlans: boolean }> };
+type PrefsData = { prefs: Record<number, { samePlace: boolean; sharePlans?: boolean; shareProgress: boolean }> };
 
 function initials(name: string): string {
   return name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
@@ -57,7 +58,7 @@ export function FellowSettingsSheet({ fellow, onClose }: { fellow: FellowLite | 
   const { data: prefsData } = useQuery<PrefsData>({ queryKey: ["/api/fellow-prefs"], queryFn: () => apiRequest("GET", "/api/fellow-prefs"), enabled: open });
 
   const invalidate = () => { qc.invalidateQueries({ queryKey: ["/api/walk"] }); };
-  const invalidatePrefs = () => { qc.invalidateQueries({ queryKey: ["/api/fellow-prefs"] }); qc.invalidateQueries({ queryKey: ["/api/fellow-plans"] }); };
+  const invalidatePrefs = () => { qc.invalidateQueries({ queryKey: ["/api/fellow-prefs"] }); };
 
   // Walking-together status for this fellow.
   const find = (arr?: Array<{ pairId: number; userId: number }>) => arr?.find((x) => x.userId === fid) ?? null;
@@ -83,12 +84,12 @@ export function FellowSettingsSheet({ fellow, onClose }: { fellow: FellowLite | 
     },
   });
 
-  // Place prefs (default: not same place, plans shared).
+  // Per-fellow prefs (default: not same place, daily progress shared).
   const pref = fid != null ? prefsData?.prefs?.[fid] : undefined;
   const samePlace = pref?.samePlace ?? false;
-  const sharePlans = pref?.sharePlans ?? true;
+  const shareProgress = pref?.shareProgress ?? true;
   const [savingKey, setSavingKey] = useState<string | null>(null);
-  const patchPref = (patch: { samePlace?: boolean; sharePlans?: boolean }, key: string) => {
+  const patchPref = (patch: { samePlace?: boolean; shareProgress?: boolean }, key: string) => {
     if (fid == null) return;
     setSavingKey(key);
     apiRequest("PATCH", `/api/fellow-prefs/${fid}`, patch)
@@ -136,25 +137,20 @@ export function FellowSettingsSheet({ fellow, onClose }: { fellow: FellowLite | 
               </div>
             </div>
 
-            {/* 1. Daily progress — inherent for fellows (no opt-in). Informational. */}
+            {/* 1. Daily progress — a one-way toggle for whether they see your dots. */}
             <Row
               title="Daily progress"
-              sub={`You're walking together — you each see the other's daily rhythm once you've prayed 1:1 recently.`}
-              control={<span className="shrink-0 rounded-full text-[11px] font-semibold px-3 py-1.5" style={{ background: "rgba(46,107,64,0.3)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.5)", fontFamily: FONT, textTransform: "uppercase", letterSpacing: "0.1em" }}>On</span>}
+              sub={shareProgress
+                ? `${first} can see today's rhythm once you've prayed 1:1 recently`
+                : `Your daily rhythm stays hidden from ${first}`}
+              control={<Switch on={shareProgress} disabled={savingKey === "shareProgress"} onClick={() => patchPref({ shareProgress: !shareProgress }, "shareProgress")} />}
             />
 
-            {/* 2. Lives in the same place (subjective). */}
+            {/* 2. Lives in the same place (subjective) — also where plan-sharing lives. */}
             <Row
               title="Lives in the same place as me"
               sub="You decide — it just helps you keep local plans local."
               control={<Switch on={samePlace} disabled={savingKey === "samePlace"} onClick={() => patchPref({ samePlace: !samePlace }, "samePlace")} />}
-            />
-
-            {/* 3. Share my plans with them. */}
-            <Row
-              title="Share my plans with them"
-              sub={sharePlans ? `${first} can see plans you share` : `Your plans stay hidden from ${first}`}
-              control={<Switch on={sharePlans} disabled={savingKey === "sharePlans"} onClick={() => patchPref({ sharePlans: !sharePlans }, "sharePlans")} />}
             />
 
             <button type="button" onClick={onClose} className="w-full rounded-2xl py-3 mt-5 text-[14px] font-semibold" style={{ background: "transparent", color: "#C8D4C0", border: `1px solid ${CARD_B}`, fontFamily: FONT }}>Done</button>

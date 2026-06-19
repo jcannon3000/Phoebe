@@ -8,7 +8,7 @@
 // Beta-gated, mirroring fellows-connect.ts (getUserId / requireBeta / areFellows).
 import { Router, type IRouter, type RequestHandler } from "express";
 import { eq, and, or, inArray, gte, sql } from "drizzle-orm";
-import { db, walkPairingsTable, walkNudgesTable, fellowsTable, usersTable, betaUsersTable, userMutesTable, dailyPrayersTable, prayerAttentionsTable, type WalkPairing } from "@workspace/db";
+import { db, walkPairingsTable, walkNudgesTable, fellowsTable, fellowPrefsTable, usersTable, betaUsersTable, userMutesTable, dailyPrayersTable, prayerAttentionsTable, type WalkPairing } from "@workspace/db";
 import { z } from "zod/v4";
 import { sendPushToUser } from "../lib/pushSender";
 import { perUserRateLimit } from "../lib/rate-limit";
@@ -175,13 +175,25 @@ router.get("/walk", requireBeta, async (req, res): Promise<void> => {
   const needHeart = fellowIds.filter((id) => { const s = fellowSince.get(id); return !(s && nowMs - new Date(s).getTime() < GRACE_MS); });
   const heartSet = await recentHeartToHeartSet(me, needHeart);
 
+  // Per-fellow "share daily progress" choice (FellowSettingsSheet): a fellow who
+  // turned it OFF toward me hides their own dots from me, even mid-grace or after
+  // a Heart to Heart. Default (no row) = shared, so this only ever subtracts.
+  const progressOffRows = await db.select({ ownerId: fellowPrefsTable.ownerId })
+    .from(fellowPrefsTable)
+    .where(and(
+      inArray(fellowPrefsTable.ownerId, fellowIds),
+      eq(fellowPrefsTable.fellowUserId, me),
+      eq(fellowPrefsTable.shareProgress, false),
+    ));
+  const progressHiddenFromMe = new Set(progressOffRows.map((r) => r.ownerId));
+
   const companions = (await Promise.all(fellowIds.map(async (pid) => {
     const person = people.get(pid);
     const pairId = pairIdByPartner.get(pid);
     if (!person || !pairId) return null;
     const s = fellowSince.get(pid);
     const inGrace = !!s && nowMs - new Date(s).getTime() < GRACE_MS;
-    const canSeeProgress = inGrace || heartSet.has(pid);
+    const canSeeProgress = (inGrace || heartSet.has(pid)) && !progressHiddenFromMe.has(pid);
     const progress = canSeeProgress ? await getWalkProgressForToday(pid) : null;
     const [lastFromThem] = await db.select({ kind: walkNudgesTable.kind, createdAt: walkNudgesTable.createdAt })
       .from(walkNudgesTable)

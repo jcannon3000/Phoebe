@@ -1245,10 +1245,12 @@ export async function migrate() {
         fellow_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         same_place BOOLEAN NOT NULL DEFAULT FALSE,
         share_plans BOOLEAN NOT NULL DEFAULT TRUE,
+        share_progress BOOLEAN NOT NULL DEFAULT TRUE,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
+    await run(client, `ALTER TABLE fellow_prefs ADD COLUMN IF NOT EXISTS share_progress BOOLEAN NOT NULL DEFAULT TRUE`);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS fellow_prefs_owner_fellow ON fellow_prefs (owner_id, fellow_user_id)`);
 
     // daily_prayers — one "prayer for the day" per author per local day,
