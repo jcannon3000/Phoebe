@@ -1403,8 +1403,8 @@ export function ContemplationTimer({
                 // Once the bell has rung, "Done" is solid black at 80%. Before
                 // then, "End" is a clearly-visible solid green pill (it used to
                 // be near-invisible) so there's always an obvious way to finish.
-                background: reachedGoal ? "rgba(0,0,0,0.8)" : "rgba(46,107,64,0.7)",
-                border: `1px solid ${reachedGoal ? "rgba(255,255,255,0.22)" : "rgba(140,195,160,0.6)"}`,
+                background: reachedGoal ? "rgba(0,0,0,0.85)" : "#2D5E3F",
+                border: `1px solid ${reachedGoal ? "rgba(255,255,255,0.3)" : "rgba(140,195,160,0.7)"}`,
                 color: reachedGoal ? "#FFFFFF" : WARM,
                 fontFamily: SPACE_GROTESK,
                 fontSize: 15.5,
@@ -1421,12 +1421,18 @@ export function ContemplationTimer({
               onClick={discardSit}
               className="transition-opacity hover:opacity-80"
               style={{
-                background: "none",
-                border: "none",
-                color: "rgba(143,175,150,0.6)",
+                // A visible pill (dark backing + light text) so it reads clearly
+                // over the photo background, not a near-invisible faint link.
+                background: "rgba(0,0,0,0.4)",
+                border: "1px solid rgba(200,225,210,0.28)",
+                borderRadius: 999,
+                padding: "8px 20px",
+                color: "rgba(224,232,220,0.92)",
                 fontFamily: SPACE_GROTESK,
                 fontSize: 13,
+                fontWeight: 600,
                 cursor: "pointer",
+                textShadow: "0 1px 6px rgba(0,0,0,0.5)",
               }}
             >
               {t("contemplation_timer.discard_session")}

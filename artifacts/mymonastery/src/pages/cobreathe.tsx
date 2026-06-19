@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { apiRequest } from "@/lib/queryClient";
-import { CobreatheBreath, DEFAULT_TOTAL_BREATHS } from "@/components/CobreatheBreath";
+import { CobreatheBreath, DEFAULT_TOTAL_BREATHS, CYCLE_MS } from "@/components/CobreatheBreath";
 import { CobreatheSummary } from "@/components/CobreatheSummary";
 import { addBreathsThisWeek } from "@/lib/cobreatheTally";
 import { useAuth } from "@/hooks/useAuth";
@@ -256,11 +256,22 @@ export default function CobreathePage() {
     });
   }, [mode, breathSync.coBreatherIds, peopleById]);
 
+  // Fellows breathing RIGHT NOW (live), with faces — passed to the breath so it
+  // can show who's cobreathing alongside you, refreshed once per breath.
+  const coBreathingFellows = useMemo(
+    () => breathSync.coBreatherIds
+      .map((id) => { const p = peopleById.get(id); return p ? { userId: id, name: (p.name ?? null) as string | null, avatarUrl: p.avatarUrl ?? null } : null; })
+      .filter((x): x is NonNullable<typeof x> => x !== null),
+    [breathSync.coBreatherIds, peopleById],
+  );
+
   // State returned by the POST — fresher than the GET cache on the done screen.
   const [doneState, setDoneState] = useState<BreathState | null>(null);
   // This week's running breath tally (per-device), shown on the concluding
   // screen — the same number the slideshow's Cobreathe close shows.
   const [weekBreaths, setWeekBreaths] = useState(0);
+  // How many breaths the user actually took this sit (open-ended — can exceed 12).
+  const [breathsTaken, setBreathsTaken] = useState(DEFAULT_TOTAL_BREATHS);
   const talliedRef = useRef(false);
 
   const { data: today } = useQuery<BreathState>({
@@ -334,6 +345,9 @@ export default function CobreathePage() {
     }
     logSit(secondsKept);
     record.mutate(secondsKept);
+    // The actual breaths taken — open-ended, so derive from elapsed (one breath
+    // per CYCLE_MS). Floored at the 12 target. Drives the summary headline + tally.
+    setBreathsTaken(Math.max(DEFAULT_TOTAL_BREATHS, Math.round(secondsKept / (CYCLE_MS / 1000))));
     // From the contemplation page → show the summary screen; otherwise return
     // straight to contemplation as before.
     if (fromContemplation) setMode("done"); else setLocation("/contemplation");
@@ -344,7 +358,7 @@ export default function CobreathePage() {
   // mirrors the slideshow overlay so both closes show the same count.
   useEffect(() => {
     if (mode !== "done") return;
-    if (!talliedRef.current) { talliedRef.current = true; setWeekBreaths(addBreathsThisWeek(DEFAULT_TOTAL_BREATHS)); }
+    if (!talliedRef.current) { talliedRef.current = true; setWeekBreaths(addBreathsThisWeek(breathsTaken)); }
   }, [mode]);
 
   // Prefer the POST's snapshot once it lands; fall back to the GET while in
@@ -444,6 +458,7 @@ export default function CobreathePage() {
         nearbyFellows={breathSync.nearbyFellows}
         mapFellows={breathSync.mapFellows}
         myLoc={breathSync.myLoc}
+        coBreathingFellows={coBreathingFellows}
       />
     );
   }
@@ -487,6 +502,7 @@ export default function CobreathePage() {
     }
     return (
       <CobreatheSummary
+        breathsTaken={breathsTaken}
         weekBreaths={weekBreaths}
         others={othersDone}
         companions={summaryFaces}

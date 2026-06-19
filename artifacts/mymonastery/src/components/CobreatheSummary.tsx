@@ -15,6 +15,7 @@ const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
 
 export function CobreatheSummary({
+  breathsTaken = DEFAULT_TOTAL_BREATHS,
   weekBreaths,
   others,
   onContinue,
@@ -28,6 +29,9 @@ export function CobreatheSummary({
   nearFellows = [],
   companions = [],
 }: {
+  // How many breaths the user actually took this sit (open-ended — can exceed
+  // the 12-breath target). Defaults to the target for callers that don't track it.
+  breathsTaken?: number;
   // This week's running breath tally (per-device).
   weekBreaths: number;
   // Others who have breathed today (excluding the caller).
@@ -90,7 +94,7 @@ export function CobreatheSummary({
         })()}
         {/* Breaths this session — the headline number. */}
         <h2 className="text-[2.1rem] font-bold leading-none mb-1.5" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-          {DEFAULT_TOTAL_BREATHS} {t("cobreathe.breaths_word", { defaultValue: "breaths" })}
+          {breathsTaken} {t("cobreathe.breaths_word", { defaultValue: "breaths" })}
         </h2>
         {/* Breaths so far this week, and who you breathed with today. */}
         <p className="text-[13px] tracking-wide mb-7" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>

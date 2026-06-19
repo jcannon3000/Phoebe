@@ -143,6 +143,7 @@ export function CobreatheBreath({
   nearbyFellows = [],
   mapFellows = [],
   myLoc = null,
+  coBreathingFellows = [],
 }: {
   // Fired ONCE, when the target number of breaths has been kept. The breath
   // does NOT stop here — people can keep breathing as long as they like.
@@ -189,6 +190,9 @@ export function CobreatheBreath({
   // shared precise coords, plus my own anchor. Drives the across-distance map.
   mapFellows?: Array<{ userId: number; name: string; avatarUrl: string | null; lat: number; lng: number }>;
   myLoc?: { lat: number; lng: number } | null;
+  // Fellows breathing RIGHT NOW (live) — shown as faces near the top, refreshed
+  // ONCE per breath and fading in/out with the breath.
+  coBreathingFellows?: Array<{ userId: number; name: string | null; avatarUrl: string | null }>;
 }) {
   const { t } = useTranslation();
   // Entrance fade-up: false on mount, flipped on the next frame so the root
@@ -625,6 +629,13 @@ export function CobreatheBreath({
   const completed = counting ? Math.floor(sinceCount / CYCLE_MS) : 0;
   const breathNum = completed + 1;
   const reachedNow = counting && completed >= totalBreaths;
+  // Live co-breathing fellows, snapshotted ONCE PER BREATH (not continuously) so
+  // the faces settle with the rhythm. coFacesRef always holds the latest; the
+  // effect copies it into state each time the breath number ticks over.
+  const coFacesRef = useRef(coBreathingFellows);
+  coFacesRef.current = coBreathingFellows;
+  const [breathFaces, setBreathFaces] = useState(coBreathingFellows);
+  useEffect(() => { setBreathFaces(coFacesRef.current); }, [breathNum]);
   const intention = counting ? INTENTIONS[(breathNum - 1) % INTENTIONS.length] : null;
   // The session globe (held for the whole sit).
   const globe = sessionGlobeRef.current ?? GLOBES[0];
@@ -774,26 +785,20 @@ export function CobreatheBreath({
         </div>
       )}
 
-      {/* Top-right control — a quiet round ✕ (cancel) while breathing, switching
-          to a green "Done" pill once the full set is kept. onClick passes
-          reachedRef either way: cancel doesn't count, Done finishes. */}
+      {/* A small ✕ top-right — a quick close for the syncing pre-roll (and a
+          familiar exit). The clear, labelled End / Discard live at the bottom. */}
       <button
         type="button"
-        aria-label={reachedNow ? t("cobreathe.done", { defaultValue: "Done" }) : t("common.cancel", { defaultValue: "Cancel" })}
+        aria-label={t("common.cancel", { defaultValue: "Cancel" })}
         onClick={() => onEnd(Math.round((syncedNow() - startRef.current) / 1000), reachedRef.current)}
         style={{
           position: "absolute", top: "calc(var(--safe-top) + 16px)", right: 16,
           borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
           fontFamily: SPACE_GROTESK, fontWeight: 600, lineHeight: 1, cursor: "pointer", zIndex: 2,
-          transition: "background 0.4s ease, color 0.4s ease, padding 0.3s ease, width 0.3s ease, height 0.3s ease",
-          ...(reachedNow
-            ? { background: "rgba(46,107,64,0.85)", border: "1px solid rgba(140,195,160,0.5)", color: "#EAF6F4", fontSize: 14, padding: "9px 22px" }
-            // Cancel is a round ✕ button — a quiet close affordance — so only the
-            // green "Done" pill reads as the finish once the set is kept.
-            : { background: "rgba(255,255,255,0.08)", border: "1px solid rgba(200,225,210,0.28)", color: TEXT_DIM, fontSize: 17, width: 38, height: 38, padding: 0 }),
+          background: "rgba(0,0,0,0.4)", border: "1px solid rgba(200,225,210,0.28)", color: "#EAF6F4", fontSize: 17, width: 38, height: 38, padding: 0,
         }}
       >
-        {reachedNow ? t("cobreathe.done", { defaultValue: "Done" }) : "✕"}
+        ✕
       </button>
 
       {/* While SYNCING, a quote rests in the upper third — centred. A short wait
@@ -843,6 +848,30 @@ export function CobreatheBreath({
           </p>
         )}
       </div>
+
+      {/* Fellows breathing with you RIGHT NOW — faces, refreshed once per breath
+          and breathing in/out with the rhythm (opacity tied to the phase). */}
+      {counting && breathFaces.length > 0 && (
+        <div
+          className="w-full flex justify-center"
+          style={{ paddingLeft: 20, paddingRight: 20, marginTop: 10, opacity: phase === "in" ? 0.95 : 0.32, transition: "opacity 3s ease-in-out" }}
+        >
+          <div className="flex items-center">
+            {breathFaces.slice(0, 5).map((f, i) => (
+              f.avatarUrl ? (
+                <img key={f.userId} src={f.avatarUrl} alt={f.name ?? ""} style={{ width: 34, height: 34, borderRadius: 999, objectFit: "cover", border: "2px solid rgba(8,30,18,0.85)", marginLeft: i === 0 ? 0 : -8 }} />
+              ) : (
+                <span key={f.userId} style={{ width: 34, height: 34, borderRadius: 999, background: "#1A4A2E", color: "#A8C5A0", fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "2px solid rgba(8,30,18,0.85)", marginLeft: i === 0 ? 0 : -8, fontFamily: SPACE_GROTESK }}>
+                  {((f.name ?? "?").trim()[0] ?? "?").toUpperCase()}
+                </span>
+              )
+            ))}
+            {breathFaces.length > 5 && (
+              <span style={{ width: 34, height: 34, borderRadius: 999, background: "rgba(46,107,64,0.5)", color: "#C8D4C0", fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "2px solid rgba(8,30,18,0.85)", marginLeft: -8, fontFamily: SPACE_GROTESK }}>+{breathFaces.length - 5}</span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Globe + rings — CENTRED, the still point of the screen, but DRAGGABLE:
           grab it anywhere on screen (24px clear of the edges + the top/bottom
@@ -960,8 +989,30 @@ export function CobreatheBreath({
         </div>
       )}
 
+      {/* End / Discard — clear, labelled controls at the foot of the breath. End
+          finishes the sit (and counts once the 12 are kept); Discard leaves
+          without logging. (The top-right ✕ is just a quick close.) */}
+      <div className="w-full flex flex-col items-center" style={{ gap: 9, marginBottom: 14, paddingLeft: 28, paddingRight: 28 }}>
+        <button
+          type="button"
+          onClick={() => onEnd(Math.round((syncedNow() - startRef.current) / 1000), reachedRef.current)}
+          className="rounded-full active:scale-[0.98]"
+          style={{ padding: "13px 52px", background: "#2D5E3F", border: "1px solid rgba(140,195,160,0.7)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 15.5, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 16px rgba(8,30,18,0.5)" }}
+        >
+          {reachedNow ? t("cobreathe.done", { defaultValue: "Done" }) : t("cobreathe.end", { defaultValue: "End" })}
+        </button>
+        <button
+          type="button"
+          onClick={() => onEnd(Math.round((syncedNow() - startRef.current) / 1000), false)}
+          className="active:opacity-70"
+          style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(200,225,210,0.28)", borderRadius: 999, padding: "7px 20px", color: "rgba(224,232,220,0.9)", fontFamily: SPACE_GROTESK, fontSize: 12.5, fontWeight: 600, cursor: "pointer", textShadow: "0 1px 6px rgba(0,0,0,0.5)" }}
+        >
+          {t("cobreathe.discard", { defaultValue: "Discard" })}
+        </button>
+      </div>
+
       {/* Bottom — the breathing word in the LEFT corner (smaller) + the breath
-          count in the RIGHT corner. The Cancel / Done control lives top-right. */}
+          count in the RIGHT corner. The quick-close ✕ lives top-right. */}
       <div ref={bottomRef} className="w-full" style={{ paddingLeft: 28, paddingRight: 28, marginBottom: 8 }}>
         <div className="flex items-end" style={{ gap: 14 }}>
           {/* LEFT — Breathe In / Breathe Out. */}
