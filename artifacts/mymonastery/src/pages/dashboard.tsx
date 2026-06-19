@@ -512,7 +512,6 @@ export function HomeAuthoringFAB() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [, setLocation] = useLocation();
-  const { isBeta } = useBetaStatus();
   // Same admin probe HomeFAB() uses below — admin in *any* group earns
   // the community-intercession option. Server enforces nothing yet, so
   // this is a soft gate; we'll harden if it turns out anyone bypasses it.
@@ -533,6 +532,14 @@ export function HomeAuthoringFAB() {
             className="flex flex-col gap-2 mb-1"
           >
             <button
+              onClick={() => { setOpen(false); setLocation("/prayer-partner"); }}
+              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+              style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+            >
+              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>💚 {t("home_fab.heart_to_heart", { defaultValue: "Heart to Heart" })}</p>
+              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.heart_to_heart_sub", { defaultValue: "Share what's on your heart with a fellow, back and forth." })}</p>
+            </button>
+            <button
               onClick={() => { setOpen(false); setLocation("/pray-request/new?kind=request"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
               style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
@@ -540,16 +547,6 @@ export function HomeAuthoringFAB() {
               <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 {t("home_fab.prayer_request")}</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.prayer_request_sub")}</p>
             </button>
-            {LETTERS_MESSAGES_ENABLED && isBeta && (
-              <button
-                onClick={() => { setOpen(false); setLocation("/messages/new"); }}
-                className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-                style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
-              >
-                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>💬 {t("home_fab.one_to_one", { defaultValue: "Pray 1:1 with someone" })}</p>
-                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.one_to_one_sub", { defaultValue: "Start a private back-and-forth prayer." })}</p>
-              </button>
-            )}
             {isAdminOfAny && (
               <button
                 onClick={() => { setOpen(false); setLocation("/moment/new?template=intercession"); }}
@@ -558,6 +555,16 @@ export function HomeAuthoringFAB() {
               >
                 <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕯️ {t("home_fab.community_intercession")}</p>
                 <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.community_intercession_sub")}</p>
+              </button>
+            )}
+            {isAdminOfAny && (
+              <button
+                onClick={() => { setOpen(false); setLocation("/tradition/new"); }}
+                className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
+                style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+              >
+                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📅 {t("home_fab.event", { defaultValue: "Event" })}</p>
+                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.event_sub", { defaultValue: "Put a gathering on your community's calendar." })}</p>
               </button>
             )}
           </motion.div>
@@ -569,10 +576,9 @@ export function HomeAuthoringFAB() {
         style={{ background: "#1A4A2E", color: "#F0EDE6" }}
         aria-label={open ? t("home_fab.close_menu") : t("home_fab.new_prayer")}
       >
+        {/* The classic "+" create affordance — rotates 45° into an × when open. */}
         <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }}>
-          {open
-            ? <X size={24} />
-            : <span style={{ fontSize: 22, lineHeight: 1, display: "block" }} aria-hidden>🙏🏽</span>}
+          <Plus size={26} />
         </motion.div>
       </button>
     </div>
@@ -7213,17 +7219,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
             reachable via the side menu and the direct route, but it
             shouldn't pull tap-attention from the dashboard footer. */}
 
-        {/* Universal home FAB — bottom-right "+" with four authoring
-            entry points everyone gets:
-              🙏🏽 Prayer request   → /pray-request/new?kind=request
-              🌱 Life event        → /pray-request/new?kind=life-event
-              ⚖️ Justice concern   → /pray-request/new?kind=justice
-              🤝 Prayer for other  → /pray-for/new
-            The first three share the same underlying form (only the
-            copy/placeholder differs per kind); the fourth jumps into
-            the existing pray-for-other authoring flow. The admin FAB
-            for community-scoped authoring lives on the community
-            detail page now, not here. */}
+        {/* Universal home FAB — bottom-right "+" with the authoring entry
+            points: Heart to Heart + Prayer request for everyone, plus
+            Community intercession + Event for group admins. Hidden on the
+            Events surface (which reuses this dashboard in eventsOnly mode). */}
+        {!eventsOnly && <HomeAuthoringFAB />}
       </div>
 
       {/* New-prayer chooser (admins) — request for yourself vs. a community
