@@ -16,7 +16,7 @@
  *      so the voice keeps its breath and intimacy.
  *   3. Tone + dynamics, rendered offline (OfflineAudioContext, non-realtime):
  *        high-pass 80 → warmth low-shelf 200 → cut mud 300 / box 500 →
- *        presence 3.2k → air 9k → gentle 16k lowpass → compressor →
+ *        presence 3.2k → air shelf 8k (full-band, no low-pass) → compressor →
  *        soft tanh saturation.
  *   4. Downward expander — makes the silences between words silent (the biggest
  *      "studio vs phone" tell).
@@ -59,11 +59,14 @@ interface Voicing {
   targetLufs: number;
 }
 
+// denoiseWet kept MODERATE — aggressive RNNoise dulls/muffles the voice and
+// eats its air; ~0.6-0.75 cleans the room while staying open and present. The
+// air shelf is generous so the result reads bright, not under-water.
 const VOICINGS: Record<Exclude<StudioPreset, "off">, Voicing> = {
-  studio:   { denoiseWet: 0.90, warmthDb: 2.0, mudCutDb: -2.5, boxCutDb: -2.0, presenceDb: 3.0, airDb: 2.5, compThresholdDb: -24, compRatio: 3.0, saturation: 0.18, expanderDb: -16, targetLufs: -16 },
-  warm:     { denoiseWet: 0.86, warmthDb: 3.5, mudCutDb: -1.5, boxCutDb: -1.5, presenceDb: 2.0, airDb: 1.0, compThresholdDb: -24, compRatio: 3.0, saturation: 0.26, expanderDb: -14, targetLufs: -16 },
-  radio:    { denoiseWet: 0.94, warmthDb: 1.5, mudCutDb: -3.0, boxCutDb: -2.5, presenceDb: 4.0, airDb: 3.0, compThresholdDb: -28, compRatio: 4.0, saturation: 0.22, expanderDb: -18, targetLufs: -14 },
-  intimate: { denoiseWet: 0.82, warmthDb: 4.0, mudCutDb: -1.5, boxCutDb: -1.0, presenceDb: 2.5, airDb: 2.0, compThresholdDb: -22, compRatio: 2.5, saturation: 0.30, expanderDb: -12, targetLufs: -17 },
+  studio:   { denoiseWet: 0.72, warmthDb: 2.0, mudCutDb: -2.5, boxCutDb: -2.0, presenceDb: 3.5, airDb: 4.0, compThresholdDb: -24, compRatio: 3.0, saturation: 0.18, expanderDb: -16, targetLufs: -16 },
+  warm:     { denoiseWet: 0.68, warmthDb: 3.5, mudCutDb: -1.5, boxCutDb: -1.5, presenceDb: 2.5, airDb: 2.5, compThresholdDb: -24, compRatio: 3.0, saturation: 0.26, expanderDb: -14, targetLufs: -16 },
+  radio:    { denoiseWet: 0.78, warmthDb: 1.5, mudCutDb: -3.0, boxCutDb: -2.5, presenceDb: 4.5, airDb: 5.0, compThresholdDb: -28, compRatio: 4.0, saturation: 0.22, expanderDb: -18, targetLufs: -14 },
+  intimate: { denoiseWet: 0.62, warmthDb: 4.0, mudCutDb: -1.5, boxCutDb: -1.0, presenceDb: 3.0, airDb: 3.5, compThresholdDb: -22, compRatio: 2.5, saturation: 0.30, expanderDb: -12, targetLufs: -17 },
 };
 
 export function studioSupported(): boolean {
@@ -172,16 +175,17 @@ async function renderChain(pcm: Float32Array, v: Voicing): Promise<Float32Array>
   const mud = ctx.createBiquadFilter(); mud.type = "peaking"; mud.frequency.value = 300; mud.Q.value = 1.0; mud.gain.value = v.mudCutDb;
   const box = ctx.createBiquadFilter(); box.type = "peaking"; box.frequency.value = 500; box.Q.value = 1.2; box.gain.value = v.boxCutDb;
   const presence = ctx.createBiquadFilter(); presence.type = "peaking"; presence.frequency.value = 3200; presence.Q.value = 0.8; presence.gain.value = v.presenceDb;
-  const air = ctx.createBiquadFilter(); air.type = "highshelf"; air.frequency.value = 9000; air.gain.value = v.airDb;
-  const top = ctx.createBiquadFilter(); top.type = "lowpass"; top.frequency.value = 16000; top.Q.value = 0.707; // tame any ultrasonic hiss
+  const air = ctx.createBiquadFilter(); air.type = "highshelf"; air.frequency.value = 8000; air.gain.value = v.airDb;
+  // (no low-pass — output is full-band 48 kHz MP3 now; the old 16 kHz LP was a
+  // leftover from the dead 24 kHz path and was capping the brightness/air.)
   const comp = ctx.createDynamicsCompressor();
   comp.threshold.value = v.compThresholdDb; comp.knee.value = 24; comp.ratio.value = v.compRatio; comp.attack.value = 0.004; comp.release.value = 0.18;
   const sat = ctx.createWaveShaper(); sat.curve = makeSaturationCurve(v.saturation); sat.oversample = "4x";
   const makeup = ctx.createGain(); makeup.gain.value = 1.0;
 
   src.connect(hp); hp.connect(warmth); warmth.connect(mud); mud.connect(box);
-  box.connect(presence); presence.connect(air); air.connect(top);
-  top.connect(comp); comp.connect(sat); sat.connect(makeup); makeup.connect(ctx.destination);
+  box.connect(presence); presence.connect(air);
+  air.connect(comp); comp.connect(sat); sat.connect(makeup); makeup.connect(ctx.destination);
 
   src.start();
   const r = await ctx.startRendering();

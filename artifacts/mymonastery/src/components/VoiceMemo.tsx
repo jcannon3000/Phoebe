@@ -19,7 +19,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { encryptVoice, decryptVoice, voiceSupported, type EncryptedMemo } from "@/lib/voiceCrypto";
 import { enhancePcm, decodeToMono48k, pcmToMp3, STUDIO_RATE, studioSupported, type StudioPreset, type EnhanceResult } from "@/lib/studioVoice";
 import { saveVoiceDraft, listVoiceDrafts, deleteVoiceDraft, VOICE_DRAFTS_EVENT, type VoiceDraft } from "@/lib/voiceDrafts";
-import { tapeClick } from "@/lib/tapeSfx";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -38,18 +37,20 @@ function pickMime(): string | undefined {
   return undefined;
 }
 
-// Open the mic for a CLEAN mono capture. We keep the platform's first pass
-// (echo-cancellation — our only free de-reverb — plus noise-suppression and
-// auto-gain so a phone held at any distance lands at a sane level for Phoebe
-// Studio to polish). Crucially there is NO realtime DSP graph here anymore —
-// all tone shaping happens offline on the finished recording (studioVoice.ts),
-// which is what sidesteps the iOS "live processed stream records silence" bug.
+// Open the mic for a TRUE/RAW mono capture. We deliberately turn OFF the
+// browser's voice processing (noise-suppression, auto-gain, echo-cancellation):
+// those make a phone recording sound MUFFLED/under-water, and stacking the
+// browser's noise-suppression on top of our own RNNoise double-processed the
+// voice into mush. Phoebe Studio does all the cleanup offline (RNNoise + EQ +
+// compression + loudness), so it wants the cleanest, brightest signal possible.
+// (iOS WKWebView may ignore these and force its own processing — the true fix
+// there is a native capture path; this still helps on web/desktop.)
 async function openMic(): Promise<{ stream: MediaStream; cleanup: () => void }> {
   const raw = await navigator.mediaDevices.getUserMedia({
     audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
       channelCount: 1,
     },
   });
@@ -139,7 +140,6 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
   const doSend = async () => {
     const blob = sourceBlob(source) ?? fallbackBlobRef.current;
     if (!blob) { close(); return; }
-    tapeClick("send");
     setPhase("sending");
     try {
       let pub: { publicKeyJwk: string };
@@ -203,7 +203,6 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
   };
 
   const stopRec = () => {
-    tapeClick("stop");
     if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
     try { recRef.current?.stop(); } catch { /* ignore */ }
   };
@@ -211,7 +210,6 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
   const beginRecording = async (punch: boolean) => {
     if (busyRef.current) return;
     busyRef.current = true; punchRef.current = punch;
-    tapeClick("record");
     try { audioRef.current?.pause(); } catch { /* ignore */ } setPlaying(false);
     setOpen(true); setSaved(false);
     if (!punch) { setPolished(null); rawPcmRef.current = null; rawMp3Ref.current = null; fallbackBlobRef.current = null; punchAtRef.current = 0; }
@@ -529,11 +527,10 @@ export function VoiceMemoInbox() {
   const toggle = (m: InMemo) => {
     const a = getAudio();
     if (activeId === m.id) {
-      if (a.paused) { tapeClick("play"); void a.play().catch(() => setFailedId(m.id)); }
-      else { tapeClick("pause"); a.pause(); }
+      if (a.paused) { void a.play().catch(() => setFailedId(m.id)); }
+      else { a.pause(); }
       return;
     }
-    tapeClick("play");
     void load(m);
   };
 
@@ -633,7 +630,6 @@ export function VoiceDraftsShelf() {
     setPlayingId(d.id);
     const done = () => { if (urlRef.current === url) { try { URL.revokeObjectURL(url); } catch { /* ignore */ } urlRef.current = null; } setPlayingId(null); };
     a.onended = done; a.onerror = done;
-    tapeClick("play");
     a.play().catch(done);
   };
 
@@ -643,7 +639,6 @@ export function VoiceDraftsShelf() {
       const pub: { publicKeyJwk: string } = await apiRequest("GET", `/api/keys/public/${d.recipientId}`);
       const enc: EncryptedMemo = await encryptVoice(pub.publicKeyJwk, await d.blob.arrayBuffer());
       await apiRequest("POST", "/api/voice-memos", { recipientId: d.recipientId, ...enc, mimeType: d.mimeType || "audio/mpeg", durationMs: d.durationMs });
-      tapeClick("send");
       await deleteVoiceDraft(d.id);
     } catch { /* keep the draft so it can be retried */ } finally { setBusyId(null); }
   };
