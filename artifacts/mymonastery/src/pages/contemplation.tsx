@@ -789,7 +789,6 @@ export default function ContemplationPage() {
         >
           <CobreatheGlobe size={18} />
           <span>{t("cobreathe.title", { defaultValue: "Cobreathe" })}</span>
-          {cobreathe?.done && <span aria-hidden>🌿</span>}
         </div>
       </Link>
     </div>

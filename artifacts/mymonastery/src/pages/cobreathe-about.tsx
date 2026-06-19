@@ -36,7 +36,7 @@ export default function CobreatheAboutPage() {
 
         <div className="flex-1 flex flex-col justify-center" style={{ maxWidth: 520 }}>
           <p className="text-[12px] uppercase tracking-[0.18em] mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
-            {t("cobreathe.title", { defaultValue: "Cobreathe" })}
+            🌍 {t("cobreathe.title", { defaultValue: "Cobreathe" })}
           </p>
           <h1 className="text-[28px] font-bold mb-4" style={{ color: WARM, fontFamily: SPACE_GROTESK, letterSpacing: "-0.01em" }}>
             {t("cobreathe.about_heading", { defaultValue: "Breathing together, for justice" })}
