@@ -1850,7 +1850,10 @@ const SCHEDULER_SENDERS: Array<{ name: string; run: () => Promise<void> }> = [
   { name: "bell-evening",          run: runEveningNudgeSender },
   { name: "lectio-reminder",       run: runLectioReminderSender },
   { name: "lectio-evening",        run: runLectioEveningReminderSender },
-  { name: "renewal-nudge",         run: runPrayerRenewalNudgeSender },
+  // The "your prayer is wrapping up tomorrow" renewal nudge is intentionally
+  // NOT scheduled — per request, a prayer request should only ever notify when
+  // it's finished/answered, never a wrapping-up reminder. (runPrayerRenewalNudge
+  // -Sender is kept for manual/forceNow use but no longer fires on the cron.)
   { name: "life-event-followup",   run: runLifeEventFollowUpSender },
   { name: "parish-office",         run: runParishOfficeReminderSender },
   { name: "contemplation-goal",    run: runContemplationGoalSender },
