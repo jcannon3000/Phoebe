@@ -576,8 +576,7 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(prayBySide[side] === "community", `🙏 ${t("wol_rule.pray_community", { defaultValue: "Community Prayers" })}`, t("wol_rule.pray_community_sub", { defaultValue: "Pray with your community through the day's intercessions." }), () => choosePrayBySide(side, "community"))}
           {choiceRow(prayBySide[side] === "devotion", `🌿 ${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`, t("wol_rule.pray_devotion_sub", { defaultValue: "A short liturgy with your community's prayers included." }), () => choosePrayBySide(side, "devotion"))}
           {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, t("wol_rule.pray_offices_sub", { defaultValue: "The full liturgy with your community's prayers included." }), () => choosePrayBySide(side, "offices"))}
-          {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle !== "cobreathe", `🕯️ ${cap} ${t("wol_rule.contemplation_word", { defaultValue: "Contemplation" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("silent"); })}
-          {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle === "cobreathe", `🌍 ${t("wol_rule.style_cobreathe", { defaultValue: "Cobreathe" })}`, t("wol_rule.style_cobreathe_sub", { defaultValue: "Breathe to one shared pace for climate justice." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("cobreathe"); })}
+          {choiceRow(prayBySide[side] === "contemplation", `🕯️ ${cap} ${t("wol_rule.contemplation_word", { defaultValue: "Contemplation" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("silent"); })}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
@@ -627,18 +626,6 @@ export default function WayOfLoveRuleFlow({
                 )}
               </select>
               <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
-            </div>
-          </>
-        )}
-        {/* Contemplation: silent sit or Cobreathe (a shared global breath). */}
-        {isContemplation && (
-          <>
-            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
-              {t("wol_rule.contemplation_style_label", { defaultValue: "How would you like to sit?" })}
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {choiceRow(contemplationStyle === "silent", `🕯️ ${t("wol_rule.style_silent", { defaultValue: "Silent sit" })}`, t("wol_rule.style_silent_sub", { defaultValue: "Just you and a quiet timer." }), () => chooseContemplationStyle("silent"))}
-              {choiceRow(contemplationStyle === "cobreathe", `🌍 ${t("wol_rule.style_cobreathe", { defaultValue: "Cobreathe" })}`, t("wol_rule.style_cobreathe_sub", { defaultValue: "Breathe to one shared pace for climate justice." }), () => chooseContemplationStyle("cobreathe"))}
             </div>
           </>
         )}
