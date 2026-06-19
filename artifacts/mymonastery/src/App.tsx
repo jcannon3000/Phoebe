@@ -1,5 +1,5 @@
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
-import { QueryClient, QueryClientProvider, QueryCache } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, QueryCache, useQueryClient } from "@tanstack/react-query";
 import { PersistQueryClientProvider, removeOldestQuery } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { hydrateIdbCache, attachIdbPersistence } from "@/lib/idbCache";
@@ -80,12 +80,27 @@ function PendingPrayerInviteRedirect() {
 // first time). Runs once per signed-in user.
 function CustomAnchorServerSync() {
   const { user, isLoading } = useAuthForGate();
-  const syncedForRef = useRef<number | null>(null);
+  const qc = useQueryClient();
+  const lastSyncedRef = useRef<string | null>(null);
+  // On load (and when the app returns to the foreground), pull a FRESH /auth/me
+  // so a ritual created on another device shows up here — the cached user can be
+  // up to staleTime old, which is why the web "still" looked empty after a phone
+  // edit.
+  useEffect(() => {
+    qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    const refresh = () => qc.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    window.addEventListener("phoebe:appactive", refresh);
+    return () => window.removeEventListener("phoebe:appactive", refresh);
+  }, [qc]);
+  // Re-sync whenever the server snapshot's CONTENT changes (not just once per
+  // user.id) — so a ritual pushed from another device is imported, not ignored.
   useEffect(() => {
     if (isLoading || !user) return;
-    if (syncedForRef.current === user.id) return;
-    syncedForRef.current = user.id;
-    syncCustomAnchorsFromServer(user.customAnchors as unknown as CustomAnchorSnapshot | null);
+    const snap = user.customAnchors ?? null;
+    const key = `${user.id}:${JSON.stringify(snap)}`;
+    if (lastSyncedRef.current === key) return;
+    lastSyncedRef.current = key;
+    syncCustomAnchorsFromServer(snap as unknown as CustomAnchorSnapshot | null);
   }, [user, isLoading]);
   return null;
 }

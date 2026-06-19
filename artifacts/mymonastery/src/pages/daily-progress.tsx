@@ -11,10 +11,8 @@
 import { Link } from "wouter";
 import { ChevronLeft, Sliders } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useBetaStatus } from "@/hooks/useDemo";
 import { Layout } from "@/components/layout";
 import { DailyProgressBody } from "@/components/DailyProgressBody";
-import { WalkTogether } from "@/components/WalkTogether";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -22,7 +20,6 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 
 export default function DailyProgressPage() {
   const { t } = useTranslation();
-  const { rawIsBeta } = useBetaStatus();
   return (
     <Layout>
       {/* Capped on desktop, full-width on mobile. */}
@@ -57,15 +54,6 @@ export default function DailyProgressPage() {
         </p>
 
         <DailyProgressBody />
-
-        {/* Friends' progress + encouragement — see how your fellows are keeping
-            their rhythm today and send a 🙌. (The beta practice cards that used
-            to sit here moved into the main flow / their own menu surfaces.) */}
-        {rawIsBeta && (
-          <div className="mt-9">
-            <WalkTogether />
-          </div>
-        )}
       </div>
     </Layout>
   );
