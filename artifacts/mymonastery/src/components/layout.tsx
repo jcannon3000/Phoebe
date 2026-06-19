@@ -753,7 +753,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 // Prayer list now lives in the side Menu drawer.
 function DailyProgressPill() {
   const { t } = useTranslation();
-  const { morningDone, reflectDone, silenceDone, eveningDone, morningActive, reflectActive, silenceActive, eveningActive, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, customAnchors } = useRhythmState();
+  const { morningDone, silenceDone, eveningDone, morningActive, silenceActive, eveningActive, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, customAnchors } = useRhythmState();
   // The core anchors the user keeps (morning/reflection/contemplation/evening —
   // each dropped when its pref is off), plus a dot for each optional practice
   // they added (gratitude, examen, the daily-steps goal) and each user-defined
@@ -767,7 +767,7 @@ function DailyProgressPill() {
   const dotDefs = [
     ...(morningActive ? [{ key: "morning", done: morningDone }] : []),
     ...cDots("morning"),
-    ...(reflectActive ? [{ key: "reflect", done: reflectDone }] : []),
+    ...reflections.map((r) => ({ key: `reflect-${r.source}`, done: r.done })),
     ...(silenceActive ? [{ key: "silence", done: silenceDone }] : []),
     ...cDots("midday"),
     ...(gratitudeActive ? [{ key: "gratitude", done: gratitudeDone }] : []),

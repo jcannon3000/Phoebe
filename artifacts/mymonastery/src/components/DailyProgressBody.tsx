@@ -17,7 +17,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
 import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/officePrefs";
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
-import { CAC_TODAY_URL, markCacRead } from "@/lib/cacReadState";
+import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 
@@ -458,7 +458,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, stepsToday, stepsGoal, customAnchors } = useRhythmState();
+  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, stepsToday, stepsGoal, customAnchors } = useRhythmState();
   const hour = new Date().getHours();
   // The custom-practice "Log" popup — which anchor's popup is open (by id).
   const [logAnchorId, setLogAnchorId] = useState<string | null>(null);
@@ -542,21 +542,21 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
     ...customsForSlot("morning"),
-    ...(reflectActive ? [{
-      key: "reflect", emoji: "📖", rgb: "96,141,209", done: reflectDone, href: "/menu/reflections",
-      title: t("rhythm.card_reflect", { defaultValue: "Today's reflection" }),
-      blurb: reflectionSubtitle,
-      // CAC with a scraped title: flip between the publication name and today's
-      // title — kept even once read, so the second line always carries the
-      // day's reflection title.
-      blurbCycle: (reflectionSource === "cac" && cacTitle) ? [PUBLICATION_NAME.cac, cacTitle] : undefined,
-      // CAC opens the meditation straight in the in-app browser (it can't be
-      // iframed), marking it read — rather than routing to the reflections list.
-      onClick: reflectionSource === "cac"
-        ? () => { markCacRead(); openExternal(CAC_TODAY_URL); }
-        : undefined,
-      cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
-    }] : []),
+    // One card per reflection newsletter the user follows — each its own card +
+    // dot, opening that source's reading directly (and marking it read).
+    ...reflections.map((r) => {
+      const url = r.source === "cac" ? CAC_TODAY_URL : r.source === "fdd" ? FDD_TODAY_URL : SSJE_TODAY_URL;
+      const mark = r.source === "cac" ? markCacRead : r.source === "fdd" ? markFddRead : markSsjeRead;
+      return {
+        key: `reflect-${r.source}`, emoji: "📖", rgb: "96,141,209", done: r.done, href: "",
+        title: PUBLICATION_NAME[r.source],
+        blurb: r.done ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" }),
+        // CAC with a scraped title flips between the publication name + today's title.
+        blurbCycle: (r.source === "cac" && cacTitle) ? [PUBLICATION_NAME.cac, cacTitle] : undefined,
+        onClick: () => { mark(); openExternal(url); },
+        cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
+      };
+    }),
     ...(silenceActive ? [{
       key: "silence", emoji: "🕯️", rgb: "62,124,122", done: silenceDone,
       // Cobreathe straight away if that's their chosen contemplation style;

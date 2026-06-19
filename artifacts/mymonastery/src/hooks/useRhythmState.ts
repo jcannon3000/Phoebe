@@ -62,6 +62,9 @@ export type RhythmState = {
   morningActive: boolean;
   silenceActive: boolean;
   reflectActive: boolean;
+  /** Each reflection newsletter the user follows (cac/fdd/ssje) — one per chosen
+   *  source, each its OWN card + dot + done-state. Empty when none chosen. */
+  reflections: Array<{ source: "cac" | "fdd" | "ssje"; done: boolean }>;
   /** Optional practices the user added from the Customize flow (visible on the
    *  home layout) — each adds a checkmark to Daily progress. */
   gratitudeActive: boolean;
@@ -376,10 +379,24 @@ export function useRhythmState(): RhythmState {
   const morningActive = isActiveLevel(ml) || (officePrefs?.morning ?? "devotion") !== "none";
   const eveningActive = isActiveLevel(el) || (officePrefs?.evening ?? "none") !== "none";
   const silenceActive = (officePrefs?.contemplationGoalMinutes ?? 5) > 0;
-  const reflectActive = reflectionSource !== "none";
+  // Each reflection newsletter the user follows is its OWN anchor (card + dot).
+  // The selected set is the reflection home-modules that are on; an un-set-up
+  // user with no saved layout falls back to the single effective source.
+  const REFLECT_SOURCES = ["fdd", "cac", "ssje"] as const;
+  const reflectDoneFor = (s: "fdd" | "cac" | "ssje"): boolean =>
+    s === "cac" ? (hasReadCacToday() || !!reflRead?.cac)
+      : s === "fdd" ? (hasReadFddToday() || !!reflRead?.fdd)
+        : (hasReadSsjeToday() || !!reflRead?.ssje);
+  const fromLayout = REFLECT_SOURCES.filter((s) => homeCardActive(user?.homeLayout, s));
+  const selectedReflections: Array<"cac" | "fdd" | "ssje"> =
+    fromLayout.length > 0
+      ? [...fromLayout]
+      : (reflectionSource === "cac" || reflectionSource === "fdd" || reflectionSource === "ssje" ? [reflectionSource] : []);
+  const reflections = selectedReflections.map((s) => ({ source: s, done: reflectDoneFor(s) }));
+  const reflectActive = reflections.length > 0;
   const coreFlags = [
     ...(morningActive ? [morningDone] : []),
-    ...(reflectActive ? [reflectDone] : []),
+    ...reflections.map((r) => r.done),
     ...(silenceActive ? [silenceDone] : []),
     ...(eveningActive ? [eveningDone] : []),
   ];
@@ -417,6 +434,7 @@ export function useRhythmState(): RhythmState {
     morningActive,
     silenceActive,
     reflectActive,
+    reflections,
     gratitudeActive,
     examenActive,
     stepsActive,
