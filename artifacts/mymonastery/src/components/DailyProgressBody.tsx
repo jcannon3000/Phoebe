@@ -31,16 +31,25 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
-// Practice-card palette: a calm cool gradient that walks the hue from green
-// through teal/blue to purple across the day's cards, by their order. Each user
-// gets a slightly different spread (their anchor set differs), but it always
-// reads as one harmonious analogous ramp — never a muddy or clashing pair.
+// Practice-card palette: a calm ramp across the day's cards by order — LIME
+// GREEN → the Phoebe forest green in the MIDDLE → TEAL. Two segments so the
+// brand green always lands at the centre of the spread. Each user's set differs
+// but it always reads as one harmonious green ramp.
 // Returns an "r,g,b" string (the format the cards' rgba() helpers expect).
 function rhythmGradientRgb(i: number, n: number): string {
-  const t = n <= 1 ? 0 : i / (n - 1);
-  const hue = 145 + (288 - 145) * t;   // 145° green → 288° violet (through teal/blue)
-  const sat = 0.46 - 0.04 * t;          // ease saturation down a touch toward purple
-  const light = 0.55;
+  const t = n <= 1 ? 0.5 : i / (n - 1); // a lone card sits at the Phoebe-green centre
+  const LIME = { h: 95, s: 0.62, l: 0.55 };
+  const PHOEBE = { h: 145, s: 0.45, l: 0.47 }; // the brand green — the midpoint
+  const TEAL = { h: 180, s: 0.50, l: 0.43 };
+  const lerp = (a: number, b: number, u: number) => a + (b - a) * u;
+  let hue: number, sat: number, light: number;
+  if (t <= 0.5) {
+    const u = t / 0.5; // lime → phoebe across the first half
+    hue = lerp(LIME.h, PHOEBE.h, u); sat = lerp(LIME.s, PHOEBE.s, u); light = lerp(LIME.l, PHOEBE.l, u);
+  } else {
+    const u = (t - 0.5) / 0.5; // phoebe → teal across the second half
+    hue = lerp(PHOEBE.h, TEAL.h, u); sat = lerp(PHOEBE.s, TEAL.s, u); light = lerp(PHOEBE.l, TEAL.l, u);
+  }
   // HSL → RGB.
   const c = (1 - Math.abs(2 * light - 1)) * sat;
   const hp = hue / 60;
