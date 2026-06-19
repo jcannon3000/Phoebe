@@ -1997,21 +1997,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                   >
                     From the Daily Office Lectionary
                   </p>
-                  {/* "Open your Bible, or read this passage online."
-                      — the server's lesson prompt, kept above the
-                      Read on Bible.com pill that renders below. */}
-                  {currentSlide.content && (
-                    <p
-                      style={{
-                        fontSize: 15,
-                        fontFamily: SPACE_GROTESK,
-                        color: "rgba(143,175,150,0.9)",
-                        margin: "6px 0 0 0",
-                      }}
-                    >
-                      {currentSlide.content}
-                    </p>
-                  )}
+                  {/* The "Open your Bible, or read online" invitation is rendered
+                      with the Read-online pill below (the lesson || lesson_title
+                      block), so it always sits right above the pill — no longer
+                      dependent on the server sending a per-slide prompt. */}
                 </div>
               );
             })()
@@ -2595,7 +2584,19 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               : (currentSlide.title ? bibleUrl(currentSlide.title) : null);
             if (!readHref) return null;
             return (
-              <div style={{ display: "flex", justifyContent: "center", marginTop: 4 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 4 }}>
+                {/* Invite a physical Bible first; the pill is the online option. */}
+                <p
+                  style={{
+                    fontSize: 15,
+                    fontFamily: SPACE_GROTESK,
+                    color: "rgba(143,175,150,0.9)",
+                    margin: 0,
+                    textAlign: "center",
+                  }}
+                >
+                  Open your Bible, or read online
+                </p>
                 <a
                   href={readHref}
                   target="_blank"
@@ -2617,7 +2618,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     display: "inline-block",
                   }}
                 >
-                  Read in NRSV →
+                  Read online →
                 </a>
               </div>
             );

@@ -151,9 +151,10 @@ router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Res
   if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   try {
-    const { getGardenUserIds } = await import("../lib/garden.js");
+    const { getGardenUserIds, getFellowUserIds } = await import("../lib/garden.js");
     const gardenIds = await getGardenUserIds(sessionUser.id);
     if (gardenIds.length === 0) { res.json({ people: [], total: 0 }); return; }
+    const fellowIds = new Set(await getFellowUserIds(sessionUser.id));
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
@@ -197,7 +198,12 @@ router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Res
     const total = activePeople.length;
     const people = activePeople
       .slice()
-      .sort((a, b) => (b.avatarUrl ? 1 : 0) - (a.avatarUrl ? 1 : 0))
+      // Fellows lead the rail; then (within each group) those with a profile photo.
+      .sort((a, b) => {
+        const fa = fellowIds.has(a.id) ? 1 : 0, fb = fellowIds.has(b.id) ? 1 : 0;
+        if (fa !== fb) return fb - fa;
+        return (b.avatarUrl ? 1 : 0) - (a.avatarUrl ? 1 : 0);
+      })
       .slice(0, 12)
       .map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl }));
 
@@ -216,9 +222,10 @@ router.get("/prayer-streak/community-prayed-month", async (req: Request, res: Re
   if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   try {
-    const { getGardenUserIds } = await import("../lib/garden.js");
+    const { getGardenUserIds, getFellowUserIds } = await import("../lib/garden.js");
     const gardenIds = await getGardenUserIds(sessionUser.id);
     if (gardenIds.length === 0) { res.json({ people: [], total: 0 }); return; }
+    const fellowIds = new Set(await getFellowUserIds(sessionUser.id));
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
@@ -247,10 +254,15 @@ router.get("/prayer-streak/community-prayed-month", async (req: Request, res: Re
 
     const activePeople = peopleRows.filter((p) => activeIds.has(p.id));
     const total = activePeople.length;
-    // Lead the rail with people who have a profile photo, then show the rest.
+    // Fellows lead the rail; then (within each group) people who have a profile
+    // photo, then the rest.
     const people = activePeople
       .slice()
-      .sort((a, b) => (b.avatarUrl ? 1 : 0) - (a.avatarUrl ? 1 : 0))
+      .sort((a, b) => {
+        const fa = fellowIds.has(a.id) ? 1 : 0, fb = fellowIds.has(b.id) ? 1 : 0;
+        if (fa !== fb) return fb - fa;
+        return (b.avatarUrl ? 1 : 0) - (a.avatarUrl ? 1 : 0);
+      })
       .map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl }));
 
     res.json({ people, total });
