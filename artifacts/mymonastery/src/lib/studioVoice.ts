@@ -298,18 +298,50 @@ async function encodeMp3(pcm: Float32Array, sampleRate: number, kbps: number): P
   return new Blob(parts, { type: "audio/mpeg" });
 }
 
-/**
- * Enhance a recorded voice blob → an MP3 blob (+ the loudness measured).
- * REJECTS on any failure so the caller falls back to the raw recording.
- * `preset: "off"` returns a levelled-only pass (still consistent loudness).
- */
-export async function enhanceVoice(input: Blob, preset: StudioPreset = "studio"): Promise<EnhanceResult> {
+// 16-bit PCM WAV — lossless, used as the editable "raw take" intermediate
+// (splicing / re-takes happen on PCM; WAV lets the unenhanced take play back).
+export function pcmToWav(pcm: Float32Array, sampleRate: number): Blob {
+  const dataSize = pcm.length * 2;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+  const w = (off: number, s: string) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+  w(0, "RIFF"); view.setUint32(4, 36 + dataSize, true); w(8, "WAVE"); w(12, "fmt ");
+  view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true); view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true); view.setUint16(34, 16, true); w(36, "data"); view.setUint32(40, dataSize, true);
+  let off = 44;
+  for (let i = 0; i < pcm.length; i++, off += 2) { const s = Math.max(-1, Math.min(1, pcm[i])); view.setInt16(off, s < 0 ? s * 0x8000 : s * 0x7fff, true); }
+  return new Blob([buffer], { type: "audio/wav" });
+}
+
+export const STUDIO_RATE = PROC_RATE;
+
+/** Encode an UN-processed mono-48k take to MP3 (the "as recorded" A/B take —
+ *  same codec as the polished one so the only audible difference is the studio
+ *  processing, and it stays small enough to send). */
+export async function pcmToMp3(pcm: Float32Array): Promise<Blob> {
+  return encodeMp3(pcm, PROC_RATE, MP3_KBPS);
+}
+
+/** Decode any recorded blob to the editor's working format: mono Float32 @48k. */
+export async function decodeToMono48k(blob: Blob): Promise<Float32Array> {
   if (!studioSupported()) throw new Error("studio: unsupported");
-  const decoded = await decode(input);
+  const decoded = await decode(blob);
   if (!decoded || decoded.length === 0) throw new Error("studio: empty");
+  return toMono48k(decoded);
+}
+
+/**
+ * Enhance a mono-48k PCM take → an MP3 blob (+ measured loudness). This is the
+ * core; enhanceVoice() just decodes a blob into this. The tape editor calls
+ * this directly on its spliced/edited PCM so it never re-decodes a lossy take.
+ * `preset: "off"` is a levelled-only pass.
+ */
+export async function enhancePcm(mono48: Float32Array, preset: StudioPreset = "studio", durationMs?: number): Promise<EnhanceResult> {
+  if (!studioSupported()) throw new Error("studio: unsupported");
+  if (!mono48 || mono48.length === 0) throw new Error("studio: empty");
 
   const v = preset === "off" ? null : VOICINGS[preset];
-  const mono48 = await toMono48k(decoded);
   const lufsBefore = integratedLufs(mono48, PROC_RATE);
 
   let pcm = mono48;
@@ -331,12 +363,14 @@ export async function enhanceVoice(input: Blob, preset: StudioPreset = "studio")
   // 5) full-band MP3
   const blob = await encodeMp3(pcm, PROC_RATE, MP3_KBPS);
 
-  return {
-    blob,
-    mimeType: "audio/mpeg",
-    preset,
-    lufsBefore,
-    lufsAfter,
-    durationMs: Math.round(decoded.duration * 1000),
-  };
+  return { blob, mimeType: "audio/mpeg", preset, lufsBefore, lufsAfter, durationMs: durationMs ?? Math.round((mono48.length / PROC_RATE) * 1000) };
+}
+
+/**
+ * Enhance a recorded voice blob → an MP3 blob. REJECTS on any failure so the
+ * caller falls back to the raw recording.
+ */
+export async function enhanceVoice(input: Blob, preset: StudioPreset = "studio"): Promise<EnhanceResult> {
+  const mono48 = await decodeToMono48k(input);
+  return enhancePcm(mono48, preset);
 }

@@ -14,10 +14,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, Play, Pause, Square, X } from "lucide-react";
+import { Mic, Play, Pause, Square, X, RotateCcw, Circle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { encryptVoice, decryptVoice, voiceSupported, type EncryptedMemo } from "@/lib/voiceCrypto";
-import { enhanceVoice, studioSupported, type StudioPreset, type EnhanceResult } from "@/lib/studioVoice";
+import { enhancePcm, decodeToMono48k, pcmToMp3, STUDIO_RATE, studioSupported, type StudioPreset, type EnhanceResult } from "@/lib/studioVoice";
+import { saveVoiceDraft, listVoiceDrafts, deleteVoiceDraft, VOICE_DRAFTS_EVENT, type VoiceDraft } from "@/lib/voiceDrafts";
 import { tapeClick } from "@/lib/tapeSfx";
 
 const WARM = "#F0EDE6";
@@ -75,77 +76,130 @@ function loadPreset(): Exclude<StudioPreset, "off"> {
 type Phase = "rec" | "polishing" | "preview" | "sending" | "sent" | "nokey" | "error";
 
 // ── Record + Studio-polish + send to one fellow ──────────────────────────────
-// The trigger is the small "Voice" pill; tapping it opens a calm bottom sheet
-// that records (10s), polishes the audio ON-DEVICE (studioVoice.ts), lets the
-// sender A/B "As recorded" vs "Polished" and pick a voicing, then encrypts the
-// chosen take and sends it. Enhancement is best-effort: any failure falls back
-// to sending the raw recording so a prayer is never blocked.
+// The trigger is the small "Voice" pill; tapping it opens a calm bottom sheet:
+// record (up to 144s) → Phoebe Studio polishes ON-DEVICE → a tape-style editor:
+// scrub/listen back, A/B "Polished" vs "As recorded", pick a voicing, RECORD
+// OVER from any point (punch-in, splices the take), START OVER, SAVE FOR LATER,
+// or send. Editing happens on the decoded PCM so a re-take never re-decodes a
+// lossy file. Best-effort: any failure falls back to sending the raw take.
 export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: number; recipientName: string }) {
   const first = (recipientName ?? "them").trim().split(/\s+/)[0] || "them";
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("rec");
   const [remaining, setRemaining] = useState(MAX_SECS);
+  const [budget, setBudget] = useState(MAX_SECS);
   const [preset, setPreset] = useState<Exclude<StudioPreset, "off">>(loadPreset);
   const [polished, setPolished] = useState<EnhanceResult | null>(null);
   const [rePolishing, setRePolishing] = useState(false);
-  const [playing, setPlaying] = useState<"raw" | "polished" | null>(null);
+  const [source, setSource] = useState<"polished" | "raw">("polished");
+  const [playing, setPlaying] = useState(false);
+  const [pos, setPos] = useState(0);
+  const [dur, setDur] = useState(0);
+  const [saved, setSaved] = useState(false);
 
   const recRef = useRef<MediaRecorder | null>(null);
   const micCleanupRef = useRef<(() => void) | null>(null);
   const startedRef = useRef(0);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const busyRef = useRef(false);
-  const rawBlobRef = useRef<Blob | null>(null);
+  const punchRef = useRef(false);     // is the in-flight recording a punch-in?
+  const punchAtRef = useRef(0);       // seconds into the take to record over from
+  const rawPcmRef = useRef<Float32Array | null>(null); // editable raw take @48k
+  const rawMp3Ref = useRef<Blob | null>(null);         // "as recorded" (compact)
+  const fallbackBlobRef = useRef<Blob | null>(null);   // no-studio path
   const rawDurRef = useRef(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const urlRef = useRef<string | null>(null);
+  const srcUrlRef = useRef<{ which: "polished" | "raw"; url: string } | null>(null);
 
+  const revokeSrc = () => { if (srcUrlRef.current) { try { URL.revokeObjectURL(srcUrlRef.current.url); } catch { /* ignore */ } srcUrlRef.current = null; } };
   const teardown = () => {
     if (tickRef.current) { clearInterval(tickRef.current); tickRef.current = null; }
-    try { recRef.current?.stop(); } catch { /* ignore */ }
-    recRef.current = null;
+    try { recRef.current?.stop(); } catch { /* ignore */ } recRef.current = null;
     micCleanupRef.current?.(); micCleanupRef.current = null;
-    try { audioRef.current?.pause(); } catch { /* ignore */ }
-    audioRef.current = null;
-    if (urlRef.current) { try { URL.revokeObjectURL(urlRef.current); } catch { /* ignore */ } urlRef.current = null; }
-    busyRef.current = false;
+    try { audioRef.current?.pause(); } catch { /* ignore */ } audioRef.current = null;
+    revokeSrc();
+    busyRef.current = false; punchRef.current = false;
   };
   useEffect(() => () => teardown(), []); // unmount safety
 
   if (!voiceSupported()) return null;
 
-  const close = () => { teardown(); setOpen(false); setPlaying(null); setPolished(null); rawBlobRef.current = null; };
+  const close = () => {
+    teardown();
+    setOpen(false); setPhase("rec"); setPolished(null); setSource("polished");
+    setPlaying(false); setPos(0); setDur(0); setSaved(false);
+    rawPcmRef.current = null; rawMp3Ref.current = null; fallbackBlobRef.current = null;
+  };
 
-  const doSend = async (useEnhanced: boolean) => {
-    const blob = (useEnhanced && polished) ? polished.blob : rawBlobRef.current;
+  const sourceBlob = (which: "polished" | "raw"): Blob | null => {
+    if (which === "polished") return polished?.blob ?? null;
+    return rawMp3Ref.current ?? fallbackBlobRef.current;
+  };
+
+  const doSend = async () => {
+    const blob = sourceBlob(source) ?? fallbackBlobRef.current;
     if (!blob) { close(); return; }
     tapeClick("send");
     setPhase("sending");
     try {
       let pub: { publicKeyJwk: string };
-      try {
-        pub = await apiRequest("GET", `/api/keys/public/${recipientId}`);
-      } catch { setPhase("nokey"); return; }
+      try { pub = await apiRequest("GET", `/api/keys/public/${recipientId}`); } catch { setPhase("nokey"); return; }
       const enc: EncryptedMemo = await encryptVoice(pub.publicKeyJwk, await blob.arrayBuffer());
-      await apiRequest("POST", "/api/voice-memos", { recipientId, ...enc, mimeType: blob.type || "audio/mp4", durationMs: rawDurRef.current });
+      await apiRequest("POST", "/api/voice-memos", { recipientId, ...enc, mimeType: blob.type || "audio/mpeg", durationMs: rawDurRef.current });
       setPhase("sent");
       setTimeout(close, 1400);
     } catch { setPhase("error"); }
   };
 
-  // Run the on-device studio polish for a given voicing. `initial` send-raw on
-  // first-attempt failure (never block); a failed preset re-render keeps the
-  // previous polished take.
-  const polish = async (p: Exclude<StudioPreset, "off">, initial: boolean) => {
-    if (!rawBlobRef.current) return;
+  const saveForLater = async () => {
+    const blob = sourceBlob(source) ?? polished?.blob ?? fallbackBlobRef.current;
+    if (!blob) { close(); return; }
+    try { await saveVoiceDraft({ recipientId, recipientName, blob, mimeType: blob.type || "audio/mpeg", durationMs: rawDurRef.current, preset }); } catch { /* ignore */ }
+    setSaved(true);
+    setTimeout(close, 1100);
+  };
+
+  // Studio-polish the editable PCM take for a voicing.
+  const polish = async (p: Exclude<StudioPreset, "off">, toPreview: boolean) => {
+    if (!rawPcmRef.current) return;
     setRePolishing(true);
     try {
-      const res = await enhanceVoice(rawBlobRef.current, p);
+      const res = await enhancePcm(rawPcmRef.current, p, rawDurRef.current);
       setPolished(res);
-      if (initial) setPhase("preview");
+      if (srcUrlRef.current?.which === "polished") revokeSrc();
+      if (toPreview) { setSource("polished"); setPlaying(false); setPos(0); setPhase("preview"); }
     } catch {
-      if (initial) { void doSend(false); } // polish failed on first pass → send the raw take
+      if (toPreview) { setSource("raw"); setPlaying(false); setPos(0); setPhase("preview"); }
     } finally { setRePolishing(false); }
+  };
+
+  // Decode the just-recorded blob → editable PCM; on a punch-in, splice it onto
+  // the head of the existing take at punchAtRef. Then encode the compact "as
+  // recorded" MP3 and run the polish.
+  const ingest = async (blob: Blob, durMs: number) => {
+    try {
+      const newPcm = await decodeToMono48k(blob);
+      if (punchRef.current && rawPcmRef.current) {
+        const cut = Math.max(0, Math.min(rawPcmRef.current.length, Math.round(punchAtRef.current * STUDIO_RATE)));
+        const head = rawPcmRef.current.subarray(0, cut);
+        const merged = new Float32Array(head.length + newPcm.length);
+        merged.set(head, 0); merged.set(newPcm, head.length);
+        rawPcmRef.current = merged;
+      } else {
+        rawPcmRef.current = newPcm;
+      }
+      punchRef.current = false;
+      rawDurRef.current = Math.round((rawPcmRef.current.length / STUDIO_RATE) * 1000);
+      setPhase("polishing");
+      try { rawMp3Ref.current = await pcmToMp3(rawPcmRef.current); } catch { rawMp3Ref.current = null; }
+      void polish(preset, true);
+    } catch {
+      // Couldn't decode (e.g. WebAudio hiccup): keep the prior take if any, else
+      // fall back to sending the raw recorded blob untouched.
+      punchRef.current = false;
+      if (rawPcmRef.current) { setPhase("preview"); }
+      else { fallbackBlobRef.current = blob; rawDurRef.current = durMs; setSource("raw"); setPhase("preview"); }
+    }
   };
 
   const stopRec = () => {
@@ -154,11 +208,15 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
     try { recRef.current?.stop(); } catch { /* ignore */ }
   };
 
-  const start = async () => {
+  const beginRecording = async (punch: boolean) => {
     if (busyRef.current) return;
-    busyRef.current = true;
+    busyRef.current = true; punchRef.current = punch;
     tapeClick("record");
-    setOpen(true); setPhase("rec"); setRemaining(MAX_SECS); setPolished(null); setPlaying(null);
+    try { audioRef.current?.pause(); } catch { /* ignore */ } setPlaying(false);
+    setOpen(true); setSaved(false);
+    if (!punch) { setPolished(null); rawPcmRef.current = null; rawMp3Ref.current = null; fallbackBlobRef.current = null; punchAtRef.current = 0; }
+    const b = punch ? Math.max(2, MAX_SECS - Math.floor(punchAtRef.current)) : MAX_SECS;
+    setBudget(b); setRemaining(b); setPhase("rec");
     try {
       const { stream, cleanup } = await openMic();
       micCleanupRef.current = cleanup;
@@ -169,60 +227,84 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
       rec.onstop = () => {
         micCleanupRef.current?.(); micCleanupRef.current = null;
         busyRef.current = false;
-        const durationMs = Math.min(MAX_MS, Date.now() - startedRef.current);
+        const durMs = Math.min(MAX_MS, Date.now() - startedRef.current);
         const blob = new Blob(chunks, { type: rec.mimeType || mime || "audio/mp4" });
-        if (blob.size === 0) { close(); return; }
-        rawBlobRef.current = blob; rawDurRef.current = durationMs;
-        if (!studioSupported()) { void doSend(false); return; } // no engine → send raw
-        setPhase("polishing");
-        void polish(preset, true);
+        if (blob.size === 0) { punchRef.current = false; if (rawPcmRef.current || fallbackBlobRef.current) setPhase("preview"); else close(); return; }
+        if (!studioSupported()) { punchRef.current = false; fallbackBlobRef.current = blob; rawDurRef.current = durMs; void doSend(); return; }
+        void ingest(blob, durMs);
       };
-      recRef.current = rec;
-      startedRef.current = Date.now();
-      rec.start();
+      recRef.current = rec; startedRef.current = Date.now(); rec.start();
       tickRef.current = setInterval(() => {
-        const elapsed = Date.now() - startedRef.current;
-        setRemaining(Math.max(0, (MAX_MS - elapsed) / 1000));
-        if (elapsed >= MAX_MS) stopRec();
+        const sec = (Date.now() - startedRef.current) / 1000;
+        setRemaining(Math.max(0, b - sec));
+        if (sec >= b) stopRec();
       }, 80);
     } catch {
-      busyRef.current = false;
+      busyRef.current = false; punchRef.current = false;
       micCleanupRef.current?.(); micCleanupRef.current = null;
-      setPhase("error");
+      setPhase(rawPcmRef.current ? "preview" : "error");
     }
   };
 
   const choosePreset = (p: Exclude<StudioPreset, "off">) => {
-    if (p === preset) return;
     setPreset(p);
     try { localStorage.setItem(PRESET_KEY, p); } catch { /* ignore */ }
+    if (p === preset && source === "polished") return;
+    setSource("polished");
     void polish(p, false);
   };
 
-  const playTake = (which: "raw" | "polished") => {
-    try { audioRef.current?.pause(); } catch { /* ignore */ }
-    if (urlRef.current) { try { URL.revokeObjectURL(urlRef.current); } catch { /* ignore */ } urlRef.current = null; }
-    if (playing === which) { setPlaying(null); audioRef.current = null; return; } // toggle off
-    const blob = which === "polished" ? polished?.blob : rawBlobRef.current;
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    urlRef.current = url;
-    const audio = new Audio(url);
-    audioRef.current = audio;
-    setPlaying(which);
-    const done = () => { if (urlRef.current === url) { try { URL.revokeObjectURL(url); } catch { /* ignore */ } urlRef.current = null; } setPlaying(null); audioRef.current = null; };
-    audio.onended = done; audio.onerror = done;
-    audio.play().catch(done);
+  // ── preview player (scrub/listen back, switch take) ──
+  const getAudio = (): HTMLAudioElement => {
+    if (!audioRef.current) {
+      const a = new Audio();
+      a.ontimeupdate = () => setPos(a.currentTime);
+      a.onloadedmetadata = () => { if (isFinite(a.duration)) setDur(a.duration); };
+      a.onplay = () => setPlaying(true);
+      a.onpause = () => setPlaying(false);
+      a.onended = () => { setPlaying(false); setPos(a.duration || 0); };
+      audioRef.current = a;
+    }
+    return audioRef.current;
   };
+  const ensureSrc = (which: "polished" | "raw"): boolean => {
+    const a = getAudio();
+    if (srcUrlRef.current?.which === which) return true;
+    const blob = sourceBlob(which);
+    if (!blob) return false;
+    revokeSrc();
+    const url = URL.createObjectURL(blob);
+    srcUrlRef.current = { which, url };
+    a.src = url; setPos(0); setDur((rawDurRef.current || 0) / 1000);
+    return true;
+  };
+  const togglePlay = () => {
+    const a = getAudio();
+    if (!ensureSrc(source)) return;
+    if (a.paused) void a.play().catch(() => undefined); else a.pause();
+  };
+  const seek = (frac: number) => {
+    const a = getAudio();
+    if (!ensureSrc(source)) return;
+    const total = a.duration && isFinite(a.duration) ? a.duration : (rawDurRef.current || 0) / 1000;
+    if (total > 0) { a.currentTime = frac * total; setPos(a.currentTime); }
+  };
+  const switchSource = (which: "polished" | "raw") => {
+    if (which === source || !sourceBlob(which)) return;
+    try { audioRef.current?.pause(); } catch { /* ignore */ }
+    revokeSrc();
+    setSource(which); setPlaying(false); setPos(0);
+  };
+  const recordOver = () => { punchAtRef.current = pos; void beginRecording(true); };
 
   const r = 32;
   const C = 2 * Math.PI * r;
-  const elapsed = MAX_SECS - remaining;
-  const frac = elapsed / MAX_SECS; // ring fills as the time is used
+  const elapsed = budget - remaining;
+  const frac = budget > 0 ? elapsed / budget : 0; // ring fills as the time is used
 
   return (
     <>
-      <button type="button" onClick={() => void start()} aria-label={`Send ${first} a voice prayer`}
+      <button type="button" onClick={() => void beginRecording(false)} aria-label={`Send ${first} a voice prayer`}
         className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-opacity active:scale-[0.97]"
         style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}>
         <Mic size={13} /> Voice
@@ -265,8 +347,8 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
                       <Square size={20} fill={WARM} />
                     </span>
                   </button>
-                  <p className="mt-4 text-[15px] font-semibold tabular-nums" style={{ color: WARM }}>{fmt(elapsed)} / {fmt(MAX_SECS)}</p>
-                  <p className="mt-1 text-[12px]" style={{ color: SAGE }}>Speak from the heart — tap to finish</p>
+                  <p className="mt-4 text-[15px] font-semibold tabular-nums" style={{ color: WARM }}>{fmt(elapsed)} / {fmt(budget)}</p>
+                  <p className="mt-1 text-[12px]" style={{ color: SAGE }}>{punchRef.current ? "Recording over — tap to finish" : "Speak from the heart — tap to finish"}</p>
                 </div>
               )}
 
@@ -279,14 +361,39 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
                 </div>
               )}
 
-              {phase === "preview" && (
-                <div className="flex flex-col gap-4">
-                  {/* A/B */}
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <PreviewPlay label="As recorded" active={playing === "raw"} onClick={() => playTake("raw")} dim />
-                    <PreviewPlay label="Polished 🌿" active={playing === "polished"} busy={rePolishing} onClick={() => playTake("polished")} />
+              {phase === "preview" && (() => {
+                const total = dur > 0 ? dur : (rawDurRef.current || 0) / 1000;
+                const pfrac = total > 0 ? Math.min(1, pos / total) : 0;
+                return (
+                <div className="flex flex-col gap-3.5">
+                  {/* player */}
+                  <div className="flex items-center gap-2.5">
+                    <button type="button" onClick={togglePlay} aria-label={playing ? "Pause" : "Play"}
+                      className="shrink-0 rounded-full flex items-center justify-center active:scale-95" style={{ width: 38, height: 38, background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)" }}>
+                      {playing ? <Pause size={16} fill={WARM} /> : <Play size={16} fill={WARM} />}
+                    </button>
+                    <input type="range" min={0} max={1000} value={Math.round(pfrac * 1000)} aria-label="Scrub"
+                      onChange={(e) => seek(Number(e.target.value) / 1000)}
+                      className="voice-scrub flex-1 cursor-pointer"
+                      style={{ background: `linear-gradient(to right, rgba(110,180,130,0.95) ${pfrac * 100}%, rgba(46,107,64,0.22) ${pfrac * 100}%)` }} />
+                    <span className="shrink-0 text-[11px] tabular-nums" style={{ color: SAGE, minWidth: 74, textAlign: "right" }}>{clock(pos)} / {clock(total)}</span>
                   </div>
-                  {/* preset chooser */}
+                  {/* A/B source toggle */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["polished", "raw"] as const).map((id) => {
+                      const on = source === id;
+                      const disabled = id === "polished" && !polished;
+                      const label = id === "polished" ? (rePolishing ? "Polishing…" : "Polished 🌿") : "As recorded";
+                      return (
+                        <button key={id} type="button" disabled={disabled} onClick={() => switchSource(id)}
+                          className="rounded-full py-2 text-[12.5px] font-semibold transition-colors active:scale-[0.98]"
+                          style={{ background: on ? "rgba(46,107,64,0.85)" : "rgba(46,107,64,0.08)", color: on ? WARM : SAGE, border: `1px solid ${on ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.2)"}`, opacity: disabled ? 0.5 : 1 }}>
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* voicing */}
                   <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
                     {PRESETS.map((p) => {
                       const on = p.id === preset;
@@ -299,17 +406,31 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
                       );
                     })}
                   </div>
+                  {/* tape edits: record over (punch-in) / start over */}
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={recordOver}
+                      className="flex items-center justify-center gap-1.5 rounded-full py-2 text-[12.5px] font-semibold active:scale-[0.98]"
+                      style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.4)" }}>
+                      <Circle size={10} fill={CLAY} stroke="none" /> {pos > 0.4 ? `Over from ${clock(pos)}` : "Record over"}
+                    </button>
+                    <button type="button" onClick={() => void beginRecording(false)}
+                      className="flex items-center justify-center gap-1.5 rounded-full py-2 text-[12.5px] font-semibold active:scale-[0.98]"
+                      style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.4)" }}>
+                      <RotateCcw size={13} /> Start over
+                    </button>
+                  </div>
                   {/* send */}
-                  <button type="button" onClick={() => void doSend(true)} disabled={rePolishing}
+                  <button type="button" onClick={() => void doSend()} disabled={rePolishing}
                     className="w-full rounded-2xl py-3 text-[15px] font-semibold transition-opacity active:scale-[0.99]"
                     style={{ background: "rgba(46,107,64,0.95)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", opacity: rePolishing ? 0.6 : 1 }}>
                     Send 🌿
                   </button>
-                  <button type="button" onClick={() => void doSend(false)} className="text-[12px] -mt-1.5 text-center" style={{ color: "rgba(143,175,150,0.7)" }}>
-                    Send as recorded instead
+                  <button type="button" onClick={() => void saveForLater()} className="text-[12px] -mt-1.5 text-center" style={{ color: saved ? "#A8C5A0" : "rgba(143,175,150,0.7)" }}>
+                    {saved ? "Saved for later 🌿" : "Save for later"}
                   </button>
                 </div>
-              )}
+                );
+              })()}
 
               {phase === "sending" && <p className="text-center py-8 text-[14px]" style={{ color: SAGE }}>Sending…</p>}
               {phase === "sent" && <p className="text-center py-8 text-[15px] font-semibold" style={{ color: WARM }}>It's on its way 🌿</p>}
@@ -320,27 +441,6 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
         )}
       </AnimatePresence>
     </>
-  );
-}
-
-// A play button used in the A/B preview — a pill/toggle that shows animated
-// bars while playing. "dim" = the secondary (As recorded) take.
-function PreviewPlay({ label, active, busy, dim, onClick }: { label: string; active: boolean; busy?: boolean; dim?: boolean; onClick: () => void }) {
-  return (
-    <button type="button" onClick={onClick} disabled={busy}
-      className="flex items-center justify-center gap-2 rounded-full py-3 text-[13px] font-semibold transition-colors active:scale-[0.98]"
-      style={{ background: dim ? "rgba(46,107,64,0.08)" : "rgba(46,107,64,0.25)", color: dim ? SAGE : WARM, border: `1px solid ${dim ? "rgba(46,107,64,0.2)" : "rgba(46,107,64,0.4)"}` }}>
-      {busy
-        ? <motion.span style={{ width: 11, height: 11, borderRadius: 999, background: "#6FAF85" }} animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 0.9, repeat: Infinity }} />
-        : active
-          ? <span className="inline-flex items-end gap-[2px]" style={{ height: 13 }}>
-              {[0, 1, 2].map((i) => (
-                <motion.span key={i} style={{ width: 3, background: "currentColor", borderRadius: 2 }} animate={{ height: [4, 12, 4] }} transition={{ duration: 0.7, repeat: Infinity, delay: i * 0.14 }} />
-              ))}
-            </span>
-          : <Play size={14} />}
-      {label}
-    </button>
   );
 }
 
@@ -497,6 +597,92 @@ export function VoiceMemoInbox() {
           );
         })}
       </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Saved prayers — drafts kept on-device, ready to send later ────────────────
+export function VoiceDraftsShelf() {
+  const [drafts, setDrafts] = useState<VoiceDraft[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const urlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const reload = () => { listVoiceDrafts().then(setDrafts).catch(() => undefined); };
+    reload();
+    window.addEventListener(VOICE_DRAFTS_EVENT, reload);
+    return () => {
+      window.removeEventListener(VOICE_DRAFTS_EVENT, reload);
+      try { audioRef.current?.pause(); } catch { /* ignore */ }
+      if (urlRef.current) { try { URL.revokeObjectURL(urlRef.current); } catch { /* ignore */ } }
+    };
+  }, []);
+
+  if (!voiceSupported() || drafts.length === 0) return null;
+
+  const play = (d: VoiceDraft) => {
+    try { audioRef.current?.pause(); } catch { /* ignore */ }
+    if (urlRef.current) { try { URL.revokeObjectURL(urlRef.current); } catch { /* ignore */ } urlRef.current = null; }
+    if (playingId === d.id) { setPlayingId(null); return; }
+    const url = URL.createObjectURL(d.blob);
+    urlRef.current = url;
+    const a = new Audio(url);
+    audioRef.current = a;
+    setPlayingId(d.id);
+    const done = () => { if (urlRef.current === url) { try { URL.revokeObjectURL(url); } catch { /* ignore */ } urlRef.current = null; } setPlayingId(null); };
+    a.onended = done; a.onerror = done;
+    tapeClick("play");
+    a.play().catch(done);
+  };
+
+  const send = async (d: VoiceDraft) => {
+    setBusyId(d.id);
+    try {
+      const pub: { publicKeyJwk: string } = await apiRequest("GET", `/api/keys/public/${d.recipientId}`);
+      const enc: EncryptedMemo = await encryptVoice(pub.publicKeyJwk, await d.blob.arrayBuffer());
+      await apiRequest("POST", "/api/voice-memos", { recipientId: d.recipientId, ...enc, mimeType: d.mimeType || "audio/mpeg", durationMs: d.durationMs });
+      tapeClick("send");
+      await deleteVoiceDraft(d.id);
+    } catch { /* keep the draft so it can be retried */ } finally { setBusyId(null); }
+  };
+
+  const remove = (d: VoiceDraft) => {
+    if (playingId === d.id) { try { audioRef.current?.pause(); } catch { /* ignore */ } setPlayingId(null); }
+    void deleteVoiceDraft(d.id);
+  };
+
+  return (
+    <div className="mb-5">
+      <p className="mb-2" style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", color: "rgba(143,175,150,0.55)", fontFamily: FONT }}>Saved prayers</p>
+      <div className="flex flex-col gap-2">
+        {drafts.map((d) => {
+          const first = (d.recipientName ?? "someone").trim().split(/\s+/)[0] || "someone";
+          const sec = Math.max(1, Math.round((d.durationMs || 0) / 1000));
+          const isPlaying = playingId === d.id;
+          return (
+            <div key={d.id} className="rounded-2xl px-3.5 py-3 flex items-center gap-3" style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}>
+              <button type="button" onClick={() => play(d)} aria-label={isPlaying ? "Pause" : "Play"}
+                className="shrink-0 rounded-full flex items-center justify-center active:scale-95" style={{ width: 34, height: 34, background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)" }}>
+                {isPlaying ? <Pause size={14} fill={WARM} /> : <Play size={14} fill={WARM} />}
+              </button>
+              <div className="flex-1 min-w-0">
+                <p className="text-[15px] font-medium" style={{ color: WARM, fontFamily: FONT }}>For {first}</p>
+                <p className="text-[12px]" style={{ color: SAGE, fontFamily: FONT }}>Saved · {sec}s · tap to play</p>
+              </div>
+              <button type="button" onClick={() => void send(d)} disabled={busyId === d.id}
+                className="shrink-0 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold active:scale-[0.97]"
+                style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", opacity: busyId === d.id ? 0.6 : 1 }}>
+                {busyId === d.id ? "Sending…" : "Send"}
+              </button>
+              <button type="button" onClick={() => remove(d)} aria-label="Discard" className="shrink-0 rounded-full flex items-center justify-center active:scale-90" style={{ width: 30, height: 30, color: "rgba(143,175,150,0.6)", background: "rgba(200,212,192,0.06)" }}>
+                <X size={15} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

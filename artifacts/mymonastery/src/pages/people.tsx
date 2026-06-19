@@ -12,7 +12,7 @@ import { FellowsConnect } from "@/components/FellowsConnect";
 import { WalkTogether } from "@/components/WalkTogether";
 import { FellowOnboardingPrompt } from "@/components/FellowOnboardingPrompt";
 import { EncouragementBanner } from "@/components/EncouragementBanner";
-import { VoiceMemoInbox } from "@/components/VoiceMemo";
+import { VoiceMemoInbox, VoiceDraftsShelf } from "@/components/VoiceMemo";
 import { ensureVoiceKeysPublished } from "@/lib/voiceCrypto";
 import { useBetaStatus } from "@/hooks/useDemo";
 import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
@@ -606,8 +606,10 @@ export default function People() {
         {/* A fellow's 🙌 encouragement, if one's waiting. */}
         <EncouragementBanner />
 
-        {/* Voice prayers sent to me — encrypted, fade after I listen. */}
+        {/* Voice prayers sent to me — encrypted, replayable for 3 days. */}
         {rawIsBeta && <VoiceMemoInbox />}
+        {/* Voice prayers I saved to send later. */}
+        {rawIsBeta && <VoiceDraftsShelf />}
 
         {/* Fellows — your 1:1 prayer connections, prioritized at the very
             top of the page so your closest people lead before search or the
