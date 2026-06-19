@@ -5608,7 +5608,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // feed-led, else office), then the rest; Contemplation hidden by
   // default. The first visible office/feeds module is the "primary"
   // anchor — it gets the full office card / the feed hero card.
-  const HOME_MODULES = ["office", "feeds", "contemplation", "gratitude", "examen", "steps", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
+  const HOME_MODULES = ["office", "feeds", "contemplation", "listening", "gratitude", "examen", "journaling", "cac", "fdd", "ssje", "ncmp", "podcasts", "requests"] as const;
   type HomeModule = typeof HOME_MODULES[number];
   // The default everyone starts at: prayer requests pinned on top, then
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.
@@ -6599,27 +6599,34 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
             not the day-of-week, so we want the in-app date visible
             there too). */}
         <div className="mb-4" style={{ paddingTop: 4 }}>
-          <p
-            className="mb-1"
-            style={{
-              color: "#F0EDE6",
-              fontSize: 22,
-              fontWeight: 600,
-              letterSpacing: "-0.02em",
-              lineHeight: 1.2,
-              fontFamily: "'Space Grotesk', sans-serif",
-            }}
-          >
-            {eventsOnly ? t("dashboard.events_title", { defaultValue: "Events" }) : format(new Date(), "EEEE, d MMMM")}
-          </p>
-          {/* Show the feast/Sunday/commemoration when there is one;
-              otherwise fall back to the brand tagline. The events page swaps
-              this for a short subtitle. */}
-          <div style={{ marginBottom: 20 }}>
-            {eventsOnly
-              ? null
-              : <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />}
-          </div>
+          {/* Beta users get a cleaner home: drop the date + feast eyebrow so the
+              "Next" rhythm starts right at the top. (The Events surface keeps its
+              title regardless.) */}
+          {!(isBeta && !eventsOnly) && (
+            <>
+              <p
+                className="mb-1"
+                style={{
+                  color: "#F0EDE6",
+                  fontSize: 22,
+                  fontWeight: 600,
+                  letterSpacing: "-0.02em",
+                  lineHeight: 1.2,
+                  fontFamily: "'Space Grotesk', sans-serif",
+                }}
+              >
+                {eventsOnly ? t("dashboard.events_title", { defaultValue: "Events" }) : format(new Date(), "EEEE, d MMMM")}
+              </p>
+              {/* Show the feast/Sunday/commemoration when there is one; otherwise
+                  fall back to the brand tagline. The events page swaps this for a
+                  short subtitle. */}
+              <div style={{ marginBottom: 20 }}>
+                {eventsOnly
+                  ? null
+                  : <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />}
+              </div>
+            </>
+          )}
 
           {/* Plans ("How About") — share something you're going to and your
               fellows can come. Moved here from the People page: it belongs with
@@ -6803,12 +6810,19 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 }
                 case "contemplation":
                   return <ContemplationHomeCard />;
+                // Listening is surfaced through the rhythm cards (daily-progress),
+                // not as a separate classic-home feed card — like cac/fdd when
+                // they're not the reflection hero.
+                case "listening":
+                  return null;
+                // Journaling is a log-only rhythm dot (surfaced in daily-progress),
+                // not a classic-home feed card.
+                case "journaling":
+                  return null;
                 case "gratitude":
                   return <GratitudeHomeCard />;
                 case "examen":
                   return <ExamenHomeCard />;
-                case "steps":
-                  return <StepsHomeCard />;
                 case "cac":
                   return reflectionIsHero("cac") ? <CacHomeCard /> : null;
                 case "fdd":
