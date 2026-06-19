@@ -605,7 +605,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       // Optional practices.
       db.execute<{ section: string; local_date: string }>(sql`
         SELECT DISTINCT section, local_date FROM practice_completion
-        WHERE user_id = ${sessionUserId} AND section IN ('gratitude', 'examen') AND local_date >= ${oldestYmd}
+        WHERE user_id = ${sessionUserId} AND section IN ('gratitude', 'examen', 'listening') AND local_date >= ${oldestYmd}
       `),
       // Daily steps — the synced per-day step total (day is already a tz-local
       // ymd). Compared to the user's current goal below to fill the steps dot.
@@ -648,9 +648,11 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     for (const r of cacRows.rows) reflection.add(r.ymd);
     const gratitude = new Set<string>();
     const examen = new Set<string>();
+    const listening = new Set<string>();
     for (const r of pcRows.rows) {
       if (r.section === "gratitude") gratitude.add(r.local_date);
       if (r.section === "examen") examen.add(r.local_date);
+      if (r.section === "listening") listening.add(r.local_date);
     }
     // Steps: a day counts only when the goal is set AND that day's synced steps
     // reached it. (No goal → the practice is off, so no day fills.)
@@ -667,6 +669,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       evening: evening.has(ymd),
       contemplation: contemplation.has(ymd),
       reflection: reflection.has(ymd),
+      listening: listening.has(ymd),
       gratitude: gratitude.has(ymd),
       examen: examen.has(ymd),
       steps: steps.has(ymd),

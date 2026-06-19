@@ -315,6 +315,8 @@ const CustomizeHomeAddPage = lazy(() =>
   import("./pages/customize-home").then((m) => ({ default: m.CustomizeHomeAddPage })),
 );
 const GratitudePage = lazy(() => import("./pages/gratitude"));
+const ListeningPage = lazy(() => import("./pages/listening"));
+const SpotifyCallbackPage = lazy(() => import("./pages/spotify-callback"));
 const BcpIntercessionsPage = lazy(() => import("./pages/bcp-intercessions"));
 const BcpDailyOfficePage = lazy(() => import("./pages/bcp-daily-office"));
 const BcpDailyDevotionPage = lazy(() => import("./pages/bcp-daily-devotion"));
@@ -732,6 +734,8 @@ function ParishGate({ children }: { children: ReactNode }) {
         location === "/cobreathe/about" ||
         location === "/examen" ||
         location === "/gratitude" ||
+        location === "/listening" ||
+        location === "/spotify-callback" ||
         location.startsWith("/moments/") ||
         // Public prayer feeds — discovery + detail. Offices-only and
         // parish-only members may browse and subscribe to public feeds
@@ -953,6 +957,8 @@ function Router() {
       {/* Saints — a single browsable/searchable index (BCP-Prayers-style). */}
       <Route path="/saints" component={SaintsIndex} />
       <Route path="/gratitude" component={GratitudePage} />
+      <Route path="/listening" component={ListeningPage} />
+      <Route path="/spotify-callback" component={SpotifyCallbackPage} />
       <Route path="/bcp" component={BcpPage} />
       <Route path="/bcp/intercessions" component={BcpIntercessionsPage} />
       {/* Office-only Settings — focused subset of /settings that
