@@ -124,7 +124,19 @@ export default function FindYourRhythmPage() {
           <button onClick={() => navigate("/rule-of-life")} className="w-full mt-3 py-3 text-[14px]" style={{ color: SAGE, fontFamily: FONT }}>
             I'll adjust it myself
           </button>
-          <button onClick={() => { setPhase("questions"); setIdx(0); }} className="w-full mt-1 py-2 text-[12.5px]" style={{ color: SAGE_DIM, fontFamily: FONT }}>
+
+          {/* A gentle bridge into the Way of Love — the 8-week daily journey
+              through the practices (a separate feature; this just links to it). */}
+          <div className="mt-6 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+            <p className="text-[12.5px] leading-relaxed mb-2.5" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
+              When you're ready to go deeper, walk the Way of Love — an eight-week daily journey through the practices.
+            </p>
+            <button onClick={() => navigate("/way-of-love")} className="text-[14px] font-medium inline-flex items-center gap-1.5" style={{ color: WARM, fontFamily: FONT }}>
+              Walk the Way of Love <span aria-hidden style={{ color: SAGE }}>→</span>
+            </button>
+          </div>
+
+          <button onClick={() => { setPhase("questions"); setIdx(0); }} className="w-full mt-5 py-2 text-[12.5px]" style={{ color: SAGE_DIM, fontFamily: FONT }}>
             Start over
           </button>
         </div>
