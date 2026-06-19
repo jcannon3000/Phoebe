@@ -1184,38 +1184,64 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // look. A plain render helper (NOT a component) so it inlines and the native
     // select never remounts mid-selection. Stops propagation so a tap can't
     // bubble to the slide tap-nav.
-    const dropdown = (id: string, value: string, onChange: (v: string) => void, options: React.ReactNode) => (
-      <div style={{ position: "relative", width: "100%", maxWidth: 420 }}>
+    const wayLabel = wayToPray === "intercessions" ? "Community Intercessions" : wayToPray === "devotion" ? `${sideWord} Devotion` : `${sideWord} Prayer`;
+    const methodValue = isIntercessions ? "screen" : prayMethod;
+    const methodLabel = methodValue === "screen" ? "On screen" : methodValue === "listen" ? "Listen" : methodValue === "watch" ? "Watch" : "Physical BCP";
+
+    // A screen-wide settings pill: CATEGORY on the left, the chosen value +
+    // chevron on the right (the singing-bowl / Insight-Timer pattern). The
+    // native <select> sits transparent over the whole pill so a tap opens the
+    // iOS picker, while our own content is what shows. Plain helper (not a
+    // component) so the native select never remounts mid-selection.
+    const dropdown = (
+      id: string,
+      value: string,
+      valueLabel: string,
+      categoryLabel: string,
+      onChange: (v: string) => void,
+      options: React.ReactNode,
+    ) => (
+      <div style={{ position: "relative", width: "100%" }}>
+        <div style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          background: "rgba(46,107,64,0.10)",
+          border: "1px solid rgba(46,107,64,0.32)",
+          borderRadius: 999,
+          padding: "14px 20px",
+          pointerEvents: "none",
+        }}>
+          <span style={{ color: WARM_TEXT, fontFamily: SPACE_GROTESK, fontSize: 14.5, fontWeight: 600, flexShrink: 0 }}>{categoryLabel}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            <span style={{ color: "rgba(168,197,160,0.95)", fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{valueLabel}</span>
+            <span aria-hidden style={{ color: "rgba(168,197,160,0.7)", fontSize: 16, lineHeight: 1, flexShrink: 0 }}>›</span>
+          </span>
+        </div>
         <select
           id={id}
           value={value}
+          aria-label={categoryLabel}
           onChange={(e) => onChange(e.target.value)}
           onClick={(e) => e.stopPropagation()}
           style={{
+            position: "absolute",
+            inset: 0,
             width: "100%",
+            height: "100%",
+            opacity: 0,
             appearance: "none",
             WebkitAppearance: "none",
-            background: "rgba(46,107,64,0.10)",
-            border: "1px solid rgba(46,107,64,0.32)",
-            borderRadius: 999,
-            color: WARM_TEXT,
-            fontFamily: SPACE_GROTESK,
-            fontSize: 14,
-            fontWeight: 500,
+            border: "none",
+            background: "transparent",
+            color: "transparent",
             cursor: "pointer",
-            // Center the selected value in the pill to match the Begin button.
-            // iOS WKWebView ignores `text-align` on a native <select> but honors
-            // `text-align-last`, so we set both; symmetric padding centers the
-            // text while the ▾ chevron sits (absolutely positioned) in the right
-            // padding, clear of these short labels.
-            padding: "13px 38px",
-            textAlign: "center",
-            textAlignLast: "center",
           }}
         >
           {options}
         </select>
-        <span aria-hidden style={{ position: "absolute", right: 18, top: "50%", transform: "translateY(-50%)", color: "rgba(168,197,160,0.8)", fontSize: 12, pointerEvents: "none" }}>▾</span>
       </div>
     );
     return (
@@ -1224,16 +1250,20 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           marginTop: 28,
           display: "flex",
           flexDirection: "column",
-          alignItems: "center",
-          gap: 12,
+          alignItems: "stretch",
+          gap: 10,
           paddingTop: 16,
           borderTop: `1px solid ${BORDER}`,
+          width: "100%",
+          maxWidth: 480,
+          marginLeft: "auto",
+          marginRight: "auto",
         }}
       >
         {canChoose && (
           <>
             {/* Row 1 — the way to pray. */}
-            {dropdown("way-to-pray", wayToPray, (v) => {
+            {dropdown("way-to-pray", wayToPray, wayLabel, "Practice", (v) => {
               const w = v as WayToPray;
               setWayToPray(w);
               // Intercessions is on-screen only — snap the method back.
@@ -1246,7 +1276,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               </>
             ))}
             {/* Row 2 — the method, based on the way. Intercessions = digital only. */}
-            {dropdown("pray-method", isIntercessions ? "screen" : prayMethod, (v) => setPrayMethod(v as PrayMethod), (
+            {dropdown("pray-method", methodValue, methodLabel, "How", (v) => setPrayMethod(v as PrayMethod), (
               isIntercessions ? (
                 <option value="screen">On screen</option>
               ) : (
@@ -1266,7 +1296,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           onClick={(e) => { e.stopPropagation(); canChoose ? launchWay(wayToPray, isIntercessions ? "screen" : prayMethod) : next(); }}
           style={{
             width: "100%",
-            maxWidth: 420,
+            marginTop: 6,
             background: "#2D5E3F",
             border: "1px solid rgba(46,107,64,0.7)",
             borderRadius: 999,
@@ -1276,7 +1306,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             fontWeight: 600,
             letterSpacing: "0.02em",
             cursor: "pointer",
-            padding: "13px 24px",
+            padding: "14px 24px",
           }}
         >
           {i18n.language?.startsWith("es") ? "Comenzar" : "Begin"}
