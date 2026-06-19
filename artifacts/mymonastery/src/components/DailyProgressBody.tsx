@@ -31,25 +31,17 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
-// Practice-card palette: a calm ramp across the day's cards by order — LIME
-// GREEN → the Phoebe forest green in the MIDDLE → TEAL. Two segments so the
-// brand green always lands at the centre of the spread. Each user's set differs
-// but it always reads as one harmonious green ramp.
+// Practice-card palette: a calm, LOW-CHROMA cool ramp that walks the hue from
+// the Phoebe forest green through teal/blue to a muted violet across the day's
+// cards, by order. Every hue is cool, so it stays in harmony with the dark green
+// ground; saturation eases DOWN toward purple, so the violet end reads as a
+// whisper rather than a pop (saturated purple/teal is what made the cards shout).
 // Returns an "r,g,b" string (the format the cards' rgba() helpers expect).
 function rhythmGradientRgb(i: number, n: number): string {
-  const t = n <= 1 ? 0.5 : i / (n - 1); // a lone card sits at the Phoebe-green centre
-  const LIME = { h: 95, s: 0.62, l: 0.55 };
-  const PHOEBE = { h: 145, s: 0.45, l: 0.47 }; // the brand green — the midpoint
-  const TEAL = { h: 180, s: 0.50, l: 0.43 };
-  const lerp = (a: number, b: number, u: number) => a + (b - a) * u;
-  let hue: number, sat: number, light: number;
-  if (t <= 0.5) {
-    const u = t / 0.5; // lime → phoebe across the first half
-    hue = lerp(LIME.h, PHOEBE.h, u); sat = lerp(LIME.s, PHOEBE.s, u); light = lerp(LIME.l, PHOEBE.l, u);
-  } else {
-    const u = (t - 0.5) / 0.5; // phoebe → teal across the second half
-    hue = lerp(PHOEBE.h, TEAL.h, u); sat = lerp(PHOEBE.s, TEAL.s, u); light = lerp(PHOEBE.l, TEAL.l, u);
-  }
+  const t = n <= 1 ? 0 : i / (n - 1);
+  const hue = 145 + (285 - 145) * t;   // 145° green → 285° violet (through teal/blue)
+  const sat = 0.40 - 0.08 * t;          // ease chroma down toward purple (0.40 → 0.32)
+  const light = 0.56;
   // HSL → RGB.
   const c = (1 - Math.abs(2 * light - 1)) * sat;
   const hp = hue / 60;
@@ -126,21 +118,20 @@ function StreakCard() {
   const gardenOverflow = Math.max(0, gardenWeekCount - gardenFaces.length);
   if (!data) return null;
   const { days, streak, last7 } = data;
-  const AMBER = "193,127,36";
   const GREEN = "46,107,64";
   const GREEN_BRIGHT = "110,180,130";
   return (
     <div
       className="relative flex rounded-2xl overflow-hidden mt-6"
-      style={{ background: `rgba(${GREEN},0.10)`, border: `1px solid rgba(${GREEN},0.24)` }}
+      style={{ background: `linear-gradient(180deg, rgba(${GREEN},0.08) 0%, rgba(${GREEN},0.16) 100%)`, border: `1px solid rgba(${GREEN},0.24)` }}
     >
-      <div className="w-1 flex-shrink-0" style={{ background: `rgba(${AMBER},0.85)` }} />
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(${GREEN_BRIGHT},0.7)` }} />
       <div className="flex-1 px-4 py-4">
         <div className="flex items-center gap-3">
           <span className="text-2xl flex-shrink-0">🔥</span>
-          <p className="flex-1 min-w-0 leading-none" style={{ color: "#E8B45E", fontFamily: FONT, fontSize: 26, fontWeight: 700 }}>
+          <p className="flex-1 min-w-0 leading-none" style={{ color: WARM, fontFamily: FONT, fontSize: 26, fontWeight: 700 }}>
             {streak}
-            <span className="text-[13px] font-semibold ml-2" style={{ color: "#D9A45B" }}>
+            <span className="text-[13px] font-semibold ml-2" style={{ color: SAGE }}>
               {t("rhythm.streak_unit", { count: streak, defaultValue: streak === 1 ? "day rhythm" : "day rhythm" })}
             </span>
           </p>
@@ -222,8 +213,10 @@ export function WeeklyGridCard() {
 
   const rows: Array<{ key: keyof Day; emoji: string; label: string; rgb: string }> = [
     ...(morningActive ? [{ key: "morning" as const, emoji: "🌅", label: t("rhythm.row_morning", { defaultValue: "Morning" }), rgb: "46,107,64" }] : []),
-    ...(silenceActive ? [{ key: "contemplation" as const, emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122" }] : []),
+    // Reflection rides right after Morning Prayer — it's the second beat of the
+    // day — and stays ahead of Contemplation, matching the card order below.
     ...(reflectActive ? [{ key: "reflection" as const, emoji: "📖", label: t("rhythm.row_reflection", { defaultValue: "Reflection" }), rgb: "96,141,209" }] : []),
+    ...(silenceActive ? [{ key: "contemplation" as const, emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122" }] : []),
     ...(eveningActive ? [{ key: "evening" as const, emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "124,116,196" }] : []),
     ...(gratitudeActive ? [{ key: "gratitude" as const, emoji: "🙏", label: t("rhythm.row_gratitude", { defaultValue: "Gratitude" }), rgb: "108,162,124" }] : []),
     ...(examenActive ? [{ key: "examen" as const, emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180" }] : []),
@@ -346,9 +339,9 @@ function PracticeCard({
     const heroRow = (
       <div
         className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
-        style={{ background: `rgba(${rgb},0.12)`, border: `1px solid rgba(${rgb},0.42)`, opacity: waiting ? 0.8 : 1 }}
+        style={{ background: `linear-gradient(180deg, rgba(${rgb},0.08) 0%, rgba(${rgb},0.17) 100%)`, border: `1px solid rgba(${rgb},0.34)`, opacity: waiting ? 0.8 : 1 }}
       >
-        <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.9})` }} />
+        <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />
         <div className="flex-1 px-5 py-5">
           <div className="flex items-start gap-3.5">
             {emoji ? <span className="text-[34px] leading-none flex-shrink-0">{emoji}</span> : null}
@@ -412,15 +405,15 @@ function PracticeCard({
     </span>
   );
 
-  const restBorder = `rgba(${rgb},${done ? 0.42 : 0.18})`;
+  const restBorder = `rgba(${rgb},${done ? 0.34 : 0.16})`;
   const row = (
     <motion.div
       className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
-      style={{ background: `rgba(${rgb},0.10)`, border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1 }}
-      animate={pulse ? { borderColor: [restBorder, `rgba(${rgb},0.65)`, restBorder] } : undefined}
+      style={{ background: `linear-gradient(180deg, rgba(${rgb},0.07) 0%, rgba(${rgb},0.14) 100%)`, border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1 }}
+      animate={pulse ? { borderColor: [restBorder, `rgba(${rgb},0.55)`, restBorder] } : undefined}
       transition={pulse ? { duration: 2.2, repeat: Infinity, ease: "easeInOut" } : undefined}
     >
-      <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.85})` }} />
+      <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.7})` }} />
       <div className="flex-1 min-w-0 px-4 py-3.5">
         <div className="flex items-center gap-3">
           {emoji ? <span className="text-xl flex-shrink-0">{emoji}</span> : null}
