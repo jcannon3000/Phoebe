@@ -315,6 +315,7 @@ const CustomizeHomeAddPage = lazy(() =>
 );
 const GratitudePage = lazy(() => import("./pages/gratitude"));
 const ListeningPage = lazy(() => import("./pages/listening"));
+const FindYourRhythmPage = lazy(() => import("./pages/find-your-rhythm"));
 const SpotifyCallbackPage = lazy(() => import("./pages/spotify-callback"));
 const BcpIntercessionsPage = lazy(() => import("./pages/bcp-intercessions"));
 const BcpDailyOfficePage = lazy(() => import("./pages/bcp-daily-office"));
@@ -734,6 +735,7 @@ function ParishGate({ children }: { children: ReactNode }) {
         location === "/examen" ||
         location === "/gratitude" ||
         location === "/listening" ||
+        location === "/find-your-rhythm" ||
         location === "/spotify-callback" ||
         location.startsWith("/moments/") ||
         // Public prayer feeds — discovery + detail. Offices-only and
@@ -956,6 +958,7 @@ function Router() {
       <Route path="/saints" component={SaintsIndex} />
       <Route path="/gratitude" component={GratitudePage} />
       <Route path="/listening" component={ListeningPage} />
+      <Route path="/find-your-rhythm" component={FindYourRhythmPage} />
       <Route path="/spotify-callback" component={SpotifyCallbackPage} />
       <Route path="/bcp" component={BcpPage} />
       <Route path="/bcp/intercessions" component={BcpIntercessionsPage} />

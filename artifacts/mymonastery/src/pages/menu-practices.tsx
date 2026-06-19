@@ -13,6 +13,10 @@ export default function MenuPracticesPage() {
       backHref="/menu"
       groups={[{
         items: [
+          { emoji: "🧭", label: "Find your rhythm", sub: "A few questions → a rule of life shaped for you", onClick: () => go("/find-your-rhythm") },
+        ],
+      }, {
+        items: [
           { emoji: "🕯️", label: "Contemplation", sub: "A timer for silent prayer", onClick: () => go("/contemplation") },
           { emoji: "🎧", label: "Listening", sub: "Music as a way of prayer", onClick: () => go("/listening") },
           { emoji: "🌾", label: "Gratitude", sub: "A daily thanksgiving journal", onClick: () => go("/gratitude") },
