@@ -37,6 +37,7 @@ import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { earthPhotoForDay } from "@/lib/earthPhotos";
 import { CommunityPrayedRecap } from "@/components/CommunityPrayedRecap";
 import { GratitudeNudge } from "@/components/GratitudeComposer";
 import { TodaysRhythm } from "@/components/TodaysRhythm";
@@ -4177,6 +4178,10 @@ export default function PrayerModePage() {
   }
 
   const slide = displaySlides[index];
+  // A calm landscape rests behind the office slides (one per day, from the
+  // "life on earth" library), under a strong dark wash so prayer text stays
+  // legible. Only on the prayer slides — the closing/blessing keep their own look.
+  const officePhoto = earthPhotoForDay();
 
   return (
     <div
@@ -4198,9 +4203,26 @@ export default function PrayerModePage() {
         isolation: "isolate",
       }}
     >
-      {/* Subtle drifting green backdrop on the prayer slides — skipped on
-          the closing slide, which runs its own "you arrived" color pulse. */}
-      {phase !== "closing" && <AnimatedBackground base="#0C1F12" variant="subtle" fadeTop />}
+      {/* Office backdrop. On the prayer slides: a daily landscape photo under a
+          strong dark wash (legible text), in place of the drifting gradient.
+          The closing slide runs its own pulse; other phases keep the gradient.
+          Both layers sit at z-index:-1 behind the content (host is isolated). */}
+      {phase === "prayer" && officePhoto ? (
+        <>
+          <img
+            src={officePhoto}
+            alt=""
+            aria-hidden
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.34, zIndex: -1 }}
+          />
+          <div
+            aria-hidden
+            style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }}
+          />
+        </>
+      ) : phase !== "closing" ? (
+        <AnimatedBackground base="#0C1F12" variant="subtle" fadeTop />
+      ) : null}
       {/* Exit button — lands on the dashboard so leaving prayer is a clean
           return to the home view rather than dropping the user back into
           the prayer-list they were just trying to step away from. */}
