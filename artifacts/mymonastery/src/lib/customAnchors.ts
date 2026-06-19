@@ -155,8 +155,8 @@ export function isCustomDoneToday(id: string): boolean {
 export function toggleCustomDoneToday(id: string): void {
   try {
     const key = DONE_PREFIX + id;
-    if (localStorage.getItem(key) === todayISO()) localStorage.removeItem(key);
-    else localStorage.setItem(key, todayISO());
+    if (localStorage.getItem(key) === todayISO()) { localStorage.removeItem(key); removeDoneDay(id, todayISO()); }
+    else { localStorage.setItem(key, todayISO()); addDoneDay(id, todayISO()); }
     window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
   } catch {
     /* private mode / quota — non-fatal */
@@ -177,11 +177,41 @@ export function isCustomSkippedToday(id: string): boolean {
   }
 }
 
+// ── Per-day completion history (for the weekly grid) ──────────────────────────
+// A small rolling set of recent kept-days (YYYY-MM-DD) per anchor, so the weekly
+// progress grid can show a row for custom practices too. Pruned to ~21 days; only
+// grows going forward (no backfill of days before this shipped — the row fills in
+// over the week). DONE_PREFIX still holds just "kept today" for the daily card.
+const DONE_HIST_PREFIX = "phoebe:custom-done-hist:";
+function readDoneHist(id: string): string[] {
+  try {
+    const raw = localStorage.getItem(DONE_HIST_PREFIX + id);
+    const a = raw ? JSON.parse(raw) : [];
+    return Array.isArray(a) ? a.filter((x): x is string => typeof x === "string") : [];
+  } catch { return []; }
+}
+function writeDoneHist(id: string, days: string[]): void {
+  // Distinct, sorted (YYYY-MM-DD sorts chronologically), most-recent 21 kept.
+  try { localStorage.setItem(DONE_HIST_PREFIX + id, JSON.stringify(Array.from(new Set(days)).sort().slice(-21))); }
+  catch { /* non-fatal */ }
+}
+function addDoneDay(id: string, ymd: string): void { writeDoneHist(id, [...readDoneHist(id), ymd]); }
+function removeDoneDay(id: string, ymd: string): void { writeDoneHist(id, readDoneHist(id).filter((d) => d !== ymd)); }
+
+/** The set of recent local days this custom practice was kept — including today
+ *  if it's currently marked done. Powers the weekly progress grid's custom rows. */
+export function getCustomDoneDays(id: string): Set<string> {
+  const set = new Set(readDoneHist(id));
+  if (isCustomDoneToday(id)) set.add(todayISO());
+  return set;
+}
+
 /** Log this practice as DONE today (clears any "not today"). */
 export function markCustomDoneToday(id: string): void {
   try {
     localStorage.setItem(DONE_PREFIX + id, todayISO());
     localStorage.removeItem(SKIP_PREFIX + id);
+    addDoneDay(id, todayISO());
     window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
   } catch {
     /* non-fatal */
@@ -202,6 +232,7 @@ export function setCustomNotToday(id: string): void {
     localStorage.setItem(SKIP_PREFIX + id, todayISO());
     localStorage.removeItem(DONE_PREFIX + id);
     localStorage.removeItem(READ_TODAY_PREFIX + id);
+    removeDoneDay(id, todayISO());
     window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
   } catch {
     /* non-fatal */
