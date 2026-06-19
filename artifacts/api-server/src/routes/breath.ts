@@ -1,7 +1,7 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, breathSessionsTable, usersTable } from "@workspace/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { getGardenUserIds } from "../lib/garden";
+import { getGardenUserIds, getFellowUserIds } from "../lib/garden";
 import { perUserRateLimit } from "../lib/rate-limit";
 
 // ── Cobreathe ────────────────────────────────────────────────────────
@@ -139,6 +139,33 @@ router.post("/breath/today", perUserRateLimit("breath_record", { max: 20, window
     res.json({ ok: true, ...(await breathPayload(userId, day)) });
   } catch (err) {
     console.error("[/breath/today POST] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// GET /breath/together — for each of the caller's fellows, the most recent LOCAL
+// day they BOTH held the breath (a cobreathe "together"). Cobreathe is async —
+// same day, not the same moment — so co-presence is the latest shared day across
+// both users' breath_sessions rows. Powers the "last breathed together" line on
+// the People page.
+router.get("/breath/together", async (req: Request, res: Response): Promise<void> => {
+  const me = uid(req);
+  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const fellowIds = (await getFellowUserIds(me)).filter((id) => id !== me);
+    if (fellowIds.length === 0) { res.json({ together: {} }); return; }
+    const rows = await db.execute<{ fellow_id: number; last_day: string }>(sql`
+      SELECT bf.user_id AS fellow_id, MAX(bf.day) AS last_day
+      FROM breath_sessions bf
+      JOIN breath_sessions mine ON mine.user_id = ${me} AND mine.day = bf.day
+      WHERE bf.user_id IN (${sql.join(fellowIds, sql`, `)})
+      GROUP BY bf.user_id
+    `);
+    const together: Record<number, string> = {};
+    for (const r of rows.rows) together[Number(r.fellow_id)] = String(r.last_day);
+    res.json({ together });
+  } catch (err) {
+    console.error("[/breath/together GET] failed:", err);
     res.status(500).json({ error: "internal_error" });
   }
 });

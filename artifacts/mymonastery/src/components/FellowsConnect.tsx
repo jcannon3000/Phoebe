@@ -122,6 +122,24 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
   const walkQ = useQuery<{ companions: WalkCompanionLite[] }>({ queryKey: ["/api/walk"], queryFn: () => apiRequest("GET", "/api/walk"), enabled: canManage, staleTime: 30_000 });
   const walkByUser = new Map((walkQ.data?.companions ?? []).map((c) => [c.userId, c]));
 
+  // "Last breathed together" per fellow — the most recent local day you BOTH held
+  // the Cobreathe (server-derived from breath_sessions; cobreathe is same-day, not
+  // same-moment). Folded onto the card as a quiet 🫁 line.
+  const togetherQ = useQuery<{ together: Record<number, string> }>({ queryKey: ["/api/breath/together"], queryFn: () => apiRequest("GET", "/api/breath/together"), staleTime: 60_000 });
+  const togetherByUser = togetherQ.data?.together ?? {};
+  const lastTogetherLabel = (day: string | undefined): string | null => {
+    if (!day) return null;
+    const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const todayStr = ymd(new Date());
+    if (day === todayStr) return t("fellows_c.breathed_today", { defaultValue: "Cobreathed together today" });
+    const d0 = new Date(`${day}T00:00:00`);
+    const diff = Math.round((new Date(`${todayStr}T00:00:00`).getTime() - d0.getTime()) / 86400000);
+    const when = diff === 1 ? t("fellows_c.yesterday", { defaultValue: "yesterday" })
+      : diff > 1 && diff < 30 ? t("fellows_c.n_days_ago", { count: diff, defaultValue: `${diff} days ago` })
+      : d0.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return t("fellows_c.breathed_ago", { when, defaultValue: `Cobreathed together ${when}` });
+  };
+
   const [optReq, setOptReq] = useState<Set<number>>(() => new Set());
   const addFellow = (id: number) => { sendReq.mutate(id); setOptReq((s) => new Set(s).add(id)); };
 
@@ -247,6 +265,12 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
               <span className="text-[12px] truncate" style={{ color: SAGE, fontFamily: FONT }}>{statusLine}</span>
             </div>
           )}
+          {(() => {
+            const lt = lastTogetherLabel(togetherByUser[f.userId]);
+            return lt ? (
+              <p className="text-[11.5px] truncate mt-0.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>🫁 {lt}</p>
+            ) : null;
+          })()}
         </div>
         <div className="flex items-center gap-2.5 shrink-0">
           {/* Encourage once they've kept at least two-thirds of today. */}
