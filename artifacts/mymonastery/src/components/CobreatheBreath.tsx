@@ -928,7 +928,7 @@ export function CobreatheBreath({
           {counting && (
             <p className="flex-1 text-right" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 600, letterSpacing: "0.04em" }}>
               {reachedNow
-                ? t("cobreathe.breath_counter_past", { current: breathNum, defaultValue: `🌿 ${breathNum}` })
+                ? t("cobreathe.breath_counter_past", { current: breathNum, defaultValue: `${breathNum}` })
                 : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `${breathNum} of ${totalBreaths}` })}
             </p>
           )}
