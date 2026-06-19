@@ -182,6 +182,15 @@ export default function CobreathePage() {
     window.dispatchEvent(new CustomEvent(ev));
   }, [mode, musicOn]);
   useEffect(() => () => { window.dispatchEvent(new CustomEvent("phoebe:cobreathe-music-stop")); }, []);
+  // The toggle only appears when music can ACTUALLY play: iOS + the native
+  // CobreatheMusic plugin registered + a real playlist configured (native-shell
+  // sets __cobreatheMusicReady). Never a control that silently does nothing.
+  const musicAvailable = (() => {
+    const cap = (window as unknown as { Capacitor?: { getPlatform?: () => string; Plugins?: Record<string, unknown> } }).Capacitor;
+    return cap?.getPlatform?.() === "ios"
+      && !!cap?.Plugins?.["CobreatheMusic"]
+      && (window as unknown as { __cobreatheMusicReady?: boolean }).__cobreatheMusicReady === true;
+  })();
 
   // Garden-mate photo sync: while breathing, follow the earliest online garden-
   // mate's photo order (or lead if first). Gated on showPresence inside the hook.
@@ -505,8 +514,10 @@ export default function CobreathePage() {
                 : t("cobreathe.begin", { defaultValue: "Cobreathe — twelve breaths" })}
             </button>
 
-            {/* Apple Music over the breath — opt-in, iOS only (native plugin). */}
-            {((window as unknown as { Capacitor?: { getPlatform?: () => string } }).Capacitor?.getPlatform?.() === "ios") && (
+            {/* Apple Music over the breath — opt-in. Shown ONLY when it can
+                actually play: iOS + the native CobreatheMusic plugin registered
+                + a real playlist configured. Never a control that does nothing. */}
+            {musicAvailable && (
               <button type="button" onClick={toggleMusic} aria-pressed={musicOn}
                 className="mt-3 mx-auto flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold active:scale-[0.97]"
                 style={{

@@ -1288,6 +1288,14 @@ function getCobreatheMusic(): {
 }
 
 function wireCobreatheMusic() {
+  // Tell the web layer whether music is REALLY offerable — i.e. a real catalog
+  // playlist is set (not the placeholder). The plugin's PRESENCE in
+  // Capacitor.Plugins covers the native wiring (target + registration); this
+  // covers the playlist config. The UI toggle requires BOTH, so we never show a
+  // control that silently does nothing.
+  (window as unknown as { __cobreatheMusicReady?: boolean }).__cobreatheMusicReady =
+    !!COBREATHE_PLAYLIST_ID && COBREATHE_PLAYLIST_ID !== "pl.PLACEHOLDER";
+
   window.addEventListener("phoebe:cobreathe-music-start", async () => {
     if (!COBREATHE_PLAYLIST_ID || COBREATHE_PLAYLIST_ID === "pl.PLACEHOLDER") return;
     const music = getCobreatheMusic();
