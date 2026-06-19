@@ -14,6 +14,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { BreathNearInvite } from "@/components/BreathNearInvite";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { computeFingerprint } from "@/lib/cobreatheOrder";
+import { getBreathBucket } from "@/lib/breathGeohash";
 import { COBREATHE_INTRO_SEEN_KEY } from "@/pages/cobreathe-about";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
@@ -155,9 +156,13 @@ export default function CobreathePage() {
   // slideshow first (the effect below), which begins the breath at its end.
   // First-time users see a single intro page (the practice + the why) before the
   // breath; after that, starting goes straight in.
-  const [mode, setMode] = useState<"intro" | "breathing" | "done">(() =>
-    wantsStart() && introSeen() ? "breathing" : "intro",
+  const [mode, setMode] = useState<"intro" | "options" | "breathing" | "done">(() =>
+    wantsStart() && introSeen() ? "options" : "intro",
   );
+  // Per-sit opt-in to an IN-PERSON session: share presence + a coarse location
+  // bucket so the breath can show who's breathing near you right now. Chosen on
+  // the options slide below; never persisted, just this sit.
+  const [joinInPerson, setJoinInPerson] = useState(false);
   // Hold the screen on while breathing — the breath has no touch input, so the
   // idle timer would otherwise dim/sleep the phone mid-sit.
   useKeepAwake(mode === "breathing");
@@ -209,7 +214,11 @@ export default function CobreathePage() {
   const breathSync = useCobreatheSync(user, gardenUserIds, {
     fingerprint: COBREATHE_FINGERPRINT,
     active: mode === "breathing",
-    shareLocation: shareBreathLocation,
+    // Opting into an in-person session shares a coarse location for this sit and
+    // turns presence on for it (overriding the global setting), so "same air"
+    // works even if the persistent toggle is off.
+    shareLocation: shareBreathLocation || joinInPerson,
+    presence: joinInPerson,
   });
 
   // "Same air" peak for the after-glow: nearby state clears the moment breathing
@@ -342,6 +351,77 @@ export default function CobreathePage() {
   // "N other people" — subtract the caller once they're in the count.
   const others = Math.max(0, (state?.count ?? 0) - (state?.done ? 1 : 0));
   const withLine = state ? companionLine(state.companions, state.companionCount) : "";
+
+  // Pre-practice options slide — reached from the contemplation picker and the
+  // intro "Begin" CTA. Lets the user opt into an in-person session (share a
+  // coarse location to see who's breathing near them) before tapping Start.
+  if (mode === "options") {
+    return (
+      <Layout>
+        <div className="flex flex-col w-full max-w-md mx-auto px-5 pt-6 pb-28">
+          <button
+            type="button"
+            onClick={() => { if (cameFromContemplation()) setLocation("/contemplation"); else setMode("intro"); }}
+            className="self-start text-[13px] mb-6 transition-opacity hover:opacity-80"
+            style={{ color: SAGE, fontFamily: SPACE_GROTESK, background: "transparent", cursor: "pointer" }}
+          >
+            ← {t("common.back", { defaultValue: "Back" })}
+          </button>
+
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>
+            🌍 {t("cobreathe.title", { defaultValue: "Cobreathe" })}
+          </p>
+          <h1 className="text-[26px] font-bold mt-2 mb-1.5" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+            {t("cobreathe.options_title", { defaultValue: "Twelve breaths, together" })}
+          </h1>
+          <p className="text-[14px] mb-6" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+            {t("cobreathe.options_sub", { defaultValue: "Choose how you'll breathe, then begin." })}
+          </p>
+
+          {/* In-person session opt-in — share a coarse location for this sit. */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={joinInPerson}
+            onClick={() => {
+              const next = !joinInPerson;
+              setJoinInPerson(next);
+              // Warm the location grant NOW (on the slide) rather than mid-breath.
+              if (next) getBreathBucket({ force: false }).catch(() => undefined);
+            }}
+            className="w-full rounded-2xl p-4 flex items-start gap-3 text-left transition-colors active:scale-[0.99]"
+            style={{
+              background: joinInPerson ? "rgba(46,107,64,0.22)" : "rgba(46,107,64,0.10)",
+              border: `1px solid ${joinInPerson ? "rgba(110,180,130,0.6)" : "rgba(46,107,64,0.3)"}`,
+            }}
+          >
+            <span style={{ fontSize: 22, lineHeight: 1.1 }} aria-hidden>📍</span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+                {t("cobreathe.in_person_title", { defaultValue: "Join an in-person session" })}
+              </span>
+              <span className="block text-[12.5px] mt-0.5 leading-snug" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                {t("cobreathe.in_person_sub", { defaultValue: "Share your rough location to see who's breathing near you right now. Never stored — just for this sit." })}
+              </span>
+            </span>
+            <span className="shrink-0 mt-0.5 relative" style={{ width: 44, height: 26, borderRadius: 999, background: joinInPerson ? "rgba(46,107,64,0.9)" : "rgba(143,175,150,0.25)", border: `1px solid ${joinInPerson ? "rgba(110,180,130,0.7)" : "rgba(143,175,150,0.35)"}`, transition: "background 0.16s" }}>
+              <span style={{ position: "absolute", top: 2, left: joinInPerson ? 20 : 2, width: 20, height: 20, borderRadius: 999, background: "#F0EDE6", transition: "left 0.16s ease" }} />
+            </span>
+          </button>
+
+          {/* Start the breath. */}
+          <button
+            type="button"
+            onClick={() => { setPeakNear({ count: 0, fellows: [] }); setCoBreathed(new Map()); setMode("breathing"); }}
+            className="w-full rounded-xl py-3.5 mt-5 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+            style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600, cursor: "pointer" }}
+          >
+            {t("cobreathe.start", { defaultValue: "Start" })}
+          </button>
+        </div>
+      </Layout>
+    );
+  }
 
   // Breathing is a full-screen portal — render it WITHOUT the Layout chrome
   // (app header + page background) so navigating in doesn't flash the page
@@ -502,7 +582,7 @@ export default function CobreathePage() {
             {/* ── CTA — right under the stats, above the teaching. */}
             <button
               type="button"
-              onClick={() => { setPeakNear({ count: 0, fellows: [] }); setCoBreathed(new Map()); setMode("breathing"); }}
+              onClick={() => setMode("options")}
               className="w-full rounded-xl py-3.5 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
               style={{
                 background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)",

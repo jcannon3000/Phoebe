@@ -51,13 +51,15 @@ export interface NearFellow {
 export function useCobreatheSync(
   user: AuthUser | null,
   gardenUserIds: Set<number>,
-  opts: { fingerprint: string; active: boolean; shareLocation?: boolean },
+  opts: { fingerprint: string; active: boolean; shareLocation?: boolean; presence?: boolean },
 ) {
-  const { fingerprint, active, shareLocation = false } = opts;
+  const { fingerprint, active, shareLocation = false, presence = false } = opts;
   // Sync reveals "I'm breathing right now" to garden-mates — the same class of
-  // signal as presence, so we gate the whole feature on showPresence. Off → the
+  // signal as presence, so we gate the whole feature on showPresence. A per-sit
+  // `presence` override lets someone opt into an in-person session for THIS sit
+  // (the Cobreathe options slide) without flipping the global setting. Off → the
   // breath runs solo on its own random seed (today's behavior), emitting nothing.
-  const enabled = !!user && !!user.showPresence && active;
+  const enabled = !!user && (!!user.showPresence || presence) && active;
 
   const [leader, setLeader] = useState<CobreatheLeader | null>(null);
   // Garden-mates breathing RIGHT NOW (their userIds, excluding self). Lets the
