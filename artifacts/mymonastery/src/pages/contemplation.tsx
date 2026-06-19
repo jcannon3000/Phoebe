@@ -702,21 +702,23 @@ export default function ContemplationPage() {
   const beginPills = (
     <div>
       <div className="space-y-2.5">
-        {/* Length dropdown pill */}
-        <div className="relative">
+        {/* Length pill — category on the left, chosen value + chevron on the
+            right (matches the office welcome chooser). A transparent native
+            <select> overlays the pill so a tap opens the iOS picker. */}
+        <div className="relative w-full">
+          <div className="w-full rounded-full flex items-center justify-between"
+            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", padding: "15px 20px", gap: 12, pointerEvents: "none" }}>
+            <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600 }}>{t("contemplation.length_label", { defaultValue: "Length" })}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 500 }}>{t("contemplation.length_minutes", { count: chosenMin, defaultValue: `${chosenMin} minutes` })}</span>
+              <span aria-hidden style={{ color: SAGE, fontSize: 15, lineHeight: 1 }}>›</span>
+            </span>
+          </div>
           <select
             value={String(chosenMin)}
             onChange={(e) => setChosenMin(parseInt(e.target.value, 10))}
             aria-label={t("contemplation.length_label", { defaultValue: "Length" })}
-            className="w-full rounded-full"
-            style={{
-              background: "rgba(46,107,64,0.18)",
-              border: "1px solid rgba(46,107,64,0.4)",
-              color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
-              padding: "15px 40px", outline: "none", colorScheme: "dark",
-              appearance: "none", WebkitAppearance: "none", cursor: "pointer",
-              textAlign: "center", textAlignLast: "center",
-            }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, appearance: "none", WebkitAppearance: "none", border: "none", background: "transparent", color: "transparent", cursor: "pointer" }}
           >
             {Array.from({ length: 12 }, (_, i) => (i + 1) * 5).map((m) => (
               <option key={m} value={String(m)}>
@@ -724,7 +726,6 @@ export default function ContemplationPage() {
               </option>
             ))}
           </select>
-          <span aria-hidden style={{ position: "absolute", right: 18, top: "50%", transform: "translateY(-50%)", pointerEvents: "none", color: SAGE, fontSize: 12 }}>▾</span>
         </div>
 
         {/* Start contemplation pill */}

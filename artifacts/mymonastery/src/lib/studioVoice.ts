@@ -59,14 +59,19 @@ interface Voicing {
   targetLufs: number;
 }
 
-// denoiseWet kept MODERATE — aggressive RNNoise dulls/muffles the voice and
-// eats its air; ~0.6-0.75 cleans the room while staying open and present. The
-// air shelf is generous so the result reads bright, not under-water.
+// AUTO-MASTER philosophy: SUBTLE. A master makes a voice sound like the best
+// natural version of itself — consistent loudness, clean peaks, a feather of
+// polish — NOT a processed/"electronic" one. So: AI denoise kept light (it's
+// the #1 source of the electronic/robotic timbre), NO harmonic saturation, tiny
+// EQ moves (±1-2 dB, not ±4-5), gentle 2:1 leveling, and a barely-there
+// expander. The real work is the loudness normalize (the "auto" part). If it
+// ever still sounds processed, the lever is denoiseWet → drop toward 0.
 const VOICINGS: Record<Exclude<StudioPreset, "off">, Voicing> = {
-  studio:   { denoiseWet: 0.72, warmthDb: 2.0, mudCutDb: -2.5, boxCutDb: -2.0, presenceDb: 3.5, airDb: 4.0, compThresholdDb: -24, compRatio: 3.0, saturation: 0.18, expanderDb: -16, targetLufs: -16 },
-  warm:     { denoiseWet: 0.68, warmthDb: 3.5, mudCutDb: -1.5, boxCutDb: -1.5, presenceDb: 2.5, airDb: 2.5, compThresholdDb: -24, compRatio: 3.0, saturation: 0.26, expanderDb: -14, targetLufs: -16 },
-  radio:    { denoiseWet: 0.78, warmthDb: 1.5, mudCutDb: -3.0, boxCutDb: -2.5, presenceDb: 4.5, airDb: 5.0, compThresholdDb: -28, compRatio: 4.0, saturation: 0.22, expanderDb: -18, targetLufs: -14 },
-  intimate: { denoiseWet: 0.62, warmthDb: 4.0, mudCutDb: -1.5, boxCutDb: -1.0, presenceDb: 3.0, airDb: 3.5, compThresholdDb: -22, compRatio: 2.5, saturation: 0.30, expanderDb: -12, targetLufs: -17 },
+  // "Auto" — the default gentle master. Clean, natural, level.
+  studio:   { denoiseWet: 0.30, warmthDb: 1.0, mudCutDb: -1.0, boxCutDb: -0.5, presenceDb: 1.5, airDb: 1.5, compThresholdDb: -20, compRatio: 2.0, saturation: 0.0, expanderDb: -6, targetLufs: -16 },
+  warm:     { denoiseWet: 0.30, warmthDb: 2.0, mudCutDb: -0.5, boxCutDb: -0.5, presenceDb: 1.0, airDb: 0.5, compThresholdDb: -20, compRatio: 2.0, saturation: 0.0, expanderDb: -5, targetLufs: -16 },
+  radio:    { denoiseWet: 0.42, warmthDb: 0.5, mudCutDb: -1.5, boxCutDb: -0.5, presenceDb: 2.0, airDb: 2.0, compThresholdDb: -22, compRatio: 2.5, saturation: 0.0, expanderDb: -8, targetLufs: -15 },
+  intimate: { denoiseWet: 0.25, warmthDb: 2.5, mudCutDb: -0.5, boxCutDb: 0.0, presenceDb: 1.0, airDb: 1.0, compThresholdDb: -19, compRatio: 2.0, saturation: 0.0, expanderDb: -4, targetLufs: -17 },
 };
 
 export function studioSupported(): boolean {

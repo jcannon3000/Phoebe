@@ -61,9 +61,9 @@ async function openMic(): Promise<{ stream: MediaStream; cleanup: () => void }> 
 // ── Phoebe Studio: presets ────────────────────────────────────────────────────
 const PRESET_KEY = "phoebe:voice-preset";
 const PRESETS: { id: Exclude<StudioPreset, "off">; label: string }[] = [
-  { id: "studio", label: "Studio" },
+  { id: "studio", label: "Auto" },
   { id: "warm", label: "Warm" },
-  { id: "radio", label: "Radio" },
+  { id: "radio", label: "Bright" },
   { id: "intimate", label: "Intimate" },
 ];
 function loadPreset(): Exclude<StudioPreset, "off"> {
