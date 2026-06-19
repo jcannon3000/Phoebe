@@ -67,11 +67,13 @@ interface Voicing {
 // expander. The real work is the loudness normalize (the "auto" part). If it
 // ever still sounds processed, the lever is denoiseWet → drop toward 0.
 const VOICINGS: Record<Exclude<StudioPreset, "off">, Voicing> = {
-  // "Auto" — the default gentle master. Clean, natural, level.
-  studio:   { denoiseWet: 0.30, warmthDb: 1.0, mudCutDb: -1.0, boxCutDb: -0.5, presenceDb: 1.5, airDb: 1.5, compThresholdDb: -20, compRatio: 2.0, saturation: 0.0, expanderDb: -6, targetLufs: -16 },
-  warm:     { denoiseWet: 0.30, warmthDb: 2.0, mudCutDb: -0.5, boxCutDb: -0.5, presenceDb: 1.0, airDb: 0.5, compThresholdDb: -20, compRatio: 2.0, saturation: 0.0, expanderDb: -5, targetLufs: -16 },
-  radio:    { denoiseWet: 0.42, warmthDb: 0.5, mudCutDb: -1.5, boxCutDb: -0.5, presenceDb: 2.0, airDb: 2.0, compThresholdDb: -22, compRatio: 2.5, saturation: 0.0, expanderDb: -8, targetLufs: -15 },
-  intimate: { denoiseWet: 0.25, warmthDb: 2.5, mudCutDb: -0.5, boxCutDb: 0.0, presenceDb: 1.0, airDb: 1.0, compThresholdDb: -19, compRatio: 2.0, saturation: 0.0, expanderDb: -4, targetLufs: -17 },
+  // "Auto" — the default gentle master. Clean, natural, level. The COMPRESSOR is
+  // the main worker now (transparent leveling → present, close, "produced" —
+  // NOT electronic; that came from denoise/saturation, which stay light/off).
+  studio:   { denoiseWet: 0.30, warmthDb: 1.0, mudCutDb: -1.0, boxCutDb: -0.5, presenceDb: 1.5, airDb: 1.5, compThresholdDb: -26, compRatio: 3.0, saturation: 0.0, expanderDb: -6, targetLufs: -16 },
+  warm:     { denoiseWet: 0.30, warmthDb: 2.0, mudCutDb: -0.5, boxCutDb: -0.5, presenceDb: 1.0, airDb: 0.5, compThresholdDb: -24, compRatio: 2.8, saturation: 0.0, expanderDb: -5, targetLufs: -16 },
+  radio:    { denoiseWet: 0.42, warmthDb: 0.5, mudCutDb: -1.5, boxCutDb: -0.5, presenceDb: 2.0, airDb: 2.0, compThresholdDb: -28, compRatio: 3.5, saturation: 0.0, expanderDb: -8, targetLufs: -15 },
+  intimate: { denoiseWet: 0.25, warmthDb: 2.5, mudCutDb: -0.5, boxCutDb: 0.0, presenceDb: 1.0, airDb: 1.0, compThresholdDb: -23, compRatio: 2.6, saturation: 0.0, expanderDb: -4, targetLufs: -17 },
 };
 
 export function studioSupported(): boolean {
@@ -184,7 +186,7 @@ async function renderChain(pcm: Float32Array, v: Voicing): Promise<Float32Array>
   // (no low-pass — output is full-band 48 kHz MP3 now; the old 16 kHz LP was a
   // leftover from the dead 24 kHz path and was capping the brightness/air.)
   const comp = ctx.createDynamicsCompressor();
-  comp.threshold.value = v.compThresholdDb; comp.knee.value = 24; comp.ratio.value = v.compRatio; comp.attack.value = 0.004; comp.release.value = 0.18;
+  comp.threshold.value = v.compThresholdDb; comp.knee.value = 26; comp.ratio.value = v.compRatio; comp.attack.value = 0.005; comp.release.value = 0.24;
   const sat = ctx.createWaveShaper(); sat.curve = makeSaturationCurve(v.saturation); sat.oversample = "4x";
   const makeup = ctx.createGain(); makeup.gain.value = 1.0;
 

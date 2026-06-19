@@ -285,7 +285,13 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
     const a = getAudio();
     if (!ensureSrc(source)) return;
     const total = a.duration && isFinite(a.duration) ? a.duration : (rawDurRef.current || 0) / 1000;
-    if (total > 0) { a.currentTime = frac * total; setPos(a.currentTime); }
+    if (total > 0) {
+      const target = frac * total;
+      try { a.currentTime = target; } catch { /* not seekable until loaded — that's fine */ }
+      // Track the INTENDED position, not a.currentTime (which can read back 0 if
+      // the audio hasn't loaded yet). This is what "record over from here" uses.
+      setPos(target);
+    }
   };
   const switchSource = (which: "polished" | "raw") => {
     if (which === source || !sourceBlob(which)) return;
@@ -409,7 +415,7 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
                     <button type="button" onClick={recordOver}
                       className="flex items-center justify-center gap-1.5 rounded-full py-2 text-[12.5px] font-semibold active:scale-[0.98]"
                       style={{ background: "rgba(200,212,192,0.08)", color: "#C8D4C0", border: "1px solid rgba(46,107,64,0.4)" }}>
-                      <Circle size={10} fill={CLAY} stroke="none" /> {pos > 0.4 ? `Over from ${clock(pos)}` : "Record over"}
+                      <Circle size={10} fill={CLAY} stroke="none" /> {pos > 0.4 ? `Record from ${clock(pos)}` : "Record over"}
                     </button>
                     <button type="button" onClick={() => void beginRecording(false)}
                       className="flex items-center justify-center gap-1.5 rounded-full py-2 text-[12.5px] font-semibold active:scale-[0.98]"
