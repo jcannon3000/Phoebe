@@ -273,20 +273,15 @@ export function useWidgetSync(): void {
 
     // Daily-progress anchors — the FULL active set, in the same order + with the
     // same done-rules as the home header pill: Morning · Reflection · Silence ·
-    // Evening · Steps. `dots` (1/0 per active anchor) drives the widget dots so
+    // Evening. `dots` (1/0 per active anchor) drives the widget dots so
     // they always match the home; doneCount/totalAnchors summarise it.
     const silenceActive = contemplationGoalMin > 0;
     const silenceDone = contemplationMin >= contemplationGoalMin;
-    const stepGoal = officePrefsQ.data?.dailyStepGoal ?? 0;
-    const stepsActive = stepGoal > 0;
-    const stepsTodayYmd = new Date().toLocaleDateString("en-CA");
-    const stepsDone = (officePrefsQ.data?.dailyStepReachedDate ?? null) === stepsTodayYmd;
     const dots: number[] = [
       ...(morningActive ? [morningDone ? 1 : 0] : []),
       ...(reflectAvailable ? [reflectDone ? 1 : 0] : []),
       ...(silenceActive ? [silenceDone ? 1 : 0] : []),
       ...(eveningActive ? [eveningDone ? 1 : 0] : []),
-      ...(stepsActive ? [stepsDone ? 1 : 0] : []),
     ];
     const totalAnchors = dots.length;
     const doneCount = dots.filter((d) => d === 1).length;

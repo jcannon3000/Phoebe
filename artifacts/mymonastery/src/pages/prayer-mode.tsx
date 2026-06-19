@@ -2119,6 +2119,10 @@ function PrayerCompletedSlide({
   // so reading it (then coming back) flips the card live.
   const reflRead = () => refl === "fdd" ? hasReadFddToday() : refl === "ssje" ? hasReadSsjeToday() : hasReadCacToday();
   const [reflDone, setReflDone] = useState(() => (refl ? reflRead() : false));
+  // If they'd ALREADY read today's reflection before this close, don't prompt it
+  // again — the card is hidden entirely (captured at mount so reading it during
+  // this close still flips the shown card to its Done state, see below).
+  const alreadyReadRef = useRef(refl ? reflRead() : false);
   useEffect(() => {
     if (!refl) return;
     const check = () => setReflDone(reflRead());
@@ -2170,37 +2174,44 @@ function PrayerCompletedSlide({
         </motion.div>
       )}
 
-      {refl && (
+      {/* Today's reflection — rendered as the SAME card as the home daily-progress
+          rhythm (left bar, 📖, publication, blurb, Read pill → ✓ when done), not a
+          bespoke slide card. Hidden entirely if it was already read before this
+          close; otherwise reading it flips this card to its Done state live. */}
+      {refl && !alreadyReadRef.current && (
         <motion.button
           type="button" onClick={openReflection}
           initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.24 }}
-          className={`w-full flex items-start gap-3 rounded-2xl px-5 py-4 text-left transition-opacity hover:opacity-90 active:scale-[0.98]${reflDone ? " dp-card-pulse" : ""}`}
+          className={`w-full relative flex rounded-2xl overflow-hidden text-left transition-opacity hover:opacity-90 active:scale-[0.98]${reflDone ? " dp-card-pulse" : ""}`}
           style={{
             maxWidth: 360, cursor: "pointer",
-            background: reflDone ? "rgba(46,107,64,0.30)" : "rgba(46,107,64,0.22)",
-            // The pulse class drives the border glow when done; keep a static
-            // border only when not-done (so the two don't fight).
-            border: reflDone ? undefined : "1px solid rgba(46,107,64,0.45)",
+            background: "linear-gradient(180deg, rgba(46,107,64,0.08) 0%, rgba(46,107,64,0.14) 100%)",
+            border: reflDone ? undefined : "1px solid rgba(46,107,64,0.16)",
           }}
         >
-          <div className="flex-1 min-w-0 flex flex-col items-start gap-1.5">
-            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 10.5, letterSpacing: "0.18em", textTransform: "uppercase", color: "#8FAF96" }}>
-              {t("prayer_mode.whats_next_eyebrow", { defaultValue: "What's next" })}
-            </span>
-            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 600, color: "#F0EDE6" }}>{reflName}</span>
-            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600, color: "#A8C5A0", marginTop: 2 }}>
-              {reflDone
-                ? `✓ ${t("prayer_mode.reflection_read", { defaultValue: "Read" })}`
-                : `${t("common.read", { defaultValue: "Read" })} →`}
-            </span>
+          <div className="w-1 flex-shrink-0" style={{ background: "rgba(110,180,130,0.7)" }} />
+          <div className="flex-1 min-w-0 px-4 py-3.5 flex items-center gap-3">
+            <span className="text-xl flex-shrink-0" aria-hidden>📖</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{reflName}</p>
+              <p className="text-[12px] mt-0.5 leading-snug truncate" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {reflDone
+                  ? t("rhythm.kept", { defaultValue: "Kept today" })
+                  : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" })}
+              </p>
+            </div>
+            {reflDone ? (
+              <span
+                className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
+                style={{ background: "rgba(46,107,64,0.18)", color: "rgba(240,237,230,0.85)", border: "1px solid rgba(46,107,64,0.45)" }}
+                aria-hidden
+              >✓</span>
+            ) : (
+              <span className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center" style={{ minWidth: 84, background: "rgba(46,107,64,0.85)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {t("common.read", { defaultValue: "Read" })} <span aria-hidden>→</span>
+              </span>
+            )}
           </div>
-          {reflDone && (
-            <span
-              className="flex-shrink-0 rounded-full flex items-center justify-center text-[13px] font-bold"
-              style={{ width: 26, height: 26, background: "rgba(46,107,64,0.85)", color: "#EAF6F4" }}
-              aria-hidden
-            >✓</span>
-          )}
         </motion.button>
       )}
 

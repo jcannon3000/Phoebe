@@ -9,7 +9,6 @@ import { hasPracticeDoneToday, PRACTICE_DONE_EVENT } from "@/lib/practiceComplet
 import { getCustomAnchors, isCustomDoneToday, isCustomSkippedToday, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { OFFICE_DONE_EVENT } from "@/lib/officeManualLog";
 import { getSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
-import { useDailySteps } from "@/lib/appleHealth";
 import { useAuth } from "@/hooks/useAuth";
 
 // How the user has chosen to pray the daily office — drives whether the
@@ -69,14 +68,12 @@ export type RhythmState = {
    *  home layout) — each adds a checkmark to Daily progress. */
   gratitudeActive: boolean;
   examenActive: boolean;
-  stepsActive: boolean;
+  listeningActive: boolean;
+  journalingActive: boolean;
   gratitudeDone: boolean;
   examenDone: boolean;
-  stepsDone: boolean;
-  /** Today's step count + the daily goal (0 = no goal) — for the Daily steps
-   *  anchor's progress bar. */
-  stepsToday: number;
-  stepsGoal: number;
+  listeningDone: boolean;
+  journalingDone: boolean;
   /** User-defined custom practices (title + emoji + a per-day check) — each an
    *  extra anchor: shows as a Daily-progress card and counts as a dot. */
   customAnchors: Array<{ id: string; title: string; emoji: string; slot: CustomSlot; reading?: ReadingConfig; done: boolean; skipped: boolean }>;
@@ -169,11 +166,15 @@ export function useRhythmState(): RhythmState {
   const [practiceLocal, setPracticeLocal] = useState(() => ({
     gratitude: hasPracticeDoneToday("gratitude"),
     examen: hasPracticeDoneToday("examen"),
+    listening: hasPracticeDoneToday("listening"),
+    journaling: hasPracticeDoneToday("journaling"),
   }));
   useEffect(() => {
     const recheck = () => setPracticeLocal({
       gratitude: hasPracticeDoneToday("gratitude"),
       examen: hasPracticeDoneToday("examen"),
+      listening: hasPracticeDoneToday("listening"),
+      journaling: hasPracticeDoneToday("journaling"),
     });
     window.addEventListener(PRACTICE_DONE_EVENT, recheck);
     window.addEventListener("focus", recheck);
@@ -251,7 +252,9 @@ export function useRhythmState(): RhythmState {
   // Only fetched/used for the practices the user has actually added.
   const gratitudeActive = homeCardActive(user?.homeLayout, "gratitude");
   const examenActive = homeCardActive(user?.homeLayout, "examen");
-  const anyExtraActive = gratitudeActive || examenActive;
+  const listeningActive = homeCardActive(user?.homeLayout, "listening");
+  const journalingActive = homeCardActive(user?.homeLayout, "journaling");
+  const anyExtraActive = gratitudeActive || examenActive || listeningActive || journalingActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
   // exact localDate below. (Passing today would drop the row on any non-Sunday.)
@@ -342,17 +345,8 @@ export function useRhythmState(): RhythmState {
 
   const gratitudeDone = gratitudeActive && (practiceLocal.gratitude || serverDone("gratitude"));
   const examenDone = examenActive && (practiceLocal.examen || serverDone("examen"));
-
-  // Daily steps (optional practice). Active only when the card is on the home
-  // AND a step goal is set. We read today's steps from HealthKit ONLY while
-  // active (the hook is gated), and treat the day as kept when the live count
-  // reaches the goal OR the server already stamped today's reached-date (the
-  // cross-device / web signal, set on the first synced crossing).
-  const stepsGoal = officePrefs?.dailyStepGoal ?? 0;
-  const stepsActive = homeCardActive(user?.homeLayout, "steps") && stepsGoal > 0;
-  const { steps: stepsToday } = useDailySteps(stepsActive);
-  const stepsReachedToday = (officePrefs?.dailyStepReachedDate ?? null) === day;
-  const stepsDone = stepsActive && (stepsReachedToday || stepsToday >= stepsGoal);
+  const listeningDone = listeningActive && (practiceLocal.listening || serverDone("listening"));
+  const journalingDone = journalingActive && (practiceLocal.journaling || serverDone("journaling"));
 
   // The four core anchors plus whichever optional practices the user added.
   // Evening is an OPT-IN anchor — off by default (evening office pref "none"),
@@ -401,9 +395,10 @@ export function useRhythmState(): RhythmState {
     ...(eveningActive ? [eveningDone] : []),
   ];
   const extraFlags = [
+    ...(listeningActive ? [listeningDone] : []),
     ...(gratitudeActive ? [gratitudeDone] : []),
     ...(examenActive ? [examenDone] : []),
-    ...(stepsActive ? [stepsDone] : []),
+    ...(journalingActive ? [journalingDone] : []),
     // "Not today" customs drop out entirely — no dot, not counted.
     ...customAnchors.filter((a) => !a.skipped).map((a) => a.done),
   ];
@@ -437,12 +432,12 @@ export function useRhythmState(): RhythmState {
     reflections,
     gratitudeActive,
     examenActive,
-    stepsActive,
+    listeningActive,
+    journalingActive,
     gratitudeDone,
     examenDone,
-    stepsDone,
-    stepsToday,
-    stepsGoal,
+    listeningDone,
+    journalingDone,
     customAnchors,
     totalAnchors,
     doneCount,

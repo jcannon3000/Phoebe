@@ -20,6 +20,23 @@ import { apiRequest } from "@/lib/queryClient";
 export type CustomSlot = "morning" | "midday" | "afternoon" | "evening";
 export const CUSTOM_SLOTS: CustomSlot[] = ["morning", "midday", "afternoon", "evening"];
 
+// Journaling (a built-in optional practice) is flexible about WHEN — morning
+// pages, an evening reflection — so, like a custom anchor, it carries a
+// time-of-day slot that places its card in the rhythm at the chosen time.
+// Stored per-device; defaults to evening (the most common journaling beat).
+const JOURNALING_SLOT_KEY = "phoebe:journaling-slot";
+export function getJournalingSlot(): CustomSlot {
+  try {
+    const v = localStorage.getItem(JOURNALING_SLOT_KEY) as CustomSlot | null;
+    return v && CUSTOM_SLOTS.includes(v) ? v : "evening";
+  } catch {
+    return "evening";
+  }
+}
+export function setJournalingSlot(slot: CustomSlot): void {
+  try { localStorage.setItem(JOURNALING_SLOT_KEY, slot); } catch { /* private mode */ }
+}
+
 // A reading ritual is a custom anchor you LOG by an amount rather than a plain
 // check. The unit is how you measure a sitting — by chapter, by page, or by
 // time (minutes). An optional per-day goal gives the log a target; logging any

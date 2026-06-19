@@ -5613,8 +5613,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   // The default everyone starts at: prayer requests pinned on top, then
   // community prayers (office) → Listen (contemplation) → Forward Day by Day.
   // Everything else is hidden but addable from Customize.
-  const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "gratitude", "examen", "steps", "cac", "ssje", "ncmp", "podcasts"];
-  const DEFAULT_HIDDEN = ["feeds", "gratitude", "examen", "steps", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_ORDER: HomeModule[] = ["requests", "office", "contemplation", "fdd", "feeds", "gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
+  const DEFAULT_HIDDEN = ["feeds", "gratitude", "examen", "cac", "ssje", "ncmp", "podcasts"];
   // Honor ANY saved layout regardless of its version — bumping the version must
   // NEVER discard the user's customization (that was the "every code change
   // wipes my home / I lose my cards" bug). The order-merge below keeps the

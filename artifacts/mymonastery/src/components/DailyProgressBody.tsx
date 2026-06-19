@@ -19,7 +19,7 @@ import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/offic
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
-import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
+import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getJournalingSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 
 const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
@@ -556,6 +556,20 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // "Not today" customs are hidden for the day (not shown under Done).
   const customsForSlot = (slot: CustomSlot) => customAnchors.filter((a) => a.slot === slot && !a.skipped).map(customCard);
 
+  // Journaling is a LOG-only practice — you keep it however you like (a notebook,
+  // paper) and tap to mark the day, like a daily walk. No in-app typing (the
+  // /journal page stays separate). It slots into the rhythm at the time of day
+  // the user chose (getJournalingSlot), so it sits near that part of the day.
+  const journalingSlot = getJournalingSlot();
+  const journalingCard = {
+    key: "journaling", emoji: "📓", rgb: "120,150,170", done: journalingDone, href: "",
+    onClick: () => markPracticeDoneToday("journaling"),
+    title: t("rhythm.card_journaling", { defaultValue: "Journaling" }),
+    blurb: journalingDone ? kept : t("rhythm.blurb_journaling", { defaultValue: "Kept however you like — tap to log" }),
+    cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
+  };
+  const journalingForSlot = (slot: CustomSlot) => (journalingActive && journalingSlot === slot) ? [journalingCard] : [];
+
   const cards = [
     ...(morningActive ? [{
       key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer?side=morning",
@@ -564,6 +578,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurbCycle: morningDone ? undefined : [morningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
+    ...journalingForSlot("morning"),
     ...customsForSlot("morning"),
     // One card per reflection newsletter the user follows — each its own card +
     // dot, opening that source's reading directly (and marking it read).
@@ -598,6 +613,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurb: listeningDone ? kept : t("rhythm.blurb_listening", { defaultValue: "Music as a way of prayer" }),
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
+    ...journalingForSlot("midday"),
     ...customsForSlot("midday"),
     ...(gratitudeActive ? [{
       key: "gratitude", emoji: "🙏", rgb: "108,162,124", done: gratitudeDone, href: "/gratitude",
@@ -611,17 +627,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurb: examenDone ? kept : t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }),
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
-    ...(journalingActive ? [{
-      // Journaling is a LOG-only practice — you keep it however you like (a
-      // notebook, paper), and just tap to mark the day, like a daily walk. No
-      // in-app typing (the /journal page stays separate for those who want it).
-      key: "journaling", emoji: "📓", rgb: "120,150,170", done: journalingDone, href: "",
-      onClick: () => markPracticeDoneToday("journaling"),
-      title: t("rhythm.card_journaling", { defaultValue: "Journaling" }),
-      blurb: journalingDone ? kept : t("rhythm.blurb_journaling", { defaultValue: "Kept however you like — tap to log" }),
-      cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
-    }] : []),
     // Afternoon custom practices sit after the day's optional practices.
+    ...journalingForSlot("afternoon"),
     ...customsForSlot("afternoon"),
     ...(eveningActive ? [{
       // Evening sits last and stays a quiet "later" card until 3 PM, so the
@@ -639,6 +646,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
       later: hour < 15,
     }] : []),
+    ...journalingForSlot("evening"),
     ...customsForSlot("evening"),
   ];
 

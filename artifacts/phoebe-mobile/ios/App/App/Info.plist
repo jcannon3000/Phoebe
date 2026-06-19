@@ -78,6 +78,16 @@
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>If you turn it on, Phoebe attaches a rough (about a mile) location when you pray for someone, so they can see a map of the places their prayers came from. Your exact location is never shared, and this stays off until you enable it.</string>
 
+	<!-- Spotify in-app playback (Listening / audio divina): lets the app detect
+	     and app-remote to the installed Spotify app via the Spotify iOS SDK.
+	     Playback only — never reads listening history. (The matching redirect
+	     CFBundleURLTypes entry is added when the Spotify dashboard app exists —
+	     see artifacts/spotify-integration-notes.md.) -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>spotify</string>
+	</array>
+
 	<!-- Background modes:
 	     • remote-notification — silent push wake-up; bell scheduling uses it.
 	     • audio — keeps AVAudioSession alive while the phone is locked

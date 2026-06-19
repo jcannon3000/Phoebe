@@ -14,8 +14,15 @@
 //   CobreatheMusic.authorize()               — request Apple Music access
 //   CobreatheMusic.getAuthorizationStatus()  — { status }
 //   CobreatheMusic.isAvailable()             — { available }  (authorized + subscriber + iOS 16)
-//   CobreatheMusic.play({ playlistId })      — shuffle + repeat-all a catalog playlist
+//   CobreatheMusic.play({ playlistId, shuffle }) — play a catalog playlist
+//                                            (shuffle defaults true; the
+//                                            Listening practice passes false to
+//                                            hear a contemplative playlist in order)
+//   CobreatheMusic.pause() / .resume()       — pause/resume without losing the queue
 //   CobreatheMusic.stop()                    — stop playback
+//
+// Shared by Cobreathe AND the Listening practice (audio divina) — both play one
+// curated Apple Music playlist through the app's own player.
 //
 // Requires: NSAppleMusicUsageDescription (Info.plist); MusicKit enabled for the
 // App ID in the Apple Developer portal (catalog playback fails at runtime
@@ -35,6 +42,8 @@ public class CobreatheMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "getAuthorizationStatus", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "play", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "pause", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "resume", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
     ]
 
@@ -106,8 +115,11 @@ public class CobreatheMusicPlugin: CAPPlugin, CAPBridgedPlugin {
                     self.ensureMixingSession()
                     let player = ApplicationMusicPlayer.shared
                     player.queue = [playlist]
-                    player.state.shuffleMode = .songs   // shuffle…
-                    player.state.repeatMode = .all      // …and loop the playlist
+                    // shuffle defaults on (Cobreathe); Listening passes false to
+                    // hear the curated playlist in its intended order.
+                    let shuffle = call.getBool("shuffle") ?? true
+                    player.state.shuffleMode = shuffle ? .songs : .off
+                    player.state.repeatMode = .all      // loop for the length of the sit
                     try await player.play()
                     call.resolve(["playing": true])
                 } catch {
@@ -116,6 +128,24 @@ public class CobreatheMusicPlugin: CAPPlugin, CAPBridgedPlugin {
             }
         } else {
             call.resolve(["playing": false, "reason": "ios-too-old"])
+        }
+    }
+
+    @objc func pause(_ call: CAPPluginCall) {
+        if #available(iOS 16.0, *) {
+            ApplicationMusicPlayer.shared.pause()
+        }
+        call.resolve()
+    }
+
+    @objc func resume(_ call: CAPPluginCall) {
+        if #available(iOS 16.0, *) {
+            Task {
+                do { try await ApplicationMusicPlayer.shared.play(); call.resolve() }
+                catch { call.reject(error.localizedDescription) }
+            }
+        } else {
+            call.resolve()
         }
     }
 

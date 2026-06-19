@@ -13,7 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 // "Today" is the user's LOCAL day (en-CA → ISO 2024-05-26), matching every
 // other rhythm surface.
 
-export type OptionalPractice = "gratitude" | "examen" | "listening";
+export type OptionalPractice = "gratitude" | "examen" | "listening" | "journaling";
 
 function todayLocalISO(): string {
   return new Date().toLocaleDateString("en-CA");

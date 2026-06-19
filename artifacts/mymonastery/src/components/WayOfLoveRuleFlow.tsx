@@ -21,8 +21,7 @@ import { ChevronLeft, Check } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { requestStepAuthorization } from "@/lib/appleHealth";
-import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
+import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getJournalingSlot, setJournalingSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import {
   setSideLevel,
   setSideReflection,
@@ -62,14 +61,9 @@ type Step =
   | "when"
   | "morning-way" | "morning-config"
   | "evening-way" | "evening-config"
-  | "listen" | "learn" | "extras" | "steps-goal" | "custom" | "done";
+  | "listen" | "learn" | "extras" | "custom" | "done";
 // Contemplation goal options — a single dropdown in 5-minute increments.
 const GOAL_OPTIONS = Array.from({ length: 18 }, (_, i) => (i + 1) * 5); // 5…90
-// Daily-step goal presets (steps/day) — round numbers people recognize. Mirrors
-// the Daily steps card; no "Off" here since reaching this slide means they chose
-// the practice.
-const STEP_GOAL_OPTIONS = [5000, 7500, 10000, 12500, 15000];
-const DEFAULT_STEP_GOAL = 10000;
 
 // Each Pray choice → the office level it commits the day to. Community keeps no
 // office (the home shows "Pray Together"); devotion/offices set the office card.
@@ -219,10 +213,11 @@ export default function WayOfLoveRuleFlow({
   // Optional daily practices — adding one surfaces its home card AND an extra
   // Daily-progress checkmark. Seeded from whether the card is already on the
   // user's (current-version) home layout (in order, not hidden).
-  const [extras, setExtras] = useState<{ gratitude: boolean; examen: boolean; steps: boolean }>(() => ({
+  const [extras, setExtras] = useState<{ gratitude: boolean; examen: boolean; listening: boolean; journaling: boolean }>(() => ({
     gratitude: homeCardOn(user?.homeLayout, "gratitude"),
     examen: homeCardOn(user?.homeLayout, "examen"),
-    steps: homeCardOn(user?.homeLayout, "steps"),
+    listening: homeCardOn(user?.homeLayout, "listening"),
+    journaling: homeCardOn(user?.homeLayout, "journaling"),
   }));
   // Re-seed once auth resolves — `user` is often null on the first render, so
   // the initializer above can miss an existing selection. Guard on touchedRef
@@ -234,7 +229,8 @@ export default function WayOfLoveRuleFlow({
     setExtras({
       gratitude: homeCardOn(user.homeLayout, "gratitude"),
       examen: homeCardOn(user.homeLayout, "examen"),
-      steps: homeCardOn(user.homeLayout, "steps"),
+      listening: homeCardOn(user.homeLayout, "listening"),
+      journaling: homeCardOn(user.homeLayout, "journaling"),
     });
   }, [user]);
 
@@ -248,6 +244,11 @@ export default function WayOfLoveRuleFlow({
   // into the rhythm at the right point. Kept across adds (often several land in
   // the same slot).
   const [customSlot, setCustomSlot] = useState<CustomSlot>("morning");
+  // Journaling's time-of-day slot — when they add Journaling we ask when in the
+  // day they keep it, so its card slots into the rhythm at that point. Seeded
+  // from the saved choice; persisted on tap (localStorage, per-device).
+  const [journalingSlot, setJournalingSlotState] = useState<CustomSlot>(() => getJournalingSlot());
+  const chooseJournalingSlot = (s: CustomSlot) => { touchedRef.current = true; setJournalingSlotState(s); setJournalingSlot(s); };
   // Reading ritual toggle — when on, the new practice is logged by an amount
   // (chapter / page / time) instead of a plain check, with an optional daily goal.
   const [customIsReading, setCustomIsReading] = useState(false);
@@ -271,14 +272,10 @@ export default function WayOfLoveRuleFlow({
     setCustomGoal("");
     setCustomList(getCustomAnchors());
   };
-  const toggleExtra = (k: "gratitude" | "examen" | "steps") => {
+  const toggleExtra = (k: "gratitude" | "examen" | "listening" | "journaling") => {
     touchedRef.current = true;
     setExtras((prev) => ({ ...prev, [k]: !prev[k] }));
   };
-  // The Daily-steps goal (steps/day) — only used when extras.steps is on. Seeded
-  // from the saved office-prefs value below; defaults to a sensible 10k.
-  const [stepGoal, setStepGoal] = useState<number>(DEFAULT_STEP_GOAL);
-  const chooseStepGoal = (g: number) => { touchedRef.current = true; setStepGoal(g); };
 
   const { data: prefs } = useQuery<{ defaultPrayerLevel?: string; contemplationGoalMinutes?: number; dailyStepGoal?: number; morningTime?: string | null; eveningTime?: string | null; morning?: string | null; evening?: string | null }>({
     queryKey: ["/api/me/office-prefs"],
@@ -321,9 +318,6 @@ export default function WayOfLoveRuleFlow({
     // the real goal was 60).
     if (typeof prefs.contemplationGoalMinutes === "number" && prefs.contemplationGoalMinutes > 0) {
       setGoal(String(prefs.contemplationGoalMinutes));
-    }
-    if (typeof prefs.dailyStepGoal === "number" && prefs.dailyStepGoal > 0) {
-      setStepGoal(prefs.dailyStepGoal);
     }
     setTimeBySide((prev) => ({
       morning: typeof prefs.morningTime === "string" && /^\d{2}:\d{2}$/.test(prefs.morningTime) ? prefs.morningTime : prev.morning,
@@ -371,8 +365,6 @@ export default function WayOfLoveRuleFlow({
       defaultPrayerLevel: PRAY_LEVEL[prayBySide[primarySide]],
       contemplationGoalMinutes: goalMin,
       contemplationReminderEnabled: goalMin > 0,
-      // Daily steps: persist the goal when the practice is on, clear it when off.
-      dailyStepGoal: extras.steps ? stepGoal : 0,
       // Each chosen side turns its reminder ON (a non-"none" pref is what makes
       // the server's daily office-reminder push fire) at its chosen time.
       // A side reminds only when it's part of the rhythm AND they didn't pick
@@ -388,15 +380,6 @@ export default function WayOfLoveRuleFlow({
     // reminder push silently no-ops, which is the usual cause of "I set a
     // reminder but never get notified."
     try { window.dispatchEvent(new Event("phoebe:request-push-permission")); } catch { /* non-fatal */ }
-    // Daily steps chosen → prompt for Apple Health STEP read now (a separate
-    // prompt from the mindful/contemplation one). We only ask once the user has
-    // opted into the practice here. Remember the connection so the card/page
-    // don't re-prompt.
-    if (extras.steps) {
-      void requestStepAuthorization()
-        .then((ok) => { if (ok) { try { localStorage.setItem("phoebe:health-connected", "1"); } catch { /* ignore */ } } })
-        .catch(() => {/* best-effort */});
-    }
     // Persist in the existing selections shape so the WoL drawer / weekly
     // review still read the commitment (Record<practiceId,{optionIds,custom}>).
     const selections: Record<string, { optionIds: string[]; custom: string }> = {
@@ -410,8 +393,8 @@ export default function WayOfLoveRuleFlow({
     const others = (["cac", "fdd", "ssje"] as const).filter((n) => !newsletters.includes(n));
     // Added optional practices are surfaced (in order, not hidden); unselected
     // ones go to the hidden tail like the other opt-in modules.
-    const extrasOn = [...(extras.gratitude ? ["gratitude"] : []), ...(extras.examen ? ["examen"] : []), ...(extras.steps ? ["steps"] : [])];
-    const extrasOff = [...(extras.gratitude ? [] : ["gratitude"]), ...(extras.examen ? [] : ["examen"]), ...(extras.steps ? [] : ["steps"])];
+    const extrasOn = [...(extras.gratitude ? ["gratitude"] : []), ...(extras.examen ? ["examen"] : []), ...(extras.listening ? ["listening"] : []), ...(extras.journaling ? ["journaling"] : [])];
+    const extrasOff = [...(extras.gratitude ? [] : ["gratitude"]), ...(extras.examen ? [] : ["examen"]), ...(extras.listening ? [] : ["listening"]), ...(extras.journaling ? [] : ["journaling"])];
     const order = ["requests", "office", "contemplation", ...newsletters, ...extrasOn, "feeds", "ncmp", "podcasts", ...extrasOff, ...others];
     const hidden = ["feeds", "ncmp", "podcasts", ...extrasOff, ...others];
     apiRequest("PUT", "/api/me/home-layout", { order, hidden, v: HOME_LAYOUT_VERSION })
@@ -453,8 +436,6 @@ export default function WayOfLoveRuleFlow({
     ...(sides.morning ? (["morning-way", "morning-config"] as Step[]) : []),
     ...(sides.evening ? (["evening-way", "evening-config"] as Step[]) : []),
     "listen", "learn", "extras",
-    // Choosing Daily steps adds a slide to set the step goal before finishing.
-    ...(extras.steps ? (["steps-goal"] as Step[]) : []),
   ];
   const totalSteps = orderedSteps.length;
   const goNext = () => { const i = orderedSteps.indexOf(step); if (i >= 0 && i < orderedSteps.length - 1) setStep(orderedSteps[i + 1]); };
@@ -745,8 +726,42 @@ export default function WayOfLoveRuleFlow({
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(extras.gratitude, `🙏 ${t("wol_rule.extra_gratitude", { defaultValue: "Gratitude" })}`, t("wol_rule.extra_gratitude_sub", { defaultValue: "Name one gift from the day." }), () => toggleExtra("gratitude"))}
           {choiceRow(extras.examen, `🌗 ${t("wol_rule.extra_examen", { defaultValue: "The Examen" })}`, t("wol_rule.extra_examen_sub", { defaultValue: "St. Ignatius' end-of-day review of the day with God." }), () => toggleExtra("examen"))}
-          {choiceRow(extras.steps, `👟 ${t("wol_rule.extra_steps", { defaultValue: "Daily steps" })}`, t("wol_rule.extra_steps_sub", { defaultValue: "Walk toward a daily step goal, counted from Apple Health." }), () => toggleExtra("steps"))}
-          {/* Create your own — its own card after Daily steps; leads to the
+          {choiceRow(extras.listening, `🎧 ${t("wol_rule.extra_listening", { defaultValue: "Listening" })}`, t("wol_rule.extra_listening_sub", { defaultValue: "Pray with music — sacred listening, the contemplative way." }), () => toggleExtra("listening"))}
+          {choiceRow(extras.journaling, `📓 ${t("wol_rule.extra_journaling", { defaultValue: "Journaling" })}`, t("wol_rule.extra_journaling_sub", { defaultValue: "Keep a journal however you like — just log the day, no typing." }), () => toggleExtra("journaling"))}
+          {/* When they journal — so the card slots into the rhythm at that time. */}
+          {extras.journaling && (
+            <div style={{ margin: "-4px 0 4px", padding: "0 2px" }}>
+              <p style={{ color: SAGE_DIM, fontSize: 11.5, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 8px", fontFamily: FONT }}>
+                {t("wol_rule.journaling_when", { defaultValue: "When do you journal?" })}
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+                {CUSTOM_SLOTS.map((s) => {
+                  const on = journalingSlot === s;
+                  const label = s === "morning" ? t("wol_rule.slot_morning", { defaultValue: "Morning" })
+                    : s === "midday" ? t("wol_rule.slot_midday", { defaultValue: "Midday" })
+                      : s === "afternoon" ? t("wol_rule.slot_afternoon", { defaultValue: "Afternoon" })
+                        : t("wol_rule.slot_evening", { defaultValue: "Evening" });
+                  return (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => chooseJournalingSlot(s)}
+                      style={{
+                        background: on ? CARD_ACTIVE : CARD,
+                        border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
+                        color: on ? CREAM : SAGE,
+                        borderRadius: 10, padding: "9px 4px", fontSize: 12.5, fontWeight: on ? 700 : 500,
+                        fontFamily: FONT, cursor: "pointer", textAlign: "center",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          {/* Create your own — its own card; leads to the
               create slide (a walk, a stretch, a call — anything you keep). */}
           <button
             type="button"
@@ -771,51 +786,6 @@ export default function WayOfLoveRuleFlow({
             <span style={{ marginLeft: "auto", color: SAGE, fontSize: 18, flexShrink: 0 }} aria-hidden>→</span>
           </button>
         </div>
-        {/* If they added Daily steps, Continue leads to the step-goal slide;
-            otherwise this is the last slide and saves the rhythm. */}
-        {extras.steps
-          ? ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)
-          : ctaButton(t("wol_rule.finish", { defaultValue: "Save my daily rhythm" }), commit)}
-      </>,
-    );
-  }
-
-  // ── Step 5 — Daily step goal (only when Daily steps was added) ────────────
-  if (step === "steps-goal") {
-    return shell(
-      <>
-        {backRow(goPrev)}
-        {stepHeader(t("wol_rule.steps_eyebrow", { defaultValue: "Add to your day" }), t("wol_rule.steps_title", { defaultValue: "Daily steps" }))}
-        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 0" }}>
-          {t("wol_rule.steps_body", { defaultValue: "Set a daily step goal to walk toward. We'll count your steps from Apple Health and gently celebrate when you reach it." })}
-        </p>
-        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
-          {t("wol_rule.steps_goal_label", { defaultValue: "Steps a day" })}
-        </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-          {STEP_GOAL_OPTIONS.map((g) => {
-            const on = stepGoal === g;
-            return (
-              <button
-                key={g}
-                type="button"
-                onClick={() => chooseStepGoal(g)}
-                style={{
-                  background: on ? CARD_ACTIVE : CARD,
-                  border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
-                  color: on ? CREAM : SAGE,
-                  borderRadius: 12, padding: "13px 6px", fontSize: 15, fontWeight: on ? 700 : 500,
-                  fontFamily: FONT, cursor: "pointer", textAlign: "center",
-                }}
-              >
-                {g.toLocaleString()}
-              </button>
-            );
-          })}
-        </div>
-        <p style={{ color: SAGE_DIM, fontSize: 12.5, fontFamily: FONT, margin: "10px 0 0", lineHeight: 1.5 }}>
-          {t("wol_rule.steps_goal_note", { defaultValue: "When you finish, we'll ask permission to read your step count from Apple Health. You can change the goal anytime on the Daily steps card." })}
-        </p>
         {ctaButton(t("wol_rule.finish", { defaultValue: "Save my daily rhythm" }), commit)}
       </>,
     );
@@ -1022,7 +992,8 @@ export default function WayOfLoveRuleFlow({
       : []),
     ...(extras.gratitude ? [{ emoji: "🙏", label: "Gratitude", sub: "Name one gift from the day", step: "extras" as Step }] : []),
     ...(extras.examen ? [{ emoji: "🌗", label: "The Examen", sub: "Review the day with God", step: "extras" as Step }] : []),
-    ...(extras.steps ? [{ emoji: "👟", label: "Daily steps", sub: `${stepGoal.toLocaleString()} steps a day`, step: "steps-goal" as Step }] : []),
+    ...(extras.listening ? [{ emoji: "🎧", label: "Listening", sub: "Pray with music", step: "extras" as Step }] : []),
+    ...(extras.journaling ? [{ emoji: "📓", label: "Journaling", sub: "Keep a journal — log the day", step: "extras" as Step }] : []),
   ];
   return shell(
     <>

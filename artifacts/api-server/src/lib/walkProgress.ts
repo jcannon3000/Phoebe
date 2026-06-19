@@ -71,8 +71,6 @@ export async function getWalkProgressForToday(userId: number): Promise<WalkProgr
       morning: usersTable.parishOfficeMorningPref,
       evening: usersTable.parishOfficeEveningPref,
       contemplationGoalMinutes: usersTable.contemplationGoalMinutes,
-      dailyStepGoal: usersTable.dailyStepGoal,
-      dailyStepReachedDate: usersTable.dailyStepReachedDate,
       homeLayout: usersTable.homeLayout,
     })
     .from(usersTable)
@@ -92,8 +90,6 @@ export async function getWalkProgressForToday(userId: number): Promise<WalkProgr
   const reflectActive = true;
   const gratitudeActive = homeCardActive(u.homeLayout, "gratitude");
   const examenActive = homeCardActive(u.homeLayout, "examen");
-  const stepsGoal = u.dailyStepGoal ?? 0;
-  const stepsActive = homeCardActive(u.homeLayout, "steps") && stepsGoal > 0;
 
   // ── Office (morning / evening) — mirrors /me/office-history-week, today only.
   const officeRows = await db.execute<{ side: string }>(sql`
@@ -169,9 +165,6 @@ export async function getWalkProgressForToday(userId: number): Promise<WalkProgr
     examenDone = examenActive && done.has("examen");
   }
 
-  // ── Steps — the cross-device "reached today" stamp (live HealthKit is device-only).
-  const stepsDone = stepsActive && (u.dailyStepReachedDate ?? null) === ymd;
-
   // Canonical order matches the user's own rhythm (core, then optional).
   const anchors: WalkAnchor[] = [];
   if (morningActive) anchors.push({ key: "morning", label: "Morning prayer", emoji: "🌅", done: morningDone });
@@ -180,7 +173,6 @@ export async function getWalkProgressForToday(userId: number): Promise<WalkProgr
   if (eveningActive) anchors.push({ key: "evening", label: "Evening prayer", emoji: "🌙", done: eveningDone });
   if (gratitudeActive) anchors.push({ key: "gratitude", label: "Gratitude", emoji: "🙏", done: gratitudeDone });
   if (examenActive) anchors.push({ key: "examen", label: "Examen", emoji: "🔎", done: examenDone });
-  if (stepsActive) anchors.push({ key: "steps", label: "Daily steps", emoji: "👟", done: stepsDone });
 
   const keptCount = anchors.filter((a) => a.done).length;
   const totalCount = anchors.length;
