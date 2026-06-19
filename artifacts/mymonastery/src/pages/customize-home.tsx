@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Reorder } from "framer-motion";
@@ -176,29 +176,55 @@ function useHomeLayout(user: AuthUser) {
     onSettled: () => { queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] }); },
   });
 
-  const persist = (nextOrder: HomeModule[], nextHidden: Set<string>) => {
-    setOrder(nextOrder);
-    setHidden(new Set(nextHidden));
-    saveLayout.mutate({ order: nextOrder, hidden: [...nextHidden] });
+  // Saving is DEBOUNCED + driven off state. Adding two cards in quick succession
+  // used to fire two racing PUTs to the same row; if the earlier (single-add)
+  // payload happened to land last, one selection was silently dropped ("I picked
+  // two newsletters, only one saved"). Now every edit just updates local state,
+  // and ONE save fires shortly after the last change with the full latest layout
+  // — and we flush on unmount so tapping Done / navigating away never loses it.
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pending = useRef<{ order: string[]; hidden: string[] } | null>(null);
+  const dirty = useRef(false);
+  const flush = () => {
+    if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
+    if (pending.current) { const p = pending.current; pending.current = null; saveLayout.mutate(p); }
   };
+  useEffect(() => {
+    if (!dirty.current) return; // skip the initial mount — nothing edited yet
+    pending.current = { order, hidden: [...hidden] };
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(flush, 400);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order, hidden]);
+  useEffect(() => () => flush(), []); // flush any pending save on unmount  // eslint-disable-line react-hooks/exhaustive-deps
 
   const removeCard = (k: HomeModule) => {
     if (k === PINNED || k === PRAY_ANCHOR) return;
-    const next = new Set(hidden);
-    // Keep at least one visible card besides the pinned one.
-    const visibleCount = order.filter(m => m !== PINNED && !hidden.has(m)).length;
-    if (visibleCount <= 1) return;
-    next.add(k);
-    persist(order, next);
+    setHidden((prev) => {
+      // Keep at least one visible card besides the pinned one.
+      const visibleCount = order.filter((m) => m !== PINNED && !prev.has(m)).length;
+      if (visibleCount <= 1) return prev;
+      const next = new Set(prev);
+      next.add(k);
+      dirty.current = true;
+      return next;
+    });
   };
 
   const addCard = (k: HomeModule) => {
-    const next = new Set(hidden);
-    next.delete(k);
-    persist(order, next);
+    setHidden((prev) => {
+      if (!prev.has(k)) return prev;
+      const next = new Set(prev);
+      next.delete(k);
+      dirty.current = true;
+      return next;
+    });
   };
 
-  const reorder = (next: HomeModule[]) => persist([PINNED, PRAY_ANCHOR, ...next], hidden);
+  const reorder = (next: HomeModule[]) => {
+    dirty.current = true;
+    setOrder([PINNED, PRAY_ANCHOR, ...next]);
+  };
 
   return { order, hidden, removeCard, addCard, reorder };
 }
