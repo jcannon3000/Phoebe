@@ -265,6 +265,14 @@ export default function CobreathePage() {
     [breathSync.coBreatherIds, peopleById],
   );
 
+  // Mirror the "with a fellow" mode + who we breathed with into refs, so the
+  // empty-deps handleEnd below can read the LATEST values when the sit finishes
+  // (it would otherwise close over the first render's empty set).
+  const joinInPersonRef = useRef(joinInPerson);
+  joinInPersonRef.current = joinInPerson;
+  const coBreathedRef = useRef(coBreathed);
+  coBreathedRef.current = coBreathed;
+
   // State returned by the POST — fresher than the GET cache on the done screen.
   const [doneState, setDoneState] = useState<BreathState | null>(null);
   // This week's running breath tally (per-device), shown on the concluding
@@ -345,6 +353,16 @@ export default function CobreathePage() {
     }
     logSit(secondsKept);
     record.mutate(secondsKept);
+    // Cobreathing one-to-one with a fellow STARTS a Heart to Heart with them
+    // (and counts toward Walking Together). Only when the user opted into the
+    // "Breathe with a fellow" mode AND someone was actually breathing live with
+    // them; the server filters the ids to real fellows before pairing.
+    if (joinInPersonRef.current) {
+      const ids = Array.from(coBreathedRef.current.keys());
+      if (ids.length > 0) {
+        void apiRequest("POST", "/api/breath/together-with", { fellowIds: ids }).catch(() => { /* best-effort */ });
+      }
+    }
     // The actual breaths taken — open-ended, so derive from elapsed (one breath
     // per CYCLE_MS). Floored at the 12 target. Drives the summary headline + tally.
     setBreathsTaken(Math.max(DEFAULT_TOTAL_BREATHS, Math.round(secondsKept / (CYCLE_MS / 1000))));
@@ -384,13 +402,30 @@ export default function CobreathePage() {
             ← {t("common.back", { defaultValue: "Back" })}
           </button>
 
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>
-            🌍 {t("cobreathe.title", { defaultValue: "Cobreathe" })}
+          {/* The original Cobreathe globe — concentric rings in golden ratio
+              (each radius = the next / 1.618) around the earth, the practice's
+              signature visual. */}
+          <div className="flex justify-center mb-4" aria-hidden>
+            {(() => {
+              const R = 52, PHI = 1.618, S = R * 2 + 10, c = S / 2;
+              const rings = [R, R / PHI, R / (PHI * PHI)];
+              return (
+                <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
+                  {rings.map((r, i) => (
+                    <circle key={i} cx={c} cy={c} r={r} fill="none" stroke={`rgba(110,180,130,${0.22 + i * 0.2})`} strokeWidth={1.5} />
+                  ))}
+                  <text x={c} y={c} textAnchor="middle" dominantBaseline="central" fontSize={26}>🌍</text>
+                </svg>
+              );
+            })()}
+          </div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-center" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>
+            {t("cobreathe.title", { defaultValue: "Cobreathe" })}
           </p>
-          <h1 className="text-[26px] font-bold mt-2 mb-1.5" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+          <h1 className="text-[26px] font-bold mt-2 mb-1.5 text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
             {t("cobreathe.options_title", { defaultValue: "Twelve breaths, together" })}
           </h1>
-          <p className="text-[14px] mb-6" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+          <p className="text-[14px] mb-6 text-center" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
             {t("cobreathe.options_sub", { defaultValue: "Choose how you'll breathe, then begin." })}
           </p>
 

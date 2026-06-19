@@ -3,6 +3,7 @@ import { db, breathSessionsTable, usersTable } from "@workspace/db";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { getGardenUserIds, getFellowUserIds } from "../lib/garden";
 import { perUserRateLimit } from "../lib/rate-limit";
+import { ensureActivePartnership } from "./daily-prayer";
 
 // ── Cobreathe ────────────────────────────────────────────────────────
 //
@@ -139,6 +140,35 @@ router.post("/breath/today", perUserRateLimit("breath_record", { max: 20, window
     res.json({ ok: true, ...(await breathPayload(userId, day)) });
   } catch (err) {
     console.error("[/breath/today POST] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// POST /breath/together-with { fellowIds: number[] }
+// You just held the breath one-to-one with these fellows (the "Breathe with a
+// fellow" mode). Cobreathing together STARTS a Heart to Heart with each of them
+// (and makes you Fellows). It also counts toward Walking Together: the breath is
+// logged as a contemplation sit (a walk dot), and the new Fellow link makes the
+// pair walkable + surfaces "Cobreathed together" on the People page. Idempotent;
+// only real fellows are paired.
+router.post("/breath/together-with", perUserRateLimit("breath_together_with", { max: 30, windowMs: 60 * 1000 }), async (req: Request, res: Response): Promise<void> => {
+  const me = uid(req);
+  if (me === null) { res.status(401).json({ error: "not_authenticated" }); return; }
+  const raw = (req.body as { fellowIds?: unknown })?.fellowIds;
+  const ids = Array.isArray(raw)
+    ? raw.map((n) => Number(n)).filter((n) => Number.isInteger(n) && n > 0 && n !== me)
+    : [];
+  if (ids.length === 0) { res.json({ ok: true, paired: [] }); return; }
+  try {
+    const fellowSet = new Set(await getFellowUserIds(me));
+    const targets = Array.from(new Set(ids)).filter((id) => fellowSet.has(id)).slice(0, 10);
+    for (const fid of targets) {
+      try { await ensureActivePartnership(me, fid); }
+      catch (e) { console.error("[/breath/together-with] pair failed", fid, e); }
+    }
+    res.json({ ok: true, paired: targets });
+  } catch (err) {
+    console.error("[/breath/together-with POST] failed:", err);
     res.status(500).json({ error: "internal_error" });
   }
 });

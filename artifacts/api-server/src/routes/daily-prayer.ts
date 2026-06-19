@@ -69,6 +69,29 @@ async function getUserTz(userId: number): Promise<string | null> {
   return u?.timezone ?? null;
 }
 
+// Ensure two people are active Heart to Heart partners (idempotent). Used by the
+// normal start flow AND by Cobreathe: breathing one-to-one with a fellow starts
+// (or revives) a Heart to Heart with them. Revives an ended bond rather than
+// duplicating (the pair UNIQUE index). Also links them as Fellows.
+export async function ensureActivePartnership(initiator: number, other: number): Promise<void> {
+  if (initiator === other) return;
+  const { lo, hi } = normPair(initiator, other);
+  const [existing] = await db.select().from(prayerPartnershipsTable).where(and(
+    eq(prayerPartnershipsTable.userLoId, lo), eq(prayerPartnershipsTable.userHiId, hi)));
+  if (existing && existing.status === "active") {
+    // already partners — nothing to do
+  } else if (existing) {
+    await db.update(prayerPartnershipsTable)
+      .set({ status: "active", invitedById: initiator, acceptedAt: new Date(), endedAt: null, endedById: null })
+      .where(eq(prayerPartnershipsTable.id, existing.id));
+  } else {
+    await db.insert(prayerPartnershipsTable)
+      .values({ userLoId: lo, userHiId: hi, invitedById: initiator, status: "active", acceptedAt: new Date() })
+      .onConflictDoNothing({ target: [prayerPartnershipsTable.userLoId, prayerPartnershipsTable.userHiId] });
+  }
+  await linkPartnerFellows(initiator, other);
+}
+
 // Every active partnership this user is in (multiple allowed).
 async function getActivePartnerships(userId: number) {
   return db.select().from(prayerPartnershipsTable).where(and(

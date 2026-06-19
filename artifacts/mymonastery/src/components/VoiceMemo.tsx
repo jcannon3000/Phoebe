@@ -93,7 +93,11 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
   const { data: sentData } = useQuery<{ recipientIds: number[] }>({
     queryKey: ["/api/voice-memos/sent-today"],
     queryFn: () => apiRequest("GET", "/api/voice-memos/sent-today"),
-    staleTime: 60_000,
+    staleTime: 30_000,
+    // Always refetch when the People page mounts / regains focus so the "Sent"
+    // state can never lag behind a memo just sent (or a new day's reset).
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
     enabled: voiceSupported(),
   });
   const sentToday = (sentData?.recipientIds ?? []).includes(recipientId);
