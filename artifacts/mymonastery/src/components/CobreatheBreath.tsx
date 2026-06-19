@@ -95,6 +95,11 @@ const BREATH_Y = "63%";
 // The world turns between these three globes — one held per session, rotating
 // across sessions.
 const GLOBES = ["🌍", "🌎", "🌏"] as const;
+
+// The sync-screen quotes — one chosen per sit (see shortQuoteRef). Text + author
+// live in the render (they go through t()); this just fixes the set + order.
+type QuoteKind = "weil" | "merton" | "mlk" | "teresa";
+const QUOTE_KINDS: readonly QuoteKind[] = ["weil", "merton", "mlk", "teresa"];
 // Outer per-breath ring around the globe: the lighter green fills clockwise on
 // the inhale and HOLDS through the exhale; the darker green sweeps over it on
 // the exhale. Resets each cycle.
@@ -205,11 +210,11 @@ export function CobreatheBreath({
     sessionGlobeRef.current = GLOBES[gi];
     try { localStorage.setItem("phoebe:cobreathe-globe", String((gi + 1) % GLOBES.length)); } catch { /* ignore */ }
   }
-  // Which short sync quote this session shows — Simone Weil ↔ Thomas Merton,
-  // chosen once per sit so the short slot isn't always the same line.
-  const shortQuoteRef = useRef<"weil" | "merton" | null>(null);
+  // Which sync quote this session shows — Weil · Merton · King · Teresa, chosen
+  // once per sit so the slot isn't always the same line.
+  const shortQuoteRef = useRef<QuoteKind | null>(null);
   if (shortQuoteRef.current === null) {
-    shortQuoteRef.current = Math.random() < 0.5 ? "weil" : "merton";
+    shortQuoteRef.current = QUOTE_KINDS[Math.floor(Math.random() * QUOTE_KINDS.length)];
   }
   // ── Draggable globe ──────────────────────────────────────────────────────
   // The globe cluster can be dragged anywhere on screen (kept 24px clear of the
@@ -616,13 +621,28 @@ export function CobreatheBreath({
   const intention = counting ? INTENTIONS[(breathNum - 1) % INTENTIONS.length] : null;
   // The session globe (held for the whole sit).
   const globe = sessionGlobeRef.current ?? GLOBES[0];
-  // How long until the next clean cycle boundary — the sync pre-roll. Derived
-  // once from the two anchor refs (set at mount), so it doesn't flip as it
-  // counts down. Under 5s of waiting → the short Simone Weil line; longer → the
-  // fuller Sallie McFague one (there's more time to read it).
-  // Always a short, punchy line — Weil or Merton (per shortQuoteRef). The longer
-  // Sallie McFague passage was removed from the load per request.
-  const quoteKind: "weil" | "merton" | "mcfague" = shortQuoteRef.current ?? "weil";
+  // The sync-screen quote for this sit — one of QUOTE_KINDS, fixed per sit by
+  // shortQuoteRef. A short, punchy line on belonging / one another.
+  const quoteKind: QuoteKind = shortQuoteRef.current ?? "weil";
+  const SYNC_QUOTES: Record<QuoteKind, { text: string; author: string }> = {
+    weil: {
+      text: t("cobreathe.sync_quote_weil", { defaultValue: "Attention is the rarest and purest form of generosity." }),
+      author: t("cobreathe.sync_quote_weil_author", { defaultValue: "Simone Weil" }),
+    },
+    merton: {
+      text: t("cobreathe.sync_quote_merton", { defaultValue: "What I wear is pants.\nWhat I do is live.\nHow I pray is breathe." }),
+      author: t("cobreathe.sync_quote_merton_author", { defaultValue: "Thomas Merton" }),
+    },
+    mlk: {
+      text: t("cobreathe.sync_quote_mlk", { defaultValue: "We must all learn to live together as brothers—or we will all perish together as fools." }),
+      author: t("cobreathe.sync_quote_mlk_author", { defaultValue: "Martin Luther King Jr." }),
+    },
+    teresa: {
+      text: t("cobreathe.sync_quote_teresa", { defaultValue: "If we have no peace, it is because we have forgotten that we belong to each other." }),
+      author: t("cobreathe.sync_quote_teresa_author", { defaultValue: "Mother Teresa" }),
+    },
+  };
+  const syncQuote = SYNC_QUOTES[quoteKind];
 
   // Soft sage tones that sit calmly on the deep-green field.
   const TEXT_DIM = "rgba(182,210,188,0.72)";
@@ -784,18 +804,10 @@ export function CobreatheBreath({
         }}
       >
         <p style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: "clamp(20px, 5.8vw, 25px)", lineHeight: 1.5, textAlign: "center", textShadow: "0 2px 18px rgba(8,30,18,0.6)", whiteSpace: "pre-line" }}>
-          {quoteKind === "weil"
-            ? t("cobreathe.sync_quote_weil", { defaultValue: "Attention is the rarest and purest form of generosity." })
-            : quoteKind === "merton"
-              ? t("cobreathe.sync_quote_merton", { defaultValue: "What I wear is pants.\nWhat I do is live.\nHow I pray is breathe." })
-              : t("cobreathe.sync_quote", { defaultValue: "By paying attention, especially to the beauty of the world and to the suffering of others, we open the possibility for God to reach us, beginning the process of change whereby we allow ourselves to be decreated from egotists to lovers of God by loving the neighbor as ourselves." })}
+          {syncQuote.text}
         </p>
         <p style={{ color: "rgba(182,210,188,0.62)", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, letterSpacing: "0.06em", marginTop: 16, textAlign: "center" }}>
-          {quoteKind === "weil"
-            ? t("cobreathe.sync_quote_weil_author", { defaultValue: "Simone Weil" })
-            : quoteKind === "merton"
-              ? t("cobreathe.sync_quote_merton_author", { defaultValue: "Thomas Merton" })
-              : t("cobreathe.sync_quote_author", { defaultValue: "Sallie McFague" })}
+          {syncQuote.author}
         </p>
       </div>
 
