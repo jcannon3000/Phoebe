@@ -122,10 +122,10 @@ export default function PrayerThreadPage() {
                       <button
                         type="button"
                         onClick={() => pray(it.id)}
-                        className="mt-2.5 rounded-full px-4 py-1.5 text-[12.5px] font-semibold active:scale-[0.98]"
+                        className="mt-2.5 rounded-full px-5 py-2 text-[13px] font-semibold active:scale-[0.98]"
                         style={{ background: `rgba(${G},0.85)`, color: WARM, border: "1px solid rgba(110,180,130,0.5)", fontFamily: FONT }}
                       >
-                        🙏 {t("prayer_partner.pray_this", { defaultValue: "Pray this" })}
+                        🙏 {t("prayer_card.amen_action", { defaultValue: "Amen" })}
                       </button>
                     )}
                   </div>
@@ -135,8 +135,15 @@ export default function PrayerThreadPage() {
           </div>
         )}
 
-        {/* Your turn — share today's prayer (it reaches {first} in the morning). */}
-        {canShare ? (
+        {/* Sequence: read their prayer → Amen → THEN "how can {first} pray for
+            you?". A prayer of theirs you haven't amen'd yet is prayed first; only
+            then does the request composer appear (a daily volley, sealed until
+            the next morning — the very first exchange delivers instantly). */}
+        {canShare && items.some((it) => !it.isMine && !it.attention?.counted) ? (
+          <p className="text-[13px] text-center mt-2 px-4" style={{ color: SAGE, fontFamily: FONT, lineHeight: 1.5 }}>
+            🙏 {t("prayer_partner.amen_theirs_first", { name: first, defaultValue: `Pray ${first}'s prayer above with an Amen — then share how they can pray for you.` })}
+          </p>
+        ) : canShare ? (
           <div className="rounded-2xl p-3 mt-1" style={{ background: `rgba(${G},0.10)`, border: `1px solid rgba(${G},0.3)` }}>
             <p className="text-[13px] mb-2" style={{ color: SAGE, fontFamily: FONT }}>
               {t("prayer_partner.how_can_pray", { name: first, defaultValue: `How can ${first} pray for you today?` })}
