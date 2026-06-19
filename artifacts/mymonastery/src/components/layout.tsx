@@ -754,7 +754,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
-  const { ready, morningDone, silenceDone, eveningDone, morningActive, silenceActive, eveningActive, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, silenceDone, eveningDone, morningActive, silenceActive, eveningActive, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, customAnchors } = useRhythmState();
   // The core anchors the user keeps (morning/reflection/contemplation/evening —
   // each dropped when its pref is off), plus a dot for each optional practice
   // they added (gratitude, examen, the daily-steps goal) and each user-defined
@@ -773,7 +773,6 @@ function DailyProgressPill() {
     ...cDots("midday"),
     ...(gratitudeActive ? [{ key: "gratitude", done: gratitudeDone }] : []),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
-    ...(stepsActive ? [{ key: "steps", done: stepsDone }] : []),
     ...cDots("afternoon"),
     ...(eveningActive ? [{ key: "evening", done: eveningDone }] : []),
     ...cDots("evening"),
@@ -937,6 +936,7 @@ const SPLASH_QUOTES: Array<{ text: string; author: string }> = [
   { text: "You do not think yourself into a new way of living, you live yourself into a new way of thinking.", author: "Richard Rohr" },
   { text: "The proper habitat for truth is human relationships.", author: "Josef Pieper" },
   { text: "Attention is the rarest and purest form of generosity.", author: "Simone Weil" },
+  { text: "For one only becomes weary of what is new. One never grows weary of the old.", author: "Søren Kierkegaard" },
 ];
 
 function OpeningSplash() {
