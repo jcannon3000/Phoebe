@@ -236,6 +236,27 @@ export function CobreatheBreath({
     return { x: 0, y: 0 };
   });
   const [globeSnapping, setGlobeSnapping] = useState(false);
+  // Globe box size in px. On MOBILE we size it by the golden ratio: the OUTER
+  // ring's diameter = viewport width / 1.618. The outer ring is 2·RING_R of the
+  // 128 viewBox, so the box (which is the full viewBox) = desiredOuter·128/116.
+  // Desktop keeps the fixed 158 box.
+  const globeBoxPx = (vw: number): number => {
+    if (vw > 0 && vw <= 600) {
+      const outer = vw / 1.618;
+      return Math.round(outer * (128 / (2 * RING_R)));
+    }
+    return 158;
+  };
+  const [globePx, setGlobePx] = useState<number>(() => {
+    try { return globeBoxPx(window.innerWidth); } catch { return 158; }
+  });
+  useEffect(() => {
+    const onResize = () => { try { setGlobePx(globeBoxPx(window.innerWidth)); } catch { /* ignore */ } };
+    window.addEventListener("resize", onResize);
+    window.addEventListener("orientationchange", onResize);
+    return () => { window.removeEventListener("resize", onResize); window.removeEventListener("orientationchange", onResize); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const globeCellRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -891,7 +912,7 @@ export function CobreatheBreath({
           // top (onGlobeDown/Move recover the natural position by subtracting the
           // offset from the measured rect, so the drag clamp still bounds it).
           position: "absolute", left: "50%", top: "61.8%",
-          width: 158, height: 158, zIndex: 3,
+          width: globePx, height: globePx, zIndex: 3,
           transform: `translate(-50%, -50%) translate(${globeOffset.x}px, ${globeOffset.y}px)`,
           transition: globeSnapping ? "transform 0.4s cubic-bezier(0.34, 1.3, 0.64, 1)" : "none",
           touchAction: "none", cursor: "grab",
@@ -899,7 +920,7 @@ export function CobreatheBreath({
       >
         <svg
           aria-hidden="true"
-          width={158} height={158} viewBox="0 0 128 128"
+          width={globePx} height={globePx} viewBox="0 0 128 128"
           style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)", pointerEvents: "none", filter: "drop-shadow(0 2px 10px rgba(8,30,18,0.5))" }}
         >
           {/* Dark green BASE ring — a full circle that stays put each breath;
@@ -926,7 +947,8 @@ export function CobreatheBreath({
           aria-hidden="true"
           style={{
             position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 80, lineHeight: 1, pointerEvents: "none",
+            // Emoji scales with the box (was a fixed 80 for the 158 box → ~0.5).
+            fontSize: Math.round(globePx * 0.5), lineHeight: 1, pointerEvents: "none",
             filter: reachedNow
               ? "drop-shadow(0 0 18px rgba(91,157,239,0.9)) drop-shadow(0 2px 10px rgba(8,30,18,0.5))"
               : "drop-shadow(0 0 13px rgba(90,150,110,0.55)) drop-shadow(0 3px 14px rgba(8,30,18,0.6))",
@@ -989,27 +1011,10 @@ export function CobreatheBreath({
         </div>
       )}
 
-      {/* End / Discard — clear, labelled controls at the foot of the breath. End
-          finishes the sit (and counts once the 12 are kept); Discard leaves
-          without logging. (The top-right ✕ is just a quick close.) */}
-      <div className="w-full flex flex-col items-center" style={{ gap: 9, marginBottom: 14, paddingLeft: 28, paddingRight: 28 }}>
-        <button
-          type="button"
-          onClick={() => onEnd(Math.round((syncedNow() - startRef.current) / 1000), reachedRef.current)}
-          className="rounded-full active:scale-[0.98]"
-          style={{ padding: "13px 52px", background: "#2D5E3F", border: "1px solid rgba(140,195,160,0.7)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 15.5, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 16px rgba(8,30,18,0.5)" }}
-        >
-          {reachedNow ? t("cobreathe.done", { defaultValue: "Done" }) : t("cobreathe.end", { defaultValue: "End" })}
-        </button>
-        <button
-          type="button"
-          onClick={() => onEnd(Math.round((syncedNow() - startRef.current) / 1000), false)}
-          className="active:opacity-70"
-          style={{ background: "rgba(0,0,0,0.4)", border: "1px solid rgba(200,225,210,0.28)", borderRadius: 999, padding: "7px 20px", color: "rgba(224,232,220,0.9)", fontFamily: SPACE_GROTESK, fontSize: 12.5, fontWeight: 600, cursor: "pointer", textShadow: "0 1px 6px rgba(0,0,0,0.5)" }}
-        >
-          {t("cobreathe.discard", { defaultValue: "Discard" })}
-        </button>
-      </div>
+      {/* No End/Discard controls on the breath itself — the breath is a calm,
+          undistracted field. The quick-close ✕ (top-right) is the only exit; it
+          counts the sit once the 12 are kept, and discards otherwise. (The
+          labelled End/Discard belong to the silent ContemplationTimer, not here.) */}
 
       {/* Bottom — the breathing word in the LEFT corner (smaller) + the breath
           count in the RIGHT corner. The quick-close ✕ lives top-right. */}

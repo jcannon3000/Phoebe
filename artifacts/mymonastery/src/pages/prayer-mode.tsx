@@ -4402,11 +4402,13 @@ export default function PrayerModePage() {
         open={contemplationOpen}
         startMinutes={contemplationStartMinutes}
         onClose={(result) => {
+          // A completed sit proceeds to the next slide. Hide the slide
+          // UNDERNEATH first so the office doesn't flash the old (pause) slide
+          // as the overlay unmounts — then advance(), which fades the next slide
+          // up smoothly. Backing out of the picker just closes the overlay.
+          if (result?.completed) setSlideVisible(false);
           setContemplationOpen(false);
           setContemplationStartMinutes(undefined);
-          // A completed sit returns to the "take a breath" slide and
-          // proceeds to the next slide (same as tapping Continue);
-          // backing out of the picker just closes the overlay.
           if (result?.completed) advance();
         }}
       />

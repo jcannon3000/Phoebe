@@ -593,15 +593,8 @@ export default function People() {
     <Layout>
       <style>{FLAP_CSS}</style>
       <div className="max-w-2xl mx-auto w-full pb-20">
-        {/* Header — matches dashboard style */}
-        <div className="mb-5">
-          <p className="text-[11px] tracking-widest uppercase mb-1" style={{ color: "rgba(143,175,150,0.5)" }}>
-            {t("people.eyebrow")}
-          </p>
-          <h1 style={{ color: "#F0EDE6", fontSize: "22px", fontWeight: 600, letterSpacing: "-0.02em" }}>
-            {t("people.title")} 🌿
-          </h1>
-        </div>
+        {/* No page eyebrow/title — the Fellows section header leads the page
+            (sized like the home section titles) so it starts higher up. */}
 
         {/* A fellow's 🙌 encouragement, if one's waiting. */}
         <EncouragementBanner />
@@ -621,9 +614,9 @@ export default function People() {
             rather than an empty header. */}
         {(rawIsBeta || (fellowsData?.fellows?.length ?? 0) > 0) && (
           <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <p className="text-[11px] font-bold" style={{ color: "#F0EDE6" }}>{t("people.fellows")}</p>
-              <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.12)" }} />
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t("people.fellows")}</h3>
+              <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
             </div>
             <FellowsConnect canManage={rawIsBeta} />
           </div>

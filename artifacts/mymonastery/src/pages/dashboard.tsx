@@ -6604,8 +6604,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
         {/* Calendar date rendered on every surface (was gated to
             non-native; the iOS status bar shows the system clock but
             not the day-of-week, so we want the in-app date visible
-            there too). */}
-        <div className="mb-4" style={{ paddingTop: 4 }}>
+            there too). Half the top spacing so "Next" sits higher. */}
+        <div className="mb-2" style={{ paddingTop: 2 }}>
           {/* Beta users get a cleaner home: drop the date + feast eyebrow so the
               "Next" rhythm starts right at the top. (The Events surface keeps its
               title regardless.) */}
@@ -6627,7 +6627,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               {/* Show the feast/Sunday/commemoration when there is one; otherwise
                   fall back to the brand tagline. The events page swaps this for a
                   short subtitle. */}
-              <div style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 10 }}>
                 {eventsOnly
                   ? null
                   : <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />}
