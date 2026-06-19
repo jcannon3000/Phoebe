@@ -3186,6 +3186,43 @@ function NcmpHomeCard() {
   );
 }
 
+// ── PrayedWithWeekRail — a horizontal strip of the faces of everyone who has
+// prayed with you this week, shown above "Next" on the home. Fellows lead the
+// rail (the server sorts them first). Self-hides when no one has yet. ──────────
+function PrayedWithWeekRail() {
+  const { data } = useQuery<{ people: { id: number; name: string | null; avatarUrl: string | null }[]; total?: number }>({
+    queryKey: ["/api/prayer-streak/community-prayed-week"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-week"),
+    staleTime: 5 * 60_000,
+  });
+  const SG = "'Space Grotesk', sans-serif";
+  const people = data?.people ?? [];
+  const total = data?.total ?? people.length;
+  if (people.length === 0) return null;
+  const first = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "";
+  return (
+    <div className="mb-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SG }}>
+        🌿 {total} {total === 1 ? "person" : "people"} prayed with you this week
+      </p>
+      <div className="flex items-start gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
+        {people.map((p) => (
+          <div key={p.id} className="flex flex-col items-center shrink-0" style={{ width: 48 }}>
+            {p.avatarUrl ? (
+              <img src={p.avatarUrl} alt={first(p.name)} className="rounded-full object-cover" style={{ width: 44, height: 44, border: "1.5px solid rgba(46,107,64,0.5)", backgroundColor: "#1A4A2E" }} />
+            ) : (
+              <div className="rounded-full flex items-center justify-center font-semibold" style={{ width: 44, height: 44, border: "1.5px solid rgba(46,107,64,0.5)", background: "#1A4A2E", color: "#A8C5A0", fontSize: 15, fontFamily: SG }}>
+                {(p.name ?? "?").trim()[0]?.toUpperCase() ?? "?"}
+              </div>
+            )}
+            <p className="text-[10px] mt-1 truncate w-full text-center" style={{ color: "rgba(143,175,150,0.85)", fontFamily: SG }}>{first(p.name)}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── HomeDoneSummaryCard — the all-kept hero ──────────────────────────────────
 // Shown as the home hero once the day's rhythm is fully kept (morning +
 // reflection + evening). A quiet benediction over a community summary: how many
@@ -6680,7 +6717,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               anchors split into Next / Done plus the streak — in place of the
               standard home modules. */}
           {filter === null && (newHomeForEveryone || isBeta) && !eventsOnly && (
-            <div className="mt-5 mb-3">
+            <div className="mt-3 mb-3">
+              {/* Faces of everyone who prayed with you this week, above "Next". */}
+              <PrayedWithWeekRail />
               {allHabitsDone ? (() => {
                 // Day's rhythm is complete — hand the home over to the upcoming
                 // schedule. The full Next/Done cards still live on /daily-progress.
