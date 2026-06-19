@@ -14,8 +14,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, Play, Pause, Square, X, RotateCcw, Circle } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { Mic, Play, Pause, Square, X, RotateCcw, Circle, Check } from "lucide-react";
+import { apiRequest, ApiError } from "@/lib/queryClient";
 import { encryptVoice, decryptVoice, voiceSupported, type EncryptedMemo } from "@/lib/voiceCrypto";
 import { enhancePcm, decodeToMono48k, pcmToMp3, STUDIO_RATE, studioSupported, type StudioPreset, type EnhanceResult } from "@/lib/studioVoice";
 import { saveVoiceDraft, listVoiceDrafts, deleteVoiceDraft, VOICE_DRAFTS_EVENT, type VoiceDraft } from "@/lib/voiceDrafts";
@@ -74,7 +74,7 @@ function loadPreset(): Exclude<StudioPreset, "off"> {
   return "studio";
 }
 
-type Phase = "rec" | "polishing" | "preview" | "sending" | "sent" | "nokey" | "error";
+type Phase = "rec" | "polishing" | "preview" | "sending" | "sent" | "already" | "nokey" | "error";
 
 // ── Record + Studio-polish + send to one fellow ──────────────────────────────
 // The trigger is the small "Voice" pill; tapping it opens a calm bottom sheet:
@@ -85,6 +85,24 @@ type Phase = "rec" | "polishing" | "preview" | "sending" | "sent" | "nokey" | "e
 // lossy file. Best-effort: any failure falls back to sending the raw take.
 export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: number; recipientName: string }) {
   const first = (recipientName ?? "them").trim().split(/\s+/)[0] || "them";
+  const qc = useQueryClient();
+  // One voice prayer per fellow per day. All VoiceMemoButtons share this single
+  // query (react-query dedups by key), so it's one request no matter how many
+  // fellows render. If my id is in the list, I've already sent today → the
+  // trigger shows "Sent" and won't reopen the recorder.
+  const { data: sentData } = useQuery<{ recipientIds: number[] }>({
+    queryKey: ["/api/voice-memos/sent-today"],
+    queryFn: () => apiRequest("GET", "/api/voice-memos/sent-today"),
+    staleTime: 60_000,
+    enabled: voiceSupported(),
+  });
+  const sentToday = (sentData?.recipientIds ?? []).includes(recipientId);
+  const markSentToday = () => {
+    qc.setQueryData<{ recipientIds: number[] }>(["/api/voice-memos/sent-today"], (old) => {
+      const ids = new Set(old?.recipientIds ?? []); ids.add(recipientId);
+      return { recipientIds: Array.from(ids) };
+    });
+  };
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<Phase>("rec");
   const [remaining, setRemaining] = useState(MAX_SECS);
@@ -146,9 +164,15 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
       try { pub = await apiRequest("GET", `/api/keys/public/${recipientId}`); } catch { setPhase("nokey"); return; }
       const enc: EncryptedMemo = await encryptVoice(pub.publicKeyJwk, await blob.arrayBuffer());
       await apiRequest("POST", "/api/voice-memos", { recipientId, ...enc, mimeType: blob.type || "audio/mpeg", durationMs: rawDurRef.current });
+      markSentToday();
       setPhase("sent");
       setTimeout(close, 1400);
-    } catch { setPhase("error"); }
+    } catch (e) {
+      // Already sent one today (e.g. from another device, stale cache) → reflect
+      // that calmly rather than as an error; the trigger flips to "Sent".
+      if (e instanceof ApiError && e.status === 409) { markSentToday(); setPhase("already"); setTimeout(close, 1600); return; }
+      setPhase("error");
+    }
   };
 
   const saveForLater = async () => {
@@ -308,11 +332,19 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
 
   return (
     <>
-      <button type="button" onClick={() => void beginRecording(false)} aria-label={`Send ${first} a voice prayer`}
-        className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-opacity active:scale-[0.97]"
-        style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}>
-        <Mic size={13} /> Voice
-      </button>
+      {sentToday ? (
+        <span aria-label={`You've sent ${first} a voice prayer today`}
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold"
+          style={{ background: "rgba(46,107,64,0.18)", color: "rgba(240,237,230,0.85)", border: "1px solid rgba(46,107,64,0.45)", fontFamily: FONT }}>
+          <Check size={13} /> Sent
+        </span>
+      ) : (
+        <button type="button" onClick={() => void beginRecording(false)} aria-label={`Send ${first} a voice prayer`}
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-opacity active:scale-[0.97]"
+          style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}>
+          <Mic size={13} /> Voice
+        </button>
+      )}
 
       <AnimatePresence>
         {open && (
@@ -438,6 +470,7 @@ export function VoiceMemoButton({ recipientId, recipientName }: { recipientId: n
 
               {phase === "sending" && <p className="text-center py-8 text-[14px]" style={{ color: SAGE }}>Sending…</p>}
               {phase === "sent" && <p className="text-center py-8 text-[15px] font-semibold" style={{ color: WARM }}>It's on its way 🌿</p>}
+              {phase === "already" && <p className="text-center py-8 text-[15px] font-semibold" style={{ color: WARM }}>You've already sent {first} a prayer today 🌿</p>}
               {phase === "nokey" && <p className="text-center py-7 text-[13px]" style={{ color: SAGE }}>Ask {first} to open Phoebe once so they can receive it.</p>}
               {phase === "error" && <p className="text-center py-7 text-[13px]" style={{ color: CLAY }}>Something went off — please try again.</p>}
             </motion.div>
@@ -606,6 +639,7 @@ export function VoiceMemoInbox() {
 
 // ── Saved prayers — drafts kept on-device, ready to send later ────────────────
 export function VoiceDraftsShelf() {
+  const qc = useQueryClient();
   const [drafts, setDrafts] = useState<VoiceDraft[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
@@ -645,8 +679,16 @@ export function VoiceDraftsShelf() {
       const pub: { publicKeyJwk: string } = await apiRequest("GET", `/api/keys/public/${d.recipientId}`);
       const enc: EncryptedMemo = await encryptVoice(pub.publicKeyJwk, await d.blob.arrayBuffer());
       await apiRequest("POST", "/api/voice-memos", { recipientId: d.recipientId, ...enc, mimeType: d.mimeType || "audio/mpeg", durationMs: d.durationMs });
+      qc.setQueryData<{ recipientIds: number[] }>(["/api/voice-memos/sent-today"], (old) => {
+        const ids = new Set(old?.recipientIds ?? []); ids.add(d.recipientId);
+        return { recipientIds: Array.from(ids) };
+      });
       await deleteVoiceDraft(d.id);
-    } catch { /* keep the draft so it can be retried */ } finally { setBusyId(null); }
+    } catch (e) {
+      // A 409 means today's prayer to this fellow is already sent — drop the
+      // draft so it doesn't keep prompting; otherwise keep it to retry.
+      if (e instanceof ApiError && e.status === 409) { await deleteVoiceDraft(d.id).catch(() => undefined); }
+    } finally { setBusyId(null); }
   };
 
   const remove = (d: VoiceDraft) => {

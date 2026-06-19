@@ -95,6 +95,29 @@ router.post("/voice-memos", rateLimit({
   const fellowIds = await getFellowUserIds(me);
   if (!fellowIds.includes(d.recipientId)) { res.status(403).json({ error: "Not a fellow." }); return; }
 
+  // One voice prayer per fellow per day. A voice prayer is meant as a single
+  // daily offering, not a chat — and once sent the sender's UI shows "Sent" and
+  // hides the recorder until tomorrow. The day boundary is the SENDER's own
+  // calendar day (their timezone), matching how "today" is computed everywhere
+  // else (prayer.ts). 409 → the client surfaces "Already sent today".
+  const [senderTzRow] = await db
+    .select({ timezone: usersTable.timezone })
+    .from(usersTable)
+    .where(eq(usersTable.id, me));
+  const senderTz = senderTzRow?.timezone || "UTC";
+  const ymd = (dt: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: senderTz, year: "numeric", month: "2-digit", day: "2-digit" }).format(dt);
+  const today = ymd(new Date());
+  const [lastSent] = await db
+    .select({ createdAt: voiceMemosTable.createdAt })
+    .from(voiceMemosTable)
+    .where(and(eq(voiceMemosTable.senderId, me), eq(voiceMemosTable.recipientId, d.recipientId)))
+    .orderBy(desc(voiceMemosTable.createdAt))
+    .limit(1);
+  if (lastSent && ymd(lastSent.createdAt) === today) {
+    res.status(409).json({ error: "You've already sent them a voice prayer today.", alreadySentToday: true });
+    return;
+  }
+
   const expiresAt = new Date(Date.now() + MEMO_TTL_HOURS * 60 * 60 * 1000);
   await db.insert(voiceMemosTable).values({
     senderId: me,
@@ -164,6 +187,39 @@ router.get("/voice-memos", rateLimit({
     listenedAt: r.listenedAt ? r.listenedAt.toISOString() : null,
     expiresAt: r.expiresAt.toISOString(),
   })) });
+});
+
+// ─── GET /api/voice-memos/sent-today — recipientIds I've sent to today ────────
+// The client uses this to show "Sent" and hide the recorder for fellows I've
+// already sent a voice prayer to today (one per fellow per day). "Today" is MY
+// calendar day (my timezone), matching the send guard above.
+router.get("/voice-memos/sent-today", rateLimit({
+  name: "voice_memo_sent_today",
+  max: 240,
+  windowMs: 60 * 60 * 1000,
+  keyFn: byUser,
+  message: "Slow down a moment.",
+}), async (req, res): Promise<void> => {
+  const me = getUserId(req);
+  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const [senderTzRow] = await db
+    .select({ timezone: usersTable.timezone })
+    .from(usersTable)
+    .where(eq(usersTable.id, me));
+  const senderTz = senderTzRow?.timezone || "UTC";
+  const ymd = (dt: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: senderTz, year: "numeric", month: "2-digit", day: "2-digit" }).format(dt);
+  const today = ymd(new Date());
+  // Look back 48h so any timezone's "today" is fully covered, then keep only
+  // the rows that land on today in the sender's tz.
+  const since = new Date(Date.now() - 48 * 60 * 60 * 1000);
+  const rows = await db
+    .select({ recipientId: voiceMemosTable.recipientId, createdAt: voiceMemosTable.createdAt })
+    .from(voiceMemosTable)
+    .where(and(eq(voiceMemosTable.senderId, me), gt(voiceMemosTable.createdAt, since)));
+  const recipientIds = Array.from(new Set(
+    rows.filter((r) => ymd(r.createdAt) === today).map((r) => r.recipientId),
+  ));
+  res.json({ recipientIds });
 });
 
 // ─── POST /api/voice-memos/:id/listened — mark heard (KEEP until TTL) ─────────
