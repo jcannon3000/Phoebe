@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
+import { DrumPicker } from "@/components/DrumPicker";
 
 // ── Visual language ─────────────────────────────────────────────────
 // A calm DARK-BLUE surface (the app's reflection blue, #608DD1, family) —
@@ -97,17 +98,6 @@ function useKindCopy(): Record<RequestKind, { emoji: string; eyebrow: string; ti
 // On success we return to /prayer-list, where the new card will show up
 // under "Prayer Requests".
 
-// Built per-render inside the component so the labels follow the
-// active locale. Kept as a hook so callers don't need to thread t()
-// into the call site.
-function useDurationOptions(): ReadonlyArray<{ value: 3 | 7; label: string; tagline: string }> {
-  const { t } = useTranslation();
-  return [
-    { value: 3, label: t("prayer_request.duration_3_days"), tagline: t("prayer_request.duration_3_tagline") },
-    { value: 7, label: t("prayer_request.duration_7_days"), tagline: t("prayer_request.duration_7_tagline") },
-  ];
-}
-
 const stepVariants = {
   initial: { opacity: 0, x: 20 },
   animate: { opacity: 1, x: 0 },
@@ -123,7 +113,6 @@ export default function PrayerRequestNew() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const KIND_COPY = useKindCopy();
-  const DURATION_OPTIONS = useDurationOptions();
 
   const kind: RequestKind = useMemo(() => {
     const raw = new URLSearchParams(search).get("kind") ?? "";
@@ -134,7 +123,9 @@ export default function PrayerRequestNew() {
 
   const [step, setStep] = useState<Step>(0);
   const [body, setBody] = useState("");
-  const [days, setDays] = useState<3 | 7>(7);
+  // Default to a single day — most requests are for "today"; the roller lets
+  // them dial it up. (1–14 days via the DrumPicker below.)
+  const [days, setDays] = useState<number>(1);
   const [error, setError] = useState("");
   // Tag picker — userIds of people the requester has named in this
   // prayer. Sent in the POST body; server fans out a push to each
@@ -420,36 +411,16 @@ export default function PrayerRequestNew() {
                 {t("prayer_request.duration_subtitle")}
               </p>
 
-              <div className="space-y-3 mb-8">
-                {DURATION_OPTIONS.map((o) => {
-                  const sel = days === o.value;
-                  return (
-                    <button
-                      key={o.value}
-                      onClick={() => setDays(o.value)}
-                      className="w-full text-left p-4 active:scale-[0.99] transition-all"
-                      style={{
-                        background: sel ? "linear-gradient(180deg, rgba(58,107,176,0.92) 0%, rgba(44,84,145,0.92) 100%)" : GLASS,
-                        border: `1.5px solid ${sel ? "rgba(150,178,224,0.55)" : GLASS_BORDER}`,
-                        borderRadius: 18,
-                        backdropFilter: "blur(8px)",
-                        WebkitBackdropFilter: "blur(8px)",
-                        boxShadow: sel ? "0 8px 26px rgba(20,40,68,0.45)" : "none",
-                      }}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">🙏</span>
-                        <div>
-                          <p className="font-semibold" style={{ color: CREAM, fontFamily: SPACE }}>{o.label}</p>
-                          <p className="text-sm" style={{ color: SAGE }}>{o.tagline}</p>
-                        </div>
-                        {sel && (
-                          <span className="ml-auto text-base font-bold" style={{ color: "#C2CFE2" }}>✓</span>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })}
+              {/* Duration roller — dial how many days to carry it (default 1). */}
+              <div className="mb-8 rounded-2xl" style={{ background: GLASS, border: `1.5px solid ${GLASS_BORDER}` }}>
+                <DrumPicker
+                  value={days}
+                  onChange={setDays}
+                  options={Array.from({ length: 14 }, (_, i) => i + 1).map((d) => ({
+                    value: d,
+                    label: t("prayer_request.n_days", { count: d, defaultValue: d === 1 ? "1 day" : `${d} days` }),
+                  }))}
+                />
               </div>
 
               {error && <p className="text-sm mb-4" style={{ color: "#C47A65" }}>{error}</p>}

@@ -558,7 +558,7 @@ export const en = {
     home: "Home",
     prayer_list: "Prayer list",
     daily_progress: "Daily progress",
-    people: "People",
+    people: "Fellows",
     menu: "Menu",
     way_of_love: "Way of Love",
   },
@@ -4583,7 +4583,7 @@ export const en = {
   // card states still read from English directly. We can extend over time.
   people: {
     eyebrow: "Stay close to your community",
-    title: "People",
+    title: "Fellows",
     search_placeholder: "Search your garden",
     fellows: "Fellows",
     fellows_blurb: "People who joined Phoebe to pray with you, or whose share-link prayers you answered with an Amen.",

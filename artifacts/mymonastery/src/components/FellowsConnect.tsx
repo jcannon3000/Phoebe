@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, Users, Plus, Link2 as LinkIcon, Settings2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -100,6 +100,7 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
     enabled: canManage && q.trim().length >= 2,
   });
 
+  const [, setLocation] = useLocation();
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["/api/fellows"] });
     qc.invalidateQueries({ queryKey: ["/api/fellows/requests"] });
@@ -107,7 +108,8 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
     qc.invalidateQueries({ queryKey: ["/api/fellows/search"] });
   };
   const sendReq = useMutation({ mutationFn: (userId: number) => apiRequest("POST", "/api/fellows/request", { userId }), onSuccess: invalidate });
-  const accept = useMutation({ mutationFn: (id: number) => apiRequest("POST", `/api/fellows/requests/${id}/accept`), onSuccess: invalidate });
+  // Accepting a request takes you to the Fellows (People) page to see them.
+  const accept = useMutation({ mutationFn: (id: number) => apiRequest("POST", `/api/fellows/requests/${id}/accept`), onSuccess: () => { invalidate(); setLocation("/people"); } });
   const decline = useMutation({ mutationFn: (id: number) => apiRequest("POST", `/api/fellows/requests/${id}/decline`), onSuccess: invalidate });
   const remove = useMutation({ mutationFn: (userId: number) => apiRequest("DELETE", `/api/fellows/${userId}`), onSuccess: invalidate });
 

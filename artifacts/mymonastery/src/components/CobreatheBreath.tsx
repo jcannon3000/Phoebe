@@ -95,33 +95,31 @@ const BREATH_Y = "63%";
 // The world turns between these three globes — one held per session, rotating
 // across sessions.
 const GLOBES = ["🌍", "🌎", "🌏"] as const;
-// Outer per-breath ring around the globe: the lighter green fills clockwise on
-// the inhale and HOLDS through the exhale; the darker green sweeps over it on
-// the exhale. Resets each cycle.
+// The breath ring: the lighter green fills clockwise on the inhale and HOLDS
+// through the exhale; the darker green sweeps over it on the exhale.
 const RING_IN = "#86C79B";
 const RING_OUT = "#2E6B40";
-const RING_R = 58;                       // outer ring radius (viewBox 128)
+const RING_R = 58;                       // ring radius
 const RING_CIRC = 2 * Math.PI * RING_R;
-const RING_SW = 14.4;                     // stroke width — thick rings (3× the old 4.8)
-// Blue SESSION ring — the BOTTOM circle, filling once across the whole set of
-// breaths. It's now the SAME size as the breath ring (two equal circles), so it
-// shares RING_CIRC.
+const RING_SW = 7.2;                      // stroke width — half the previous 14.4
+// Blue SESSION ring — the RIGHT circle, filling once across the whole set of
+// breaths. Same size as the breath ring (two equal circles), so it shares RING_CIRC.
 const SESSION_BLUE = "#5B9DEF";
 const SESSION_CIRC = RING_CIRC;
 
-// The breath centre is TWO EQUAL RINGS stacked vertically, overlapping at the
-// golden section: the TOP ring is the in/out breath ring, the BOTTOM ring is the
-// 12-breath session ring. Centres are 0.618·D apart (D = ring diameter), so the
-// total height = 1.618·D — the non-overlapping part of each is 1.618× the
-// overlap. No fill, no glow; the rings show progress by their stroke, as before.
-const RING_PAD = 10;                                 // viewBox padding ≥ half the (now thick) stroke so it never clips
+// The breath centre is TWO EQUAL RINGS side by side, overlapping HORIZONTALLY at
+// the golden section: the LEFT ring is the in/out breath ring, the RIGHT ring is
+// the 12-breath session ring. Centres are 0.618·D apart (D = ring diameter), so
+// the total width = 1.618·D. No fill, no glow, NO round caps (the stroke flows
+// smoothly through the top instead of pausing on a rounded dot).
+const RING_PAD = 8;                                   // viewBox padding ≥ half-stroke
 const RING_D = 2 * RING_R;                            // ring diameter
-const RING_OFF = 0.618 * RING_D;                      // golden vertical offset between centres
-const RING_VBW = RING_D + 2 * RING_PAD;               // viewBox width
-const RING_VBH = RING_D + RING_OFF + 2 * RING_PAD;    // viewBox height
-const RING_CX = RING_R + RING_PAD;                    // shared x-centre
-const RING_TOP_CY = RING_R + RING_PAD;                // top ring centre y
-const RING_BOT_CY = RING_TOP_CY + RING_OFF;           // bottom ring centre y
+const RING_OFF = 0.618 * RING_D;                      // golden horizontal offset between centres
+const RING_VBW = RING_D + RING_OFF + 2 * RING_PAD;    // viewBox width (the wider axis now)
+const RING_VBH = RING_D + 2 * RING_PAD;               // viewBox height
+const RING_CY = RING_R + RING_PAD;                    // shared y-centre
+const RING_LEFT_CX = RING_R + RING_PAD;               // left (breath) ring centre x
+const RING_RIGHT_CX = RING_LEFT_CX + RING_OFF;        // right (session) ring centre x
 
 // The bundled photo library — every image under src/assets/cobreathe is glob-
 // imported here so the breath ALWAYS has pictures, no matter which surface
@@ -856,24 +854,23 @@ export function CobreatheBreath({
             width={Math.round(RING_VBW * 0.74)} height={Math.round(RING_VBH * 0.74)}
             viewBox={`0 0 ${RING_VBW} ${RING_VBH}`}
           >
-            {/* TOP ring — the in / out breath. The base is the FULL dark green at
+            {/* LEFT ring — the in / out breath. The base is the FULL dark green at
                 the SAME opacity as the exhale sweep, so when the sweep resets at
                 the cycle turn the identical dark stays steady underneath (no flash
                 back to a dimmer color); the light green then fills over it on the
-                next inhale. */}
-            <circle cx={RING_CX} cy={RING_TOP_CY} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeOpacity={0.92} />
-            <circle ref={ringInRef} cx={RING_CX} cy={RING_TOP_CY} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.85}
-              transform={`rotate(-90 ${RING_CX} ${RING_TOP_CY})`}
+                next inhale. Butt caps → the stroke flows smoothly through the top. */}
+            <circle cx={RING_LEFT_CX} cy={RING_CY} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeOpacity={0.92} />
+            <circle ref={ringInRef} cx={RING_LEFT_CX} cy={RING_CY} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={RING_SW} strokeOpacity={0.85}
+              transform={`rotate(-90 ${RING_LEFT_CX} ${RING_CY})`}
               style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }} />
-            <circle ref={ringOutRef} cx={RING_CX} cy={RING_TOP_CY} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.92}
-              transform={`rotate(-90 ${RING_CX} ${RING_TOP_CY})`}
+            <circle ref={ringOutRef} cx={RING_LEFT_CX} cy={RING_CY} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeOpacity={0.92}
+              transform={`rotate(-90 ${RING_LEFT_CX} ${RING_CY})`}
               style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset" }} />
-            {/* BOTTOM ring — the 12-breath session. Faint blue track; blue fills
-                once across the whole set. The old inner blue ring, now the lower
-                circle of the golden-ratio pair. */}
-            <circle cx={RING_CX} cy={RING_BOT_CY} r={RING_R} fill="none" stroke="rgba(91,157,239,0.18)" strokeWidth={RING_SW} />
-            <circle ref={sessionRingRef} cx={RING_CX} cy={RING_BOT_CY} r={RING_R} fill="none" stroke={SESSION_BLUE} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.85}
-              transform={`rotate(-90 ${RING_CX} ${RING_BOT_CY})`}
+            {/* RIGHT ring — the 12-breath session. Faint blue track; blue fills
+                once across the whole set. */}
+            <circle cx={RING_RIGHT_CX} cy={RING_CY} r={RING_R} fill="none" stroke="rgba(91,157,239,0.18)" strokeWidth={RING_SW} />
+            <circle ref={sessionRingRef} cx={RING_RIGHT_CX} cy={RING_CY} r={RING_R} fill="none" stroke={SESSION_BLUE} strokeWidth={RING_SW} strokeOpacity={0.85}
+              transform={`rotate(-90 ${RING_RIGHT_CX} ${RING_CY})`}
               style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset" }} />
           </svg>
         </div>
