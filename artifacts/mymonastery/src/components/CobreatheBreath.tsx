@@ -187,8 +187,9 @@ export function CobreatheBreath({
     const id = requestAnimationFrame(() => setEntered(true));
     return () => cancelAnimationFrame(id);
   }, []);
-  // The breath is text + a softly breathing photo field — no centre globe or
-  // progress rings. The phase word ("Breathe In/Out") is the only moving glyph.
+  // The breath is a draggable centre globe (🌍) ringed by CONCENTRIC progress
+  // circles (outer breath ring + inner blue session ring, golden ratio apart)
+  // over a softly breathing photo field — see the SVG in the render below.
   const labelRef = useRef<HTMLDivElement>(null);
   // Globe + the rings around it (driven from the rAF clock below).
   const globeRef = useRef<HTMLDivElement>(null);
@@ -866,8 +867,9 @@ export function CobreatheBreath({
               ring back to the dark base by full exhale. Never recedes. */}
           <circle ref={ringOutRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.92}
             style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 5px rgba(46,107,64,0.85))" }} />
-          {/* inner blue session ring — faint track + slow fill, thickness matched to the outer */}
-          <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(91,157,239,0.16)" strokeWidth={RING_SW} />
+          {/* inner blue session ring — visible track (so the two rings read as
+              concentric even at rest) + slow fill, thickness matched to the outer */}
+          <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(91,157,239,0.34)" strokeWidth={RING_SW} />
           <circle ref={sessionRingRef} cx={64} cy={64} r={SESSION_R} fill="none" stroke={SESSION_BLUE} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.8}
             style={{ strokeDasharray: SESSION_CIRC, strokeDashoffset: SESSION_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 5px rgba(91,157,239,0.85))" }} />
         </svg>

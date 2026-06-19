@@ -40,21 +40,30 @@ const PINNED: HomeModule = "requests";
 // list and the add page.
 const PRAY_ANCHOR: HomeModule = "office";
 
-// The three things the Pray card can be — same mapping the Rule of Life "Pray"
+// The things the Pray card can be — same mapping the Rule of Life "Pray"
 // step uses (WayOfLoveRuleFlow.PRAY_LEVEL):
 //   community → "intercessions" → the home shows "Pray Together"
+//   cobreathe → "reflect-sit"   → contemplation, breathing together (style=cobreathe)
 //   devotion  → "devotion"      → the shorter Daily Devotion
 //   offices   → "office"        → full Morning & Evening Prayer
-type PrayChoice = "community" | "devotion" | "offices";
+type PrayChoice = "community" | "cobreathe" | "devotion" | "offices";
 const PRAY_LEVEL: Record<PrayChoice, OfficeLevel> = {
   community: "intercessions",
+  cobreathe: "reflect-sit",
   devotion: "devotion",
   offices: "office",
 };
+// Cobreathe is contemplation (reflect-sit) with the shared-breath style — the
+// only contemplation prayer offered here (silent contemplation lives in the
+// Rule of Life). Stored in localStorage, same key the Rule of Life flow uses.
+function getContemplationStyle(): "silent" | "cobreathe" {
+  try { return localStorage.getItem("phoebe:contemplation-style") === "cobreathe" ? "cobreathe" : "silent"; } catch { return "silent"; }
+}
 // Pill labels — hardcoded English, matching the other hardcoded module labels
 // (cac/fdd/ssje) so the i18n coverage guard stays green.
 const PRAY_OPTIONS: { id: PrayChoice; pill: string }[] = [
-  { id: "community", pill: "Community Prayers" },
+  { id: "community", pill: "Community" },
+  { id: "cobreathe", pill: "Cobreathe" },
   { id: "devotion", pill: "Devotions" },
   { id: "offices", pill: "Office" },
 ];
@@ -62,6 +71,7 @@ const PRAY_OPTIONS: { id: PrayChoice; pill: string }[] = [
 // renders for that level (community = the "Pray Together 🙏" card).
 const PRAY_CARD: Record<PrayChoice, { emoji: string; label: string; sub: string }> = {
   community: { emoji: "🙏🏽", label: "Pray Together", sub: "Pray with your community" },
+  cobreathe: { emoji: "🌍", label: "Cobreathe", sub: "12 Breathes Together for Climate Justice" },
   devotion: { emoji: "🛐", label: "Daily Devotion", sub: "A short morning & evening devotion" },
   offices: { emoji: "📖", label: "Daily Office", sub: "Morning & Evening Prayer" },
 };
@@ -74,6 +84,10 @@ function derivePrayChoice(defaultPrayerLevel: string | null | undefined): PrayCh
   if (defaultPrayerLevel === "office" || m === "office" || e === "office") return "offices";
   if (defaultPrayerLevel === "devotion" || m === "devotion" || e === "devotion") return "devotion";
   if (defaultPrayerLevel === "intercessions" || m === "intercessions" || e === "intercessions") return "community";
+  // reflect-sit IS contemplation; here that only ever means Cobreathe (gated on
+  // the shared-breath style). Plain silent contemplation isn't a choice here.
+  const isReflect = defaultPrayerLevel === "reflect-sit" || m === "reflect-sit" || e === "reflect-sit";
+  if (isReflect && getContemplationStyle() === "cobreathe") return "cobreathe";
   return "devotion";
 }
 
@@ -246,6 +260,9 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
     // Per-side local levels + the server default together drive the home card.
     setSideLevel("morning", level);
     setSideLevel("evening", level);
+    // Cobreathe is contemplation with the shared-breath style — mark it so the
+    // home/contemplation card opens straight into the breath.
+    if (choice === "cobreathe") { try { localStorage.setItem("phoebe:contemplation-style", "cobreathe"); } catch { /* ignore */ } }
     savePray.mutate(level);
   };
 

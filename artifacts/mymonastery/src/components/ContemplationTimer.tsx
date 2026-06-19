@@ -1400,18 +1400,18 @@ export function ContemplationTimer({
               className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.98]"
               style={{
                 padding: "13px 44px",
-                // Once the bell has rung, "Done" is the primary action — a solid,
-                // opaque blue so it reads clearly. Before then, "End" stays a
+                // Once the bell has rung, "Done" is the primary action — solid
+                // black at 80% so it reads clearly. Before then, "End" stays a
                 // quiet affordance that shouldn't pull the eye out of the silence.
-                background: reachedGoal ? "rgba(96,141,209,0.92)" : "rgba(46,107,64,0.18)",
-                border: `1px solid ${reachedGoal ? "rgba(140,178,232,0.7)" : "rgba(46,107,64,0.5)"}`,
+                background: reachedGoal ? "rgba(0,0,0,0.8)" : "rgba(46,107,64,0.18)",
+                border: `1px solid ${reachedGoal ? "rgba(255,255,255,0.22)" : "rgba(46,107,64,0.5)"}`,
                 color: reachedGoal ? "#FFFFFF" : WARM,
                 fontFamily: SPACE_GROTESK,
                 fontSize: 15,
                 fontWeight: 600,
                 letterSpacing: "0.02em",
                 cursor: "pointer",
-                boxShadow: reachedGoal ? "0 6px 20px rgba(96,141,209,0.35)" : "none",
+                boxShadow: reachedGoal ? "0 6px 20px rgba(0,0,0,0.35)" : "none",
               }}
             >
               {reachedGoal ? t("common.done") : t("contemplation_timer.end")}
