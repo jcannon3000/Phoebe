@@ -38,7 +38,9 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 // ground; saturation eases DOWN toward purple, so the violet end reads as a
 // whisper rather than a pop (saturated purple/teal is what made the cards shout).
 // Returns an "r,g,b" string (the format the cards' rgba() helpers expect).
-function rhythmGradientRgb(i: number, n: number): string {
+// Exported so other home surfaces (e.g. the Prayer List carousel) can shade
+// their cards along the SAME green→violet ramp and read as one family.
+export function rhythmGradientRgb(i: number, n: number): string {
   const t = n <= 1 ? 0 : i / (n - 1);
   const hue = 145 + (285 - 145) * t;   // 145° green → 285° violet (through teal/blue)
   const sat = 0.40 - 0.08 * t;          // ease chroma down toward purple (0.40 → 0.32)

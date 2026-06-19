@@ -11,7 +11,7 @@ import { ScrollStrip } from "@/components/ScrollStrip";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
-import { DailyProgressBody } from "@/components/DailyProgressBody";
+import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
 import { useDailySteps } from "@/lib/appleHealth";
 import { amenWithLocation } from "@/lib/prayLocation";
@@ -4212,7 +4212,11 @@ function PrayerListCarousel({
               : undefined
           }
         >
-          {requests.map((req) => {
+          {requests.map((req, i) => {
+            // Shade each card along the SAME green→violet ramp the practice
+            // cards use (rhythmGradientRgb), by its position in the list, so the
+            // Prayer List reads as one family with the daily rhythm cards.
+            const rgb = rhythmGradientRgb(i, requests.length);
             const displayName = req.isAnonymous
               ? t("prayer_list_carousel.anonymous")
               : (req.isOwnRequest ? (viewerName ?? t("gratitude.you")) : (req.ownerName ?? t("find_friends.someone")));
@@ -4236,12 +4240,12 @@ function PrayerListCarousel({
                   // requests waiting" card. Prayed ones rest calm.
                   className={`relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99] ${amened ? "" : "animate-turn-pulse-practices"}`}
                   style={{
-                    background: "rgba(46,107,64,0.15)",
-                    border: amened ? "1px solid rgba(46,107,64,0.28)" : "1px solid rgba(140,195,160,0.5)",
+                    background: `linear-gradient(180deg, rgba(${rgb},0.08) 0%, rgba(${rgb},0.17) 100%)`,
+                    border: amened ? `1px solid rgba(${rgb},0.34)` : "1px solid rgba(140,195,160,0.5)",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
                   }}
                 >
-                  <div className={`w-1 flex-shrink-0 ${amened ? "" : "animate-bar-pulse-practices"}`} style={amened ? { background: "#8FAF96" } : undefined} />
+                  <div className={`w-1 flex-shrink-0 ${amened ? "" : "animate-bar-pulse-practices"}`} style={amened ? { background: `rgba(${rgb},0.72)` } : undefined} />
                   <div className="flex-1 px-4 pt-3 pb-3">
                     <div className="flex items-center gap-3">
                       {displayAvatar ? (
