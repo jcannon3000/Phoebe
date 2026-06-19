@@ -70,3 +70,43 @@ export function getBreathBucket(opts: { force?: boolean } = {}): Promise<string 
     } catch { resolve(null); }
   });
 }
+
+// PRECISE coords for the "breathing together" map — UNLIKE getBreathBucket, this
+// returns raw lat/lng. Only call it when the user has explicitly opted into an
+// in-person session (precise location is the whole point of the map). The server
+// relays these ONLY to the breather's mutual Fellows.
+export function getBreathCoords(opts: { force?: boolean } = {}): Promise<{ lat: number; lng: number } | null> {
+  const { force = false } = opts;
+  if (isNativeShell()) {
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = (val: { lat: number; lng: number } | null) => {
+        if (done) return; done = true;
+        window.removeEventListener("phoebe:location", onLoc as EventListener);
+        window.removeEventListener("phoebe:location-error", onErr);
+        clearTimeout(timer);
+        resolve(val);
+      };
+      const onLoc = (e: Event) => {
+        const d = (e as CustomEvent).detail as { lat?: number; lng?: number } | undefined;
+        if (d && typeof d.lat === "number" && typeof d.lng === "number") finish({ lat: d.lat, lng: d.lng });
+        else finish(null);
+      };
+      const onErr = () => finish(null);
+      window.addEventListener("phoebe:location", onLoc as EventListener);
+      window.addEventListener("phoebe:location-error", onErr);
+      const timer = setTimeout(() => finish(null), 10_000);
+      window.dispatchEvent(new CustomEvent("phoebe:request-location", { detail: { force } }));
+    });
+  }
+  return new Promise((resolve) => {
+    try {
+      if (!navigator.geolocation) { resolve(null); return; }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        () => resolve(null),
+        { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+      );
+    } catch { resolve(null); }
+  });
+}

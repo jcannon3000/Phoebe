@@ -214,11 +214,13 @@ export default function CobreathePage() {
   const breathSync = useCobreatheSync(user, gardenUserIds, {
     fingerprint: COBREATHE_FINGERPRINT,
     active: mode === "breathing",
-    // Opting into an in-person session shares a coarse location for this sit and
-    // turns presence on for it (overriding the global setting), so "same air"
-    // works even if the persistent toggle is off.
+    // Opting into an in-person session shares location for this sit and turns
+    // presence on for it (overriding the global setting), so "same air" works
+    // even if the persistent toggle is off. `shareCoords` (in-person only) shares
+    // PRECISE coords for the map; the plain coarse toggle stays geohash-only.
     shareLocation: shareBreathLocation || joinInPerson,
     presence: joinInPerson,
+    shareCoords: joinInPerson,
   });
 
   // "Same air" peak for the after-glow: nearby state clears the moment breathing
@@ -398,10 +400,10 @@ export default function CobreathePage() {
             <span style={{ fontSize: 22, lineHeight: 1.1 }} aria-hidden>📍</span>
             <span className="flex-1 min-w-0">
               <span className="block text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                {t("cobreathe.in_person_title", { defaultValue: "Join an in-person session" })}
+                {t("cobreathe.in_person_title", { defaultValue: "Breathe with a fellow" })}
               </span>
               <span className="block text-[12.5px] mt-0.5 leading-snug" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                {t("cobreathe.in_person_sub", { defaultValue: "Share your rough location to see who's breathing near you right now. Never stored — just for this sit." })}
+                {t("cobreathe.in_person_sub", { defaultValue: "Share your location to breathe one-to-one with your fellows — together in person, or joined across the miles on a map. Just for this sit." })}
               </span>
             </span>
             <span className="shrink-0 mt-0.5 relative" style={{ width: 44, height: 26, borderRadius: 999, background: joinInPerson ? "rgba(46,107,64,0.9)" : "rgba(143,175,150,0.25)", border: `1px solid ${joinInPerson ? "rgba(110,180,130,0.7)" : "rgba(143,175,150,0.35)"}`, transition: "background 0.16s" }}>
@@ -440,6 +442,8 @@ export default function CobreathePage() {
         onSession={(info) => breathSync.announceSession(info.startEpochMs, info.masterSeed)}
         nearbyCount={breathSync.nearbyCount}
         nearbyFellows={breathSync.nearbyFellows}
+        mapFellows={breathSync.mapFellows}
+        myLoc={breathSync.myLoc}
       />
     );
   }

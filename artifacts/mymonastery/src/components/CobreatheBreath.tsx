@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { playBreathTone, primeAudio } from "@/lib/amenFeedback";
 import { buildCanonical, photoForGlobalIndex, randomSeed, type Canonical } from "@/lib/cobreatheOrder";
 import { syncedNow, ensureClockSynced } from "@/lib/serverClock";
+import { CobreatheMap } from "@/components/CobreatheMap";
 
 // ── CobreatheBreath ─────────────────────────────────────────────────────────
 //
@@ -140,6 +141,8 @@ export function CobreatheBreath({
   onSession,
   nearbyCount = 0,
   nearbyFellows = [],
+  mapFellows = [],
+  myLoc = null,
 }: {
   // Fired ONCE, when the target number of breaths has been kept. The breath
   // does NOT stop here — people can keep breathing as long as they like.
@@ -182,6 +185,10 @@ export function CobreatheBreath({
   // quietly mid-breath; 0 → nothing shown (falls back to the global count).
   nearbyCount?: number;
   nearbyFellows?: Array<{ userId: number; name: string; avatarUrl: string | null; band: string }>;
+  // "Breathing together" map (in-person opt-in) — Fellows breathing now who
+  // shared precise coords, plus my own anchor. Drives the across-distance map.
+  mapFellows?: Array<{ userId: number; name: string; avatarUrl: string | null; lat: number; lng: number }>;
+  myLoc?: { lat: number; lng: number } | null;
 }) {
   const { t } = useTranslation();
   // Entrance fade-up: false on mount, flipped on the next frame so the root
@@ -901,10 +908,29 @@ export function CobreatheBreath({
         </div>
       </div>
 
+      {/* "Breathing together" map — when you opted into an in-person session and
+          Fellows are breathing with you (precise coords), show where they are with
+          a line from you to each. Fades in mid-breath like the "same air" line and
+          takes its place when present. */}
+      {counting && breathNum >= 3 && myLoc && mapFellows.length > 0 && (
+        <div
+          className="w-full flex flex-col items-center"
+          style={{ paddingLeft: 28, paddingRight: 28, marginBottom: 10, opacity: phase === "in" ? 0.96 : 0.62, transition: "opacity 2.4s ease-in-out" }}
+        >
+          <p style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic", fontSize: 14.5, textAlign: "center", marginBottom: 8, textShadow: "0 2px 18px rgba(8,30,18,0.6)" }}>
+            {mapFellows.length === 1 ? "breathing together, miles apart" : "breathing together, across the miles"}
+          </p>
+          <div style={{ width: "100%", maxWidth: 264 }}>
+            <CobreatheMap me={myLoc} fellows={mapFellows} />
+          </div>
+        </div>
+      )}
+
       {/* "Same air" — a quiet realization that arrives mid-breath (breath ≥ 3),
           fading IN with the inhale so the count feels inhaled, not displayed.
-          Strangers stay an anonymous count; Fellows get a first name. */}
-      {counting && breathNum >= 3 && nearbyCount > 0 && (
+          Strangers stay an anonymous count; Fellows get a first name. Hidden when
+          the map (above) is showing. */}
+      {counting && breathNum >= 3 && nearbyCount > 0 && !(myLoc && mapFellows.length > 0) && (
         <div
           className="w-full flex flex-col items-center"
           style={{

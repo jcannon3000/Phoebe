@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AuthUser } from "./useAuth";
 import { sendMessage, subscribe } from "./useGardenSocket";
-import { getBreathBucket } from "@/lib/breathGeohash";
+import { getBreathBucket, getBreathCoords, encodeGeohash } from "@/lib/breathGeohash";
 
 // ── Cobreathe photo sync ─────────────────────────────────────────────────────
 //
@@ -37,6 +37,10 @@ interface CobreatheSessionMsg {
   // Coarse "same air" bucket — only set on OUR outgoing payload when opted in;
   // the server keeps it in-memory and strips it from every broadcast.
   geohash?: string;
+  // PRECISE coords — only set when opted into an in-person session (the map).
+  // The server relays them ONLY to our mutual Fellows, never the general sync.
+  lat?: number;
+  lng?: number;
 }
 
 // A Fellow breathing in the same coarse cell right now (server-derived; we never
@@ -48,12 +52,23 @@ export interface NearFellow {
   band: string; // "near" | "blocks" | "town"
 }
 
+// A Fellow on the breathing-together MAP — precise coords, surfaced only when
+// both you and they opted into an in-person session (server relays to mutual
+// Fellows). Drives the points + connecting lines on the map.
+export interface MapFellow {
+  userId: number;
+  name: string;
+  avatarUrl: string | null;
+  lat: number;
+  lng: number;
+}
+
 export function useCobreatheSync(
   user: AuthUser | null,
   gardenUserIds: Set<number>,
-  opts: { fingerprint: string; active: boolean; shareLocation?: boolean; presence?: boolean },
+  opts: { fingerprint: string; active: boolean; shareLocation?: boolean; presence?: boolean; shareCoords?: boolean },
 ) {
-  const { fingerprint, active, shareLocation = false, presence = false } = opts;
+  const { fingerprint, active, shareLocation = false, presence = false, shareCoords = false } = opts;
   // Sync reveals "I'm breathing right now" to garden-mates — the same class of
   // signal as presence, so we gate the whole feature on showPresence. A per-sit
   // `presence` override lets someone opt into an in-person session for THIS sit
@@ -69,6 +84,9 @@ export function useCobreatheSync(
   // "Same air" — others breathing in our coarse cell right now (server-derived).
   const [nearbyCount, setNearbyCount] = useState(0);
   const [nearbyFellows, setNearbyFellows] = useState<NearFellow[]>([]);
+  // Map points (precise) + my own anchor — only populated for an in-person session.
+  const [mapFellows, setMapFellows] = useState<MapFellow[]>([]);
+  const [myLoc, setMyLoc] = useState<{ lat: number; lng: number } | null>(null);
   // Our coarse bucket once resolved (in-memory, never persisted on the client).
   const bucketRef = useRef<string | null>(null);
 
@@ -128,6 +146,8 @@ export function useCobreatheSync(
       if (msg.type === "cobreathe-near") {
         setNearbyCount(typeof msg.nearCount === "number" ? msg.nearCount : 0);
         setNearbyFellows(Array.isArray(msg.nearFellows) ? (msg.nearFellows as NearFellow[]) : []);
+        setMapFellows(Array.isArray(msg.mapFellows) ? (msg.mapFellows as MapFellow[]) : []);
+        setMyLoc(msg.myLoc && typeof msg.myLoc === "object" ? (msg.myLoc as { lat: number; lng: number }) : null);
         return;
       }
       if (msg.type !== "cobreathe-sync") return;
@@ -169,30 +189,39 @@ export function useCobreatheSync(
       bucketRef.current = null;
       setNearbyCount(0);
       setNearbyFellows([]);
-      // Scrub any bucket already attached to the live/last session so a reconnect
+      setMapFellows([]);
+      setMyLoc(null);
+      // Scrub any location already attached to the live/last session so a reconnect
       // self-heal (which re-sends leadingRef.current verbatim) can never re-leak a
       // stale location after the user opts out or revokes the OS grant. If we're
-      // still breathing, re-announce WITHOUT the geohash so the server drops it.
+      // still breathing, re-announce WITHOUT it so the server drops it.
       const mine = leadingRef.current;
-      if (mine && mine.geohash) {
-        delete mine.geohash;
+      if (mine && (mine.geohash || mine.lat != null)) {
+        delete mine.geohash; delete mine.lat; delete mine.lng;
         if (enabled) sendMessage({ type: "cobreathe-start", payload: mine });
       }
       return;
     }
     let cancelled = false;
-    getBreathBucket({ force: false }).then((bucket) => {
-      if (cancelled || !bucket) return;
-      bucketRef.current = bucket;
-      // If we're already advertising a session, re-send it with the bucket.
+    // Attach the resolved location to our live session + re-announce. An in-person
+    // session (shareCoords) attaches PRECISE lat/lng for the map and derives the
+    // coarse bucket from them; the plain coarse opt-in attaches only the bucket.
+    const attach = (geohash: string | null, coords: { lat: number; lng: number } | null) => {
+      if (cancelled) return;
+      bucketRef.current = geohash;
       const mine = leadingRef.current;
-      if (mine) {
-        mine.geohash = bucket;
-        sendMessage({ type: "cobreathe-start", payload: mine });
-      }
-    }).catch(() => undefined);
+      if (!mine) return;
+      if (geohash) mine.geohash = geohash;
+      if (coords && shareCoords) { mine.lat = coords.lat; mine.lng = coords.lng; }
+      if (mine.geohash || mine.lat != null) sendMessage({ type: "cobreathe-start", payload: mine });
+    };
+    if (shareCoords) {
+      getBreathCoords({ force: false }).then((c) => { if (c) attach(encodeGeohash(c.lat, c.lng, 5), c); }).catch(() => undefined);
+    } else {
+      getBreathBucket({ force: false }).then((b) => { if (b) attach(b, null); }).catch(() => undefined);
+    }
     return () => { cancelled = true; };
-  }, [enabled, shareLocation]);
+  }, [enabled, shareLocation, shareCoords]);
 
   // Called by CobreatheBreath's onSession at count-begin with the plan we're
   // running — our own when leading/solo, or the leader's when following. Either
@@ -222,5 +251,5 @@ export function useCobreatheSync(
     }
   }, []);
 
-  return { leader, announceSession, stop, nearbyCount, nearbyFellows, coBreatherIds };
+  return { leader, announceSession, stop, nearbyCount, nearbyFellows, mapFellows, myLoc, coBreatherIds };
 }
