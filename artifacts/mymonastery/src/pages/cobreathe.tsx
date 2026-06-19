@@ -166,6 +166,23 @@ export default function CobreathePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Apple Music over the breath (native plugin CobreatheMusic; no-ops on web and
+  // until a real catalog playlist + an Apple Music subscription exist). Opt-in.
+  // Start when the breath is active AND the user enabled it; stop on exit/unmount.
+  const [musicOn, setMusicOn] = useState<boolean>(() => {
+    try { return localStorage.getItem("phoebe:cobreathe-music") === "1"; } catch { return false; }
+  });
+  const toggleMusic = () => setMusicOn((on) => {
+    const next = !on;
+    try { localStorage.setItem("phoebe:cobreathe-music", next ? "1" : "0"); } catch { /* ignore */ }
+    return next;
+  });
+  useEffect(() => {
+    const ev = (mode === "breathing" && musicOn) ? "phoebe:cobreathe-music-start" : "phoebe:cobreathe-music-stop";
+    window.dispatchEvent(new CustomEvent(ev));
+  }, [mode, musicOn]);
+  useEffect(() => () => { window.dispatchEvent(new CustomEvent("phoebe:cobreathe-music-stop")); }, []);
+
   // Garden-mate photo sync: while breathing, follow the earliest online garden-
   // mate's photo order (or lead if first). Gated on showPresence inside the hook.
   const { user } = useAuth();
@@ -487,6 +504,22 @@ export default function CobreathePage() {
                 ? t("cobreathe.begin_again", { defaultValue: "Breathe again" })
                 : t("cobreathe.begin", { defaultValue: "Cobreathe — twelve breaths" })}
             </button>
+
+            {/* Apple Music over the breath — opt-in, iOS only (native plugin). */}
+            {((window as unknown as { Capacitor?: { getPlatform?: () => string } }).Capacitor?.getPlatform?.() === "ios") && (
+              <button type="button" onClick={toggleMusic} aria-pressed={musicOn}
+                className="mt-3 mx-auto flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold active:scale-[0.97]"
+                style={{
+                  background: musicOn ? "rgba(46,107,64,0.85)" : "rgba(46,107,64,0.10)",
+                  color: musicOn ? WARM : "rgba(143,175,150,0.9)",
+                  border: `1px solid ${musicOn ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.3)"}`,
+                  fontFamily: SPACE_GROTESK,
+                }}>
+                ♪ {musicOn
+                  ? t("cobreathe.music_on", { defaultValue: "Music on" })
+                  : t("cobreathe.music_off", { defaultValue: "Play music while you breathe" })}
+              </button>
+            )}
 
             <p className="text-[12px] mt-3 text-center px-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SERIF, fontStyle: "italic" }}>
               {t("cobreathe.caption", { defaultValue: "About two and a half minutes — it counts toward your contemplation goal. Sit comfortably; let the circle pace you." })}
