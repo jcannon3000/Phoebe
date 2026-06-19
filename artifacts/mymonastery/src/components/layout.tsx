@@ -753,7 +753,8 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 // Prayer list now lives in the side Menu drawer.
 function DailyProgressPill() {
   const { t } = useTranslation();
-  const { morningDone, silenceDone, eveningDone, morningActive, silenceActive, eveningActive, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, customAnchors } = useRhythmState();
+  const { rawIsBeta } = useBetaStatus();
+  const { ready, morningDone, silenceDone, eveningDone, morningActive, silenceActive, eveningActive, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, stepsActive, stepsDone, customAnchors } = useRhythmState();
   // The core anchors the user keeps (morning/reflection/contemplation/evening —
   // each dropped when its pref is off), plus a dot for each optional practice
   // they added (gratitude, examen, the daily-steps goal) and each user-defined
@@ -777,6 +778,21 @@ function DailyProgressPill() {
     ...(eveningActive ? [{ key: "evening", done: eveningDone }] : []),
     ...cDots("evening"),
   ];
+  // Once you've kept THREE of today's dots, ping your fellows (once/day) so they
+  // can send a 🙌 and take it as a nudge for their own rhythm. Guarded per
+  // day/device; the server dedupes + fans out to your fellows.
+  const doneCount = dotDefs.filter((d) => d.done).length;
+  useEffect(() => {
+    if (!rawIsBeta || !ready || doneCount < 3) return;
+    let key: string;
+    try {
+      key = `phoebe:reached-three:${new Date().toLocaleDateString("en-CA")}`;
+      if (localStorage.getItem(key) === "1") return;
+      localStorage.setItem(key, "1");
+    } catch { return; }
+    apiRequest("POST", "/api/walk/reached-three").catch(() => { /* best-effort */ });
+  }, [rawIsBeta, ready, doneCount]);
+
   // Every practice for the day kept → ALL dots gently pulse colour (a staggered
   // "you held the whole day" wave).
   const allDone = dotDefs.length > 0 && dotDefs.every((d) => d.done);

@@ -311,6 +311,33 @@ router.post("/walk/:id/stop", requireBeta, async (req, res): Promise<void> => {
   res.json({ ok: true, status: "ended" });
 });
 
+// ─── POST /api/walk/reached-three ────────────────────────────────────────────
+// When you've kept at least THREE of today's practices, give your fellows a
+// gentle ping — so they can send a 🙌 (the encourage button unlocks at three)
+// and take it as a nudge toward their own rhythm. Once per person per day; the
+// client fires it as you cross the third dot. Deduped in-memory per process
+// (the client also guards once/day/device, so duplicates are rare).
+const reachedThreePinged = new Map<number, string>(); // userId → ymd already pinged
+router.post("/walk/reached-three", perUserRateLimit("walk_reached_three", { max: 10, windowMs: 60 * 60 * 1000 }), requireBeta, async (req, res): Promise<void> => {
+  const me = getUserId(req)!;
+  const [u] = await db.select({ tz: usersTable.timezone, name: usersTable.name }).from(usersTable).where(eq(usersTable.id, me));
+  const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: u?.tz || "UTC" }).format(new Date());
+  if (reachedThreePinged.get(me) === ymd) { res.json({ ok: true, alreadySent: true }); return; }
+  reachedThreePinged.set(me, ymd);
+  const first = (u?.name || "Someone").split(/\s+/)[0];
+  // The viewer's fellows — each an active walking companion.
+  const fellowRows = await db.select({ fid: fellowsTable.fellowUserId }).from(fellowsTable).where(eq(fellowsTable.userId, me));
+  const fellowIds = [...new Set(fellowRows.map((r) => r.fid).filter((id) => id !== me))];
+  void Promise.all(fellowIds.map((fid) =>
+    sendPushToUser(fid, {
+      title: `${first} has kept 3 today 🌿`,
+      body: `Send ${first} a 🙌 — and a few minutes for your own rhythm.`,
+      path: "/people", threadId: "walk-reached-three", data: { type: "walk-reached-three" },
+    }).catch(() => undefined),
+  ));
+  res.json({ ok: true });
+});
+
 // ─── POST /api/walk/:id/nudge { kind } — one-tap encouragement ───────────────
 const NUDGE_COPY: Record<string, string> = {
   praying: "is praying for you",
