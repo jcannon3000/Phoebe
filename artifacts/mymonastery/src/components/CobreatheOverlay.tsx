@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { CobreatheBreath, DEFAULT_TOTAL_BREATHS } from "@/components/CobreatheBreath";
+import { CobreatheBreath, DEFAULT_TOTAL_BREATHS, CYCLE_MS } from "@/components/CobreatheBreath";
 import { CobreatheSummary } from "@/components/CobreatheSummary";
 import { addBreathsThisWeek } from "@/lib/cobreatheTally";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
@@ -57,6 +57,11 @@ export function CobreatheOverlay({
   const [breathVisible, setBreathVisible] = useState(true);
   // This week's running breath tally (per-device), shown on the summary.
   const [weekBreaths, setWeekBreaths] = useState(0);
+  // Actual breaths taken this sit (open-ended — can exceed 12). Drives the
+  // summary headline + the week tally, so the slideshow close matches the
+  // /cobreathe page close (both show the REAL count, not a hardcoded 12).
+  const [breathsTaken, setBreathsTaken] = useState(DEFAULT_TOTAL_BREATHS);
+  const breathsTakenRef = useRef(DEFAULT_TOTAL_BREATHS);
   const talliedRef = useRef(false);
   // Hold the screen on through the breath (no touch input to keep it awake).
   useKeepAwake(open && phase === "breathing");
@@ -68,8 +73,9 @@ export function CobreatheOverlay({
   useEffect(() => {
     if (phase !== "done") return;
     onSummaryRef.current?.();
-    // Add this completed set to the week's breath tally, once.
-    if (!talliedRef.current) { talliedRef.current = true; setWeekBreaths(addBreathsThisWeek(DEFAULT_TOTAL_BREATHS)); }
+    // Add this completed set to the week's breath tally, once — using the REAL
+    // breaths taken (not a hardcoded 12), so the tally matches the page.
+    if (!talliedRef.current) { talliedRef.current = true; setWeekBreaths(addBreathsThisWeek(breathsTakenRef.current)); }
   }, [phase]);
 
   // The overlay stays mounted (prayer-mode toggles `open`), so reset to a fresh
@@ -77,7 +83,7 @@ export function CobreatheOverlay({
   // lands straight on the stale "you cobreathed with N" done screen.
   const sitLoggedRef = useRef(false);
   useEffect(() => {
-    if (open) { setPhase("breathing"); setResp(null); sitLoggedRef.current = false; setClosing(false); talliedRef.current = false; setBreathVisible(true); }
+    if (open) { setPhase("breathing"); setResp(null); sitLoggedRef.current = false; setClosing(false); talliedRef.current = false; setBreathVisible(true); setBreathsTaken(DEFAULT_TOTAL_BREATHS); breathsTakenRef.current = DEFAULT_TOTAL_BREATHS; }
   }, [open]);
 
   // Log the breathed time as a contemplation sit — exactly once per open — so a
@@ -138,6 +144,11 @@ export function CobreatheOverlay({
     // even an early exit, which previously returned here recording nothing.
     logSit(secondsKept);
     if (!reached) { onClose(); return; }
+    // The actual breaths taken (one per CYCLE_MS), floored at the 12 target —
+    // same derivation the /cobreathe page uses, so both closes show the real count.
+    const taken = Math.max(DEFAULT_TOTAL_BREATHS, Math.round(secondsKept / (CYCLE_MS / 1000)));
+    breathsTakenRef.current = taken;
+    setBreathsTaken(taken);
     setPhase("done");
     // Completing the set records today's communal breath.
     void apiRequest<BreathResp>("POST", "/api/breath/today", { day: d, seconds: secondsKept })
@@ -170,6 +181,7 @@ export function CobreatheOverlay({
       )}
       {phase === "done" && (
         <CobreatheSummary
+          breathsTaken={breathsTaken}
           weekBreaths={weekBreaths}
           others={others}
           continueDisabled={closing}

@@ -392,83 +392,81 @@ export default function CobreathePage() {
   if (mode === "options") {
     return (
       <Layout>
-        <div className="flex flex-col w-full max-w-md mx-auto px-5 pt-6 pb-28">
-          <button
-            type="button"
-            onClick={() => { if (cameFromContemplation()) setLocation("/contemplation"); else setMode("intro"); }}
-            className="self-start text-[13px] mb-6 transition-opacity hover:opacity-80"
-            style={{ color: SAGE, fontFamily: SPACE_GROTESK, background: "transparent", cursor: "pointer" }}
-          >
-            ← {t("common.back", { defaultValue: "Back" })}
-          </button>
+        {/* A calm begin slide — like the start of a contemplation sit: a soft
+            light-green gradient field, the content resting in the centre. No
+            globe emoji here (the globe lives in the breath itself). */}
+        <div
+          className="flex flex-col w-full"
+          style={{
+            minHeight: "calc(100dvh - var(--safe-top) - 56px)",
+            background: "radial-gradient(130% 80% at 50% 14%, rgba(70,140,96,0.34) 0%, rgba(34,82,56,0.20) 40%, rgba(12,36,23,0.04) 66%, rgba(10,24,16,0) 80%)",
+          }}
+        >
+          <div className="flex flex-col flex-1 w-full max-w-md mx-auto px-6 pt-5 pb-10">
+            <button
+              type="button"
+              onClick={() => { if (cameFromContemplation()) setLocation("/contemplation"); else setMode("intro"); }}
+              className="self-start text-[13px] transition-opacity hover:opacity-80"
+              style={{ color: SAGE, fontFamily: SPACE_GROTESK, background: "transparent", cursor: "pointer" }}
+            >
+              ← {t("common.back", { defaultValue: "Back" })}
+            </button>
 
-          {/* The original Cobreathe globe — concentric rings in golden ratio
-              (each radius = the next / 1.618) around the earth, the practice's
-              signature visual. */}
-          <div className="flex justify-center mb-4" aria-hidden>
-            {(() => {
-              const R = 52, PHI = 1.618, S = R * 2 + 10, c = S / 2;
-              const rings = [R, R / PHI, R / (PHI * PHI)];
-              return (
-                <svg width={S} height={S} viewBox={`0 0 ${S} ${S}`}>
-                  {rings.map((r, i) => (
-                    <circle key={i} cx={c} cy={c} r={r} fill="none" stroke={`rgba(110,180,130,${0.22 + i * 0.2})`} strokeWidth={1.5} />
-                  ))}
-                  <text x={c} y={c} textAnchor="middle" dominantBaseline="central" fontSize={26}>🌍</text>
-                </svg>
-              );
-            })()}
+            {/* Title + the one choice, resting in the centre of the field. */}
+            <div className="flex-1 flex flex-col justify-center">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-center" style={{ color: "rgba(180,210,188,0.75)", fontFamily: SPACE_GROTESK }}>
+                {t("cobreathe.title", { defaultValue: "Cobreathe" })}
+              </p>
+              <h1 className="text-[30px] font-bold mt-2.5 mb-2 text-center leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+                {t("cobreathe.options_title", { defaultValue: "Twelve breaths, together" })}
+              </h1>
+              <p className="text-[14.5px] mb-8 text-center leading-relaxed mx-auto" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic", maxWidth: 300 }}>
+                {t("cobreathe.options_sub", { defaultValue: "A shared breath for climate justice. Choose how you'll breathe, then begin." })}
+              </p>
+
+              {/* In-person session opt-in — share a coarse location for this sit. */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={joinInPerson}
+                onClick={() => {
+                  const next = !joinInPerson;
+                  setJoinInPerson(next);
+                  // Warm the location grant NOW (on the slide) rather than mid-breath.
+                  if (next) getBreathBucket({ force: false }).catch(() => undefined);
+                }}
+                className="w-full rounded-2xl p-4 flex items-start gap-3 text-left transition-colors active:scale-[0.99]"
+                style={{
+                  background: joinInPerson ? "rgba(46,107,64,0.30)" : "rgba(20,46,30,0.45)",
+                  border: `1px solid ${joinInPerson ? "rgba(110,180,130,0.65)" : "rgba(110,160,128,0.28)"}`,
+                  backdropFilter: "blur(2px)",
+                }}
+              >
+                <span style={{ fontSize: 22, lineHeight: 1.1 }} aria-hidden>📍</span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+                    {t("cobreathe.in_person_title", { defaultValue: "Breathe with a fellow" })}
+                  </span>
+                  <span className="block text-[12.5px] mt-0.5 leading-snug" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                    {t("cobreathe.in_person_sub", { defaultValue: "Share your location to breathe one-to-one with your fellows — together in person, or joined across the miles on a map. Just for this sit." })}
+                  </span>
+                </span>
+                <span className="shrink-0 mt-0.5 relative" style={{ width: 44, height: 26, borderRadius: 999, background: joinInPerson ? "rgba(46,107,64,0.9)" : "rgba(143,175,150,0.25)", border: `1px solid ${joinInPerson ? "rgba(110,180,130,0.7)" : "rgba(143,175,150,0.35)"}`, transition: "background 0.16s" }}>
+                  <span style={{ position: "absolute", top: 2, left: joinInPerson ? 20 : 2, width: 20, height: 20, borderRadius: 999, background: "#F0EDE6", transition: "left 0.16s ease" }} />
+                </span>
+              </button>
+            </div>
+
+            {/* Start the breath — anchored at the foot of the field. */}
+            <button
+              type="button"
+              onClick={() => { setPeakNear({ count: 0, fellows: [] }); setCoBreathed(new Map()); setMode("breathing"); }}
+              className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+              style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(140,195,160,0.6)", fontFamily: SPACE_GROTESK, fontSize: 16.5, fontWeight: 700, cursor: "pointer", boxShadow: "0 6px 22px rgba(8,30,18,0.45)" }}
+            >
+              {t("cobreathe.start", { defaultValue: "Start" })}
+            </button>
           </div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-center" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>
-            {t("cobreathe.title", { defaultValue: "Cobreathe" })}
-          </p>
-          <h1 className="text-[26px] font-bold mt-2 mb-1.5 text-center" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-            {t("cobreathe.options_title", { defaultValue: "Twelve breaths, together" })}
-          </h1>
-          <p className="text-[14px] mb-6 text-center" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-            {t("cobreathe.options_sub", { defaultValue: "Choose how you'll breathe, then begin." })}
-          </p>
-
-          {/* In-person session opt-in — share a coarse location for this sit. */}
-          <button
-            type="button"
-            role="switch"
-            aria-checked={joinInPerson}
-            onClick={() => {
-              const next = !joinInPerson;
-              setJoinInPerson(next);
-              // Warm the location grant NOW (on the slide) rather than mid-breath.
-              if (next) getBreathBucket({ force: false }).catch(() => undefined);
-            }}
-            className="w-full rounded-2xl p-4 flex items-start gap-3 text-left transition-colors active:scale-[0.99]"
-            style={{
-              background: joinInPerson ? "rgba(46,107,64,0.22)" : "rgba(46,107,64,0.10)",
-              border: `1px solid ${joinInPerson ? "rgba(110,180,130,0.6)" : "rgba(46,107,64,0.3)"}`,
-            }}
-          >
-            <span style={{ fontSize: 22, lineHeight: 1.1 }} aria-hidden>📍</span>
-            <span className="flex-1 min-w-0">
-              <span className="block text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                {t("cobreathe.in_person_title", { defaultValue: "Breathe with a fellow" })}
-              </span>
-              <span className="block text-[12.5px] mt-0.5 leading-snug" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                {t("cobreathe.in_person_sub", { defaultValue: "Share your location to breathe one-to-one with your fellows — together in person, or joined across the miles on a map. Just for this sit." })}
-              </span>
-            </span>
-            <span className="shrink-0 mt-0.5 relative" style={{ width: 44, height: 26, borderRadius: 999, background: joinInPerson ? "rgba(46,107,64,0.9)" : "rgba(143,175,150,0.25)", border: `1px solid ${joinInPerson ? "rgba(110,180,130,0.7)" : "rgba(143,175,150,0.35)"}`, transition: "background 0.16s" }}>
-              <span style={{ position: "absolute", top: 2, left: joinInPerson ? 20 : 2, width: 20, height: 20, borderRadius: 999, background: "#F0EDE6", transition: "left 0.16s ease" }} />
-            </span>
-          </button>
-
-          {/* Start the breath. */}
-          <button
-            type="button"
-            onClick={() => { setPeakNear({ count: 0, fellows: [] }); setCoBreathed(new Map()); setMode("breathing"); }}
-            className="w-full rounded-xl py-3.5 mt-5 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-            style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600, cursor: "pointer" }}
-          >
-            {t("cobreathe.start", { defaultValue: "Start" })}
-          </button>
         </div>
       </Layout>
     );
