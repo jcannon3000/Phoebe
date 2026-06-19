@@ -1031,7 +1031,7 @@ function ReadingSlide({ reading }: { reading: LectioData["reading"] }) {
             display: "inline-block",
           }}
         >
-          Read on Bible.com →
+          Read online →
         </a>
       )}
     </div>

@@ -716,10 +716,13 @@ export function ContemplationTimer({
             style={{
               top: "calc(var(--safe-top) + 12px)",
               right: 16,
-              width: 36, height: 36,
-              background: "rgba(46,107,64,0.18)",
-              border: "1px solid rgba(46,107,64,0.35)",
-              color: "#C8D4C0", fontSize: 18, lineHeight: 1, cursor: "pointer",
+              width: 40, height: 40,
+              // SOLID so it reads over any photo background (it was 18% green,
+              // near-invisible over the bright nature image).
+              background: "rgba(10,24,16,0.86)",
+              border: "1px solid rgba(210,230,216,0.55)",
+              color: "#FFFFFF", fontSize: 20, lineHeight: 1, cursor: "pointer",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.45)",
               zIndex: 2,
             }}
           >
@@ -1399,19 +1402,20 @@ export function ContemplationTimer({
               onClick={endSit}
               className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.98]"
               style={{
-                padding: "14px 48px",
-                // Once the bell has rung, "Done" is solid black at 80%. Before
-                // then, "End" is a clearly-visible solid green pill (it used to
-                // be near-invisible) so there's always an obvious way to finish.
-                background: reachedGoal ? "rgba(0,0,0,0.85)" : "#2D5E3F",
-                border: `1px solid ${reachedGoal ? "rgba(255,255,255,0.3)" : "rgba(140,195,160,0.7)"}`,
-                color: reachedGoal ? "#FFFFFF" : WARM,
+                padding: "16px 56px",
+                // Both states are SOLID + high-contrast so the control can't get
+                // lost over the bright nature photo (the repeated "I can't see
+                // End/Done" complaint). Done = black ~80% (per request); End =
+                // an opaque deep green with a bright ring + strong shadow.
+                background: reachedGoal ? "rgba(0,0,0,0.82)" : "#1F4E33",
+                border: `1.5px solid ${reachedGoal ? "rgba(255,255,255,0.55)" : "rgba(190,222,198,0.9)"}`,
+                color: "#FFFFFF",
                 fontFamily: SPACE_GROTESK,
-                fontSize: 15.5,
-                fontWeight: 600,
+                fontSize: 17,
+                fontWeight: 700,
                 letterSpacing: "0.02em",
                 cursor: "pointer",
-                boxShadow: reachedGoal ? "0 6px 20px rgba(0,0,0,0.35)" : "0 4px 16px rgba(0,0,0,0.3)",
+                boxShadow: "0 8px 26px rgba(0,0,0,0.5)",
               }}
             >
               {reachedGoal ? t("common.done") : t("contemplation_timer.end")}
@@ -1421,18 +1425,18 @@ export function ContemplationTimer({
               onClick={discardSit}
               className="transition-opacity hover:opacity-80"
               style={{
-                // A visible pill (dark backing + light text) so it reads clearly
-                // over the photo background, not a near-invisible faint link.
-                background: "rgba(0,0,0,0.4)",
-                border: "1px solid rgba(200,225,210,0.28)",
+                // A clearly-visible pill (near-opaque backing + light text +
+                // bright ring) so it reads over the photo, not a faint link.
+                background: "rgba(0,0,0,0.6)",
+                border: "1px solid rgba(210,230,216,0.5)",
                 borderRadius: 999,
-                padding: "8px 20px",
-                color: "rgba(224,232,220,0.92)",
+                padding: "10px 24px",
+                color: "#FFFFFF",
                 fontFamily: SPACE_GROTESK,
-                fontSize: 13,
+                fontSize: 13.5,
                 fontWeight: 600,
                 cursor: "pointer",
-                textShadow: "0 1px 6px rgba(0,0,0,0.5)",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.45)",
               }}
             >
               {t("contemplation_timer.discard_session")}
