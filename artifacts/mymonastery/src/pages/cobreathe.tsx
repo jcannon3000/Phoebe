@@ -7,7 +7,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { CobreatheBreath, DEFAULT_TOTAL_BREATHS } from "@/components/CobreatheBreath";
 import { CobreatheSummary } from "@/components/CobreatheSummary";
 import { addBreathsThisWeek } from "@/lib/cobreatheTally";
-import { COBREATHE_INTRO_SEEN_KEY } from "@/pages/cobreathe-about";
 import { useAuth } from "@/hooks/useAuth";
 import { usePeople } from "@/hooks/usePeople";
 import { useCobreatheSync } from "@/hooks/useCobreatheSync";
@@ -32,10 +31,6 @@ const COBREATHE_PHOTOS = Object.values(
 // so a build/version drift (different photos) safely falls back to solo order.
 const COBREATHE_FINGERPRINT = computeFingerprint(COBREATHE_PHOTOS);
 
-// True once the user has been through the intro slideshow at least once.
-function introSeen(): boolean {
-  try { return localStorage.getItem(COBREATHE_INTRO_SEEN_KEY) === "1"; } catch { return false; }
-}
 function wantsStart(): boolean {
   try { return new URLSearchParams(window.location.search).get("start") === "1"; } catch { return false; }
 }
@@ -153,16 +148,14 @@ export default function CobreathePage() {
   // Opened with ?start=1 → go straight into the breath, BUT only once the user
   // has been through the intro slideshow. First-timers are sent through the
   // slideshow first (the effect below), which begins the breath at its end.
+  // New users no longer get routed through the /cobreathe/about slideshow — if
+  // they came to start, they go straight into the breath.
   const [mode, setMode] = useState<"intro" | "breathing" | "done">(() =>
-    wantsStart() && introSeen() ? "breathing" : "intro",
+    wantsStart() ? "breathing" : "intro",
   );
   // Hold the screen on while breathing — the breath has no touch input, so the
   // idle timer would otherwise dim/sleep the phone mid-sit.
   useKeepAwake(mode === "breathing");
-  useEffect(() => {
-    if (wantsStart() && !introSeen()) setLocation("/cobreathe/about");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Garden-mate photo sync: while breathing, follow the earliest online garden-
   // mate's photo order (or lead if first). Gated on showPresence inside the hook.
