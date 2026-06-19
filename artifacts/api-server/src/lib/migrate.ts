@@ -2473,6 +2473,18 @@ export async function migrate() {
       logger.error({ err }, "BCP text seed failed (non-fatal — server still starts)");
     }
 
+    // ── Diocese of New York — 2026 Calendar of Intercession ──────────────────
+    // A platform-owned, public Prayer Feed: one parish/ministry/cause to pray
+    // for each calendar day, from the diocese's published intercession cycle.
+    // Idempotent — upserts the feed + 365 daily entries on every boot.
+    try {
+      const { seedDioceseNyIntercession } = await import("../seeds/dioceseNyIntercession");
+      const n = await seedDioceseNyIntercession();
+      logger.info(`Diocese of NY intercession feed seeded (${n} entries)`);
+    } catch (err) {
+      logger.error({ err }, "Diocese of NY intercession seed failed (non-fatal — server still starts)");
+    }
+
     // ── Newsletters ────────────────────────────────────────────────────────
     // Admin-composed newsletter emails. One row per send for audit history.
     // recipient_scope is "all" (every user) or "groups" (members of the
