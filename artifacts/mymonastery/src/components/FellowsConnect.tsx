@@ -249,7 +249,6 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
           )}
         </div>
         <div className="flex items-center gap-2.5 shrink-0">
-          {f.streak > 0 && <span className="text-[13px] font-semibold" style={{ color: "#E8B45E", fontFamily: FONT }} title={t("fellows_c.streak_title", { defaultValue: "Prayer rhythm" })}>🔥 {f.streak}</span>}
           {/* Encourage once they've kept at least two-thirds of today. */}
           {keptEnough && (encouraged.has(f.userId)
             ? <Pill label={t("fellows_c.encouraged", { defaultValue: "Encouraged 🙌" })} kind="muted" disabled />
@@ -376,7 +375,6 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
             const keptEnough = shown.length > 0 && shown.every((a) => a.done);
             return row(f.name ?? "Someone", f.avatarUrl,
               <div className="flex items-center gap-2.5 shrink-0">
-                {f.streak > 0 && <span className="text-[13px] font-semibold" style={{ color: "#E8B45E", fontFamily: FONT }} title={t("fellows_c.streak_title", { defaultValue: "Prayer rhythm" })}>🔥 {f.streak}</span>}
                 {keptEnough && (encouraged.has(f.userId)
                   ? <Pill label={t("fellows_c.encouraged", { defaultValue: "Encouraged 🙌" })} kind="muted" disabled />
                   : <Pill label={t("fellows_c.encourage", { defaultValue: "🙌 Encourage" })} kind="solid" onClick={() => sendEncourage(f.userId)} />)}
