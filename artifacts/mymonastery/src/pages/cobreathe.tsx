@@ -207,6 +207,13 @@ export default function CobreathePage() {
   const [lengthBreaths, setLengthBreaths] = useState<number>(DEFAULT_TOTAL_BREATHS);
   const [topic, setTopic] = useState<"planet" | "coffee">("planet");
   const [locationOn, setLocationOn] = useState<boolean>(true);
+  // One calm landscape behind the intro slide, picked once and faded gently up
+  // under a dark wash (the good top-level set, not the bad/animal Co-Breathe-only
+  // shots). Falls back to the full pool if the top set is somehow empty.
+  const introBgPhoto = useMemo(() => {
+    const pool = COBREATHE_TOP_PHOTOS.length > 0 ? COBREATHE_TOP_PHOTOS : COBREATHE_PHOTOS;
+    return pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)]! : null;
+  }, []);
   // Location-based "breathe with a fellow" is removed — Co-Breathe never shares
   // location. Kept as a const false so the synchronized (global, location-free)
   // breath stays solo.
@@ -514,6 +521,19 @@ export default function CobreathePage() {
 
   return (
     <Layout>
+      {/* A still landscape behind the intro, faded gently up under a dark wash
+          for legibility (sits behind the page content at z-index -1). */}
+      {introBgPhoto && (
+        <>
+          <img
+            src={introBgPhoto}
+            alt=""
+            aria-hidden
+            style={{ position: "fixed", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, animation: "office-bg-in 1.2s ease both" }}
+          />
+          <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.58) 0%, rgba(8,22,15,0.70) 30%, rgba(8,22,15,0.80) 60%, rgba(8,22,15,0.90) 100%)" }} />
+        </>
+      )}
       <div className="max-w-xl mx-auto w-full flex flex-col flex-1">
         {/* "Before you begin" intro — same shape as a devotion's opening slide
             (centered eyebrow + big title + a few lines + setting rows + Begin).
