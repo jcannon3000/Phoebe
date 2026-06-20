@@ -1362,7 +1362,7 @@ function LoadReveal() {
       animate={{ opacity: 0, y: "22%" }}
       transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
       className="fixed inset-0"
-      style={{ zIndex: 150, pointerEvents: "none", background: "#102816" }}
+      style={{ zIndex: 150, pointerEvents: "none", background: "#091A10" }}
     />
   );
 }
@@ -1391,13 +1391,13 @@ export function Layout({ children }: { children: ReactNode }) {
   useSyncHealthMinutes();
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#102816" }}>
+    <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10" }}>
       <LoadReveal />
       <OpeningSplash />
       <header
         className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pb-2 md:pb-5 flex justify-between items-center"
         style={{
-          background: "#102816",
+          background: "#091A10",
           // Clear the status-bar clock, not the whole Dynamic Island. "Phoebe"
           // (left) + the controls (right) sit in the corners, away from the
           // centred Island, so they don't need the full safe-area-inset-top —
