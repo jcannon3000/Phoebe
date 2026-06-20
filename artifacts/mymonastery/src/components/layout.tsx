@@ -9,6 +9,7 @@ import { FROST } from "@/lib/frost";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
@@ -1405,6 +1406,10 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: React
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { t } = useTranslation();
+  // Phone-width viewport (native app + mobile web) gets the bottom nav bar
+  // (People · ＋ · Menu). Desktop web keeps the classic chrome instead: a Menu
+  // button top-right + a create "+" FAB bottom-right (no bottom bar).
+  const isMobile = useIsMobile();
   // Beta testers get the "Way of Love" header pill (opens the progress
   // drawer) in place of the "Prayer list" pill; everyone else keeps Prayer
   // list. Gated on isBeta so previewing the regular experience (beta-view
@@ -1467,10 +1472,32 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: React
         {user && (
           <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
             {/* Daily-progress pill — the four dots reflect today's rhythm;
-                tapping opens /daily-progress. The Menu button that used to sit
-                beside it moved to the bottom nav bar. Hidden for the offices-
-                only tier to match the prior pill. */}
+                tapping opens /daily-progress. Hidden for the offices-only tier
+                to match the prior pill. */}
             {!officesOnly && !headerJardinShell && <DailyProgressPill />}
+            {/* Menu button — desktop web only. On mobile the Menu lives in the
+                bottom nav bar, so it's hidden up here. */}
+            {!isMobile && (
+              <button
+                onClick={() => { playOpeningSwell(0); setDrawerOpen(true); }}
+                className="flex items-center justify-center transition-colors"
+                style={{ background: "none", border: "none", padding: 0 }}
+                aria-label="Open menu"
+              >
+                <span
+                  className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+                  style={{
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    letterSpacing: "-0.01em",
+                    background: "rgba(200,212,192,0.08)",
+                    color: "#C8D4C0",
+                    border: "1px solid rgba(46,107,64,0.3)",
+                  }}
+                >
+                  {t("header.menu")}
+                </span>
+              </button>
+            )}
           </div>
         )}
       </header>
@@ -1480,8 +1507,8 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: React
       <main
         className="flex-1 flex flex-col pt-2 pb-12 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full"
         // Leave room for the fixed bottom nav bar so the last cards aren't
-        // hidden behind it (only when the bar is shown — i.e. signed in).
-        style={user ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 106px)" } : undefined}
+        // hidden behind it (only when the bar is shown — signed in + mobile).
+        style={user && isMobile ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 106px)" } : undefined}
       >
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -1493,38 +1520,65 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: React
         </motion.div>
       </main>
 
-      {/* Bottom nav — people · ＋ · menu. Replaces the top Menu button and the
-          home "+" FAB; present on every Layout-wrapped page for signed-in users. */}
-      {user && <BottomNav onOpenMenu={() => { playOpeningSwell(0); setDrawerOpen(true); }} />}
+      {/* Mobile: bottom nav — people · ＋ · menu. Desktop web: just a create
+          "+" FAB bottom-right (Menu lives top-right in the header). */}
+      {user && isMobile && <BottomNav onOpenMenu={() => { playOpeningSwell(0); setDrawerOpen(true); }} />}
+      {user && !isMobile && <WebCreateFab />}
     </div>
   );
 }
 
-// ─── Bottom nav bar ──────────────────────────────────────────────────────────
-// A simple frosted-glass tab bar fixed to the bottom: People (left), a central
-// "+" create button (prayer request / — for admins — community intercession +
-// event), and Menu (right). Matches the app's frosted surfaces + sage palette.
-function BottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
+// The create entry points shared by the mobile nav "+" and the desktop FAB:
+// a prayer request for everyone, plus community intercession + event for group
+// admins (a soft client gate; the server enforces the real permissions).
+function CreateOptionButtons({ onPick }: { onPick: () => void }) {
   const { t } = useTranslation();
-  const [location, navigate] = useLocation();
-  const [plusOpen, setPlusOpen] = useState(false);
-  // Admin in any group earns the extra create options (same soft gate the old
-  // home FAB used; the server enforces the real permissions).
+  const [, navigate] = useLocation();
   const { data: groupsData } = useQuery<{ groups: Array<{ myRole: string }> }>({
     queryKey: ["/api/groups"],
     queryFn: () => apiRequest("GET", "/api/groups"),
   });
   const isAdminOfAny = (groupsData?.groups ?? []).some((g) => g.myRole === "admin" || g.myRole === "hidden_admin");
-  const go = (href: string) => { setPlusOpen(false); navigate(href); };
-  const peopleActive = location.startsWith("/people") || location.startsWith("/fellows");
-
-  const ICON = "#8FAF96";
-  const ICON_ACTIVE = "#F0EDE6";
+  const go = (href: string) => { onPick(); navigate(href); };
   const optionStyle: CSSProperties = {
     ...FROST, border: "1px solid rgba(200,212,192,0.28)", minWidth: 248,
     boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)",
     borderRadius: 16, padding: "12px 16px", textAlign: "left", cursor: "pointer",
   };
+  return (
+    <>
+      <button type="button" onClick={() => go("/pray-request/new?kind=request")} style={optionStyle}>
+        <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 {t("home_fab.prayer_request")}</p>
+        <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.prayer_request_sub")}</p>
+      </button>
+      {isAdminOfAny && (
+        <button type="button" onClick={() => go("/moment/new?template=intercession")} style={optionStyle}>
+          <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕯️ {t("home_fab.community_intercession")}</p>
+          <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.community_intercession_sub")}</p>
+        </button>
+      )}
+      {isAdminOfAny && (
+        <button type="button" onClick={() => go("/tradition/new")} style={optionStyle}>
+          <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📅 {t("home_fab.event", { defaultValue: "Event" })}</p>
+          <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.event_sub", { defaultValue: "Put a gathering on your community's calendar." })}</p>
+        </button>
+      )}
+    </>
+  );
+}
+
+// ─── Bottom nav bar (mobile) ─────────────────────────────────────────────────
+// A simple frosted-glass tab bar fixed to the bottom: People (left), a central
+// "+" create button, and Menu (right). Matches the app's frosted surfaces + sage
+// palette. Mobile only — desktop web uses WebCreateFab + the header Menu instead.
+function BottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
+  const { t } = useTranslation();
+  const [location, navigate] = useLocation();
+  const [plusOpen, setPlusOpen] = useState(false);
+  const peopleActive = location.startsWith("/people") || location.startsWith("/fellows");
+
+  const ICON = "#8FAF96";
+  const ICON_ACTIVE = "#F0EDE6";
 
   return (
     <>
@@ -1561,22 +1615,7 @@ function BottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
               className="absolute left-1/2 flex flex-col gap-2"
               style={{ bottom: "calc(100% + 14px)", transform: "translateX(-50%)", zIndex: 51 }}
             >
-              <button type="button" onClick={() => go("/pray-request/new?kind=request")} style={optionStyle}>
-                <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 {t("home_fab.prayer_request")}</p>
-                <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.prayer_request_sub")}</p>
-              </button>
-              {isAdminOfAny && (
-                <button type="button" onClick={() => go("/moment/new?template=intercession")} style={optionStyle}>
-                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕯️ {t("home_fab.community_intercession")}</p>
-                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.community_intercession_sub")}</p>
-                </button>
-              )}
-              {isAdminOfAny && (
-                <button type="button" onClick={() => go("/tradition/new")} style={optionStyle}>
-                  <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📅 {t("home_fab.event", { defaultValue: "Event" })}</p>
-                  <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.event_sub", { defaultValue: "Put a gathering on your community's calendar." })}</p>
-                </button>
-              )}
+              <CreateOptionButtons onPick={() => setPlusOpen(false)} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -1585,7 +1624,7 @@ function BottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
           {/* People (left) */}
           <button
             type="button"
-            onClick={() => go("/people")}
+            onClick={() => { setPlusOpen(false); navigate("/people"); }}
             className="flex items-center justify-center transition-opacity active:opacity-60"
             style={{ width: 64, height: 48, background: "none", border: "none", cursor: "pointer", color: peopleActive ? ICON_ACTIVE : ICON }}
             aria-label={t("nav.people", { defaultValue: "People" })}
@@ -1618,6 +1657,56 @@ function BottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
           </button>
         </div>
       </nav>
+    </>
+  );
+}
+
+// ─── Create FAB (desktop web) ────────────────────────────────────────────────
+// The classic bottom-right "+" circle, frosted with an outline. Desktop web only
+// — phones use the bottom nav bar. Menu lives top-right in the header on web.
+function WebCreateFab() {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      {/* Tap-catcher closes the popover. */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0"
+            style={{ zIndex: 29 }}
+          />
+        )}
+      </AnimatePresence>
+      <div className="fixed bottom-6 right-6 flex flex-col items-end gap-2" style={{ zIndex: 30 }}>
+        <AnimatePresence>
+          {open && (
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.96 }}
+              transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col gap-2 mb-1 items-end"
+            >
+              <CreateOptionButtons onPick={() => setOpen(false)} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="w-14 h-14 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+          style={{ ...FROST, border: "1px solid rgba(200,212,192,0.35)", color: "#F0EDE6", cursor: "pointer", boxShadow: "0 6px 18px rgba(0,0,0,0.45)" }}
+          aria-label={open ? t("home_fab.close_menu") : t("home_fab.new_prayer")}
+        >
+          <motion.div animate={{ rotate: open ? 45 : 0 }} transition={{ duration: 0.2 }}>
+            <Plus size={26} strokeWidth={2.2} />
+          </motion.div>
+        </button>
+      </div>
     </>
   );
 }
