@@ -152,7 +152,7 @@ export default function ListeningPage() {
           onChange={(e) => setWhat(e.target.value)}
           placeholder={streaming ? "What did you listen to?" : "What are you listening to?"}
           className="w-full rounded-2xl px-4 py-3.5 mb-4 text-[15px] outline-none"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", color: WARM, fontFamily: "Georgia, serif" }}
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", color: WARM, fontFamily: SPACE_GROTESK }}
         />
 
         <button

@@ -238,7 +238,7 @@ function AddSheet({ onClose }: { onClose: () => void }) {
           onChange={(e) => setText(e.target.value)}
           placeholder={canSearch ? "Search Apple Music, or paste a link…" : "Paste a link…"}
           className="w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none"
-          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: WARM, fontFamily: "Georgia, serif" }}
+          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: WARM, fontFamily: FONT }}
         />
 
         {parsed && (
