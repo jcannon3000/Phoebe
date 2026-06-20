@@ -622,27 +622,8 @@ export default function People() {
           </div>
         )}
 
-        {/* Start a Heart to Heart — the deepest 1:1: share what's on your heart
-            each day and hold each other in prayer, back and forth. The dashboard
-            only surfaces this once you HAVE a partner (hideWhenEmpty), so this is
-            the discoverable way in to start one. Routes to the full experience. */}
-        <Link href="/prayer-partner" className="block mb-6">
-          <div
-            className="rounded-2xl px-4 py-3.5 flex items-center gap-3 transition-opacity active:scale-[0.99]"
-            style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)" }}
-          >
-            <span style={{ fontSize: 26 }}>💛</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-[15px] font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                {t("people.h2h_title", { defaultValue: "Start a Heart to Heart" })}
-              </p>
-              <p className="text-[12.5px] mt-0.5" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
-                {t("people.h2h_body", { defaultValue: "Pray back and forth with one person, a little each day." })}
-              </p>
-            </div>
-            <span style={{ color: "rgba(143,175,150,0.6)", fontSize: 18 }}>›</span>
-          </div>
-        </Link>
+        {/* Heart to Heart (the 1:1 daily prayer exchange) is hidden for now —
+            the "Start a Heart to Heart" entry card was removed. */}
 
         {/* Walking together — beta accountability layer on Fellows: opt in with
             a fellow to see each other's today-only rhythm dots + send a word of

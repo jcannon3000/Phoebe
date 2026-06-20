@@ -236,6 +236,17 @@ export default function PrayerRequestDetailPage() {
       setLocation("/prayer-list");
     },
   });
+  // Owner delete — permanently removes the request (server is owner-gated,
+  // DELETE /api/prayer-requests/:id). Distinct from "release" (which gently
+  // closes it into the Past backlog); this erases it. Confirmed before firing.
+  const deleteMutation = useMutation({
+    mutationFn: () => apiRequest("DELETE", `/api/prayer-requests/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/mine/past"] });
+      setLocation("/");
+    },
+  });
 
   // Tagged-user opt-out. Lets a viewer who was tagged ("praying
   // for my friend Matthew") remove themselves quietly — the row is
@@ -959,6 +970,25 @@ export default function PrayerRequestDetailPage() {
                   }}
                 >
                   {renewMutation.isPending ? t("prayer_request_detail.renewing") : t("prayer_request_detail.renew")}
+                </button>
+                {/* Delete — permanent, owner-only, confirmed. Quiet warm-red so
+                    it reads as destructive without shouting next to the greens. */}
+                <button
+                  onClick={() => {
+                    if (window.confirm(t("prayer_request_detail.delete_confirm", { defaultValue: "Delete this prayer request? This can't be undone." }))) {
+                      deleteMutation.mutate();
+                    }
+                  }}
+                  disabled={deleteMutation.isPending}
+                  className="px-5 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
+                  style={{
+                    color: "#E2A9A0",
+                    background: "rgba(120,45,40,0.14)",
+                    border: "1px solid rgba(150,65,58,0.38)",
+                    fontFamily: "'Space Grotesk', sans-serif",
+                  }}
+                >
+                  {deleteMutation.isPending ? t("prayer_request_detail.deleting", { defaultValue: "Deleting…" }) : t("prayer_request_detail.delete", { defaultValue: "Delete" })}
                 </button>
               </>
             )}

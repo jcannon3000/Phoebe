@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import { motion } from "framer-motion";
 import { Layout } from "@/components/layout";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
@@ -384,18 +385,29 @@ export default function CobreathePage() {
   // behind the breath for a frame. (The breath's own opaque field covers the
   // screen from the first paint.)
   if (mode === "breathing") {
+    // Fade INTO the breath rather than hard-cutting from the intro — a gentle
+    // half-second opacity rise as the practice takes over the screen. The
+    // wrapper is a full-screen fixed layer so the fade reads cleanly over the
+    // dark app background (no white flash, no jump).
     return (
-      <CobreatheBreath
-        othersToday={others}
-        todayCount={state?.count ?? 0}
-        onReachTarget={handleReachTarget}
-        onEnd={handleEnd}
-        photos={COBREATHE_PHOTOS}
-        followSeed={breathSync.leader?.masterSeed}
-        followStartEpochMs={breathSync.leader?.startEpochMs}
-        onSession={(info) => breathSync.announceSession(info.startEpochMs, info.masterSeed)}
-        coBreathingFellows={coBreathingFellows}
-      />
+      <motion.div
+        style={{ position: "fixed", inset: 0, zIndex: 80 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+      >
+        <CobreatheBreath
+          othersToday={others}
+          todayCount={state?.count ?? 0}
+          onReachTarget={handleReachTarget}
+          onEnd={handleEnd}
+          photos={COBREATHE_PHOTOS}
+          followSeed={breathSync.leader?.masterSeed}
+          followStartEpochMs={breathSync.leader?.startEpochMs}
+          onSession={(info) => breathSync.announceSession(info.startEpochMs, info.masterSeed)}
+          coBreathingFellows={coBreathingFellows}
+        />
+      </motion.div>
     );
   }
 

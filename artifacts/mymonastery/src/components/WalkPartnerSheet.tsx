@@ -45,6 +45,12 @@ const NUDGES: Array<{ kind: "praying" | "cheer" | "thinking"; emoji: string; lab
   { kind: "thinking", emoji: "💚", label: "Thinking of you" },
 ];
 
+// Heart to Heart is hidden for now across the app. We keep the composer +
+// state wired (so re-enabling is a one-line flip) but gate every HtH affordance
+// in this sheet behind this flag. Walking Together (shared dots + encouragement)
+// is unaffected.
+const HIDE_H2H = true;
+
 export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompanion | null; onClose: () => void }) {
   const qc = useQueryClient();
   const [sent, setSent] = useState<string | null>(null);
@@ -154,21 +160,23 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
                 </p>
               </div>
             ) : locked ? (
-              /* Grace week is over and no recent Heart to Heart — dots are hidden
-                 until they reconnect 1:1. A gentle nudge toward prayer, not a wall. */
+              /* Grace week is over and they haven't reconnected 1:1 — dots stay
+                 hidden until you're praying together again. A gentle nudge. */
               <div className="mt-5 mb-2 rounded-2xl px-4 py-5 text-center" style={{ background: "rgba(46,107,64,0.12)", border: `1px solid ${CARD_B}` }}>
                 <div style={{ fontSize: 26 }}>💚</div>
                 <p className="text-[14px] mt-2" style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-                  It's been a little while. Reach back out with a Heart to Heart — your days reappear here once you're praying together again.
+                  It's been a little while. Their days reappear here once you're praying together again.
                 </p>
-                <button
-                  type="button"
-                  onClick={openCompose}
-                  className="inline-flex items-center justify-center rounded-full px-5 py-2.5 mt-4 text-[13px] font-semibold transition-opacity active:scale-[0.98]"
-                  style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
-                >
-                  Send a Heart to Heart
-                </button>
+                {!HIDE_H2H && (
+                  <button
+                    type="button"
+                    onClick={openCompose}
+                    className="inline-flex items-center justify-center rounded-full px-5 py-2.5 mt-4 text-[13px] font-semibold transition-opacity active:scale-[0.98]"
+                    style={{ background: "rgba(46,107,64,0.9)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
+                  >
+                    Send a Heart to Heart
+                  </button>
+                )}
               </div>
             ) : (
               <>
@@ -229,25 +237,27 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
                 )}
 
                 {/* Heart to Heart — start a private back-and-forth prayer with
-                    {first}, right here. The first one delivers instantly. */}
-                <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(143,175,150,0.14)" }}>
-                  {heartSent ? (
-                    <p className="text-[13px] text-center py-1.5" style={{ color: "#A8C5A0", fontFamily: FONT }}>
-                      {heartDelivered
-                        ? `💚 Your Heart to Heart reached ${first}`
-                        : `🌅 ${first} will receive it tomorrow morning`}
-                    </p>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={openCompose}
-                      className="w-full inline-flex items-center justify-center gap-2 rounded-2xl py-3 text-[14px] font-semibold transition-opacity active:scale-[0.98]"
-                      style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
-                    >
-                      💚 Send {first} a Heart to Heart
-                    </button>
-                  )}
-                </div>
+                    {first}, right here. Hidden for now (HIDE_H2H). */}
+                {!HIDE_H2H && (
+                  <div className="mt-4 pt-4" style={{ borderTop: "1px solid rgba(143,175,150,0.14)" }}>
+                    {heartSent ? (
+                      <p className="text-[13px] text-center py-1.5" style={{ color: "#A8C5A0", fontFamily: FONT }}>
+                        {heartDelivered
+                          ? `💚 Your Heart to Heart reached ${first}`
+                          : `🌅 ${first} will receive it tomorrow morning`}
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={openCompose}
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-2xl py-3 text-[14px] font-semibold transition-opacity active:scale-[0.98]"
+                        style={{ background: "rgba(46,107,64,0.85)", color: WARM, border: "1px solid rgba(46,107,64,0.6)", fontFamily: FONT }}
+                      >
+                        💚 Send {first} a Heart to Heart
+                      </button>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </motion.div>
@@ -257,7 +267,7 @@ export function WalkPartnerSheet({ companion, onClose }: { companion: WalkCompan
               with the breathing pulse, eyebrow, italic body). The first one
               delivers instantly; after that it follows the next-morning volley. */}
           <AnimatePresence>
-            {composeOpen && (
+            {!HIDE_H2H && composeOpen && (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 className="fixed inset-0 z-[280] flex flex-col"
                 style={{

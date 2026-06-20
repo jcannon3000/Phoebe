@@ -14,8 +14,6 @@ import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
 import { useDailySteps } from "@/lib/appleHealth";
-import { amenWithLocation } from "@/lib/prayLocation";
-import { triggerAmenFeedback } from "@/lib/amenFeedback";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
@@ -27,7 +25,6 @@ import {
 } from "@/lib/cacReadState";
 import { FeedEventCard, type FeedEvent } from "@/components/FeedEventCard";
 import { PrayerListComposeBar } from "@/pages/prayer-list";
-import { PartnerExchange } from "@/components/PartnerExchange";
 import { FellowPlans } from "@/components/FellowPlans";
 import { AvatarCropModal } from "@/components/AvatarCropModal";
 import { BetaRhythmExtras } from "@/components/BetaRhythmExtras";
@@ -3191,6 +3188,16 @@ function PrayedWithWeekRail() {
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
+  // Who (among everyone visible to me) has an active prayer request right now —
+  // so we can mark their face with a 🙏. Shares the dashboard's existing
+  // ["/api/prayer-requests"] cache, so this adds no extra network on the home.
+  const { data: openRequests } = useQuery<Array<{ ownerId: number }>>({
+    queryKey: ["/api/prayer-requests"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests"),
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+  });
+  const requestOwnerIds = new Set((openRequests ?? []).map((r) => r.ownerId));
   const SG = "'Space Grotesk', sans-serif";
   const people = data?.people ?? [];
   const total = data?.total ?? people.length;
@@ -3203,18 +3210,35 @@ function PrayedWithWeekRail() {
         Who prayed with you this week
       </p>
       <div className="flex items-start gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
-        {people.map((p) => (
+        {people.map((p) => {
+          const hasRequest = requestOwnerIds.has(p.id);
+          return (
           <div key={p.id} className="flex flex-col items-center shrink-0" style={{ width: 48 }}>
-            {p.avatarUrl ? (
-              <img src={p.avatarUrl} alt={first(p.name)} className="rounded-full object-cover" style={{ width: 44, height: 44, backgroundColor: "#1A4A2E" }} />
-            ) : (
-              <div className="rounded-full flex items-center justify-center font-semibold" style={{ width: 44, height: 44, background: "#1A4A2E", color: "#A8C5A0", fontSize: 15, fontFamily: SG }}>
-                {(p.name ?? "?").trim()[0]?.toUpperCase() ?? "?"}
-              </div>
-            )}
+            <div className="relative" style={{ width: 44, height: 44 }}>
+              {p.avatarUrl ? (
+                <img src={p.avatarUrl} alt={first(p.name)} className="rounded-full object-cover" style={{ width: 44, height: 44, backgroundColor: "#1A4A2E" }} />
+              ) : (
+                <div className="rounded-full flex items-center justify-center font-semibold" style={{ width: 44, height: 44, background: "#1A4A2E", color: "#A8C5A0", fontSize: 15, fontFamily: SG }}>
+                  {(p.name ?? "?").trim()[0]?.toUpperCase() ?? "?"}
+                </div>
+              )}
+              {/* 🙏 badge, bottom-right — this person has an active prayer
+                  request. The dark circle (page bg) lets it sit cleanly on
+                  any avatar edge. */}
+              {hasRequest && (
+                <span
+                  aria-label="has a prayer request"
+                  className="absolute flex items-center justify-center rounded-full"
+                  style={{ right: -3, bottom: -3, width: 19, height: 19, background: "#0C2215", border: "1px solid rgba(46,107,64,0.55)", fontSize: 11, lineHeight: 1 }}
+                >
+                  🙏
+                </span>
+              )}
+            </div>
             <p className="text-[10px] mt-1 truncate w-full text-center" style={{ color: "rgba(143,175,150,0.85)", fontFamily: SG }}>{first(p.name)}</p>
           </div>
-        ))}
+          );
+        })}
       </div>
     </motion.div>
   );
@@ -4162,37 +4186,10 @@ function PrayerListCarousel({
   hideTitle?: boolean;
 }) {
   const { t } = useTranslation();
-  const carouselQc = useQueryClient();
-  // Tap-to-pray, Reminders-style: tapping a card records the amen and flips it
-  // to ✓ instantly. We write the ✓ straight into the ["/api/prayer-requests"]
-  // cache (optimistic) and DO NOT refetch the list on success — an immediate
-  // refetch was racing the write and REVERTING the ✓ back to 🙏 (the "it works
-  // for the first prayer, then no others" bug). The server has recorded it; the
-  // home re-confirms on its next natural refetch (mount / focus). Each id is its
-  // own mutate() call, so amening one never blocks tapping another.
-  const amenCard = useMutation({
-    mutationFn: (id: number) => amenWithLocation(id),
-    onMutate: async (id: number) => {
-      await carouselQc.cancelQueries({ queryKey: ["/api/prayer-requests"] });
-      const prev = carouselQc.getQueryData(["/api/prayer-requests"]);
-      carouselQc.setQueryData(["/api/prayer-requests"], (old: unknown) =>
-        Array.isArray(old)
-          ? old.map((r: { id?: number } & Record<string, unknown>) =>
-              r && r.id === id ? { ...r, myAmenedToday: true, myAmenedEver: true } : r)
-          : old);
-      try { triggerAmenFeedback(); } catch { /* non-fatal */ }
-      return { prev };
-    },
-    // Only revert on a real failure — never on a successful (or throttled-ok)
-    // response. A throttled re-tap still means "you've prayed today" → keep ✓.
-    onError: (_e, _id, ctx) => {
-      if (ctx?.prev !== undefined) carouselQc.setQueryData(["/api/prayer-requests"], ctx.prev);
-    },
-    onSuccess: (_d, id: number) => {
-      // Refresh ONLY the detail query (not the home list) so the ✓ can't revert.
-      carouselQc.invalidateQueries({ queryKey: [`/api/prayer-requests/by-id/${id}`] });
-    },
-  });
+  // Tapping a prayer card (anywhere, including the 🙏) opens the prayer
+  // slideshow focused on that request — and queues the rest of your prayer
+  // list — so you actually pray it (and Amen there), rather than a silent
+  // one-tap amen on the home.
   if (requests.length === 0) return null;
 
   // ~3.5 card rows. Each card is roughly 72-80px tall with vertical
@@ -4312,9 +4309,11 @@ function PrayerListCarousel({
                         </p>
                       </div>
                       {/* Amen oval — same size as the daily-practice check pills.
-                          Not prayed = a 🙏🏽 amen hand (tap to pray right here, a
-                          quick amen, no walk); prayed = a ✓. stopPropagation so it
-                          doesn't also open the slideshow. Not on your own request. */}
+                          Not prayed = a 🙏🏽 amen hand; prayed = a ✓. Both are
+                          decorative spans — the whole card is a Link, so tapping
+                          the 🙏 opens the prayer slideshow on THIS request (and
+                          queues the rest of your prayer list) to pray it there,
+                          rather than a silent one-tap amen. Not on your own request. */}
                       {!req.isOwnRequest && (
                         amened ? (
                           <span
@@ -4330,11 +4329,9 @@ function PrayerListCarousel({
                             ✓
                           </span>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); amenCard.mutate(req.id); }}
-                            aria-label={t("prayer_card.pray", { defaultValue: "Pray" })}
-                            className="flex-shrink-0 inline-flex items-center justify-center rounded-full transition-opacity hover:opacity-90 active:scale-95"
+                          <span
+                            aria-hidden
+                            className="flex-shrink-0 inline-flex items-center justify-center rounded-full"
                             style={{
                               height: 30, padding: "0 13px",
                               background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)",
@@ -4342,7 +4339,7 @@ function PrayerListCarousel({
                             }}
                           >
                             🙏🏽
-                          </button>
+                          </span>
                         )
                       )}
                     </div>
@@ -6972,12 +6969,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.15 }}
               >
-                {/* One-to-one prayer — your prayer partners (the daily
-                    attention-based exchange). Sits above the community prayer
-                    list; the two models coexist. */}
-                {filter === null && !eventsOnly && (
-                  <PartnerExchange hideWhenEmpty />
-                )}
+                {/* Heart to Heart (one-to-one prayer partners) is hidden for
+                    now — the PartnerExchange home card was removed. */}
 
                 {/* Prayer List — the requests carousel (title + divider +
                     "View all", "Pray through the whole list" at its foot), then

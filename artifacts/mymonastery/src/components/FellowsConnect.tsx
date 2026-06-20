@@ -276,9 +276,8 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
           {keptEnough && (encouraged.has(f.userId)
             ? <Pill label={t("fellows_c.encouraged", { defaultValue: "Encouraged 🙌" })} kind="muted" disabled />
             : <Pill label={t("fellows_c.encourage", { defaultValue: "🙌 Encourage" })} kind="solid" onClick={() => sendEncourage(f.userId)} />)}
-          {/* The 1:1 back-and-forth is a daily prayer-request exchange (Heart to
-              Heart) — read theirs, Amen, then share how they can pray for you. */}
-          {canManage && <Pill label={t("fellows_c.pray", { defaultValue: "🙏 Pray" })} kind="solid" onClick={() => setLocation(`/prayer-partner/${f.userId}`)} />}
+          {/* Heart to Heart (the 1:1 prayer-request exchange) is hidden for now —
+              the per-fellow 🙏 Pray pill was removed. */}
           {canManage && (
             <button type="button" aria-label={t("fellows_c.settings", { defaultValue: "Sharing settings" })}
               onClick={() => openSettings(f)}
