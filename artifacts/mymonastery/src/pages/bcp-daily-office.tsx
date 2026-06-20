@@ -3863,6 +3863,15 @@ export default function BcpDailyOfficePage() {
     }
   }, [betaLoading, rawIsBeta]);
 
+  // ── "Before you begin" builder state (the Daily Office landing now reads as
+  // an office's opening slide: Time of day · Practice · How → Begin). ──
+  const __h = new Date().getHours();
+  const [todPick, setTodPick] = useState<OfficeSide>(__h >= 14 && __h < 20 ? "evening" : "morning");
+  const [practicePick, setPracticePick] = useState<"devotion" | "full">(
+    () => (getSideLevel(__h >= 14 ? "evening" : "morning") === "office" ? "full" : "devotion"),
+  );
+  const [methodPick, setMethodPick] = useState<DefaultOfficeEntry>("read");
+
   // Time-of-day flags driving which card highlights "Available now".
   const hour = new Date().getHours();
   const isMorning = hour < 14;
@@ -4002,95 +4011,97 @@ export default function BcpDailyOfficePage() {
     </p>
   );
 
+  // The "How" options valid for the chosen time + practice. read/book always;
+  // Listen only for the full office; Watch only in the morning (Cathedral /
+  // St John's stream). methodPick is clamped to a valid one for Begin.
+  const howOptions: DefaultOfficeEntry[] = [
+    "read", "book",
+    ...(practicePick === "full" ? (["listen"] as const) : []),
+    ...(todPick === "morning" ? (["watch"] as const) : []),
+  ];
+  const effMethod: DefaultOfficeEntry = howOptions.includes(methodPick) ? methodPick : "read";
+  const beginOffice = () => {
+    if (practicePick === "devotion") {
+      const mode = todPick === "morning" ? "morning-devotion" : "early-evening-devotion";
+      const m = (effMethod === "book" || effMethod === "watch") ? effMethod : "read";
+      launchDevotion(mode, m);
+    } else {
+      launchOffice(todPick, effMethod);
+    }
+  };
+  const officeRow: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 12, padding: "12px 16px", marginBottom: 8, background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" };
+  const officeRowLabel: CSSProperties = { color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600 };
+  const officeRowSelect: CSSProperties = { appearance: "none", WebkitAppearance: "none", MozAppearance: "none", background: "transparent", border: "none", outline: "none", color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 500, textAlign: "right", textAlignLast: "right", cursor: "pointer" };
+
   return (
     <Layout>
       <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
-        <div className="mb-2">
-          <Link href="/bcp" className="text-sm mb-3 inline-block" style={{ color: "#8FAF96" }}>
-            ← Book of Common Prayer
-          </Link>
-          {/* Header row: title + subtitle on the left, a "Settings"
-              pill on the right that opens the focused office-prefs
-              page (/bcp/daily-office/settings). The Layout's own
-              top-right pill group (Prayer list · People · Menu) sits
-              above this in the chrome — this pill lives inside the
-              page body so it's clearly scoped to the office. */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <h1
-                className="text-2xl font-bold mb-1"
-                style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}
-              >
-                Daily Offices 📖
-              </h1>
-              <p className="text-sm" style={{ color: "#8FAF96" }}>
-                The full Morning &amp; Evening Prayer, or the short Daily Devotions
-              </p>
+        <Link href="/bcp" className="text-sm mb-3 inline-block" style={{ color: "#8FAF96" }}>
+          ← Book of Common Prayer
+        </Link>
+
+        {/* The landing reads as an office's opening slide: a centered title and
+            three settings rows (Time of day · Practice · How) → Begin. */}
+        <div className="flex flex-col items-center text-center pt-1">
+          <p className="uppercase font-semibold" style={{ color: "rgba(143,175,150,0.6)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, letterSpacing: "0.22em", marginBottom: 12 }}>
+            Before you begin
+          </p>
+          <h1 style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "clamp(40px, 11vw, 60px)", lineHeight: 1.05, letterSpacing: "-0.02em", marginBottom: 16 }}>
+            Daily Office
+          </h1>
+          <p style={{ color: "rgba(240,237,230,0.85)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, lineHeight: 1.55, maxWidth: 440, marginBottom: 24 }}>
+            Morning and Evening Prayer, kept at the hinges of the day — the full office or the short devotion.
+          </p>
+
+          <div className="w-full" style={{ maxWidth: 460 }}>
+            <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginBottom: 14 }} />
+            <div style={officeRow}>
+              <span style={officeRowLabel}>Time of day</span>
+              <select value={todPick} onChange={(e) => setTodPick(e.target.value as OfficeSide)} style={officeRowSelect} aria-label="Time of day">
+                <option value="morning">Morning</option>
+                <option value="evening">Evening</option>
+              </select>
             </div>
-            <Link
-              href="/rule-of-life"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80 shrink-0 mt-1"
-              style={{
-                fontFamily: "'Space Grotesk', sans-serif",
-                letterSpacing: "-0.01em",
-                background: "rgba(46,107,64,0.18)",
-                color: "#C8D4C0",
-                border: "1px solid rgba(46,107,64,0.4)",
-              }}
-              aria-label="Customize your daily prayer habit"
+            <div style={officeRow}>
+              <span style={officeRowLabel}>Practice</span>
+              <select value={practicePick} onChange={(e) => setPracticePick(e.target.value as "devotion" | "full")} style={officeRowSelect} aria-label="Practice">
+                <option value="devotion">Devotion (short)</option>
+                <option value="full">Full Prayer</option>
+              </select>
+            </div>
+            <div style={officeRow}>
+              <span style={officeRowLabel}>How</span>
+              <select value={effMethod} onChange={(e) => setMethodPick(e.target.value as DefaultOfficeEntry)} style={officeRowSelect} aria-label="How">
+                {howOptions.map((m) => (
+                  <option key={m} value={m}>{OFFICE_METHOD_META[m].label}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginTop: 14, marginBottom: 20 }} />
+
+            <button
+              onClick={beginOffice}
+              className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+              style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 700, border: "none", cursor: "pointer" }}
             >
-              <span aria-hidden style={{ fontSize: 13 }}>⚙️</span>
-              Customize
-            </Link>
+              Begin <span aria-hidden>→</span>
+            </button>
+            <div className="flex justify-center mt-4">
+              <Link
+                href="/rule-of-life"
+                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 transition-opacity hover:opacity-90"
+                style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.32)", color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}
+              >
+                ⚙️ Customize
+              </Link>
+            </div>
+            {/* Compline (beta) — the night office, kept as a quiet link below. */}
+            {rawIsBeta && (
+              <div className="flex justify-center mt-3">
+                <OptionButton opt={compline} />
+              </div>
+            )}
           </div>
-        </div>
-
-        <SectionLabel>Morning</SectionLabel>
-        <div className="space-y-3">
-          <DevotionMethodCard
-            mode="morning-devotion"
-            emoji="🌿"
-            title="Morning Devotion"
-            page="BCP p. 137"
-            weekday={weekday}
-            now={isMorning}
-            isDefault={optIsDefault(morningDevotion)}
-            onLaunch={(m) => launchDevotion("morning-devotion", m)}
-          />
-          <OfficeMethodCard
-            side="morning"
-            title="Morning Prayer"
-            weekday={weekday}
-            now={isMorning}
-            isDefault={getSideLevel("morning") === "office"}
-            onLaunch={(m) => launchOffice("morning", m)}
-          />
-        </div>
-
-        <SectionLabel>Evening</SectionLabel>
-        <div className="space-y-3">
-          <DevotionMethodCard
-            mode="early-evening-devotion"
-            emoji="🌆"
-            title="Early Evening Devotion"
-            page="BCP p. 139"
-            weekday={weekday}
-            now={isEvening}
-            isDefault={optIsDefault(eveningDevotion)}
-            onLaunch={(m) => launchDevotion("early-evening-devotion", m)}
-          />
-          <OfficeMethodCard
-            side="evening"
-            title="Evening Prayer"
-            weekday={weekday}
-            now={isEvening}
-            isDefault={getSideLevel("evening") === "office"}
-            onLaunch={(m) => launchOffice("evening", m)}
-          />
-          {/* Compline closes the evening. Beta-only — the server
-              endpoint 403s non-beta callers (office.ts), so this is the
-              visual mirror of that gate. */}
-          {rawIsBeta && <OptionButton opt={compline} />}
         </div>
       </div>
     </Layout>
