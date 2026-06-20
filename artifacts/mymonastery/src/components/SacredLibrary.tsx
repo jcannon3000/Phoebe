@@ -85,9 +85,14 @@ export function SacredLibrary() {
       </div>
 
       {items.length === 0 ? (
-        <p className="text-[13px] leading-snug py-2" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-          The music that draws you toward God — search your catalogue and save it here, and it's always a tap away.
-        </p>
+        <div className="py-1">
+          <p className="text-[13px] leading-snug mb-3" style={{ color: "rgba(143,175,150,0.85)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+            The music that draws you toward God — find it in Apple Music and save it here.
+          </p>
+          <button onClick={() => setAdding(true)} className="w-full flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-[14px] font-semibold active:scale-[0.99] transition-transform" style={{ background: "rgba(46,107,64,0.9)", color: WARM, fontFamily: FONT }}>
+            🔍 Search Apple Music
+          </button>
+        </div>
       ) : (
         <div className="flex flex-col gap-2">
           {items.map((it) => {
