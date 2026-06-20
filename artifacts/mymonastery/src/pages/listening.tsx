@@ -35,7 +35,7 @@ const glassField = {
   fontFamily: SPACE_GROTESK,
 } as const;
 
-type View = "log" | "done" | "history";
+type View = "log" | "history";
 
 // One account-wide log entry (server-backed; syncs across the account).
 type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: string; artworkUrl?: string; experience?: string; createdAt: string };
@@ -101,36 +101,12 @@ export default function ListeningPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
   });
 
-  // The whole log: note what + how, mark it done for today. (No amount.)
+  // The whole log: note what + how, mark it done, then show the log. (No amount.)
   function logToday() {
     logMutation.mutate();
     markPracticeDoneToday("listening");
-    setView("done");
-  }
-
-  // ——— Done / confirmation ———
-  if (view === "done") {
-    return (
-      <Layout>
-        <div className="max-w-xl mx-auto w-full min-h-[60vh] flex flex-col items-center justify-center text-center px-2">
-          <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-            <div className="text-4xl mb-5">🎧</div>
-            <h1 className="text-2xl font-bold leading-tight mb-3" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Amen.</h1>
-            <p className="text-[17px] leading-relaxed mb-1" style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic" }}>
-              What did you hear in the quiet after the music?
-            </p>
-            <p className="text-[13px] mt-5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>Logged for today 🌿</p>
-            <button
-              onClick={() => navigate("/")}
-              className="mt-8 px-7 py-3 rounded-full text-[15px] font-semibold active:scale-95 transition-transform"
-              style={{ background: "rgba(46,107,64,0.9)", color: WARM, fontFamily: SPACE_GROTESK }}
-            >
-              Done
-            </button>
-          </motion.div>
-        </div>
-      </Layout>
-    );
+    setWhat(""); setExperience(""); setArtworkUrl("");
+    setView("history");
   }
 
   // ——— History (the log) ———
