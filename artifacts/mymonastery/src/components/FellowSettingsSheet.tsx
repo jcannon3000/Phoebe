@@ -146,10 +146,11 @@ export function FellowSettingsSheet({ fellow, onClose }: { fellow: FellowLite | 
               control={<Switch on={shareProgress} disabled={savingKey === "shareProgress"} onClick={() => patchPref({ shareProgress: !shareProgress }, "shareProgress")} />}
             />
 
-            {/* 2. Lives in the same place (subjective) — also where plan-sharing lives. */}
+            {/* 2. Share plans — this is the toggle that gates whether they see
+                the plans you're going to (kept on the samePlace pref). */}
             <Row
-              title="Lives in the same place as me"
-              sub="You decide — it just helps you keep local plans local."
+              title="Share your plans"
+              sub="Lets them see the plans you're going to, so they can come along."
               control={<Switch on={samePlace} disabled={savingKey === "samePlace"} onClick={() => patchPref({ samePlace: !samePlace }, "samePlace")} />}
             />
 

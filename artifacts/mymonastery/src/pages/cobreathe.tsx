@@ -427,7 +427,7 @@ export default function CobreathePage() {
       return (
         <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center text-center px-6"
           style={{ background: "radial-gradient(120% 80% at 50% 30%, #122E20 0%, #0A1C14 65%)", paddingTop: "var(--safe-top)", paddingBottom: "env(safe-area-inset-bottom)" }}>
-          <div className="text-5xl mb-5">🌬️</div>
+          <div className="text-5xl mb-5">🌍</div>
           <h2 className="text-[1.4rem] font-bold mb-3 px-4" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
             {t("cobreathe.save_failed", { defaultValue: "Your breath didn't save" })}
           </h2>
