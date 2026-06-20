@@ -1,11 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { GratitudeComposer } from "@/components/GratitudeComposer";
+
+// Frosted-glass card surface — translucent dark tint + blur so the leaf
+// backdrop shows through, matching the rest of the app's photo surfaces.
+const FROST_CARD = { background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)" } as const;
 
 // Gratitude — a personal daily practice (private journal) with the option
 // to share an entry to the garden. Grounded in the BCP's General
@@ -48,7 +53,7 @@ function formatDay(iso: string, todayLabel: string, yesterdayLabel: string, loca
 
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex-1 rounded-2xl px-4 py-5 text-center" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
+    <div className="flex-1 rounded-2xl px-4 py-5 text-center" style={{ ...FROST_CARD, border: "1px solid rgba(46,107,64,0.22)" }}>
       <p className="font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 22, lineHeight: 1.1, margin: 0 }}>{value}</p>
       <p className="text-[11px] mt-1.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK, margin: 0 }}>{label}</p>
     </div>
@@ -117,8 +122,10 @@ export default function GratitudePage() {
     },
   });
 
+  const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
+
   return (
-    <Layout>
+    <Layout bgPhoto={bgPhoto}>
       <div className="max-w-xl mx-auto w-full">
         <div className="flex items-start gap-3 mb-5">
           <div className="text-3xl w-12 h-12 flex items-center justify-center rounded-2xl flex-shrink-0" style={{ background: "rgba(62,124,122,0.18)", border: "1px solid rgba(62,124,122,0.35)" }}>
@@ -145,7 +152,8 @@ export default function GratitudePage() {
                 onClick={() => setTab(tab2.key)}
                 className="flex items-center gap-1.5 rounded-full px-4 py-2 transition-opacity hover:opacity-90"
                 style={{
-                  background: active ? "rgba(46,107,64,0.25)" : "rgba(46,107,64,0.08)",
+                  background: active ? "rgba(46,107,64,0.32)" : "rgba(9,26,16,0.3)",
+                  backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
                   border: `1px solid ${active ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.2)"}`,
                   color: active ? WARM : SAGE,
                   fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600, cursor: "pointer",
@@ -166,7 +174,7 @@ export default function GratitudePage() {
             </div>
 
             {/* Composer */}
-            <div className="rounded-2xl p-4 mb-6" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.25)" }}>
+            <div className="rounded-2xl p-4 mb-6" style={{ ...FROST_CARD, border: "1px solid rgba(46,107,64,0.25)" }}>
               <p className="text-[15px] font-semibold mb-3" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
                 {stats.today ? t("gratitude.give_thanks_again") : t("gratitude.what_grateful")}
               </p>
@@ -179,7 +187,7 @@ export default function GratitudePage() {
                 type="button"
                 onClick={() => setLocation("/thanks")}
                 className="w-full rounded-2xl mb-6 flex items-center text-left transition-opacity hover:opacity-90 active:scale-[0.99]"
-                style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.25)", gap: 14, padding: "16px 18px" }}
+                style={{ ...FROST_CARD, border: "1px solid rgba(46,107,64,0.25)", gap: 14, padding: "16px 18px" }}
               >
                 <span aria-hidden style={{ fontSize: 24, width: 28, textAlign: "center", flexShrink: 0, lineHeight: 1 }}>🤝</span>
                 <span className="flex-1 min-w-0">
@@ -198,7 +206,7 @@ export default function GratitudePage() {
                 </p>
                 <div className="space-y-2 mb-6">
                   {entries.map((e) => (
-                    <div key={e.id} className="rounded-2xl px-4 py-3" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.18)" }}>
+                    <div key={e.id} className="rounded-2xl px-4 py-3" style={{ ...FROST_CARD, border: "1px solid rgba(46,107,64,0.18)" }}>
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>{formatDay(e.createdAt, t("common.today"), t("common.yesterday"), i18n.language)}</span>
                         <button
@@ -222,7 +230,7 @@ export default function GratitudePage() {
           gardenEntries.length > 0 ? (
             <div className="space-y-2">
               {gardenEntries.map((g) => (
-                <div key={g.id} className="rounded-2xl px-4 py-3 flex gap-3" style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.18)" }}>
+                <div key={g.id} className="rounded-2xl px-4 py-3 flex gap-3" style={{ ...FROST_CARD, border: "1px solid rgba(46,107,64,0.18)" }}>
                   {g.avatarUrl
                     ? <img src={g.avatarUrl} alt={g.authorName} className="w-7 h-7 rounded-full object-cover shrink-0 mt-0.5" />
                     : <div className="w-7 h-7 rounded-full shrink-0 mt-0.5 flex items-center justify-center text-[11px] font-semibold" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>{g.authorName.slice(0, 1).toUpperCase()}</div>}

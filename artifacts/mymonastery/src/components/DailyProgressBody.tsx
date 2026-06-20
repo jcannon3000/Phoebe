@@ -729,10 +729,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   );
 
   // Gentle staggered fade-up — each card rises in just after the one above it.
+  // A clear cascade: a touch more travel + a longer per-card gap so the cards
+  // visibly load one after another rather than appearing all at once.
   const enterUp = (i: number) => ({
-    initial: { opacity: 0, y: 10 },
+    initial: { opacity: 0, y: 14 },
     animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const, delay: Math.min(i * 0.05, 0.3) },
+    transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] as const, delay: Math.min(i * 0.09, 0.55) },
   });
 
   // Hold the first paint until the rhythm queries have settled (so cards don't

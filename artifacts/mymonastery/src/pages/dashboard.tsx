@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { Plus, X, Camera } from "lucide-react";
 import { LEAF_PHOTOS, HOME_LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { FROST } from "@/lib/frost";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -532,7 +533,7 @@ export function HomeAuthoringFAB() {
             <button
               onClick={() => { setOpen(false); setLocation("/pray-request/new?kind=request"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+              style={{ ...FROST, border: "1px solid rgba(200,212,192,0.28)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
             >
               <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🙏🏽 {t("home_fab.prayer_request")}</p>
               <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.prayer_request_sub")}</p>
@@ -541,7 +542,7 @@ export function HomeAuthoringFAB() {
               <button
                 onClick={() => { setOpen(false); setLocation("/moment/new?template=intercession"); }}
                 className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-                style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+                style={{ ...FROST, border: "1px solid rgba(200,212,192,0.28)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
               >
                 <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>🕯️ {t("home_fab.community_intercession")}</p>
                 <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.community_intercession_sub")}</p>
@@ -551,7 +552,7 @@ export function HomeAuthoringFAB() {
               <button
                 onClick={() => { setOpen(false); setLocation("/tradition/new"); }}
                 className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-                style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
+                style={{ ...FROST, border: "1px solid rgba(200,212,192,0.28)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
               >
                 <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>📅 {t("home_fab.event", { defaultValue: "Event" })}</p>
                 <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.event_sub", { defaultValue: "Put a gathering on your community's calendar." })}</p>
@@ -563,7 +564,7 @@ export function HomeAuthoringFAB() {
       <button
         onClick={() => setOpen(o => !o)}
         className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-transform"
-        style={{ background: "#1A4A2E", color: "#F0EDE6" }}
+        style={{ ...FROST, border: "1px solid rgba(200,212,192,0.35)", color: "#F0EDE6" }}
         aria-label={open ? t("home_fab.close_menu") : t("home_fab.new_prayer")}
       >
         {/* The classic "+" create affordance — rotates 45° into an × when open. */}
@@ -7100,7 +7101,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       type="button"
                       onClick={() => setShowNewPrayerChoice(true)}
                       className={`w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99] ${ownReqs.length > 0 ? "mt-3" : ""}`}
-                      style={{ padding: "12px 16px", background: "rgba(96,141,209,0.18)", border: "1px solid rgba(96,141,209,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
+                      style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
                     >
                       ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
                     </button>
@@ -7108,7 +7109,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     <Link href="/pray-request/new" className={`block ${ownReqs.length > 0 ? "mt-3" : ""}`}>
                       <div
                         className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-                        style={{ padding: "12px 16px", background: "rgba(96,141,209,0.18)", border: "1px solid rgba(96,141,209,0.4)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
+                        style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}
                       >
                         ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
                       </div>
@@ -7360,7 +7361,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   type="button"
                   onClick={() => { setShowNewPrayerChoice(false); setLocation("/pray-request/new?kind=request"); }}
                   className="text-left rounded-xl px-4 py-3.5 transition-opacity hover:opacity-90 active:scale-[0.99]"
-                  style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)" }}
+                  style={{ ...FROST, border: "1px solid rgba(200,212,192,0.28)" }}
                 >
                   <p className="text-[15px] font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>🙏🏽 {t("dashboard.choice_personal", { defaultValue: "Prayer request" })}</p>
                   <p className="text-[12.5px] mt-0.5" style={{ color: "#8FAF96" }}>{t("dashboard.choice_personal_sub", { defaultValue: "Ask your community to pray for you." })}</p>
@@ -7369,7 +7370,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   type="button"
                   onClick={() => { setShowNewPrayerChoice(false); setLocation("/moment/new?template=intercession"); }}
                   className="text-left rounded-xl px-4 py-3.5 transition-opacity hover:opacity-90 active:scale-[0.99]"
-                  style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)" }}
+                  style={{ ...FROST, border: "1px solid rgba(200,212,192,0.28)" }}
                 >
                   <p className="text-[15px] font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>🕯️ {t("dashboard.choice_intercession", { defaultValue: "Community intercession" })}</p>
                   <p className="text-[12.5px] mt-0.5" style={{ color: "#8FAF96" }}>{t("dashboard.choice_intercession_sub", { defaultValue: "A prayer the whole community carries together." })}</p>

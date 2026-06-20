@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/hooks/useAuth";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { BCP_PRAYERS, type BcpPrayer, localizeBcpPrayer } from "@/lib/bcp-prayers";
 
 
@@ -43,6 +44,7 @@ export default function BcpIntercessionsPage() {
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [selectedPrayer, setSelectedPrayer] = useState<BcpPrayer | null>(null);
   const [query, setQuery] = useState("");
+  const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
@@ -59,7 +61,7 @@ export default function BcpIntercessionsPage() {
   if (isLoading || !user) return null;
 
   return (
-    <Layout>
+    <Layout bgPhoto={bgPhoto}>
       <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
         {/* Header */}
         <div className="mb-6">
@@ -86,7 +88,9 @@ export default function BcpIntercessionsPage() {
             placeholder={t("bcp_intercessions.search_placeholder")}
             className="w-full text-sm px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/30 focus:border-[#8FAF96]/60 transition-all"
             style={{
-              backgroundColor: "#091A10",
+              background: "rgba(9,26,16,0.3)",
+              backdropFilter: "blur(14px)",
+              WebkitBackdropFilter: "blur(14px)",
               borderColor: "rgba(46,107,64,0.3)",
               color: "#F0EDE6",
             }}
@@ -132,7 +136,7 @@ export default function BcpIntercessionsPage() {
                     key={prayer.title}
                     onClick={() => setSelectedPrayer(prayer)}
                     className="w-full text-left px-4 py-3 rounded-xl transition-all hover:bg-white/5 active:scale-[0.99]"
-                    style={{ background: "rgba(46,107,64,0.07)", border: "1px solid rgba(46,107,64,0.12)" }}
+                    style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(46,107,64,0.18)" }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -166,8 +170,10 @@ export default function BcpIntercessionsPage() {
                     onClick={() => setOpenCategory(isOpen ? null : category)}
                     className="w-full text-left p-4 rounded-xl transition-all"
                     style={{
-                      background: isOpen ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.08)",
-                      border: `1px solid ${isOpen ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.15)"}`,
+                      background: isOpen ? "rgba(46,107,64,0.32)" : "rgba(9,26,16,0.3)",
+                      backdropFilter: "blur(14px)",
+                      WebkitBackdropFilter: "blur(14px)",
+                      border: `1px solid ${isOpen ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.2)"}`,
                     }}
                   >
                     <div className="flex items-center justify-between">

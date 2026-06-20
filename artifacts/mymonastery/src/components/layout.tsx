@@ -9,6 +9,7 @@ import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import splashForestPath from "@/assets/splash/forest-path.jpg";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
 import { playOpeningSwell } from "@/lib/amenFeedback";
 import { hasReadCacToday, hasReadFddToday, hasReadSsjeToday } from "@/lib/cacReadState";
@@ -1137,7 +1138,24 @@ function OpeningSplash() {
         paddingTop: "calc(var(--safe-top) + 24px)", paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)", overflowY: "auto",
       }}
     >
-      <AnimatedBackground base="#0C1F12" variant="pronounced" />
+      {/* Splash backdrop — ONE fixed, bundled leaf photo (foggy forest path).
+          It's set, not loaded from the rotating library, so it paints instantly
+          on a cold open with no flash. A frosted dark wash sits on top so the
+          greeting / faces / quote stay legible over the photo. */}
+      <img
+        src={splashForestPath}
+        alt=""
+        aria-hidden
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
+      />
+      <div
+        aria-hidden
+        style={{
+          position: "absolute", inset: 0, zIndex: -1,
+          background: "linear-gradient(180deg, rgba(8,18,12,0.55) 0%, rgba(8,18,12,0.42) 45%, rgba(8,18,12,0.72) 100%)",
+          backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)",
+        }}
+      />
       {phase === "routine" ? (
         // Design-your-daily-routine nudge — shown after the faces to users who
         // haven't set up a routine yet (once a week until they have one).
@@ -1371,10 +1389,13 @@ function LoadReveal() {
 // sits z-index:-1 within the Layout root's isolation:isolate context so it stays put.
 function LayoutBackdrop({ photo, opacity }: { photo: string; opacity: number }) {
   const [loaded, setLoaded] = useState(false);
+  // Photo AND its wash fade UP together once the image decodes — so the
+  // backdrop eases in as one piece rather than the dark wash flashing on
+  // instantly while the photo is still loading behind it.
   return (
     <>
-      <img src={photo} alt="" aria-hidden onLoad={() => setLoaded(true)} style={{ position: "fixed", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: loaded ? opacity : 0, transition: "opacity 0.7s ease", zIndex: -1 }} />
-      <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
+      <img src={photo} alt="" aria-hidden onLoad={() => setLoaded(true)} style={{ position: "fixed", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: loaded ? opacity : 0, transition: "opacity 0.8s ease", zIndex: -1 }} />
+      <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, opacity: loaded ? 1 : 0, transition: "opacity 0.8s ease", background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
     </>
   );
 }

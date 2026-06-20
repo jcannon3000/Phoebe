@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -6,6 +6,7 @@ import { ChevronLeft, X as CloseIcon, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
@@ -266,7 +267,7 @@ function BarCard({
   href,
   pulse,
   accent = "#2E6B40",
-  bg = "rgba(46,107,64,0.15)",
+  bg = "rgba(9,26,16,0.3)",
   border,
   children,
 }: {
@@ -287,6 +288,8 @@ function BarCard({
       className={`relative flex rounded-xl overflow-hidden transition-shadow ${pulse ? "animate-turn-pulse-practices" : ""}`}
       style={{
         background: bg,
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
         border: `1px solid ${border ?? (pulse ? "rgba(46,107,64,0.15)" : "rgba(46,107,64,0.28)")}`,
         boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         cursor: onClick || href ? "pointer" : "default",
@@ -1157,6 +1160,7 @@ export default function PrayerListPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   // Mark "this user opened their prayer list" as a prayer event for
   // the community metrics dashboard's Times-prayed rollup. The
@@ -1409,7 +1413,7 @@ export default function PrayerListPage() {
     }));
 
   return (
-    <Layout>
+    <Layout bgPhoto={bgPhoto}>
       <div className="max-w-2xl mx-auto w-full pb-24">
         {/* Back link to /dashboard — matches the pattern on the
             sibling prayer surfaces (/my-prayer-requests,
@@ -1448,7 +1452,9 @@ export default function PrayerListPage() {
             href="/prayer-mode?reset=1"
             className="block mb-4 rounded-xl px-4 py-3 cursor-pointer"
             style={{
-              background: "rgba(46,107,64,0.18)",
+              background: "rgba(9,26,16,0.3)",
+              backdropFilter: "blur(14px)",
+              WebkitBackdropFilter: "blur(14px)",
               border: "1px solid rgba(46,107,64,0.4)",
               textAlign: "center",
               fontFamily: "'Space Grotesk', sans-serif",
@@ -1709,7 +1715,7 @@ export function PrayerListComposeBar() {
           placeholder={t("prayer_list_compose.placeholder")}
           maxLength={1000}
           className="flex-1 text-sm px-4 py-2.5 rounded-xl border placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/40 focus:border-[#8FAF96] transition-all"
-          style={{ backgroundColor: "#091A10", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6" }}
+          style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6" }}
         />
         <button
           type="button"
