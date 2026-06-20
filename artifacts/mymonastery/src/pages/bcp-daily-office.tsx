@@ -1,5 +1,6 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { X } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -510,7 +511,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const officeBgPhoto = LEAF_PHOTOS.length > 0
     ? LEAF_PHOTOS[(leafOffset + sectionIndex) % LEAF_PHOTOS.length]!
     : null;
-  const officeBgOpacity = 0.55;
+  const officeBgOpacity = 0.70;
   const mainRef = useRef<HTMLElement | null>(null);
   const swipeTouchStartXRef = useRef<number | null>(null);
   const swipeTouchStartYRef = useRef<number | null>(null);
@@ -1463,12 +1464,19 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           >
             {officeTitle}
           </span>
-          {/* Right column kept as a grid spacer so the centered
-              officeTitle pill stays centered. The day-label that
-              used to sit here ("Wednesday in the 5th Week of
-              Easter") was visually crowded against the pill on
-              narrow screens. */}
-          <div />
+          {/* Right column: an X circle to close the slideshow (consistent with
+              the other slideshows). Right-aligned so the centered title pill
+              stays centered. */}
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={onBack}
+              aria-label="Close"
+              style={{ width: 32, height: 32, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(19,44,29,0.85)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}
+            >
+              <X size={16} />
+            </button>
+          </div>
 
         </div>
       </header>
