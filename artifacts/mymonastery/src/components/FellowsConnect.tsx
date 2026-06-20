@@ -15,12 +15,16 @@ import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { FellowSettingsSheet, type FellowLite } from "@/components/FellowSettingsSheet";
+import { FROST_BLUR } from "@/lib/frost";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 const CARD_BG = "rgba(46,107,64,0.12)";
 const CARD_B = "rgba(46,107,64,0.3)";
+// Frosted-glass card — the leaf backdrop blurs through, with a soft sage edge
+// (matches the home cards' "+" FAB ring).
+const CARD_STYLE = { background: "rgba(9,26,16,0.3)", ...FROST_BLUR, border: "1px solid rgba(200,212,192,0.22)" } as const;
 
 type Fellow = { userId: number; name: string | null; avatarUrl: string | null; streak: number };
 type Request = { id: number; userId: number; name: string | null; avatarUrl: string | null };
@@ -175,7 +179,7 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
   };
 
   const row = (name: string, url: string | null, right: React.ReactNode, key: string | number) => (
-    <div key={key} className="relative flex items-center gap-3 rounded-2xl px-4 py-3 mb-2" style={{ background: CARD_BG, border: `1px solid ${CARD_B}` }}>
+    <div key={key} className="relative flex items-center gap-3 rounded-2xl px-4 py-3 mb-2" style={CARD_STYLE}>
       <Avatar name={name} url={url} />
       <p className="flex-1 min-w-0 truncate text-[15px] font-medium" style={{ color: WARM, fontFamily: FONT }}>{name}</p>
       {right}
@@ -254,7 +258,7 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
       : keptEnough ? t("fellows_c.walk_all_kept", { defaultValue: "Kept today 🌿" })
       : t("fellows_c.walk_kept_count", { kept: keptShown, total: shown.length, defaultValue: `${keptShown} of ${shown.length} kept today` });
     return (
-      <div key={`f-${f.userId}`} className="relative flex items-center gap-3 rounded-2xl px-4 py-3 mb-2" style={{ background: CARD_BG, border: `1px solid ${CARD_B}` }}>
+      <div key={`f-${f.userId}`} className="relative flex items-center gap-3 rounded-2xl px-4 py-3 mb-2" style={CARD_STYLE}>
         <Avatar name={f.name ?? "Someone"} url={f.avatarUrl} />
         <div className="flex-1 min-w-0">
           <p className="truncate text-[15px] font-medium" style={{ color: WARM, fontFamily: FONT }}>{f.name ?? "Someone"}</p>
@@ -332,7 +336,7 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
 
       {/* Add a fellow — search + contacts (beta only) */}
       {canManage && (
-      <div className="rounded-2xl p-3" style={{ background: CARD_BG, border: `1px solid ${CARD_B}` }}>
+      <div className="rounded-2xl p-3" style={CARD_STYLE}>
         <div className="relative">
           <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2" color="rgba(143,175,150,0.6)" />
           <input

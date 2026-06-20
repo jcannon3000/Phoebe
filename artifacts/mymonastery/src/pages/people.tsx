@@ -8,6 +8,7 @@ import { useGardenSocket } from "@/hooks/useGardenSocket";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { FellowsConnect } from "@/components/FellowsConnect";
 import { WalkTogether } from "@/components/WalkTogether";
 import { FellowOnboardingPrompt } from "@/components/FellowOnboardingPrompt";
@@ -595,9 +596,11 @@ export default function People() {
         return false;
       });
 
+  const leafBg = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
   return (
-    <Layout>
+    <Layout bgPhoto={leafBg}>
       <style>{FLAP_CSS}</style>
+      <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
       <div className="max-w-2xl mx-auto w-full pb-20">
         {/* No page eyebrow/title — the Fellows section header leads the page
             (sized like the home section titles) so it starts higher up. */}
@@ -847,6 +850,7 @@ export default function People() {
           </div>
         )}
         </>)}
+      </div>
       </div>
     </Layout>
   );
