@@ -1362,7 +1362,7 @@ export function ContemplationTimer({
                 className="rounded-full px-10 py-3.5 text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
                 style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)", cursor: "pointer", fontFamily: SPACE_GROTESK }}
               >
-                {t("contemplation_timer.amen")}
+                {t("contemplation_timer.done", { defaultValue: "Done" })}
               </button>
             </>
           )}
