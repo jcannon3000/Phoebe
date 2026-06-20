@@ -1182,12 +1182,6 @@ export default function PrayerListPage() {
   // The live /prayer-requests feed only carries active rows (plus the
   // owner's own expired ones), so a dedicated endpoint backs the faded
   // "Past" backlog so answered / released prayers don't disappear.
-  const { data: pastMineRequests = [] } = useQuery<PrayerRequest[]>({
-    queryKey: ["/api/prayer-requests/mine/past"],
-    queryFn: () => apiRequest("GET", "/api/prayer-requests/mine/past"),
-    enabled: !!user,
-  });
-
   const { data: prayersForMine = [] } = useQuery<MyActivePrayerFor[]>({
     queryKey: ["/api/prayers-for/mine"],
     queryFn: () => apiRequest("GET", "/api/prayers-for/mine"),
@@ -1213,17 +1207,6 @@ export default function PrayerListPage() {
     enabled: !!user,
   });
 
-  // Backlog of community intercessions the viewer once helped lead
-  // but has since archived. Endpoint is admin-gated server-side, so
-  // for non-admins this just returns []. We feed it through into the
-  // section render unconditionally; the section hides itself when
-  // the array is empty so we don't show a mostly-empty heading.
-  const { data: pastIntercessionsData } = useQuery<{ intercessions: PastIntercession[] }>({
-    queryKey: ["/api/moments/past-intercessions"],
-    queryFn: () => apiRequest("GET", "/api/moments/past-intercessions"),
-    enabled: !!user,
-  });
-  const pastIntercessions = pastIntercessionsData?.intercessions ?? [];
 
   // Today's intercessions across every prayer feed the user subscribes
   // to. Together with /subscribed (below) we surface one card per feed
@@ -1400,8 +1383,7 @@ export default function PrayerListPage() {
   // /api/prayer-requests/mine/past. Rendered faded at the bottom of the
   // section (same treatment as the "Prayers for You" / intercessions
   // backlogs) so a request doesn't just vanish when its window closes.
-  const pastRequests = pastMineRequests;
-  const hasAnyRequests = activeRequests.length > 0 || pastRequests.length > 0;
+  const hasAnyRequests = activeRequests.length > 0;
   // Own requests float to the top of the active list — the user asked to see
   // their own asks first. Stable sort keeps server order within each group.
   const sortedActiveRequests = [...activeRequests].sort(
@@ -1498,15 +1480,13 @@ export default function PrayerListPage() {
           </button>
         )}
 
-        {/* Prayer Requests — active rows first, then a faded "Past"
-            sub-group for answered / cycle-expired requests so they
-            don't disappear when their window closes (same faded
-            backlog treatment as the other sections). */}
+        {/* Prayer Requests — active rows only. The faded "Past" backlog
+            sub-group was removed per request. */}
         {hasAnyRequests && (focused === null || focused === "requests") && (
           <SectionShell
             id="requests"
             label={t("prayer_list.section_requests")}
-            count={activeRequests.length + pastRequests.length}
+            count={activeRequests.length}
             focused={focused}
             onFocus={setFocused}
             maxRows={7}
@@ -1525,29 +1505,27 @@ export default function PrayerListPage() {
                 onOpen={() => setLocation(`/prayer-requests/${r.id}`)}
               />
             ))}
-            {/* "Past" divider — labels the faded backlog of requests
-                that have run their course. Only shown when there's a
-                past row to introduce. */}
-            {pastRequests.length > 0 && (
-              <div className="flex items-center gap-2 pt-3 pb-0.5">
-                <span
-                  className="text-[10px] font-semibold uppercase"
-                  style={{ color: "rgba(143,175,150,0.5)", letterSpacing: "0.14em" }}
-                >
-                  {t("prayer_list.past")}
-                </span>
-                <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.1)" }} />
-              </div>
-            )}
-            {pastRequests.map((r) => (
-              <RequestCard
-                key={`past-${r.id}`}
-                req={r}
-                isPast
-                viewerAvatarUrl={user.avatarUrl ?? null}
-                viewerName={user.name ?? null}
-                onOpen={() => setLocation(`/prayer-requests/${r.id}`)}
-              />
+          </SectionShell>
+        )}
+
+        {/* Community intercessions — ongoing community practices (subscribed
+            prayer feeds first, then individual intercessions). Restored per
+            request. Auto-hides when there's nothing today. */}
+        {(intercessionsSorted.length > 0 || feedsToday.length > 0)
+          && (focused === null || focused === "intercessions") && (
+          <SectionShell
+            id="intercessions"
+            label={t("prayer_list.section_community", { defaultValue: "Community intercessions" })}
+            count={intercessionsSorted.length + feedsToday.length}
+            focused={focused}
+            onFocus={setFocused}
+            maxRows={7}
+          >
+            {feedsToday.map((f) => (
+              <FeedCard key={`feed-${f.feedId}`} feed={f} />
+            ))}
+            {intercessionsSorted.map((m) => (
+              <IntercessionCard key={m.id} moment={m} viewerEmail={user.email ?? ""} />
             ))}
           </SectionShell>
         )}
@@ -1564,8 +1542,8 @@ export default function PrayerListPage() {
         {/* Heart to Heart (1:1 prayer exchange) is hidden for now — the
             PartnerExchange block was removed from the prayer list. */}
 
-        {/* Empty state — when there are no requests to show. */}
-        {!hasAnyRequests && (
+        {/* Empty state — only when there's nothing in any section. */}
+        {!hasAnyRequests && intercessionsSorted.length === 0 && feedsToday.length === 0 && (
           <p className="text-sm italic mt-10 text-center" style={{ color: "rgba(143,175,150,0.6)" }}>
             Quiet today. Share a prayer above to start something.
           </p>

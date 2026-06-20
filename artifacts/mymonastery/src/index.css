@@ -115,7 +115,7 @@
   /* prayer #C47A65 — prayer, warmth                   */
   /* button #2D5E3F — active button bg                 */
 
-  --background: 145 47% 9%;         /* #0C2215 deep forest green (lifted a touch) */
+  --background: 137 42% 11%;        /* #102816 — the St. Phoebe icon's deep forest green (warmer + less saturated than before, to match the app icon) */
   --foreground: 42 25% 92%;         /* #F0EDE6 warm off-white */
 
   --border: 133 17% 62%;            /* sage accent */
@@ -221,7 +221,7 @@ input[type="email"],
 input[type="password"],
 textarea {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  background-color: #0C2215;
+  background-color: #102816;
   transition: box-shadow 0.3s ease, border-color 0.3s ease;
 }
 input[type="text"]:focus,
@@ -292,7 +292,7 @@ textarea:focus {
   }
 
   html {
-    background-color: #0C2215;
+    background-color: #102816;
     /* Android Chrome auto-inflates ("text boosting") body text on narrow
        viewports unless this is pinned, which throws our tuned spacing off
        and makes the layout read as cramped/scrunched. iOS ignores it. */
@@ -306,7 +306,7 @@ textarea:focus {
      showed the browser's WHITE canvas ("not filling the screen"). With <html>
      left full-size + green, that gap is the app's green. Never on iOS/native. */
   html.android-web {
-    background-color: #0C2215;
+    background-color: #102816;
     min-height: 100%;
   }
   html.android-web body {
@@ -315,7 +315,7 @@ textarea:focus {
 
   body {
     @apply font-sans antialiased text-foreground;
-    background-color: #0C2215;
+    background-color: #102816;
     /* Guard against a single overflowing element widening the layout
        viewport: Android Chrome reacts by zooming the WHOLE page out to fit
        (the "everything is scrunched" report), where iOS Safari just clips.
@@ -325,7 +325,7 @@ textarea:focus {
   }
 
   #root {
-    background-color: #0C2215;
+    background-color: #102816;
     min-height: 100vh;
   }
 

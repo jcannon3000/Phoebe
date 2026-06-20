@@ -222,10 +222,9 @@ router.get("/prayer-streak/community-prayed-month", async (req: Request, res: Re
   if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   try {
-    const { getGardenUserIds, getFellowUserIds } = await import("../lib/garden.js");
+    const { getGardenUserIds } = await import("../lib/garden.js");
     const gardenIds = await getGardenUserIds(sessionUser.id);
     if (gardenIds.length === 0) { res.json({ people: [], total: 0 }); return; }
-    const fellowIds = new Set(await getFellowUserIds(sessionUser.id));
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
@@ -234,35 +233,38 @@ router.get("/prayer-streak/community-prayed-month", async (req: Request, res: Re
       .from(usersTable)
       .where(inArray(usersTable.id, gardenIds));
 
-    const activeIds = new Set<number>();
+    // Track the LATEST time each person prayed (across sessions + amens) so the
+    // rail can be ordered by recency — most recent first (leftmost).
+    const latestMs = new Map<number, number>();
+    const note = (userId: number | null, ts: Date | null) => {
+      if (typeof userId !== "number" || !ts) return;
+      const ms = ts.getTime();
+      const prev = latestMs.get(userId);
+      if (prev === undefined || ms > prev) latestMs.set(userId, ms);
+    };
     const sessionRows = await db
-      .selectDistinct({ userId: prayerSessionsTable.userId })
+      .select({ userId: prayerSessionsTable.userId, ts: prayerSessionsTable.endedAt })
       .from(prayerSessionsTable)
       .where(and(
         inArray(prayerSessionsTable.userId, gardenIds),
         gte(prayerSessionsTable.endedAt, thirtyDaysAgo),
       ));
-    for (const r of sessionRows) { if (typeof r.userId === "number") activeIds.add(r.userId); }
+    for (const r of sessionRows) note(r.userId, r.ts);
     const amenRows = await db
-      .selectDistinct({ userId: prayerRequestAmensTable.userId })
+      .select({ userId: prayerRequestAmensTable.userId, ts: prayerRequestAmensTable.prayedAt })
       .from(prayerRequestAmensTable)
       .where(and(
         inArray(prayerRequestAmensTable.userId, gardenIds),
         gte(prayerRequestAmensTable.prayedAt, thirtyDaysAgo),
       ));
-    for (const r of amenRows) { if (typeof r.userId === "number") activeIds.add(r.userId); }
+    for (const r of amenRows) note(r.userId, r.ts);
 
-    const activePeople = peopleRows.filter((p) => activeIds.has(p.id));
+    const activePeople = peopleRows.filter((p) => latestMs.has(p.id));
     const total = activePeople.length;
-    // Fellows lead the rail; then (within each group) people who have a profile
-    // photo, then the rest.
+    // Order by recency — the most recent person to pray with you sits on the left.
     const people = activePeople
       .slice()
-      .sort((a, b) => {
-        const fa = fellowIds.has(a.id) ? 1 : 0, fb = fellowIds.has(b.id) ? 1 : 0;
-        if (fa !== fb) return fb - fa;
-        return (b.avatarUrl ? 1 : 0) - (a.avatarUrl ? 1 : 0);
-      })
+      .sort((a, b) => (latestMs.get(b.id) ?? 0) - (latestMs.get(a.id) ?? 0))
       .map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl }));
 
     res.json({ people, total });

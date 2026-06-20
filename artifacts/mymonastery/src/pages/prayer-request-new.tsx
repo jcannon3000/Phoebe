@@ -13,7 +13,7 @@ import { DrumPicker } from "@/components/DrumPicker";
 // A calm DARK-BLUE surface (the app's reflection blue, #6FAF85, family) —
 // solid, no drifting gradient — behind frosted-glass cards, Space Grotesk
 // headings, Georgia-italic body, a blue-grey + warm-cream palette.
-const BG = "#0C2215";
+const BG = "#102816";
 const CREAM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SAGE_DIM = "rgba(143,175,150,0.6)";
