@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,18 +31,6 @@ const glassField = {
   WebkitBackdropFilter: "blur(8px)",
   outline: "none",
 } as const;
-
-type LastMineRow = {
-  id: number;
-  body: string;
-  createdAt: string;
-  expiresAt: string | null;
-  closedAt: string | null;
-  isAnswered: boolean;
-  kind: string | null;
-  isActive: boolean;
-  isExpired: boolean;
-};
 
 // Kind comes from a `?kind=` query param set by the FAB on the home
 // dashboard. Drives form copy AND is persisted to prayer_requests.kind
@@ -128,20 +116,8 @@ export default function PrayerRequestNew() {
   const [eventDate, setEventDate] = useState(""); // YYYY-MM-DD from <input type=date>
   const todayStr = new Date().toLocaleDateString("en-CA");
 
-  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const bodyRef = useRef<HTMLInputElement>(null);
   useEffect(() => { bodyRef.current?.focus(); }, []);
-
-  // Pull the user's most-recent prayer request to offer a "renew this
-  // instead?" card under the textarea on step 0. Only renders for an
-  // expired/closed request — an active one already lives on /prayer-list,
-  // so showing it here would just duplicate the surface.
-  const { data: lastMineData } = useQuery<{ request: LastMineRow | null }>({
-    queryKey: ["/api/prayer-requests/last-mine"],
-    queryFn: () => apiRequest("GET", "/api/prayer-requests/last-mine"),
-    enabled: !!user,
-  });
-  const lastMine = lastMineData?.request ?? null;
-  const showRenewCard = lastMine && (lastMine.isExpired || !!lastMine.closedAt) && !lastMine.isActive;
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -164,25 +140,10 @@ export default function PrayerRequestNew() {
     onSuccess: () => {
       triggerSubmitFeedback();
       qc.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-      qc.invalidateQueries({ queryKey: ["/api/prayer-requests/last-mine"] });
       setLocation("/prayer-list");
     },
     onError: (err: any) => {
       setError(err?.message || t("prayer_request.couldnt_share"));
-    },
-  });
-
-  const renewMutation = useMutation({
-    mutationFn: (id: number) =>
-      apiRequest("PATCH", `/api/prayer-requests/${id}/renew`),
-    onSuccess: () => {
-      triggerSubmitFeedback();
-      qc.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-      qc.invalidateQueries({ queryKey: ["/api/prayer-requests/last-mine"] });
-      setLocation("/prayer-list");
-    },
-    onError: (err: any) => {
-      setError(err?.message || t("prayer_request.couldnt_renew"));
     },
   });
 
@@ -230,9 +191,26 @@ export default function PrayerRequestNew() {
       <div style={{ maxWidth: 480, margin: "0 auto", width: "100%", padding: "22px 24px calc(env(safe-area-inset-bottom) + var(--kb-inset, 0px) + 24px)" }}>
         {/* One slide — write the request, choose how long, share. */}
         <div>
-          <h1 style={{ fontSize: 23, lineHeight: 1.2, fontWeight: 700, color: CREAM, fontFamily: SPACE, letterSpacing: "-0.02em", margin: 0, marginBottom: 22 }}>
-            {copy.title}
-          </h1>
+          {/* Designed header — emoji badge, eyebrow, title, subtitle (the per-kind
+              copy defined all four; the page used to render only the title, which
+              left it floating in empty space). */}
+          <div style={{ marginBottom: 24 }}>
+            <div
+              aria-hidden
+              style={{ width: 52, height: 52, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 27, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.35)", marginBottom: 14 }}
+            >
+              {copy.emoji}
+            </div>
+            <p style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.18em", color: SAGE, fontFamily: SPACE, fontWeight: 600, margin: 0, marginBottom: 8 }}>
+              {copy.eyebrow}
+            </p>
+            <h1 style={{ fontSize: 24, lineHeight: 1.18, fontWeight: 700, color: CREAM, fontFamily: SPACE, letterSpacing: "-0.02em", margin: 0, marginBottom: 9 }}>
+              {copy.title}
+            </h1>
+            <p style={{ fontSize: 15, lineHeight: 1.5, color: SAGE, fontFamily: SERIF, fontStyle: "italic", margin: 0 }}>
+              {copy.subtitle}
+            </p>
+          </div>
 
           {/* Life-event: a short title + the date it happens. */}
           {isLifeEvent && (
@@ -261,18 +239,15 @@ export default function PrayerRequestNew() {
             </div>
           )}
 
-          <textarea
+          <input
             ref={bodyRef}
+            type="text"
             value={body}
             onChange={(e) => { setBody(e.target.value.slice(0, 1000)); setError(""); }}
-            rows={4}
             placeholder={copy.placeholder}
-            className="w-full px-5 py-4 text-base resize-none"
-            style={{ ...glassField, minHeight: 140, fontFamily: SPACE, fontSize: 16, lineHeight: 1.6 }}
+            className="w-full px-5 py-3.5 text-base mb-6"
+            style={{ ...glassField, fontFamily: SPACE, fontSize: 16 }}
           />
-          <p className="text-[11px] mb-5 text-right" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE, marginTop: 6 }}>
-            {t("prayer_request.char_count", { count: body.length })}
-          </p>
 
           {/* How long to carry it — a simple dropdown (1–7 days), in the spot the
               audience picker used to sit. Life events derive their own lifetime
@@ -285,8 +260,22 @@ export default function PrayerRequestNew() {
               <select
                 value={days}
                 onChange={(e) => setDays(Number(e.target.value))}
-                className="w-full px-4 py-3.5 text-base"
-                style={{ ...glassField, fontFamily: SPACE, fontSize: 16, colorScheme: "dark" }}
+                style={{
+                  display: "inline-block",
+                  width: "auto",
+                  background: "rgba(46,107,64,0.22)",
+                  color: CREAM,
+                  border: "1px solid rgba(46,107,64,0.50)",
+                  borderRadius: 999,
+                  padding: "12px 26px",
+                  fontSize: 15,
+                  fontWeight: 600,
+                  fontFamily: SPACE,
+                  textAlignLast: "center",
+                  colorScheme: "dark",
+                  cursor: "pointer",
+                  outline: "none",
+                }}
               >
                 {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => (
                   <option key={d} value={d}>{d === 1 ? "1 day" : `${d} days`}</option>
@@ -307,26 +296,6 @@ export default function PrayerRequestNew() {
             {createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community")}
           </button>
 
-          {/* Renew-instead card — only when the user has a previous expired /
-              released request. */}
-          {showRenewCard && lastMine && (
-            <div className="mt-7 p-4" style={{ background: GLASS, border: `1px solid ${GLASS_BORDER}`, borderRadius: 18, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
-              <p className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.6)" }}>
-                {t("prayer_request.or_renew")}
-              </p>
-              <p className="text-[14px] italic leading-snug mb-3" style={{ color: "rgba(232,217,176,0.85)", fontFamily: "Georgia, 'Times New Roman', serif", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                {lastMine.body}
-              </p>
-              <button
-                onClick={() => renewMutation.mutate(lastMine.id)}
-                disabled={renewMutation.isPending}
-                className="text-xs font-semibold rounded-full px-4 py-2 disabled:opacity-50"
-                style={{ background: "rgba(46,107,64,0.45)", color: "#F0EDE6" }}
-              >
-                {renewMutation.isPending ? t("prayer_request.renewing") : t("prayer_request.renew_for_7_days")}
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </motion.div>
