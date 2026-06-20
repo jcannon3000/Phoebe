@@ -834,20 +834,25 @@ export function CobreatheBreath({
         </div>
       )}
 
-      {/* A small ✕ top-right — a quick close for the syncing pre-roll (and a
-          familiar exit). The clear, labelled End / Discard live at the bottom. */}
+      {/* Top-right control: a quick-close ✕ during the breath, which MORPHS into a
+          green "Done" pill the moment the set is complete (the only finish control —
+          no separate centred Done button mid-screen). */}
       <button
         type="button"
-        aria-label={t("common.cancel", { defaultValue: "Cancel" })}
-        onClick={() => onEnd(Math.round((syncedNow() - startRef.current) / 1000), reachedRef.current)}
+        aria-label={reachedNow ? t("common.done", { defaultValue: "Done" }) : t("common.cancel", { defaultValue: "Cancel" })}
+        onClick={() => onEnd(Math.round((syncedNow() - startRef.current) / 1000), reachedNow ? true : reachedRef.current)}
         style={{
           position: "absolute", top: "calc(var(--safe-top) + 16px)", right: 16,
           borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
           fontFamily: SPACE_GROTESK, fontWeight: 600, lineHeight: 1, cursor: "pointer", zIndex: 2,
-          background: "rgba(0,0,0,0.4)", border: "1px solid rgba(200,225,210,0.28)", color: "#EAF6F4", fontSize: 17, width: 38, height: 38, padding: 0,
+          transition: "background 0.6s ease, border-color 0.6s ease, color 0.6s ease, padding 0.4s ease, box-shadow 0.6s ease",
+          height: 38,
+          ...(reachedNow
+            ? { background: "rgba(46,107,64,0.95)", border: "1px solid rgba(110,180,130,0.6)", color: "#EAF6F4", fontSize: 15, padding: "0 22px", boxShadow: "0 5px 22px rgba(8,30,18,0.45)" }
+            : { background: "rgba(0,0,0,0.4)", border: "1px solid rgba(200,225,210,0.28)", color: "#EAF6F4", fontSize: 17, width: 38, padding: 0 }),
         }}
       >
-        ✕
+        {reachedNow ? t("common.done", { defaultValue: "Done" }) : "✕"}
       </button>
 
       {/* While SYNCING, a quote rests in the upper third — centred. A short wait
@@ -1044,19 +1049,6 @@ export function CobreatheBreath({
           counts the sit once the 12 are kept, and discards otherwise. (The
           labelled End/Discard belong to the silent ContemplationTimer, not here.) */}
 
-      {/* Once the set is complete, a clear Done button to finish — logs the
-          FULL elapsed time (so breathing past 12 counts), not just the target. */}
-      {reachedNow && (
-        <div className="w-full flex justify-center" style={{ marginBottom: 18 }}>
-          <button
-            type="button"
-            onClick={() => onEnd(Math.round((syncedNow() - startRef.current) / 1000), true)}
-            style={{ background: "rgba(46,107,64,0.95)", color: "#EAF6F4", fontFamily: SPACE_GROTESK, fontWeight: 600, fontSize: 17, borderRadius: 999, padding: "14px 44px", border: "1px solid rgba(110,180,130,0.5)", cursor: "pointer", boxShadow: "0 6px 24px rgba(8,30,18,0.45)" }}
-          >
-            {t("common.done", { defaultValue: "Done" })}
-          </button>
-        </div>
-      )}
       {/* Bottom — the breathing word in the LEFT corner + the breath
           count in the RIGHT corner. The quick-close ✕ lives top-right. */}
       <div ref={bottomRef} className="w-full" style={{ paddingLeft: 28, paddingRight: 28, marginBottom: 8 }}>
