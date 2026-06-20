@@ -514,7 +514,7 @@ export default function CobreathePage() {
   return (
     <Layout bgPhoto={introBgPhoto}>
       <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-      <div className="max-w-xl mx-auto w-full flex flex-col flex-1">
+      <div className="max-w-xl mx-auto w-full flex flex-col flex-1 justify-center">
         {/* "Before you begin" intro — same shape as a devotion's opening slide
             (centered eyebrow + big title + a few lines + setting rows + Begin).
             This screen only renders in intro mode (the breath + summary return
