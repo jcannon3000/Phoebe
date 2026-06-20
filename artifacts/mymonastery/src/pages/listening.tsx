@@ -38,7 +38,7 @@ const glassField = {
 type View = "log" | "done" | "history";
 
 // One account-wide log entry (server-backed; syncs across the account).
-type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: string; createdAt: string };
+type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: string; artworkUrl?: string; createdAt: string };
 
 export default function ListeningPage() {
   const [, navigate] = useLocation();
@@ -97,7 +97,7 @@ export default function ListeningPage() {
   });
   const entries = logData?.entries ?? [];
   const logMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim() }),
+    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
   });
 
@@ -283,7 +283,11 @@ function HistoryRow({ e }: { e: ServerEntry }) {
   const label = e.what?.trim() || (e.medium === "streaming" ? "Streaming" : e.medium.toUpperCase());
   return (
     <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-      <span className="w-11 h-11 rounded-lg flex items-center justify-center text-[20px] flex-shrink-0" style={{ background: "rgba(46,107,64,0.3)" }} aria-hidden>{MEDIUM_EMOJI[e.medium] ?? "🎧"}</span>
+      {e.artworkUrl ? (
+        <img src={e.artworkUrl} alt="" className="w-11 h-11 rounded-lg object-cover flex-shrink-0" style={{ backgroundColor: "rgba(46,107,64,0.3)" }} />
+      ) : (
+        <span className="w-11 h-11 rounded-lg flex items-center justify-center text-[20px] flex-shrink-0" style={{ background: "rgba(46,107,64,0.3)" }} aria-hidden>{MEDIUM_EMOJI[e.medium] ?? "🎧"}</span>
+      )}
       <div className="flex-1 min-w-0">
         <p className="text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{label}</p>
         <p className="text-[11.5px] mt-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{MEDIUM_EMOJI[e.medium] ?? "🎧"} {day}</p>

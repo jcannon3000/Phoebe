@@ -21,6 +21,9 @@ export const listeningEntriesTable = pgTable(
     medium: text("medium").notNull(),
     // What they put on (free text; streaming may carry an autocompleted title).
     what: text("what").notNull().default(""),
+    // Album/track artwork URL from the Apple Music search autocomplete (https
+    // mzstatic catalog URL, which loads in <img>). Empty when free-typed.
+    artworkUrl: text("artwork_url").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
