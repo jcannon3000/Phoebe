@@ -1,49 +1,55 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { saveListeningEntry, listeningHistory, type ListeningMedium, type ListeningEntry } from "@/lib/listeningLog";
-import { SacredLibrary } from "@/components/SacredLibrary";
-import { searchCatalog, type SearchResult } from "@/lib/sacredLibrary";
 
-// Audio Divina — sacred listening. A simple did-you-or-not daily log: put on
-// music (streaming via your Sacred Library, or an analog medium you own), then
-// mark it for the day. No timer, no goal, no length — just whether you listened.
+// Audio Divina — sacred listening, kept simple as a JOURNAL/TASK (like gratitude):
+// you put on music, then note what you listened to + how, and mark it done for the
+// day. No timer, no goal, no in-app player. Every entry is kept in a local log.
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
+const SERIF = "Georgia, 'Times New Roman', serif";
 
-const MEDIA: { id: ListeningMedium; emoji: string; label: string; cue: string }[] = [
-  { id: "streaming", emoji: "🎧", label: "Streaming", cue: "" },
-  { id: "cd", emoji: "💿", label: "CD", cue: "Put on your CD and listen — log it when you're done." },
-  { id: "vinyl", emoji: "📀", label: "Vinyl", cue: "Drop the needle and listen — log it when you're done." },
-  { id: "tape", emoji: "📼", label: "Tape", cue: "Press play and listen — log it when you're done." },
+const MEDIA: { id: ListeningMedium; label: string }[] = [
+  { id: "streaming", label: "Streaming" },
+  { id: "cd", label: "CD" },
+  { id: "vinyl", label: "Vinyl" },
+  { id: "tape", label: "Tape" },
 ];
 
 const MEDIUM_EMOJI: Record<ListeningMedium, string> = { streaming: "🎧", cd: "💿", vinyl: "📀", tape: "📼" };
+
+// A glass field, matching the office close-slide composer look.
+const glassField = {
+  background: "rgba(255,255,255,0.04)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  color: WARM,
+  fontFamily: SPACE_GROTESK,
+} as const;
 
 type View = "log" | "done" | "history";
 
 export default function ListeningPage() {
   const [, navigate] = useLocation();
   const [view, setView] = useState<View>("log");
+  const [what, setWhat] = useState("");
   const [medium, setMedium] = useState<ListeningMedium>(() => {
     try {
       const v = localStorage.getItem("phoebe:audio-divina-medium");
       return (v === "streaming" || v === "cd" || v === "vinyl" || v === "tape") ? v : "streaming";
     } catch { return "streaming"; }
   });
-  const [what, setWhat] = useState("");
-  const streaming = medium === "streaming";
 
   function chooseMedium(m: ListeningMedium) {
     setMedium(m);
     try { localStorage.setItem("phoebe:audio-divina-medium", m); } catch { /* private mode */ }
   }
 
-  // The whole log: did you listen today? (No amount — just mark it done.)
+  // The whole log: note what + how, mark it done for today. (No amount.)
   function logToday() {
     saveListeningEntry({ minutes: 0, songs: 0, medium, what: what.trim() });
     markPracticeDoneToday("listening");
@@ -58,7 +64,7 @@ export default function ListeningPage() {
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
             <div className="text-4xl mb-5">🎧</div>
             <h1 className="text-2xl font-bold leading-tight mb-3" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Amen.</h1>
-            <p className="text-[17px] leading-relaxed mb-1" style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+            <p className="text-[17px] leading-relaxed mb-1" style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic" }}>
               What did you hear in the quiet after the music?
             </p>
             <p className="text-[13px] mt-5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>Logged for today 🌿</p>
@@ -75,7 +81,7 @@ export default function ListeningPage() {
     );
   }
 
-  // ——— History ———
+  // ——— History (the log) ———
   if (view === "history") {
     const hist = listeningHistory();
     return (
@@ -84,10 +90,10 @@ export default function ListeningPage() {
           <button onClick={() => setView("log")} className="text-[14px] mb-5 inline-flex items-center gap-1.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
             ← <span>Audio Divina</span>
           </button>
-          <h1 className="text-xl font-bold leading-tight mb-1" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Listening history</h1>
+          <h1 className="text-xl font-bold leading-tight mb-1" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Listening log</h1>
           <p className="text-xs mb-5" style={{ color: SAGE }}>What you've sat with.</p>
           {hist.length === 0 ? (
-            <p className="text-[14px] leading-relaxed mt-10 text-center" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
+            <p className="text-[14px] leading-relaxed mt-10 text-center" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SERIF, fontStyle: "italic" }}>
               Nothing logged yet. Your sittings will gather here.
             </p>
           ) : (
@@ -100,70 +106,52 @@ export default function ListeningPage() {
     );
   }
 
-  // ——— Log (the main screen) ———
-  const activeMedium = MEDIA.find((x) => x.id === medium)!;
-
+  // ——— Log (the main screen) — a simple two-field journal entry ———
   return (
     <Layout>
       <div className="max-w-xl mx-auto w-full">
         {/* Header */}
-        <div className="flex items-start gap-3 mb-6">
+        <div className="flex items-start gap-3 mb-7">
           <div className="text-3xl w-12 h-12 flex items-center justify-center rounded-2xl flex-shrink-0" style={{ background: "rgba(62,124,122,0.18)", border: "1px solid rgba(62,124,122,0.35)" }}>
             🎧
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Audio Divina</h1>
-            <p className="text-xs mt-0.5" style={{ color: SAGE }}>Sacred listening</p>
+            <p className="text-[13px] mt-0.5" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>Sacred listening — note what you let draw you toward God.</p>
           </div>
         </div>
 
-        {/* How are you listening? */}
+        {/* 1 — What did you listen to? */}
         <p className="text-[10.5px] uppercase tracking-[0.18em] mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-          How are you listening?
+          What did you listen to?
         </p>
-        <div className="grid grid-cols-4 gap-2 mb-4">
-          {MEDIA.map((x) => {
-            const on = x.id === medium;
-            return (
-              <button
-                key={x.id}
-                onClick={() => chooseMedium(x.id)}
-                className="flex flex-col items-center gap-1 rounded-2xl py-3 active:scale-[0.97] transition-transform"
-                style={{ background: on ? "rgba(46,107,64,0.9)" : "rgba(255,255,255,0.04)", border: `1px solid ${on ? "rgba(110,180,130,0.55)" : "rgba(255,255,255,0.10)"}` }}
-              >
-                <span className="text-[20px] leading-none" aria-hidden>{x.emoji}</span>
-                <span className="text-[12px] font-medium" style={{ color: on ? WARM : SAGE, fontFamily: SPACE_GROTESK }}>{x.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        <input
+          value={what}
+          onChange={(e) => setWhat(e.target.value)}
+          placeholder="A song, album, or artist…"
+          className="w-full rounded-2xl px-4 py-3.5 mb-6 text-[15px] outline-none"
+          style={glassField}
+        />
 
-        {streaming ? (
-          <SacredLibrary />
-        ) : (
-          <div className="mb-3 rounded-2xl px-4 py-3.5 flex items-center gap-3" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.20)" }}>
-            <span className="text-[22px] leading-none" aria-hidden>{activeMedium.emoji}</span>
-            <p className="text-[13.5px] leading-snug" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{activeMedium.cue}</p>
-          </div>
-        )}
-        {/* What you listened to — recorded for EVERY medium. For an analog medium
-            you can SEARCH the Apple Music catalogue to tag the exact song / album /
-            artist you put on (it's only a label — nothing plays); streaming free-texts it. */}
-        {streaming ? (
-          <input
-            value={what}
-            onChange={(e) => setWhat(e.target.value)}
-            placeholder="What did you listen to?"
-            className="w-full rounded-2xl px-4 py-3.5 mb-4 text-[15px] outline-none"
-            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", color: WARM, fontFamily: SPACE_GROTESK }}
-          />
-        ) : (
-          <AnalogTagField value={what} onChange={setWhat} />
-        )}
+        {/* 2 — How did you listen? (dropdown, 4 options) */}
+        <p className="text-[10.5px] uppercase tracking-[0.18em] mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+          How did you listen?
+        </p>
+        <select
+          value={medium}
+          onChange={(e) => chooseMedium(e.target.value as ListeningMedium)}
+          className="w-full rounded-2xl px-4 py-3.5 mb-7 text-[15px] outline-none"
+          style={{ ...glassField, colorScheme: "dark" }}
+        >
+          {MEDIA.map((x) => (
+            <option key={x.id} value={x.id}>{MEDIUM_EMOJI[x.id]}  {x.label}</option>
+          ))}
+        </select>
 
+        {/* Log it — like marking a task done, plus it saves to your log. */}
         <button
           onClick={logToday}
-          className="w-full py-4 rounded-2xl text-[16px] font-semibold active:scale-[0.98] transition-transform mt-1"
+          className="w-full py-4 rounded-2xl text-[16px] font-semibold active:scale-[0.98] transition-transform"
           style={{ background: "rgba(46,107,64,0.9)", color: WARM, fontFamily: SPACE_GROTESK }}
         >
           Log today's listening
@@ -171,7 +159,7 @@ export default function ListeningPage() {
 
         <div className="flex items-center justify-between mt-5">
           <button onClick={() => setView("history")} className="text-[13px] inline-flex items-center gap-1" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-            See your listening history <span aria-hidden>›</span>
+            See your listening log <span aria-hidden>›</span>
           </button>
           <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>Stays on this device</p>
         </div>
@@ -180,74 +168,7 @@ export default function ListeningPage() {
   );
 }
 
-// ——— Analog tag field — type freely, OR search the Apple Music catalogue to tag
-// the exact song / album / artist you put on the turntable. Picking a result just
-// fills the label (the history line); nothing plays — analog audio lives off-app.
-function AnalogTagField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [open, setOpen] = useState(false);
-  const [picked, setPicked] = useState(false); // suppress results right after a pick
-
-  useEffect(() => {
-    const q = value.trim();
-    if (picked || q.length < 2) { setResults([]); setSearching(false); return; }
-    let cancelled = false;
-    setSearching(true);
-    const t = setTimeout(async () => {
-      try {
-        const r = await searchCatalog(q);
-        if (!cancelled) setResults(r.slice(0, 6));
-      } catch { if (!cancelled) setResults([]); }
-      finally { if (!cancelled) setSearching(false); }
-    }, 320);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [value, picked]);
-
-  const showPanel = open && !picked && (searching || results.length > 0);
-  return (
-    <div className="relative mb-4">
-      <input
-        value={value}
-        onChange={(e) => { setPicked(false); onChange(e.target.value); }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        placeholder="Search a song, album or artist — or just type it"
-        className="w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none"
-        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", color: WARM, fontFamily: SPACE_GROTESK }}
-      />
-      {showPanel && (
-        <div className="absolute left-0 right-0 mt-1.5 z-30 rounded-2xl overflow-hidden" style={{ background: "#10231A", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 12px 40px rgba(0,0,0,0.5)" }}>
-          {searching && results.length === 0 ? (
-            <p className="px-4 py-3 text-[13px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>Searching…</p>
-          ) : (
-            results.map((r, i) => (
-              <button
-                key={`${r.service}-${r.appleId ?? r.url}-${i}`}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => { onChange(r.subtitle ? `${r.title} — ${r.subtitle}` : r.title); setPicked(true); setResults([]); setOpen(false); }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-left active:scale-[0.99] transition-transform"
-                style={{ borderBottom: i < results.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}
-              >
-                {r.artworkUrl ? (
-                  <img src={r.artworkUrl} alt="" className="w-9 h-9 rounded-md flex-shrink-0 object-cover" />
-                ) : (
-                  <span className="w-9 h-9 rounded-md flex-shrink-0 flex items-center justify-center text-[15px]" style={{ background: "rgba(255,255,255,0.06)" }} aria-hidden>{r.kind === "album" ? "💿" : r.kind === "playlist" ? "🎵" : "♪"}</span>
-                )}
-                <span className="flex-1 min-w-0">
-                  <span className="block text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{r.title}</span>
-                  <span className="block text-[11.5px] truncate" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{r.subtitle ? `${r.subtitle} · ` : ""}{r.kind}</span>
-                </span>
-              </button>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ——— A history row — what you put on, and when (no length) ———
+// ——— A log row — what you put on, how, and when ———
 function HistoryRow({ e }: { e: ListeningEntry }) {
   const d = new Date(e.ymd + "T12:00:00");
   const day = Number.isNaN(d.getTime()) ? e.ymd : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
