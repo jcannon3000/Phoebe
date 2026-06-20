@@ -58,7 +58,7 @@ export default function BcpDailyDevotionPage() {
   if (isLoading || !user) return null;
 
   if (showMode === "morning-devotion" || showMode === "early-evening-devotion") {
-    return <OfficeViewer mode={showMode} cameFromPicker={cameFromPicker} onBack={() => setShowMode(null)} />;
+    return <OfficeViewer mode={showMode} cameFromPicker={cameFromPicker} onBack={() => { setShowMode(null); setLocation("/dashboard"); }} />;
   }
 
   // Highlight the time-appropriate card. Same threshold as the Daily

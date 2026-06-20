@@ -3897,7 +3897,7 @@ export default function BcpDailyOfficePage() {
         mode={showMode}
         initialBook={showBook}
         cameFromPicker={cameFromPicker}
-        onBack={() => { setShowMode(null); setShowBook(false); setCameFromPicker(false); }}
+        onBack={() => { setShowMode(null); setShowBook(false); setCameFromPicker(false); setLocation("/dashboard"); }}
       />
     );
   }
