@@ -7329,11 +7329,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
             reachable via the side menu and the direct route, but it
             shouldn't pull tap-attention from the dashboard footer. */}
 
-        {/* Universal home FAB — bottom-right "+" with the authoring entry
-            points: Heart to Heart + Prayer request for everyone, plus
-            Community intercession + Event for group admins. Hidden on the
-            Events surface (which reuses this dashboard in eventsOnly mode). */}
-        {!eventsOnly && <HomeAuthoringFAB />}
+        {/* The home "+" FAB moved into the global bottom nav bar (People · ＋ ·
+            Menu) in Layout, so the create entry points now live there. */}
       </div>
 
       {/* New-prayer chooser (admins) — request for yourself vs. a community
