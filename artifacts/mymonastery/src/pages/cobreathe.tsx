@@ -14,7 +14,6 @@ import { usePeople } from "@/hooks/usePeople";
 import { useCobreatheSync } from "@/hooks/useCobreatheSync";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { computeFingerprint } from "@/lib/cobreatheOrder";
-import { COBREATHE_INTRO_SEEN_KEY } from "@/pages/cobreathe-about";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
 // (hashed + optimized by Vite) and rotated through during the breath, one photo
@@ -70,10 +69,6 @@ const COBREATHE_FINGERPRINT = computeFingerprint(COBREATHE_PHOTOS);
 
 function wantsStart(): boolean {
   try { return new URLSearchParams(window.location.search).get("start") === "1"; } catch { return false; }
-}
-// True once the user has seen the one-page Cobreathe intro at least once.
-function introSeen(): boolean {
-  try { return localStorage.getItem(COBREATHE_INTRO_SEEN_KEY) === "1"; } catch { return false; }
 }
 // Launched from the contemplation page / sit? Those entry points pass
 // ?from=contemplation, and finishing then shows the summary screen (and returns
@@ -189,10 +184,11 @@ export default function CobreathePage() {
   // Opened with ?start=1 → go straight into the breath, BUT only once the user
   // has been through the intro slideshow. First-timers are sent through the
   // slideshow first (the effect below), which begins the breath at its end.
-  // First-time users see a single intro page (the practice + the why) before the
-  // breath; after that, starting goes straight in.
+  // Landing on /cobreathe shows the intro slide (the practice + the why, plus a
+  // "Learn more" link to the full slideshow); a ?start=1 quick-launch goes
+  // straight into the breath. The full slideshow is no longer forced on anyone.
   const [mode, setMode] = useState<"intro" | "breathing" | "done">(() =>
-    wantsStart() && introSeen() ? "breathing" : "intro",
+    wantsStart() ? "breathing" : "intro",
   );
   // Intro-slide settings: breath count (6-breath increments, default 12), the
   // photo topic, and whether to share coarse presence ("same air").
@@ -206,10 +202,6 @@ export default function CobreathePage() {
   // Hold the screen on while breathing — the breath has no touch input, so the
   // idle timer would otherwise dim/sleep the phone mid-sit.
   useKeepAwake(mode === "breathing");
-  useEffect(() => {
-    if (wantsStart() && !introSeen()) setLocation("/cobreathe/about");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Apple Music over the breath (native plugin CobreatheMusic; no-ops on web and
   // until a real catalog playlist + an Apple Music subscription exist). Opt-in.
