@@ -236,13 +236,13 @@ export function CobreatheBreath({
     return { x: 0, y: 0 };
   });
   const [globeSnapping, setGlobeSnapping] = useState(false);
-  // Globe box size in px. On MOBILE we size it by the golden ratio: the OUTER
-  // ring's diameter = viewport width / 1.879. The outer ring is 2·RING_R of the
-  // 128 viewBox, so the box (which is the full viewBox) = desiredOuter·128/116.
+  // Globe box size in px. On MOBILE the page width is 2.61× the OUTER ring's
+  // diameter — i.e. outer diameter = viewport width / 2.61. The outer ring is
+  // 2·RING_R of the 128 viewBox, so the box (the full viewBox) = outer·128/116.
   // Desktop keeps the fixed 158 box.
   const globeBoxPx = (vw: number): number => {
     if (vw > 0 && vw <= 600) {
-      const outer = vw / 1.879;
+      const outer = vw / 2.61;
       return Math.round(outer * (128 / (2 * RING_R)));
     }
     return 158;
@@ -1037,7 +1037,7 @@ export function CobreatheBreath({
           <div ref={labelRef} className="flex-1 min-w-0" style={{ willChange: "transform, opacity" }}>
             <span
               style={{
-                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 26, fontWeight: 600,
+                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 19, fontWeight: 600,
                 letterSpacing: "0.04em", textShadow: "0 2px 18px rgba(8,30,18,0.6)", whiteSpace: "nowrap",
               }}
             >

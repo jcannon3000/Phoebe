@@ -1374,7 +1374,9 @@ export function ContemplationTimer({
         {phase === "reflection" && (
           <div
             className="flex flex-col items-center gap-2.5"
-            style={{ marginBottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
+            // Same fix as the End block below — lift above the zIndex:0 bg layer
+            // so the gradient doesn't wash out this control.
+            style={{ position: "relative", zIndex: 1, marginBottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
           >
             <button
               type="button"
@@ -1404,7 +1406,12 @@ export function ContemplationTimer({
         {phase === "running" && (
           <div
             className="flex flex-col items-center gap-2.5"
-            style={{ marginBottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
+            // position:relative + zIndex lift this ABOVE the absolute photo+dark-
+            // gradient bg layer (zIndex 0). Without it this block is a non-
+            // positioned root sibling, which paints UNDER that layer — so the
+            // gradient washed the End/Done + Discard pills out (the "I can't see
+            // the Done button, there's an overlay above it" report).
+            style={{ position: "relative", zIndex: 1, marginBottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
           >
             <button
               type="button"

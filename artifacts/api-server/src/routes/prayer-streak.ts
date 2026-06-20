@@ -24,7 +24,7 @@
 
 import { Router, type IRouter, type Request, type Response } from "express";
 import { eq, and, inArray, gte } from "drizzle-orm";
-import { db, usersTable, momentUserTokensTable, momentPostsTable, prayerRequestAmensTable, prayerRequestsTable, prayerSessionsTable } from "@workspace/db";
+import { db, usersTable, momentUserTokensTable, momentPostsTable, prayerRequestAmensTable, prayerRequestsTable, prayerSessionsTable, breathSessionsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
@@ -193,6 +193,18 @@ router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Res
         gte(prayerRequestAmensTable.prayedAt, sevenDaysAgo),
       ));
     for (const r of amenRows) note(r.userId, r.ts);
+    // Co-Breathe counts as being "with you" too — pull the breath log for the
+    // window. `day` is a local YYYY-MM-DD text; ISO dates sort lexically, so a
+    // string >= comparison is a date comparison.
+    const sevenAgoYmd = new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" }).format(sevenDaysAgo);
+    const breathRows = await db
+      .select({ userId: breathSessionsTable.userId, day: breathSessionsTable.day })
+      .from(breathSessionsTable)
+      .where(and(
+        inArray(breathSessionsTable.userId, gardenIds),
+        gte(breathSessionsTable.day, sevenAgoYmd),
+      ));
+    for (const r of breathRows) { if (r.day) note(r.userId, new Date(`${r.day}T12:00:00Z`)); }
 
     // Everyone who prayed this week → the count line + the full rail (no cap),
     // most-recent first.
@@ -254,6 +266,16 @@ router.get("/prayer-streak/community-prayed-month", async (req: Request, res: Re
         gte(prayerRequestAmensTable.prayedAt, thirtyDaysAgo),
       ));
     for (const r of amenRows) note(r.userId, r.ts);
+    // Co-Breathe counts as being "with you" too (see the week endpoint).
+    const thirtyAgoYmd = new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" }).format(thirtyDaysAgo);
+    const breathRows = await db
+      .select({ userId: breathSessionsTable.userId, day: breathSessionsTable.day })
+      .from(breathSessionsTable)
+      .where(and(
+        inArray(breathSessionsTable.userId, gardenIds),
+        gte(breathSessionsTable.day, thirtyAgoYmd),
+      ));
+    for (const r of breathRows) { if (r.day) note(r.userId, new Date(`${r.day}T12:00:00Z`)); }
 
     const activePeople = peopleRows.filter((p) => latestMs.has(p.id));
     const total = activePeople.length;

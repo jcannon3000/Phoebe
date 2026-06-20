@@ -390,20 +390,42 @@ export function pushCustomAnchors(): void {
   pushTimer = setTimeout(() => { pushTimer = null; doPush(); }, 800);
 }
 
+// Flush a PENDING push IMMEDIATELY, surviving an imminent page unload. The 800ms
+// debounce can be outrun by an app update / reload / backgrounding, which would
+// drop a just-logged practice before it reached the server — the recurring
+// "I logged it, then an update un-logged it" bug. `keepalive` lets the PUT
+// complete even as the page goes away. Registered on visibilitychange/pagehide.
+function flushPendingPush(): void {
+  if (!pushTimer || suppressPush) return;
+  clearTimeout(pushTimer);
+  pushTimer = null;
+  try {
+    fetch("/api/me/custom-anchors", {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(exportCustomAnchorSnapshot()),
+      keepalive: true,
+    }).catch(() => { /* best-effort */ });
+  } catch { doPush(); }
+}
+
 // Day-stamps are ISO YYYY-MM-DD, which sort lexically — so the later string is
 // the more recent day. Ties keep `a` (local).
 function laterStamp(a?: string, b?: string): string | undefined {
   if (a && b) return a >= b ? a : b;
   return a || b;
 }
-// readToday is "ymd|amount" — keep the later day; same day → the larger amount.
+// readToday is "ymd|amount" — keep the later day; same day → LOCAL (a). A
+// same-day local edit is the most recent action on THIS device, so it must win
+// (a downward correction can't be reverted by a stale-but-larger server value).
 function laterReadToday(a?: string, b?: string): string | undefined {
   if (!a) return b;
   if (!b) return a;
-  const [ay, aAmt] = a.split("|");
-  const [by, bAmt] = b.split("|");
+  const [ay] = a.split("|");
+  const [by] = b.split("|");
   if (ay !== by) return ay > by ? a : b;
-  return (Number(aAmt) || 0) >= (Number(bAmt) || 0) ? a : b;
+  return a;
 }
 type LogEntry = { done?: string; skip?: string; readToday?: string; readTotal?: number };
 // Merge one anchor's per-day state field-by-field, keeping the MOST RECENT value
@@ -476,4 +498,11 @@ export function syncCustomAnchorsFromServer(server: CustomAnchorSnapshot | null 
 if (typeof window !== "undefined") {
   window.addEventListener(CUSTOM_ANCHORS_EVENT, pushCustomAnchors);
   window.addEventListener(CUSTOM_DONE_EVENT, pushCustomAnchors);
+  // Persist a just-logged practice BEFORE the page can go away (an app update /
+  // reload / backgrounding). Without this the 800ms debounce loses the race and
+  // the log never reaches the server — the recurring un-logging bug.
+  window.addEventListener("pagehide", flushPendingPush);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushPendingPush();
+  });
 }
