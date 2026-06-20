@@ -132,7 +132,7 @@ const RING_IN = "#86C79B";
 const RING_OUT = "#2E6B40";
 const RING_R = 58;                       // outer ring radius (viewBox 128)
 const RING_CIRC = 2 * Math.PI * RING_R;
-const RING_SW = 4.8;                     // stroke width — 20% thicker; inner ring matches it (same thickness)
+const RING_SW = 3.36;                    // stroke width — 30% thinner; inner ring matches it (same thickness)
 // Inner blue SESSION ring — ONE slow circle filling once across the whole set
 // of breaths. Radius is 10% smaller than the old 47, and its thickness matches
 // the outer ring (RING_SW). The globe takes on a blue glow when the set is kept.
