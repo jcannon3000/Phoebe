@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePeople } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
+import { EARTH_PHOTOS } from "@/lib/earthPhotos";
 
 // ── Visual language ─────────────────────────────────────────────────
 // A calm DARK-BLUE surface (the app's reflection blue, #6FAF85, family) —
@@ -102,6 +103,12 @@ export default function PrayerRequestNew() {
   const copy = KIND_COPY[kind];
 
   const [body, setBody] = useState("");
+  // One calm landscape behind the page, picked once and faded gently up under a
+  // dark wash (matching the office/Co-Breathe slides).
+  const bgPhoto = useMemo(
+    () => (EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[Math.floor(Math.random() * EARTH_PHOTOS.length)]! : null),
+    [],
+  );
   // How long the garden carries it — a 1–7 day dropdown, default 3.
   const [days, setDays] = useState<number>(3);
   const [error, setError] = useState("");
@@ -204,6 +211,18 @@ export default function PrayerRequestNew() {
       transition={{ duration: 0.44, ease: [0.22, 1, 0.36, 1] }}
       style={{ position: "relative", isolation: "isolate", minHeight: "100dvh", background: BG, overflowX: "hidden" }}
     >
+      {/* A still landscape behind the page, faded gently up under a dark wash. */}
+      {bgPhoto && (
+        <>
+          <img
+            src={bgPhoto}
+            alt=""
+            aria-hidden
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.3, zIndex: -1 }}
+          />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
+        </>
+      )}
 
       {/* Close — top-right X (matches the office-close ask slide). */}
       <div style={{ paddingTop: "max(0.75rem, var(--safe-top))", paddingLeft: 20, paddingRight: 16, paddingBottom: 2, display: "flex", justifyContent: "flex-end" }}>
