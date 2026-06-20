@@ -5,13 +5,13 @@ import passport from "passport";
 import { Strategy as GoogleStrategy, type Profile } from "passport-google-oauth20";
 import { google } from "googleapis";
 import { db, usersTable, betaUsersTable, groupsTable, groupMembersTable, waitlistTable, persistentAuthTokensTable } from "@workspace/db";
-import { eq, and, sql, isNull, inArray } from "drizzle-orm";
+import { eq, and, or, gt, sql, isNull, inArray } from "drizzle-orm";
 import { notifyAdminsOfNewMember } from "./groups";
 import { rateLimit, getClientIp } from "../lib/rate-limit";
 import { getUserAccessTier } from "../lib/parishGate";
 import { PHOEBE_PARISH_ENABLED } from "../lib/parishFlag";
 import { revokeGoogleTokensFor } from "../lib/googleOauthRevoke";
-import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { scrypt, randomBytes, timingSafeEqual, createHash } from "crypto";
 import { promisify } from "util";
 
 const scryptAsync = promisify(scrypt);
@@ -603,23 +603,45 @@ router.post("/auth/logout", async (req, res, next) => {
 // to outlast cookies. Explicit logout revokes a single device's token;
 // password change / account delete revokes all tokens for the user.
 
-// Mint a fresh persistent token for a user. Caller is responsible for
-// shipping it back to the client (server should NEVER store it anywhere
-// outside this DB row).
+// SHA-256 of a persistent token (hex). We store ONLY the hash at rest, so a DB
+// leak can't be replayed against /exchange-token — the plaintext lives solely
+// in the client's durable store. The token is 256 bits of CSPRNG output, so a
+// plain hash (no salt/iteration) is sufficient and keeps lookup a single index
+// hit.
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+// Persistent tokens get a 90-day TTL. They rotate on every exchange, so an
+// active user's token is continually refreshed; the TTL only reaps a token for
+// a device that hasn't reached for one in 90 days.
+const PERSISTENT_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+
+// Mint a fresh persistent token for a user. Returns the PLAINTEXT (shipped to
+// the client); the DB only ever holds its hash + a hard expiry. The plaintext
+// is never persisted anywhere but the response.
 async function mintPersistentToken(userId: number): Promise<string> {
   const token = randomBytes(32).toString("hex");
-  await db.insert(persistentAuthTokensTable).values({ userId, token });
+  await db.insert(persistentAuthTokensTable).values({
+    userId,
+    token: hashToken(token),
+    expiresAt: new Date(Date.now() + PERSISTENT_TOKEN_TTL_MS),
+  });
   return token;
 }
 
 // Revoke a single token (e.g. on logout from this device). Idempotent —
-// safe to call with a stale/unknown value.
+// safe to call with a stale/unknown value. Matches the stored hash (new rows)
+// or the raw value (legacy plaintext rows that haven't rotated yet).
 async function revokePersistentToken(token: string): Promise<void> {
   await db
     .update(persistentAuthTokensTable)
     .set({ revokedAt: new Date() })
     .where(and(
-      eq(persistentAuthTokensTable.token, token),
+      or(
+        eq(persistentAuthTokensTable.token, hashToken(token)),
+        eq(persistentAuthTokensTable.token, token),
+      ),
       isNull(persistentAuthTokensTable.revokedAt),
     ));
 }
@@ -706,12 +728,23 @@ router.post(
   // original — wasting a second mint and leaving stale rows behind.
   // RETURNING * tells us whether OUR statement was the one that
   // flipped revokedAt; if not, somebody else won the race and we 401.
+  const nowTs = new Date();
   const [claimed] = await db
     .update(persistentAuthTokensTable)
-    .set({ revokedAt: new Date(), lastUsedAt: new Date() })
+    .set({ revokedAt: nowTs, lastUsedAt: nowTs })
     .where(and(
-      eq(persistentAuthTokensTable.token, token),
+      // New tokens are stored hashed; legacy rows may still be plaintext.
+      or(
+        eq(persistentAuthTokensTable.token, hashToken(token)),
+        eq(persistentAuthTokensTable.token, token),
+      ),
       isNull(persistentAuthTokensTable.revokedAt),
+      // TTL: reject an expired token. Legacy rows (NULL expiresAt) are
+      // grandfathered until they next rotate into a TTL'd replacement.
+      or(
+        isNull(persistentAuthTokensTable.expiresAt),
+        gt(persistentAuthTokensTable.expiresAt, nowTs),
+      ),
     ))
     .returning({
       id: persistentAuthTokensTable.id,

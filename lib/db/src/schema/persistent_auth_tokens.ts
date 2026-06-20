@@ -25,14 +25,17 @@ export const persistentAuthTokensTable = pgTable(
     userId: integer("user_id")
       .notNull()
       .references(() => usersTable.id, { onDelete: "cascade" }),
-    // 32-byte random hex, generated with crypto.randomBytes(32).toString("hex").
-    // Stored in plaintext for fast lookup — same security posture as a
-    // long-lived session cookie. If you want to harden this further, hash
-    // the token on disk and only return the plaintext on /persistent-token.
+    // SHA-256 hash (hex) of the 32-byte random token. We store ONLY the hash —
+    // the plaintext lives in the client's durable store and is hashed here for
+    // lookup, so a DB leak can't be replayed. (Legacy rows may still hold a
+    // plaintext value until they rotate; the exchange matches either.)
     token: text("token").notNull().unique(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    // Hard expiry (90 days from mint) — tokens past this are rejected at
+    // /exchange-token. NULL on legacy rows, grandfathered until they rotate.
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
   },
   (table) => ({
     userIdx: index("persistent_auth_tokens_user_id_idx").on(table.userId),

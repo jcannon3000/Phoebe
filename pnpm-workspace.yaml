@@ -46,6 +46,9 @@ overrides:
   # (see `pnpm audit`): qs via express 5, ws via api-server.
   qs: '>=6.15.2'
   ws: '>=8.20.1'
+  # @sentry/node pulls an old @opentelemetry/core (<2.8.0) with an unbounded-
+  # memory DoS in W3C Baggage propagation — the only prod-runtime advisory.
+  '@opentelemetry/core': '>=2.8.0'
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64': '-'
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-x64': '-'

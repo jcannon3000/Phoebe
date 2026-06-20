@@ -142,6 +142,9 @@ export function useLogout() {
     // this device can't briefly see the previous account's "prayed for you"
     // contacts (names + avatars).
     try { window.localStorage.removeItem("phoebe:splash-faces"); } catch { /* ignore */ }
+    // Prayer-list snapshot caches other people's request BODIES (sensitive) —
+    // wipe it so the next person to sign in on this device can't read them.
+    try { window.localStorage.removeItem("phoebe:prayer-list-snapshot"); } catch { /* ignore */ }
     // Wipe the larger IndexedDB layer too (feeds + office text) so one
     // account's cached content never carries over to the next person.
     try { await clearIdbCache(); } catch { /* ignore */ }

@@ -2126,6 +2126,8 @@ export async function migrate() {
     await run(client, `ALTER TABLE prayer_feeds ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'private'`);
     await run(client, `ALTER TABLE prayer_feed_entries ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'custom'`);
     await run(client, `ALTER TABLE prayer_feed_recurring_entries ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'custom'`);
+    // Persistent auth tokens: hard-expiry column (90-day TTL set at mint).
+    await run(client, `ALTER TABLE persistent_auth_tokens ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`);
 
     // Seed the phoebe-climate feed (platform-owned, creator_user_id NULL).
     // Idempotent — skips if the slug already exists. visibility=public

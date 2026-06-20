@@ -9,6 +9,10 @@ import {
   appOpensTable,
   breathSessionsTable,
   voiceMemosTable,
+  gratitudeSeenTable,
+  prayerFeedPrayersTable,
+  reflectionReadsTable,
+  walkNudgesTable,
 } from "@workspace/db";
 import { logger } from "./logger";
 
@@ -70,6 +74,17 @@ export async function runRetentionCleanupSender(opts: { forceNow?: boolean } = {
     // listening already deletes it immediately — this catches the unheard).
     ["voice_memos past TTL", () =>
       db.delete(voiceMemosTable).where(lt(voiceMemosTable.expiresAt, new Date()))],
+    // High-churn bookkeeping/event-log tables that otherwise grow forever.
+    // All are pure "seen / prayed / read / nudged" records — old rows have no
+    // bearing on current streaks or surfaces, so prune conservatively.
+    ["gratitude_seen>90d", () =>
+      db.delete(gratitudeSeenTable).where(lt(gratitudeSeenTable.seenAt, D90))],
+    ["prayer_feed_prayers>1y", () =>
+      db.delete(prayerFeedPrayersTable).where(lt(prayerFeedPrayersTable.createdAt, YEAR))],
+    ["reflection_reads>1y", () =>
+      db.delete(reflectionReadsTable).where(lt(reflectionReadsTable.createdAt, YEAR))],
+    ["walk_nudges>1y", () =>
+      db.delete(walkNudgesTable).where(lt(walkNudgesTable.createdAt, YEAR))],
   ];
 
   for (const [label, fn] of steps) {
