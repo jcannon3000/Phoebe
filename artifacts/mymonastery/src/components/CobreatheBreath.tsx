@@ -1006,16 +1006,19 @@ export function CobreatheBreath({
           ref={globeRef}
           aria-hidden="true"
           style={{
-            position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-            // Emoji scales with the box (was a fixed 80 for the 158 box → ~0.5).
-            fontSize: Math.round(globePx * 0.5), lineHeight: 1, pointerEvents: "none",
+            position: "absolute", inset: 0, pointerEvents: "none",
             filter: reachedNow
               ? "drop-shadow(0 0 18px rgba(91,157,239,0.9)) drop-shadow(0 2px 10px rgba(8,30,18,0.5))"
               : "drop-shadow(0 0 13px rgba(90,150,110,0.55)) drop-shadow(0 3px 14px rgba(8,30,18,0.6))",
             transition: reachedNow ? "filter 1.2s ease" : "none",
           }}
         >
-          {globe}
+          {/* Emoji centered GEOMETRICALLY at the rings' centre (64,64 in the same
+              128 viewBox) via text-anchor + central baseline — HTML flex-centering
+              left the glyph optically low/off, misaligned with the rings. */}
+          <svg width="100%" height="100%" viewBox="0 0 128 128" style={{ display: "block" }}>
+            <text x="64" y="64" textAnchor="middle" dominantBaseline="central" fontSize="64">{globe}</text>
+          </svg>
         </div>
       </div>
 

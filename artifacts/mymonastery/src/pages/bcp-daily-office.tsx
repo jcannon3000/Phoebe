@@ -9,7 +9,7 @@ import { openExternal } from "@/lib/openExternal";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { EARTH_PHOTOS, LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import i18n from "@/i18n";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -489,14 +489,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const [slides, setSlides] = useState<Slide[]>([]);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
-  // Backgrounds: the WELCOME / options slide rests on a leaves photo; the rest of
-  // the office uses the wide LANDSCAPES, holding steady within a section and cross-
-  // fading to a new one at each section boundary. Per-mount random offsets vary
-  // which photos a given day draws.
-  const bgOffset = useMemo(
-    () => (EARTH_PHOTOS.length > 0 ? Math.floor(Math.random() * EARTH_PHOTOS.length) : 0),
-    [],
-  );
+  // Leaves behind the whole office / devotion slideshow — holding steady within a
+  // section and cross-fading to a new leaf photo at each section boundary. A
+  // per-mount random offset varies which photos a given day draws.
   const leafOffset = useMemo(
     () => (LEAF_PHOTOS.length > 0 ? Math.floor(Math.random() * LEAF_PHOTOS.length) : 0),
     [],
@@ -512,14 +507,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     }
     return n;
   }, [slideIdx, slides]);
-  const officeBgPhoto = slideIdx <= 0
-    // Welcome / options slide → a leaves photo.
-    ? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[leafOffset % LEAF_PHOTOS.length]! : null)
-    // The office itself → the wide landscapes, by section.
-    : (EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[(bgOffset + sectionIndex) % EARTH_PHOTOS.length]! : null);
-  // Leaves read well a bit brighter; the wide landscapes behind the prayer text
-  // stay subtle.
-  const officeBgOpacity = slideIdx <= 0 ? 0.45 : 0.22;
+  const officeBgPhoto = LEAF_PHOTOS.length > 0
+    ? LEAF_PHOTOS[(leafOffset + sectionIndex) % LEAF_PHOTOS.length]!
+    : null;
+  const officeBgOpacity = 0.55;
   const mainRef = useRef<HTMLElement | null>(null);
   const swipeTouchStartXRef = useRef<number | null>(null);
   const swipeTouchStartYRef = useRef<number | null>(null);
