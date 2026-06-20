@@ -511,7 +511,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const officeBgPhoto = LEAF_PHOTOS.length > 0
     ? LEAF_PHOTOS[(leafOffset + sectionIndex) % LEAF_PHOTOS.length]!
     : null;
-  const officeBgOpacity = 0.70;
+  const officeBgOpacity = 0.65;
   const mainRef = useRef<HTMLElement | null>(null);
   const swipeTouchStartXRef = useRef<number | null>(null);
   const swipeTouchStartYRef = useRef<number | null>(null);

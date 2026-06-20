@@ -41,6 +41,11 @@ export default function BcpDailyDevotionPage() {
     if (mode === "morning-devotion" || mode === "early-evening-devotion") {
       setShowMode(mode);
       if (search.get("picked") === "1") setCameFromPicker(true);
+    } else {
+      // No specific devotion to launch → the standalone "Daily Devotions"
+      // landing is replaced by the Daily Office picker (the before-you-begin
+      // builder). A bare /bcp/daily-devotions now sends you there.
+      setLocation("/bcp/daily-office");
     }
   }, []);
 
