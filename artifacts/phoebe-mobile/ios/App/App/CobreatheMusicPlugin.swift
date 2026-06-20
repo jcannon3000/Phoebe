@@ -42,6 +42,9 @@ public class CobreatheMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "getAuthorizationStatus", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "isAvailable", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "play", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "playItem", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "searchCatalog", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "nowPlaying", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "pause", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "resume", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
@@ -154,6 +157,126 @@ public class CobreatheMusicPlugin: CAPPlugin, CAPBridgedPlugin {
             ApplicationMusicPlayer.shared.stop()
         }
         call.resolve()
+    }
+
+    // Search the Apple Music CATALOG for songs, albums, and playlists the
+    // listener can add to their Sacred Library. Native MusicKit search uses the
+    // app's MusicKit entitlement + the user's Apple Music auth — no developer
+    // JWT needed (that's only the web/MusicKit-JS path).
+    @objc func searchCatalog(_ call: CAPPluginCall) {
+        let term = (call.getString("term") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !term.isEmpty else { call.resolve(["results": []]); return }
+        if #available(iOS 16.0, *) {
+            Task {
+                do {
+                    guard MusicAuthorization.currentStatus == .authorized else {
+                        call.resolve(["results": [], "reason": "not-authorized"]); return
+                    }
+                    var request = MusicCatalogSearchRequest(term: term, types: [Song.self, Album.self, Playlist.self])
+                    request.limit = 5
+                    let response = try await request.response()
+                    var results: [[String: Any]] = []
+                    for song in response.songs {
+                        results.append([
+                            "id": song.id.rawValue, "kind": "song", "title": song.title,
+                            "subtitle": song.artistName,
+                            "artworkUrl": song.artwork?.url(width: 160, height: 160)?.absoluteString ?? "",
+                            "url": song.url?.absoluteString ?? "",
+                        ])
+                    }
+                    for album in response.albums {
+                        results.append([
+                            "id": album.id.rawValue, "kind": "album", "title": album.title,
+                            "subtitle": album.artistName,
+                            "artworkUrl": album.artwork?.url(width: 160, height: 160)?.absoluteString ?? "",
+                            "url": album.url?.absoluteString ?? "",
+                        ])
+                    }
+                    for playlist in response.playlists {
+                        results.append([
+                            "id": playlist.id.rawValue, "kind": "playlist", "title": playlist.name,
+                            "subtitle": playlist.curatorName ?? "",
+                            "artworkUrl": playlist.artwork?.url(width: 160, height: 160)?.absoluteString ?? "",
+                            "url": playlist.url?.absoluteString ?? "",
+                        ])
+                    }
+                    call.resolve(["results": results])
+                } catch {
+                    call.resolve(["results": [], "reason": error.localizedDescription])
+                }
+            }
+        } else {
+            call.resolve(["results": []])
+        }
+    }
+
+    // Play ANY catalog item by id — a song, an album, or a playlist (the
+    // listener's own choice, not a fixed playlist). Returns playing:false so the
+    // web layer can fall back to opening Apple Music.
+    @objc func playItem(_ call: CAPPluginCall) {
+        guard let id = call.getString("id"), !id.isEmpty else { call.reject("id required"); return }
+        let kind = call.getString("kind") ?? "song"
+        if #available(iOS 16.0, *) {
+            Task {
+                do {
+                    guard MusicAuthorization.currentStatus == .authorized else {
+                        call.resolve(["playing": false, "reason": "not-authorized"]); return
+                    }
+                    let itemId = MusicItemID(id)
+                    self.ensureMixingSession()
+                    let player = ApplicationMusicPlayer.shared
+                    switch kind {
+                    case "album":
+                        var req = MusicCatalogResourceRequest<Album>(matching: \.id, equalTo: itemId)
+                        req.limit = 1
+                        guard let album = try await req.response().items.first else {
+                            call.resolve(["playing": false, "reason": "not-found"]); return
+                        }
+                        player.queue = [album]
+                    case "playlist":
+                        var req = MusicCatalogResourceRequest<Playlist>(matching: \.id, equalTo: itemId)
+                        req.limit = 1
+                        guard let playlist = try await req.response().items.first else {
+                            call.resolve(["playing": false, "reason": "not-found"]); return
+                        }
+                        player.queue = [playlist]
+                    default:
+                        var req = MusicCatalogResourceRequest<Song>(matching: \.id, equalTo: itemId)
+                        req.limit = 1
+                        guard let song = try await req.response().items.first else {
+                            call.resolve(["playing": false, "reason": "not-found"]); return
+                        }
+                        player.queue = [song]
+                    }
+                    player.state.shuffleMode = .off
+                    player.state.repeatMode = (kind == "song") ? MusicPlayer.RepeatMode.one : MusicPlayer.RepeatMode.all
+                    try await player.play()
+                    call.resolve(["playing": true])
+                } catch {
+                    call.resolve(["playing": false, "reason": error.localizedDescription])
+                }
+            }
+        } else {
+            call.resolve(["playing": false, "reason": "ios-too-old"])
+        }
+    }
+
+    // The currently-playing entry (title / artist / artwork) for the in-app
+    // now-playing bar. Empty title when nothing is queued.
+    @objc func nowPlaying(_ call: CAPPluginCall) {
+        if #available(iOS 16.0, *) {
+            if let entry = ApplicationMusicPlayer.shared.queue.currentEntry {
+                call.resolve([
+                    "title": entry.title,
+                    "subtitle": entry.subtitle ?? "",
+                    "artworkUrl": entry.artwork?.url(width: 160, height: 160)?.absoluteString ?? "",
+                ])
+            } else {
+                call.resolve(["title": ""])
+            }
+        } else {
+            call.resolve(["title": ""])
+        }
     }
 }
 

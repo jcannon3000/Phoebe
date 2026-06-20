@@ -11,6 +11,7 @@
 // playlist), so your sacred music is always a tap away.
 
 import { getValidAccessToken } from "@/lib/spotify";
+import { appleMusicAvailable, searchAppleCatalog } from "@/lib/appleMusic";
 
 export type SacredKind = "song" | "album" | "playlist";
 export type SacredService = "apple" | "spotify" | "other";
@@ -23,6 +24,7 @@ export type SacredItem = {
   service: SacredService;
   url: string; // share / deep link, used to play
   artworkUrl?: string;
+  appleId?: string; // MusicKit catalog id — lets Apple items play in-app
   addedAt: number;
 };
 
@@ -87,7 +89,7 @@ function titleFromSlug(slug: string): string {
   }
 }
 
-export type ParsedLink = { service: SacredService; kind: SacredKind; url: string; title: string };
+export type ParsedLink = { service: SacredService; kind: SacredKind; url: string; title: string; appleId?: string };
 
 /** Parse an Apple Music / Spotify share link (or spotify: uri). Null if it
  *  isn't a recognizable song/album/playlist link. */
@@ -111,8 +113,10 @@ export function parseMusicLink(raw: string): ParsedLink | null {
     if (ti === -1) return null;
     const type = parts[ti];
     const slug = parts[ti + 1] ?? "";
-    const kind: SacredKind = type === "playlist" ? "playlist" : (type === "song" || u.searchParams.has("i")) ? "song" : "album";
-    return { service: "apple", kind, url: input, title: titleFromSlug(slug) };
+    const trackId = u.searchParams.get("i");
+    const kind: SacredKind = type === "playlist" ? "playlist" : (type === "song" || trackId) ? "song" : "album";
+    const appleId = trackId || parts[ti + 2] || parts[parts.length - 1] || undefined;
+    return { service: "apple", kind, url: input, title: titleFromSlug(slug), appleId };
   }
 
   if (u.hostname.includes("open.spotify.com")) {
@@ -127,11 +131,12 @@ export function parseMusicLink(raw: string): ParsedLink | null {
 }
 
 // ——— Catalogue search ———
-export type SearchResult = { kind: SacredKind; title: string; subtitle?: string; url: string; artworkUrl?: string; service: SacredService };
+export type SearchResult = { kind: SacredKind; title: string; subtitle?: string; url: string; artworkUrl?: string; service: SacredService; appleId?: string };
 
 /** Whether live catalogue search is available right now (needs a Spotify token).
  *  Apple Music catalogue search needs native MusicKit (not yet wired). */
 export async function catalogSearchAvailable(): Promise<boolean> {
+  if (appleMusicAvailable()) return true;
   try { return !!(await getValidAccessToken()); } catch { return false; }
 }
 
@@ -140,6 +145,11 @@ export async function catalogSearchAvailable(): Promise<boolean> {
 export async function searchCatalog(query: string): Promise<SearchResult[]> {
   const q = query.trim();
   if (!q) return [];
+  // Prefer the listener's OWN Apple Music catalogue (native MusicKit search).
+  if (appleMusicAvailable()) {
+    const apple = await searchAppleCatalog(q);
+    if (apple.length) return apple.map((a) => ({ kind: a.kind, title: a.title, subtitle: a.subtitle || undefined, url: a.url, artworkUrl: a.artworkUrl || undefined, service: "apple" as const, appleId: a.id }));
+  }
   const token = await getValidAccessToken().catch(() => null);
   if (!token) return [];
   try {

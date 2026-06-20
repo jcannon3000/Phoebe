@@ -8,7 +8,6 @@ import {
   getListeningGoal, setListeningGoal, goalProgress, saveListeningEntry,
   listeningHistory, type ListeningMedium, type ListeningGoal, type ListeningEntry,
 } from "@/lib/listeningLog";
-import { useMusicPlayback } from "@/lib/musicPlayback";
 import { SacredLibrary } from "@/components/SacredLibrary";
 
 // Audio Divina — sacred listening. A logging-first practice: you put on music
@@ -67,7 +66,6 @@ export default function ListeningPage() {
   // What was logged last, for the confirmation screen.
   const lastLog = useRef<{ unit: "time" | "songs"; n: number }>({ unit: "time", n: 0 });
 
-  const music = useMusicPlayback();
   const streaming = medium === "streaming";
 
   function chooseMedium(m: ListeningMedium) {
@@ -265,7 +263,7 @@ export default function ListeningPage() {
         {/* Streaming: a podcast-style player + browse your library. Analog: a cue
             + what-you're-listening-to field. */}
         {streaming ? (
-          <SacredLibrary music={music} />
+          <SacredLibrary />
         ) : (
           <>
             <div className="mb-3 rounded-2xl px-4 py-3.5 flex items-center gap-3" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.20)" }}>

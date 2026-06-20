@@ -23,10 +23,15 @@ export function appleMusicConfigured(): boolean {
   return APPLE_MUSIC_PLAYLIST_ID.trim().length > 0;
 }
 
+export type AppleSearchResult = { id: string; kind: "song" | "album" | "playlist"; title: string; subtitle: string; artworkUrl: string; url: string };
+
 interface AppleMusicPlugin {
   authorize(): Promise<{ status: string }>;
   isAvailable(): Promise<{ available: boolean }>;
   play(opts: { playlistId: string; shuffle: boolean }): Promise<{ playing: boolean; reason?: string }>;
+  playItem(opts: { id: string; kind: string }): Promise<{ playing: boolean; reason?: string }>;
+  searchCatalog(opts: { term: string }): Promise<{ results: AppleSearchResult[]; reason?: string }>;
+  nowPlaying(): Promise<{ title: string; subtitle?: string; artworkUrl?: string }>;
   pause(): Promise<void>;
   resume(): Promise<void>;
   stop(): Promise<void>;
@@ -79,6 +84,55 @@ export async function connectAndPlay(): Promise<void> {
     set({ status: "playing" });
   } catch (e) {
     set({ status: "error", error: e instanceof Error ? e.message : "The music didn't start." });
+  }
+}
+
+// Play ANY catalog item the listener saved — a song, album, or playlist (their
+// own sacred music, not a fixed Phoebe playlist). Returns false if it couldn't
+// start, so the caller can fall back to opening Apple Music.
+export async function playAppleItem(id: string, kind: string): Promise<boolean> {
+  const p = plugin();
+  if (!p || !id.trim()) { set({ status: "error", error: "Apple Music isn't available here." }); return false; }
+  try {
+    set({ status: "connecting" });
+    const auth = await p.authorize();
+    if (auth.status !== "authorized") { set({ status: "error", error: "Apple Music access is off — opening it instead." }); return false; }
+    const { available } = await p.isAvailable();
+    if (!available) { set({ status: "error", error: "This needs an Apple Music subscription." }); return false; }
+    const res = await p.playItem({ id, kind });
+    if (!res.playing) { set({ status: "idle", error: undefined }); return false; }
+    set({ status: "playing", error: undefined });
+    return true;
+  } catch (e) {
+    set({ status: "error", error: e instanceof Error ? e.message : "The music didn't start." });
+    return false;
+  }
+}
+
+/** Search the Apple Music catalogue (songs / albums / playlists). Returns []
+ *  when unavailable or access is denied. */
+export async function searchAppleCatalog(term: string): Promise<AppleSearchResult[]> {
+  const p = plugin();
+  if (!p || !term.trim()) return [];
+  try {
+    const auth = await p.authorize();
+    if (auth.status !== "authorized") return [];
+    const res = await p.searchCatalog({ term });
+    return Array.isArray(res?.results) ? res.results : [];
+  } catch {
+    return [];
+  }
+}
+
+/** The currently-playing entry, for the in-app now-playing bar. */
+export async function appleNowPlaying(): Promise<{ title: string; subtitle?: string; artworkUrl?: string } | null> {
+  const p = plugin();
+  if (!p) return null;
+  try {
+    const r = await p.nowPlaying();
+    return r && r.title ? r : null;
+  } catch {
+    return null;
   }
 }
 

@@ -2,16 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { openExternal } from "@/lib/openExternal";
 import { isNativeIOS } from "@/lib/spotify";
-import { useMusicPlayback, type MusicSourceId } from "@/lib/musicPlayback";
+import { appleMusicAvailable, playAppleItem, useAppleMusicPlayback } from "@/lib/appleMusic";
 import {
   getSacredLibrary, addToSacredLibrary, removeFromSacredLibrary, parseMusicLink,
   searchCatalog, catalogSearchAvailable, KIND_EMOJI, SERVICE_LABEL,
   SACRED_LIBRARY_EVENT, type SacredItem, type SearchResult,
 } from "@/lib/sacredLibrary";
 
-// Your Sacred Library — the streaming experience for Audio Divina. A featured
-// in-app contemplative playlist, the music YOU'VE saved for prayer (one tap to
-// play), and a search-or-paste way to add more from Apple Music / Spotify.
+// Your Sacred Library — the streaming experience for Audio Divina. NOT a fixed
+// playlist: it's the music YOU choose. Search your Apple Music catalogue (native
+// MusicKit), save songs / albums / playlists, and play them IN-APP (their own
+// sacred music). Anything we can't play in-app deep-links to the music app.
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -23,9 +24,11 @@ function browse(service: "apple" | "spotify"): void {
   try { window.open(service === "apple" ? "music://" : "https://open.spotify.com/search", "_system"); } catch { /* ignore */ }
 }
 
-export function SacredLibrary({ music }: { music: ReturnType<typeof useMusicPlayback> }) {
+export function SacredLibrary() {
   const [items, setItems] = useState<SacredItem[]>(getSacredLibrary);
   const [adding, setAdding] = useState(false);
+  const [nowPlaying, setNowPlaying] = useState<SacredItem | null>(null);
+  const apple = useAppleMusicPlayback();
 
   useEffect(() => {
     const refresh = () => setItems(getSacredLibrary());
@@ -33,13 +36,48 @@ export function SacredLibrary({ music }: { music: ReturnType<typeof useMusicPlay
     return () => window.removeEventListener(SACRED_LIBRARY_EVENT, refresh);
   }, []);
 
+  const playItem = async (it: SacredItem) => {
+    // In-app for Apple items we have a catalog id for; otherwise open the app.
+    if (it.appleId && appleMusicAvailable()) {
+      setNowPlaying(it);
+      const ok = await playAppleItem(it.appleId, it.kind);
+      if (!ok) { setNowPlaying(null); openExternal(it.url); }
+      return;
+    }
+    openExternal(it.url);
+  };
+
+  const playing = apple.status === "playing";
+  const paused = apple.status === "paused";
+  const inAppActive = !!nowPlaying && (playing || paused || apple.status === "connecting");
+
   return (
     <div className="mb-3 rounded-2xl p-4" style={{ background: CARD, border: `1px solid ${CARD_B}` }}>
-      {/* Featured: a contemplative playlist that plays inside Phoebe */}
-      {music.anyAvailable && <InAppPlaylist music={music} />}
+      {/* In-app now-playing — the listener's own pick */}
+      {inAppActive && nowPlaying && (
+        <div className="flex items-center gap-3.5 mb-3.5 pb-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          {nowPlaying.artworkUrl ? (
+            <img src={nowPlaying.artworkUrl} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+          ) : (
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(46,107,64,0.35)" }}>
+              <span className="text-[24px]" aria-hidden>{playing ? "♪" : "🎧"}</span>
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-[14.5px] font-semibold truncate" style={{ color: WARM, fontFamily: FONT }}>{nowPlaying.title}</p>
+            <p className="text-[12px] mt-0.5 truncate" style={{ color: SAGE, fontFamily: FONT }}>
+              {apple.status === "connecting" ? "Starting…" : nowPlaying.subtitle || "Apple Music"}
+            </p>
+          </div>
+          <button onClick={() => (playing ? apple.pause() : apple.resume())} aria-label={playing ? "Pause" : "Play"} className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform" style={{ background: "rgba(46,107,64,0.95)", color: WARM }}>
+            <span className="text-[18px]" aria-hidden>{playing ? "❚❚" : "▶"}</span>
+          </button>
+          <button onClick={() => { apple.disconnect(); setNowPlaying(null); }} aria-label="Stop" className="text-[15px] px-1 flex-shrink-0 active:scale-90" style={{ color: "rgba(143,175,150,0.6)" }}>✕</button>
+        </div>
+      )}
 
-      {/* Your saved sacred music */}
-      <div className="flex items-center justify-between mt-1 mb-2.5">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-2.5">
         <p className="text-[11px] uppercase tracking-[0.16em]" style={{ color: SAGE, fontFamily: FONT }}>Your sacred library</p>
         <button onClick={() => setAdding(true)} className="text-[13px] font-medium px-3 py-1 rounded-full active:scale-95 transition-transform" style={{ background: "rgba(46,107,64,0.85)", color: WARM, fontFamily: FONT }}>
           ＋ Add
@@ -48,27 +86,30 @@ export function SacredLibrary({ music }: { music: ReturnType<typeof useMusicPlay
 
       {items.length === 0 ? (
         <p className="text-[13px] leading-snug py-2" style={{ color: "rgba(143,175,150,0.8)", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-          The music that draws you toward God — save it here, and it's always a tap away.
+          The music that draws you toward God — search your catalogue and save it here, and it's always a tap away.
         </p>
       ) : (
         <div className="flex flex-col gap-2">
-          {items.map((it) => (
-            <div key={it.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-              <button onClick={() => openExternal(it.url)} className="flex items-center gap-3 flex-1 min-w-0 text-left active:opacity-80">
-                {it.artworkUrl ? (
-                  <img src={it.artworkUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
-                ) : (
-                  <span className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-[18px]" style={{ background: "rgba(46,107,64,0.3)" }} aria-hidden>{KIND_EMOJI[it.kind]}</span>
-                )}
-                <span className="flex-1 min-w-0">
-                  <span className="block text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: FONT }}>{it.title}</span>
-                  <span className="block text-[11.5px] truncate" style={{ color: SAGE, fontFamily: FONT }}>{it.subtitle ? `${it.subtitle} · ` : ""}{SERVICE_LABEL[it.service]}</span>
-                </span>
-                <span className="text-[16px] flex-shrink-0" style={{ color: SAGE }} aria-hidden>▶</span>
-              </button>
-              <button onClick={() => removeFromSacredLibrary(it.id)} aria-label="Remove" className="text-[16px] px-1 flex-shrink-0 active:scale-90" style={{ color: "rgba(143,175,150,0.5)" }}>×</button>
-            </div>
-          ))}
+          {items.map((it) => {
+            const isLive = nowPlaying?.id === it.id && (playing || paused);
+            return (
+              <div key={it.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: isLive ? "rgba(46,107,64,0.22)" : "rgba(255,255,255,0.04)", border: `1px solid ${isLive ? "rgba(110,180,130,0.4)" : "rgba(255,255,255,0.08)"}` }}>
+                <button onClick={() => playItem(it)} className="flex items-center gap-3 flex-1 min-w-0 text-left active:opacity-80">
+                  {it.artworkUrl ? (
+                    <img src={it.artworkUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                  ) : (
+                    <span className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-[18px]" style={{ background: "rgba(46,107,64,0.3)" }} aria-hidden>{KIND_EMOJI[it.kind]}</span>
+                  )}
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: FONT }}>{it.title}</span>
+                    <span className="block text-[11.5px] truncate" style={{ color: SAGE, fontFamily: FONT }}>{it.subtitle ? `${it.subtitle} · ` : ""}{SERVICE_LABEL[it.service]}</span>
+                  </span>
+                  <span className="text-[15px] flex-shrink-0" style={{ color: SAGE }} aria-hidden>{isLive && playing ? "♪" : "▶"}</span>
+                </button>
+                <button onClick={() => { if (nowPlaying?.id === it.id) { apple.disconnect(); setNowPlaying(null); } removeFromSacredLibrary(it.id); }} aria-label="Remove" className="text-[16px] px-1 flex-shrink-0 active:scale-90" style={{ color: "rgba(143,175,150,0.5)" }}>×</button>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -84,53 +125,8 @@ export function SacredLibrary({ music }: { music: ReturnType<typeof useMusicPlay
   );
 }
 
-// The curated, in-app contemplative playlist (plays inside Phoebe via the music
-// services). Podcast-style transport.
-function InAppPlaylist({ music }: { music: ReturnType<typeof useMusicPlayback> }) {
-  const playing = music.status === "playing";
-  const paused = music.status === "paused";
-  const connecting = music.status === "connecting";
-  const needsAuth = music.needsAuth || music.status === "needs_auth";
-  const sourceLabel = music.activeId === "spotify" ? "Spotify" : "Apple Music";
-  const onTransport = () => {
-    if (playing) music.pause();
-    else if (paused) music.resume();
-    else if (needsAuth) music.authorize();
-    else music.connectPlay();
-  };
-  return (
-    <div className="mb-3.5">
-      {music.sources.length > 1 && (
-        <div className="flex p-1 rounded-full mb-3" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-          {music.sources.map((s) => {
-            const on = s.id === music.activeId;
-            return (
-              <button key={s.id} onClick={() => music.setActive(s.id as MusicSourceId)} className="flex-1 py-2 rounded-full text-[13px] font-medium transition-colors" style={{ background: on ? "rgba(46,107,64,0.9)" : "transparent", color: on ? WARM : SAGE, fontFamily: FONT }}>
-                {s.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      <div className="flex items-center gap-3.5">
-        <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(46,107,64,0.35)", border: "1px solid rgba(110,180,130,0.3)" }}>
-          <span className="text-[24px]" aria-hidden>{playing ? "♪" : "🎧"}</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[14.5px] font-semibold truncate" style={{ color: WARM, fontFamily: FONT }}>A contemplative playlist</p>
-          <p className="text-[12px] mt-0.5 truncate" style={{ color: SAGE, fontFamily: FONT }}>{connecting ? "Starting the music…" : needsAuth ? `Connect ${sourceLabel}` : sourceLabel}</p>
-        </div>
-        <button onClick={onTransport} disabled={connecting} aria-label={playing ? "Pause" : "Play"} className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform disabled:opacity-60" style={{ background: "rgba(46,107,64,0.95)", color: WARM }}>
-          <span className="text-[20px]" aria-hidden>{playing ? "❚❚" : "▶"}</span>
-        </button>
-      </div>
-      {music.error && <p className="text-[11.5px] mt-2 leading-snug" style={{ color: "rgba(230,205,180,0.9)", fontFamily: FONT }}>{music.error}</p>}
-    </div>
-  );
-}
-
-// Add to the library — one input that's both a catalogue search (Spotify, when
-// connected) and a share-link paste (Apple Music / Spotify, always).
+// Add to the library — one input that's both a catalogue search (your Apple
+// Music catalogue via MusicKit, or Spotify) and a share-link paste.
 function AddSheet({ onClose }: { onClose: () => void }) {
   const [text, setText] = useState("");
   const [title, setTitle] = useState("");
@@ -145,7 +141,6 @@ function AddSheet({ onClose }: { onClose: () => void }) {
   useEffect(() => { if (parsed) setTitle(parsed.title); }, [parsed]);
   useEffect(() => { inputRef.current?.focus(); }, []);
 
-  // Debounced catalogue search when the text isn't a link.
   useEffect(() => {
     if (parsed || !text.trim()) { setResults([]); setSearching(false); return; }
     let cancelled = false;
@@ -159,11 +154,11 @@ function AddSheet({ onClose }: { onClose: () => void }) {
 
   const savePasted = () => {
     if (!parsed) return;
-    addToSacredLibrary({ kind: parsed.kind, title: title || parsed.title, service: parsed.service, url: parsed.url });
+    addToSacredLibrary({ kind: parsed.kind, title: title || parsed.title, service: parsed.service, url: parsed.url, appleId: parsed.appleId });
     onClose();
   };
   const saveResult = (r: SearchResult) => {
-    addToSacredLibrary({ kind: r.kind, title: r.title, subtitle: r.subtitle, service: r.service, url: r.url, artworkUrl: r.artworkUrl });
+    addToSacredLibrary({ kind: r.kind, title: r.title, subtitle: r.subtitle, service: r.service, url: r.url, artworkUrl: r.artworkUrl, appleId: r.appleId });
     onClose();
   };
 
@@ -178,7 +173,7 @@ function AddSheet({ onClose }: { onClose: () => void }) {
         <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: "rgba(143,175,150,0.4)" }} />
         <h2 className="text-[18px] font-bold mb-1" style={{ color: WARM, fontFamily: FONT }}>Add to your sacred library</h2>
         <p className="text-[12.5px] mb-3.5" style={{ color: SAGE, fontFamily: FONT }}>
-          {canSearch ? "Search, or paste an Apple Music / Spotify link." : "Paste an Apple Music or Spotify link (Share → Copy Link)."}
+          {canSearch ? "Search your catalogue, or paste an Apple Music / Spotify link." : "Paste an Apple Music or Spotify link (Share → Copy Link)."}
         </p>
 
         <input
@@ -190,7 +185,6 @@ function AddSheet({ onClose }: { onClose: () => void }) {
           style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: WARM, fontFamily: "Georgia, serif" }}
         />
 
-        {/* Pasted-link path */}
         {parsed && (
           <div className="mt-3 rounded-2xl p-3.5" style={{ background: CARD, border: `1px solid ${CARD_B}` }}>
             <p className="text-[11px] uppercase tracking-[0.14em] mb-2" style={{ color: SAGE, fontFamily: FONT }}>
@@ -209,7 +203,6 @@ function AddSheet({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        {/* Search path */}
         {!parsed && searching && <p className="mt-3 text-[13px] text-center" style={{ color: SAGE, fontFamily: FONT }}>Searching…</p>}
         {!parsed && !searching && results.length > 0 && (
           <div className="mt-3 flex flex-col gap-2 max-h-[40vh] overflow-y-auto">
@@ -227,11 +220,10 @@ function AddSheet({ onClose }: { onClose: () => void }) {
         )}
         {!parsed && !searching && !!text.trim() && results.length === 0 && (
           <p className="mt-3 text-[12.5px] leading-snug text-center" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>
-            {canSearch ? "Nothing found — try a link instead." : "Connect Spotify to search, or paste a share link from your music app."}
+            {canSearch ? "Nothing found — try a link instead." : "Open Apple Music, copy a link, and paste it here."}
           </p>
         )}
 
-        {/* Browse hand-off */}
         <div className="flex gap-2 mt-4">
           {isNativeIOS() && (
             <button onClick={() => browse("apple")} className="flex-1 py-2.5 rounded-2xl text-[13px] font-medium active:scale-[0.98]" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: WARM, fontFamily: FONT }}>Apple Music ↗</button>
