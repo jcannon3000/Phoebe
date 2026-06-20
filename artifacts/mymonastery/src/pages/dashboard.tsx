@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { Plus, X, Camera } from "lucide-react";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -5337,6 +5338,10 @@ function GoalReachedModal({
 
 export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean } = {}) {
   const { t } = useTranslation();
+  const homeBgPhoto = useMemo(
+    () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
+    [],
+  );
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const [filter, setFilter] = useState<"practices" | null>(null);
@@ -6563,6 +6568,15 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
 
   return (
     <Layout>
+      {/* A still leaves photo behind the home, under a dark wash. Anchored to the
+          Layout root (relative + min-h-screen); absolute (not fixed) so it renders
+          reliably in the iOS WebView, matching the office/listening surfaces. */}
+      {homeBgPhoto && (
+        <>
+          <img src={homeBgPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, zIndex: -1 }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.55) 0%, rgba(8,22,15,0.68) 40%, rgba(8,22,15,0.82) 100%)" }} />
+        </>
+      )}
       <style>{`
         @media (min-width: 768px) {
           .dash-shell {
