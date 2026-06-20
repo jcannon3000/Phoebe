@@ -231,10 +231,10 @@ export function CobreatheBreath({
   // The globe cluster can be dragged anywhere on screen (kept 24px clear of the
   // edges + the top title and bottom labels). Released near its home (centre),
   // it springs back with a soft haptic. The chosen spot persists across sits.
-  const [globeOffset, setGlobeOffset] = useState<{ x: number; y: number }>(() => {
-    try { const r = JSON.parse(localStorage.getItem("phoebe:cobreathe-globe-offset") || "null"); if (r && typeof r.x === "number" && typeof r.y === "number") return r; } catch { /* ignore */ }
-    return { x: 0, y: 0 };
-  });
+  // Always START perfectly centred (on 50% / 61.8%). We no longer restore a
+  // persisted drag offset — a stale offset from a prior sit was leaving the
+  // globe + rings off-centre on open. Dragging still works within the sit.
+  const [globeOffset, setGlobeOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [globeSnapping, setGlobeSnapping] = useState(false);
   // Globe box size in px. On MOBILE the page width is 2.61× the OUTER ring's
   // diameter — i.e. outer diameter = viewport width / 2.61. The outer ring is
@@ -1046,7 +1046,7 @@ export function CobreatheBreath({
           </div>
           {/* RIGHT — just "n of 12" (no leading "Breath"), once counting. */}
           {counting && (
-            <p className="flex-1 text-right" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, fontSize: 26, fontWeight: 600, letterSpacing: "0.04em" }}>
+            <p className="flex-1 text-right" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, fontSize: 19, fontWeight: 600, letterSpacing: "0.04em" }}>
               {reachedNow
                 ? t("cobreathe.breath_counter_past", { current: breathNum, defaultValue: `🌿 ${breathNum}` })
                 : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `${breathNum} of ${totalBreaths}` })}
