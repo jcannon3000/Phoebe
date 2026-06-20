@@ -428,6 +428,12 @@ function FindFriendsEntry() {
 
 /* ── Page ─────────────────────────────────────────────────────────────── */
 
+// Fellows are 1:1 connections ONLY — an individual outside your communities who
+// can see your prayer requests and pray for you. The accountability / social
+// extras (Walking Together, 🙌 encouragements, the share-daily-progress
+// onboarding) stay OFF; flip this to re-enable them later.
+const FELLOW_EXTRAS = false;
+
 export default function People() {
   const [location, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
@@ -596,8 +602,8 @@ export default function People() {
         {/* No page eyebrow/title — the Fellows section header leads the page
             (sized like the home section titles) so it starts higher up. */}
 
-        {/* A fellow's 🙌 encouragement, if one's waiting. */}
-        <EncouragementBanner />
+        {/* A fellow's 🙌 encouragement, if one's waiting. (Extra — off.) */}
+        {FELLOW_EXTRAS && <EncouragementBanner />}
 
         {/* Voice prayers sent to me — encrypted, replayable for 3 days. */}
         {rawIsBeta && <VoiceMemoInbox />}
@@ -625,17 +631,18 @@ export default function People() {
         {/* Heart to Heart (the 1:1 daily prayer exchange) is hidden for now —
             the "Start a Heart to Heart" entry card was removed. */}
 
-        {/* Walking together — beta accountability layer on Fellows: opt in with
-            a fellow to see each other's today-only rhythm dots + send a word of
-            encouragement. The component renders its own header, and nothing at
-            all when there's nothing to show. */}
-        {rawIsBeta && <WalkTogether hideCompanions />}
+        {/* Walking together — accountability layer on Fellows. OFF: fellows are
+            just 1:1 connections now, no accountability. */}
+        {FELLOW_EXTRAS && rawIsBeta && <WalkTogether hideCompanions />}
 
-        {/* One-time new-fellow onboarding (same place? + share daily progress?). */}
-        <FellowOnboardingPrompt
-          fellow={onboardFellow}
-          onDone={() => { if (onboardFellow) setOnboardDismissed((s) => new Set(s).add(onboardFellow.userId)); }}
-        />
+        {/* One-time new-fellow onboarding (share daily progress?). OFF — that's
+            an accountability/sharing extra. */}
+        {FELLOW_EXTRAS && (
+          <FellowOnboardingPrompt
+            fellow={onboardFellow}
+            onDone={() => { if (onboardFellow) setOnboardDismissed((s) => new Set(s).add(onboardFellow.userId)); }}
+          />
+        )}
 
         {/* Plans ("How About") moved to the Events page — share what you're
             going to there, and your fellows can come. (Lives in the Dashboard's

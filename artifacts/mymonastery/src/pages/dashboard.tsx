@@ -3178,8 +3178,8 @@ type RailPerson = { id: number; name: string | null; avatarUrl: string | null };
 
 // ── PrayedWithWeekRail — a horizontal strip of the faces of everyone who has
 // prayed with you THIS MONTH, most-recent first (leftmost), shown above "Next"
-// on the home. Tap a face to ask that person to pray for you (a private,
-// directed 1:1 prayer request). Self-hides when no one has yet. ──────────
+// on the home. A face with a 🙏 has an active prayer request; tapping it opens
+// that request. Faces without one aren't tappable. Self-hides when empty. ──
 function PrayedWithWeekRail() {
   const { data } = useQuery<{ people: RailPerson[]; total?: number }>({
     queryKey: ["/api/prayer-streak/community-prayed-month"],
@@ -3190,183 +3190,77 @@ function PrayedWithWeekRail() {
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
-  // Who (among everyone visible to me) has an active prayer request right now —
-  // so we can mark their face with a 🙏. Shares the dashboard's existing
-  // ["/api/prayer-requests"] cache, so this adds no extra network on the home.
-  const { data: openRequests } = useQuery<Array<{ ownerId: number }>>({
+  // Map each person to their most-recent active prayer request id (the list is
+  // newest-first, so keep the first id we see per owner). A face with a request
+  // gets a 🙏 and, when tapped, opens THAT request; faces without one aren't
+  // tappable. Shares the dashboard's ["/api/prayer-requests"] cache (no extra
+  // network on the home).
+  const { data: openRequests } = useQuery<Array<{ id: number; ownerId: number }>>({
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
     staleTime: 5 * 60_000,
     refetchOnWindowFocus: false,
   });
-  const requestOwnerIds = new Set((openRequests ?? []).map((r) => r.ownerId));
+  const requestByOwner = new Map<number, number>();
+  for (const r of openRequests ?? []) if (!requestByOwner.has(r.ownerId)) requestByOwner.set(r.ownerId, r.id);
   const SG = "'Space Grotesk', sans-serif";
   const people = data?.people ?? [];
   const total = data?.total ?? people.length;
-  // Tap a face → open the "ask them to pray for you" composer for that person.
-  const [askTarget, setAskTarget] = useState<RailPerson | null>(null);
   if (people.length === 0) return null;
   const first = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "";
   return (
     // Ease the whole rail in once the faces are ready, rather than popping.
-    <motion.div className="mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, ease: "easeOut" }}>
+    // -mt-1 nudges the label up a touch, tightening the space above it.
+    <motion.div className="mb-4 -mt-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, ease: "easeOut" }}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SG }}>
         {total} {total === 1 ? "person" : "people"} prayed with you this month
       </p>
       <div className="flex items-start gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
         {people.map((p) => {
-          const hasRequest = requestOwnerIds.has(p.id);
-          return (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => setAskTarget(p)}
-            className="flex flex-col items-center shrink-0 transition-opacity active:scale-[0.96] hover:opacity-90"
-            style={{ width: 48 }}
-          >
-            <div className="relative" style={{ width: 44, height: 44 }}>
-              {p.avatarUrl ? (
-                <img src={p.avatarUrl} alt={first(p.name)} className="rounded-full object-cover" style={{ width: 44, height: 44, backgroundColor: "#1A4A2E" }} />
-              ) : (
-                <div className="rounded-full flex items-center justify-center font-semibold" style={{ width: 44, height: 44, background: "#1A4A2E", color: "#A8C5A0", fontSize: 15, fontFamily: SG }}>
-                  {(p.name ?? "?").trim()[0]?.toUpperCase() ?? "?"}
-                </div>
-              )}
-              {/* 🙏 badge, bottom-right — this person has an active prayer
-                  request. The dark circle (page bg) lets it sit cleanly on
-                  any avatar edge. */}
-              {hasRequest && (
-                <span
-                  aria-label="has a prayer request"
-                  className="absolute flex items-center justify-center rounded-full"
-                  style={{ right: -3, bottom: -3, width: 19, height: 19, background: "#102816", border: "1px solid rgba(46,107,64,0.55)", fontSize: 11, lineHeight: 1 }}
-                >
-                  🙏
-                </span>
-              )}
+          const reqId = requestByOwner.get(p.id);
+          const faceInner = (
+            <>
+              <div className="relative" style={{ width: 44, height: 44 }}>
+                {p.avatarUrl ? (
+                  <img src={p.avatarUrl} alt={first(p.name)} className="rounded-full object-cover" style={{ width: 44, height: 44, backgroundColor: "#1A4A2E" }} />
+                ) : (
+                  <div className="rounded-full flex items-center justify-center font-semibold" style={{ width: 44, height: 44, background: "#1A4A2E", color: "#A8C5A0", fontSize: 15, fontFamily: SG }}>
+                    {(p.name ?? "?").trim()[0]?.toUpperCase() ?? "?"}
+                  </div>
+                )}
+                {/* 🙏 badge, bottom-right — this person has an active prayer
+                    request; tapping the face opens it. */}
+                {reqId !== undefined && (
+                  <span
+                    aria-label="has a prayer request"
+                    className="absolute flex items-center justify-center rounded-full"
+                    style={{ right: -3, bottom: -3, width: 19, height: 19, background: "#102816", border: "1px solid rgba(46,107,64,0.55)", fontSize: 11, lineHeight: 1 }}
+                  >
+                    🙏
+                  </span>
+                )}
+              </div>
+              <p className="text-[10px] mt-1 truncate w-full text-center" style={{ color: "rgba(143,175,150,0.85)", fontFamily: SG }}>{first(p.name)}</p>
+            </>
+          );
+          // Tappable ONLY when that person has an active request → opens it.
+          // No request → not interactive (avoids a dead tap).
+          return reqId !== undefined ? (
+            <Link
+              key={p.id}
+              href={`/prayer-requests/${reqId}`}
+              className="flex flex-col items-center shrink-0 w-12 transition-opacity active:scale-[0.96] hover:opacity-90"
+            >
+              {faceInner}
+            </Link>
+          ) : (
+            <div key={p.id} className="flex flex-col items-center shrink-0 w-12">
+              {faceInner}
             </div>
-            <p className="text-[10px] mt-1 truncate w-full text-center" style={{ color: "rgba(143,175,150,0.85)", fontFamily: SG }}>{first(p.name)}</p>
-          </button>
           );
         })}
       </div>
-      <AskToPraySheet target={askTarget} onClose={() => setAskTarget(null)} />
     </motion.div>
-  );
-}
-
-// ── AskToPraySheet — tap a face on the home rail to ask that person to pray
-// for you: a private, directed 1:1 prayer request (directOnly, tagged to them).
-// They get a push and it appears in their prayer list; nobody else sees it. ──
-function AskToPraySheet({ target, onClose }: { target: RailPerson | null; onClose: () => void }) {
-  const qc = useQueryClient();
-  const [draft, setDraft] = useState("");
-  const [sent, setSent] = useState(false);
-  const SG = "'Space Grotesk', sans-serif";
-  // Reset the composer whenever a different face is tapped.
-  useEffect(() => { setDraft(""); setSent(false); }, [target?.id]);
-  const ask = useMutation({
-    mutationFn: () =>
-      apiRequest("POST", "/api/prayer-requests", {
-        body: draft.trim(),
-        taggedUserIds: target ? [target.id] : [],
-        directOnly: true,
-      }),
-    onSuccess: () => {
-      setSent(true);
-      qc.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-    },
-  });
-  const name = (target?.name ?? "").trim();
-  const firstName = name.split(/\s+/)[0] || "them";
-  const initialsOf = (n: string) => n.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "·";
-  return (
-    <AnimatePresence>
-      {target && (
-        <motion.div
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[280] flex flex-col"
-          style={{
-            background: "radial-gradient(130% 95% at 50% 22%, #163524 0%, #0C1F12 52%, #06120C 100%)",
-            paddingTop: "calc(var(--safe-top) + 14px)",
-            paddingBottom: "calc(env(safe-area-inset-bottom) + 16px)",
-          }}
-        >
-          {/* Quiet close, top-left — the action lives at the bottom. */}
-          <div className="px-5">
-            <button
-              type="button" onClick={onClose} aria-label="Cancel"
-              className="w-9 h-9 rounded-full flex items-center justify-center text-[18px] active:scale-[0.95]"
-              style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.35)", color: "#C8D4C0", fontFamily: SG }}
-            >×</button>
-          </div>
-
-          <div className="flex-1 flex flex-col w-full max-w-lg mx-auto px-8 overflow-y-auto">
-            {/* Who you're asking — face with the soft prayer pulse. */}
-            <div className="flex flex-col items-center text-center mt-1 mb-5">
-              {target.avatarUrl ? (
-                <img src={target.avatarUrl} alt={name} className="w-16 h-16 rounded-full object-cover prayer-avatar-pulse" />
-              ) : (
-                <div className="w-16 h-16 rounded-full flex items-center justify-center text-lg font-semibold prayer-avatar-pulse"
-                  style={{ background: "#1A4A2E", color: "#A8C5A0", fontFamily: SG }}>{initialsOf(name)}</div>
-              )}
-              <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mt-3" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SG }}>
-                A prayer between you
-              </p>
-              <p className="text-[18px] font-semibold mt-1" style={{ color: "#F0EDE6", fontFamily: SG }}>
-                Ask {firstName} to pray for you
-              </p>
-              <p className="text-[12.5px] mt-1.5" style={{ color: "rgba(143,175,150,0.75)", fontFamily: SG }}>
-                Private — just between you and {firstName}.
-              </p>
-            </div>
-
-            {sent ? (
-              <div className="flex flex-col items-center text-center mt-6">
-                <div className="text-4xl mb-3">🙏</div>
-                <p className="text-[15px]" style={{ color: "#F0EDE6", fontFamily: "Georgia, serif", fontStyle: "italic" }}>
-                  {firstName} will be asked to hold you in prayer.
-                </p>
-                <button
-                  type="button" onClick={onClose}
-                  className="mt-7 rounded-2xl py-3 px-8 text-[14px] font-semibold active:scale-[0.98]"
-                  style={{ background: "rgba(46,107,64,0.85)", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.6)", fontFamily: SG }}
-                >Done</button>
-              </div>
-            ) : (
-              <>
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder={`What would you like ${firstName} to pray for?`}
-                  rows={5}
-                  autoFocus
-                  className="w-full rounded-2xl px-4 py-3.5 text-[16px] resize-none outline-none"
-                  style={{
-                    background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.35)",
-                    color: "#F0EDE6", fontFamily: "Georgia, serif", lineHeight: 1.55,
-                  }}
-                />
-                {ask.isError && (
-                  <p className="text-[12.5px] mt-2 text-center" style={{ color: "#E0A87E", fontFamily: SG }}>
-                    Couldn't send — tap to try again.
-                  </p>
-                )}
-                <button
-                  type="button"
-                  disabled={!draft.trim() || ask.isPending}
-                  onClick={() => ask.mutate()}
-                  className="mt-4 w-full rounded-2xl py-3.5 text-[15px] font-semibold transition-opacity active:scale-[0.98] disabled:opacity-50"
-                  style={{ background: "#2D5E3F", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.7)", fontFamily: SG }}
-                >
-                  {ask.isPending ? "Sending…" : `Ask ${firstName} to pray`}
-                </button>
-              </>
-            )}
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
   );
 }
 
