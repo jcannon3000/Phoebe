@@ -408,15 +408,8 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     </MenuSection>
                   );
                 })()}
-                {/* People — find and connect with people, incl. Fellows
-                    (1:1 connections + requests). The count badge shows incoming
-                    fellow requests for beta users. */}
-                <MenuRow
-                  emoji="👥"
-                  label={t("header.people")}
-                  count={fellowRequestCount + newFromFriends}
-                  onClick={() => navigate("/people")}
-                />
+                {/* People / Fellows is turned off for now — the nav entry is
+                    removed so the page is unreachable. */}
                 {/* Events — the upcoming schedule (services, gatherings,
                     practices), its own page now that it's off the home. */}
                 <MenuRow
@@ -777,20 +770,8 @@ function DailyProgressPill() {
     ...(eveningActive ? [{ key: "evening", done: eveningDone }] : []),
     ...cDots("evening"),
   ];
-  // Once you've kept THREE of today's dots, ping your fellows (once/day) so they
-  // can send a 🙌 and take it as a nudge for their own rhythm. Guarded per
-  // day/device; the server dedupes + fans out to your fellows.
-  const doneCount = dotDefs.filter((d) => d.done).length;
-  useEffect(() => {
-    if (!rawIsBeta || !ready || doneCount < 3) return;
-    let key: string;
-    try {
-      key = `phoebe:reached-three:${new Date().toLocaleDateString("en-CA")}`;
-      if (localStorage.getItem(key) === "1") return;
-      localStorage.setItem(key, "1");
-    } catch { return; }
-    apiRequest("POST", "/api/walk/reached-three").catch(() => { /* best-effort */ });
-  }, [rawIsBeta, ready, doneCount]);
+  // Fellows are turned off for now — we no longer ping fellows when three dots
+  // are kept (that fanned out a notification to your fellows). Removed.
 
   // Every practice for the day kept → ALL dots gently pulse colour (a staggered
   // "you held the whole day" wave).
@@ -1000,7 +981,7 @@ function OpeningSplash() {
       return n;
     } catch { return 0; }
   });
-  const splashVariant = splashOpenN % 3;     // 0 = faces, 1 = quote, 2 = fellows
+  const splashVariant = splashOpenN % 2;     // 0 = faces, 1 = quote (fellows variant retired)
   const hour = new Date().getHours();
   const showFaces = splashVariant === 0;
   // The quote shows IMMEDIATELY on its open — its content is a static line, ready
@@ -1008,7 +989,9 @@ function OpeningSplash() {
   // waits to "settle".
   const showQuote = splashVariant === 1;
   // Third in rotation: your fellows' progress for the day (faces + dots).
-  const showFellows = splashVariant === 2;
+  // Fellows turned off for now — never show the splash "fellows today" / walking
+  // companions variant.
+  const showFellows = false;
   // The quote advances each time the quote slide comes up (every third open).
   const quote = SPLASH_QUOTES[Math.floor(splashOpenN / 3) % SPLASH_QUOTES.length]!;
   // Fellows' today progress — only fetched on the fellows variant.

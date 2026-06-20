@@ -31,6 +31,7 @@ import {
 import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/officePrefs";
 import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
 import NewsClosingSlide, { useUnseenNews } from "@/components/NewsClosingSlide";
+import { OfficeCloseEvents } from "@/components/OfficeCloseEvents";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
@@ -38,7 +39,6 @@ import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { earthPhotoForDay } from "@/lib/earthPhotos";
-import { CommunityPrayedRecap } from "@/components/CommunityPrayedRecap";
 import { GratitudeNudge } from "@/components/GratitudeComposer";
 import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
@@ -1510,7 +1510,7 @@ function HabitSlide({
         className="w-full flex flex-col items-center"
         style={{ gap: 16 }}
       >
-        <CommunityPrayedRecap coPrayers={coPrayers} />
+        {/* Fellows off: no "prayed with you" community recap on the devotion close. */}
       </motion.div>
 
       {/* Give-thanks (gratitude) + Ignatian Examen — on the same level. The
@@ -1941,7 +1941,7 @@ function ClosingSlide({
           the count + their faces — and one pill to add a prayer request of
           your own. (The gratitude / Examen pills and the rhythm grid that
           used to follow on a second slide were removed.) */}
-      <CommunityPrayedRecap coPrayers={coPrayers} />
+      {/* Fellows off: no "prayed with you" community recap on the devotion close. */}
 
       {/* Add a prayer request — opens the prayer-request composer feed. */}
       <motion.div
@@ -2147,7 +2147,7 @@ function PrayerCompletedSlide({
         {t("prayer_mode.prayer_completed", { defaultValue: "Prayer completed" })}
       </motion.p>
 
-      {faces.length > 0 && (
+      <OfficeCloseEvents max={3} onEmpty={faces.length > 0 ? (
         <motion.div
           className="flex flex-col items-center w-full" style={{ maxWidth: 420 }}
           initial="hidden" animate="show"
@@ -2173,7 +2173,7 @@ function PrayerCompletedSlide({
             {t("splash.prayed_with_you_total", { count: total, defaultValue: `You prayed with ${total} ${total === 1 ? "person" : "people"} this month` })}
           </motion.p>
         </motion.div>
-      )}
+      ) : null} />
 
       {/* Today's reflection — rendered as the SAME card as the home daily-progress
           rhythm (left bar, 📖, publication, blurb, Read pill → ✓ when done), not a
