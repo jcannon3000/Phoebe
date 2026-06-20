@@ -117,13 +117,9 @@ export function OfficeCloseEvents({
       animate="show"
       variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.12 } } }}
     >
-      <motion.p
-        variants={{ hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0 } }}
-        className="text-[11px] uppercase tracking-[0.22em] text-center mb-3"
-        style={{ color: "#8FAF96", fontFamily: SPACE_GROTESK }}
-      >
-        Coming up
-      </motion.p>
+      {/* The "Coming up" eyebrow is provided by the caller (the office-close
+          slide), so we don't render our own here — that double-stacked the
+          label. */}
       <div className="flex flex-col gap-2.5 text-left">
         {events.map((e) => (
           <motion.div key={e.key} variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } } }}>

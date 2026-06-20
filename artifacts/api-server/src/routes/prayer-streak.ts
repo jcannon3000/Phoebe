@@ -151,10 +151,9 @@ router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Res
   if (!sessionUser) { res.status(401).json({ error: "Unauthorized" }); return; }
 
   try {
-    const { getGardenUserIds, getFellowUserIds } = await import("../lib/garden.js");
+    const { getGardenUserIds } = await import("../lib/garden.js");
     const gardenIds = await getGardenUserIds(sessionUser.id);
     if (gardenIds.length === 0) { res.json({ people: [], total: 0 }); return; }
-    const fellowIds = new Set(await getFellowUserIds(sessionUser.id));
 
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
@@ -167,44 +166,41 @@ router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Res
       .from(usersTable)
       .where(inArray(usersTable.id, gardenIds));
 
-    const activeIds = new Set<number>();
-    // Any prayer session (offices, devotions, the Pray Together slideshow,
-    // feed walks, Compline) in the window — not just offices.
+    // Track the LATEST time each person prayed (sessions + amens) so the rail
+    // is ordered by recency — most recent first (leftmost). Any prayer session
+    // (offices, devotions, Pray Together, feed walks, Compline) OR an Amen on a
+    // request counts as praying.
+    const latestMs = new Map<number, number>();
+    const note = (userId: number | null, ts: Date | null) => {
+      if (typeof userId !== "number" || !ts) return;
+      const ms = ts.getTime();
+      const prev = latestMs.get(userId);
+      if (prev === undefined || ms > prev) latestMs.set(userId, ms);
+    };
     const sessionRows = await db
-      .selectDistinct({ userId: prayerSessionsTable.userId })
+      .select({ userId: prayerSessionsTable.userId, ts: prayerSessionsTable.endedAt })
       .from(prayerSessionsTable)
       .where(and(
         inArray(prayerSessionsTable.userId, gardenIds),
         gte(prayerSessionsTable.endedAt, sevenDaysAgo),
       ));
-    for (const r of sessionRows) {
-      if (typeof r.userId === "number") activeIds.add(r.userId);
-    }
-    // Praying for an individual request (an Amen) also counts as praying.
+    for (const r of sessionRows) note(r.userId, r.ts);
     const amenRows = await db
-      .selectDistinct({ userId: prayerRequestAmensTable.userId })
+      .select({ userId: prayerRequestAmensTable.userId, ts: prayerRequestAmensTable.prayedAt })
       .from(prayerRequestAmensTable)
       .where(and(
         inArray(prayerRequestAmensTable.userId, gardenIds),
         gte(prayerRequestAmensTable.prayedAt, sevenDaysAgo),
       ));
-    for (const r of amenRows) {
-      if (typeof r.userId === "number") activeIds.add(r.userId);
-    }
+    for (const r of amenRows) note(r.userId, r.ts);
 
-    // Everyone who prayed → the true total for the count line. Lead the
-    // (capped) avatar rail with people who have a profile photo.
-    const activePeople = peopleRows.filter((p) => activeIds.has(p.id));
+    // Everyone who prayed this week → the count line + the full rail (no cap),
+    // most-recent first.
+    const activePeople = peopleRows.filter((p) => latestMs.has(p.id));
     const total = activePeople.length;
     const people = activePeople
       .slice()
-      // Fellows lead the rail; then (within each group) those with a profile photo.
-      .sort((a, b) => {
-        const fa = fellowIds.has(a.id) ? 1 : 0, fb = fellowIds.has(b.id) ? 1 : 0;
-        if (fa !== fb) return fb - fa;
-        return (b.avatarUrl ? 1 : 0) - (a.avatarUrl ? 1 : 0);
-      })
-      .slice(0, 12)
+      .sort((a, b) => (latestMs.get(b.id) ?? 0) - (latestMs.get(a.id) ?? 0))
       .map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl }));
 
     res.json({ people, total });

@@ -3177,13 +3177,13 @@ function NcmpHomeCard() {
 type RailPerson = { id: number; name: string | null; avatarUrl: string | null };
 
 // ── PrayedWithWeekRail — a horizontal strip of the faces of everyone who has
-// prayed with you THIS MONTH, most-recent first (leftmost), shown above "Next"
+// prayed with you THIS WEEK, most-recent first (leftmost), shown above "Next"
 // on the home. A face with a 🙏 has an active prayer request; tapping it opens
 // that request. Faces without one aren't tappable. Self-hides when empty. ──
 function PrayedWithWeekRail() {
   const { data } = useQuery<{ people: RailPerson[]; total?: number }>({
-    queryKey: ["/api/prayer-streak/community-prayed-month"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-month"),
+    queryKey: ["/api/prayer-streak/community-prayed-week"],
+    queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-week"),
     staleTime: 5 * 60_000,
     // Don't refetch on mount/focus — once the faces are shown they shouldn't
     // reshuffle under the user (the "they flash then change" report).
@@ -3212,8 +3212,8 @@ function PrayedWithWeekRail() {
     // Ease the whole rail in once the faces are ready, rather than popping.
     // -mt-1 nudges the label up a touch, tightening the space above it.
     <motion.div className="mb-4 -mt-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, ease: "easeOut" }}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SG }}>
-        {total} {total === 1 ? "person" : "people"} prayed with you this month
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] mb-3" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SG }}>
+        {total} {total === 1 ? "person" : "people"} prayed with you this week
       </p>
       <div className="flex items-start gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
         {people.map((p) => {
