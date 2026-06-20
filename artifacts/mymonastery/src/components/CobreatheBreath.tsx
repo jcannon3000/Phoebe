@@ -1007,17 +1007,20 @@ export function CobreatheBreath({
           aria-hidden="true"
           style={{
             position: "absolute", inset: 0, pointerEvents: "none",
+            // Symmetric glow (no downward Y offset) so the shadow doesn't pull the
+            // globe's visual weight below the rings' centre.
             filter: reachedNow
-              ? "drop-shadow(0 0 18px rgba(91,157,239,0.9)) drop-shadow(0 2px 10px rgba(8,30,18,0.5))"
-              : "drop-shadow(0 0 13px rgba(90,150,110,0.55)) drop-shadow(0 3px 14px rgba(8,30,18,0.6))",
+              ? "drop-shadow(0 0 18px rgba(91,157,239,0.9)) drop-shadow(0 0 10px rgba(8,30,18,0.5))"
+              : "drop-shadow(0 0 13px rgba(90,150,110,0.55)) drop-shadow(0 0 14px rgba(8,30,18,0.6))",
             transition: reachedNow ? "filter 1.2s ease" : "none",
           }}
         >
           {/* Emoji centered GEOMETRICALLY at the rings' centre (64,64 in the same
-              128 viewBox) via text-anchor + central baseline — HTML flex-centering
-              left the glyph optically low/off, misaligned with the rings. */}
+              128 viewBox) via text-anchor + central baseline. A hair of upward dy
+              compensates the emoji glyph sitting slightly low in its em box, so it
+              reads as truly concentric with the rings. */}
           <svg width="100%" height="100%" viewBox="0 0 128 128" style={{ display: "block" }}>
-            <text x="64" y="64" textAnchor="middle" dominantBaseline="central" fontSize="64">{globe}</text>
+            <text x="64" y="63" dy="-1.5" textAnchor="middle" dominantBaseline="central" fontSize="64">{globe}</text>
           </svg>
         </div>
       </div>
