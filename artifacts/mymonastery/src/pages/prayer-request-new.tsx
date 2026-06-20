@@ -242,7 +242,7 @@ export default function PrayerRequestNew() {
           <p className="text-[10px] uppercase tracking-[0.18em] font-semibold" style={{ color: "rgba(143,175,150,0.45)", fontFamily: SPACE }}>
             {copy.eyebrow}
           </p>
-          <h1 className="text-[24px] leading-[1.4] font-medium italic" style={{ color: "#E8E4D8", fontFamily: SPACE, margin: 0, whiteSpace: "pre-line" }}>
+          <h1 className="text-[24px] leading-[1.4] font-medium italic" style={{ color: "#E8E4D8", fontFamily: SPACE, marginTop: -4, marginBottom: -4, whiteSpace: "pre-line" }}>
             {copy.title}
           </h1>
 
