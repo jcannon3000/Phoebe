@@ -408,14 +408,8 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     </MenuSection>
                   );
                 })()}
-                {/* People — your 1:1 fellow connections: individuals outside
-                    your communities who can see your prayer requests and pray
-                    for you. (Just the connection — no accountability layers.) */}
-                <MenuRow
-                  emoji="🤝"
-                  label={t("menu.people", { defaultValue: "People" })}
-                  onClick={() => navigate("/people")}
-                />
+                {/* People (Fellows) turned off — the People menu row + page are
+                    hidden and fellow features paused. */}
                 {/* Events — the upcoming schedule (services, gatherings,
                     practices), its own page now that it's off the home. */}
                 <MenuRow

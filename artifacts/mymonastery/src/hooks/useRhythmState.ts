@@ -378,7 +378,7 @@ export function useRhythmState(): RhythmState {
   const isActiveLevel = (l: typeof ml) => l != null && l !== "ask";
   const morningActive = isActiveLevel(ml) || (officePrefs?.morning ?? "devotion") !== "none";
   const eveningActive = isActiveLevel(el) || (officePrefs?.evening ?? "none") !== "none";
-  const silenceActive = (officePrefs?.contemplationGoalMinutes ?? 5) > 0;
+  const silenceActive = (officePrefs?.contemplationGoalMinutes ?? 0) > 0;
   // Each reflection newsletter the user follows is its OWN anchor (card + dot).
   // The selected set is the reflection home-modules that are on; an un-set-up
   // user with no saved layout falls back to the single effective source.
