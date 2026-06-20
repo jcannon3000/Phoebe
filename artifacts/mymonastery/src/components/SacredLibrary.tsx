@@ -224,7 +224,7 @@ function AddSheet({ onClose }: { onClose: () => void }) {
         onClick={(e) => e.stopPropagation()}
         initial={{ y: 40 }} animate={{ y: 0 }} exit={{ y: 40 }} transition={{ type: "spring", stiffness: 320, damping: 32 }}
         className="w-full max-w-xl rounded-t-3xl p-5"
-        style={{ background: "radial-gradient(120% 90% at 50% 0%, #143524 0%, #0C2417 70%)", border: "1px solid rgba(110,180,130,0.18)", paddingBottom: "calc(env(safe-area-inset-bottom) + 20px)" }}
+        style={{ background: "radial-gradient(120% 90% at 50% 0%, #143524 0%, #0C2417 70%)", border: "1px solid rgba(110,180,130,0.18)", paddingBottom: "calc(env(safe-area-inset-bottom) + var(--kb-inset, 0px) + 20px)" }}
       >
         <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: "rgba(143,175,150,0.4)" }} />
         <h2 className="text-[18px] font-bold mb-1" style={{ color: WARM, fontFamily: FONT }}>Add to your sacred library</h2>
