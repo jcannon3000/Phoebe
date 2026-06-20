@@ -1016,7 +1016,20 @@ export function CobreatheBreath({
           counts the sit once the 12 are kept, and discards otherwise. (The
           labelled End/Discard belong to the silent ContemplationTimer, not here.) */}
 
-      {/* Bottom — the breathing word in the LEFT corner (smaller) + the breath
+      {/* Once the set is complete, a clear Done button to finish — logs the
+          FULL elapsed time (so breathing past 12 counts), not just the target. */}
+      {reachedNow && (
+        <div className="w-full flex justify-center" style={{ marginBottom: 18 }}>
+          <button
+            type="button"
+            onClick={() => onEnd(Math.round((syncedNow() - startRef.current) / 1000), true)}
+            style={{ background: "rgba(46,107,64,0.95)", color: "#EAF6F4", fontFamily: SPACE_GROTESK, fontWeight: 600, fontSize: 17, borderRadius: 999, padding: "14px 44px", border: "1px solid rgba(110,180,130,0.5)", cursor: "pointer", boxShadow: "0 6px 24px rgba(8,30,18,0.45)" }}
+          >
+            {t("common.done", { defaultValue: "Done" })}
+          </button>
+        </div>
+      )}
+      {/* Bottom — the breathing word in the LEFT corner + the breath
           count in the RIGHT corner. The quick-close ✕ lives top-right. */}
       <div ref={bottomRef} className="w-full" style={{ paddingLeft: 28, paddingRight: 28, marginBottom: 8 }}>
         <div className="flex items-end" style={{ gap: 14 }}>
@@ -1024,7 +1037,7 @@ export function CobreatheBreath({
           <div ref={labelRef} className="flex-1 min-w-0" style={{ willChange: "transform, opacity" }}>
             <span
               style={{
-                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 600,
+                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 26, fontWeight: 600,
                 letterSpacing: "0.04em", textShadow: "0 2px 18px rgba(8,30,18,0.6)", whiteSpace: "nowrap",
               }}
             >
@@ -1033,7 +1046,7 @@ export function CobreatheBreath({
           </div>
           {/* RIGHT — just "n of 12" (no leading "Breath"), once counting. */}
           {counting && (
-            <p className="flex-1 text-right" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 600, letterSpacing: "0.04em" }}>
+            <p className="flex-1 text-right" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, fontSize: 26, fontWeight: 600, letterSpacing: "0.04em" }}>
               {reachedNow
                 ? t("cobreathe.breath_counter_past", { current: breathNum, defaultValue: `🌿 ${breathNum}` })
                 : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `${breathNum} of ${totalBreaths}` })}
