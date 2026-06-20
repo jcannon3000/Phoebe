@@ -45,6 +45,10 @@ export default function ListeningPage() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [picked, setPicked] = useState(false);
+  // Artwork of the picked song/artist/album (shown in the log) + an optional
+  // reflection on the listening.
+  const [artworkUrl, setArtworkUrl] = useState("");
+  const [experience, setExperience] = useState("");
   useEffect(() => {
     const q = what.trim();
     if (picked || q.length < 2) { setResults([]); setSearching(false); return; }
@@ -58,6 +62,7 @@ export default function ListeningPage() {
   }, [what, picked]);
   function chooseResult(r: SearchResult) {
     setWhat(r.subtitle ? `${r.title} — ${r.subtitle}` : r.title);
+    setArtworkUrl(r.artworkUrl ?? "");
     setPicked(true);
     setResults([]);
   }
@@ -80,7 +85,7 @@ export default function ListeningPage() {
 
   // The whole log: note what + how, mark it done for today. (No amount.)
   function logToday() {
-    saveListeningEntry({ minutes: 0, songs: 0, medium, what: what.trim() });
+    saveListeningEntry({ minutes: 0, songs: 0, medium, what: what.trim(), artworkUrl, experience });
     markPracticeDoneToday("listening");
     setView("done");
   }
@@ -138,6 +143,7 @@ export default function ListeningPage() {
   // ——— Log (the main screen) — a simple two-field journal entry ———
   return (
     <Layout>
+      <div style={{ position: "relative", isolation: "isolate", flex: 1, display: "flex", flexDirection: "column", minHeight: "100%" }}>
       {/* A still landscape behind the page, under a dark wash for legibility. */}
       {bgPhoto && (
         <>
@@ -145,9 +151,9 @@ export default function ListeningPage() {
             src={bgPhoto}
             alt=""
             aria-hidden
-            style={{ position: "fixed", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.3, zIndex: -1 }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.3, zIndex: -1 }}
           />
-          <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
         </>
       )}
       <div className="max-w-xl mx-auto w-full">
@@ -168,7 +174,7 @@ export default function ListeningPage() {
         </p>
         <input
           value={what}
-          onChange={(e) => { setWhat(e.target.value); setPicked(false); }}
+          onChange={(e) => { setWhat(e.target.value); setPicked(false); setArtworkUrl(""); }}
           placeholder="A song, album, or artist…"
           className="w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none"
           style={glassField}
@@ -218,6 +224,19 @@ export default function ListeningPage() {
           ))}
         </select>
 
+        {/* 3 — How was your experience? (optional reflection) */}
+        <p className="text-[10.5px] uppercase tracking-[0.18em] mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+          How was your experience? <span style={{ opacity: 0.6, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
+        </p>
+        <textarea
+          value={experience}
+          onChange={(e) => setExperience(e.target.value.slice(0, 500))}
+          rows={3}
+          placeholder="What did it stir in you?"
+          className="w-full rounded-2xl px-4 py-3.5 mb-7 text-[15px] outline-none resize-none"
+          style={{ ...glassField, fontFamily: SERIF, fontStyle: "italic", lineHeight: 1.6 }}
+        />
+
         {/* Log it — like marking a task done, plus it saves to your log. */}
         <button
           onClick={logToday}
@@ -234,6 +253,7 @@ export default function ListeningPage() {
           <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>Stays on this device</p>
         </div>
       </div>
+      </div>
     </Layout>
   );
 }
@@ -244,11 +264,18 @@ function HistoryRow({ e }: { e: ListeningEntry }) {
   const day = Number.isNaN(d.getTime()) ? e.ymd : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
   const label = e.what?.trim() || (e.medium === "streaming" ? "Streaming" : e.medium.toUpperCase());
   return (
-    <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-      <span className="text-[20px] leading-none flex-shrink-0" aria-hidden>{MEDIUM_EMOJI[e.medium] ?? "🎧"}</span>
+    <div className="flex items-start gap-3 rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+      {e.artworkUrl ? (
+        <img src={e.artworkUrl} alt="" className="w-11 h-11 rounded-lg object-cover flex-shrink-0" style={{ backgroundColor: "rgba(46,107,64,0.3)" }} />
+      ) : (
+        <span className="w-11 h-11 rounded-lg flex items-center justify-center text-[20px] flex-shrink-0" style={{ background: "rgba(46,107,64,0.3)" }} aria-hidden>{MEDIUM_EMOJI[e.medium] ?? "🎧"}</span>
+      )}
       <div className="flex-1 min-w-0">
         <p className="text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{label}</p>
-        <p className="text-[11.5px] mt-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{day}</p>
+        <p className="text-[11.5px] mt-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{MEDIUM_EMOJI[e.medium] ?? "🎧"} {day}</p>
+        {e.experience?.trim() ? (
+          <p className="text-[12.5px] mt-1.5 leading-snug" style={{ color: "rgba(240,237,230,0.78)", fontFamily: SERIF, fontStyle: "italic" }}>{e.experience.trim()}</p>
+        ) : null}
       </div>
     </div>
   );

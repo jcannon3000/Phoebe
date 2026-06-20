@@ -18,7 +18,7 @@ export type ListeningGoalType = "time" | "songs";
 export type ListeningGoal = { type: ListeningGoalType; amount: number };
 // One logged sitting — how you listened, what you put on (streaming: the track
 // you picked; analog: your own words), and how much (minutes + songs).
-export type ListeningEntry = { ymd: string; minutes: number; songs: number; medium: ListeningMedium; what: string };
+export type ListeningEntry = { ymd: string; minutes: number; songs: number; medium: ListeningMedium; what: string; artworkUrl?: string; experience?: string };
 
 function todayKey(): string {
   return new Date().toLocaleDateString("en-CA"); // local day, ISO 2026-06-18
@@ -117,13 +117,15 @@ export function listeningHistory(): ListeningEntry[] {
 }
 
 /** Record a logged sitting for the history. */
-export function saveListeningEntry(e: { minutes: number; songs: number; medium: ListeningMedium; what: string }): void {
+export function saveListeningEntry(e: { minutes: number; songs: number; medium: ListeningMedium; what: string; artworkUrl?: string; experience?: string }): void {
   const entry: ListeningEntry = {
     ymd: todayKey(),
     minutes: Math.max(0, Math.round(e.minutes)),
     songs: Math.max(0, Math.round(e.songs)),
     medium: e.medium,
     what: e.what.trim().slice(0, 200),
+    ...(e.artworkUrl ? { artworkUrl: e.artworkUrl } : {}),
+    ...(e.experience && e.experience.trim() ? { experience: e.experience.trim().slice(0, 500) } : {}),
   };
   try {
     const hist = listeningHistory();
