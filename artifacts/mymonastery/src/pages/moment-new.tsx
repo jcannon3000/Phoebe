@@ -1303,15 +1303,8 @@ export default function MomentNew() {
   }
 
   return (
-    <Layout>
+    <Layout bgPhoto={bgPhoto}>
       <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
-      {/* A still leaves photo behind the creator, under a dark wash. */}
-      {bgPhoto && (
-        <>
-          <img src={bgPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, zIndex: -1 }} />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
-        </>
-      )}
       <div className="max-w-2xl mx-auto w-full pt-6 pb-16">
 
         {/* Header + progress */}

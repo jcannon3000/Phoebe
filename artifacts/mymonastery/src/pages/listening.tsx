@@ -140,24 +140,8 @@ export default function ListeningPage() {
 
   // ——— Log (the main screen) — a simple two-field journal entry ———
   return (
-    <Layout>
+    <Layout bgPhoto={bgPhoto}>
       <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-      {/* A still landscape behind the page. MUST be position:absolute inside this
-          isolation:isolate host (NOT position:fixed) — fixed + z-index:-1 gets
-          painted behind the opaque page background in the iOS WebView, so the
-          photo flashes then vanishes. This matches the office slideshow, which
-          renders reliably. flex:1 fills the viewport so it's still full-bleed. */}
-      {bgPhoto && (
-        <>
-          <img
-            src={bgPhoto}
-            alt=""
-            aria-hidden
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, zIndex: -1 }}
-          />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
-        </>
-      )}
       <div className="max-w-xl mx-auto w-full">
         {/* Header */}
         <div className="flex items-start gap-3 mb-7">

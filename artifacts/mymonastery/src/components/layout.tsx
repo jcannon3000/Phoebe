@@ -1367,7 +1367,7 @@ function LoadReveal() {
   );
 }
 
-export function Layout({ children }: { children: ReactNode }) {
+export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: ReactNode; bgPhoto?: string | null; bgOpacity?: number }) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { t } = useTranslation();
@@ -1391,13 +1391,23 @@ export function Layout({ children }: { children: ReactNode }) {
   useSyncHealthMinutes();
 
   return (
-    <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10" }}>
+    <div className="min-h-screen flex flex-col relative overflow-x-hidden" style={{ background: "#091A10", isolation: "isolate" }}>
       <LoadReveal />
       <OpeningSplash />
+      {/* Optional full-bleed page backdrop — fixed (edge to edge, behind the header
+          AND the content gutters), z-index:-1 within this isolation:isolate root so
+          it renders reliably (never position:fixed without isolation — that flashes
+          then vanishes in the iOS WebView; see reference_page_backdrop_pattern). */}
+      {bgPhoto && (
+        <>
+          <img src={bgPhoto} alt="" aria-hidden style={{ position: "fixed", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: bgOpacity, zIndex: -1 }} />
+          <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
+        </>
+      )}
       <header
         className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pb-2 md:pb-5 flex justify-between items-center"
         style={{
-          background: "#091A10",
+          background: bgPhoto ? "linear-gradient(180deg, rgba(8,22,15,0.6) 0%, rgba(8,22,15,0.15) 70%, rgba(8,22,15,0) 100%)" : "#091A10",
           // Clear the status-bar clock, not the whole Dynamic Island. "Phoebe"
           // (left) + the controls (right) sit in the corners, away from the
           // centred Island, so they don't need the full safe-area-inset-top —

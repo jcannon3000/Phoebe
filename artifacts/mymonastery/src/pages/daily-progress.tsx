@@ -27,15 +27,8 @@ export default function DailyProgressPage() {
     [],
   );
   return (
-    <Layout>
+    <Layout bgPhoto={bgPhoto}>
       <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
-      {/* A still leaves photo behind the page, under a dark wash. */}
-      {bgPhoto && (
-        <>
-          <img src={bgPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, zIndex: -1 }} />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
-        </>
-      )}
       {/* Capped on desktop, full-width on mobile. */}
       <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
         <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm mb-3" style={{ color: SAGE }}>

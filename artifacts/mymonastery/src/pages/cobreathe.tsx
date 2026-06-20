@@ -509,22 +509,8 @@ export default function CobreathePage() {
   }
 
   return (
-    <Layout>
+    <Layout bgPhoto={introBgPhoto}>
       <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-      {/* A still leaves photo behind the intro, under a dark wash for legibility.
-          position:absolute inside this flex:1 host (NOT fixed — fixed + z-index:-1
-          flashes then vanishes in the iOS WebView; absolute matches the office). */}
-      {introBgPhoto && (
-        <>
-          <img
-            src={introBgPhoto}
-            alt=""
-            aria-hidden
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, opacity: 0.38 }}
-          />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.55) 0%, rgba(8,22,15,0.66) 35%, rgba(8,22,15,0.80) 100%)" }} />
-        </>
-      )}
       <div className="max-w-xl mx-auto w-full flex flex-col flex-1">
         {/* "Before you begin" intro — same shape as a devotion's opening slide
             (centered eyebrow + big title + a few lines + setting rows + Begin).
