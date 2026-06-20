@@ -4414,7 +4414,7 @@ function PrayerListCarousel({
         {overflowing && (
           <div
             className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
-            style={{ background: "linear-gradient(to bottom, transparent 20%, #091A10)" }}
+            style={{ background: "linear-gradient(to bottom, transparent 20%, #102816)" }}
           />
         )}
       </div>
@@ -5100,7 +5100,7 @@ function TimeSection({
           {/* Fade out at bottom */}
           <div
             className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
-            style={{ background: "linear-gradient(to bottom, transparent 20%, #091A10)" }}
+            style={{ background: "linear-gradient(to bottom, transparent 20%, #102816)" }}
           />
         </div>
       ) : (
