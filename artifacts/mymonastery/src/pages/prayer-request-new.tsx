@@ -280,7 +280,7 @@ export default function PrayerRequestNew() {
             rows={4}
             placeholder={copy.placeholder}
             className="w-full rounded-2xl px-5 py-4 text-[15px] outline-none resize-none text-left"
-            style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)", color: CREAM, fontFamily: SPACE, fontStyle: "italic", lineHeight: 1.65 }}
+            style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)", color: CREAM, fontFamily: SPACE, fontStyle: "italic", lineHeight: 1.65, marginTop: 12 }}
           />
 
           {/* How long the garden carries it — a 1–7 day dropdown (default 3).
