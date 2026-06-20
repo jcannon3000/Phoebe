@@ -797,6 +797,11 @@ export function CobreatheBreath({
           and text legible. No captions — the images speak for themselves. */}
       {hasPhotos && (
         <div aria-hidden="true" style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
+          {/* Solid dark-green base UNDER the photos (the outer-ring green). The
+              breathing photo fades to ~0 at the bottom of each breath and swaps
+              there; without this the dark field showed through as a grey flash.
+              Now the dip/swap settles onto this dark green instead. */}
+          <div style={{ position: "absolute", inset: 0, background: RING_OUT }} />
           <div
             ref={photoGroupRef}
             style={{
