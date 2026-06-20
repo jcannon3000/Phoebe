@@ -267,7 +267,7 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
           {(() => {
             const lt = lastTogetherLabel(togetherByUser[f.userId]);
             return lt ? (
-              <p className="text-[11.5px] truncate mt-0.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>🫁 {lt}</p>
+              <p className="text-[11.5px] truncate mt-0.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>🌍 {lt}</p>
             ) : null;
           })()}
         </div>
