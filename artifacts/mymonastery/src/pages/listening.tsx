@@ -61,7 +61,7 @@ export default function ListeningPage() {
   // (time) or one song (songs); the listener confirms/adjusts on the stepper.
   const [amount, setAmount] = useState<number>(() => {
     const g = getListeningGoal();
-    return g.type === "time" ? g.amount : 1;
+    return g.type === "time" ? 15 : 1;
   });
   // What was logged last, for the confirmation screen.
   const lastLog = useRef<{ unit: "time" | "songs"; n: number }>({ unit: "time", n: 0 });
@@ -75,7 +75,7 @@ export default function ListeningPage() {
   function chooseGoal(g: ListeningGoal) {
     setGoal(g);
     setListeningGoal(g);
-    setAmount(g.type === "time" ? g.amount : 1);
+    setAmount(g.type === "time" ? 15 : 1);
     setEditingGoal(false);
   }
 
@@ -161,7 +161,6 @@ export default function ListeningPage() {
   const todayCount = goal.type === "songs" ? songsToday() : minutesToday();
   const unitLabel = goal.type === "songs" ? (todayCount === 1 ? "song today" : "songs today") : "min today";
   const activeMedium = MEDIA.find((x) => x.id === medium)!;
-  const stepOpts = goal.type === "time" ? TIME_OPTIONS : SONG_OPTIONS;
   const stepMax = goal.type === "time" ? 180 : 50;
   const stepUnit = goal.type === "time" ? "min" : (amount === 1 ? "song" : "songs");
 
@@ -280,31 +279,35 @@ export default function ListeningPage() {
           </>
         )}
 
-        {/* Log — the amount, in the goal's unit */}
+        {/* Log — the amount. Time = an alarm-clock roller; songs = a stepper. */}
         <div className="rounded-2xl p-4 mb-5 mt-1" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)" }}>
-          <p className="text-[13px] mb-3" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+          <p className="text-[13px] mb-3 text-center" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
             {goal.type === "time" ? "How long did you listen?" : "How many songs did you sit with?"}
           </p>
-          <div className="flex items-center justify-between">
-            <Stepper
-              value={amount}
-              unit={stepUnit}
-              onDec={() => setAmount((a) => Math.max(1, a - (goal.type === "time" ? 5 : 1)))}
-              onInc={() => setAmount((a) => Math.min(stepMax, a + (goal.type === "time" ? 5 : 1)))}
-            />
-          </div>
-          <div className="flex flex-wrap gap-2 mt-3">
-            {stepOpts.map((n) => {
-              const on = amount === n;
-              return (
-                <button key={n} onClick={() => setAmount(n)}
-                  className="px-3 py-1.5 rounded-full text-[12.5px] font-medium"
-                  style={{ background: on ? "rgba(46,107,64,0.8)" : "rgba(255,255,255,0.05)", color: on ? WARM : SAGE, fontFamily: SPACE_GROTESK }}>
-                  {n} {goal.type === "time" ? "min" : (n === 1 ? "song" : "songs")}
-                </button>
-              );
-            })}
-          </div>
+          {goal.type === "time" ? (
+            <MinuteRoller value={amount} onChange={setAmount} />
+          ) : (
+            <>
+              <Stepper
+                value={amount}
+                unit={stepUnit}
+                onDec={() => setAmount((a) => Math.max(1, a - 1))}
+                onInc={() => setAmount((a) => Math.min(stepMax, a + 1))}
+              />
+              <div className="flex flex-wrap gap-2 mt-3 justify-center">
+                {SONG_OPTIONS.map((n) => {
+                  const on = amount === n;
+                  return (
+                    <button key={n} onClick={() => setAmount(n)}
+                      className="px-3 py-1.5 rounded-full text-[12.5px] font-medium"
+                      style={{ background: on ? "rgba(46,107,64,0.8)" : "rgba(255,255,255,0.05)", color: on ? WARM : SAGE, fontFamily: SPACE_GROTESK }}>
+                      {n} {n === 1 ? "song" : "songs"}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
 
         <button
@@ -338,6 +341,49 @@ function Stepper({ value, unit, onDec, onInc }: { value: number; unit: string; o
         <span className="text-[13px] ml-1.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{unit}</span>
       </div>
       <button aria-label="More" onClick={onInc} className={btn} style={btnStyle}>+</button>
+    </div>
+  );
+}
+
+// ——— Alarm-clock style minute roller — 5-min increments, default 15 ———
+const ROLLER_MINUTES = Array.from({ length: 24 }, (_, i) => (i + 1) * 5); // 5…120
+function MinuteRoller({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const ITEM_H = 44;
+  const ref = useRef<HTMLDivElement>(null);
+  const selIdx = Math.max(0, ROLLER_MINUTES.indexOf(value));
+
+  useEffect(() => {
+    const idx = ROLLER_MINUTES.indexOf(value);
+    if (ref.current && idx >= 0) ref.current.scrollTop = idx * ITEM_H;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onScroll = () => {
+    if (!ref.current) return;
+    const idx = Math.round(ref.current.scrollTop / ITEM_H);
+    const v = ROLLER_MINUTES[Math.max(0, Math.min(ROLLER_MINUTES.length - 1, idx))];
+    if (v !== value) onChange(v);
+  };
+
+  return (
+    <div className="relative mx-auto" style={{ height: ITEM_H * 5, maxWidth: 210 }}>
+      <style>{".ad-roller::-webkit-scrollbar{display:none}"}</style>
+      {/* center selection band */}
+      <div className="absolute left-0 right-0 pointer-events-none" style={{ top: ITEM_H * 2, height: ITEM_H, borderRadius: 12, background: "rgba(46,107,64,0.16)", border: "1px solid rgba(110,180,130,0.35)" }} />
+      <div ref={ref} onScroll={onScroll} className="ad-roller h-full overflow-y-scroll" style={{ scrollSnapType: "y mandatory", scrollbarWidth: "none" }}>
+        <div style={{ height: ITEM_H * 2 }} />
+        {ROLLER_MINUTES.map((v, i) => {
+          const on = v === value;
+          const op = Math.max(0.25, 1 - Math.abs(i - selIdx) * 0.3);
+          return (
+            <div key={v} className="flex items-center justify-center gap-1.5" style={{ height: ITEM_H, scrollSnapAlign: "center", opacity: op }}>
+              <span style={{ color: on ? WARM : SAGE, fontFamily: SPACE_GROTESK, fontSize: on ? 26 : 20, fontWeight: on ? 700 : 500, fontVariantNumeric: "tabular-nums" }}>{v}</span>
+              <span style={{ color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 13 }}>min</span>
+            </div>
+          );
+        })}
+        <div style={{ height: ITEM_H * 2 }} />
+      </div>
     </div>
   );
 }
