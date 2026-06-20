@@ -5,6 +5,7 @@ import { playBreathTone, primeAudio } from "@/lib/amenFeedback";
 import { buildCanonical, photoForGlobalIndex, randomSeed, type Canonical } from "@/lib/cobreatheOrder";
 import { syncedNow, ensureClockSynced } from "@/lib/serverClock";
 import { CobreatheMap } from "@/components/CobreatheMap";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 // ── CobreatheBreath ─────────────────────────────────────────────────────────
 //
@@ -257,6 +258,12 @@ export function CobreatheBreath({
   const shortQuoteRef = useRef<QuoteKind | null>(null);
   if (shortQuoteRef.current === null) {
     shortQuoteRef.current = QUOTE_KINDS[Math.floor(Math.random() * QUOTE_KINDS.length)];
+  }
+  // A leaf rests behind the SYNC ("loading") screen — picked once per sit. It
+  // fades out as the breath goes live and the rotating breath photos take over.
+  const sessionLeafRef = useRef<string | null>(null);
+  if (sessionLeafRef.current === null && LEAF_PHOTOS.length > 0) {
+    sessionLeafRef.current = LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]!;
   }
   // ── Draggable globe ──────────────────────────────────────────────────────
   // The globe cluster can be dragged anywhere on screen (kept 24px clear of the
@@ -697,6 +704,16 @@ export function CobreatheBreath({
   // so the count keeps climbing past the target while they keep breathing.
   const sinceCount = now - countStartRef.current;
   const counting = sinceCount >= 0;
+  // A gentle haptic the moment the breath SYNCS (pre-roll → live), so joining
+  // the global breath is felt. Fires once per sit. "success" routes to the
+  // smooth native swell (native-shell wireHaptics).
+  const syncedHapticRef = useRef(false);
+  useEffect(() => {
+    if (counting && !syncedHapticRef.current) {
+      syncedHapticRef.current = true;
+      try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "success" } })); } catch { /* web */ }
+    }
+  }, [counting]);
   // While syncing (before the count begins), the centre word reads "Syncing"
   // with an animated ellipsis instead of "Breathe in / out".
   const syncDots = ".".repeat(Math.floor(now / 450) % 4);
@@ -814,6 +831,20 @@ export function CobreatheBreath({
         willChange: "opacity, transform",
       }}
     >
+      {/* A leaf rests behind the SYNC ("loading") screen, under a dark wash for
+          legibility. It fades out the moment the breath goes live, handing off to
+          the rotating breath photos below. */}
+      {sessionLeafRef.current && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none",
+            opacity: counting ? 0 : 1, transition: "opacity 1.4s ease",
+            backgroundImage: `linear-gradient(rgba(4,13,8,0.62), rgba(4,13,8,0.78)), url(${sessionLeafRef.current})`,
+            backgroundSize: "cover", backgroundPosition: "center",
+          }}
+        />
+      )}
       {/* The breathing photos — images of life on earth, full-bleed behind the
           breath. Two stacked layers crossfade so the change from one photo to
           the next is never a hard cut; each photo slowly zooms in (Ken Burns
