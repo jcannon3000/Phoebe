@@ -30,7 +30,7 @@ import {
 } from "@/lib/cacReadState";
 import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/officePrefs";
 import type { MyActivePrayerFor, PrayerForMe } from "@/components/pray-for-them";
-import NewsClosingSlide, { useUnseenNews } from "@/components/NewsClosingSlide";
+import { useUnseenNews } from "@/components/NewsClosingSlide";
 import { OfficeCloseEvents } from "@/components/OfficeCloseEvents";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { RequestWordField } from "@/components/RequestWordField";
@@ -2147,7 +2147,7 @@ function PrayerCompletedSlide({
         {t("prayer_mode.prayer_completed", { defaultValue: "Prayer completed" })}
       </motion.p>
 
-      <OfficeCloseEvents max={3} onEmpty={faces.length > 0 ? (
+      {faces.length > 0 && (
         <motion.div
           className="flex flex-col items-center w-full" style={{ maxWidth: 420 }}
           initial="hidden" animate="show"
@@ -2173,7 +2173,7 @@ function PrayerCompletedSlide({
             {t("splash.prayed_with_you_total", { count: total, defaultValue: `You prayed with ${total} ${total === 1 ? "person" : "people"} this month` })}
           </motion.p>
         </motion.div>
-      ) : null} />
+      )}
 
       {/* Today's reflection — rendered as the SAME card as the home daily-progress
           rhythm (left bar, 📖, publication, blurb, Read pill → ✓ when done), not a
@@ -2223,6 +2223,40 @@ function PrayerCompletedSlide({
         style={{ background: "#2D5E3F", color: "#F0EDE6" }}
       >
         {doneLabel ?? t("common.done")}
+      </motion.button>
+    </div>
+  );
+}
+
+// Upcoming events on the close — three of the user's next events (gatherings,
+// fellow plans, feed events), rendered with the same card the Events page uses.
+// Replaces the old "As you go" newsletter slide; a gentle send-off when the
+// calendar is clear.
+function OfficeCloseEventsSlide({ onDone, visible }: { onDone: () => void; visible: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <div className="w-full flex flex-col items-center text-center" style={{ opacity: visible ? 1 : 0, transition: "opacity 0.4s ease", gap: 26 }}>
+      <motion.p
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}
+        style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 12, letterSpacing: "0.22em", textTransform: "uppercase", color: "#8FAF96" }}
+      >
+        {t("prayer_mode.coming_up", { defaultValue: "Coming up" })}
+      </motion.p>
+      <OfficeCloseEvents max={3} onEmpty={(
+        <motion.p
+          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.12 }}
+          style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 19, color: "#F0EDE6", maxWidth: 320, lineHeight: 1.45 }}
+        >
+          {t("prayer_mode.go_in_peace_line", { defaultValue: "Go in peace to love and serve the Lord." })}
+        </motion.p>
+      )} />
+      <motion.button
+        type="button" onClick={onDone}
+        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45, delay: 0.36 }}
+        className="px-10 py-3.5 rounded-full text-sm font-medium tracking-wide transition-opacity hover:opacity-90 active:scale-[0.98]"
+        style={{ background: "#2D5E3F", color: "#F0EDE6" }}
+      >
+        {t("common.done")}
       </motion.button>
     </div>
   );
@@ -4315,7 +4349,7 @@ export default function PrayerModePage() {
             reflectionSource={reflectionSource as Exclude<ReflectionSource, "none">}
             // This closing slide IS the "Prayer completed" hero, so skip the
             // blessing phase (which renders the same hero) — exit straight home.
-            onDone={() => handleDone({ skipBless: true })}
+            onDone={() => setPhase("news")}
             visible={slideVisible}
           />
         )}
@@ -4354,7 +4388,7 @@ export default function PrayerModePage() {
             this phase from the closing slide). Continue marks seen + lands
             on the habit rhythm screen. */}
         {phase === "news" && (
-          <NewsClosingSlide onDone={handleDone} visible={slideVisible} />
+          <OfficeCloseEventsSlide onDone={() => handleDone({ skipBless: true })} visible={slideVisible} />
         )}
         {phase === "habit" && (
           <HabitSlide onDone={handleDone} visible={slideVisible} isEvening={closingIsEvening} coPrayers={coPrayersData?.people ?? []} />
