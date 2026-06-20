@@ -20,6 +20,7 @@ import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
 import { useRhythmState } from "@/hooks/useRhythmState";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   CAC_TODAY_URL, CAC_READ_EVENT, hasReadCacToday, recordCacOpened,
   FDD_TODAY_URL, FDD_READ_EVENT, hasReadFddToday, recordFddOpened,
@@ -4247,6 +4248,8 @@ function PrayerListCarousel({
   hideTitle?: boolean;
 }) {
   const { t } = useTranslation();
+  // Mobile-only experiment: drop the avatar so the prayer text sits flush left.
+  const isMobile = useIsMobile();
   // Tapping a prayer card (anywhere, including the 🙏) opens the prayer
   // slideshow focused on that request — and queues the rest of your prayer
   // list — so you actually pray it (and Amen there), rather than a silent
@@ -4343,7 +4346,7 @@ function PrayerListCarousel({
                   <div className={`w-1 flex-shrink-0 ${amened ? "" : "animate-bar-pulse-practices"}`} style={amened ? { background: `rgba(${rgb},0.72)` } : undefined} />
                   <div className="flex-1 px-4 pt-3 pb-3">
                     <div className="flex items-center gap-3">
-                      {displayAvatar ? (
+                      {isMobile ? null : displayAvatar ? (
                         <img
                           src={displayAvatar}
                           alt={displayName}

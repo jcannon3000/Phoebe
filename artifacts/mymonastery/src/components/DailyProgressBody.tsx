@@ -15,6 +15,7 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { apiRequest } from "@/lib/queryClient";
 import { useRhythmState } from "@/hooks/useRhythmState";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/officePrefs";
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead } from "@/lib/cacReadState";
@@ -348,6 +349,10 @@ function PracticeCard({
   pulse?: boolean;
 }) {
   const waiting = !!later && !done;
+  // Mobile-only experiment: drop the emoji + colored accent bar and let the
+  // text sit flush left (cleaner, quieter cards on a phone).
+  const isMobile = useIsMobile();
+  const showGlyph = !isMobile;
   // Cycle the subtitle whenever a cycle is supplied — including on a DONE card
   // (so the reflection keeps flipping its publication name ↔ today's title even
   // after it's read). Cards that shouldn't cycle when done simply pass no cycle.
@@ -370,10 +375,10 @@ function PracticeCard({
         className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
         style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1 }}
       >
-        <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />
+        {showGlyph && <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />}
         <div className="flex-1 px-5 py-5">
           <div className="flex items-start gap-3.5">
-            {emoji ? <span className="text-[34px] leading-none flex-shrink-0">{emoji}</span> : null}
+            {emoji && showGlyph ? <span className="text-[34px] leading-none flex-shrink-0">{emoji}</span> : null}
             <div className="flex-1 min-w-0 overflow-hidden">
               <p className="text-[22px] font-bold leading-tight" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
               {useCycle
@@ -442,10 +447,10 @@ function PracticeCard({
       animate={pulse ? { borderColor: [restBorder, `rgba(${rgb},0.55)`, restBorder] } : undefined}
       transition={pulse ? { duration: 2.2, repeat: Infinity, ease: "easeInOut" } : undefined}
     >
-      <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.7})` }} />
+      {showGlyph && <div className="w-1 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.7})` }} />}
       <div className="flex-1 min-w-0 px-4 py-3.5">
         <div className="flex items-center gap-3">
-          {emoji ? <span className="text-xl flex-shrink-0">{emoji}</span> : null}
+          {emoji && showGlyph ? <span className="text-xl flex-shrink-0">{emoji}</span> : null}
           <div className="flex-1 min-w-0 overflow-hidden">
             <p className="text-[14.5px] font-semibold leading-tight truncate" style={{ color: WARM, fontFamily: FONT }}>{title}</p>
             {useCycle
