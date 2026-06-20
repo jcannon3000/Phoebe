@@ -53,16 +53,6 @@ const COBREATHE_PHOTOS = [
   ...COBREATHE_ANIMAL_PHOTOS,
 ];
 
-// Topic photo sets. The combined glob above is "The Planet"; each other topic
-// lives in its own subfolder (the `*` globs don't recurse into them).
-const COFFEE_PHOTOS = Object.values(
-  import.meta.glob("@/assets/cobreathe/coffee/*.{jpg,jpeg,png,avif,webp}", {
-    eager: true,
-    query: "?url",
-    import: "default",
-  }),
-) as string[];
-
 // Fingerprint of the bundled photo set — two clients only sync if it matches,
 // so a build/version drift (different photos) safely falls back to solo order.
 const COBREATHE_FINGERPRINT = computeFingerprint(COBREATHE_PHOTOS);
