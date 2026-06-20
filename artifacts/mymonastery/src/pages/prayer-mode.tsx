@@ -3588,7 +3588,11 @@ export default function PrayerModePage() {
   // Cobreathe overlay — also opened from the pause slide, beside the timer.
   const [cobreatheOpen, setCobreatheOpen] = useState(false);
   const [visible, setVisible] = useState(false);
-  const [slideVisible, setSlideVisible] = useState(true);
+  // Starts false so the FIRST slide fades up via the 0.22s content transition,
+  // same as every later slide (advance() drives the false→true cycle). The
+  // visible-gate effect raises it once the slide is ready. Initializing it true
+  // made the first intercession pop in at full opacity (no fade).
+  const [slideVisible, setSlideVisible] = useState(false);
   // Track which intercessions the viewer has already "amened" this
   // session, keyed by momentToken. We POST a check-in the moment the
   // viewer advances past a community intercession so it lands on the
@@ -3742,7 +3746,7 @@ export default function PrayerModePage() {
   // slide list to wait on, so they fade in straight away. (gate + fade)
   useEffect(() => {
     if (phase !== "prayer" || (frozenSlides && index >= 0)) {
-      const t = setTimeout(() => setVisible(true), 30);
+      const t = setTimeout(() => { setVisible(true); setSlideVisible(true); }, 30);
       return () => clearTimeout(t);
     }
     return undefined;
