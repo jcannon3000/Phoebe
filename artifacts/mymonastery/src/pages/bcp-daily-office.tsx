@@ -489,28 +489,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const [slides, setSlides] = useState<Slide[]>([]);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
-  // A landscape behind the office that CHANGES with each new SECTION — every
-  // title slide (psalm / canticle / lesson titles, the office threshold, the
-  // intercessions portal). It cross-fades DOWN then UP between photos as the
-  // sections turn, so the same image holds steadily within a section. A per-mount
-  // random offset varies which photos a given day draws.
+  // A landscape behind the office that CHANGES on every slide — it cross-fades
+  // from the current photo to the next as you advance (no fade through black). A
+  // per-mount random offset varies which photos a given day draws.
   const bgOffset = useMemo(
     () => (EARTH_PHOTOS.length > 0 ? Math.floor(Math.random() * EARTH_PHOTOS.length) : 0),
     [],
   );
-  const sectionIndex = useMemo(() => {
-    let n = 0;
-    for (let i = 0; i <= slideIdx && i < slides.length; i++) {
-      const ty = slides[i]?.type;
-      if (
-        ty === "office_intro" || ty === "intercessions_portal" || ty === "intercessions" ||
-        ty === "psalm_title" || ty === "canticle_title" || ty === "lesson_title"
-      ) n++;
-    }
-    return n;
-  }, [slideIdx, slides]);
   const officeBgPhoto = EARTH_PHOTOS.length > 0
-    ? EARTH_PHOTOS[(bgOffset + sectionIndex) % EARTH_PHOTOS.length]!
+    ? EARTH_PHOTOS[(bgOffset + slideIdx) % EARTH_PHOTOS.length]!
     : null;
   const mainRef = useRef<HTMLElement | null>(null);
   const swipeTouchStartXRef = useRef<number | null>(null);
@@ -1380,7 +1367,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           wash for legibility. */}
       {officeBgPhoto ? (
         <>
-          <AnimatePresence mode="wait">
+          {/* No mode="wait": the exiting and entering photos animate at the same
+              time, so it's a true crossfade rather than a fade through black. */}
+          <AnimatePresence>
             <motion.img
               key={officeBgPhoto}
               src={officeBgPhoto}
@@ -1389,7 +1378,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.6, ease: "easeInOut" }}
+              transition={{ duration: 0.8, ease: "easeInOut" }}
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
             />
           </AnimatePresence>
