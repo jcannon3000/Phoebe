@@ -487,6 +487,13 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const [slides, setSlides] = useState<Slide[]>([]);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
+  // ONE landscape for the whole office/devotion slideshow (not a new photo per
+  // slide) — picked once on open and faded gently up. A still field is calmer to
+  // pray over than an image that swaps on every slide.
+  const officeBgPhoto = useMemo(
+    () => (EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[Math.floor(Math.random() * EARTH_PHOTOS.length)]! : null),
+    [],
+  );
   const mainRef = useRef<HTMLElement | null>(null);
   const swipeTouchStartXRef = useRef<number | null>(null);
   const swipeTouchStartYRef = useRef<number | null>(null);
@@ -791,7 +798,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           : { text: "O Lord, open my lips, and my mouth shall proclaim your praise.", cite: "Psalm 51:15" };
     return (
       <div style={{ minHeight: "100dvh", background: BG, position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 40px", overflow: "hidden" }}>
-        <div aria-hidden style={{ position: "absolute", inset: 0, background: "radial-gradient(120% 80% at 50% 32%, rgba(46,107,64,0.24) 0%, rgba(9,26,16,0) 70%)" }} />
+        {/* A soft single-hue glow — fades only its alpha to 0 over several stops
+            so it reads as a smooth wash, not a banded ring. */}
+        <div aria-hidden style={{ position: "absolute", inset: 0, background: "radial-gradient(120% 95% at 50% 34%, rgba(46,107,64,0.20) 0%, rgba(46,107,64,0.12) 28%, rgba(46,107,64,0.05) 54%, rgba(46,107,64,0) 82%)" }} />
         <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, animation: "office-enter 1s ease backwards" }}>
           <p
             style={{
@@ -1337,19 +1346,17 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         animation: "office-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) backwards",
       }}
     >
-      {/* Daily landscape photo behind EVERY office/devotion slide (per request) —
-          a per-slide landscape under a dark wash for legibility, matching the
-          intercession slides, instead of the drifting gradient. */}
-      {EARTH_PHOTOS.length > 0 ? (
+      {/* ONE landscape behind the whole office/devotion slideshow, faded gently
+          up on open, under a smooth multi-stop dark wash for legibility. */}
+      {officeBgPhoto ? (
         <>
           <img
-            key={EARTH_PHOTOS[slideIdx % EARTH_PHOTOS.length]}
-            src={EARTH_PHOTOS[slideIdx % EARTH_PHOTOS.length]}
+            src={officeBgPhoto}
             alt=""
             aria-hidden
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.22, transition: "opacity 0.5s ease", zIndex: -1 }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, animation: "office-bg-in 1.2s ease both" }}
           />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.55) 0%, rgba(8,22,15,0.66) 26%, rgba(8,22,15,0.76) 50%, rgba(8,22,15,0.84) 74%, rgba(8,22,15,0.90) 100%)" }} />
         </>
       ) : (
         <AnimatedBackground base={BG} variant="subtle" fadeTop />

@@ -3174,16 +3174,46 @@ function NcmpHomeCard() {
   );
 }
 
-type RailPerson = { id: number; name: string | null; avatarUrl: string | null };
+type RailPerson = { id: number; name: string | null; avatarUrl: string | null; coBreathedToday?: boolean };
+
+// A small corner badge on a face. Given one emoji it sits still; given two
+// (🌍 cobreathed today + 🙏 has a prayer request) it cross-fades between them,
+// the same gentle opacity swap the card subtitles use.
+function FaceBadgeCycle({ emojis }: { emojis: string[] }) {
+  const [idx, setIdx] = useState(0);
+  const [shown, setShown] = useState(true);
+  useEffect(() => {
+    if (emojis.length <= 1) return;
+    let swap: ReturnType<typeof setTimeout>;
+    const id = setInterval(() => {
+      setShown(false);
+      swap = setTimeout(() => { setIdx((i) => (i + 1) % emojis.length); setShown(true); }, 240);
+    }, 2600);
+    return () => { clearInterval(id); clearTimeout(swap); };
+  }, [emojis.length]);
+  if (emojis.length === 0) return null;
+  const emoji = emojis[Math.min(idx, emojis.length - 1)];
+  return (
+    <span
+      aria-hidden
+      className="absolute flex items-center justify-center rounded-full"
+      style={{ right: -3, bottom: -3, width: 19, height: 19, background: "#102816", border: "1px solid rgba(46,107,64,0.55)", fontSize: 11, lineHeight: 1 }}
+    >
+      <span style={{ opacity: shown ? 1 : 0, transition: "opacity 0.24s ease" }}>{emoji}</span>
+    </span>
+  );
+}
 
 // ── PrayedWithWeekRail — a horizontal strip of the faces of everyone who has
 // prayed with you THIS WEEK, most-recent first (leftmost), shown above "Next"
 // on the home. A face with a 🙏 has an active prayer request; tapping it opens
 // that request. Faces without one aren't tappable. Self-hides when empty. ──
 function PrayedWithWeekRail() {
+  // Viewer's timezone so the server can flag who cobreathed TODAY (🌍 badge).
+  const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
   const { data } = useQuery<{ people: RailPerson[]; total?: number }>({
-    queryKey: ["/api/prayer-streak/community-prayed-week"],
-    queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-week"),
+    queryKey: ["/api/prayer-streak/community-prayed-week", tz],
+    queryFn: () => apiRequest("GET", `/api/prayer-streak/community-prayed-week?tz=${encodeURIComponent(tz)}`),
     staleTime: 5 * 60_000,
     // Don't refetch on mount/focus — once the faces are shown they shouldn't
     // reshuffle under the user (the "they flash then change" report).
@@ -3195,7 +3225,7 @@ function PrayedWithWeekRail() {
   // gets a 🙏 and, when tapped, opens THAT request; faces without one aren't
   // tappable. Shares the dashboard's ["/api/prayer-requests"] cache (no extra
   // network on the home).
-  const { data: openRequests } = useQuery<Array<{ id: number; ownerId: number }>>({
+  const { data: openRequests } = useQuery<Array<{ id: number; ownerId: number; ownerName?: string | null; ownerAvatarUrl?: string | null; isAnonymous?: boolean }>>({
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
     staleTime: 5 * 60_000,
@@ -3204,8 +3234,20 @@ function PrayedWithWeekRail() {
   const requestByOwner = new Map<number, number>();
   for (const r of openRequests ?? []) if (!requestByOwner.has(r.ownerId)) requestByOwner.set(r.ownerId, r.id);
   const SG = "'Space Grotesk', sans-serif";
-  const people = data?.people ?? [];
-  const total = data?.total ?? people.length;
+  const prayedPeople = data?.people ?? [];
+  // Anyone with an active prayer request belongs in the rail too, even if they
+  // haven't prayed with you this week. Append the (named, non-anonymous) request
+  // owners who aren't already in the prayed list — the prayed faces keep their
+  // recency order; request-only faces follow.
+  const seen = new Set(prayedPeople.map((p) => p.id));
+  const requestOnly: RailPerson[] = [];
+  for (const r of openRequests ?? []) {
+    if (seen.has(r.ownerId) || r.isAnonymous || !r.ownerName) continue;
+    seen.add(r.ownerId);
+    requestOnly.push({ id: r.ownerId, name: r.ownerName ?? null, avatarUrl: r.ownerAvatarUrl ?? null });
+  }
+  const people = [...prayedPeople, ...requestOnly];
+  const total = people.length;
   if (people.length === 0) return null;
   const first = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "";
   return (
@@ -3218,6 +3260,11 @@ function PrayedWithWeekRail() {
       <div className="flex items-start gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
         {people.map((p) => {
           const reqId = requestByOwner.get(p.id);
+          // Corner badges: 🌍 if they cobreathed today, 🙏 if they have a prayer
+          // request. With both, the badge cross-fades between the two.
+          const badges: string[] = [];
+          if (p.coBreathedToday) badges.push("🌍");
+          if (reqId !== undefined) badges.push("🙏");
           const faceInner = (
             <>
               <div className="relative" style={{ width: 44, height: 44 }}>
@@ -3228,17 +3275,9 @@ function PrayedWithWeekRail() {
                     {(p.name ?? "?").trim()[0]?.toUpperCase() ?? "?"}
                   </div>
                 )}
-                {/* 🙏 badge, bottom-right — this person has an active prayer
-                    request; tapping the face opens it. */}
-                {reqId !== undefined && (
-                  <span
-                    aria-label="has a prayer request"
-                    className="absolute flex items-center justify-center rounded-full"
-                    style={{ right: -3, bottom: -3, width: 19, height: 19, background: "#102816", border: "1px solid rgba(46,107,64,0.55)", fontSize: 11, lineHeight: 1 }}
-                  >
-                    🙏
-                  </span>
-                )}
+                {/* Corner badge(s), bottom-right: 🌍 cobreathed today and/or 🙏
+                    has a prayer request (cross-fades when both). */}
+                <FaceBadgeCycle emojis={badges} />
               </div>
               <p className="text-[10px] mt-1 truncate w-full text-center" style={{ color: "rgba(143,175,150,0.85)", fontFamily: SG }}>{first(p.name)}</p>
             </>

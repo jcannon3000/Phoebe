@@ -206,6 +206,14 @@ router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Res
       ));
     for (const r of breathRows) { if (r.day) note(r.userId, new Date(`${r.day}T12:00:00Z`)); }
 
+    // Who cobreathed TODAY (in the viewer's timezone) → a 🌍 badge on their face.
+    const tz = typeof req.query.tz === "string" && req.query.tz ? req.query.tz : "UTC";
+    let todayYmd: string;
+    try { todayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: tz }).format(new Date()); }
+    catch { todayYmd = new Intl.DateTimeFormat("en-CA", { timeZone: "UTC" }).format(new Date()); }
+    const coBreathedTodayIds = new Set<number>();
+    for (const r of breathRows) { if (r.day === todayYmd && typeof r.userId === "number") coBreathedTodayIds.add(r.userId); }
+
     // Everyone who prayed this week → the count line + the full rail (no cap),
     // most-recent first.
     const activePeople = peopleRows.filter((p) => latestMs.has(p.id));
@@ -213,7 +221,7 @@ router.get("/prayer-streak/community-prayed-week", async (req: Request, res: Res
     const people = activePeople
       .slice()
       .sort((a, b) => (latestMs.get(b.id) ?? 0) - (latestMs.get(a.id) ?? 0))
-      .map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl }));
+      .map((p) => ({ id: p.id, name: p.name, avatarUrl: p.avatarUrl, coBreathedToday: coBreathedTodayIds.has(p.id) }));
 
     res.json({ people, total });
   } catch (err) {
