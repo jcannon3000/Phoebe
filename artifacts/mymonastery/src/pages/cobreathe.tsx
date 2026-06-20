@@ -585,15 +585,6 @@ export default function CobreathePage() {
               {t("cobreathe.begin_short", { defaultValue: "Start Breathing" })}
             </button>
 
-            <div className="flex justify-center mt-4">
-              <Link
-                href="/cobreathe/about"
-                className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 transition-opacity hover:opacity-90"
-                style={{ background: "rgba(62,124,122,0.12)", border: "1px solid rgba(62,124,122,0.32)", color: "#A8CFC4", fontFamily: SPACE_GROTESK, fontSize: 13, fontWeight: 600 }}
-              >
-                🌬️ {t("cobreathe.learn_more", { defaultValue: "Learn more about cobreathing" })}
-              </Link>
-            </div>
           </div>
         </div>
 

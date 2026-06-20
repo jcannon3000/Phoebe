@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
 import { Layout } from "@/components/layout";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { useAuth } from "@/hooks/useAuth";
 import { InviteStep } from "@/components/InviteStep";
 import { useCommunityAdminToggle } from "@/hooks/useDemo";
@@ -584,6 +585,11 @@ export default function MomentNew() {
 
   // Step navigation
   const [step, setStep] = useState<StepId>("template");
+  // A still leaves photo behind the creator, picked once.
+  const bgPhoto = useMemo(
+    () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
+    [],
+  );
   const [done, setDone] = useState(false);
   const [createdMomentId, setCreatedMomentId] = useState<number | null>(null);
 
@@ -629,7 +635,7 @@ export default function MomentNew() {
       if (practiceDurationDays === null) setPracticeDurationDays(7);
     } else {
       if (practiceDurationDays === null || practiceDurationDays < 1 || practiceDurationDays > 14) {
-        setPracticeDurationDays(7);
+        setPracticeDurationDays(3);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1298,6 +1304,14 @@ export default function MomentNew() {
 
   return (
     <Layout>
+      <div style={{ position: "relative", minHeight: "100dvh" }}>
+      {/* A still leaves photo behind the creator, under a dark wash. */}
+      {bgPhoto && (
+        <>
+          <img src={bgPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, zIndex: -1 }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
+        </>
+      )}
       <div className="max-w-2xl mx-auto w-full pt-6 pb-16">
 
         {/* Header + progress */}
@@ -1396,12 +1410,10 @@ export default function MomentNew() {
                     <h2 className="text-2xl font-semibold mb-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#F0EDE6" }}>{t("moment_new.intercession.title")}</h2>
                     <p className="text-sm text-muted-foreground italic">{t("moment_new.intercession.subtitle")}</p>
                   </div>
-                  {/* Land straight on the BCP picker; "Write your own" sits
-                      at the bottom as a card. */}
-                  <BcpPrayerList onSelect={selectBcpPrayer} />
+                  {/* "Name your own" sits at the TOP, above the BCP picker. */}
                   <button
                     onClick={confirmCustomIntercession}
-                    className="w-full text-left p-4 rounded-2xl transition-all mt-3 flex items-start gap-3"
+                    className="w-full text-left p-4 rounded-2xl transition-all mb-3 flex items-start gap-3"
                     style={{ background: "#0F2818", border: "1.5px solid rgba(46,107,64,0.45)" }}
                     onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.7)")}
                     onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(46,107,64,0.45)")}>
@@ -1411,6 +1423,7 @@ export default function MomentNew() {
                       <p className="text-sm text-muted-foreground mt-0.5">{t("moment_new.intercession.own_desc")}</p>
                     </div>
                   </button>
+                  <BcpPrayerList onSelect={selectBcpPrayer} />
                 </div>
               )}
 
@@ -1922,7 +1935,9 @@ export default function MomentNew() {
                     <p className="text-sm" style={{ color: "#8FAF96" }}>{t("moment_new.schedule.subtitle")}</p>
                   </div>
 
-                  {/* Frequency */}
+                  {/* Frequency — the every-day / once-a-week toggle. Hidden for
+                      the community-prayer (intercession) flow, which is daily. */}
+                  {templateId !== "intercession" && (
                   <div>
                     <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>{t("moment_new.schedule.how_often")}</label>
                     <div className="flex gap-3">
@@ -1937,9 +1952,10 @@ export default function MomentNew() {
                       ))}
                     </div>
                   </div>
+                  )}
 
                   {/* Day picker for weekly */}
-                  {frequency === "weekly" && (
+                  {templateId !== "intercession" && frequency === "weekly" && (
                     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
                       <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>
                         {templateId === "intercession" ? t("moment_new.schedule.which_day") : t("moment_new.schedule.which_days")}
@@ -1970,23 +1986,15 @@ export default function MomentNew() {
                       <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>
                         {t("moment_new.duration.length_label", { defaultValue: "Length" })}
                       </label>
-                      <DrumPicker
-                        value={frequency === "weekly"
-                          ? (practiceDurationDays ?? 7)
-                          : ((practiceDurationDays && practiceDurationDays >= 1 && practiceDurationDays <= 14) ? practiceDurationDays : 7)}
-                        onChange={(v) => setPracticeDurationDays(v)}
-                        options={frequency === "weekly"
-                          ? [
-                              { value: 7,  label: t("moment_new.duration.w1.label", { defaultValue: "1 week" }) },
-                              { value: 14, label: t("moment_new.duration.w2.label", { defaultValue: "2 weeks" }) },
-                              { value: 28, label: t("moment_new.duration.w4.label", { defaultValue: "4 weeks" }) },
-                              { value: 0,  label: t("moment_new.duration.ongoing.label", { defaultValue: "Ongoing" }) },
-                            ]
-                          : Array.from({ length: 14 }, (_, i) => i + 1).map((d) => ({
-                              value: d,
-                              label: t("moment_new.duration.n_days", { count: d, defaultValue: d === 1 ? "1 day" : `${d} days` }),
-                            }))}
-                      />
+                      <select
+                        value={practiceDurationDays ?? 3}
+                        onChange={(e) => setPracticeDurationDays(Number(e.target.value))}
+                        style={{ width: "auto", background: "rgba(46,107,64,0.22)", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.50)", borderRadius: 999, padding: "12px 26px", fontSize: 15, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", textAlignLast: "center", colorScheme: "dark", cursor: "pointer", outline: "none" }}
+                      >
+                        {Array.from({ length: 14 }, (_, i) => i + 1).map((d) => (
+                          <option key={d} value={d}>{d === 1 ? "1 day" : `${d} days`}</option>
+                        ))}
+                      </select>
                     </div>
                   )}
                 </div>
@@ -2556,6 +2564,7 @@ export default function MomentNew() {
             </div>
           )}
         </div>
+      </div>
       </div>
     </Layout>
   );
