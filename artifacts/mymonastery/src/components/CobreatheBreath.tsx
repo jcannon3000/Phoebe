@@ -97,8 +97,8 @@ const FIELD_LIVE = "#0B2014";         // live — a touch lighter/greener
 // (PhoebeAudio.smoothSwell, which takes a numeric peak intensity) so the ratio
 // is precise; falls back to Capacitor's discrete impact (light vs medium) on
 // web / older shells where only fixed styles exist.
-const HAPTIC_IN = 0.55;                       // inhale intensity (0–1)
-const HAPTIC_OUT = Math.min(1, HAPTIC_IN * 1.618); // exhale — 1.618× stronger
+const HAPTIC_IN = 0.44;                       // inhale intensity (0–1) — 20% softer
+const HAPTIC_OUT = Math.min(1, HAPTIC_IN * 1.618); // exhale — 1.618× stronger (also 20% softer)
 function breathHaptic(out: boolean): void {
   const peak = out ? HAPTIC_OUT : HAPTIC_IN;
   try {
