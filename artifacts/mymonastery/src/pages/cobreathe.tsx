@@ -196,7 +196,10 @@ export default function CobreathePage() {
   // Intro-slide settings: breath count (6-breath increments, default 12), the
   // photo topic, and whether to share coarse presence ("same air").
   const [lengthBreaths, setLengthBreaths] = useState<number>(DEFAULT_TOTAL_BREATHS);
-  const [locationOn, setLocationOn] = useState<boolean>(true);
+  // Location features are removed (no presence, no coarse bucket, no coords) —
+  // Co-Breathe is the global synchronized breath only. Held as const false so
+  // the sync hook never acquires or broadcasts any geographic signal.
+  const locationOn = false;
   // One calm landscape behind the intro slide, picked once and faded gently up
   // under a dark wash (the good top-level set, not the bad/animal Co-Breathe-only
   // shots). Falls back to the full pool if the top set is somehow empty.
@@ -532,7 +535,7 @@ export default function CobreathePage() {
 
             {/* Setting rows — label left, a real dropdown right. */}
             <div className="w-full flex items-center justify-between rounded-xl px-4 py-3 mb-2"
-              style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
+              style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(46,107,64,0.32)" }}>
               <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600 }}>{t("cobreathe.set_length", { defaultValue: "Length" })}</span>
               <div style={SETTING_SELECT_WRAP}>
                 <select value={lengthBreaths} onChange={(e) => setLengthBreaths(Number(e.target.value))} style={SETTING_SELECT} aria-label={t("cobreathe.set_length", { defaultValue: "Length" })}>
@@ -540,20 +543,6 @@ export default function CobreathePage() {
                   {[6, 12, 18, 24, 30, 36].map((n) => (
                     <option key={n} value={n}>{n} {t("cobreathe.breaths", { defaultValue: "breaths" })}</option>
                   ))}
-                </select>
-                <span aria-hidden style={SETTING_SELECT_CARET}>▾</span>
-              </div>
-            </div>
-            <div className="w-full flex items-center justify-between rounded-xl px-4 py-3"
-              style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
-              <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600 }}>
-                {t("cobreathe.set_location", { defaultValue: "Location" })}
-                <span style={{ color: "rgba(240,237,230,0.45)", fontWeight: 500 }}> {t("cobreathe.optional", { defaultValue: "(optional)" })}</span>
-              </span>
-              <div style={SETTING_SELECT_WRAP}>
-                <select value={locationOn ? "on" : "off"} onChange={(e) => setLocationOn(e.target.value === "on")} style={SETTING_SELECT} aria-label={t("cobreathe.set_location", { defaultValue: "Location" })}>
-                  <option value="on">{t("common.on", { defaultValue: "On" })}</option>
-                  <option value="off">{t("common.off", { defaultValue: "Off" })}</option>
                 </select>
                 <span aria-hidden style={SETTING_SELECT_CARET}>▾</span>
               </div>
@@ -566,7 +555,7 @@ export default function CobreathePage() {
               type="button"
               onClick={() => setMode("breathing")}
               className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-              style={{ background: "#2D5E3F", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700, cursor: "pointer" }}
+              style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(168,197,160,0.45)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700, cursor: "pointer" }}
             >
               {t("cobreathe.begin_short", { defaultValue: "Start Breathing" })}
             </button>
