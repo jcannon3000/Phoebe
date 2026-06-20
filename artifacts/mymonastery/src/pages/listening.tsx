@@ -8,8 +8,8 @@ import {
   getListeningGoal, setListeningGoal, goalProgress, saveListeningEntry,
   listeningHistory, type ListeningMedium, type ListeningGoal, type ListeningEntry,
 } from "@/lib/listeningLog";
-import { isNativeIOS } from "@/lib/spotify";
-import { useMusicPlayback, type MusicSourceId } from "@/lib/musicPlayback";
+import { useMusicPlayback } from "@/lib/musicPlayback";
+import { SacredLibrary } from "@/components/SacredLibrary";
 
 // Audio Divina — sacred listening. A logging-first practice: you put on music
 // (streaming, or an analog medium you own) and record it toward a daily GOAL of
@@ -42,9 +42,6 @@ const SONG_OPTIONS = [1, 2, 3, 5, 8] as const;
 
 const MEDIUM_EMOJI: Record<ListeningMedium, string> = { streaming: "🎧", cd: "💿", vinyl: "📀", tape: "📼" };
 
-function browseAppleMusic(): void {
-  try { window.open("music://", "_system"); } catch { /* ignore */ }
-}
 
 type View = "log" | "done" | "history";
 
@@ -268,7 +265,7 @@ export default function ListeningPage() {
         {/* Streaming: a podcast-style player + browse your library. Analog: a cue
             + what-you're-listening-to field. */}
         {streaming ? (
-          <StreamingPlayer music={music} />
+          <SacredLibrary music={music} />
         ) : (
           <>
             <div className="mb-3 rounded-2xl px-4 py-3.5 flex items-center gap-3" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.20)" }}>
@@ -361,92 +358,6 @@ function HistoryRow({ e }: { e: ListeningEntry }) {
         <p className="text-[11.5px] mt-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{day}</p>
       </div>
       <span className="text-[13px] tabular-nums flex-shrink-0" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{amount}</span>
-    </div>
-  );
-}
-
-// ——— Streaming player — a podcast-style transport over the in-app music
-// services, plus a hand-off to browse your own library. ———
-function StreamingPlayer({ music }: { music: ReturnType<typeof useMusicPlayback> }) {
-  const playing = music.status === "playing";
-  const paused = music.status === "paused";
-  const connecting = music.status === "connecting";
-  const needsAuth = music.needsAuth || music.status === "needs_auth";
-  const sourceLabel = music.activeId === "spotify" ? "Spotify" : "Apple Music";
-
-  const onTransport = () => {
-    if (playing) music.pause();
-    else if (paused) music.resume();
-    else if (needsAuth) music.authorize();
-    else music.connectPlay();
-  };
-
-  return (
-    <div className="mb-3 rounded-2xl p-4" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.20)" }}>
-      {music.anyAvailable ? (
-        <>
-          {/* Sign in with — which service to listen through */}
-          {music.sources.length > 1 && (
-            <>
-              <p className="text-[10px] uppercase tracking-[0.16em] mb-2" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>Listen with</p>
-              <div className="flex p-1 rounded-full mb-3.5" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                {music.sources.map((s) => {
-                  const on = s.id === music.activeId;
-                  return (
-                    <button key={s.id} onClick={() => music.setActive(s.id as MusicSourceId)}
-                      className="flex-1 py-2 rounded-full text-[13px] font-medium transition-colors"
-                      style={{ background: on ? "rgba(46,107,64,0.9)" : "transparent", color: on ? WARM : SAGE, fontFamily: SPACE_GROTESK }}>
-                      {s.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-
-          {/* Now-playing row, podcast-style: artwork tile + title + transport */}
-          <div className="flex items-center gap-3.5">
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(46,107,64,0.35)", border: "1px solid rgba(110,180,130,0.3)" }}>
-              <span className="text-[24px]" aria-hidden>{playing ? "♪" : "🎧"}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[14.5px] font-semibold truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                {playing || paused ? "A contemplative playlist" : "Sacred listening"}
-              </p>
-              <p className="text-[12px] mt-0.5 truncate" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                {connecting ? "Starting the music…" : needsAuth ? `Connect ${sourceLabel}` : sourceLabel}
-              </p>
-            </div>
-            <button
-              onClick={onTransport}
-              disabled={connecting}
-              aria-label={playing ? "Pause" : "Play"}
-              className="w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform disabled:opacity-60"
-              style={{ background: "rgba(46,107,64,0.95)", color: WARM }}
-            >
-              <span className="text-[20px]" aria-hidden>{playing ? "❚❚" : "▶"}</span>
-            </button>
-          </div>
-          {music.error && (
-            <p className="text-[11.5px] mt-2.5 leading-snug" style={{ color: "rgba(230,205,180,0.9)", fontFamily: SPACE_GROTESK }}>{music.error}</p>
-          )}
-        </>
-      ) : (
-        <p className="text-[13px] leading-snug" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-          Open your music and play something that draws you toward God, then log it below.
-        </p>
-      )}
-
-      {/* Browse your own library (Apple Music hand-off on iOS) */}
-      {isNativeIOS() && (
-        <button
-          onClick={browseAppleMusic}
-          className="w-full flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 mt-3 text-[13.5px] font-medium active:scale-[0.99] transition-transform"
-          style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: WARM, fontFamily: SPACE_GROTESK }}
-        >
-          Browse your music library <span aria-hidden style={{ color: SAGE }}>↗</span>
-        </button>
-      )}
     </div>
   );
 }
