@@ -30,7 +30,6 @@ import {
   setSideEntry,
   getSideLevel,
   getSideEntry,
-  getSideMinutes,
   getReflectionSource,
   getDefaultContemplationMinutes,
   setDefaultContemplationMinutes,
@@ -167,10 +166,9 @@ export default function WayOfLoveRuleFlow({
   // reflection + minutes are instant; the server office-prefs (the global
   // default + goal) hydrate a moment later for users whose pref was set
   // globally without a per-side override.
-  const [goal, setGoal] = useState(() => {
-    const m = getSideMinutes("morning");
-    return m > 0 ? String(m) : "5";
-  });
+  // Default to 0 — no contemplation goal. A real goal hydrates from the server
+  // pref below (contemplationGoalMinutes) only if the user has set one.
+  const [goal, setGoal] = useState("0");
   // Per-side configuration — each chosen side gets its own way + method + time.
   // Standard preset is Morning Devotion (on screen, 7:30) — so a fresh user with
   // no saved level defaults to "devotion", not the more involved "community".
