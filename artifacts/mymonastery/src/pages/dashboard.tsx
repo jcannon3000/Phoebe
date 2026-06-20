@@ -4306,7 +4306,9 @@ function PrayerListCarousel({
             // Shade each card along the SAME green→violet ramp the practice
             // cards use (rhythmGradientRgb), by its position in the list, so the
             // Prayer List reads as one family with the daily rhythm cards.
-            const rgb = rhythmGradientRgb(i, requests.length);
+            // Keep the Prayer List cards within ~20% of the colour range (a subtle
+            // single step), not the full green→dark sweep across just a few cards.
+            const rgb = rhythmGradientRgb(i, (requests.length - 1) * 5 + 1);
             const displayName = req.isAnonymous
               ? t("prayer_list_carousel.anonymous")
               : (req.isOwnRequest ? (viewerName ?? t("gratitude.you")) : (req.ownerName ?? t("find_friends.someone")));
@@ -4414,7 +4416,7 @@ function PrayerListCarousel({
         {overflowing && (
           <div
             className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
-            style={{ background: "linear-gradient(to bottom, transparent 20%, #102816)" }}
+            style={{ background: "linear-gradient(to bottom, transparent 20%, #091A10)" }}
           />
         )}
       </div>
@@ -5100,7 +5102,7 @@ function TimeSection({
           {/* Fade out at bottom */}
           <div
             className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
-            style={{ background: "linear-gradient(to bottom, transparent 20%, #102816)" }}
+            style={{ background: "linear-gradient(to bottom, transparent 20%, #091A10)" }}
           />
         </div>
       ) : (
@@ -6760,8 +6762,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               standard home modules. */}
           {filter === null && (newHomeForEveryone || isBeta) && !eventsOnly && (
             <div className="mt-0 mb-3">
-              {/* Faces of everyone who prayed with you this week, above "Next". */}
-              <PrayedWithWeekRail />
               {allHabitsDone ? (() => {
                 // Day's rhythm is complete — hand the home over to the upcoming
                 // schedule. The full Next/Done cards still live on /daily-progress.
