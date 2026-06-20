@@ -345,6 +345,25 @@ function AmenButton({ slideKey, onAdvance }: {
 // (Removed: NotTodayLink — the per-slide "Not today" skip link is
 // gone per user direction. The slide flow is Amen-or-X-out only.)
 
+// The landscape behind a prayer/intercession slide. It fades in only AFTER the
+// image has actually decoded (onLoad) — bundled photos load async, so rendering
+// at full opacity immediately made the FIRST intercession "flash" in when the
+// image finally arrived. Keyed by src upstream, so `loaded` resets per section
+// and each new landscape cross-fades up smoothly. Still respects slideVisible so
+// it fades out with the slide on advance.
+function OfficeBackdropPhoto({ src, slideVisible }: { src: string; slideVisible: boolean }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <img
+      src={src}
+      alt=""
+      aria-hidden
+      onLoad={() => setLoaded(true)}
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: (slideVisible && loaded) ? 0.22 : 0, transition: "opacity 0.6s ease", zIndex: -1 }}
+    />
+  );
+}
+
 function SlideContent({
   slide,
   slideKey,
@@ -369,7 +388,7 @@ function SlideContent({
   onAdvance: () => void;
   onRenew: (id: number, days: 3 | 7) => void;
   onEnd: (id: number) => void;
-  onAskSubmit: (body: string) => void;
+  onAskSubmit: (body: string, durationDays: number) => void;
   askSubmitting: boolean;
   // Populated only on the "pray-for-suggest" final slide — a list of
   // friends the viewer isn't already praying for. Tap → navigate to the
@@ -398,6 +417,8 @@ function SlideContent({
   // (it's your prayer request being held).
   const { user } = useAuth();
   const [askBody, setAskBody] = useState("");
+  // How long the garden carries it — a 1–7 day dropdown, default 3.
+  const [askDays, setAskDays] = useState<number>(3);
   // Selected length (minutes) for the pause slide's contemplation dropdown.
   const [pauseMin, setPauseMin] = useState(10);
   const bcpPrayer = slide.kind === "intercession" ? findBcpPrayer(slide.text) : undefined;
@@ -501,7 +522,7 @@ function SlideContent({
           className="text-[12px] italic"
           style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
         >
-          A short note; your garden will hold it for 7 days.
+          A short note; your garden will hold it.
         </p>
 
         <textarea
@@ -520,9 +541,26 @@ function SlideContent({
           }}
         />
 
+        {/* How long the garden carries it — a 1–7 day dropdown (default 3). */}
+        <select
+          value={askDays}
+          onChange={(e) => setAskDays(Number(e.target.value))}
+          aria-label="How long should we carry it?"
+          style={{
+            width: "auto", background: "rgba(46,107,64,0.22)", color: "#F0EDE6",
+            border: "1px solid rgba(46,107,64,0.50)", borderRadius: 999,
+            padding: "9px 22px", fontSize: 13, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif",
+            textAlignLast: "center", colorScheme: "dark", cursor: "pointer", outline: "none",
+          }}
+        >
+          {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => (
+            <option key={d} value={d}>{d === 1 ? "1 day" : `${d} days`}</option>
+          ))}
+        </select>
+
         <div className="flex flex-col gap-3 w-full max-w-xs mt-1">
           <button
-            onClick={() => askBody.trim() && onAskSubmit(askBody.trim())}
+            onClick={() => askBody.trim() && onAskSubmit(askBody.trim(), askDays)}
             disabled={askBody.trim().length === 0 || askSubmitting}
             className="px-6 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-40"
             style={{ background: "#2D5E3F", color: "#F0EDE6" }}
@@ -2711,8 +2749,8 @@ export default function PrayerModePage() {
   // slideshow then ends naturally. Default duration is 7 days, matching
   // the home FAB and the standalone authoring page.
   const createRequestMutation = useMutation({
-    mutationFn: (body: string) =>
-      apiRequest("POST", "/api/prayer-requests", { body, isAnonymous: false, durationDays: 7 }),
+    mutationFn: ({ body, durationDays }: { body: string; durationDays: number }) =>
+      apiRequest("POST", "/api/prayer-requests", { body, isAnonymous: false, durationDays }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
       queryClient.invalidateQueries({ queryKey: ["/api/prayer-requests/last-mine"] });
@@ -4244,15 +4282,7 @@ export default function PrayerModePage() {
           Both layers sit at z-index:-1 behind the content (host is isolated). */}
       {phase === "prayer" && officePhoto ? (
         <>
-          <img
-            key={officePhoto}
-            src={officePhoto}
-            alt=""
-            aria-hidden
-            // Lower opacity (per request) + fades with the slide so each section's
-            // landscape cross-fades in rather than hard-cutting.
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: slideVisible ? 0.22 : 0, transition: "opacity 0.35s ease", zIndex: -1 }}
-          />
+          <OfficeBackdropPhoto key={officePhoto} src={officePhoto} slideVisible={slideVisible} />
           <div
             aria-hidden
             style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }}
@@ -4308,8 +4338,8 @@ export default function PrayerModePage() {
                 endMutation.mutate(id);
                 advance();
               }}
-              onAskSubmit={(body) => {
-                createRequestMutation.mutate(body, { onSuccess: () => advance() });
+              onAskSubmit={(body, durationDays) => {
+                createRequestMutation.mutate({ body, durationDays }, { onSuccess: () => advance() });
               }}
               askSubmitting={createRequestMutation.isPending}
               suggestedFriends={suggestedFriends.map(f => ({

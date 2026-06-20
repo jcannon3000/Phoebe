@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
@@ -101,9 +102,8 @@ export default function PrayerRequestNew() {
   const copy = KIND_COPY[kind];
 
   const [body, setBody] = useState("");
-  // Default to a single day — most requests are for "today"; the dropdown lets
-  // them dial it up (1–7 days).
-  const [days, setDays] = useState<number>(1);
+  // How long the garden carries it — a 1–7 day dropdown, default 3.
+  const [days, setDays] = useState<number>(3);
   const [error, setError] = useState("");
   // This flow is community-only now (the "ask one person" path lives on the home
   // — tap a face). So no tagged users / directOnly here.
@@ -116,7 +116,7 @@ export default function PrayerRequestNew() {
   const [eventDate, setEventDate] = useState(""); // YYYY-MM-DD from <input type=date>
   const todayStr = new Date().toLocaleDateString("en-CA");
 
-  const bodyRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => { bodyRef.current?.focus(); }, []);
 
   const createMutation = useMutation({
@@ -144,6 +144,33 @@ export default function PrayerRequestNew() {
     },
     onError: (err: any) => {
       setError(err?.message || t("prayer_request.couldnt_share"));
+    },
+  });
+
+  // Renew-instead: the user's most-recent PAST request (expired or released),
+  // so they can bring it back for another 7 days instead of writing a fresh one
+  // — the same surface the office-close ask slide shows.
+  const lastMineQuery = useQuery<{ request: {
+    id: number; body: string; closedAt: string | null;
+    isAnswered: boolean; isActive: boolean; isExpired: boolean;
+  } | null }>({
+    queryKey: ["/api/prayer-requests/last-mine"],
+    queryFn: () => apiRequest("GET", "/api/prayer-requests/last-mine"),
+    enabled: !!user,
+  });
+  const renewableLastMine: { id: number; body: string } | null = (() => {
+    const r = lastMineQuery.data?.request;
+    if (!r || r.isActive || r.isAnswered) return null;
+    if (!r.isExpired && !r.closedAt) return null;
+    return { id: r.id, body: r.body };
+  })();
+  const renewMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("PATCH", `/api/prayer-requests/${id}/renew`),
+    onSuccess: () => {
+      triggerSubmitFeedback();
+      qc.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
+      qc.invalidateQueries({ queryKey: ["/api/prayer-requests/last-mine"] });
+      setLocation("/prayer-list");
     },
   });
 
@@ -178,43 +205,36 @@ export default function PrayerRequestNew() {
       style={{ position: "relative", isolation: "isolate", minHeight: "100dvh", background: BG, overflowX: "hidden" }}
     >
 
-      {/* Header — just a quiet Back. No progress bar (the flow is two short steps). */}
-      <div style={{ paddingTop: "max(1rem, var(--safe-top))", paddingLeft: 20, paddingRight: 20, paddingBottom: 2 }}>
+      {/* Close — top-right X (matches the office-close ask slide). */}
+      <div style={{ paddingTop: "max(0.75rem, var(--safe-top))", paddingLeft: 20, paddingRight: 16, paddingBottom: 2, display: "flex", justifyContent: "flex-end" }}>
         <button
           onClick={handleBack}
-          style={{ color: SAGE, fontSize: 14, fontFamily: SPACE, background: "none", border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}
+          aria-label={t("common.close", { defaultValue: "Close" })}
+          style={{ width: 40, height: 40, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.06)", border: "none", color: "rgba(240,237,230,0.7)", cursor: "pointer" }}
         >
-          {t("prayer_request.back")}
+          <X size={20} />
         </button>
       </div>
 
-      <div style={{ maxWidth: 480, margin: "0 auto", width: "100%", padding: "22px 24px calc(env(safe-area-inset-bottom) + var(--kb-inset, 0px) + 24px)" }}>
-        {/* One slide — write the request, choose how long, share. */}
-        <div>
-          {/* Designed header — emoji badge, eyebrow, title, subtitle (the per-kind
-              copy defined all four; the page used to render only the title, which
-              left it floating in empty space). */}
-          <div style={{ marginBottom: 24 }}>
-            <div
-              aria-hidden
-              style={{ width: 52, height: 52, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 27, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.35)", marginBottom: 14 }}
-            >
-              {copy.emoji}
-            </div>
-            <p style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.18em", color: SAGE, fontFamily: SPACE, fontWeight: 600, margin: 0, marginBottom: 8 }}>
-              {copy.eyebrow}
-            </p>
-            <h1 style={{ fontSize: 24, lineHeight: 1.18, fontWeight: 700, color: CREAM, fontFamily: SPACE, letterSpacing: "-0.02em", margin: 0, marginBottom: 9 }}>
-              {copy.title}
-            </h1>
-            <p style={{ fontSize: 15, lineHeight: 1.5, color: SAGE, fontFamily: SERIF, fontStyle: "italic", margin: 0 }}>
+      <div style={{ maxWidth: 480, margin: "0 auto", width: "100%", padding: "8px 24px calc(env(safe-area-inset-bottom) + var(--kb-inset, 0px) + 24px)" }}>
+        {/* One slide — centered, matching the office-close "How can the community
+            pray for you?" ask: eyebrow, italic title, note, then write + share. */}
+        <div className="flex flex-col items-center text-center gap-5">
+          <p className="text-[10px] uppercase tracking-[0.18em] font-semibold" style={{ color: "rgba(143,175,150,0.45)", fontFamily: SPACE }}>
+            {copy.eyebrow}
+          </p>
+          <h1 className="text-[24px] leading-[1.4] font-medium italic" style={{ color: "#E8E4D8", fontFamily: SPACE, margin: 0 }}>
+            {copy.title}
+          </h1>
+          {copy.subtitle ? (
+            <p className="text-[12px] italic" style={{ color: "rgba(143,175,150,0.55)", marginTop: "-8px", fontFamily: SPACE }}>
               {copy.subtitle}
             </p>
-          </div>
+          ) : null}
 
           {/* Life-event: a short title + the date it happens. */}
           {isLifeEvent && (
-            <div className="space-y-3 mb-5">
+            <div className="w-full space-y-3 text-left">
               <input
                 type="text"
                 value={eventTitle}
@@ -224,7 +244,7 @@ export default function PrayerRequestNew() {
                 style={{ ...glassField, fontFamily: SPACE }}
               />
               <div>
-                <label className="text-[12px] block mb-1.5" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+                <label className="text-[12px] block mb-1.5" style={{ color: "#8FAF96", fontFamily: SPACE }}>
                   {t("prayer_request.life_event_date_label", { defaultValue: "When does it happen?" })}
                 </label>
                 <input
@@ -239,63 +259,75 @@ export default function PrayerRequestNew() {
             </div>
           )}
 
-          <input
+          <textarea
             ref={bodyRef}
-            type="text"
             value={body}
             onChange={(e) => { setBody(e.target.value.slice(0, 1000)); setError(""); }}
+            rows={4}
             placeholder={copy.placeholder}
-            className="w-full px-5 py-3.5 text-base mb-6"
-            style={{ ...glassField, fontFamily: SPACE, fontSize: 16 }}
+            className="w-full rounded-2xl px-5 py-4 text-[15px] outline-none resize-none text-left"
+            style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.3)", color: CREAM, fontFamily: SPACE, fontStyle: "italic", lineHeight: 1.65 }}
           />
 
-          {/* How long to carry it — a simple dropdown (1–7 days), in the spot the
-              audience picker used to sit. Life events derive their own lifetime
-              from the event date, so the dropdown is hidden for them. */}
+          {/* How long the garden carries it — a 1–7 day dropdown (default 3).
+              Life events derive their lifetime from the event date instead. */}
           {!isLifeEvent && (
-            <div className="mb-6">
-              <p className="text-[12px] font-semibold mb-2" style={{ color: SAGE, fontFamily: SPACE }}>
-                {t("prayer_request.duration_question", { defaultValue: "How long should we carry it?" })}
-              </p>
-              <select
-                value={days}
-                onChange={(e) => setDays(Number(e.target.value))}
-                style={{
-                  display: "inline-block",
-                  width: "auto",
-                  background: "rgba(46,107,64,0.22)",
-                  color: CREAM,
-                  border: "1px solid rgba(46,107,64,0.50)",
-                  borderRadius: 999,
-                  padding: "12px 26px",
-                  fontSize: 15,
-                  fontWeight: 600,
-                  fontFamily: SPACE,
-                  textAlignLast: "center",
-                  colorScheme: "dark",
-                  cursor: "pointer",
-                  outline: "none",
-                }}
-              >
-                {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => (
-                  <option key={d} value={d}>{d === 1 ? "1 day" : `${d} days`}</option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={days}
+              onChange={(e) => setDays(Number(e.target.value))}
+              aria-label={t("prayer_request.duration_question", { defaultValue: "How long should we carry it?" })}
+              style={{
+                width: "auto", background: "rgba(46,107,64,0.22)", color: CREAM,
+                border: "1px solid rgba(46,107,64,0.50)", borderRadius: 999,
+                padding: "10px 24px", fontSize: 14, fontWeight: 600, fontFamily: SPACE,
+                textAlignLast: "center", colorScheme: "dark", cursor: "pointer", outline: "none",
+              }}
+            >
+              {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => (
+                <option key={d} value={d}>{d === 1 ? "1 day" : `${d} days`}</option>
+              ))}
+            </select>
           )}
 
-          {error && <p className="text-sm mb-4" style={{ color: "#C47A65" }}>{error}</p>}
+          {error && <p className="text-sm" style={{ color: "#C47A65" }}>{error}</p>}
 
-          {/* Flat CTA — solid green, no gradient/shadow. */}
-          <button
-            onClick={handleSubmit}
-            disabled={body.trim().length === 0 || createMutation.isPending}
-            className="w-full py-4 text-base font-semibold disabled:opacity-40 active:scale-[0.99] transition-all"
-            style={{ background: "#2D5E3F", color: CREAM, fontFamily: SPACE, borderRadius: 16, border: "none" }}
-          >
-            {createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community")}
-          </button>
+          <div className="flex flex-col gap-3 w-full max-w-xs mt-1">
+            <button
+              onClick={handleSubmit}
+              disabled={body.trim().length === 0 || createMutation.isPending}
+              className="px-6 py-3.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
+              style={{ background: "#2D5E3F", color: CREAM, fontFamily: SPACE, border: "none", cursor: "pointer" }}
+            >
+              {createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community")}
+            </button>
+            <button
+              onClick={handleBack}
+              className="text-sm transition-opacity hover:opacity-80"
+              style={{ color: "rgba(143,175,150,0.55)", background: "none", border: "none", cursor: "pointer", fontFamily: SPACE }}
+            >
+              {t("common.skip", { defaultValue: "Skip" })}
+            </button>
+          </div>
 
+          {/* Renew-instead card — only when the user's last request is past. */}
+          {renewableLastMine && (
+            <div className="mt-3 w-full max-w-xs rounded-xl p-4 text-left" style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}>
+              <p className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE }}>
+                {t("prayer_request.or_renew_last", { defaultValue: "Or renew your last one" })}
+              </p>
+              <p className="text-[13px] italic leading-snug mb-3" style={{ color: "rgba(232,217,176,0.85)", fontFamily: SERIF, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                {renewableLastMine.body}
+              </p>
+              <button
+                onClick={() => renewMutation.mutate(renewableLastMine.id)}
+                disabled={renewMutation.isPending}
+                className="text-xs font-semibold rounded-full px-4 py-2 disabled:opacity-50"
+                style={{ background: "rgba(46,107,64,0.45)", color: CREAM, border: "none", cursor: "pointer", fontFamily: SPACE }}
+              >
+                {renewMutation.isPending ? t("prayer_request.renewing", { defaultValue: "Renewing…" }) : t("prayer_request.renew_7_days", { defaultValue: "Renew for 7 days" })}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </motion.div>

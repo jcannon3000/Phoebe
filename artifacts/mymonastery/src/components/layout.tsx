@@ -408,8 +408,14 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     </MenuSection>
                   );
                 })()}
-                {/* People (Fellows) turned off — the People menu row + page are
-                    hidden and fellow features paused. */}
+                {/* People (Fellows) — your 1:1 connections + the garden. */}
+                {!officesOnly && (
+                  <MenuRow
+                    emoji="🤝"
+                    label={t("menu.people", { defaultValue: "People" })}
+                    onClick={() => navigate("/people")}
+                  />
+                )}
                 {/* Events — the upcoming schedule (services, gatherings,
                     practices), its own page now that it's off the home. */}
                 <MenuRow
@@ -981,7 +987,7 @@ function OpeningSplash() {
       return n;
     } catch { return 0; }
   });
-  const splashVariant = splashOpenN % 2;     // 0 = faces, 1 = quote (fellows variant retired)
+  const splashVariant = splashOpenN % 3;     // 0 = faces, 1 = quote, 2 = fellows today
   const hour = new Date().getHours();
   const showFaces = splashVariant === 0;
   // The quote shows IMMEDIATELY on its open — its content is a static line, ready
@@ -989,9 +995,7 @@ function OpeningSplash() {
   // waits to "settle".
   const showQuote = splashVariant === 1;
   // Third in rotation: your fellows' progress for the day (faces + dots).
-  // Fellows turned off for now — never show the splash "fellows today" / walking
-  // companions variant.
-  const showFellows = false;
+  const showFellows = splashVariant === 2;
   // The quote advances each time the quote slide comes up (every third open).
   const quote = SPLASH_QUOTES[Math.floor(splashOpenN / 3) % SPLASH_QUOTES.length]!;
   // Fellows' today progress — only fetched on the fellows variant.
