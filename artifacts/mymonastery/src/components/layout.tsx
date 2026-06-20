@@ -1481,7 +1481,7 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: React
         className="flex-1 flex flex-col pt-2 pb-12 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full"
         // Leave room for the fixed bottom nav bar so the last cards aren't
         // hidden behind it (only when the bar is shown — i.e. signed in).
-        style={user ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 92px)" } : undefined}
+        style={user ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 106px)" } : undefined}
       >
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -1581,7 +1581,7 @@ function BottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
           )}
         </AnimatePresence>
 
-        <div className="flex items-center justify-around" style={{ height: 60, maxWidth: 480, margin: "0 auto", paddingLeft: 8, paddingRight: 8 }}>
+        <div className="flex items-center justify-around" style={{ height: 74, maxWidth: 480, margin: "0 auto", paddingTop: 8, paddingBottom: 8, paddingLeft: 8, paddingRight: 8 }}>
           {/* People (left) */}
           <button
             type="button"
