@@ -12,6 +12,7 @@
 
 import { getValidAccessToken } from "@/lib/spotify";
 import { appleMusicAvailable, searchAppleCatalog } from "@/lib/appleMusic";
+import { apiRequest } from "@/lib/queryClient";
 
 export type SacredKind = "song" | "album" | "playlist";
 export type SacredService = "apple" | "spotify" | "other";
@@ -137,6 +138,10 @@ export type SearchResult = { kind: SacredKind; title: string; subtitle?: string;
  *  Apple Music catalogue search needs native MusicKit (not yet wired). */
 export async function catalogSearchAvailable(): Promise<boolean> {
   if (appleMusicAvailable()) return true;
+  try {
+    const r = await apiRequest<{ configured?: boolean }>("GET", "/api/apple-music/status");
+    if (r?.configured) return true;
+  } catch { /* ignore */ }
   try { return !!(await getValidAccessToken()); } catch { return false; }
 }
 
@@ -150,6 +155,11 @@ export async function searchCatalog(query: string): Promise<SearchResult[]> {
     const apple = await searchAppleCatalog(q);
     if (apple.length) return apple.map((a) => ({ kind: a.kind, title: a.title, subtitle: a.subtitle || undefined, url: a.url, artworkUrl: a.artworkUrl || undefined, service: "apple" as const, appleId: a.id }));
   }
+  // Apple Music catalogue via the server developer token — works on the web too.
+  try {
+    const r = await apiRequest<{ results?: SearchResult[] }>("GET", `/api/apple-music/search?term=${encodeURIComponent(q)}`);
+    if (Array.isArray(r?.results) && r.results.length) return r.results;
+  } catch { /* fall through to Spotify */ }
   const token = await getValidAccessToken().catch(() => null);
   if (!token) return [];
   try {

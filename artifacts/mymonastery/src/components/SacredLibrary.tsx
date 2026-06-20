@@ -173,14 +173,14 @@ function AddSheet({ onClose }: { onClose: () => void }) {
         <div className="w-10 h-1 rounded-full mx-auto mb-4" style={{ background: "rgba(143,175,150,0.4)" }} />
         <h2 className="text-[18px] font-bold mb-1" style={{ color: WARM, fontFamily: FONT }}>Add to your sacred library</h2>
         <p className="text-[12.5px] mb-3.5" style={{ color: SAGE, fontFamily: FONT }}>
-          {canSearch ? "Search your catalogue, or paste an Apple Music / Spotify link." : "Paste an Apple Music or Spotify link (Share → Copy Link)."}
+          {canSearch ? "Search Apple Music, or paste a link." : "Paste an Apple Music or Spotify link (Share → Copy Link)."}
         </p>
 
         <input
           ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={canSearch ? "Search or paste a link…" : "Paste a link…"}
+          placeholder={canSearch ? "Search Apple Music, or paste a link…" : "Paste a link…"}
           className="w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none"
           style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: WARM, fontFamily: "Georgia, serif" }}
         />
