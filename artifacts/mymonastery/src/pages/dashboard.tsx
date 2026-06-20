@@ -4335,7 +4335,8 @@ function PrayerListCarousel({
                   className={`relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99] ${amened ? "" : "animate-turn-pulse-practices"}`}
                   style={{
                     background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
-                    border: amened ? `1px solid rgba(${rgb},0.46)` : "1px solid rgba(140,195,160,0.5)",
+                    // Shared home-card outline — matches the "+" FAB ring.
+                    border: "1px solid rgba(200,212,192,0.35)",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
                   }}
                 >

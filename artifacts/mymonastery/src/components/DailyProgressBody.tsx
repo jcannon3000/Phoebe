@@ -31,6 +31,9 @@ const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
+// Shared card outline — matches the home "+" FAB ring (dashboard.tsx), so every
+// home card reads with the same soft sage edge rather than per-practice tints.
+const CARD_BORDER = "rgba(200,212,192,0.35)";
 
 // Practice-card palette: a calm, LOW-CHROMA cool ramp that walks the hue from
 // the Phoebe forest green through teal/blue to a muted violet across the day's
@@ -365,7 +368,7 @@ function PracticeCard({
     const heroRow = (
       <div
         className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
-        style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: `1px solid rgba(${rgb},0.46)`, opacity: waiting ? 0.8 : 1 }}
+        style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1 }}
       >
         <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />
         <div className="flex-1 px-5 py-5">
@@ -431,7 +434,7 @@ function PracticeCard({
     </span>
   );
 
-  const restBorder = `rgba(${rgb},${done ? 0.34 : 0.16})`;
+  const restBorder = CARD_BORDER;
   const row = (
     <motion.div
       className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
