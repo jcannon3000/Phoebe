@@ -6,6 +6,9 @@ import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+
+const CONTEMPLATION_LEAF = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null;
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { apiRequest } from "@/lib/queryClient";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
@@ -707,7 +710,7 @@ export default function ContemplationPage() {
             <select> overlays the pill so a tap opens the iOS picker. */}
         <div className="relative w-full">
           <div className="w-full rounded-full flex items-center justify-between"
-            style={{ background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.4)", padding: "15px 20px", gap: 12, pointerEvents: "none" }}>
+            style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(46,107,64,0.4)", padding: "15px 20px", gap: 12, pointerEvents: "none" }}>
             <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600 }}>{t("contemplation.length_label", { defaultValue: "Length" })}</span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
               <span style={{ color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 500 }}>{t("contemplation.length_minutes", { count: chosenMin, defaultValue: `${chosenMin} minutes` })}</span>
@@ -734,9 +737,9 @@ export default function ContemplationPage() {
           onClick={() => start(chosenMin)}
           className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
           style={{
-            background: "#2D5E3F",
+            background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
             color: WARM,
-            border: "1px solid rgba(46,107,64,0.7)",
+            border: "1px solid rgba(168,197,160,0.45)",
             fontFamily: SPACE_GROTESK,
             fontSize: 16,
             fontWeight: 600,
@@ -782,7 +785,7 @@ export default function ContemplationPage() {
         <div
           className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
           style={{
-            background: `rgba(62,124,122,${cobreathe?.done ? 0.2 : 0.14})`,
+            background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
             border: `1px solid rgba(62,124,122,${cobreathe?.done ? 0.5 : 0.4})`,
             color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
             padding: "15px", cursor: "pointer",
@@ -810,6 +813,12 @@ export default function ContemplationPage() {
           }}
         >
           <AnimatedBackground base="#0C1F12" variant="pronounced" />
+          {CONTEMPLATION_LEAF && (
+            <>
+              <img src={CONTEMPLATION_LEAF} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, zIndex: 0 }} />
+              <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(8,22,15,0.5) 0%, rgba(8,22,15,0.66) 45%, rgba(8,22,15,0.82) 100%)" }} />
+            </>
+          )}
           <Link
             href="/dashboard"
             aria-label={t("common.close", { defaultValue: "Close" })}
