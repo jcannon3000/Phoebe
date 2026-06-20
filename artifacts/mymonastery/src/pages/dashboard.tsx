@@ -4332,7 +4332,7 @@ function PrayerListCarousel({
                   // requests waiting" card. Prayed ones rest calm.
                   className={`relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99] ${amened ? "" : "animate-turn-pulse-practices"}`}
                   style={{
-                    background: `rgba(${rgb},0.30)`,
+                    background: `linear-gradient(180deg, rgba(${rgb},0.22) 0%, rgba(${rgb},0.35) 100%)`,
                     border: amened ? `1px solid rgba(${rgb},0.46)` : "1px solid rgba(140,195,160,0.5)",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
                   }}
