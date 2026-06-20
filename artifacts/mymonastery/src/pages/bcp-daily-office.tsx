@@ -11,6 +11,7 @@ import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { FROST_BLUR } from "@/lib/frost";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
 import i18n from "@/i18n";
 import { apiRequest } from "@/lib/queryClient";
@@ -3989,10 +3990,12 @@ export default function BcpDailyOfficePage() {
         }}
         className="w-full text-left rounded-2xl overflow-hidden flex transition-all hover:shadow-md active:scale-[0.99]"
         style={{
-          background: opt.now ? "rgba(46,107,64,0.18)" : "rgba(46,107,64,0.08)",
+          background: opt.now ? "rgba(46,107,64,0.30)" : "rgba(9,26,16,0.28)",
+          ...FROST_BLUR,
           border: isDefault
             ? "2px solid #A8C5A0"
-            : `1px solid ${opt.now ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.18)"}`,
+            : `1px solid ${opt.now ? "rgba(168,197,160,0.40)" : "rgba(200,225,210,0.16)"}`,
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
         }}
       >
         <div className="w-1.5 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
@@ -4052,7 +4055,9 @@ export default function BcpDailyOfficePage() {
       launchOffice(todPick, effMethod);
     }
   };
-  const officeRow: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 12, padding: "12px 16px", marginBottom: 8, background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" };
+  // Frosted-glass rows — the leaf backdrop blurs through a faint dark tint, with a
+  // soft light edge so each row reads as a pane of liquid glass.
+  const officeRow: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 14, padding: "12px 16px", marginBottom: 8, background: "rgba(9,26,16,0.28)", ...FROST_BLUR, border: "1px solid rgba(200,225,210,0.16)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" };
   const officeRowLabel: CSSProperties = { color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600 };
   const officeRowSelect: CSSProperties = { appearance: "none", WebkitAppearance: "none", MozAppearance: "none", background: "transparent", border: "none", outline: "none", color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 500, textAlign: "right", textAlignLast: "right", cursor: "pointer" };
 
@@ -4106,7 +4111,7 @@ export default function BcpDailyOfficePage() {
             <button
               onClick={beginOffice}
               className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-              style={{ background: "#2D5E3F", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 700, border: "none", cursor: "pointer" }}
+              style={{ background: "rgba(46,107,64,0.55)", ...FROST_BLUR, color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 17, fontWeight: 700, border: "1px solid rgba(168,197,160,0.5)", cursor: "pointer", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" }}
             >
               Begin <span aria-hidden>→</span>
             </button>
@@ -4114,7 +4119,7 @@ export default function BcpDailyOfficePage() {
               <Link
                 href="/rule-of-life"
                 className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 transition-opacity hover:opacity-90"
-                style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.32)", color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}
+                style={{ background: "rgba(9,26,16,0.3)", ...FROST_BLUR, border: "1px solid rgba(200,225,210,0.18)", color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}
               >
                 ⚙️ Customize
               </Link>
