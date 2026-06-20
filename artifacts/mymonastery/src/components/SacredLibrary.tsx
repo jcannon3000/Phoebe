@@ -24,6 +24,21 @@ function browse(service: "apple" | "spotify"): void {
   try { window.open(service === "apple" ? "music://" : "https://open.spotify.com/search", "_system"); } catch { /* ignore */ }
 }
 
+// Artwork thumbnail that gracefully falls back to an emoji tile when the image
+// can't load (MusicKit library/playlist artwork sometimes returns a non-web-
+// loadable URL, which WKWebView renders as a broken "?" glyph). onError swaps
+// in the emoji so the row stays clean.
+function ArtworkThumb({ src, className, fallback, fallbackSize }: { src?: string; className: string; fallback: string; fallbackSize: number }) {
+  const [ok, setOk] = useState(!!src && /^https?:/i.test(src));
+  useEffect(() => { setOk(!!src && /^https?:/i.test(src)); }, [src]);
+  if (src && ok) return <img src={src} alt="" className={`${className} object-cover`} onError={() => setOk(false)} />;
+  return (
+    <div className={`${className} flex items-center justify-center`} style={{ background: "rgba(46,107,64,0.3)" }}>
+      <span style={{ fontSize: fallbackSize }} aria-hidden>{fallback}</span>
+    </div>
+  );
+}
+
 export function SacredLibrary() {
   const [items, setItems] = useState<SacredItem[]>(getSacredLibrary);
   const [adding, setAdding] = useState(false);
@@ -78,11 +93,7 @@ export function SacredLibrary() {
       {inAppActive && nowPlaying && (
         <div className="mb-3.5 pb-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
           <div className="flex items-center gap-3.5">
-            {(np?.artworkUrl || nowPlaying.artworkUrl) ? (
-              <img src={np?.artworkUrl || nowPlaying.artworkUrl} alt="" className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
-            ) : (
-              <div className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(46,107,64,0.35)" }}><span className="text-[26px]" aria-hidden>{playing ? "♪" : "🎧"}</span></div>
-            )}
+            <ArtworkThumb src={np?.artworkUrl || nowPlaying.artworkUrl} className="w-16 h-16 rounded-xl flex-shrink-0" fallback={playing ? "♪" : "🎧"} fallbackSize={26} />
             <div className="flex-1 min-w-0">
               <p className="text-[15px] font-semibold truncate" style={{ color: WARM, fontFamily: FONT }}>{np?.title || nowPlaying.title}</p>
               <p className="text-[12px] mt-0.5 truncate" style={{ color: SAGE, fontFamily: FONT }}>{apple.status === "connecting" ? "Starting…" : (np?.subtitle || nowPlaying.subtitle || "Apple Music")}</p>
@@ -109,11 +120,7 @@ export function SacredLibrary() {
             <div className="flex gap-2.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
               {library.map((pl) => (
                 <button key={pl.id} onClick={() => playLibrary(pl)} className="flex-shrink-0 w-24 text-left active:opacity-80">
-                  {pl.artworkUrl ? (
-                    <img src={pl.artworkUrl} alt="" className="w-24 h-24 rounded-xl object-cover" />
-                  ) : (
-                    <div className="w-24 h-24 rounded-xl flex items-center justify-center" style={{ background: "rgba(46,107,64,0.3)" }}><span className="text-[28px]" aria-hidden>📃</span></div>
-                  )}
+                  <ArtworkThumb src={pl.artworkUrl} className="w-24 h-24 rounded-xl" fallback="📃" fallbackSize={28} />
                   <p className="text-[12px] font-medium truncate mt-1.5" style={{ color: WARM, fontFamily: FONT }}>{pl.title}</p>
                 </button>
               ))}
