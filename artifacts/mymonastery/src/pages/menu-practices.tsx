@@ -13,10 +13,6 @@ export default function MenuPracticesPage() {
       backHref="/menu"
       groups={[{
         items: [
-          { emoji: "🧭", label: "Find your rhythm", sub: "A few questions → a rule of life shaped for you", onClick: () => go("/find-your-rhythm") },
-        ],
-      }, {
-        items: [
           { emoji: "🕯️", label: "Contemplation", sub: "A timer for silent prayer", onClick: () => go("/contemplation") },
           { emoji: "🌍", label: "Co-Breathe", sub: "Twelve breaths, together — a prayer for justice", onClick: () => go("/cobreathe") },
           { emoji: "🎧", label: "Audio Divina", sub: "Music as a way of prayer", onClick: () => go("/listening") },

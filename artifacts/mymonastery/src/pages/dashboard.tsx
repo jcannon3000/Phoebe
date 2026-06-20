@@ -3186,6 +3186,10 @@ function PrayedWithWeekRail() {
     queryKey: ["/api/prayer-streak/community-prayed-week"],
     queryFn: () => apiRequest("GET", "/api/prayer-streak/community-prayed-week"),
     staleTime: 5 * 60_000,
+    // Don't refetch on mount/focus — once the faces are shown they shouldn't
+    // reshuffle under the user (the "they flash then change" report).
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
   const SG = "'Space Grotesk', sans-serif";
   const people = data?.people ?? [];
@@ -3193,7 +3197,8 @@ function PrayedWithWeekRail() {
   if (people.length === 0) return null;
   const first = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "";
   return (
-    <div className="mb-4">
+    // Ease the whole rail in once the faces are ready, rather than popping.
+    <motion.div className="mb-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, ease: "easeOut" }}>
       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SG }}>
         Who prayed with you this week
       </p>
@@ -3211,7 +3216,7 @@ function PrayedWithWeekRail() {
           </div>
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 }
 

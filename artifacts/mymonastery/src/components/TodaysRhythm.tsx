@@ -75,17 +75,14 @@ export function TodaysRhythm() {
     },
     {
       key: "evening", label: t("rhythm.evening", { defaultValue: "Evening" }), icon: "🌙",
-      done: eveningDone, href: hour >= 20 ? "/examen" : "/begin-prayer",
-      cta: hour >= 20
-        ? t("rhythm.cta_compline", { defaultValue: "Close the day — Compline & examen" })
-        : prayerKind === "community"
-          ? t("rhythm.cta_community", { defaultValue: "Pray with your community" })
-          : t("rhythm.cta_evening", { word: prayWord, defaultValue: `Pray Evening ${prayWord}` }),
-      blurb: hour >= 20
-        ? t("rhythm.blurb_compline", { defaultValue: "Examine the day and rest" })
-        : prayerKind === "devotion"
-          ? t("rhythm.blurb_evening_devotion", { defaultValue: "Mark the day's end with the devotion" })
-          : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
+      // Always the user's SET evening form — never override to examen/compline.
+      done: eveningDone, href: "/begin-prayer",
+      cta: prayerKind === "community"
+        ? t("rhythm.cta_community", { defaultValue: "Pray with your community" })
+        : t("rhythm.cta_evening", { word: prayWord, defaultValue: `Pray Evening ${prayWord}` }),
+      blurb: prayerKind === "devotion"
+        ? t("rhythm.blurb_evening_devotion", { defaultValue: "Mark the day's end with the devotion" })
+        : t("rhythm.blurb_evening", { defaultValue: "Mark the day's end with the office" }),
     },
     // Optional practices the user added from the Customize flow.
     ...(gratitudeActive ? [{

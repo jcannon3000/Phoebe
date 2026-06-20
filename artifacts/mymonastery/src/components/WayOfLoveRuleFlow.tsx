@@ -591,7 +591,8 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(prayBySide[side] === "community", `🙏 ${t("wol_rule.pray_community", { defaultValue: "Community Prayers" })}`, t("wol_rule.pray_community_sub", { defaultValue: "Pray with your community through the day's intercessions." }), () => choosePrayBySide(side, "community"))}
           {choiceRow(prayBySide[side] === "devotion", `🌿 ${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`, t("wol_rule.pray_devotion_sub", { defaultValue: "A short liturgy with your community's prayers included." }), () => choosePrayBySide(side, "devotion"))}
           {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, t("wol_rule.pray_offices_sub", { defaultValue: "The full liturgy with your community's prayers included." }), () => choosePrayBySide(side, "offices"))}
-          {choiceRow(prayBySide[side] === "contemplation", `🕯️ ${cap} ${t("wol_rule.contemplation_word", { defaultValue: "Contemplation" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("silent"); })}
+          {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle !== "cobreathe", `🕯️ ${cap} ${t("wol_rule.contemplation_word", { defaultValue: "Contemplation" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("silent"); })}
+          {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle === "cobreathe", `🌍 ${t("wol_rule.style_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.style_cobreathe_sub", { defaultValue: "Twelve breaths, together — a prayer for justice." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("cobreathe"); })}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
@@ -614,37 +615,26 @@ export default function WayOfLoveRuleFlow({
             ? t("wol_rule.side_config_contemplation_body", { side: cap.toLowerCase(), defaultValue: `When would you like a reminder to sit in the ${cap.toLowerCase()}?` })
             : t("wol_rule.side_config_body", { side: cap.toLowerCase(), defaultValue: `How and when would you like to pray in the ${cap.toLowerCase()}?` })}
         </p>
-        {/* Contemplation: choose HOW you'll sit (silent or Cobreathe — Cobreathe
-            is the 2nd option), and for a silent sit, HOW LONG each sit runs. */}
-        {isContemplation && (
+        {/* For a silent contemplation sit, ask HOW LONG each sit runs. (The
+            silent-vs-Co-Breathe choice is made on the prayer-form list above.) */}
+        {isContemplation && contemplationStyle === "silent" && (
           <>
             <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "0 0 10px", fontFamily: FONT }}>
-              {t("wol_rule.contemplation_style_label", { defaultValue: "How would you like to sit?" })}
+              {t("wol_rule.contemplation_length_label", { defaultValue: "How long is each sit?" })}
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {choiceRow(contemplationStyle === "silent", `🕯️ ${t("wol_rule.style_silent", { defaultValue: "Silent sit" })}`, t("wol_rule.style_silent_sub", { defaultValue: "Just you and a quiet timer." }), () => chooseContemplationStyle("silent"))}
-              {choiceRow(contemplationStyle === "cobreathe", `🌍 ${t("wol_rule.style_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.style_cobreathe_sub", { defaultValue: "12 Breaths Together for Climate Justice." }), () => chooseContemplationStyle("cobreathe"))}
+            <div style={{ position: "relative" }}>
+              <select
+                value={String(contemplationLen)}
+                onChange={(e) => chooseContemplationLen(parseInt(e.target.value, 10))}
+                aria-label={t("wol_rule.contemplation_length_label", { defaultValue: "How long is each sit?" })}
+                style={{ width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+              >
+                {[5, 10, 15, 20, 30, 45, 60].map((m) => (
+                  <option key={m} value={String(m)}>{t("wol_rule.minutes_each", { mins: m, defaultValue: `${m} minutes` })}</option>
+                ))}
+              </select>
+              <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
             </div>
-            {contemplationStyle === "silent" && (
-              <>
-                <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
-                  {t("wol_rule.contemplation_length_label", { defaultValue: "How long is each sit?" })}
-                </p>
-                <div style={{ position: "relative" }}>
-                  <select
-                    value={String(contemplationLen)}
-                    onChange={(e) => chooseContemplationLen(parseInt(e.target.value, 10))}
-                    aria-label={t("wol_rule.contemplation_length_label", { defaultValue: "How long is each sit?" })}
-                    style={{ width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
-                  >
-                    {[5, 10, 15, 20, 30, 45, 60].map((m) => (
-                      <option key={m} value={String(m)}>{t("wol_rule.minutes_each", { mins: m, defaultValue: `${m} minutes` })}</option>
-                    ))}
-                  </select>
-                  <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
-                </div>
-              </>
-            )}
           </>
         )}
         {/* Contemplation has no on-screen/listen/book method — it's a silent

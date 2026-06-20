@@ -8,6 +8,13 @@ import { playOfficeChime, primeAudio } from "@/lib/amenFeedback";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
+import { EARTH_PHOTOS } from "@/lib/earthPhotos";
+
+// A different calm landscape behind each silent sit (not the fixed polar bear).
+function pickLandscape(): string {
+  if (EARTH_PHOTOS.length === 0) return "/images/cobreathe-bg.avif";
+  return EARTH_PHOTOS[Math.floor(Math.random() * EARTH_PHOTOS.length)]!;
+}
 
 // Silent contemplation timer — Insight-Timer-style. The slideshow's
 // chapel-exhale swell opens the sit, a glowing countdown title holds
@@ -117,6 +124,8 @@ export function ContemplationTimer({
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [phase, setPhase] = useState<Phase>("picker");
+  // A landscape chosen once per mount — a different one each sit (not the bear).
+  const [bgPhoto] = useState(pickLandscape);
   const [customMode, setCustomMode] = useState(false);
   // Listen defaults to a 5-minute sit (St. Benedict's "Listen" — a few
   // minutes of silence before God).
@@ -674,7 +683,7 @@ export function ContemplationTimer({
             legible. Shown during the silence + the closing summary. */}
         {(phase === "running" || phase === "complete") && (
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none" }}>
-            <img src="/images/cobreathe-bg.avif" alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.55 }} />
+            <img src={bgPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.5 }} />
             <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(9,26,16,0.5) 0%, rgba(9,26,16,0.72) 55%, rgba(9,26,16,0.86) 100%)" }} />
           </div>
         )}
@@ -1425,12 +1434,12 @@ export function ContemplationTimer({
               onClick={discardSit}
               className="transition-opacity hover:opacity-80"
               style={{
-                // A clearly-visible pill (near-opaque backing + light text +
-                // bright ring) so it reads over the photo, not a faint link.
-                background: "rgba(0,0,0,0.6)",
-                border: "1px solid rgba(210,230,216,0.5)",
+                // Matches the top-right ✕ opacity (0.85) so it's exactly as
+                // visible as the close button — a solid pill, never a faint link.
+                background: "rgba(10,24,16,0.85)",
+                border: "1px solid rgba(210,230,216,0.55)",
                 borderRadius: 999,
-                padding: "10px 24px",
+                padding: "11px 26px",
                 color: "#FFFFFF",
                 fontFamily: SPACE_GROTESK,
                 fontSize: 13.5,

@@ -38,7 +38,7 @@ import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { earthPhotoForDay } from "@/lib/earthPhotos";
+import { EARTH_PHOTOS } from "@/lib/earthPhotos";
 import { GratitudeNudge } from "@/components/GratitudeComposer";
 import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
@@ -661,15 +661,15 @@ function SlideContent({
           </button>
         </div>
 
-        {/* Continue — a quiet text button (no pill) at the foot; advances past
-            the pause without contemplating. */}
+        {/* "or continue with office" — a quiet text button at the foot; advances
+            past the pause (into the rest of the office) without contemplating. */}
         <button
           type="button"
           onClick={onAdvance}
           className="transition-opacity active:opacity-70"
           style={{ background: "none", border: "none", color: "rgba(143,175,150,0.85)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600, cursor: "pointer", padding: "8px 12px" }}
         >
-          Continue <span aria-hidden>→</span>
+          or continue with office <span aria-hidden>→</span>
         </button>
       </div>
     );
@@ -3772,7 +3772,8 @@ export default function PrayerModePage() {
       }, 220);
       return;
     }
-    if (index <= 0) return;
+    // Back from the FIRST slide leaves the office entirely → home screen.
+    if (index <= 0) { handleExit(); return; }
     setSlideVisible(false);
     setTimeout(() => {
       setIndex(index - 1);
@@ -4178,10 +4179,10 @@ export default function PrayerModePage() {
   }
 
   const slide = displaySlides[index];
-  // A calm landscape rests behind the office slides (one per day, from the
-  // "life on earth" library), under a strong dark wash so prayer text stays
-  // legible. Only on the prayer slides — the closing/blessing keep their own look.
-  const officePhoto = earthPhotoForDay();
+  // A DIFFERENT calm landscape rests behind each office slide/section (keyed by
+  // the slide index, from the "life on earth" library), under a dark wash so the
+  // prayer text stays legible. On the prayer slides — closing/blessing keep their look.
+  const officePhoto = EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[index % EARTH_PHOTOS.length] : null;
 
   return (
     <div
@@ -4210,10 +4211,13 @@ export default function PrayerModePage() {
       {phase === "prayer" && officePhoto ? (
         <>
           <img
+            key={officePhoto}
             src={officePhoto}
             alt=""
             aria-hidden
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.34, zIndex: -1 }}
+            // Lower opacity (per request) + fades with the slide so each section's
+            // landscape cross-fades in rather than hard-cutting.
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: slideVisible ? 0.22 : 0, transition: "opacity 0.35s ease", zIndex: -1 }}
           />
           <div
             aria-hidden
