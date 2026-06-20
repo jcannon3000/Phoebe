@@ -457,9 +457,7 @@ export default function CobreathePage() {
           totalBreaths={lengthBreaths}
           onReachTarget={handleReachTarget}
           onEnd={handleEnd}
-          photos={COBREATHE_PHOTOS}
-          coffeePhotos={COFFEE_PHOTOS}
-          topic={topic}
+          photos={topic === "coffee" && COFFEE_PHOTOS.length > 0 ? COFFEE_PHOTOS : COBREATHE_PHOTOS}
           followSeed={breathSync.leader?.masterSeed}
           followStartEpochMs={breathSync.leader?.startEpochMs}
           onSession={(info) => breathSync.announceSession(info.startEpochMs, info.masterSeed)}
@@ -559,7 +557,7 @@ export default function CobreathePage() {
               style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
               <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600 }}>{t("cobreathe.set_topic", { defaultValue: "Topic" })}</span>
               <div style={SETTING_SELECT_WRAP}>
-                <select value={topic} onChange={(e) => setTopic(e.target.value as "planet" | "coffee")} style={SETTING_SELECT} aria-label={t("cobreathe.set_topic", { defaultValue: "Topic" })}>
+                <select value={topic} onChange={(e) => { const tp = e.target.value as "planet" | "coffee"; setTopic(tp); setLengthBreaths(tp === "coffee" ? 6 : DEFAULT_TOTAL_BREATHS); }} style={SETTING_SELECT} aria-label={t("cobreathe.set_topic", { defaultValue: "Topic" })}>
                   <option value="planet">{t("cobreathe.topic_planet", { defaultValue: "The Planet" })}</option>
                   <option value="coffee">{t("cobreathe.topic_coffee", { defaultValue: "Coffee" })}</option>
                 </select>
@@ -571,7 +569,8 @@ export default function CobreathePage() {
               <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600 }}>{t("cobreathe.set_length", { defaultValue: "Length" })}</span>
               <div style={SETTING_SELECT_WRAP}>
                 <select value={lengthBreaths} onChange={(e) => setLengthBreaths(Number(e.target.value))} style={SETTING_SELECT} aria-label={t("cobreathe.set_length", { defaultValue: "Length" })}>
-                  {[6, 12, 18, 24, 30, 36].map((n) => (
+                  {/* Coffee: increments of 3 (default 6). The Planet: increments of 6 (default 12). */}
+                  {(topic === "coffee" ? [3, 6, 9, 12, 15, 18, 21] : [6, 12, 18, 24, 30, 36]).map((n) => (
                     <option key={n} value={n}>{n} {t("cobreathe.breaths", { defaultValue: "breaths" })}</option>
                   ))}
                 </select>
