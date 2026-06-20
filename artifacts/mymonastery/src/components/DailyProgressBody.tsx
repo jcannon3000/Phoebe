@@ -46,8 +46,8 @@ export function rhythmGradientRgb(i: number, n: number): string {
   // darker green across the day's cards, so the set reads as one family that
   // rests naturally on the dark forest background. No teal/violet drift.
   const hue = 146;                      // Phoebe forest green, held constant
-  const sat = 0.42 - 0.12 * t;          // chroma eases down toward the darker end
-  const light = 0.84 - 0.66 * t;        // STRONG cascade: pale sage (top) → deep forest green (bottom)
+  const sat = 0.36 - 0.08 * t;          // chroma eases gently toward the darker end
+  const light = 0.70 - 0.26 * t;        // GENTLE cascade: soft sage (top) → muted forest (bottom), low card-to-card variance
   // HSL → RGB.
   const c = (1 - Math.abs(2 * light - 1)) * sat;
   const hp = hue / 60;
