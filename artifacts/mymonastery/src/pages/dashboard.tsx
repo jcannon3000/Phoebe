@@ -4337,7 +4337,7 @@ function PrayerListCarousel({
                   // requests waiting" card. Prayed ones rest calm.
                   className={`relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99] ${amened ? "" : "animate-turn-pulse-practices"}`}
                   style={{
-                    background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+                    background: "rgba(22,46,32,0.34)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
                     // Shared home-card outline — matches the "+" FAB ring.
                     border: "1px solid rgba(200,212,192,0.35)",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
