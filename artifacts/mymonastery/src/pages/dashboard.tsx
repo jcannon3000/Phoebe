@@ -3174,7 +3174,7 @@ function NcmpHomeCard() {
   );
 }
 
-type RailPerson = { id: number; name: string | null; avatarUrl: string | null; coBreathedToday?: boolean };
+type RailPerson = { id: number; name: string | null; avatarUrl: string | null; coBreathed?: boolean };
 
 // A small corner badge on a face. Given one emoji it sits still; given two
 // (🌍 cobreathed today + 🙏 has a prayer request) it cross-fades between them,
@@ -3209,7 +3209,7 @@ function FaceBadgeCycle({ emojis }: { emojis: string[] }) {
 // on the home. A face with a 🙏 has an active prayer request; tapping it opens
 // that request. Faces without one aren't tappable. Self-hides when empty. ──
 function PrayedWithWeekRail() {
-  // Viewer's timezone so the server can flag who cobreathed TODAY (🌍 badge).
+  // Viewer's timezone (kept for parity; the 🌍 badge now flags cobreathing this week).
   const tz = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; } })();
   const { data } = useQuery<{ people: RailPerson[]; total?: number }>({
     queryKey: ["/api/prayer-streak/community-prayed-week", tz],
@@ -3260,10 +3260,10 @@ function PrayedWithWeekRail() {
       <div className="flex items-start gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
         {people.map((p) => {
           const reqId = requestByOwner.get(p.id);
-          // Corner badges: 🌍 if they cobreathed today, 🙏 if they have a prayer
+          // Corner badges: 🌍 if they cobreathed this week, 🙏 if they have a prayer
           // request. With both, the badge cross-fades between the two.
           const badges: string[] = [];
-          if (p.coBreathedToday) badges.push("🌍");
+          if (p.coBreathed) badges.push("🌍");
           if (reqId !== undefined) badges.push("🙏");
           const faceInner = (
             <>
@@ -3275,7 +3275,7 @@ function PrayedWithWeekRail() {
                     {(p.name ?? "?").trim()[0]?.toUpperCase() ?? "?"}
                   </div>
                 )}
-                {/* Corner badge(s), bottom-right: 🌍 cobreathed today and/or 🙏
+                {/* Corner badge(s), bottom-right: 🌍 cobreathed this week and/or 🙏
                     has a prayer request (cross-fades when both). */}
                 <FaceBadgeCycle emojis={badges} />
               </div>
