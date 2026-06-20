@@ -4,21 +4,22 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { usePeople } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { DrumPicker } from "@/components/DrumPicker";
 
 // ── Visual language ─────────────────────────────────────────────────
-// A calm DARK-BLUE surface (the app's reflection blue, #608DD1, family) —
+// A calm DARK-BLUE surface (the app's reflection blue, #6FAF85, family) —
 // solid, no drifting gradient — behind frosted-glass cards, Space Grotesk
 // headings, Georgia-italic body, a blue-grey + warm-cream palette.
-const BG = "#0C1A30";
+const BG = "#0C2215";
 const CREAM = "#F0EDE6";
-const SAGE = "#94A8C6";
-const SAGE_DIM = "rgba(148,168,198,0.6)";
+const SAGE = "#8FAF96";
+const SAGE_DIM = "rgba(143,175,150,0.6)";
 const SERIF = "Georgia, 'Times New Roman', serif";
 const SPACE = "'Space Grotesk', sans-serif";
-const GLASS = "rgba(9,16,34,0.6)";
+const GLASS = "rgba(8,22,15,0.6)";
 const GLASS_BORDER = "rgba(255,255,255,0.08)";
 // Shared glass field styling (textarea + inputs). No box-shadow inline so
 // the global input :focus glow (index.css) still rings the field.
@@ -86,7 +87,7 @@ function useKindCopy(): Record<RequestKind, { emoji: string; eyebrow: string; ti
 // Full-screen, step-by-step authoring flow for sharing your own prayer
 // request with the community. Mirrors the "gathering" and "pray-for-new"
 // templates so the creation affordances all feel like siblings:
-//   • dark #08142A canvas
+//   • dark #081912 canvas
 //   • header = back button + progress pills
 //   • one question per step, Space Grotesk titles, Playfair Display body
 //
@@ -259,7 +260,7 @@ export default function PrayerRequestNew() {
               {/* Title only — the "PRAYER REQUEST" eyebrow + serif subtitle were
                   removed per request (redundant with the title + the placeholder
                   prompt below). */}
-              <h1 style={{ fontSize: 29, lineHeight: 1.18, fontWeight: 700, color: CREAM, fontFamily: SPACE, letterSpacing: "-0.02em", margin: 0, marginBottom: 22 }}>
+              <h1 style={{ fontSize: 23, lineHeight: 1.2, fontWeight: 700, color: CREAM, fontFamily: SPACE, letterSpacing: "-0.02em", margin: 0, marginBottom: 22 }}>
                 {copy.title}
               </h1>
 
@@ -275,7 +276,7 @@ export default function PrayerRequestNew() {
                     style={{ ...glassField, fontFamily: SPACE }}
                   />
                   <div>
-                    <label className="text-[12px] block mb-1.5" style={{ color: "#94A8C6", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    <label className="text-[12px] block mb-1.5" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
                       {t("prayer_request.life_event_date_label", { defaultValue: "When does it happen?" })}
                     </label>
                     <input
@@ -305,7 +306,7 @@ export default function PrayerRequestNew() {
                   lineHeight: 1.6,
                 }}
               />
-              <p className="text-[11px] mb-3 text-right" style={{ color: "rgba(148,168,198,0.5)", fontFamily: SPACE, marginTop: 6 }}>
+              <p className="text-[11px] mb-3 text-right" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE, marginTop: 6 }}>
                 {t("prayer_request.char_count", { count: body.length })}
               </p>
 
@@ -324,12 +325,12 @@ export default function PrayerRequestNew() {
                 disabled={body.trim().length === 0 || (isLifeEvent && createMutation.isPending)}
                 className="w-full py-4 text-base font-semibold disabled:opacity-40 active:scale-[0.99] transition-all"
                 style={{
-                  background: "linear-gradient(180deg, #3A6BB0 0%, #2C5491 100%)",
+                  background: "linear-gradient(180deg, #2D5E3F 0%, #1F4E33 100%)",
                   color: CREAM,
                   fontFamily: SPACE,
                   borderRadius: 20,
-                  border: "1px solid rgba(150,178,224,0.4)",
-                  boxShadow: "0 10px 30px rgba(20,40,68,0.5), inset 0 1px 0 rgba(255,255,255,0.07)",
+                  border: "1px solid rgba(143,175,150,0.4)",
+                  boxShadow: "0 10px 30px rgba(20,46,30,0.5), inset 0 1px 0 rgba(255,255,255,0.07)",
                 }}
               >
                 {isLifeEvent
@@ -356,7 +357,7 @@ export default function PrayerRequestNew() {
                 >
                   <p
                     className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2"
-                    style={{ color: "rgba(148,168,198,0.6)" }}
+                    style={{ color: "rgba(143,175,150,0.6)" }}
                   >
                     {t("prayer_request.or_renew")}
                   </p>
@@ -377,7 +378,7 @@ export default function PrayerRequestNew() {
                     onClick={() => renewMutation.mutate(lastMine.id)}
                     disabled={renewMutation.isPending}
                     className="text-xs font-semibold rounded-full px-4 py-2 disabled:opacity-50"
-                    style={{ background: "rgba(52,95,158,0.45)", color: "#F0EDE6" }}
+                    style={{ background: "rgba(46,107,64,0.45)", color: "#F0EDE6" }}
                   >
                     {renewMutation.isPending ? t("prayer_request.renewing") : t("prayer_request.renew_for_7_days")}
                   </button>
@@ -426,12 +427,12 @@ export default function PrayerRequestNew() {
                 disabled={createMutation.isPending}
                 className="w-full py-4 text-base font-semibold disabled:opacity-40 active:scale-[0.99] transition-all"
                 style={{
-                  background: "linear-gradient(180deg, #3A6BB0 0%, #2C5491 100%)",
+                  background: "linear-gradient(180deg, #2D5E3F 0%, #1F4E33 100%)",
                   color: CREAM,
                   fontFamily: SPACE,
                   borderRadius: 20,
-                  border: "1px solid rgba(150,178,224,0.4)",
-                  boxShadow: "0 10px 30px rgba(20,40,68,0.5), inset 0 1px 0 rgba(255,255,255,0.07)",
+                  border: "1px solid rgba(143,175,150,0.4)",
+                  boxShadow: "0 10px 30px rgba(20,46,30,0.5), inset 0 1px 0 rgba(255,255,255,0.07)",
                 }}
               >
                 {createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community")}
@@ -460,13 +461,15 @@ function AudiencePicker({
   onChange: (next: number[]) => void;
 }) {
   const { t } = useTranslation();
-  const { data } = useQuery<{ fellows: FellowLite[] }>({
-    queryKey: ["/api/fellows"],
-    queryFn: () => apiRequest("GET", "/api/fellows"),
-  });
-  const fellows = data?.fellows ?? [];
-  // "fellow" mode the moment anyone's picked; otherwise the everyone default.
-  const [mode, setMode] = useState<"everyone" | "fellow">(selectedIds.length > 0 ? "fellow" : "everyone");
+  const { user } = useAuth();
+  // Search your whole GARDEN (everyone you're connected with), not just fellows.
+  const { data: garden } = usePeople(user?.id);
+  const people = (garden ?? []).filter((p) => p.userId != null && p.userId !== user?.id);
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const matches = q ? people.filter((p) => (p.name ?? "").toLowerCase().includes(q)) : people;
+  // "individual" mode the moment someone's picked; otherwise the everyone default.
+  const [mode, setMode] = useState<"everyone" | "individual">(selectedIds.length > 0 ? "individual" : "everyone");
 
   const toggle = (uid: number) => {
     onChange(selectedIds.includes(uid) ? selectedIds.filter(x => x !== uid) : [...selectedIds, uid]);
@@ -477,14 +480,14 @@ function AudiencePicker({
       type="button"
       onClick={onClick}
       className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition-colors"
-      style={{ background: active ? "rgba(52,95,158,0.28)" : GLASS, border: `1px solid ${active ? "rgba(150,178,224,0.55)" : GLASS_BORDER}` }}
+      style={{ background: active ? "rgba(46,107,64,0.28)" : GLASS, border: `1px solid ${active ? "rgba(143,175,150,0.55)" : GLASS_BORDER}` }}
     >
       <span style={{ fontSize: 20 }} aria-hidden>{emoji}</span>
       <span className="flex-1 min-w-0">
         <span className="block text-[14px] font-semibold" style={{ color: CREAM, fontFamily: SPACE }}>{title}</span>
         <span className="block text-[12px]" style={{ color: SAGE, fontFamily: SPACE }}>{sub}</span>
       </span>
-      {active && <span style={{ color: "#A6C0E6" }} aria-hidden>✓</span>}
+      {active && <span style={{ color: "#C8D4C0" }} aria-hidden>✓</span>}
     </button>
   );
 
@@ -502,39 +505,49 @@ function AudiencePicker({
           onClick={() => { setMode("everyone"); onChange([]); }}
         />
         <Option
-          active={mode === "fellow"}
-          emoji="💚"
-          title={t("prayer_request.audience_fellow", { defaultValue: "A fellow" })}
-          sub={t("prayer_request.audience_fellow_sub", { defaultValue: "Private — just between you and them" })}
-          onClick={() => setMode("fellow")}
+          active={mode === "individual"}
+          emoji="👤"
+          title={t("prayer_request.audience_individual", { defaultValue: "An individual" })}
+          sub={t("prayer_request.audience_individual_sub", { defaultValue: "Private — just between you and them" })}
+          onClick={() => setMode("individual")}
         />
       </div>
 
-      {mode === "fellow" && (
+      {mode === "individual" && (
         <div className="mt-2 flex flex-col gap-2">
-          {fellows.length === 0 ? (
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("prayer_request.audience_search", { defaultValue: "Search your garden…" })}
+            className="w-full rounded-2xl px-4 py-2.5 text-[14px]"
+            style={{ background: GLASS, border: `1px solid ${GLASS_BORDER}`, color: CREAM, fontFamily: SPACE, outline: "none" }}
+          />
+          {matches.length === 0 ? (
             <p className="text-[12px] italic px-1 py-2" style={{ color: SAGE_DIM, fontFamily: SPACE }}>
-              {t("prayer_request.audience_no_fellows", { defaultValue: "You don't have any fellows yet." })}
+              {q
+                ? t("prayer_request.audience_no_match", { defaultValue: "No one by that name." })
+                : t("prayer_request.audience_empty_garden", { defaultValue: "No one in your garden yet." })}
             </p>
-          ) : fellows.map((f) => {
-            const isSel = selectedIds.includes(f.userId);
+          ) : matches.slice(0, 40).map((f) => {
+            const isSel = selectedIds.includes(f.userId!);
             return (
               <button
                 key={f.userId}
                 type="button"
-                onClick={() => toggle(f.userId)}
+                onClick={() => toggle(f.userId!)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-left transition-colors"
-                style={{ background: isSel ? "rgba(52,95,158,0.28)" : GLASS, border: `1px solid ${isSel ? "rgba(150,178,224,0.55)" : GLASS_BORDER}` }}
+                style={{ background: isSel ? "rgba(46,107,64,0.28)" : GLASS, border: `1px solid ${isSel ? "rgba(143,175,150,0.55)" : GLASS_BORDER}` }}
               >
                 {f.avatarUrl ? (
                   <img src={f.avatarUrl} alt={f.name ?? ""} className="w-9 h-9 rounded-full object-cover" />
                 ) : (
-                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-semibold" style={{ background: "#1C3A5C", color: "#A6C0E6" }}>
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-semibold" style={{ background: "#1A4A2E", color: "#C8D4C0" }}>
                     {(f.name ?? "?").trim().charAt(0).toUpperCase() || "?"}
                   </div>
                 )}
                 <span className="text-[14px] flex-1 truncate" style={{ color: CREAM, fontFamily: SPACE }}>{f.name ?? "Someone"}</span>
-                {isSel && <span style={{ color: "#A6C0E6" }} aria-hidden>✓</span>}
+                {isSel && <span style={{ color: "#C8D4C0" }} aria-hidden>✓</span>}
               </button>
             );
           })}
