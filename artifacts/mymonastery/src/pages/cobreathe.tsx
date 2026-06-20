@@ -20,16 +20,42 @@ import { COBREATHE_INTRO_SEEN_KEY } from "@/pages/cobreathe-about";
 // (hashed + optimized by Vite) and rotated through during the breath, one photo
 // per breath, shuffled per session. Drop a new photo into that folder and it
 // joins the rotation automatically; no manifest to edit.
-const COBREATHE_PHOTOS = Object.values(
+//
+// IMPORTANT: the top-level `*` glob is the SHARED pool used everywhere else
+// (office/intercession/contemplation via @/lib/earthPhotos). Co-Breathe ALSO
+// pulls two extra subfolders — `bad/` and `animals/` — into its "Planet" set.
+// Those are intentionally NOT in the top-level glob, so they only ever appear
+// here in Co-Breathe and never on the office or intercession slides.
+const COBREATHE_TOP_PHOTOS = Object.values(
   import.meta.glob("@/assets/cobreathe/*.{jpg,jpeg,png,avif,webp}", {
     eager: true,
     query: "?url",
     import: "default",
   }),
 ) as string[];
+const COBREATHE_BAD_PHOTOS = Object.values(
+  import.meta.glob("@/assets/cobreathe/bad/*.{jpg,jpeg,png,avif,webp}", {
+    eager: true,
+    query: "?url",
+    import: "default",
+  }),
+) as string[];
+const COBREATHE_ANIMAL_PHOTOS = Object.values(
+  import.meta.glob("@/assets/cobreathe/animals/*.{jpg,jpeg,png,avif,webp}", {
+    eager: true,
+    query: "?url",
+    import: "default",
+  }),
+) as string[];
+// "The Planet" = the shared landscapes PLUS the Co-Breathe-only bad/animal sets.
+const COBREATHE_PHOTOS = [
+  ...COBREATHE_TOP_PHOTOS,
+  ...COBREATHE_BAD_PHOTOS,
+  ...COBREATHE_ANIMAL_PHOTOS,
+];
 
-// Topic photo sets. The top-level glob above is "The Planet" (landscapes); each
-// topic lives in its own subfolder (the `*` above doesn't recurse into them).
+// Topic photo sets. The combined glob above is "The Planet"; each other topic
+// lives in its own subfolder (the `*` globs don't recurse into them).
 const COFFEE_PHOTOS = Object.values(
   import.meta.glob("@/assets/cobreathe/coffee/*.{jpg,jpeg,png,avif,webp}", {
     eager: true,
