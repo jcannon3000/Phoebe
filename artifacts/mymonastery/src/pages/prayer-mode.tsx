@@ -516,13 +516,7 @@ function SlideContent({
           className="text-[22px] leading-[1.5] font-medium italic"
           style={{ color: "#E8E4D8", fontFamily: "'Space Grotesk', sans-serif" }}
         >
-          How can the community pray for you?
-        </p>
-        <p
-          className="text-[12px] italic"
-          style={{ color: "rgba(143,175,150,0.55)", marginTop: "-6px" }}
-        >
-          A short note; your garden will hold it.
+          How can your community<br />pray for you?
         </p>
 
         <textarea
@@ -541,15 +535,17 @@ function SlideContent({
           }}
         />
 
-        {/* How long the garden carries it — a 1–7 day dropdown (default 3). */}
+        {/* How long the community carries it — a 1–7 day dropdown (default 3),
+            full-width to match the share button. */}
+        <div className="w-full max-w-xs">
         <select
           value={askDays}
           onChange={(e) => setAskDays(Number(e.target.value))}
           aria-label="How long should we carry it?"
           style={{
-            width: "auto", background: "rgba(46,107,64,0.22)", color: "#F0EDE6",
+            width: "100%", background: "rgba(46,107,64,0.22)", color: "#F0EDE6",
             border: "1px solid rgba(46,107,64,0.50)", borderRadius: 999,
-            padding: "9px 22px", fontSize: 13, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif",
+            padding: "12px 22px", fontSize: 14, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif",
             textAlignLast: "center", colorScheme: "dark", cursor: "pointer", outline: "none",
           }}
         >
@@ -557,6 +553,7 @@ function SlideContent({
             <option key={d} value={d}>{d === 1 ? "1 day" : `${d} days`}</option>
           ))}
         </select>
+        </div>
 
         <div className="flex flex-col gap-3 w-full max-w-xs mt-1">
           <button
@@ -565,7 +562,7 @@ function SlideContent({
             className="px-6 py-3 rounded-full text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-40"
             style={{ background: "#2D5E3F", color: "#F0EDE6" }}
           >
-            {askSubmitting ? "Sharing…" : "Share with my garden →"}
+            {askSubmitting ? "Sharing…" : "Share with my community →"}
           </button>
           <button
             onClick={onAdvance}

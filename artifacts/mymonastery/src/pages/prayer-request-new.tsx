@@ -242,14 +242,9 @@ export default function PrayerRequestNew() {
           <p className="text-[10px] uppercase tracking-[0.18em] font-semibold" style={{ color: "rgba(143,175,150,0.45)", fontFamily: SPACE }}>
             {copy.eyebrow}
           </p>
-          <h1 className="text-[24px] leading-[1.4] font-medium italic" style={{ color: "#E8E4D8", fontFamily: SPACE, margin: 0 }}>
+          <h1 className="text-[24px] leading-[1.4] font-medium italic" style={{ color: "#E8E4D8", fontFamily: SPACE, margin: 0, whiteSpace: "pre-line" }}>
             {copy.title}
           </h1>
-          {copy.subtitle ? (
-            <p className="text-[12px] italic" style={{ color: "rgba(143,175,150,0.55)", marginTop: "-8px", fontFamily: SPACE }}>
-              {copy.subtitle}
-            </p>
-          ) : null}
 
           {/* Life-event: a short title + the date it happens. */}
           {isLifeEvent && (
@@ -291,14 +286,15 @@ export default function PrayerRequestNew() {
           {/* How long the garden carries it — a 1–7 day dropdown (default 3).
               Life events derive their lifetime from the event date instead. */}
           {!isLifeEvent && (
+            <div className="w-full max-w-xs">
             <select
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
               aria-label={t("prayer_request.duration_question", { defaultValue: "How long should we carry it?" })}
               style={{
-                width: "auto", background: "rgba(46,107,64,0.22)", color: CREAM,
+                width: "100%", background: "rgba(46,107,64,0.22)", color: CREAM,
                 border: "1px solid rgba(46,107,64,0.50)", borderRadius: 999,
-                padding: "10px 24px", fontSize: 14, fontWeight: 600, fontFamily: SPACE,
+                padding: "12px 24px", fontSize: 14, fontWeight: 600, fontFamily: SPACE,
                 textAlignLast: "center", colorScheme: "dark", cursor: "pointer", outline: "none",
               }}
             >
@@ -306,6 +302,7 @@ export default function PrayerRequestNew() {
                 <option key={d} value={d}>{d === 1 ? "1 day" : `${d} days`}</option>
               ))}
             </select>
+            </div>
           )}
 
           {error && <p className="text-sm" style={{ color: "#C47A65" }}>{error}</p>}

@@ -261,7 +261,7 @@ export const en = {
     share_pill: "Share this prayer →",
   },
   prayer_request: {
-    title_default: "How can the community pray for you?",
+    title_default: "How can your community\npray for you?",
     title_life_event: "What's happening in your life?",
     title_justice: "What injustice are you holding?",
     subtitle_default: "",
@@ -276,7 +276,7 @@ export const en = {
     duration_3_tagline: "A short, steady watch",
     duration_7_days: "7 days",
     duration_7_tagline: "A full week of prayer",
-    share_with_community: "Share with my garden →",
+    share_with_community: "Share with my community →",
     sharing: "Sharing…",
     write_request_first: "Write a prayer request first.",
     couldnt_share: "Couldn't share this request. Please try again.",
