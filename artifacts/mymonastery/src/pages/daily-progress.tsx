@@ -14,7 +14,7 @@ import { ChevronLeft, Sliders } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
 import { DailyProgressBody } from "@/components/DailyProgressBody";
-import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { HOME_LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -23,7 +23,7 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 export default function DailyProgressPage() {
   const { t } = useTranslation();
   const bgPhoto = useMemo(
-    () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
+    () => (HOME_LEAF_PHOTOS.length > 0 ? HOME_LEAF_PHOTOS[Math.floor(Math.random() * HOME_LEAF_PHOTOS.length)]! : null),
     [],
   );
   return (

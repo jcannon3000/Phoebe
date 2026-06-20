@@ -27,6 +27,20 @@ export const LEAF_PHOTOS = (() => {
   return leaves.length > 0 ? leaves : EARTH_PHOTOS;
 })();
 
+// The Home Screen subset — used ONLY on the home + daily-progress (a curated set,
+// per the Pictures/Leaves/Home Screen folder). The general LEAF_PHOTOS glob above is
+// `@/assets/leaves/*` (non-recursive), so it does NOT include this `home/` subfolder.
+export const HOME_LEAF_PHOTOS = (() => {
+  const home = Object.values(
+    import.meta.glob("@/assets/leaves/home/*.{jpg,jpeg,png,avif,webp}", {
+      eager: true,
+      query: "?url",
+      import: "default",
+    }),
+  ) as string[];
+  return home.length > 0 ? home : LEAF_PHOTOS;
+})();
+
 // One photo per calendar day — stable through a whole office sit (and across a
 // morning→evening pair on the same day), rotating gently day to day. Pass a date
 // for testing; defaults to today.

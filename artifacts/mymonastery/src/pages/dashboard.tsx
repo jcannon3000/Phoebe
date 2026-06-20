@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { Plus, X, Camera } from "lucide-react";
-import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS, HOME_LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
@@ -5339,7 +5339,7 @@ function GoalReachedModal({
 export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean } = {}) {
   const { t } = useTranslation();
   const homeBgPhoto = useMemo(
-    () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
+    () => (HOME_LEAF_PHOTOS.length > 0 ? HOME_LEAF_PHOTOS[Math.floor(Math.random() * HOME_LEAF_PHOTOS.length)]! : null),
     [],
   );
   const [, setLocation] = useLocation();
