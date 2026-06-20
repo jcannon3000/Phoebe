@@ -13,7 +13,8 @@
  * + concrete office settings that can be applied in one tap, saved, or emailed.
  */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
+import { EARTH_PHOTOS } from "@/lib/earthPhotos";
 import { Link, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -342,6 +343,8 @@ export default function RuleOfLifePage() {
 
   const totalSlides = SLIDES.length;
   const currentSlide = SLIDES[slideIndex];
+  // A single calm landscape at low opacity behind the customizer slideshow.
+  const customizerBgPhoto = useMemo(() => (EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[Math.floor(Math.random() * EARTH_PHOTOS.length)]! : null), []);
 
   const recommendMutation = useMutation({
     mutationFn: (payload: RuleOfLifeAnswers) =>
@@ -578,6 +581,12 @@ export default function RuleOfLifePage() {
     return (
       <div style={{ minHeight: "100dvh", background: EP_BG, position: "relative", display: "flex", flexDirection: "column" }}>
         <AnimatedBackground base={EP_BG} variant="pronounced" fadeTop />
+        {customizerBgPhoto && (
+          <>
+            <img src={customizerBgPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.18, zIndex: 0 }} />
+            <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(9,26,16,0.55) 0%, rgba(9,26,16,0.72) 50%, rgba(9,26,16,0.85) 100%)" }} />
+          </>
+        )}
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>

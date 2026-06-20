@@ -117,8 +117,8 @@ export default function ListeningPage() {
   // ——— History (the log) ———
   if (view === "history") {
     return (
-      <Layout>
-        <div className="max-w-xl mx-auto w-full">
+      <Layout bgPhoto={bgPhoto}>
+        <motion.div className="max-w-xl mx-auto w-full" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}>
           <button onClick={() => setView("log")} className="text-[14px] mb-5 inline-flex items-center gap-1.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
             ← <span>Audio Divina</span>
           </button>
@@ -133,7 +133,7 @@ export default function ListeningPage() {
               {entries.map((e) => <HistoryRow key={e.id} e={e} onDelete={(id) => deleteMutation.mutate(id)} deleting={deleteMutation.isPending} />)}
             </div>
           )}
-        </div>
+        </motion.div>
       </Layout>
     );
   }

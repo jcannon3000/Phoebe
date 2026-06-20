@@ -3690,7 +3690,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
     <div
       className="relative flex rounded-xl overflow-hidden"
       style={{
-        background: "linear-gradient(180deg, rgba(46,107,64,0.16) 0%, rgba(46,107,64,0.30) 100%)",
+        background: "rgba(46,107,64,0.10)",
         // Match the border weight on the parish-weekly + count cards so the
         // stacked cards read as a paired set. Always full strength now — the
         // top progress indicator signals completion, so the card no longer
@@ -4333,7 +4333,7 @@ function PrayerListCarousel({
                   // requests waiting" card. Prayed ones rest calm.
                   className={`relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99] ${amened ? "" : "animate-turn-pulse-practices"}`}
                   style={{
-                    background: `linear-gradient(180deg, rgba(${rgb},0.22) 0%, rgba(${rgb},0.35) 100%)`,
+                    background: `rgba(${rgb},0.30)`,
                     border: amened ? `1px solid rgba(${rgb},0.46)` : "1px solid rgba(140,195,160,0.5)",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
                   }}
@@ -6567,16 +6567,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
   const userName = user.name ?? "";
 
   return (
-    <Layout>
-      {/* A still leaves photo behind the home, under a dark wash. Anchored to the
-          Layout root (relative + min-h-screen); absolute (not fixed) so it renders
-          reliably in the iOS WebView, matching the office/listening surfaces. */}
-      {homeBgPhoto && (
-        <>
-          <img src={homeBgPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, zIndex: -1 }} />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.55) 0%, rgba(8,22,15,0.68) 40%, rgba(8,22,15,0.82) 100%)" }} />
-        </>
-      )}
+    <Layout bgPhoto={homeBgPhoto}>
       <style>{`
         @media (min-width: 768px) {
           .dash-shell {
