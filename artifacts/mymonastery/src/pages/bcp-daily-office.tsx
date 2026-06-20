@@ -1389,7 +1389,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               alt=""
               aria-hidden
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.22 }}
+              animate={{ opacity: 0.45 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.8, ease: "easeInOut" }}
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
