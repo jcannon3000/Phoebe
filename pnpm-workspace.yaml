@@ -46,9 +46,12 @@ overrides:
   # (see `pnpm audit`): qs via express 5, ws via api-server.
   qs: '>=6.15.2'
   ws: '>=8.20.1'
-  # @sentry/node pulls an old @opentelemetry/core (<2.8.0) with an unbounded-
-  # memory DoS in W3C Baggage propagation — the only prod-runtime advisory.
-  '@opentelemetry/core': '>=2.8.0'
+  # NOTE: a "'@opentelemetry/core': '>=2.8.0'" override was REMOVED here — it
+  # closed a low-severity W3C-Baggage DoS advisory but BROKE prod: @sentry/node@8
+  # imports `VERSION` from @opentelemetry/core, which v2 dropped, so the server
+  # crash-looped on boot (SyntaxError, ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL). The
+  # proper fix is to bump @sentry/node to v9 (compatible with OTel v2); until
+  # then we let core resolve to the 1.x @sentry@8 needs.
   '@esbuild-kit/esm-loader': npm:tsx@^4.21.0
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-arm64': '-'
   '@expo/ngrok-bin>@expo/ngrok-bin-darwin-x64': '-'
