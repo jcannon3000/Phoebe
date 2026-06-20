@@ -3,7 +3,9 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
-import { saveListeningEntry, listeningHistory, type ListeningMedium, type ListeningEntry } from "@/lib/listeningLog";
+import { type ListeningMedium } from "@/lib/listeningLog";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrary";
 
@@ -34,6 +36,9 @@ const glassField = {
 } as const;
 
 type View = "log" | "done" | "history";
+
+// One account-wide log entry (server-backed; syncs across the account).
+type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: string; createdAt: string };
 
 export default function ListeningPage() {
   const [, navigate] = useLocation();
@@ -83,9 +88,22 @@ export default function ListeningPage() {
     try { localStorage.setItem("phoebe:audio-divina-medium", m); } catch { /* private mode */ }
   }
 
+  // Account-wide listening log (server-backed, syncs across the account).
+  const qc = useQueryClient();
+  const { data: logData } = useQuery<{ entries: ServerEntry[] }>({
+    queryKey: ["/api/listening"],
+    queryFn: () => apiRequest("GET", "/api/listening"),
+    staleTime: 60_000,
+  });
+  const entries = logData?.entries ?? [];
+  const logMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim() }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
+  });
+
   // The whole log: note what + how, mark it done for today. (No amount.)
   function logToday() {
-    saveListeningEntry({ minutes: 0, songs: 0, medium, what: what.trim(), artworkUrl, experience });
+    logMutation.mutate();
     markPracticeDoneToday("listening");
     setView("done");
   }
@@ -117,7 +135,6 @@ export default function ListeningPage() {
 
   // ——— History (the log) ———
   if (view === "history") {
-    const hist = listeningHistory();
     return (
       <Layout>
         <div className="max-w-xl mx-auto w-full">
@@ -126,13 +143,13 @@ export default function ListeningPage() {
           </button>
           <h1 className="text-xl font-bold leading-tight mb-1" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Listening log</h1>
           <p className="text-xs mb-5" style={{ color: SAGE }}>What you've sat with.</p>
-          {hist.length === 0 ? (
+          {entries.length === 0 ? (
             <p className="text-[14px] leading-relaxed mt-10 text-center" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SERIF, fontStyle: "italic" }}>
               Nothing logged yet. Your sittings will gather here.
             </p>
           ) : (
             <div className="flex flex-col gap-2">
-              {hist.map((e, i) => <HistoryRow key={`${e.ymd}-${i}`} e={e} />)}
+              {entries.map((e) => <HistoryRow key={e.id} e={e} />)}
             </div>
           )}
         </div>
@@ -260,23 +277,16 @@ export default function ListeningPage() {
 }
 
 // ——— A log row — what you put on, how, and when ———
-function HistoryRow({ e }: { e: ListeningEntry }) {
-  const d = new Date(e.ymd + "T12:00:00");
-  const day = Number.isNaN(d.getTime()) ? e.ymd : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+function HistoryRow({ e }: { e: ServerEntry }) {
+  const d = new Date(e.day + "T12:00:00");
+  const day = Number.isNaN(d.getTime()) ? e.day : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
   const label = e.what?.trim() || (e.medium === "streaming" ? "Streaming" : e.medium.toUpperCase());
   return (
-    <div className="flex items-start gap-3 rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
-      {e.artworkUrl ? (
-        <img src={e.artworkUrl} alt="" className="w-11 h-11 rounded-lg object-cover flex-shrink-0" style={{ backgroundColor: "rgba(46,107,64,0.3)" }} />
-      ) : (
-        <span className="w-11 h-11 rounded-lg flex items-center justify-center text-[20px] flex-shrink-0" style={{ background: "rgba(46,107,64,0.3)" }} aria-hidden>{MEDIUM_EMOJI[e.medium] ?? "🎧"}</span>
-      )}
+    <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+      <span className="w-11 h-11 rounded-lg flex items-center justify-center text-[20px] flex-shrink-0" style={{ background: "rgba(46,107,64,0.3)" }} aria-hidden>{MEDIUM_EMOJI[e.medium] ?? "🎧"}</span>
       <div className="flex-1 min-w-0">
         <p className="text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{label}</p>
         <p className="text-[11.5px] mt-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{MEDIUM_EMOJI[e.medium] ?? "🎧"} {day}</p>
-        {e.experience?.trim() ? (
-          <p className="text-[12.5px] mt-1.5 leading-snug" style={{ color: "rgba(240,237,230,0.78)", fontFamily: SERIF, fontStyle: "italic" }}>{e.experience.trim()}</p>
-        ) : null}
       </div>
     </div>
   );

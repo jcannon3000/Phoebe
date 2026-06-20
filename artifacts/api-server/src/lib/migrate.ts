@@ -3102,6 +3102,21 @@ export async function migrate() {
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS breath_sessions_user_day_uk ON breath_sessions (user_id, day)`);
     await run(client, `CREATE INDEX IF NOT EXISTS breath_sessions_day_idx ON breath_sessions (day)`);
 
+    // ── listening_entries (Audio Divina log — account-wide) ─────────────────
+    // Append log of "sacred listening" sittings (what + how), one row per log.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS listening_entries (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day TEXT NOT NULL,
+        medium TEXT NOT NULL,
+        what TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS listening_entries_user_idx ON listening_entries (user_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS listening_entries_user_day_idx ON listening_entries (user_id, day)`);
+
     // ── reflection_reads (Forward Day by Day / SSJE read-state) ──────────────
     // CAC reads live in cac_reads (richer — community read presence); this
     // table carries the other daily-reflection sources so the daily-progress
