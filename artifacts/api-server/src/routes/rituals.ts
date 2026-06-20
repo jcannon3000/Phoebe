@@ -369,9 +369,15 @@ router.get("/rituals", async (req, res): Promise<void> => {
 });
 
 router.post("/rituals", async (req, res): Promise<void> => {
+  // Auth required — and the gathering is ALWAYS owned by the authenticated
+  // caller. We never trust a client-supplied ownerId (that let an unauthed
+  // caller create gatherings as anyone and fan out pushes on their behalf).
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const ownerId = sessionUserId;
   const parsed = CreateRitualBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
+    res.status(400).json({ error: "Invalid request" });
     return;
   }
 
@@ -432,7 +438,7 @@ router.post("/rituals", async (req, res): Promise<void> => {
           .from(groupMembersTable)
           .where(
             and(
-              eq(groupMembersTable.userId, body.ownerId),
+              eq(groupMembersTable.userId, ownerId),
               inArray(groupMembersTable.groupId, candidate),
               sql`${groupMembersTable.joinedAt} IS NOT NULL`,
               or(
@@ -465,7 +471,7 @@ router.post("/rituals", async (req, res): Promise<void> => {
           intention: body.intention ?? null,
           location,
           meetingUrl,
-          ownerId: body.ownerId,
+          ownerId,
           scheduleToken: schedulingToken,
           rhythm: body.rhythm ?? "fortnightly",
           hasIntercession: body.hasIntercession ?? false,
@@ -545,7 +551,7 @@ router.post("/rituals", async (req, res): Promise<void> => {
     res.status(201).json({ ...enriched, id: ritual.id });
   } catch (err: unknown) {
     req.log.error({ err }, "Failed to create ritual");
-    res.status(500).json({ error: err instanceof Error ? err.message : "Failed to create ritual" });
+    res.status(500).json({ error: "Failed to create ritual" });
   }
 });
 

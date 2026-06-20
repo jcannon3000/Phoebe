@@ -2110,6 +2110,23 @@ export async function migrate() {
     // is unchanged — only the nullability is relaxed.
     await run(client, `ALTER TABLE prayer_feeds ALTER COLUMN creator_user_id DROP NOT NULL`);
 
+    // ── Column backfill ──────────────────────────────────────────────────
+    // These columns exist in the Drizzle schema but were never given an
+    // ALTER here, so a from-scratch deploy (new env / disaster recovery)
+    // was missing them. Existing prod already has them (from an old
+    // drizzle-kit push), so `ADD COLUMN IF NOT EXISTS` is a no-op there and
+    // safe to re-run every boot. The prayer_feeds.visibility one MUST come
+    // before the phoebe-climate seed below, whose INSERT names that column.
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS offices_only BOOLEAN NOT NULL DEFAULT FALSE`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS last_digest_sent_date TEXT`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_digest_enabled BOOLEAN NOT NULL DEFAULT TRUE`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS home_feed_id INTEGER`);
+    await run(client, `ALTER TABLE users ADD COLUMN IF NOT EXISTS feed_first_home BOOLEAN NOT NULL DEFAULT TRUE`);
+    await run(client, `ALTER TABLE gratitude_responses ADD COLUMN IF NOT EXISTS shared BOOLEAN NOT NULL DEFAULT FALSE`);
+    await run(client, `ALTER TABLE prayer_feeds ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'private'`);
+    await run(client, `ALTER TABLE prayer_feed_entries ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'custom'`);
+    await run(client, `ALTER TABLE prayer_feed_recurring_entries ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'custom'`);
+
     // Seed the phoebe-climate feed (platform-owned, creator_user_id NULL).
     // Idempotent — skips if the slug already exists. visibility=public
     // so it surfaces on the public /feed/phoebe-climate landing the
