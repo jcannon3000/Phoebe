@@ -3689,7 +3689,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
     <div
       className="relative flex rounded-xl overflow-hidden"
       style={{
-        background: "rgba(46,107,64,0.08)",
+        background: "linear-gradient(180deg, rgba(46,107,64,0.16) 0%, rgba(46,107,64,0.30) 100%)",
         // Match the border weight on the parish-weekly + count cards so the
         // stacked cards read as a paired set. Always full strength now — the
         // top progress indicator signals completion, so the card no longer

@@ -509,6 +509,7 @@ export default function CobreathePage() {
 
   return (
     <Layout>
+      <div style={{ position: "relative", isolation: "isolate", flex: 1, display: "flex", flexDirection: "column", minHeight: "100%" }}>
       {/* A still landscape behind the intro, faded gently up under a dark wash
           for legibility (sits behind the page content at z-index -1). */}
       {introBgPhoto && (
@@ -517,9 +518,9 @@ export default function CobreathePage() {
             src={introBgPhoto}
             alt=""
             aria-hidden
-            style={{ position: "fixed", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, opacity: 0.32 }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, opacity: 0.32 }}
           />
-          <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.58) 0%, rgba(8,22,15,0.70) 30%, rgba(8,22,15,0.80) 60%, rgba(8,22,15,0.90) 100%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.58) 0%, rgba(8,22,15,0.70) 30%, rgba(8,22,15,0.80) 60%, rgba(8,22,15,0.90) 100%)" }} />
         </>
       )}
       <div className="max-w-xl mx-auto w-full flex flex-col flex-1">
@@ -594,6 +595,7 @@ export default function CobreathePage() {
           </div>
         </div>
 
+      </div>
       </div>
     </Layout>
   );
