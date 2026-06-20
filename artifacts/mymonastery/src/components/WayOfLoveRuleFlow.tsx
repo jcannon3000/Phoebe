@@ -425,7 +425,7 @@ export default function WayOfLoveRuleFlow({
   // left it narrow), not jammed to the edge.
   const leafBg = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
   const shell = (children: ReactNode) => (
-    <div className="-mx-4 sm:-mx-6 md:-mx-8" style={{ flex: 1, minHeight: 0, background: BG, position: "relative", isolation: "isolate", display: "flex", flexDirection: "column" }}>
+    <div style={{ flex: 1, minHeight: 0, background: BG, position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", width: "100vw", marginLeft: "calc(50% - 50vw)", marginRight: "calc(50% - 50vw)" }}>
       <AnimatedBackground base={BG} variant="subtle" />
       {leafBg && (
         <>
