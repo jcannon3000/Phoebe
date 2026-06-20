@@ -1416,22 +1416,20 @@ export function ContemplationTimer({
             <button
               type="button"
               onClick={endSit}
-              className="rounded-full transition-opacity hover:opacity-90 active:scale-[0.98]"
+              className="transition-opacity hover:opacity-90 active:scale-[0.98]"
               style={{
-                padding: "16px 56px",
-                // Both states are SOLID + high-contrast so the control can't get
-                // lost over the bright nature photo (the repeated "I can't see
-                // End/Done" complaint). Done = black ~80% (per request); End =
-                // an opaque deep green with a bright ring + strong shadow.
-                background: reachedGoal ? "rgba(0,0,0,0.82)" : "#1F4E33",
-                border: `1.5px solid ${reachedGoal ? "rgba(255,255,255,0.55)" : "rgba(190,222,198,0.9)"}`,
+                // Plain text (no pill) per request — kept white with a strong
+                // text-shadow so it stays legible over the bright photo.
+                background: "none",
+                border: "none",
+                padding: "8px 16px",
                 color: "#FFFFFF",
                 fontFamily: SPACE_GROTESK,
-                fontSize: 17,
+                fontSize: 23,
                 fontWeight: 700,
                 letterSpacing: "0.02em",
                 cursor: "pointer",
-                boxShadow: "0 8px 26px rgba(0,0,0,0.5)",
+                textShadow: "0 2px 16px rgba(0,0,0,0.75)",
               }}
             >
               {reachedGoal ? t("common.done") : t("contemplation_timer.end")}
@@ -1441,18 +1439,16 @@ export function ContemplationTimer({
               onClick={discardSit}
               className="transition-opacity hover:opacity-80"
               style={{
-                // Matches the top-right ✕ opacity (0.85) so it's exactly as
-                // visible as the close button — a solid pill, never a faint link.
-                background: "rgba(10,24,16,0.85)",
-                border: "1px solid rgba(210,230,216,0.55)",
-                borderRadius: 999,
-                padding: "11px 26px",
-                color: "#FFFFFF",
+                // Plain text (no pill) per request, with a shadow for legibility.
+                background: "none",
+                border: "none",
+                padding: "8px 16px",
+                color: "rgba(255,255,255,0.88)",
                 fontFamily: SPACE_GROTESK,
-                fontSize: 13.5,
+                fontSize: 14,
                 fontWeight: 600,
                 cursor: "pointer",
-                boxShadow: "0 4px 16px rgba(0,0,0,0.45)",
+                textShadow: "0 2px 14px rgba(0,0,0,0.7)",
               }}
             >
               {t("contemplation_timer.discard_session")}
