@@ -1007,6 +1007,11 @@ export function CobreatheBreath({
           aria-hidden="true"
           style={{
             position: "absolute", inset: 0, pointerEvents: "none",
+            // Flex-centre the emoji over the rings box. SVG <text> positioning
+            // follows the glyph's FONT metrics (which sit off-centre for the
+            // globe emoji), so it drifted up-left of the rings; flex centring of
+            // the line box reads as truly concentric, as it did originally.
+            display: "flex", alignItems: "center", justifyContent: "center",
             // Symmetric glow (no downward Y offset) so the shadow doesn't pull the
             // globe's visual weight below the rings' centre.
             filter: reachedNow
@@ -1015,13 +1020,7 @@ export function CobreatheBreath({
             transition: reachedNow ? "filter 1.2s ease" : "none",
           }}
         >
-          {/* Emoji centered GEOMETRICALLY at the rings' centre (64,64 in the same
-              128 viewBox) via text-anchor + central baseline. A hair of upward dy
-              compensates the emoji glyph sitting slightly low in its em box, so it
-              reads as truly concentric with the rings. */}
-          <svg width="100%" height="100%" viewBox="0 0 128 128" style={{ display: "block" }}>
-            <text x="64" y="63" dy="-1.5" textAnchor="middle" dominantBaseline="central" fontSize="64">{globe}</text>
-          </svg>
+          <span style={{ fontSize: Math.round(globePx * 0.5), lineHeight: 1 }}>{globe}</span>
         </div>
       </div>
 

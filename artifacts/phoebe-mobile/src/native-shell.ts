@@ -671,20 +671,29 @@ function fireSmoothSwell() {
   step();
 }
 
-// The Cobreathe "all twelve breaths" payoff. PREFER native Core Haptics
-// (PhoebeAudio.smoothSwell) — a single CONTINUOUS vibration on a parabolic
-// intensity envelope, the genuinely smooth "Duolingo" swell. Only fall back to
-// the impact-density approximation (fireSmoothSwell) on the web or on hardware
-// without Core Haptics, where it reads as a string of taps.
-async function playBreathCompleteHaptic() {
+// The genuinely smooth "Co-Breathe" swell, generalized. PREFER native Core
+// Haptics (PhoebeAudio.smoothSwell) — a single CONTINUOUS vibration on a
+// parabolic intensity envelope — and only fall back to a discrete impact
+// approximation on the web / on hardware without Core Haptics, where the native
+// path is unavailable and the taps read as a string. This is the one helper all
+// of the app's "completion / finishing" haptics now route through, so every
+// slideshow close, examen finish, and payoff feels like the same calm exhale.
+async function playSmoothSwell(
+  opts: { durationMs: number; peak: number; sharpness: number },
+  fallback: () => void,
+): Promise<void> {
   try {
     const audio = getPhoebeAudio();
     if (audio?.smoothSwell) {
-      const res = await audio.smoothSwell({ durationMs: 1300, peak: 1.0, sharpness: 0.3 });
-      if (res?.ok) return; // native swell played — don't also fire the taps
+      const res = await audio.smoothSwell(opts);
+      if (res?.ok) return; // native swell played — don't also fire the fallback
     }
   } catch { /* fall through to the web approximation */ }
-  fireSmoothSwell();
+  fallback();
+}
+// The Cobreathe "all twelve breaths" payoff.
+function playBreathCompleteHaptic() {
+  void playSmoothSwell({ durationMs: 1300, peak: 1.0, sharpness: 0.3 }, fireSmoothSwell);
 }
 
 function wireHaptics() {
@@ -694,13 +703,16 @@ function wireHaptics() {
     try {
       switch (s) {
         case "celebration":
-          fireCelebrationRumble();
+          // Slideshow / lesson close — the big finish. A long, full, smooth
+          // swell (native Core Haptics) instead of the old impact-density
+          // crescendo; the rumble is the web fallback only.
+          void playSmoothSwell({ durationMs: 2400, peak: 1.0, sharpness: 0.25 }, fireCelebrationRumble);
           break;
         case "breath-complete":
-          void playBreathCompleteHaptic();
+          playBreathCompleteHaptic();
           break;
         case "sustained":
-          fireSustainedRumble();
+          void playSmoothSwell({ durationMs: 1300, peak: 1.0, sharpness: 0.3 }, fireSustainedRumble);
           break;
         case "heavy":
           Haptics.impact({ style: ImpactStyle.Heavy });
@@ -709,7 +721,9 @@ function wireHaptics() {
           Haptics.impact({ style: ImpactStyle.Medium });
           break;
         case "success":
-          Haptics.notification({ type: NotificationType.Success });
+          // A gentle smooth confirmation (e.g. examen / prayer-mode completion)
+          // — softer + rounder than the discrete Success double-tap.
+          void playSmoothSwell({ durationMs: 650, peak: 0.6, sharpness: 0.45 }, () => Haptics.notification({ type: NotificationType.Success }));
           break;
         case "warning":
           Haptics.notification({ type: NotificationType.Warning });
