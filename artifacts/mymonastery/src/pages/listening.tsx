@@ -160,18 +160,21 @@ export default function ListeningPage() {
   // ——— Log (the main screen) — a simple two-field journal entry ———
   return (
     <Layout>
-      <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", minHeight: "100%" }}>
-      {/* A still landscape behind the WHOLE page (fixed = full-bleed, not boxed to
-          the content height), under a dark wash for legibility. */}
+      <div style={{ position: "relative", isolation: "isolate", flex: 1, display: "flex", flexDirection: "column", minHeight: "100%" }}>
+      {/* A still landscape behind the page. MUST be position:absolute inside this
+          isolation:isolate host (NOT position:fixed) — fixed + z-index:-1 gets
+          painted behind the opaque page background in the iOS WebView, so the
+          photo flashes then vanishes. This matches the office slideshow, which
+          renders reliably. flex:1 fills the viewport so it's still full-bleed. */}
       {bgPhoto && (
         <>
           <img
             src={bgPhoto}
             alt=""
             aria-hidden
-            style={{ position: "fixed", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.3, zIndex: -1 }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.3, zIndex: -1 }}
           />
-          <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
         </>
       )}
       <div className="max-w-xl mx-auto w-full">
@@ -268,7 +271,7 @@ export default function ListeningPage() {
           <button onClick={() => setView("history")} className="text-[13px] inline-flex items-center gap-1" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
             See your listening log <span aria-hidden>›</span>
           </button>
-          <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>Stays on this device</p>
+          <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>Synced to your account</p>
         </div>
       </div>
       </div>
