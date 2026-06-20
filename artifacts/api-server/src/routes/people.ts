@@ -235,6 +235,12 @@ router.get("/people", async (req, res): Promise<void> => {
           inArray(prayerRequestsTable.ownerId, gardenUserIds),
           eq(prayerRequestsTable.isAnswered, false),
           isNull(prayerRequestsTable.closedAt),
+          // Directed ("to a fellow") requests are private to owner + recipient,
+          // and parish pastoral concerns are private to the parish admin — neither
+          // may surface in this garden-wide "who's praying" map. (INVARIANT: every
+          // surface showing others' request bodies excludes directOnly.)
+          eq(prayerRequestsTable.directOnly, false),
+          isNull(prayerRequestsTable.parishFeedId),
         )
       ).orderBy(desc(prayerRequestsTable.createdAt));
       for (const r of activeRequests) {
