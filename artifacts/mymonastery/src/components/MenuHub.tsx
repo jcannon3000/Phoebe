@@ -16,8 +16,8 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FAINT = "rgba(143,175,150,0.55)";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
-const CARD_BG = "rgba(46,107,64,0.10)";
-const CARD_BORDER = "rgba(46,107,64,0.22)";
+const CARD_BG = "rgba(46,107,64,0.28)";
+const CARD_BORDER = "rgba(46,107,64,0.38)";
 
 export interface MenuHubItem {
   emoji: string;
