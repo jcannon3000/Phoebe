@@ -9,7 +9,7 @@ import { openExternal } from "@/lib/openExternal";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { EARTH_PHOTOS, LEAF_PHOTOS } from "@/lib/earthPhotos";
 import i18n from "@/i18n";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -489,17 +489,20 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const [slides, setSlides] = useState<Slide[]>([]);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
-  // A landscape behind the office that holds steady WITHIN a section and cross-
-  // fades to a new photo at each section boundary. The welcome/intro slide is its
-  // OWN photo, so it switches to a different one on the first actual office slide.
-  // A per-mount random offset varies which photos a given day draws.
+  // Backgrounds: the WELCOME / options slide rests on a leaves photo; the rest of
+  // the office uses the wide LANDSCAPES, holding steady within a section and cross-
+  // fading to a new one at each section boundary. Per-mount random offsets vary
+  // which photos a given day draws.
   const bgOffset = useMemo(
+    () => (EARTH_PHOTOS.length > 0 ? Math.floor(Math.random() * EARTH_PHOTOS.length) : 0),
+    [],
+  );
+  const leafOffset = useMemo(
     () => (LEAF_PHOTOS.length > 0 ? Math.floor(Math.random() * LEAF_PHOTOS.length) : 0),
     [],
   );
   const sectionIndex = useMemo(() => {
-    if (slideIdx <= 0) return 0;          // the welcome/intro slide → its own photo
-    let n = 1;                            // everything after the welcome starts a new photo
+    let n = 0;
     for (let i = 1; i <= slideIdx && i < slides.length; i++) {
       const ty = slides[i]?.type;
       if (
@@ -509,9 +512,14 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     }
     return n;
   }, [slideIdx, slides]);
-  const officeBgPhoto = LEAF_PHOTOS.length > 0
-    ? LEAF_PHOTOS[(bgOffset + sectionIndex) % LEAF_PHOTOS.length]!
-    : null;
+  const officeBgPhoto = slideIdx <= 0
+    // Welcome / options slide → a leaves photo.
+    ? (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[leafOffset % LEAF_PHOTOS.length]! : null)
+    // The office itself → the wide landscapes, by section.
+    : (EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[(bgOffset + sectionIndex) % EARTH_PHOTOS.length]! : null);
+  // Leaves read well a bit brighter; the wide landscapes behind the prayer text
+  // stay subtle.
+  const officeBgOpacity = slideIdx <= 0 ? 0.45 : 0.22;
   const mainRef = useRef<HTMLElement | null>(null);
   const swipeTouchStartXRef = useRef<number | null>(null);
   const swipeTouchStartYRef = useRef<number | null>(null);
@@ -1389,7 +1397,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               alt=""
               aria-hidden
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.45 }}
+              animate={{ opacity: officeBgOpacity }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.8, ease: "easeInOut" }}
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}

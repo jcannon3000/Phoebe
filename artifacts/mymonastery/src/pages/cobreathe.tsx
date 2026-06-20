@@ -518,9 +518,9 @@ export default function CobreathePage() {
             src={introBgPhoto}
             alt=""
             aria-hidden
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, opacity: 0.32 }}
+            style={{ position: "fixed", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, opacity: 0.32 }}
           />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.58) 0%, rgba(8,22,15,0.70) 30%, rgba(8,22,15,0.80) 60%, rgba(8,22,15,0.90) 100%)" }} />
+          <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.58) 0%, rgba(8,22,15,0.70) 30%, rgba(8,22,15,0.80) 60%, rgba(8,22,15,0.90) 100%)" }} />
         </>
       )}
       <div className="max-w-xl mx-auto w-full flex flex-col flex-1">
