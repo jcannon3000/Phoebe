@@ -580,11 +580,14 @@ export function CobreatheBreath({
         // sweeps FORWARD over it (same direction — it never recedes backwards),
         // settling the ring back to the dark base by full exhale. Both reset
         // under the static dark base at the cycle turn, so there's no jump.
-        // Two colors only: the light-green ring grows over the inhale and
-        // RECEDES over the exhale (back and forth), revealing the dark-green
-        // base ring beneath. No third "exhale sweep" stroke.
-        const fLight = isCounting ? (inhale ? pos / INHALE_MS : 1 - (pos - INHALE_MS) / EXHALE_MS) : 0;
-        if (ringInRef.current) ringInRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fLight)).toFixed(2);
+        // Two colors. The light-green ring draws FORWARD over the inhale and
+        // HOLDS full; on the exhale a dark-green stroke (the SAME green as the
+        // base) draws FORWARD in the same direction over the light, settling the
+        // ring back to dark — never rewinding.
+        const fIn = isCounting ? (inhale ? pos / INHALE_MS : 1) : 0;
+        const fOut = isCounting ? (inhale ? 0 : (pos - INHALE_MS) / EXHALE_MS) : 0;
+        if (ringInRef.current) ringInRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fIn)).toFixed(2);
+        if (ringOutRef.current) ringOutRef.current.style.strokeDashoffset = (RING_CIRC * (1 - fOut)).toFixed(2);
         if (sessionRingRef.current) {
           const sFrac = isCounting ? Math.min(1, Math.max(0, (now - countStartRef.current) / (totalBreaths * CYCLE_MS))) : 0;
           sessionRingRef.current.style.strokeDashoffset = (SESSION_CIRC * (1 - sFrac)).toFixed(2);
@@ -984,11 +987,15 @@ export function CobreatheBreath({
               dark-green circle the breath starts and ends on. */}
           <circle cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeOpacity={0.9}
             style={{ filter: "drop-shadow(0 0 4px rgba(46,107,64,0.7))" }} />
-          {/* Light green progress — grows over the dark base on the inhale and
-              RECEDES back to it on the exhale (back and forth). The only other
-              color; no third stroke. */}
+          {/* Light green progress — draws FORWARD over the dark base on the
+              inhale and holds full. */}
           <circle ref={ringInRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_IN} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.85}
             style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 5px rgba(134,199,155,0.85))" }} />
+          {/* Exhale sweep — the SAME dark green as the base (still two colors),
+              drawing FORWARD in the same direction over the light on the exhale,
+              settling the ring back to dark. Never rewinds. */}
+          <circle ref={ringOutRef} cx={64} cy={64} r={RING_R} fill="none" stroke={RING_OUT} strokeWidth={RING_SW} strokeLinecap="round" strokeOpacity={0.9}
+            style={{ strokeDasharray: RING_CIRC, strokeDashoffset: RING_CIRC, willChange: "stroke-dashoffset", filter: "drop-shadow(0 0 4px rgba(46,107,64,0.7))" }} />
           {/* inner blue session ring — visible track (so the two rings read as
               concentric even at rest) + slow fill, thickness matched to the outer */}
           <circle cx={64} cy={64} r={SESSION_R} fill="none" stroke="rgba(91,157,239,0.34)" strokeWidth={RING_SW} />
