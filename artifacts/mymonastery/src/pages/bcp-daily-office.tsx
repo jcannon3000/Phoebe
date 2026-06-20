@@ -524,6 +524,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // mode again — once we've handed off, we treat the portal as a
   // transparent slide for the rest of the session.
   const portalHandedOffRef = useRef(false);
+  // Warmed promise for the community-intercession data, so /prayer-mode can open
+  // straight onto the first intercession instead of its "Gathering…" loader.
+  const intercessionPrefetchRef = useRef<Promise<unknown> | null>(null);
   // Did the seamless intercessions handoff already run for this
   // session? If yes, when the user finishes the closing collect we
   // route them to the prayer-mode celebration summary instead of
@@ -756,6 +759,29 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     return () => { cancelled = true; };
   }, [endpoint, officeTitle, resolvedMode]);
 
+  // Prefetch the SAME queries the intercession slideshow reads, so handing off
+  // hits a warm React Query cache (no loader). Returns a single promise (built
+  // once) the handoff can await.
+  function prefetchIntercessions(): Promise<unknown> {
+    if (intercessionPrefetchRef.current) return intercessionPrefetchRef.current;
+    const warm = (key: string) => queryClient.prefetchQuery({ queryKey: [key], queryFn: () => apiRequest("GET", key), staleTime: 60_000 });
+    intercessionPrefetchRef.current = Promise.all([
+      warm("/api/moments"),
+      warm("/api/prayer-requests"),
+      warm("/api/prayers-for/for-me"),
+      warm("/api/prayers-for/mine"),
+      warm("/api/groups/me/circle-intentions"),
+    ]).catch(() => undefined);
+    return intercessionPrefetchRef.current;
+  }
+  // Start warming as soon as this office is known to contain intercessions, so
+  // the data is loading in the background while the reader prays through the
+  // psalms / lessons and reaches the portal.
+  useEffect(() => {
+    if (slides.some((sl) => sl.type === "intercessions_portal")) void prefetchIntercessions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slides]);
+
   // Hand the user off into /prayer-mode for the community
   // intercession slideshow, with a return URL that lands them right
   // back at the next office slide when they finish. Idempotent —
@@ -766,7 +792,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // it, which meant tapping "Next" before the timeout fired
   // cancelled the cleanup-bound timeout and silently skipped the
   // slideshow — landing the user on the Lord's Prayer instead.
-  function handIntoPrayerMode() {
+  async function handIntoPrayerMode() {
     if (portalHandedOffRef.current) return;
     portalHandedOffRef.current = true;
     const nextOfficeIdx = Math.min(slideIdx + 1, slides.length - 1);
@@ -781,6 +807,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // the closing collect's Amen lands on the celebration summary
     // even though we'll re-enter the office below.
     seamlessReturnRef.current = true;
+    // Don't transition until the intercessions are loaded — so prayer-mode opens
+    // on the first slide, not its loader. Usually already warm from the effect
+    // above; if not, the portal headline holds a beat longer.
+    try { await prefetchIntercessions(); } catch { /* navigate anyway */ }
     setViewerLocation(url);
   }
 
