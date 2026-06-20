@@ -16,7 +16,7 @@ const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FAINT = "rgba(143,175,150,0.55)";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
-const CARD_BG = "rgba(46,107,64,0.28)";
+const CARD_BG = "rgba(9,26,16,0.3)";
 const CARD_BORDER = "rgba(46,107,64,0.38)";
 
 export interface MenuHubItem {
@@ -92,7 +92,7 @@ export function MenuHub({
                     type="button"
                     onClick={() => { playOpeningSwell(2); it.onClick(); }}
                     className="w-full transition-opacity hover:opacity-90"
-                    style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer", background: CARD_BG, border: `1px solid ${CARD_BORDER}`, borderRadius: 16, padding: "16px 18px" }}
+                    style={{ display: "flex", alignItems: "center", gap: 14, textAlign: "left", cursor: "pointer", background: CARD_BG, backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: `1px solid ${CARD_BORDER}`, borderRadius: 16, padding: "16px 18px" }}
                   >
                     <span style={{ fontSize: 24, lineHeight: 1, flexShrink: 0, width: 28, textAlign: "center" }} aria-hidden>{it.emoji}</span>
                     <span style={{ flex: 1, minWidth: 0 }}>

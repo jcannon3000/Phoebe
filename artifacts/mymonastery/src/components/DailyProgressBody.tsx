@@ -129,7 +129,7 @@ function StreakCard() {
   return (
     <div
       className="relative flex rounded-2xl overflow-hidden mt-6"
-      style={{ background: `rgba(${GREEN},0.13)`, border: `1px solid rgba(${GREEN},0.26)` }}
+      style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: `1px solid rgba(${GREEN},0.26)` }}
     >
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${GREEN_BRIGHT},0.7)` }} />
       <div className="flex-1 px-4 py-4">
@@ -365,7 +365,7 @@ function PracticeCard({
     const heroRow = (
       <div
         className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
-        style={{ background: `rgba(${rgb},0.30)`, border: `1px solid rgba(${rgb},0.46)`, opacity: waiting ? 0.8 : 1 }}
+        style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: `1px solid rgba(${rgb},0.46)`, opacity: waiting ? 0.8 : 1 }}
       >
         <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />
         <div className="flex-1 px-5 py-5">
@@ -435,7 +435,7 @@ function PracticeCard({
   const row = (
     <motion.div
       className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
-      style={{ background: `rgba(${rgb},0.28)`, border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1 }}
+      style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1 }}
       animate={pulse ? { borderColor: [restBorder, `rgba(${rgb},0.55)`, restBorder] } : undefined}
       transition={pulse ? { duration: 2.2, repeat: Infinity, ease: "easeInOut" } : undefined}
     >

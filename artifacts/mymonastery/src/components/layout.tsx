@@ -1414,12 +1414,9 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: React
       <header
         className="sticky top-0 z-10 px-4 sm:px-6 md:px-8 pb-2 md:pb-5 flex justify-between items-center"
         style={{
-          // Over a backdrop photo: a frosted-glass header (the photo shows through,
-          // blurred + lightly tinted) so it never reads as a solid green band and
-          // masks content scrolling under the sticky bar. Solid green otherwise.
-          background: bgPhoto ? "rgba(9,26,16,0.3)" : "#091A10",
-          backdropFilter: bgPhoto ? "blur(14px)" : undefined,
-          WebkitBackdropFilter: bgPhoto ? "blur(14px)" : undefined,
+          // No bar over a backdrop photo — the image runs all the way to the top;
+          // the wordmark + pills sit directly on the washed photo. Solid otherwise.
+          background: bgPhoto ? "transparent" : "#091A10",
           // Clear the status-bar clock, not the whole Dynamic Island. "Phoebe"
           // (left) + the controls (right) sit in the corners, away from the
           // centred Island, so they don't need the full safe-area-inset-top —
