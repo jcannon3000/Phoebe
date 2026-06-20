@@ -423,9 +423,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
       if (search.has("slide") || search.has("seamlessReturn")) return false;
     } catch { /* non-browser */ }
     if (initialBook) return true;
-    if (resolvedMode === "morning" || resolvedMode === "evening") {
-      return getSideEntry(officeSide) === "book";
-    }
+    // Do NOT auto-open the book just because the saved method is "book". The
+    // office must show the intro/welcome chooser first (with the saved method
+    // pre-selected) so the reader can confirm or change how they pray before
+    // tapping Begin. Only an explicit ?book=1 / initialBook jumps straight in.
     return false;
   });
   // Wall-clock stamp of when the book guide first opened this mount.
@@ -591,7 +592,18 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // on the way above: Community Intercessions is on-screen only. "watch" is a
   // morning-weekday-only option (the National Cathedral broadcast).
   type PrayMethod = "screen" | "listen" | "book" | "watch";
-  const [prayMethod, setPrayMethod] = useState<PrayMethod>("screen");
+  const [prayMethod, setPrayMethod] = useState<PrayMethod>(() => {
+    // Pre-select the reader's saved way for this side so the intro chooser opens
+    // on their default (Physical BCP / Listen / Watch / On screen), not always
+    // "On screen". Only full Morning/Evening Prayer carry a per-side method.
+    if (resolvedMode === "morning" || resolvedMode === "evening") {
+      const e = getSideEntry(officeSide);
+      if (e === "book") return "book";
+      if (e === "listen") return "listen";
+      if (e === "watch") return "watch";
+    }
+    return "screen";
+  });
 
   useEffect(() => {
     let cancelled = false;
