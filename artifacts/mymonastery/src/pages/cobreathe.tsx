@@ -414,9 +414,10 @@ export default function CobreathePage() {
     // The actual breaths taken — open-ended, so derive from elapsed (one breath
     // per CYCLE_MS). Floored at the 12 target. Drives the summary headline + tally.
     setBreathsTaken(Math.max(lengthBreathsRef.current, Math.round(secondsKept / (CYCLE_MS / 1000))));
-    // From the contemplation page → show the summary screen; otherwise return
-    // straight to contemplation as before.
-    if (fromContemplation) setMode("done"); else setLocation("/contemplation");
+    // Always show the concluding summary slide after a completed sit (it has its
+    // own continue button). fromContemplation is kept for the no-op note below.
+    void fromContemplation;
+    setMode("done");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -588,9 +589,7 @@ export default function CobreathePage() {
               className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
               style={{ background: "#2D5E3F", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700, cursor: "pointer" }}
             >
-              {today?.done
-                ? t("cobreathe.begin_again", { defaultValue: "Breathe again" })
-                : t("cobreathe.begin_short", { defaultValue: "Begin" })}
+              {t("cobreathe.begin_short", { defaultValue: "Start Breathing" })}
             </button>
 
             <div className="flex justify-center mt-4">
