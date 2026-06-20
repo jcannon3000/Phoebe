@@ -70,12 +70,12 @@ function artwork(a: { url?: string } | undefined): string {
 type AppleAttrs = { name?: string; artistName?: string; curatorName?: string; url?: string; artwork?: { url?: string } };
 type AppleData = { id: string; attributes?: AppleAttrs };
 
-function map(kind: "song" | "album" | "playlist", rows: AppleData[]): unknown[] {
+function map(kind: "artist" | "song" | "album" | "playlist", rows: AppleData[]): unknown[] {
   return rows.map((r) => ({
     id: r.id,
     kind,
     title: r.attributes?.name ?? "",
-    subtitle: kind === "playlist" ? (r.attributes?.curatorName ?? "") : (r.attributes?.artistName ?? ""),
+    subtitle: kind === "playlist" ? (r.attributes?.curatorName ?? "") : kind === "artist" ? "Artist" : (r.attributes?.artistName ?? ""),
     artworkUrl: artwork(r.attributes?.artwork),
     url: r.attributes?.url ?? "",
     service: "apple",
@@ -94,15 +94,21 @@ router.get("/apple-music/search", async (req: Request, res: Response): Promise<v
 
   try {
     const url = `https://api.music.apple.com/v1/catalog/${storefront}/search`
-      + `?term=${encodeURIComponent(term)}&types=songs,albums,playlists&limit=5`;
+      + `?term=${encodeURIComponent(term)}&types=artists,songs,albums,playlists&limit=5`;
     const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!r.ok) { res.json({ results: [], reason: `apple-${r.status}` }); return; }
-    const j = await r.json() as { results?: { songs?: { data?: AppleData[] }; albums?: { data?: AppleData[] }; playlists?: { data?: AppleData[] } } };
-    const results = [
-      ...map("song", j.results?.songs?.data ?? []),
-      ...map("album", j.results?.albums?.data ?? []),
-      ...map("playlist", j.results?.playlists?.data ?? []),
+    const j = await r.json() as { results?: { artists?: { data?: AppleData[] }; songs?: { data?: AppleData[] }; albums?: { data?: AppleData[] }; playlists?: { data?: AppleData[] } } };
+    // Interleave the kinds round-robin so the dropdown shows a MIX (song, album,
+    // artist, playlist, …) rather than 5 songs first with albums/artists pushed
+    // out of view.
+    const lists = [
+      map("song", j.results?.songs?.data ?? []),
+      map("album", j.results?.albums?.data ?? []),
+      map("artist", j.results?.artists?.data ?? []),
+      map("playlist", j.results?.playlists?.data ?? []),
     ];
+    const results: unknown[] = [];
+    for (let i = 0; i < 5; i++) for (const l of lists) if (l[i]) results.push(l[i]);
     res.json({ results });
   } catch (err) {
     console.error("apple-music: search failed:", err);
