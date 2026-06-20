@@ -15,8 +15,9 @@ import { isNativeIOS } from "@/lib/spotify";
 import type { PlaybackStatus } from "@/lib/spotifyPlayer";
 
 /** A curated sacred/contemplative Apple Music playlist id (catalog id, not a
- *  URL). Empty → Apple Music stays hidden (no lying control). */
-export const APPLE_MUSIC_PLAYLIST_ID = "";
+ *  URL). Empty → Apple Music stays hidden (no lying control).
+ *  Currently "Pure Calm" (Apple-curated). */
+export const APPLE_MUSIC_PLAYLIST_ID = "pl.ffc344338c3d4ff394ddcf94d766c143";
 
 export function appleMusicConfigured(): boolean {
   return APPLE_MUSIC_PLAYLIST_ID.trim().length > 0;
