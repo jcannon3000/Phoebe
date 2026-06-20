@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { saveListeningEntry, listeningHistory, type ListeningMedium, type ListeningEntry } from "@/lib/listeningLog";
 import { SacredLibrary } from "@/components/SacredLibrary";
+import { searchCatalog, type SearchResult } from "@/lib/sacredLibrary";
 
 // Audio Divina — sacred listening. A simple did-you-or-not daily log: put on
 // music (streaming via your Sacred Library, or an analog medium you own), then
@@ -145,15 +146,20 @@ export default function ListeningPage() {
             <p className="text-[13.5px] leading-snug" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{activeMedium.cue}</p>
           </div>
         )}
-        {/* What you listened to — recorded for EVERY medium (including streaming)
-            so the history shows the music, not just "Streaming". */}
-        <input
-          value={what}
-          onChange={(e) => setWhat(e.target.value)}
-          placeholder={streaming ? "What did you listen to?" : "What are you listening to?"}
-          className="w-full rounded-2xl px-4 py-3.5 mb-4 text-[15px] outline-none"
-          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", color: WARM, fontFamily: SPACE_GROTESK }}
-        />
+        {/* What you listened to — recorded for EVERY medium. For an analog medium
+            you can SEARCH the Apple Music catalogue to tag the exact song / album /
+            artist you put on (it's only a label — nothing plays); streaming free-texts it. */}
+        {streaming ? (
+          <input
+            value={what}
+            onChange={(e) => setWhat(e.target.value)}
+            placeholder="What did you listen to?"
+            className="w-full rounded-2xl px-4 py-3.5 mb-4 text-[15px] outline-none"
+            style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", color: WARM, fontFamily: SPACE_GROTESK }}
+          />
+        ) : (
+          <AnalogTagField value={what} onChange={setWhat} />
+        )}
 
         <button
           onClick={logToday}
@@ -171,6 +177,73 @@ export default function ListeningPage() {
         </div>
       </div>
     </Layout>
+  );
+}
+
+// ——— Analog tag field — type freely, OR search the Apple Music catalogue to tag
+// the exact song / album / artist you put on the turntable. Picking a result just
+// fills the label (the history line); nothing plays — analog audio lives off-app.
+function AnalogTagField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState(false); // suppress results right after a pick
+
+  useEffect(() => {
+    const q = value.trim();
+    if (picked || q.length < 2) { setResults([]); setSearching(false); return; }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const r = await searchCatalog(q);
+        if (!cancelled) setResults(r.slice(0, 6));
+      } catch { if (!cancelled) setResults([]); }
+      finally { if (!cancelled) setSearching(false); }
+    }, 320);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [value, picked]);
+
+  const showPanel = open && !picked && (searching || results.length > 0);
+  return (
+    <div className="relative mb-4">
+      <input
+        value={value}
+        onChange={(e) => { setPicked(false); onChange(e.target.value); }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        placeholder="Search a song, album or artist — or just type it"
+        className="w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none"
+        style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", color: WARM, fontFamily: SPACE_GROTESK }}
+      />
+      {showPanel && (
+        <div className="absolute left-0 right-0 mt-1.5 z-30 rounded-2xl overflow-hidden" style={{ background: "#10231A", border: "1px solid rgba(255,255,255,0.12)", boxShadow: "0 12px 40px rgba(0,0,0,0.5)" }}>
+          {searching && results.length === 0 ? (
+            <p className="px-4 py-3 text-[13px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>Searching…</p>
+          ) : (
+            results.map((r, i) => (
+              <button
+                key={`${r.service}-${r.appleId ?? r.url}-${i}`}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => { onChange(r.subtitle ? `${r.title} — ${r.subtitle}` : r.title); setPicked(true); setResults([]); setOpen(false); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-left active:scale-[0.99] transition-transform"
+                style={{ borderBottom: i < results.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}
+              >
+                {r.artworkUrl ? (
+                  <img src={r.artworkUrl} alt="" className="w-9 h-9 rounded-md flex-shrink-0 object-cover" />
+                ) : (
+                  <span className="w-9 h-9 rounded-md flex-shrink-0 flex items-center justify-center text-[15px]" style={{ background: "rgba(255,255,255,0.06)" }} aria-hidden>{r.kind === "album" ? "💿" : r.kind === "playlist" ? "🎵" : "♪"}</span>
+                )}
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{r.title}</span>
+                  <span className="block text-[11.5px] truncate" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{r.subtitle ? `${r.subtitle} · ` : ""}{r.kind}</span>
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
