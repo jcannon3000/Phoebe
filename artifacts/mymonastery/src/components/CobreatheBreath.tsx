@@ -237,12 +237,12 @@ export function CobreatheBreath({
   });
   const [globeSnapping, setGlobeSnapping] = useState(false);
   // Globe box size in px. On MOBILE we size it by the golden ratio: the OUTER
-  // ring's diameter = viewport width / 1.618. The outer ring is 2·RING_R of the
+  // ring's diameter = viewport width / 1.879. The outer ring is 2·RING_R of the
   // 128 viewBox, so the box (which is the full viewBox) = desiredOuter·128/116.
   // Desktop keeps the fixed 158 box.
   const globeBoxPx = (vw: number): number => {
     if (vw > 0 && vw <= 600) {
-      const outer = vw / 1.618;
+      const outer = vw / 1.879;
       return Math.round(outer * (128 / (2 * RING_R)));
     }
     return 158;

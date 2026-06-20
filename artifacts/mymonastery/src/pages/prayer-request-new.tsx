@@ -401,7 +401,7 @@ export default function PrayerRequestNew() {
                 <span aria-hidden style={{ fontSize: 15 }}>🕊️</span>
                 {t("prayer_request.eyebrow_duration", { defaultValue: "How long" })}
               </p>
-              <h1 style={{ fontSize: 29, lineHeight: 1.18, fontWeight: 700, color: CREAM, fontFamily: SPACE, letterSpacing: "-0.02em", margin: 0, marginBottom: 12 }}>
+              <h1 style={{ fontSize: "clamp(22px, 6.2vw, 29px)", lineHeight: 1.18, fontWeight: 700, color: CREAM, fontFamily: SPACE, letterSpacing: "-0.02em", margin: 0, marginBottom: 12 }}>
                 {t("prayer_request.duration_question")}
               </h1>
               <p style={{ fontSize: 16, lineHeight: 1.5, fontStyle: "italic", color: SAGE, fontFamily: SERIF, margin: 0, marginBottom: 26 }}>
@@ -409,7 +409,7 @@ export default function PrayerRequestNew() {
               </p>
 
               {/* Duration roller — dial how many days to carry it (default 1). */}
-              <div className="mb-8 rounded-2xl" style={{ background: GLASS, border: `1.5px solid ${GLASS_BORDER}` }}>
+              <div className="mb-8">
                 <DrumPicker
                   value={days}
                   onChange={setDays}
