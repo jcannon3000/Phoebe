@@ -14,6 +14,7 @@ import { usePeople } from "@/hooks/usePeople";
 import { useCobreatheSync } from "@/hooks/useCobreatheSync";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { computeFingerprint } from "@/lib/cobreatheOrder";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
 // (hashed + optimized by Vite) and rotated through during the breath, one photo
@@ -200,7 +201,7 @@ export default function CobreathePage() {
   // under a dark wash (the good top-level set, not the bad/animal Co-Breathe-only
   // shots). Falls back to the full pool if the top set is somehow empty.
   const introBgPhoto = useMemo(() => {
-    const pool = COBREATHE_TOP_PHOTOS.length > 0 ? COBREATHE_TOP_PHOTOS : COBREATHE_PHOTOS;
+    const pool = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS : COBREATHE_PHOTOS;
     return pool.length > 0 ? pool[Math.floor(Math.random() * pool.length)]! : null;
   }, []);
   // Location-based "breathe with a fellow" is removed — Co-Breathe never shares
@@ -510,17 +511,18 @@ export default function CobreathePage() {
   return (
     <Layout>
       <div style={{ position: "relative", isolation: "isolate", flex: 1, display: "flex", flexDirection: "column", minHeight: "100%" }}>
-      {/* A still landscape behind the intro, faded gently up under a dark wash
-          for legibility (sits behind the page content at z-index -1). */}
+      {/* A still leaves photo behind the intro, under a dark wash for legibility.
+          position:absolute inside this flex:1 host (NOT fixed — fixed + z-index:-1
+          flashes then vanishes in the iOS WebView; absolute matches the office). */}
       {introBgPhoto && (
         <>
           <img
             src={introBgPhoto}
             alt=""
             aria-hidden
-            style={{ position: "fixed", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, opacity: 0.32 }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, opacity: 0.38 }}
           />
-          <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.58) 0%, rgba(8,22,15,0.70) 30%, rgba(8,22,15,0.80) 60%, rgba(8,22,15,0.90) 100%)" }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.55) 0%, rgba(8,22,15,0.66) 35%, rgba(8,22,15,0.80) 100%)" }} />
         </>
       )}
       <div className="max-w-xl mx-auto w-full flex flex-col flex-1">
