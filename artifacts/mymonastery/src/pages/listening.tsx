@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
@@ -100,6 +101,10 @@ export default function ListeningPage() {
     mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, experience }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
   });
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/listening/${id}`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
+  });
 
   // The whole log: note what + how, mark it done, then show the log. (No amount.)
   function logToday() {
@@ -125,7 +130,7 @@ export default function ListeningPage() {
             </p>
           ) : (
             <div className="flex flex-col gap-2">
-              {entries.map((e) => <HistoryRow key={e.id} e={e} />)}
+              {entries.map((e) => <HistoryRow key={e.id} e={e} onDelete={(id) => deleteMutation.mutate(id)} deleting={deleteMutation.isPending} />)}
             </div>
           )}
         </div>
@@ -256,7 +261,7 @@ export default function ListeningPage() {
 }
 
 // ——— A log row — what you put on, how, and when ———
-function HistoryRow({ e }: { e: ServerEntry }) {
+function HistoryRow({ e, onDelete, deleting }: { e: ServerEntry; onDelete: (id: number) => void; deleting: boolean }) {
   const d = new Date(e.day + "T12:00:00");
   const day = Number.isNaN(d.getTime()) ? e.day : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
   const label = e.what?.trim() || (e.medium === "streaming" ? "Streaming" : e.medium.toUpperCase());
@@ -274,6 +279,15 @@ function HistoryRow({ e }: { e: ServerEntry }) {
           <p className="text-[12.5px] mt-1.5 leading-snug" style={{ color: "rgba(240,237,230,0.78)", fontFamily: SERIF, fontStyle: "italic" }}>{e.experience.trim()}</p>
         ) : null}
       </div>
+      <button
+        onClick={() => onDelete(e.id)}
+        disabled={deleting}
+        aria-label="Delete entry"
+        className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-100 disabled:opacity-40"
+        style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(200,150,140,0.9)", opacity: 0.75 }}
+      >
+        <Trash2 size={15} />
+      </button>
     </div>
   );
 }

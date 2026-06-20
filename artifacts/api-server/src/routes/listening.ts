@@ -1,6 +1,6 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { db, listeningEntriesTable } from "@workspace/db";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { perUserRateLimit } from "../lib/rate-limit";
 
 // ── Audio Divina log (account-wide) ──────────────────────────────────
@@ -64,6 +64,23 @@ router.post("/listening", perUserRateLimit("listening_log", { max: 30, windowMs:
     res.json({ ok: true, entry: row });
   } catch (err) {
     console.error("[/listening POST] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// DELETE /api/listening/:id — remove one of the caller's own entries.
+router.delete("/listening/:id", async (req: Request, res: Response): Promise<void> => {
+  const userId = uid(req);
+  if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) { res.status(400).json({ error: "bad_id" }); return; }
+  try {
+    await db
+      .delete(listeningEntriesTable)
+      .where(and(eq(listeningEntriesTable.id, id), eq(listeningEntriesTable.userId, userId)));
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[/listening DELETE] failed:", err);
     res.status(500).json({ error: "internal_error" });
   }
 });
