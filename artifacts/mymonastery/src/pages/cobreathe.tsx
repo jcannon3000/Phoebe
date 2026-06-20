@@ -28,6 +28,16 @@ const COBREATHE_PHOTOS = Object.values(
   }),
 ) as string[];
 
+// Topic photo sets. The top-level glob above is "The Planet" (landscapes); each
+// topic lives in its own subfolder (the `*` above doesn't recurse into them).
+const COFFEE_PHOTOS = Object.values(
+  import.meta.glob("@/assets/cobreathe/coffee/*.{jpg,jpeg,png,avif,webp}", {
+    eager: true,
+    query: "?url",
+    import: "default",
+  }),
+) as string[];
+
 // Fingerprint of the bundled photo set — two clients only sync if it matches,
 // so a build/version drift (different photos) safely falls back to solo order.
 const COBREATHE_FINGERPRINT = computeFingerprint(COBREATHE_PHOTOS);
@@ -158,6 +168,11 @@ export default function CobreathePage() {
   const [mode, setMode] = useState<"intro" | "breathing" | "done">(() =>
     wantsStart() && introSeen() ? "breathing" : "intro",
   );
+  // Intro-slide settings: breath count (6-breath increments, default 12), the
+  // photo topic, and whether to share coarse presence ("same air").
+  const [lengthBreaths, setLengthBreaths] = useState<number>(DEFAULT_TOTAL_BREATHS);
+  const [topic, setTopic] = useState<"planet" | "coffee">("planet");
+  const [locationOn, setLocationOn] = useState<boolean>(false);
   // Location-based "breathe with a fellow" is removed — Co-Breathe never shares
   // location. Kept as a const false so the synchronized (global, location-free)
   // breath stays solo.
@@ -212,8 +227,8 @@ export default function CobreathePage() {
   const breathSync = useCobreatheSync(user, gardenUserIds, {
     fingerprint: COBREATHE_FINGERPRINT,
     active: mode === "breathing",
-    shareLocation: false,
-    presence: false,
+    shareLocation: locationOn,
+    presence: locationOn,
     shareCoords: false,
   });
 
@@ -264,6 +279,9 @@ export default function CobreathePage() {
   // (it would otherwise close over the first render's empty set).
   const joinInPersonRef = useRef(joinInPerson);
   joinInPersonRef.current = joinInPerson;
+  // Mirror the chosen length so the empty-deps handleEnd reads the LATEST value.
+  const lengthBreathsRef = useRef(lengthBreaths);
+  lengthBreathsRef.current = lengthBreaths;
   const coBreathedRef = useRef(coBreathed);
   coBreathedRef.current = coBreathed;
 
@@ -359,7 +377,7 @@ export default function CobreathePage() {
     }
     // The actual breaths taken — open-ended, so derive from elapsed (one breath
     // per CYCLE_MS). Floored at the 12 target. Drives the summary headline + tally.
-    setBreathsTaken(Math.max(DEFAULT_TOTAL_BREATHS, Math.round(secondsKept / (CYCLE_MS / 1000))));
+    setBreathsTaken(Math.max(lengthBreathsRef.current, Math.round(secondsKept / (CYCLE_MS / 1000))));
     // From the contemplation page → show the summary screen; otherwise return
     // straight to contemplation as before.
     if (fromContemplation) setMode("done"); else setLocation("/contemplation");
@@ -385,6 +403,11 @@ export default function CobreathePage() {
   // behind the breath for a frame. (The breath's own opaque field covers the
   // screen from the first paint.)
   if (mode === "breathing") {
+    // Topic → which photos the breath cycles. "planet" = the bundled landscapes;
+    // "coffee" = the coffee set (falls back to the planet set if somehow empty).
+    const topicPhotos = topic === "coffee" && COFFEE_PHOTOS.length > 0
+      ? COFFEE_PHOTOS
+      : COBREATHE_PHOTOS;
     // Fade INTO the breath rather than hard-cutting from the intro — a gentle
     // half-second opacity rise as the practice takes over the screen. The
     // wrapper is a full-screen fixed layer so the fade reads cleanly over the
@@ -399,9 +422,10 @@ export default function CobreathePage() {
         <CobreatheBreath
           othersToday={others}
           todayCount={state?.count ?? 0}
+          totalBreaths={lengthBreaths}
           onReachTarget={handleReachTarget}
           onEnd={handleEnd}
-          photos={COBREATHE_PHOTOS}
+          photos={topicPhotos}
           followSeed={breathSync.leader?.masterSeed}
           followStartEpochMs={breathSync.leader?.startEpochMs}
           onSession={(info) => breathSync.announceSession(info.startEpochMs, info.masterSeed)}
@@ -492,121 +516,85 @@ export default function CobreathePage() {
 
         {mode === "intro" && (
           <>
-            {/* ── Stats hero — who has breathed today, leading the page.
-                The big number is the practice's heartbeat; faces make the
-                "we" concrete; the small row underneath carries your own
-                days and the all-time count. */}
-            <div
-              className="rounded-2xl p-5 mb-4"
-              style={{ background: "rgba(46,107,64,0.12)", border: "1px solid rgba(46,107,64,0.30)" }}
-            >
-              <div className="flex items-center gap-4">
-                <span className="text-3xl">🫁</span>
-                <div className="flex-1 min-w-0">
-                  <p className="leading-none" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 34, fontWeight: 700 }}>
-                    {state?.count ?? 0}
-                  </p>
-                  <p className="text-[12.5px] mt-1.5 leading-snug" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                    {today?.done
-                      ? others === 0
-                        ? t("cobreathe.stats_done_first", { defaultValue: "breathed today — you were the first breath of the day" })
-                        : t("cobreathe.stats_done", { count: others, defaultValue: `breathed today, you among them — with ${others} other ${others === 1 ? "person" : "people"}` })
-                      : (state?.count ?? 0) === 0
-                        ? t("cobreathe.stats_none_yet", { defaultValue: "have breathed yet today — yours can be the first breath" })
-                        : t("cobreathe.stats_count", { defaultValue: "breathed today — join your breath to theirs" })}
-                  </p>
+            {/* Brief intro — what Co-Breathing is. */}
+            <p style={{ color: WARM, fontFamily: SERIF, fontStyle: "italic", fontSize: 17, lineHeight: 1.55, marginBottom: 22 }}>
+              {t("cobreathe.intro_blurb", { defaultValue: "Co-Breathing is taking twelve breaths to remember our interconnectedness with one another and the planet — an embodied prayer for climate justice, and for the will to work together for the sake of all who share our common home." })}
+            </p>
+
+            {/* Settings — selectable option pills, the same pattern as a
+                devotion/contemplation start slide (selected = brighter green).
+                Topic leads (it sets the imagery), then length, then location. */}
+            <div className="flex flex-col gap-5 mb-7">
+              {/* Topic — changes the photos shown during the breath. */}
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
+                  {t("cobreathe.set_topic", { defaultValue: "Topic" })}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([["planet", t("cobreathe.topic_planet", { defaultValue: "The Planet" })], ["coffee", t("cobreathe.topic_coffee", { defaultValue: "Coffee" })]] as const).map(([val, label]) => {
+                    const on = topic === val;
+                    return (
+                      <button key={val} type="button" onClick={() => setTopic(val)}
+                        className="rounded-2xl py-3 transition-opacity hover:opacity-90 active:scale-[0.98]"
+                        style={{ background: on ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.16)", border: `1px solid ${on ? "rgba(46,107,64,0.65)" : "rgba(46,107,64,0.4)"}`, color: WARM, fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600 }}>
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-              {state && state.companions.length > 0 && (
-                <div className="flex items-center gap-2 mt-3.5">
-                  <Faces companions={state.companions} />
-                  <p className="text-[12px]" style={{ color: "rgba(143,175,150,0.75)", fontFamily: SPACE_GROTESK }}>
-                    {t("cobreathe.including", { names: withLine, defaultValue: `including ${withLine}` })}
-                  </p>
+
+              {/* Length — breath count, in 6-breath increments. */}
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
+                  {t("cobreathe.set_length", { defaultValue: "Length" })}
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[6, 12, 18, 24, 30, 36].map((n) => {
+                    const on = lengthBreaths === n;
+                    return (
+                      <button key={n} type="button" onClick={() => setLengthBreaths(n)}
+                        className="rounded-2xl py-3 transition-opacity hover:opacity-90 active:scale-[0.98]"
+                        style={{ background: on ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.16)", border: `1px solid ${on ? "rgba(46,107,64,0.65)" : "rgba(46,107,64,0.4)"}`, color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600 }}>
+                        {n}
+                        <span className="block text-[11px] font-normal mt-0.5" style={{ color: SAGE }}>{t("cobreathe.breaths", { defaultValue: "breaths" })}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
-              {state && (state.myDays > 0 || state.allBreaths > 0) && (
-                <div className="flex gap-3 mt-4 pt-3.5" style={{ borderTop: "1px solid rgba(46,107,64,0.22)" }}>
-                  <div className="flex-1">
-                    <p className="leading-none" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 19, fontWeight: 700 }}>
-                      {state.myDays}
-                    </p>
-                    <p className="text-[11px] mt-1" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>
-                      {t("cobreathe.stats_my_days", { defaultValue: "days you've breathed" })}
-                    </p>
-                  </div>
-                  <div className="flex-1">
-                    <p className="leading-none" style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 19, fontWeight: 700 }}>
-                      {state.allBreaths.toLocaleString()}
-                    </p>
-                    <p className="text-[11px] mt-1" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>
-                      {t("cobreathe.stats_all", { defaultValue: "breaths held across Phoebe" })}
-                    </p>
-                  </div>
+              </div>
+
+              {/* Location — share coarse presence ("same air"). */}
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.18em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
+                  {t("cobreathe.set_location", { defaultValue: "Location" })}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {([[true, t("common.on", { defaultValue: "On" })], [false, t("common.off", { defaultValue: "Off" })]] as const).map(([val, label]) => {
+                    const on = locationOn === val;
+                    return (
+                      <button key={String(val)} type="button" onClick={() => setLocationOn(val)}
+                        className="rounded-2xl py-3 transition-opacity hover:opacity-90 active:scale-[0.98]"
+                        style={{ background: on ? "rgba(46,107,64,0.35)" : "rgba(46,107,64,0.16)", border: `1px solid ${on ? "rgba(46,107,64,0.65)" : "rgba(46,107,64,0.4)"}`, color: WARM, fontFamily: SPACE_GROTESK, fontSize: 14, fontWeight: 600 }}>
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
             </div>
 
-            {/* ── CTA — right under the stats, above the teaching. Straight into
-                the synced breath (no location/options screen). */}
+            {/* Begin — into the synced breath. */}
             <button
               type="button"
               onClick={() => setMode("breathing")}
               className="w-full rounded-xl py-3.5 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-              style={{
-                background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)",
-                fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600, cursor: "pointer",
-              }}
+              style={{ background: "#2D5E3F", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600, cursor: "pointer" }}
             >
               {today?.done
                 ? t("cobreathe.begin_again", { defaultValue: "Breathe again" })
-                : t("cobreathe.begin", { defaultValue: "Co-Breathe — twelve breaths" })}
+                : t("cobreathe.begin_short", { defaultValue: "Begin" })}
             </button>
-
-            {/* Apple Music over the breath — opt-in. Shown ONLY when it can
-                actually play: iOS + the native CobreatheMusic plugin registered
-                + a real playlist configured. Never a control that does nothing. */}
-            {musicAvailable && (
-              <button type="button" onClick={toggleMusic} aria-pressed={musicOn}
-                className="mt-3 mx-auto flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold active:scale-[0.97]"
-                style={{
-                  background: musicOn ? "rgba(46,107,64,0.85)" : "rgba(46,107,64,0.10)",
-                  color: musicOn ? WARM : "rgba(143,175,150,0.9)",
-                  border: `1px solid ${musicOn ? "rgba(46,107,64,0.6)" : "rgba(46,107,64,0.3)"}`,
-                  fontFamily: SPACE_GROTESK,
-                }}>
-                ♪ {musicOn
-                  ? t("cobreathe.music_on", { defaultValue: "Music on" })
-                  : t("cobreathe.music_off", { defaultValue: "Play music while you breathe" })}
-              </button>
-            )}
-
-            <p className="text-[12px] mt-3 text-center px-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SERIF, fontStyle: "italic" }}>
-              {t("cobreathe.caption", { defaultValue: "About two and a half minutes — it counts toward your contemplation goal. Sit comfortably; let the circle pace you." })}
-            </p>
-
-            <div className="mb-6" />
-
-            {/* ── Information — the weekly intention, then the teaching. */}
-
-            {/* This week's intention */}
-            <div
-              className="rounded-2xl p-4 mb-4 flex gap-3"
-              style={{ background: "rgba(193,127,36,0.08)", border: "1px solid rgba(193,127,36,0.28)" }}
-            >
-              <span className="text-2xl leading-none mt-0.5">{focus.emoji}</span>
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-widest mb-1" style={{ color: "#D9A45B", fontFamily: SPACE_GROTESK }}>
-                  {t("cobreathe.this_week", { defaultValue: "This week we breathe for" })}
-                </p>
-                <p className="text-[14px] font-bold mb-0.5" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                  {t(`cobreathe.focus.${focus.key}.title`, { defaultValue: focus.title })}
-                </p>
-                <p className="text-[13px] leading-relaxed" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>
-                  {t(`cobreathe.focus.${focus.key}.line`, { defaultValue: focus.line })}
-                </p>
-              </div>
-            </div>
 
             {/* Learn more — the con-spire framing, the essay, and the justice
                 grounding now live on their own page so this screen stays

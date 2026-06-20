@@ -46,8 +46,8 @@ export function rhythmGradientRgb(i: number, n: number): string {
   // darker green across the day's cards, so the set reads as one family that
   // rests naturally on the dark forest background. No teal/violet drift.
   const hue = 146;                      // Phoebe forest green, held constant
-  const sat = 0.40 - 0.05 * t;          // chroma eases down a touch toward the darker end
-  const light = 0.66 - 0.34 * t;        // a CLEAR cascade: lighter green (top) → darker green (bottom)
+  const sat = 0.42 - 0.12 * t;          // chroma eases down toward the darker end
+  const light = 0.84 - 0.66 * t;        // STRONG cascade: pale sage (top) → deep forest green (bottom)
   // HSL → RGB.
   const c = (1 - Math.abs(2 * light - 1)) * sat;
   const hp = hue / 60;
@@ -365,7 +365,7 @@ function PracticeCard({
     const heroRow = (
       <div
         className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
-        style={{ background: `rgba(${rgb},0.16)`, border: `1px solid rgba(${rgb},0.32)`, opacity: waiting ? 0.8 : 1 }}
+        style={{ background: `rgba(${rgb},0.30)`, border: `1px solid rgba(${rgb},0.46)`, opacity: waiting ? 0.8 : 1 }}
       >
         <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />
         <div className="flex-1 px-5 py-5">
@@ -435,7 +435,7 @@ function PracticeCard({
   const row = (
     <motion.div
       className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
-      style={{ background: `rgba(${rgb},0.14)`, border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1 }}
+      style={{ background: `rgba(${rgb},0.28)`, border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1 }}
       animate={pulse ? { borderColor: [restBorder, `rgba(${rgb},0.55)`, restBorder] } : undefined}
       transition={pulse ? { duration: 2.2, repeat: Infinity, ease: "easeInOut" } : undefined}
     >

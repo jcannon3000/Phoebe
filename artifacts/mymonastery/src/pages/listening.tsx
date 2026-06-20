@@ -44,7 +44,7 @@ export default function ListeningPage() {
 
   // The whole log: did you listen today? (No amount — just mark it done.)
   function logToday() {
-    saveListeningEntry({ minutes: 0, songs: 0, medium, what: streaming ? "" : what });
+    saveListeningEntry({ minutes: 0, songs: 0, medium, what: what.trim() });
     markPracticeDoneToday("listening");
     setView("done");
   }
@@ -140,20 +140,20 @@ export default function ListeningPage() {
         {streaming ? (
           <SacredLibrary />
         ) : (
-          <>
-            <div className="mb-3 rounded-2xl px-4 py-3.5 flex items-center gap-3" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.20)" }}>
-              <span className="text-[22px] leading-none" aria-hidden>{activeMedium.emoji}</span>
-              <p className="text-[13.5px] leading-snug" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{activeMedium.cue}</p>
-            </div>
-            <input
-              value={what}
-              onChange={(e) => setWhat(e.target.value)}
-              placeholder="What are you listening to?"
-              className="w-full rounded-2xl px-4 py-3.5 mb-4 text-[15px] outline-none"
-              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", color: WARM, fontFamily: "Georgia, serif" }}
-            />
-          </>
+          <div className="mb-3 rounded-2xl px-4 py-3.5 flex items-center gap-3" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.20)" }}>
+            <span className="text-[22px] leading-none" aria-hidden>{activeMedium.emoji}</span>
+            <p className="text-[13.5px] leading-snug" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{activeMedium.cue}</p>
+          </div>
         )}
+        {/* What you listened to — recorded for EVERY medium (including streaming)
+            so the history shows the music, not just "Streaming". */}
+        <input
+          value={what}
+          onChange={(e) => setWhat(e.target.value)}
+          placeholder={streaming ? "What did you listen to?" : "What are you listening to?"}
+          className="w-full rounded-2xl px-4 py-3.5 mb-4 text-[15px] outline-none"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", color: WARM, fontFamily: "Georgia, serif" }}
+        />
 
         <button
           onClick={logToday}

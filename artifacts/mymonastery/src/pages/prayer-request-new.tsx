@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { usePeople } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
-import { DrumPicker } from "@/components/DrumPicker";
 
 // ── Visual language ─────────────────────────────────────────────────
 // A calm DARK-BLUE surface (the app's reflection blue, #6FAF85, family) —
@@ -98,14 +97,6 @@ function useKindCopy(): Record<RequestKind, { emoji: string; eyebrow: string; ti
 // On success we return to /prayer-list, where the new card will show up
 // under "Prayer Requests".
 
-const stepVariants = {
-  initial: { opacity: 0, x: 20 },
-  animate: { opacity: 1, x: 0 },
-  exit:    { opacity: 0, x: -20 },
-};
-
-type Step = 0 | 1;
-
 export default function PrayerRequestNew() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
@@ -121,17 +112,14 @@ export default function PrayerRequestNew() {
   }, [search]);
   const copy = KIND_COPY[kind];
 
-  const [step, setStep] = useState<Step>(0);
   const [body, setBody] = useState("");
-  // Default to a single day — most requests are for "today"; the roller lets
-  // them dial it up. (1–14 days via the DrumPicker below.)
+  // Default to a single day — most requests are for "today"; the dropdown lets
+  // them dial it up (1–7 days).
   const [days, setDays] = useState<number>(1);
   const [error, setError] = useState("");
-  // Tag picker — userIds of people the requester has named in this
-  // prayer. Sent in the POST body; server fans out a push to each
-  // and grants them request-scoped visibility regardless of garden
-  // membership. Reset on success when the form unmounts.
-  const [taggedUserIds, setTaggedUserIds] = useState<number[]>([]);
+  // This flow is community-only now (the "ask one person" path lives on the home
+  // — tap a face). So no tagged users / directOnly here.
+  const taggedUserIds: number[] = [];
 
   // Life-event extras — a short title + the date it happens. Drives the
   // "how did it go?" follow-up. The body still holds the prayer focus.
@@ -141,7 +129,7 @@ export default function PrayerRequestNew() {
   const todayStr = new Date().toLocaleDateString("en-CA");
 
   const bodyRef = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => { if (step === 0) bodyRef.current?.focus(); }, [step]);
+  useEffect(() => { bodyRef.current?.focus(); }, []);
 
   // Pull the user's most-recent prayer request to offer a "renew this
   // instead?" card under the textarea on step 0. Only renders for an
@@ -198,24 +186,19 @@ export default function PrayerRequestNew() {
     },
   });
 
-  function handleBodyNext() {
+  // One slide now: validate, then submit. (Life events also carry a title + date.)
+  function handleSubmit() {
     if (body.trim().length === 0) { setError(t("prayer_request.write_request_first")); return; }
-    // Life events carry a title + date and derive their own lifetime, so they
-    // skip the 3/7-day step and submit straight from here.
     if (isLifeEvent) {
       if (eventTitle.trim().length === 0) { setError(t("prayer_request.life_event_need_title", { defaultValue: "Give it a short title." })); return; }
       if (!eventDate) { setError(t("prayer_request.life_event_need_date", { defaultValue: "Pick the date it happens." })); return; }
-      setError("");
-      createMutation.mutate();
-      return;
     }
     setError("");
-    setStep(1);
+    createMutation.mutate();
   }
 
   function handleBack() {
-    if (step === 0) { setLocation("/prayer-list"); return; }
-    setStep((s) => (s - 1) as Step);
+    setLocation("/prayer-list");
   }
 
   // Auth guard — same pattern as the other template pages
@@ -245,202 +228,106 @@ export default function PrayerRequestNew() {
       </div>
 
       <div style={{ maxWidth: 480, margin: "0 auto", width: "100%", padding: "22px 24px calc(env(safe-area-inset-bottom) + var(--kb-inset, 0px) + 24px)" }}>
-        <AnimatePresence mode="wait">
+        {/* One slide — write the request, choose how long, share. */}
+        <div>
+          <h1 style={{ fontSize: 23, lineHeight: 1.2, fontWeight: 700, color: CREAM, fontFamily: SPACE, letterSpacing: "-0.02em", margin: 0, marginBottom: 22 }}>
+            {copy.title}
+          </h1>
 
-          {/* Step 0 — Write the request */}
-          {step === 0 && (
-            <motion.div
-              key="s0"
-              variants={stepVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{ duration: 0.2 }}
-            >
-              {/* Title only — the "PRAYER REQUEST" eyebrow + serif subtitle were
-                  removed per request (redundant with the title + the placeholder
-                  prompt below). */}
-              <h1 style={{ fontSize: 23, lineHeight: 1.2, fontWeight: 700, color: CREAM, fontFamily: SPACE, letterSpacing: "-0.02em", margin: 0, marginBottom: 22 }}>
-                {copy.title}
-              </h1>
-
-              {/* Life-event: a short title + the date it happens. */}
-              {isLifeEvent && (
-                <div className="space-y-3 mb-5">
-                  <input
-                    type="text"
-                    value={eventTitle}
-                    onChange={(e) => { setEventTitle(e.target.value.slice(0, 80)); setError(""); }}
-                    placeholder={t("prayer_request.life_event_title_placeholder", { defaultValue: "What is it? e.g. Knee surgery" })}
-                    className="w-full px-4 py-3.5 text-base"
-                    style={{ ...glassField, fontFamily: SPACE }}
-                  />
-                  <div>
-                    <label className="text-[12px] block mb-1.5" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
-                      {t("prayer_request.life_event_date_label", { defaultValue: "When does it happen?" })}
-                    </label>
-                    <input
-                      type="date"
-                      value={eventDate}
-                      min={todayStr}
-                      onChange={(e) => { setEventDate(e.target.value); setError(""); }}
-                      className="w-full px-4 py-3.5 text-base"
-                      style={{ ...glassField, fontFamily: SPACE, colorScheme: "dark" }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <textarea
-                ref={bodyRef}
-                value={body}
-                onChange={(e) => { setBody(e.target.value.slice(0, 1000)); setError(""); }}
-                rows={4}
-                placeholder={copy.placeholder}
-                className="w-full px-5 py-4 text-base resize-none"
-                style={{
-                  ...glassField,
-                  minHeight: 140,
-                  fontFamily: SPACE,
-                  fontSize: 16,
-                  lineHeight: 1.6,
-                }}
+          {/* Life-event: a short title + the date it happens. */}
+          {isLifeEvent && (
+            <div className="space-y-3 mb-5">
+              <input
+                type="text"
+                value={eventTitle}
+                onChange={(e) => { setEventTitle(e.target.value.slice(0, 80)); setError(""); }}
+                placeholder={t("prayer_request.life_event_title_placeholder", { defaultValue: "What is it? e.g. Knee surgery" })}
+                className="w-full px-4 py-3.5 text-base"
+                style={{ ...glassField, fontFamily: SPACE }}
               />
-              <p className="text-[11px] mb-3 text-right" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE, marginTop: 6 }}>
-                {t("prayer_request.char_count", { count: body.length })}
-              </p>
-
-              {/* Audience — to a fellow (private, just between you two) or to
-                  everyone you're connected with (the default garden feed).
-                  Picking a fellow tags them + makes the request directOnly. */}
-              <AudiencePicker
-                selectedIds={taggedUserIds}
-                onChange={setTaggedUserIds}
-              />
-
-              {error && <p className="text-sm mb-4" style={{ color: "#C47A65" }}>{error}</p>}
-
-              <button
-                onClick={handleBodyNext}
-                disabled={body.trim().length === 0 || (isLifeEvent && createMutation.isPending)}
-                className="w-full py-4 text-base font-semibold disabled:opacity-40 active:scale-[0.99] transition-all"
-                style={{
-                  background: "linear-gradient(180deg, #2D5E3F 0%, #1F4E33 100%)",
-                  color: CREAM,
-                  fontFamily: SPACE,
-                  borderRadius: 20,
-                  border: "1px solid rgba(143,175,150,0.4)",
-                  boxShadow: "0 10px 30px rgba(20,46,30,0.5), inset 0 1px 0 rgba(255,255,255,0.07)",
-                }}
-              >
-                {isLifeEvent
-                  ? (createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community"))
-                  : t("prayer_request.continue_button")}
-              </button>
-
-              {/* Renew-instead card — only when the user has a previous
-                  prayer request that's expired or released. Tapping the
-                  green pill renews it for another 7 days and routes to
-                  /prayer-list, skipping the new-request submission
-                  entirely. The textarea above stays focused so the
-                  user can still write something fresh if they prefer. */}
-              {showRenewCard && lastMine && (
-                <div
-                  className="mt-7 p-4"
-                  style={{
-                    background: GLASS,
-                    border: `1px solid ${GLASS_BORDER}`,
-                    borderRadius: 18,
-                    backdropFilter: "blur(8px)",
-                    WebkitBackdropFilter: "blur(8px)",
-                  }}
-                >
-                  <p
-                    className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2"
-                    style={{ color: "rgba(143,175,150,0.6)" }}
-                  >
-                    {t("prayer_request.or_renew")}
-                  </p>
-                  <p
-                    className="text-[14px] italic leading-snug mb-3"
-                    style={{
-                      color: "rgba(232,217,176,0.85)",
-                      fontFamily: "Georgia, 'Times New Roman', serif",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                    }}
-                  >
-                    {lastMine.body}
-                  </p>
-                  <button
-                    onClick={() => renewMutation.mutate(lastMine.id)}
-                    disabled={renewMutation.isPending}
-                    className="text-xs font-semibold rounded-full px-4 py-2 disabled:opacity-50"
-                    style={{ background: "rgba(46,107,64,0.45)", color: "#F0EDE6" }}
-                  >
-                    {renewMutation.isPending ? t("prayer_request.renewing") : t("prayer_request.renew_for_7_days")}
-                  </button>
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* Step 1 — Duration */}
-          {step === 1 && (
-            <motion.div
-              key="s1"
-              variants={stepVariants}
-              initial="initial"
-              animate="animate"
-              exit="exit"
-              transition={{ duration: 0.2 }}
-            >
-              <p style={{ fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", fontWeight: 600, color: SAGE_DIM, fontFamily: SPACE, margin: 0, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}>
-                <span aria-hidden style={{ fontSize: 15 }}>🕊️</span>
-                {t("prayer_request.eyebrow_duration", { defaultValue: "How long" })}
-              </p>
-              <h1 style={{ fontSize: "clamp(22px, 6.2vw, 29px)", lineHeight: 1.18, fontWeight: 700, color: CREAM, fontFamily: SPACE, letterSpacing: "-0.02em", margin: 0, marginBottom: 12 }}>
-                {t("prayer_request.duration_question")}
-              </h1>
-              <p style={{ fontSize: 16, lineHeight: 1.5, fontStyle: "italic", color: SAGE, fontFamily: SERIF, margin: 0, marginBottom: 26 }}>
-                {t("prayer_request.duration_subtitle")}
-              </p>
-
-              {/* Duration roller — dial how many days to carry it (default 1). */}
-              <div className="mb-8">
-                <DrumPicker
-                  value={days}
-                  onChange={setDays}
-                  options={Array.from({ length: 14 }, (_, i) => i + 1).map((d) => ({
-                    value: d,
-                    label: t("prayer_request.n_days", { count: d, defaultValue: d === 1 ? "1 day" : `${d} days` }),
-                  }))}
+              <div>
+                <label className="text-[12px] block mb-1.5" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {t("prayer_request.life_event_date_label", { defaultValue: "When does it happen?" })}
+                </label>
+                <input
+                  type="date"
+                  value={eventDate}
+                  min={todayStr}
+                  onChange={(e) => { setEventDate(e.target.value); setError(""); }}
+                  className="w-full px-4 py-3.5 text-base"
+                  style={{ ...glassField, fontFamily: SPACE, colorScheme: "dark" }}
                 />
               </div>
-
-              {error && <p className="text-sm mb-4" style={{ color: "#C47A65" }}>{error}</p>}
-
-              <button
-                onClick={() => createMutation.mutate()}
-                disabled={createMutation.isPending}
-                className="w-full py-4 text-base font-semibold disabled:opacity-40 active:scale-[0.99] transition-all"
-                style={{
-                  background: "linear-gradient(180deg, #2D5E3F 0%, #1F4E33 100%)",
-                  color: CREAM,
-                  fontFamily: SPACE,
-                  borderRadius: 20,
-                  border: "1px solid rgba(143,175,150,0.4)",
-                  boxShadow: "0 10px 30px rgba(20,46,30,0.5), inset 0 1px 0 rgba(255,255,255,0.07)",
-                }}
-              >
-                {createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community")}
-              </button>
-            </motion.div>
+            </div>
           )}
 
-        </AnimatePresence>
+          <textarea
+            ref={bodyRef}
+            value={body}
+            onChange={(e) => { setBody(e.target.value.slice(0, 1000)); setError(""); }}
+            rows={4}
+            placeholder={copy.placeholder}
+            className="w-full px-5 py-4 text-base resize-none"
+            style={{ ...glassField, minHeight: 140, fontFamily: SPACE, fontSize: 16, lineHeight: 1.6 }}
+          />
+          <p className="text-[11px] mb-5 text-right" style={{ color: "rgba(143,175,150,0.5)", fontFamily: SPACE, marginTop: 6 }}>
+            {t("prayer_request.char_count", { count: body.length })}
+          </p>
+
+          {/* How long to carry it — a simple dropdown (1–7 days), in the spot the
+              audience picker used to sit. Life events derive their own lifetime
+              from the event date, so the dropdown is hidden for them. */}
+          {!isLifeEvent && (
+            <div className="mb-6">
+              <p className="text-[12px] font-semibold mb-2" style={{ color: SAGE, fontFamily: SPACE }}>
+                {t("prayer_request.duration_question", { defaultValue: "How long should we carry it?" })}
+              </p>
+              <select
+                value={days}
+                onChange={(e) => setDays(Number(e.target.value))}
+                className="w-full px-4 py-3.5 text-base"
+                style={{ ...glassField, fontFamily: SPACE, fontSize: 16, colorScheme: "dark" }}
+              >
+                {Array.from({ length: 7 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={d}>{d === 1 ? "1 day" : `${d} days`}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {error && <p className="text-sm mb-4" style={{ color: "#C47A65" }}>{error}</p>}
+
+          {/* Flat CTA — solid green, no gradient/shadow. */}
+          <button
+            onClick={handleSubmit}
+            disabled={body.trim().length === 0 || createMutation.isPending}
+            className="w-full py-4 text-base font-semibold disabled:opacity-40 active:scale-[0.99] transition-all"
+            style={{ background: "#2D5E3F", color: CREAM, fontFamily: SPACE, borderRadius: 16, border: "none" }}
+          >
+            {createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community")}
+          </button>
+
+          {/* Renew-instead card — only when the user has a previous expired /
+              released request. */}
+          {showRenewCard && lastMine && (
+            <div className="mt-7 p-4" style={{ background: GLASS, border: `1px solid ${GLASS_BORDER}`, borderRadius: 18, backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}>
+              <p className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.6)" }}>
+                {t("prayer_request.or_renew")}
+              </p>
+              <p className="text-[14px] italic leading-snug mb-3" style={{ color: "rgba(232,217,176,0.85)", fontFamily: "Georgia, 'Times New Roman', serif", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                {lastMine.body}
+              </p>
+              <button
+                onClick={() => renewMutation.mutate(lastMine.id)}
+                disabled={renewMutation.isPending}
+                className="text-xs font-semibold rounded-full px-4 py-2 disabled:opacity-50"
+                style={{ background: "rgba(46,107,64,0.45)", color: "#F0EDE6" }}
+              >
+                {renewMutation.isPending ? t("prayer_request.renewing") : t("prayer_request.renew_for_7_days")}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </motion.div>
   );

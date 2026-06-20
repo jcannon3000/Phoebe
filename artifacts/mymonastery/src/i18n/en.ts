@@ -270,7 +270,7 @@ export const en = {
     placeholder_default: "Share something on your heart, an important event coming up, someone you care for, or a cause that is dear to you…",
     placeholder_life_event: "Starting a new job next Monday… my dad just went into hospice…",
     placeholder_justice: "A neighbor without housing… a hard ruling today…",
-    duration_question: "How long should we carry it? 🌿",
+    duration_question: "How long should we carry it?",
     duration_subtitle: "Choose a watch. You can renew or release it any time.",
     duration_3_days: "3 days",
     duration_3_tagline: "A short, steady watch",
