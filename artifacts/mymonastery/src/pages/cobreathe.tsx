@@ -11,11 +11,8 @@ import { addBreathsThisWeek } from "@/lib/cobreatheTally";
 import { useAuth } from "@/hooks/useAuth";
 import { usePeople } from "@/hooks/usePeople";
 import { useCobreatheSync } from "@/hooks/useCobreatheSync";
-import { useBetaStatus } from "@/hooks/useDemo";
-import { BreathNearInvite } from "@/components/BreathNearInvite";
 import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { computeFingerprint } from "@/lib/cobreatheOrder";
-import { getBreathBucket } from "@/lib/breathGeohash";
 import { COBREATHE_INTRO_SEEN_KEY } from "@/pages/cobreathe-about";
 
 // The Cobreathe photo library — every image in src/assets/cobreathe is bundled
@@ -157,13 +154,13 @@ export default function CobreathePage() {
   // slideshow first (the effect below), which begins the breath at its end.
   // First-time users see a single intro page (the practice + the why) before the
   // breath; after that, starting goes straight in.
-  const [mode, setMode] = useState<"intro" | "options" | "breathing" | "done">(() =>
-    wantsStart() && introSeen() ? "options" : "intro",
+  const [mode, setMode] = useState<"intro" | "breathing" | "done">(() =>
+    wantsStart() && introSeen() ? "breathing" : "intro",
   );
-  // Per-sit opt-in to an IN-PERSON session: share presence + a coarse location
-  // bucket so the breath can show who's breathing near you right now. Chosen on
-  // the options slide below; never persisted, just this sit.
-  const [joinInPerson, setJoinInPerson] = useState(false);
+  // Location-based "breathe with a fellow" is removed — Co-Breathe never shares
+  // location. Kept as a const false so the synchronized (global, location-free)
+  // breath stays solo.
+  const joinInPerson = false;
   // Hold the screen on while breathing — the breath has no touch input, so the
   // idle timer would otherwise dim/sleep the phone mid-sit.
   useKeepAwake(mode === "breathing");
@@ -208,20 +205,15 @@ export default function CobreathePage() {
     () => new Set((people ?? []).map((p) => p.userId).filter((x): x is number => x != null)),
     [people],
   );
-  // "Same air" (beta): share a coarse location bucket while breathing so we can
-  // surface who's nearby. Only when beta AND the user has opted in.
-  const { isBeta } = useBetaStatus();
-  const shareBreathLocation = isBeta && !!user?.shareBreathLocation;
+  // Location features removed — Co-Breathe shares NO location / presence /
+  // coords. It's the global synchronized breath only (everyone who keeps the
+  // practice on a given day shares one count); nothing geographic.
   const breathSync = useCobreatheSync(user, gardenUserIds, {
     fingerprint: COBREATHE_FINGERPRINT,
     active: mode === "breathing",
-    // Opting into an in-person session shares location for this sit and turns
-    // presence on for it (overriding the global setting), so "same air" works
-    // even if the persistent toggle is off. `shareCoords` (in-person only) shares
-    // PRECISE coords for the map; the plain coarse toggle stays geohash-only.
-    shareLocation: shareBreathLocation || joinInPerson,
-    presence: joinInPerson,
-    shareCoords: joinInPerson,
+    shareLocation: false,
+    presence: false,
+    shareCoords: false,
   });
 
   // "Same air" peak for the after-glow: nearby state clears the moment breathing
@@ -387,92 +379,6 @@ export default function CobreathePage() {
   const others = Math.max(0, (state?.count ?? 0) - (state?.done ? 1 : 0));
   const withLine = state ? companionLine(state.companions, state.companionCount) : "";
 
-  // Pre-practice options slide — reached from the contemplation picker and the
-  // intro "Begin" CTA. Lets the user opt into an in-person session (share a
-  // coarse location to see who's breathing near them) before tapping Start.
-  if (mode === "options") {
-    return (
-      <Layout>
-        {/* The begin slide, made to match the Contemplation begin screen: the
-            same drifting green glow (AnimatedBackground "pronounced") over the
-            #0C1F12 base, content resting in the centre, the choice + Start
-            stacked together. No globe emoji here (the globe lives in the breath). */}
-        <div
-          className="flex flex-col w-full"
-          style={{ minHeight: "calc(100dvh - var(--safe-top) - 56px)", background: "#0C1F12", position: "relative", isolation: "isolate" }}
-        >
-          <AnimatedBackground base="#0C1F12" variant="pronounced" />
-          <div className="flex flex-col flex-1 w-full max-w-md mx-auto px-6 pt-5 pb-10" style={{ position: "relative", zIndex: 1 }}>
-            <button
-              type="button"
-              onClick={() => { if (cameFromContemplation()) setLocation("/contemplation"); else setMode("intro"); }}
-              className="self-start text-[13px] transition-opacity hover:opacity-80"
-              style={{ color: SAGE, fontFamily: SPACE_GROTESK, background: "transparent", cursor: "pointer" }}
-            >
-              ← {t("common.back", { defaultValue: "Back" })}
-            </button>
-
-            {/* Title, the one choice, and Start — all resting in the centre. */}
-            <div className="flex-1 flex flex-col justify-center">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-center" style={{ color: "rgba(180,210,188,0.75)", fontFamily: SPACE_GROTESK }}>
-                {t("cobreathe.title", { defaultValue: "Cobreathe" })}
-              </p>
-              <h1 className="text-[30px] font-bold mt-2.5 mb-2 text-center leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                {t("cobreathe.options_title", { defaultValue: "Twelve breaths, together" })}
-              </h1>
-              <p className="text-[14.5px] mb-8 text-center leading-relaxed mx-auto" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic", maxWidth: 300 }}>
-                {t("cobreathe.options_sub", { defaultValue: "A shared breath for climate justice. Choose how you'll breathe, then begin." })}
-              </p>
-
-              {/* In-person session opt-in — share a coarse location for this sit. */}
-              <button
-                type="button"
-                role="switch"
-                aria-checked={joinInPerson}
-                onClick={() => {
-                  const next = !joinInPerson;
-                  setJoinInPerson(next);
-                  // Warm the location grant NOW (on the slide) rather than mid-breath.
-                  if (next) getBreathBucket({ force: false }).catch(() => undefined);
-                }}
-                className="w-full rounded-2xl p-4 flex items-start gap-3 text-left transition-colors active:scale-[0.99]"
-                style={{
-                  background: joinInPerson ? "rgba(46,107,64,0.30)" : "rgba(20,46,30,0.45)",
-                  border: `1px solid ${joinInPerson ? "rgba(110,180,130,0.65)" : "rgba(110,160,128,0.28)"}`,
-                  backdropFilter: "blur(2px)",
-                }}
-              >
-                <span style={{ fontSize: 22, lineHeight: 1.1 }} aria-hidden>📍</span>
-                <span className="flex-1 min-w-0">
-                  <span className="block text-[15px] font-semibold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                    {t("cobreathe.in_person_title", { defaultValue: "Breathe with a fellow" })}
-                  </span>
-                  <span className="block text-[12.5px] mt-0.5 leading-snug" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-                    {t("cobreathe.in_person_sub", { defaultValue: "Share your location to breathe one-to-one with your fellows — together in person, or joined across the miles on a map. Just for this sit." })}
-                  </span>
-                </span>
-                <span className="shrink-0 mt-0.5 relative" style={{ width: 44, height: 26, borderRadius: 999, background: joinInPerson ? "rgba(46,107,64,0.9)" : "rgba(143,175,150,0.25)", border: `1px solid ${joinInPerson ? "rgba(110,180,130,0.7)" : "rgba(143,175,150,0.35)"}`, transition: "background 0.16s" }}>
-                  <span style={{ position: "absolute", top: 2, left: joinInPerson ? 20 : 2, width: 20, height: 20, borderRadius: 999, background: "#F0EDE6", transition: "left 0.16s ease" }} />
-                </span>
-              </button>
-
-              {/* Start — directly below the choice, centred (mirrors "Start
-                  contemplation" sitting under the Length picker). */}
-              <button
-                type="button"
-                onClick={() => { setPeakNear({ count: 0, fellows: [] }); setCoBreathed(new Map()); setMode("breathing"); }}
-                className="w-full rounded-2xl py-4 mt-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-                style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(140,195,160,0.6)", fontFamily: SPACE_GROTESK, fontSize: 16.5, fontWeight: 700, cursor: "pointer", boxShadow: "0 6px 22px rgba(8,30,18,0.45)" }}
-              >
-                {t("cobreathe.start", { defaultValue: "Start" })}
-              </button>
-            </div>
-          </div>
-        </div>
-      </Layout>
-    );
-  }
-
   // Breathing is a full-screen portal — render it WITHOUT the Layout chrome
   // (app header + page background) so navigating in doesn't flash the page
   // behind the breath for a frame. (The breath's own opaque field covers the
@@ -488,10 +394,6 @@ export default function CobreathePage() {
         followSeed={breathSync.leader?.masterSeed}
         followStartEpochMs={breathSync.leader?.startEpochMs}
         onSession={(info) => breathSync.announceSession(info.startEpochMs, info.masterSeed)}
-        nearbyCount={breathSync.nearbyCount}
-        nearbyFellows={breathSync.nearbyFellows}
-        mapFellows={breathSync.mapFellows}
-        myLoc={breathSync.myLoc}
         coBreathingFellows={coBreathingFellows}
       />
     );
@@ -561,7 +463,7 @@ export default function CobreathePage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
-                {t("cobreathe.title", { defaultValue: "Cobreathe" })}
+                {t("cobreathe.title", { defaultValue: "Co-Breathe" })}
               </h1>
               <span
                 className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
@@ -633,10 +535,11 @@ export default function CobreathePage() {
               )}
             </div>
 
-            {/* ── CTA — right under the stats, above the teaching. */}
+            {/* ── CTA — right under the stats, above the teaching. Straight into
+                the synced breath (no location/options screen). */}
             <button
               type="button"
-              onClick={() => setMode("options")}
+              onClick={() => setMode("breathing")}
               className="w-full rounded-xl py-3.5 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
               style={{
                 background: "#2D5E3F", color: WARM, border: "1px solid rgba(46,107,64,0.7)",
@@ -645,7 +548,7 @@ export default function CobreathePage() {
             >
               {today?.done
                 ? t("cobreathe.begin_again", { defaultValue: "Breathe again" })
-                : t("cobreathe.begin", { defaultValue: "Cobreathe — twelve breaths" })}
+                : t("cobreathe.begin", { defaultValue: "Co-Breathe — twelve breaths" })}
             </button>
 
             {/* Apple Music over the breath — opt-in. Shown ONLY when it can
@@ -669,9 +572,6 @@ export default function CobreathePage() {
             <p className="text-[12px] mt-3 text-center px-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SERIF, fontStyle: "italic" }}>
               {t("cobreathe.caption", { defaultValue: "About two and a half minutes — it counts toward your contemplation goal. Sit comfortably; let the circle pace you." })}
             </p>
-
-            {/* "Same air" opt-in (beta) — shown once, only before the breath. */}
-            <BreathNearInvite />
 
             <div className="mb-6" />
 

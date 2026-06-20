@@ -63,7 +63,7 @@ function getContemplationStyle(): "silent" | "cobreathe" {
 // (cac/fdd/ssje) so the i18n coverage guard stays green.
 const PRAY_OPTIONS: { id: PrayChoice; pill: string }[] = [
   { id: "community", pill: "Community" },
-  { id: "cobreathe", pill: "Cobreathe" },
+  { id: "cobreathe", pill: "Co-Breathe" },
   { id: "devotion", pill: "Devotions" },
   { id: "offices", pill: "Office" },
 ];
@@ -71,7 +71,7 @@ const PRAY_OPTIONS: { id: PrayChoice; pill: string }[] = [
 // renders for that level (community = the "Pray Together 🙏" card).
 const PRAY_CARD: Record<PrayChoice, { emoji: string; label: string; sub: string }> = {
   community: { emoji: "🙏🏽", label: "Pray Together", sub: "Pray with your community" },
-  cobreathe: { emoji: "🌍", label: "Cobreathe", sub: "12 Breathes Together for Climate Justice" },
+  cobreathe: { emoji: "🌍", label: "Co-Breathe", sub: "12 Breathes Together for Climate Justice" },
   devotion: { emoji: "🛐", label: "Daily Devotion", sub: "A short morning & evening devotion" },
   offices: { emoji: "📖", label: "Daily Office", sub: "Morning & Evening Prayer" },
 };

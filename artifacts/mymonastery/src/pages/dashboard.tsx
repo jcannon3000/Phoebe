@@ -532,14 +532,6 @@ export function HomeAuthoringFAB() {
             className="flex flex-col gap-2 mb-1"
           >
             <button
-              onClick={() => { setOpen(false); setLocation("/prayer-partner"); }}
-              className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
-              style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
-            >
-              <p className="text-sm font-semibold" style={{ color: "#F0EDE6" }}>💚 {t("home_fab.heart_to_heart", { defaultValue: "Heart to Heart" })}</p>
-              <p className="text-xs mt-0.5" style={{ color: "#8FAF96" }}>{t("home_fab.heart_to_heart_sub", { defaultValue: "Share what's on your heart with a fellow, back and forth." })}</p>
-            </button>
-            <button
               onClick={() => { setOpen(false); setLocation("/pray-request/new?kind=request"); }}
               className="px-4 py-3 rounded-2xl shadow-lg text-left transition-colors"
               style={{ background: "#193F2A", border: "1px solid rgba(46,107,64,0.45)", minWidth: 240, boxShadow: "0 6px 20px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.35)" }}
@@ -6643,33 +6635,22 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
             not the day-of-week, so we want the in-app date visible
             there too). Half the top spacing so "Next" sits higher. */}
         <div className="mb-2" style={{ paddingTop: 2 }}>
-          {/* Beta users get a cleaner home: drop the date + feast eyebrow so the
-              "Next" rhythm starts right at the top. (The Events surface keeps its
-              title regardless.) */}
-          {!(isBeta && !eventsOnly) && (
-            <>
-              <p
-                className="mb-1"
-                style={{
-                  color: "#F0EDE6",
-                  fontSize: 22,
-                  fontWeight: 600,
-                  letterSpacing: "-0.02em",
-                  lineHeight: 1.2,
-                  fontFamily: "'Space Grotesk', sans-serif",
-                }}
-              >
-                {eventsOnly ? t("dashboard.events_title", { defaultValue: "Events" }) : format(new Date(), "EEEE, d MMMM")}
-              </p>
-              {/* Show the feast/Sunday/commemoration when there is one; otherwise
-                  fall back to the brand tagline. The events page swaps this for a
-                  short subtitle. */}
-              <div style={{ marginBottom: 10 }}>
-                {eventsOnly
-                  ? null
-                  : <LiturgicalDateHeader feastOnly fallbackText="A Place Set Apart for Connection" />}
-              </div>
-            </>
+          {/* The date + feast-day eyebrow is removed entirely. Only the Events
+              surface keeps a title. */}
+          {eventsOnly && (
+            <p
+              className="mb-1"
+              style={{
+                color: "#F0EDE6",
+                fontSize: 22,
+                fontWeight: 600,
+                letterSpacing: "-0.02em",
+                lineHeight: 1.2,
+                fontFamily: "'Space Grotesk', sans-serif",
+              }}
+            >
+              {t("dashboard.events_title", { defaultValue: "Events" })}
+            </p>
           )}
 
           {/* Plans ("How About") — share something you're going to and your

@@ -169,7 +169,7 @@ export default function ContemplationSetupPage() {
             <div className="grid grid-cols-2 gap-2">
               {([
                 { type: "contemplation" as SessionType, emoji: "🕯️", label: t("contsetup.silent", { defaultValue: "Contemplation" }), sub: t("contsetup.silent_sub", { defaultValue: "Silent sit" }), rgb: TEAL },
-                { type: "cobreathe" as SessionType, emoji: "🌍", label: t("contsetup.cobreathe", { defaultValue: "Cobreathe" }), sub: t("contsetup.cobreathe_sub", { defaultValue: "Breathe together" }), rgb: GREEN },
+                { type: "cobreathe" as SessionType, emoji: "🌍", label: t("contsetup.cobreathe", { defaultValue: "Co-Breathe" }), sub: t("contsetup.cobreathe_sub", { defaultValue: "Breathe together" }), rgb: GREEN },
               ]).map((o) => {
                 const on = current.type === o.type;
                 return (

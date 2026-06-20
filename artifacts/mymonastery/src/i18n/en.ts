@@ -1454,7 +1454,7 @@ export const en = {
     office_blurb_evening: "Close the day with the psalms, lessons, and prayers from the Book of Common Prayer.",
     climate_title: "Prayer for the climate",
     climate_blurb: "Pray today's intercession alongside the wider community caring for creation.",
-    cobreathe_title: "Cobreathe",
+    cobreathe_title: "Co-Breathe",
     cobreathe_blurb: "Twelve slow breaths, in one shared rhythm — a prayer for justice.",
     sign_in_blurb: "Already with Phoebe? Pick up where you left off.",
     learn_title: "Learn about Phoebe",

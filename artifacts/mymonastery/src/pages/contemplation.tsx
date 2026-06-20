@@ -373,7 +373,7 @@ function SessionRow({ s, onDelete, deleting }: { s: Session; onDelete: () => voi
         <p className="text-[12px] mt-0.5" style={{ color: SAGE, margin: 0 }}>
           {when ? formatSessionTime(when) : ""}
           {s.source === "cobreathe" && (
-            <span> · 🌍 {t("cobreathe.title", { defaultValue: "Cobreathe" })}</span>
+            <span> · 🌍 {t("cobreathe.title", { defaultValue: "Co-Breathe" })}</span>
           )}
         </p>
       </div>
@@ -789,7 +789,7 @@ export default function ContemplationPage() {
           }}
         >
           <CobreatheGlobe size={18} />
-          <span>{t("cobreathe.title", { defaultValue: "Cobreathe" })}</span>
+          <span>{t("cobreathe.title", { defaultValue: "Co-Breathe" })}</span>
         </div>
       </Link>
     </div>

@@ -125,7 +125,7 @@ export default function WelcomePublicPage() {
           <ChoiceCard
             href="/cobreathe?start=1"
             emoji={<CobreatheGlobe size={28} />}
-            title={t("welcome_public.cobreathe_title", { defaultValue: "Cobreathe" })}
+            title={t("welcome_public.cobreathe_title", { defaultValue: "Co-Breathe" })}
             blurb={t("welcome_public.cobreathe_blurb", { defaultValue: "Twelve slow breaths, in one shared rhythm — a prayer for justice." })}
             delay={0.09}
             onClick={() => primeAudio()}

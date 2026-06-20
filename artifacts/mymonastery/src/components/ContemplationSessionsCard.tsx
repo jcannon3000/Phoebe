@@ -88,7 +88,7 @@ export function ContemplationSessionsCard() {
         {sessions.map((s) => {
           const rgb = accent(s.type);
           const typeLabel = s.type === "cobreathe"
-            ? t("contcard.cobreathe", { defaultValue: "Cobreathe" })
+            ? t("contcard.cobreathe", { defaultValue: "Co-Breathe" })
             : t("contcard.silent", { defaultValue: "Contemplation" });
           return (
             <div key={s.id} className="rounded-2xl px-4 py-3 flex items-center gap-3" style={{ background: `rgba(${rgb},${s.done ? 0.16 : 0.09})`, border: `1px solid rgba(${rgb},${s.done ? 0.45 : 0.26})` }}>
