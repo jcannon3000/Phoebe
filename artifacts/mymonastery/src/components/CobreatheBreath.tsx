@@ -89,6 +89,28 @@ function phaseAt(pos: number): Phase {
 // breath. CSS-transitioned between the two.
 const FIELD_DIM = "#040D08";          // before sync — near-black green
 const FIELD_LIVE = "#0B2014";         // live — a touch lighter/greener
+
+// Per-breath haptic. The exhale ("out") is EXACTLY 1.618× as strong as the
+// inhale ("in") — the golden ratio, felt. Uses the native Core-Haptics plugin
+// (PhoebeAudio.smoothSwell, which takes a numeric peak intensity) so the ratio
+// is precise; falls back to Capacitor's discrete impact (light vs medium) on
+// web / older shells where only fixed styles exist.
+const HAPTIC_IN = 0.55;                       // inhale intensity (0–1)
+const HAPTIC_OUT = Math.min(1, HAPTIC_IN * 1.618); // exhale — 1.618× stronger
+function breathHaptic(out: boolean): void {
+  const peak = out ? HAPTIC_OUT : HAPTIC_IN;
+  try {
+    const audio = (window as unknown as {
+      Capacitor?: { Plugins?: { PhoebeAudio?: { smoothSwell?: (o: { durationMs: number; peak: number; sharpness: number }) => Promise<unknown> } } };
+    }).Capacitor?.Plugins?.PhoebeAudio;
+    if (audio?.smoothSwell) {
+      const r = audio.smoothSwell({ durationMs: 150, peak, sharpness: 0.5 });
+      if (r && typeof (r as Promise<unknown>).catch === "function") (r as Promise<unknown>).catch(() => {});
+      return;
+    }
+  } catch { /* fall through to discrete impact */ }
+  try { window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: out ? "medium" : "light" } })); } catch { /* web — silent */ }
+}
 // Vertical centre of the breath text — lowered toward the bottom third of the
 // screen so the breath sits low and there's room above.
 const BREATH_Y = "63%";
@@ -418,9 +440,8 @@ export function CobreatheBreath({
       } else if (phase !== lastPhaseRef.current) {
         lastPhaseRef.current = phase;
         if (isCounting) {
-          try {
-            window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } }));
-          } catch { /* no native shell on web — silent */ }
+          // A haptic on each phase turn; the exhale is 1.618× the inhale.
+          breathHaptic(phase === "out");
           // Sound ONLY on the inhale (the start of each breath), not the
           // exhale — one tone per breath, rising through the three lower slide
           // octaves (0,1,2) from a per-session counter that starts at 0.
