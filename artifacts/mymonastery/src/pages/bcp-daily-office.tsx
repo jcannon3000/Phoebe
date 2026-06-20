@@ -1506,6 +1506,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
             : "calc(env(safe-area-inset-bottom) + 112px)",
           display: "flex",
           flexDirection: "column",
+          // Slight drop shadow on all slide text (inherited) so it stays legible
+          // over the leaf backdrop.
+          textShadow: "0 1px 6px rgba(8,30,18,0.5)",
         }}
       >
         <div
