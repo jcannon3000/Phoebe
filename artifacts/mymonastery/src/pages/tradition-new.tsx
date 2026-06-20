@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,8 +40,14 @@ export default function TraditionNew() {
   const gatheringSlides = useGatheringSlides();
 
   const [imprintDone, setImprintDone] = useState(false);
+  const bgPhoto = useMemo(
+    () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
+    [],
+  );
   const [step, setStep] = useState<Step>(0);
-  const [template, setTemplate] = useState("");
+  // Every gathering is "name your own" now — the template picker (step 1) is gone,
+  // so the type is always custom and the flow skips straight from community → name.
+  const [template, setTemplate] = useState("custom");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
@@ -123,13 +130,13 @@ export default function TraditionNew() {
       const match = adminGroups.find(g => g.slug === slug);
       if (match) {
         setSelectedGroupId(match.id);
-        if (step === 0) setStep(1);
+        if (step === 0) setStep(2);
         return;
       }
     }
     if (adminGroups.length === 1) {
       setSelectedGroupId(adminGroups[0].id);
-      if (step === 0) setStep(1);
+      if (step === 0) setStep(2);
     }
   }, [adminGroups, selectedGroupId, step]);
 
@@ -297,12 +304,22 @@ export default function TraditionNew() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#091A10" }}>
+    <div className="min-h-screen flex flex-col" style={{ background: "#091A10", position: "relative" }}>
+      {/* A still leaves photo behind the creator, under a dark wash. */}
+      {bgPhoto && (
+        <>
+          <img src={bgPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, zIndex: 0 }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
+        </>
+      )}
+      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1, minHeight: "100%" }}>
       {/* Header */}
       <div className="px-6 pt-6 pb-4 flex items-center gap-4">
         <button
           onClick={() => {
             if (step === 0) { setLocation("/dashboard"); return; }
+            // The template picker (step 1) was removed, so step 2 goes back to 0.
+            if (step === 2) { setStep(0); return; }
             // Community flow skips the "Who" step (step 3) on the way
             // forward, so skip it on the way back too.
             if (step === 4 && selectedGroupId !== null) { setStep(2); return; }
@@ -338,7 +355,7 @@ export default function TraditionNew() {
                 {adminGroups.map(g => (
                   <button
                     key={g.id}
-                    onClick={() => { setSelectedGroupId(g.id); setStep(1); }}
+                    onClick={() => { setSelectedGroupId(g.id); setStep(2); }}
                     className={`px-5 py-4 rounded-xl text-left transition-all ${selectedGroupId === g.id ? "animate-turn-pulse" : ""}`}
                     style={selectedGroupId === g.id
                       ? { background: "#1A4A2E", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.65)" }
@@ -353,34 +370,8 @@ export default function TraditionNew() {
             </motion.div>
           )}
 
-          {/* Step 1 — What */}
-          {step === 1 && (
-            <motion.div key="s1" variants={stepVariants} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.2 }}>
-              <h1 className="text-2xl font-bold mb-2" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
-                What will you gather for? 🌿
-              </h1>
-              <p className="text-sm mb-8" style={{ color: "#8FAF96" }}>Recurring gatherings are where belonging forms.</p>
-
-              <div className="space-y-3">
-                {TEMPLATE_OPTIONS.map((o) => (
-                  <button
-                    key={o.value}
-                    onClick={() => handleTypeSelect(o.value)}
-                    className="w-full text-left p-4 rounded-2xl transition-all hover:shadow-md active:scale-[0.99]"
-                    style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.3)" }}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{o.emoji}</span>
-                      <div>
-                        <p className="font-semibold text-base" style={{ color: "#F0EDE6" }}>{o.label}</p>
-                        <p className="text-sm" style={{ color: "#8FAF96" }}>{o.tagline}</p>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </motion.div>
-          )}
+          {/* Step 1 (template picker) removed — every gathering is "name your
+              own" now, so the flow goes straight from community → name. */}
 
           {/* Step 2 — Name + Description */}
           {step === 2 && (
@@ -900,6 +891,7 @@ export default function TraditionNew() {
           )}
 
         </AnimatePresence>
+      </div>
       </div>
     </div>
   );
