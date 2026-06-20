@@ -3254,7 +3254,7 @@ function PrayedWithWeekRail() {
     // Ease the whole rail in once the faces are ready, rather than popping.
     // -mt-1 nudges the label up a touch, tightening the space above it.
     <motion.div className="mb-4 -mt-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, ease: "easeOut" }}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] mb-3" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SG }}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] mb-3" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SG, marginTop: 8 }}>
         {total} {total === 1 ? "person" : "people"} prayed with you this week
       </p>
       <div className="flex items-start gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
