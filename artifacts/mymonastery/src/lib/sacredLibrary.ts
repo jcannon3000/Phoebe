@@ -14,7 +14,7 @@ import { getValidAccessToken } from "@/lib/spotify";
 import { appleMusicAvailable, searchAppleCatalog } from "@/lib/appleMusic";
 import { apiRequest } from "@/lib/queryClient";
 
-export type SacredKind = "song" | "album" | "playlist";
+export type SacredKind = "artist" | "song" | "album" | "playlist";
 export type SacredService = "apple" | "spotify" | "other";
 
 export type SacredItem = {
@@ -32,7 +32,7 @@ export type SacredItem = {
 const STORE_KEY = "phoebe:sacred-library";
 export const SACRED_LIBRARY_EVENT = "phoebe:sacred-library-changed";
 
-export const KIND_EMOJI: Record<SacredKind, string> = { song: "🎵", album: "💿", playlist: "📃" };
+export const KIND_EMOJI: Record<SacredKind, string> = { artist: "🎤", song: "🎵", album: "💿", playlist: "📃" };
 export const SERVICE_LABEL: Record<SacredService, string> = { apple: "Apple Music", spotify: "Spotify", other: "Music" };
 
 function emit(): void {

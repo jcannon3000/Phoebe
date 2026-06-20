@@ -182,10 +182,18 @@ public class CobreatheMusicPlugin: CAPPlugin, CAPBridgedPlugin {
                     guard MusicAuthorization.currentStatus == .authorized else {
                         call.resolve(["results": [], "reason": "not-authorized"]); return
                     }
-                    var request = MusicCatalogSearchRequest(term: term, types: [Song.self, Album.self, Playlist.self])
+                    var request = MusicCatalogSearchRequest(term: term, types: [Artist.self, Song.self, Album.self, Playlist.self])
                     request.limit = 5
                     let response = try await request.response()
                     var results: [[String: Any]] = []
+                    for artist in response.artists {
+                        results.append([
+                            "id": artist.id.rawValue, "kind": "artist", "title": artist.name,
+                            "subtitle": "Artist",
+                            "artworkUrl": artist.artwork?.url(width: 160, height: 160)?.absoluteString ?? "",
+                            "url": artist.url?.absoluteString ?? "",
+                        ])
+                    }
                     for song in response.songs {
                         results.append([
                             "id": song.id.rawValue, "kind": "song", "title": song.title,

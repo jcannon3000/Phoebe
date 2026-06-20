@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { saveListeningEntry, listeningHistory, type ListeningMedium, type ListeningEntry } from "@/lib/listeningLog";
 import { EARTH_PHOTOS } from "@/lib/earthPhotos";
+import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrary";
 
 // Audio Divina — sacred listening, kept simple as a JOURNAL/TASK (like gratitude):
 // you put on music, then note what you listened to + how, and mark it done for the
@@ -38,6 +39,28 @@ export default function ListeningPage() {
   const [, navigate] = useLocation();
   const [view, setView] = useState<View>("log");
   const [what, setWhat] = useState("");
+  // Apple Music (→ Spotify) catalog suggestions for the "what" field: artists,
+  // songs, albums. Debounced; `picked` suppresses re-searching the text we just
+  // filled in from a tap. Falls back to plain typing when no source is available.
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [picked, setPicked] = useState(false);
+  useEffect(() => {
+    const q = what.trim();
+    if (picked || q.length < 2) { setResults([]); setSearching(false); return; }
+    let cancelled = false;
+    setSearching(true);
+    const h = window.setTimeout(async () => {
+      const r = await searchCatalog(q).catch(() => [] as SearchResult[]);
+      if (!cancelled) { setResults(r); setSearching(false); }
+    }, 350);
+    return () => { cancelled = true; window.clearTimeout(h); };
+  }, [what, picked]);
+  function chooseResult(r: SearchResult) {
+    setWhat(r.subtitle ? `${r.title} — ${r.subtitle}` : r.title);
+    setPicked(true);
+    setResults([]);
+  }
   // A still landscape behind the page (the shared non-animal set), picked once.
   const bgPhoto = useMemo(
     () => (EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[Math.floor(Math.random() * EARTH_PHOTOS.length)]! : null),
@@ -145,11 +168,40 @@ export default function ListeningPage() {
         </p>
         <input
           value={what}
-          onChange={(e) => setWhat(e.target.value)}
+          onChange={(e) => { setWhat(e.target.value); setPicked(false); }}
           placeholder="A song, album, or artist…"
-          className="w-full rounded-2xl px-4 py-3.5 mb-6 text-[15px] outline-none"
+          className="w-full rounded-2xl px-4 py-3.5 text-[15px] outline-none"
           style={glassField}
         />
+        {/* Apple Music suggestions — artists, songs, albums. Tap one to fill the
+            field. Stays empty (plain typing) when no catalog source is wired. */}
+        {!picked && (searching || results.length > 0) && (
+          <div className="mt-2 flex flex-col gap-1.5 max-h-[44vh] overflow-y-auto">
+            {searching && results.length === 0 && (
+              <p className="text-[12px] italic px-1 py-1.5" style={{ color: SAGE, fontFamily: SERIF }}>Searching…</p>
+            )}
+            {results.map((r, i) => (
+              <button
+                key={`${r.service}-${r.appleId ?? r.url}-${i}`}
+                type="button"
+                onClick={() => chooseResult(r)}
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left active:scale-[0.99]"
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}
+              >
+                {r.artworkUrl ? (
+                  <img src={r.artworkUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" />
+                ) : (
+                  <span className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-[18px]" style={{ background: "rgba(46,107,64,0.3)" }} aria-hidden>{KIND_EMOJI[r.kind]}</span>
+                )}
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{r.title}</span>
+                  <span className="block text-[11.5px] truncate" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{r.subtitle ? `${r.subtitle} · ` : ""}{r.kind}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="mb-6" />
 
         {/* 2 — How did you listen? (dropdown, 4 options) */}
         <p className="text-[10.5px] uppercase tracking-[0.18em] mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>

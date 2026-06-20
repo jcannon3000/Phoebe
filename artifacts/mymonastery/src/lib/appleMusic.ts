@@ -23,7 +23,7 @@ export function appleMusicConfigured(): boolean {
   return APPLE_MUSIC_PLAYLIST_ID.trim().length > 0;
 }
 
-export type AppleSearchResult = { id: string; kind: "song" | "album" | "playlist"; title: string; subtitle: string; artworkUrl: string; url: string };
+export type AppleSearchResult = { id: string; kind: "artist" | "song" | "album" | "playlist"; title: string; subtitle: string; artworkUrl: string; url: string };
 export type AppleLibraryItem = { id: string; kind: "playlist"; title: string; subtitle: string; artworkUrl: string };
 
 interface AppleMusicPlugin {
