@@ -11,6 +11,7 @@ import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import splashForestPath from "@/assets/splash/forest-path.jpg";
 import i18n from "@/i18n";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -839,7 +840,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // psalm versicle again. A cache hit makes this invisible (loading is false).
     if (alreadyOpenedToday) {
       return (
-        <div style={{ minHeight: "100dvh", background: BG, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ minHeight: "100dvh", background: BG, position: "relative", isolation: "isolate", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <img src={splashForestPath} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.62) 0%, rgba(8,18,12,0.5) 45%, rgba(8,18,12,0.78) 100%)" }} />
           <div aria-hidden className="animate-spin" style={{ width: 22, height: 22, borderRadius: "50%", border: "2px solid rgba(143,175,150,0.25)", borderTopColor: "rgba(143,175,150,0.8)" }} />
         </div>
       );
@@ -856,10 +859,15 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           ? { text: "The Lord grant us a quiet night and a peaceful end.", cite: "Compline" }
           : { text: "O Lord, open my lips, and my mouth shall proclaim your praise.", cite: "Psalm 51:15" };
     return (
-      <div style={{ minHeight: "100dvh", background: BG, position: "relative", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 40px", overflow: "hidden" }}>
+      <div style={{ minHeight: "100dvh", background: BG, position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 40px", overflow: "hidden" }}>
+        {/* The same fixed, bundled forest-path leaf photo the splash uses — set,
+            not loaded — under a darkened wash so the versicle reads clearly.
+            A held breath into the office, on the same image as the app open. */}
+        <img src={splashForestPath} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }} />
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.62) 0%, rgba(8,18,12,0.5) 45%, rgba(8,18,12,0.78) 100%)" }} />
         {/* A soft single-hue glow — fades only its alpha to 0 over several stops
             so it reads as a smooth wash, not a banded ring. */}
-        <div aria-hidden style={{ position: "absolute", inset: 0, background: "radial-gradient(120% 95% at 50% 34%, rgba(46,107,64,0.20) 0%, rgba(46,107,64,0.12) 28%, rgba(46,107,64,0.05) 54%, rgba(46,107,64,0) 82%)" }} />
+        <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "radial-gradient(120% 95% at 50% 34%, rgba(46,107,64,0.20) 0%, rgba(46,107,64,0.12) 28%, rgba(46,107,64,0.05) 54%, rgba(46,107,64,0) 82%)" }} />
         <div style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, animation: "office-enter 1s ease backwards" }}>
           <p
             style={{
