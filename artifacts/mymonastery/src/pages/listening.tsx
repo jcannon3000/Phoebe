@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { saveListeningEntry, listeningHistory, type ListeningMedium, type ListeningEntry } from "@/lib/listeningLog";
+import { EARTH_PHOTOS } from "@/lib/earthPhotos";
 
 // Audio Divina — sacred listening, kept simple as a JOURNAL/TASK (like gratitude):
 // you put on music, then note what you listened to + how, and mark it done for the
@@ -37,6 +38,11 @@ export default function ListeningPage() {
   const [, navigate] = useLocation();
   const [view, setView] = useState<View>("log");
   const [what, setWhat] = useState("");
+  // A still landscape behind the page (the shared non-animal set), picked once.
+  const bgPhoto = useMemo(
+    () => (EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[Math.floor(Math.random() * EARTH_PHOTOS.length)]! : null),
+    [],
+  );
   const [medium, setMedium] = useState<ListeningMedium>(() => {
     try {
       const v = localStorage.getItem("phoebe:audio-divina-medium");
@@ -109,6 +115,18 @@ export default function ListeningPage() {
   // ——— Log (the main screen) — a simple two-field journal entry ———
   return (
     <Layout>
+      {/* A still landscape behind the page, under a dark wash for legibility. */}
+      {bgPhoto && (
+        <>
+          <img
+            src={bgPhoto}
+            alt=""
+            aria-hidden
+            style={{ position: "fixed", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.3, zIndex: -1 }}
+          />
+          <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
+        </>
+      )}
       <div className="max-w-xl mx-auto w-full">
         {/* Header */}
         <div className="flex items-start gap-3 mb-7">
