@@ -35,6 +35,13 @@ class MainViewController: CAPBridgeViewController {
         // App target's Target Membership in Xcode (it ships in the repo but isn't
         // in the target yet) AND MusicKit is enabled for the App ID in the portal.
         bridge?.registerPluginInstance(CobreatheMusicPlugin())
+        // PhoebeAudio (Core-Haptics smooth swell + the prayer-bell scheduler) is
+        // ALSO only referenced from comments now, so the linker dead-strips it and
+        // window.Capacitor.Plugins.PhoebeAudio was undefined — which is why the
+        // Cobreathe "done" payoff fell back to the JS impact-density approximation
+        // (a string of taps) instead of the single continuous CHHaptic swell.
+        // Register it explicitly so the native smooth swell + bells run.
+        bridge?.registerPluginInstance(PhoebeAudioPlugin())
     }
 
     // Edge-to-edge: render the WebView UNDER a transparent status bar

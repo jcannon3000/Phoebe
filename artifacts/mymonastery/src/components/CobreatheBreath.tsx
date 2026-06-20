@@ -34,7 +34,10 @@ const SERIF = "Georgia, serif";
 // cycles ≈ 2:24. The synced schedule below is derived from CYCLE_MS, so changing
 // these here re-times the global breath for everyone at once.
 const INHALE_MS = 6000;
-const EXHALE_MS = 6000;
+// The exhale is 1.618× as long as the inhale — a longer, settling breath out
+// (golden ratio). The scale + ring fills below derive from INHALE_MS/EXHALE_MS
+// separately, so the asymmetry flows through everything.
+const EXHALE_MS = Math.round(INHALE_MS * 1.618);
 // Each phase (in, out) is one PHASE_MS slice of the cycle — used to derive a
 // globally-synced octave that rotates 0→1→2→3 across phases.
 const PHASE_MS = INHALE_MS;
