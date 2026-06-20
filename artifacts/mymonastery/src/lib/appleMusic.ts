@@ -24,6 +24,7 @@ export function appleMusicConfigured(): boolean {
 }
 
 export type AppleSearchResult = { id: string; kind: "song" | "album" | "playlist"; title: string; subtitle: string; artworkUrl: string; url: string };
+export type AppleLibraryItem = { id: string; kind: "playlist"; title: string; subtitle: string; artworkUrl: string };
 
 interface AppleMusicPlugin {
   authorize(): Promise<{ status: string }>;
@@ -31,7 +32,11 @@ interface AppleMusicPlugin {
   play(opts: { playlistId: string; shuffle: boolean }): Promise<{ playing: boolean; reason?: string }>;
   playItem(opts: { id: string; kind: string }): Promise<{ playing: boolean; reason?: string }>;
   searchCatalog(opts: { term: string }): Promise<{ results: AppleSearchResult[]; reason?: string }>;
-  nowPlaying(): Promise<{ title: string; subtitle?: string; artworkUrl?: string }>;
+  getLibraryPlaylists(): Promise<{ items: AppleLibraryItem[]; reason?: string }>;
+  playLibraryItem(opts: { id: string }): Promise<{ playing: boolean; reason?: string }>;
+  skipNext(): Promise<void>;
+  skipPrevious(): Promise<void>;
+  nowPlaying(): Promise<{ title: string; subtitle?: string; artworkUrl?: string; playbackTime?: number; isPlaying?: boolean }>;
   pause(): Promise<void>;
   resume(): Promise<void>;
   stop(): Promise<void>;
@@ -125,7 +130,7 @@ export async function searchAppleCatalog(term: string): Promise<AppleSearchResul
 }
 
 /** The currently-playing entry, for the in-app now-playing bar. */
-export async function appleNowPlaying(): Promise<{ title: string; subtitle?: string; artworkUrl?: string } | null> {
+export async function appleNowPlaying(): Promise<{ title: string; subtitle?: string; artworkUrl?: string; playbackTime?: number; isPlaying?: boolean } | null> {
   const p = plugin();
   if (!p) return null;
   try {
@@ -134,6 +139,45 @@ export async function appleNowPlaying(): Promise<{ title: string; subtitle?: str
   } catch {
     return null;
   }
+}
+
+/** The listener's OWN Apple Music library playlists (iOS native MusicKit). */
+export async function getAppleLibraryPlaylists(): Promise<AppleLibraryItem[]> {
+  const p = plugin();
+  if (!p) return [];
+  try {
+    const auth = await p.authorize();
+    if (auth.status !== "authorized") return [];
+    const res = await p.getLibraryPlaylists();
+    return Array.isArray(res?.items) ? res.items : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Play a browsed library playlist in-app. False → caller can fall back. */
+export async function playAppleLibraryItem(id: string): Promise<boolean> {
+  const p = plugin();
+  if (!p || !id.trim()) { set({ status: "error", error: "Apple Music isn't available here." }); return false; }
+  try {
+    set({ status: "connecting" });
+    const auth = await p.authorize();
+    if (auth.status !== "authorized") { set({ status: "error", error: "Apple Music access is off." }); return false; }
+    const res = await p.playLibraryItem({ id });
+    if (!res.playing) { set({ status: "idle", error: undefined }); return false; }
+    set({ status: "playing", error: undefined });
+    return true;
+  } catch (e) {
+    set({ status: "error", error: e instanceof Error ? e.message : "The music didn't start." });
+    return false;
+  }
+}
+
+export async function appleSkipNext(): Promise<void> {
+  try { await plugin()?.skipNext(); set({ status: "playing", error: undefined }); } catch { /* ignore */ }
+}
+export async function appleSkipPrevious(): Promise<void> {
+  try { await plugin()?.skipPrevious(); set({ status: "playing", error: undefined }); } catch { /* ignore */ }
 }
 
 export async function pause(): Promise<void> {

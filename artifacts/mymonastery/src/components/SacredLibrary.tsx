@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { openExternal } from "@/lib/openExternal";
 import { isNativeIOS } from "@/lib/spotify";
-import { appleMusicAvailable, playAppleItem, useAppleMusicPlayback } from "@/lib/appleMusic";
+import { appleMusicAvailable, playAppleItem, playAppleLibraryItem, getAppleLibraryPlaylists, appleNowPlaying, appleSkipNext, appleSkipPrevious, useAppleMusicPlayback, type AppleLibraryItem } from "@/lib/appleMusic";
 import {
   getSacredLibrary, addToSacredLibrary, removeFromSacredLibrary, parseMusicLink,
   searchCatalog, catalogSearchAvailable, KIND_EMOJI, SERVICE_LABEL,
@@ -29,12 +29,32 @@ export function SacredLibrary() {
   const [adding, setAdding] = useState(false);
   const [nowPlaying, setNowPlaying] = useState<SacredItem | null>(null);
   const apple = useAppleMusicPlayback();
+  const [library, setLibrary] = useState<AppleLibraryItem[]>([]);
+  // Live now-playing (title/artwork) while a playlist advances — the iPod feel.
+  const [np, setNp] = useState<{ title: string; subtitle?: string; artworkUrl?: string } | null>(null);
 
   useEffect(() => {
     const refresh = () => setItems(getSacredLibrary());
     window.addEventListener(SACRED_LIBRARY_EVENT, refresh);
+    if (appleMusicAvailable()) getAppleLibraryPlaylists().then(setLibrary).catch(() => {});
     return () => window.removeEventListener(SACRED_LIBRARY_EVENT, refresh);
   }, []);
+
+  const active = apple.status === "playing" || apple.status === "paused" || apple.status === "connecting";
+  useEffect(() => {
+    if (!active) { setNp(null); return; }
+    let on = true;
+    const tick = () => { appleNowPlaying().then((r) => { if (on && r) setNp(r); }).catch(() => {}); };
+    tick();
+    const id = window.setInterval(tick, 2000);
+    return () => { on = false; window.clearInterval(id); };
+  }, [active]);
+
+  const playLibrary = async (it: AppleLibraryItem) => {
+    setNowPlaying({ id: `lib-${it.id}`, kind: "playlist", title: it.title, subtitle: it.subtitle, service: "apple", url: "", artworkUrl: it.artworkUrl, appleId: it.id, addedAt: 0 });
+    const ok = await playAppleLibraryItem(it.id);
+    if (!ok) setNowPlaying(null);
+  };
 
   const playItem = async (it: SacredItem) => {
     // In-app for Apple items we have a catalog id for; otherwise open the app.
@@ -54,26 +74,57 @@ export function SacredLibrary() {
   return (
     <div className="mb-3 rounded-2xl p-4" style={{ background: CARD, border: `1px solid ${CARD_B}` }}>
       {/* In-app now-playing — the listener's own pick */}
+      {/* Now-playing — the sacred iPod player */}
       {inAppActive && nowPlaying && (
-        <div className="flex items-center gap-3.5 mb-3.5 pb-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          {nowPlaying.artworkUrl ? (
-            <img src={nowPlaying.artworkUrl} alt="" className="w-14 h-14 rounded-xl object-cover flex-shrink-0" />
+        <div className="mb-3.5 pb-3.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div className="flex items-center gap-3.5">
+            {(np?.artworkUrl || nowPlaying.artworkUrl) ? (
+              <img src={np?.artworkUrl || nowPlaying.artworkUrl} alt="" className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
+            ) : (
+              <div className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(46,107,64,0.35)" }}><span className="text-[26px]" aria-hidden>{playing ? "♪" : "🎧"}</span></div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-semibold truncate" style={{ color: WARM, fontFamily: FONT }}>{np?.title || nowPlaying.title}</p>
+              <p className="text-[12px] mt-0.5 truncate" style={{ color: SAGE, fontFamily: FONT }}>{apple.status === "connecting" ? "Starting…" : (np?.subtitle || nowPlaying.subtitle || "Apple Music")}</p>
+            </div>
+            <button onClick={() => { apple.disconnect(); setNowPlaying(null); }} aria-label="Stop" className="text-[15px] px-1 flex-shrink-0 active:scale-90" style={{ color: "rgba(143,175,150,0.55)" }}>✕</button>
+          </div>
+          <div className="flex items-center justify-center gap-8 mt-3">
+            <button onClick={() => appleSkipPrevious()} aria-label="Previous" className="text-[19px] active:scale-90" style={{ color: WARM }}>⏮</button>
+            <button onClick={() => (playing ? apple.pause() : apple.resume())} aria-label={playing ? "Pause" : "Play"} className="w-12 h-12 rounded-full flex items-center justify-center active:scale-90 transition-transform" style={{ background: "rgba(46,107,64,0.95)", color: WARM }}>
+              <span className="text-[20px]" aria-hidden>{playing ? "❚❚" : "▶"}</span>
+            </button>
+            <button onClick={() => appleSkipNext()} aria-label="Next" className="text-[19px] active:scale-90" style={{ color: WARM }}>⏭</button>
+          </div>
+        </div>
+      )}
+
+      {/* Browse YOUR Apple Music library (iOS native) */}
+      {appleMusicAvailable() && (
+        <div className="mb-4">
+          <p className="text-[11px] uppercase tracking-[0.16em] mb-2" style={{ color: SAGE, fontFamily: FONT }}>Your Apple Music</p>
+          {library.length === 0 ? (
+            <p className="text-[12.5px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>Loading your playlists…</p>
           ) : (
-            <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(46,107,64,0.35)" }}>
-              <span className="text-[24px]" aria-hidden>{playing ? "♪" : "🎧"}</span>
+            <div className="flex gap-2.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+              {library.map((pl) => (
+                <button key={pl.id} onClick={() => playLibrary(pl)} className="flex-shrink-0 w-24 text-left active:opacity-80">
+                  {pl.artworkUrl ? (
+                    <img src={pl.artworkUrl} alt="" className="w-24 h-24 rounded-xl object-cover" />
+                  ) : (
+                    <div className="w-24 h-24 rounded-xl flex items-center justify-center" style={{ background: "rgba(46,107,64,0.3)" }}><span className="text-[28px]" aria-hidden>📃</span></div>
+                  )}
+                  <p className="text-[12px] font-medium truncate mt-1.5" style={{ color: WARM, fontFamily: FONT }}>{pl.title}</p>
+                </button>
+              ))}
             </div>
           )}
-          <div className="flex-1 min-w-0">
-            <p className="text-[14.5px] font-semibold truncate" style={{ color: WARM, fontFamily: FONT }}>{nowPlaying.title}</p>
-            <p className="text-[12px] mt-0.5 truncate" style={{ color: SAGE, fontFamily: FONT }}>
-              {apple.status === "connecting" ? "Starting…" : nowPlaying.subtitle || "Apple Music"}
-            </p>
-          </div>
-          <button onClick={() => (playing ? apple.pause() : apple.resume())} aria-label={playing ? "Pause" : "Play"} className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 active:scale-90 transition-transform" style={{ background: "rgba(46,107,64,0.95)", color: WARM }}>
-            <span className="text-[18px]" aria-hidden>{playing ? "❚❚" : "▶"}</span>
-          </button>
-          <button onClick={() => { apple.disconnect(); setNowPlaying(null); }} aria-label="Stop" className="text-[15px] px-1 flex-shrink-0 active:scale-90" style={{ color: "rgba(143,175,150,0.6)" }}>✕</button>
         </div>
+      )}
+      {!appleMusicAvailable() && (
+        <p className="text-[12px] leading-snug mb-4 rounded-xl px-3 py-2.5" style={{ color: "rgba(143,175,150,0.8)", background: "rgba(255,255,255,0.04)", fontFamily: FONT }}>
+          🎧 Open Phoebe on your iPhone to browse and play your Apple Music library here. On the web you can still search and save.
+        </p>
       )}
 
       {/* Header */}

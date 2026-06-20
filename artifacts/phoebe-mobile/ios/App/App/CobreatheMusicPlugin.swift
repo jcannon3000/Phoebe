@@ -45,10 +45,20 @@ public class CobreatheMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "playItem", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "searchCatalog", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "nowPlaying", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getLibraryPlaylists", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "playLibraryItem", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "skipNext", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "skipPrevious", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "pause", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "resume", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stop", returnType: CAPPluginReturnPromise),
     ]
+
+    // Cache of fetched library items (a MusicKit Playlist is iOS 16+, so we
+    // store it as Any to keep the property valid on the base class) keyed by the
+    // library id — lets playLibraryItem replay a browsed playlist without an
+    // uncertain library-filter re-fetch.
+    private var libraryCache: [String: Any] = [:]
 
     // Mix the breath tones over the music. Same category PhoebeAudioPlugin uses,
     // so the two are compatible/idempotent. Activated before play; never torn
@@ -265,11 +275,14 @@ public class CobreatheMusicPlugin: CAPPlugin, CAPBridgedPlugin {
     // now-playing bar. Empty title when nothing is queued.
     @objc func nowPlaying(_ call: CAPPluginCall) {
         if #available(iOS 16.0, *) {
-            if let entry = ApplicationMusicPlayer.shared.queue.currentEntry {
+            let player = ApplicationMusicPlayer.shared
+            if let entry = player.queue.currentEntry {
                 call.resolve([
                     "title": entry.title,
                     "subtitle": entry.subtitle ?? "",
-                    "artworkUrl": entry.artwork?.url(width: 160, height: 160)?.absoluteString ?? "",
+                    "artworkUrl": entry.artwork?.url(width: 240, height: 240)?.absoluteString ?? "",
+                    "playbackTime": player.playbackTime,
+                    "isPlaying": player.state.playbackStatus == .playing,
                 ])
             } else {
                 call.resolve(["title": ""])
@@ -277,6 +290,77 @@ public class CobreatheMusicPlugin: CAPPlugin, CAPBridgedPlugin {
         } else {
             call.resolve(["title": ""])
         }
+    }
+
+    // The listener's OWN Apple Music library playlists — the "sacred iPod" browse
+    // list. Caches the fetched objects so playLibraryItem can replay one in-app.
+    @objc func getLibraryPlaylists(_ call: CAPPluginCall) {
+        if #available(iOS 16.0, *) {
+            Task {
+                do {
+                    guard MusicAuthorization.currentStatus == .authorized else {
+                        call.resolve(["items": [], "reason": "not-authorized"]); return
+                    }
+                    var request = MusicLibraryRequest<Playlist>()
+                    request.limit = 80
+                    let response = try await request.response()
+                    var items: [[String: Any]] = []
+                    for p in response.items {
+                        self.libraryCache[p.id.rawValue] = p
+                        items.append([
+                            "id": p.id.rawValue, "kind": "playlist", "title": p.name,
+                            "subtitle": p.curatorName ?? "",
+                            "artworkUrl": p.artwork?.url(width: 160, height: 160)?.absoluteString ?? "",
+                        ])
+                    }
+                    call.resolve(["items": items])
+                } catch {
+                    call.resolve(["items": [], "reason": error.localizedDescription])
+                }
+            }
+        } else {
+            call.resolve(["items": []])
+        }
+    }
+
+    // Play a browsed LIBRARY item (from getLibraryPlaylists' cache) in-app.
+    @objc func playLibraryItem(_ call: CAPPluginCall) {
+        guard let id = call.getString("id"), !id.isEmpty else { call.reject("id required"); return }
+        if #available(iOS 16.0, *) {
+            Task {
+                do {
+                    guard MusicAuthorization.currentStatus == .authorized else {
+                        call.resolve(["playing": false, "reason": "not-authorized"]); return
+                    }
+                    guard let playlist = self.libraryCache[id] as? Playlist else {
+                        call.resolve(["playing": false, "reason": "not-cached"]); return
+                    }
+                    self.ensureMixingSession()
+                    let player = ApplicationMusicPlayer.shared
+                    player.queue = [playlist]
+                    player.state.shuffleMode = .off
+                    player.state.repeatMode = .all
+                    try await player.play()
+                    call.resolve(["playing": true])
+                } catch {
+                    call.resolve(["playing": false, "reason": error.localizedDescription])
+                }
+            }
+        } else {
+            call.resolve(["playing": false, "reason": "ios-too-old"])
+        }
+    }
+
+    @objc func skipNext(_ call: CAPPluginCall) {
+        if #available(iOS 16.0, *) {
+            Task { try? await ApplicationMusicPlayer.shared.skipToNextEntry(); call.resolve() }
+        } else { call.resolve() }
+    }
+
+    @objc func skipPrevious(_ call: CAPPluginCall) {
+        if #available(iOS 16.0, *) {
+            Task { try? await ApplicationMusicPlayer.shared.skipToPreviousEntry(); call.resolve() }
+        } else { call.resolve() }
     }
 }
 
