@@ -551,13 +551,12 @@ export function CobreatheBreath({
       }
       // The phase word — "Breathe In" / "Breathe Out" — fades UP from nothing at
       // the start of each phase, peaks mid-phase, and fades DOWN to nothing at
-      // the turn (so the word swap happens while invisible). A hair of scale
-      // rides along with the breath. Before sync, the "Syncing" label holds at
-      // full opacity instead of breathing.
+      // the turn (so the word swap happens while invisible). The word stays a
+      // CONSTANT SIZE — no scale ride (it was reading as the text growing and
+      // shrinking). Before sync, the "Syncing" label holds at full opacity.
       if (labelRef.current) {
         const f = pos < INHALE_MS ? pos / INHALE_MS : (pos - INHALE_MS) / EXHALE_MS;
         labelRef.current.style.opacity = isCounting ? Math.sin(Math.PI * f).toFixed(4) : "1";
-        labelRef.current.style.transform = `scale(${0.97 + pAnim * 0.06})`;
       }
       // Globe GREEN glow crossfades with the breath — darker at the bottom of the
       // exhale (pAnim→0), lighter at the top of the inhale (pAnim→1). Skipped once
@@ -821,11 +820,6 @@ export function CobreatheBreath({
           and text legible. No captions — the images speak for themselves. */}
       {hasPhotos && (
         <div aria-hidden="true" style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
-          {/* Solid dark-green base UNDER the photos (the outer-ring green). The
-              breathing photo fades to ~0 at the bottom of each breath and swaps
-              there; without this the dark field showed through as a grey flash.
-              Now the dip/swap settles onto this dark green instead. */}
-          <div style={{ position: "absolute", inset: 0, background: RING_OUT }} />
           <div
             ref={photoGroupRef}
             style={{
