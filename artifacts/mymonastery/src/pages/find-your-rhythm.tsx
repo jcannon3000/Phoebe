@@ -80,7 +80,7 @@ export default function FindYourRhythmPage() {
     lines.push(`Pray each day with ${PRAYER_LABEL[rec.morningPrayer]}.`);
     if (rec.contemplationMinutes > 0) lines.push(`${rec.contemplationMinutes} minutes of silence a day.`);
     if (rec.reflectionSource) lines.push(`A daily reflection — ${SOURCE_LABEL[rec.reflectionSource]}.`);
-    if (rec.listening) lines.push("Listening — music as a way of prayer.");
+    if (rec.listening) lines.push("Audio Divina — music as a way of prayer.");
     if (rec.journaling) lines.push(`Journaling (${rec.journalingSlot}).`);
     if (rec.gratitude) lines.push("A daily gratitude.");
     if (rec.examen) lines.push("The Examen at day's end.");

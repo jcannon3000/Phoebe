@@ -233,7 +233,7 @@ export function WeeklyGridCard() {
     // day — and stays ahead of Contemplation, matching the card order below.
     ...(reflectActive ? [{ id: "reflection", emoji: "📖", label: t("rhythm.row_reflection", { defaultValue: "Reflection" }), rgb: "96,141,209", doneFor: (d: Day) => !!d.reflection }] : []),
     ...(silenceActive ? [{ id: "contemplation", emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.contemplation }] : []),
-    ...(listeningActive ? [{ id: "listening", emoji: "🎧", label: t("rhythm.row_listening", { defaultValue: "Listening" }), rgb: "108,140,180", doneFor: (d: Day) => !!d.listening }] : []),
+    ...(listeningActive ? [{ id: "listening", emoji: "🎧", label: t("rhythm.row_listening", { defaultValue: "Audio Divina" }), rgb: "108,140,180", doneFor: (d: Day) => !!d.listening }] : []),
     ...(eveningActive ? [{ id: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "124,116,196", doneFor: (d: Day) => !!d.evening }] : []),
     ...(gratitudeActive ? [{ id: "gratitude", emoji: "🙏", label: t("rhythm.row_gratitude", { defaultValue: "Gratitude" }), rgb: "108,162,124", doneFor: (d: Day) => !!d.gratitude }] : []),
     ...(examenActive ? [{ id: "examen", emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180", doneFor: (d: Day) => !!d.examen }] : []),
@@ -611,7 +611,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     }] : []),
     ...(listeningActive ? [{
       key: "listening", emoji: "🎧", rgb: "108,140,180", done: listeningDone, href: "/listening",
-      title: t("rhythm.card_listening", { defaultValue: "Listening" }),
+      title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }),
       blurb: listeningDone ? kept : t("rhythm.blurb_listening", { defaultValue: "Music as a way of prayer" }),
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),

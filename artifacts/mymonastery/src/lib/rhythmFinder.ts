@@ -203,7 +203,7 @@ export function recommend(a: FinderAnswers): RecommendedRhythm {
 
   // Music → the Listening practice.
   const listening = has(a.meet, "music") || has(a.growToward, "music");
-  if (listening) reasons.push("Listening — music as a way of prayer — because that's where the music takes you.");
+  if (listening) reasons.push("Audio Divina — music as a way of prayer — because that's where the music takes you.");
 
   // Writing → Journaling (at the time of day they have space).
   const journaling = has(a.meet, "writing") || has(a.growToward, "journaling");

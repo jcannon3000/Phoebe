@@ -107,7 +107,7 @@ function useModuleMeta(): Record<HomeModule, { label: string; emoji: string; sub
   return {
     office:       { label: t("customize_home.module_office"),    emoji: "📖", sub: t("customize_home.module_office_sub") },
     contemplation:{ label: t("menu.contemplation"),              emoji: "🕯️", sub: t("customize_home.module_contemplation_sub") },
-    listening:    { label: t("menu.listening", { defaultValue: "Listening" }), emoji: "🎧", sub: t("customize_home.module_listening_sub", { defaultValue: "Music as a way of prayer" }) },
+    listening:    { label: t("menu.listening", { defaultValue: "Audio Divina" }), emoji: "🎧", sub: t("customize_home.module_listening_sub", { defaultValue: "Music as a way of prayer" }) },
     journaling:   { label: t("menu.journaling", { defaultValue: "Journaling" }), emoji: "📓", sub: t("customize_home.module_journaling_sub", { defaultValue: "Keep a journal — just log the day" }) },
     gratitude:    { label: t("gratitude.title"),                 emoji: "🌾", sub: t("customize_home.module_gratitude_sub") },
     examen:       { label: t("menu.examen"),                     emoji: "🤔", sub: t("customize_home.module_examen_sub") },

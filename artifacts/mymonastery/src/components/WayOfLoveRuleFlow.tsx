@@ -623,7 +623,7 @@ export default function WayOfLoveRuleFlow({
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {choiceRow(contemplationStyle === "silent", `🕯️ ${t("wol_rule.style_silent", { defaultValue: "Silent sit" })}`, t("wol_rule.style_silent_sub", { defaultValue: "Just you and a quiet timer." }), () => chooseContemplationStyle("silent"))}
-              {choiceRow(contemplationStyle === "cobreathe", `🌍 ${t("wol_rule.style_cobreathe", { defaultValue: "Cobreathe" })}`, t("wol_rule.style_cobreathe_sub", { defaultValue: "12 Breaths Together for Climate Justice." }), () => chooseContemplationStyle("cobreathe"))}
+              {choiceRow(contemplationStyle === "cobreathe", `🌍 ${t("wol_rule.style_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.style_cobreathe_sub", { defaultValue: "12 Breaths Together for Climate Justice." }), () => chooseContemplationStyle("cobreathe"))}
             </div>
             {contemplationStyle === "silent" && (
               <>
@@ -761,7 +761,7 @@ export default function WayOfLoveRuleFlow({
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(extras.gratitude, `🙏 ${t("wol_rule.extra_gratitude", { defaultValue: "Gratitude" })}`, t("wol_rule.extra_gratitude_sub", { defaultValue: "Name one gift from the day." }), () => toggleExtra("gratitude"))}
           {choiceRow(extras.examen, `🌗 ${t("wol_rule.extra_examen", { defaultValue: "The Examen" })}`, t("wol_rule.extra_examen_sub", { defaultValue: "St. Ignatius' end-of-day review of the day with God." }), () => toggleExtra("examen"))}
-          {choiceRow(extras.listening, `🎧 ${t("wol_rule.extra_listening", { defaultValue: "Listening" })}`, t("wol_rule.extra_listening_sub", { defaultValue: "Pray with music — sacred listening, the contemplative way." }), () => toggleExtra("listening"))}
+          {choiceRow(extras.listening, `🎧 ${t("wol_rule.extra_listening", { defaultValue: "Audio Divina" })}`, t("wol_rule.extra_listening_sub", { defaultValue: "Pray with music — sacred listening, the contemplative way." }), () => toggleExtra("listening"))}
           {choiceRow(extras.journaling, `📓 ${t("wol_rule.extra_journaling", { defaultValue: "Journaling" })}`, t("wol_rule.extra_journaling_sub", { defaultValue: "Keep a journal however you like — just log the day, no typing." }), () => toggleExtra("journaling"))}
           {/* When they journal — so the card slots into the rhythm at that time. */}
           {extras.journaling && (
@@ -1027,7 +1027,7 @@ export default function WayOfLoveRuleFlow({
       : []),
     ...(extras.gratitude ? [{ emoji: "🙏", label: "Gratitude", sub: "Name one gift from the day", step: "extras" as Step }] : []),
     ...(extras.examen ? [{ emoji: "🌗", label: "The Examen", sub: "Review the day with God", step: "extras" as Step }] : []),
-    ...(extras.listening ? [{ emoji: "🎧", label: "Listening", sub: "Pray with music", step: "extras" as Step }] : []),
+    ...(extras.listening ? [{ emoji: "🎧", label: "Audio Divina", sub: "Pray with music", step: "extras" as Step }] : []),
     ...(extras.journaling ? [{ emoji: "📓", label: "Journaling", sub: "Keep a journal — log the day", step: "extras" as Step }] : []),
   ];
   return shell(

@@ -3,24 +3,22 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
-import { addListeningMinutes, minutesToday } from "@/lib/listeningLog";
-import { openSpotifyPlaylist, spotifyPlaylistReady } from "@/lib/spotify";
+import { addListeningMinutes, minutesToday, saveListeningEntry, type ListeningMedium } from "@/lib/listeningLog";
+import { isNativeIOS } from "@/lib/spotify";
 import { useMusicPlayback, type MusicSourceId } from "@/lib/musicPlayback";
 import { isNativeShell } from "@/lib/isNativeShell";
 import { playOfficeChime, primeAudio } from "@/lib/amenFeedback";
 
-// Listening — "audio divina." Music as a way of prayer. The classic lectio
-// divina movements (read → meditate → pray → rest) applied to listening:
-// you bring sacred music you love — Taizé, plainchant, a hymn, choral,
-// something ambient — and play it wherever it already lives (Apple Music,
-// Spotify, a record). Phoebe holds the prayer *around* it: a single still
-// screen, the four movements unfolding over the time you chose, and a soft
-// close. It counts toward the daily rhythm like Contemplation or the Examen.
+// Audio Divina — music as a way of prayer. The classic lectio divina movements
+// (read → meditate → pray → rest) applied to listening: a Scripture of sound.
+// You choose HOW you'll listen — streaming (Apple Music: play a curated piece
+// in-app, or browse your own), or an analog medium you put on yourself (CD,
+// vinyl, tape) — and Phoebe holds the prayer around it: a still screen, the four
+// movements over the time you chose, start/end chimes, and a soft close. It
+// counts toward the daily rhythm like Contemplation or the Examen.
 //
-// Deliberately "bring your own music": no streaming integration, no listening
-// history read, nothing about what you played ever leaves the device. Phoebe
-// is the frame, not the jukebox. (A curated in-app playlist via Apple Music
-// is a possible later enhancement — see reference_cobreathe_apple_music.)
+// What you listen to stays on this device (you note it in your own words for
+// your history); nothing about your music leaves the phone.
 
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
@@ -28,6 +26,15 @@ const DEEP = "#0C2417";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 
 const LENGTHS = [5, 10, 15, 20] as const;
+
+// How you'll listen. Streaming = Apple Music (in-app or browse); the analog
+// three are a manual log — you put the record/disc/tape on yourself.
+const MEDIA: { id: ListeningMedium; emoji: string; label: string; cue: string }[] = [
+  { id: "streaming", emoji: "🎧", label: "Streaming", cue: "" },
+  { id: "cd", emoji: "💿", label: "CD", cue: "Put on your CD, then press Begin." },
+  { id: "vinyl", emoji: "📀", label: "Vinyl", cue: "Drop the needle, then press Begin." },
+  { id: "tape", emoji: "📼", label: "Tape", cue: "Press play on your tape, then Begin." },
+];
 
 // The four movements of audio divina — each held for a quarter of the sit.
 const MOVEMENTS = [
@@ -57,9 +64,7 @@ function clock(totalSec: number): string {
 
 // Chimes bookend the sit — an opening voicing when you begin, a brighter close
 // when the time is up. Reuses Contemplation's bell mechanism so the CLOSE rings
-// even with the phone locked: on the native shell `schedule-end` arms a bell on
-// the kept-alive audio clock at the end time (the JS timer can't fire while
-// suspended); on web it's the synthesized chime, foreground only.
+// even with the phone locked.
 function nativeEvent(name: string, detail?: unknown): void {
   try { window.dispatchEvent(new CustomEvent(name, detail !== undefined ? { detail } : undefined)); }
   catch { /* non-fatal */ }
@@ -78,6 +83,12 @@ function cancelEndBell(): void {
   nativeEvent("phoebe:contemplation-cancel-end");
 }
 
+// Open the native Apple Music app so they can browse their catalogue and play
+// anything; they switch back to Phoebe and press Begin. Phoebe holds the time.
+function browseAppleMusic(): void {
+  try { window.open("music://", "_system"); } catch { /* ignore */ }
+}
+
 type Phase = "intro" | "listening" | "done";
 
 export default function ListeningPage() {
@@ -87,29 +98,43 @@ export default function ListeningPage() {
     const saved = Number(localStorage.getItem("phoebe:listening-minutes"));
     return LENGTHS.includes(saved as (typeof LENGTHS)[number]) ? saved : 10;
   });
+  const [medium, setMedium] = useState<ListeningMedium>(() => {
+    try {
+      const v = localStorage.getItem("phoebe:audio-divina-medium");
+      return (v === "streaming" || v === "cd" || v === "vinyl" || v === "tape") ? v : "streaming";
+    } catch { return "streaming"; }
+  });
+  const [what, setWhat] = useState("");
   const [elapsed, setElapsed] = useState(0); // seconds
   const tickRef = useRef<number | null>(null);
   const startRef = useRef(0);       // wall-clock ms the sit began
   const elapsedRef = useRef(0);
   const loggedRef = useRef(false); // guard: count a sitting's minutes exactly once
+  const mediumRef = useRef(medium);
+  const whatRef = useRef(what);
+  useEffect(() => { mediumRef.current = medium; }, [medium]);
+  useEffect(() => { whatRef.current = what; }, [what]);
 
   // Keep a ref in step with elapsed so finish() (button or auto-complete via a
   // deferred timeout) always logs the true elapsed time, not a stale closure.
   useEffect(() => { elapsedRef.current = elapsed; }, [elapsed]);
 
-  // In-app music (Apple Music on iOS, Spotify on iOS + web), behind one surface.
-  // Inert until a service is configured — music.anyAvailable stays false, so no
-  // control renders and the practice is bring-your-own-music.
+  // In-app music (Apple Music / Spotify), used only when the medium is Streaming.
   const music = useMusicPlayback();
 
   const total = minutes * 60;
   const quarter = total / 4;
   const movementIdx = Math.min(3, Math.floor(elapsed / quarter));
   const remaining = Math.max(0, total - elapsed);
+  const streaming = medium === "streaming";
 
   function chooseMinutes(m: number) {
     setMinutes(m);
     try { localStorage.setItem("phoebe:listening-minutes", String(m)); } catch { /* private mode */ }
+  }
+  function chooseMedium(m: ListeningMedium) {
+    setMedium(m);
+    try { localStorage.setItem("phoebe:audio-divina-medium", m); } catch { /* private mode */ }
   }
 
   function begin() {
@@ -131,17 +156,16 @@ export default function ListeningPage() {
     loggedRef.current = true;
     // Count the real time spent — a full sit logs `total`, an early end logs
     // however far they got. Under a minute still counts as a minute of prayer.
-    addListeningMinutes(Math.max(1, Math.round(elapsedRef.current / 60)));
+    const mins = Math.max(1, Math.round(elapsedRef.current / 60));
+    addListeningMinutes(mins);
+    saveListeningEntry({ minutes: mins, medium: mediumRef.current, what: whatRef.current });
     markPracticeDoneToday("listening");
     if (!opts?.silentChime) playBell(2); // closing chime
     setPhase("done");
   }
 
   // The ticking clock while listening. Elapsed is derived from WALL-CLOCK time,
-  // not a tick counter — so locking the phone or backgrounding the app (the
-  // norm for this practice: eyes closed, music playing) doesn't stall the timer.
-  // setInterval throttles in the background, but each fire recomputes the true
-  // elapsed and catches up on resume.
+  // so locking the phone or backgrounding the app doesn't stall the timer.
   useEffect(() => {
     if (phase !== "listening") return;
     tickRef.current = window.setInterval(() => {
@@ -149,7 +173,6 @@ export default function ListeningPage() {
       if (secs >= total) {
         if (tickRef.current) window.clearInterval(tickRef.current);
         setElapsed(total);
-        // Resumed well past the end → the native bell already rang; don't double.
         const lateCatchUp = secs > total + 3;
         window.setTimeout(() => finish({ silentChime: lateCatchUp }), 0);
       } else {
@@ -160,8 +183,7 @@ export default function ListeningPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, total]);
 
-  // Leaving mid-sit (navigating away without finishing) must disarm the bell so
-  // it can't ring after you've gone. Harmless no-op once a sit has finished.
+  // Leaving mid-sit (navigating away without finishing) must disarm the bell.
   useEffect(() => () => cancelEndBell(), []);
 
   // ——— Listening (full-bleed, calm) ———
@@ -176,7 +198,6 @@ export default function ListeningPage() {
           paddingBottom: "calc(env(safe-area-inset-bottom) + 24px)",
         }}
       >
-        {/* slow, near-still breath of light behind the words */}
         <motion.div
           aria-hidden
           className="absolute rounded-full"
@@ -186,7 +207,6 @@ export default function ListeningPage() {
         />
 
         <div className="relative z-10 w-full max-w-md text-center">
-          {/* which movement we're in */}
           <div className="flex items-center justify-center gap-2 mb-6">
             {MOVEMENTS.map((mv, i) => (
               <span
@@ -223,9 +243,9 @@ export default function ListeningPage() {
             {clock(remaining)}
           </p>
           <div className="flex items-center gap-3">
-            {/* Minimal in-sit music control — only when something's playing
-                through Phoebe. The prayer is the focus, not the player. */}
-            {music.anyAvailable && (music.status === "playing" || music.status === "paused") && (
+            {/* In-sit music control — only when something's playing through Phoebe
+                (the curated streaming option). The prayer is the focus. */}
+            {streaming && music.anyAvailable && (music.status === "playing" || music.status === "paused") && (
               <button
                 onClick={music.status === "playing" ? music.pause : music.resume}
                 className="px-5 py-2.5 rounded-full text-[14px] font-medium active:scale-95 transition-transform"
@@ -260,11 +280,13 @@ export default function ListeningPage() {
             <p className="text-[17px] leading-relaxed mb-1" style={{ color: WARM, fontFamily: "Georgia, serif", fontStyle: "italic" }}>
               What did you hear in the quiet after the music stopped?
             </p>
-            <p className="text-[13px] mt-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-              Carry it with you.
-            </p>
+            {what.trim() && (
+              <p className="text-[13px] mt-3" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+                You sat with <span style={{ color: WARM }}>{what.trim()}</span>.
+              </p>
+            )}
             <p className="text-[12.5px] mt-5 tabular-nums" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SPACE_GROTESK }}>
-              {minutesToday()} min listened today
+              {minutesToday()} min in Audio Divina today
             </p>
             <button
               onClick={() => navigate("/")}
@@ -281,16 +303,15 @@ export default function ListeningPage() {
 
   // ——— Intro / setup ———
   const todayMins = minutesToday();
+  const activeMedium = MEDIA.find((x) => x.id === medium)!;
 
-  // The in-app player control's label + action follow the live player state,
-  // whichever service is active.
+  // In-app player control's label + action (streaming only).
   const player: { label: string; onClick: () => void; disabled?: boolean } =
     music.status === "playing" ? { label: "Pause", onClick: music.pause }
     : music.status === "paused" ? { label: "Resume", onClick: music.resume }
     : music.status === "connecting" ? { label: "Starting the music…", onClick: () => {}, disabled: true }
     : (music.needsAuth || music.status === "needs_auth") ? { label: "Connect Spotify", onClick: music.authorize }
     : { label: "Play a contemplative playlist", onClick: music.connectPlay };
-  // Honest subscription caption for the active service.
   const subLabel = music.activeId === "spotify" ? "Spotify Premium" : "Apple Music";
 
   return (
@@ -304,7 +325,7 @@ export default function ListeningPage() {
             🎧
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Listening</h1>
+            <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Audio Divina</h1>
             <p className="text-xs mt-0.5" style={{ color: SAGE }}>Music as a way of prayer</p>
           </div>
           {todayMins > 0 && (
@@ -317,76 +338,102 @@ export default function ListeningPage() {
 
         <p className="text-[15px] leading-relaxed mb-5" style={{ color: "rgba(240,237,230,0.85)", fontFamily: "Georgia, serif" }}>
           Put on music that opens you to God — Taizé, plainchant, a hymn, something
-          choral or still — wherever you already play it. Then let Phoebe hold the
-          prayer around it. The old practice of <span style={{ fontStyle: "italic" }}>lectio divina</span> in
-          four movements, only the text is sound.
+          choral or still. Phoebe holds the prayer around it: the old practice of{" "}
+          <span style={{ fontStyle: "italic" }}>lectio divina</span> in four movements, only the text is sound.
         </p>
 
-        {/* Music source. Every control is gated on real configuration — nothing
-            appears that can't actually play. In-app playback when a service is
-            set up; otherwise the one-tap deep link; otherwise bring-your-own
-            (always fine — the blurb above already frames it). */}
-        {music.anyAvailable ? (
-          <div className="mb-6 rounded-2xl p-4" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.20)" }}>
-            <p className="text-[10.5px] uppercase tracking-[0.18em] mb-3" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-              Play through Phoebe
-            </p>
+        {/* How are you listening? */}
+        <p className="text-[10.5px] uppercase tracking-[0.18em] mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
+          How are you listening?
+        </p>
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          {MEDIA.map((x) => {
+            const on = x.id === medium;
+            return (
+              <button
+                key={x.id}
+                onClick={() => chooseMedium(x.id)}
+                className="flex flex-col items-center gap-1 rounded-2xl py-3 active:scale-[0.97] transition-transform"
+                style={{
+                  background: on ? "rgba(46,107,64,0.9)" : "rgba(255,255,255,0.04)",
+                  border: `1px solid ${on ? "rgba(110,180,130,0.55)" : "rgba(255,255,255,0.10)"}`,
+                }}
+              >
+                <span className="text-[20px] leading-none" aria-hidden>{x.emoji}</span>
+                <span className="text-[12px] font-medium" style={{ color: on ? WARM : SAGE, fontFamily: SPACE_GROTESK }}>{x.label}</span>
+              </button>
+            );
+          })}
+        </div>
 
-            {/* Service switch — only when more than one is available. Remembers
-                the pick (musicPlayback PREF_KEY). */}
-            {music.sources.length > 1 && (
-              <div className="flex p-1 rounded-full mb-3" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
-                {music.sources.map((s) => {
-                  const on = s.id === music.activeId;
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => music.setActive(s.id as MusicSourceId)}
-                      className="flex-1 py-2 rounded-full text-[13px] font-medium transition-colors"
-                      style={{
-                        background: on ? "rgba(46,107,64,0.9)" : "transparent",
-                        color: on ? WARM : SAGE,
-                        fontFamily: SPACE_GROTESK,
-                      }}
-                    >
-                      {s.label}
-                    </button>
-                  );
-                })}
-              </div>
+        {/* Streaming: play a curated piece in-app, or browse Apple Music. Analog:
+            a gentle cue — you put it on, Phoebe holds the time. */}
+        {streaming ? (
+          <div className="mb-4 rounded-2xl p-4" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.20)" }}>
+            {music.anyAvailable && (
+              <>
+                {music.sources.length > 1 && (
+                  <div className="flex p-1 rounded-full mb-3" style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+                    {music.sources.map((s) => {
+                      const on = s.id === music.activeId;
+                      return (
+                        <button key={s.id} onClick={() => music.setActive(s.id as MusicSourceId)}
+                          className="flex-1 py-2 rounded-full text-[13px] font-medium transition-colors"
+                          style={{ background: on ? "rgba(46,107,64,0.9)" : "transparent", color: on ? WARM : SAGE, fontFamily: SPACE_GROTESK }}>
+                          {s.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <button
+                  onClick={player.onClick}
+                  disabled={player.disabled}
+                  className="w-full flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-[14px] font-medium active:scale-[0.99] transition-transform disabled:opacity-60"
+                  style={{ background: "rgba(46,107,64,0.9)", color: WARM, fontFamily: SPACE_GROTESK }}
+                >
+                  <span aria-hidden>♪</span>
+                  {player.label}
+                </button>
+                {music.error && (
+                  <p className="text-center text-[11.5px] mt-2 leading-snug" style={{ color: "rgba(230,205,180,0.9)", fontFamily: SPACE_GROTESK }}>{music.error}</p>
+                )}
+              </>
             )}
-
-            <button
-              onClick={player.onClick}
-              disabled={player.disabled}
-              className="w-full flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-[14px] font-medium active:scale-[0.99] transition-transform disabled:opacity-60"
-              style={{ background: "rgba(46,107,64,0.9)", color: WARM, fontFamily: SPACE_GROTESK }}
-            >
-              <span aria-hidden>♪</span>
-              {player.label}
-            </button>
-
-            {music.error ? (
-              <p className="text-center text-[11.5px] mt-2.5 leading-snug" style={{ color: "rgba(230,205,180,0.9)", fontFamily: SPACE_GROTESK }}>
-                {music.error}
-              </p>
-            ) : (
+            {/* Browse your own — opens Apple Music to pick anything, then come back and Begin. */}
+            {isNativeIOS() && (
+              <button
+                onClick={browseAppleMusic}
+                className={`w-full flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-[14px] font-medium active:scale-[0.99] transition-transform ${music.anyAvailable ? "mt-2.5" : ""}`}
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", color: WARM, fontFamily: SPACE_GROTESK }}
+              >
+                Browse Apple Music
+                <span aria-hidden style={{ color: SAGE }}>↗</span>
+              </button>
+            )}
+            {music.anyAvailable && !music.error && (
               <p className="text-center text-[11px] mt-2.5" style={{ color: "rgba(143,175,150,0.55)", fontFamily: SPACE_GROTESK }}>
-                Plays inside Phoebe · {subLabel}
+                Plays inside Phoebe · {subLabel} · or browse and play your own
               </p>
             )}
           </div>
-        ) : spotifyPlaylistReady() ? (
-          <button
-            onClick={() => openSpotifyPlaylist()}
-            className="w-full flex items-center justify-center gap-2 rounded-2xl px-4 py-3 mb-6 text-[14px] font-medium active:scale-[0.99] transition-transform"
-            style={{ background: "rgba(46,107,64,0.9)", color: WARM, fontFamily: SPACE_GROTESK }}
-          >
-            <span aria-hidden>♪</span>
-            Open a contemplative playlist
-            <span aria-hidden style={{ color: SAGE }}>↗</span>
-          </button>
-        ) : null}
+        ) : (
+          <div className="mb-4 rounded-2xl px-4 py-3.5 flex items-center gap-3" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.20)" }}>
+            <span className="text-[22px] leading-none" aria-hidden>{activeMedium.emoji}</span>
+            <p className="text-[13.5px] leading-snug" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>
+              {activeMedium.cue} <span style={{ color: SAGE }}>Phoebe will hold the time.</span>
+            </p>
+          </div>
+        )}
+
+        {/* What are you listening to? */}
+        <input
+          value={what}
+          onChange={(e) => setWhat(e.target.value)}
+          placeholder="What are you listening to?"
+          className="w-full rounded-2xl px-4 py-3.5 mb-6 text-[15px] outline-none"
+          style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", color: WARM, fontFamily: "Georgia, serif" }}
+        />
 
         {/* the four movements, named */}
         <div className="rounded-2xl p-4 mb-6" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.20)" }}>
@@ -403,7 +450,7 @@ export default function ListeningPage() {
           ))}
         </div>
 
-        {/* Length — the screen-wide pill: category left, value + chevron right */}
+        {/* Length — the screen-wide pill */}
         <div
           className="relative flex items-center justify-between rounded-2xl px-4 py-3.5 mb-4"
           style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)" }}
@@ -433,14 +480,8 @@ export default function ListeningPage() {
           Begin
         </button>
 
-        {todayMins > 0 && (
-          <p className="text-center text-[12.5px] mt-3" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-            {todayMins} minutes in prayer with music today. You're always welcome back.
-          </p>
-        )}
-
         <p className="text-center text-[11.5px] mt-6 leading-relaxed" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
-          Phoebe never sees what you play. Nothing about your music leaves this device.
+          What you listen to stays on this device.
         </p>
       </div>
     </Layout>

@@ -56,3 +56,37 @@ export function addListeningMinutes(minutes: number): void {
   write(map);
   try { window.dispatchEvent(new Event(LISTENING_LOG_EVENT)); } catch { /* ignore */ }
 }
+
+// A short history of recent sittings — how you listened (streaming or an analog
+// medium) and what you put on (your own words). Local-only; lets the practice
+// remember what you've sat with. Pruned to the last 40.
+const HISTORY_KEY = "phoebe:listening-history";
+export type ListeningMedium = "streaming" | "cd" | "vinyl" | "tape";
+export type ListeningEntry = { ymd: string; minutes: number; medium: ListeningMedium; what: string };
+
+export function listeningHistory(): ListeningEntry[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? (arr as ListeningEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Record what was listened to + on what, for the history. */
+export function saveListeningEntry(e: { minutes: number; medium: ListeningMedium; what: string }): void {
+  const entry: ListeningEntry = {
+    ymd: todayKey(),
+    minutes: Math.max(1, Math.round(e.minutes)),
+    medium: e.medium,
+    what: e.what.trim().slice(0, 200),
+  };
+  try {
+    const hist = listeningHistory();
+    hist.unshift(entry);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(hist.slice(0, 40)));
+  } catch {
+    /* private mode / quota — non-fatal */
+  }
+}
