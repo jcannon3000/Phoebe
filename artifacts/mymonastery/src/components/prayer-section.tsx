@@ -7,6 +7,7 @@ import { triggerSubmitFeedback } from "@/lib/amenFeedback";
 import { usePrayerRequestPlaceholder } from "@/lib/usePrayerRequestPlaceholder";
 import { MessageCircle } from "lucide-react";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
+import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 
 interface PrayerRequest {
   id: number;
@@ -81,6 +82,15 @@ export function PrayerSection({
     queryKey: ["/api/prayer-requests"],
     queryFn: () => apiRequest("GET", "/api/prayer-requests"),
   });
+  // Who in the garden cobreathed today — so we can mark their face with a globe.
+  const breathDay = new Date().toLocaleDateString("en-CA");
+  const { data: breathToday } = useQuery<{ companionIds?: number[] }>({
+    queryKey: ["/api/breath/today", breathDay],
+    queryFn: () => apiRequest("GET", `/api/breath/today?day=${breathDay}`),
+    staleTime: 60_000,
+  });
+  const cobreathers = new Set(breathToday?.companionIds ?? []);
+
   const requests = filterMode === "own"
     ? rawRequests.filter(r => r.isOwnRequest)
     : filterMode === "others"
@@ -312,23 +322,36 @@ export function PrayerSection({
                               .slice(0, 2)
                               .map((w) => w[0]?.toUpperCase() ?? "")
                               .join("");
+                            // Globe badge when this request's owner cobreathed today.
+                            const breathedToday = !isSelf && !request.isAnonymous && cobreathers.has(request.ownerId);
                             return (
                               <div className="flex items-start gap-3 flex-1 min-w-0">
-                                {displayAvatar ? (
-                                  <img
-                                    src={displayAvatar}
-                                    alt={displayName}
-                                    className="w-9 h-9 rounded-full object-cover shrink-0 mt-0.5"
-                                    style={{ border: "1px solid rgba(46,107,64,0.3)" }}
-                                  />
-                                ) : (
-                                  <div
-                                    className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 mt-0.5"
-                                    style={{ background: "#1A4A2E", color: "#A8C5A0" }}
-                                  >
-                                    {initials}
-                                  </div>
-                                )}
+                                <div className="relative shrink-0 mt-0.5">
+                                  {displayAvatar ? (
+                                    <img
+                                      src={displayAvatar}
+                                      alt={displayName}
+                                      className="w-9 h-9 rounded-full object-cover"
+                                      style={{ border: "1px solid rgba(46,107,64,0.3)" }}
+                                    />
+                                  ) : (
+                                    <div
+                                      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold"
+                                      style={{ background: "#1A4A2E", color: "#A8C5A0" }}
+                                    >
+                                      {initials}
+                                    </div>
+                                  )}
+                                  {breathedToday && (
+                                    <span
+                                      className="absolute -bottom-0.5 -right-0.5 rounded-full flex items-center justify-center"
+                                      title="Cobreathed today"
+                                      style={{ background: "#0C1F12", padding: 1.5, lineHeight: 0 }}
+                                    >
+                                      <CobreatheGlobe size={14} />
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                                     <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50">

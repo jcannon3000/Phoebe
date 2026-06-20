@@ -58,6 +58,7 @@ type BreathPayload = {
   count: number;
   companions: Companion[];
   companionCount: number;
+  companionIds: number[];
   myDays: number;
   allBreaths: number;
 };
@@ -79,6 +80,7 @@ async function breathPayload(userId: number, day: string): Promise<BreathPayload
 
   let companions: Companion[] = [];
   let companionCount = 0;
+  let companionIds: number[] = [];
   if (gardenIds.length > 0) {
     const rows = await db
       .select({ userId: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
@@ -90,6 +92,7 @@ async function breathPayload(userId: number, day: string): Promise<BreathPayload
       ));
     companionCount = rows.length;
     companions = rows.slice(0, 6);
+    companionIds = rows.map((r) => r.userId);
   }
 
   return {
@@ -97,6 +100,7 @@ async function breathPayload(userId: number, day: string): Promise<BreathPayload
     count: dayRows[0]?.n ?? 0,
     companions,
     companionCount,
+    companionIds,
     myDays: myDaysRows[0]?.n ?? 0,
     allBreaths: allRows[0]?.n ?? 0,
   };
