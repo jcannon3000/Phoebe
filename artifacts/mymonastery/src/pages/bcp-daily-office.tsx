@@ -1,4 +1,5 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useBetaStatus } from "@/hooks/useDemo";
@@ -488,13 +489,29 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   const [slides, setSlides] = useState<Slide[]>([]);
   const [officeDay, setOfficeDay] = useState<OfficeDayInfo | null>(null);
   const [slideIdx, setSlideIdx] = useState(0);
-  // ONE landscape for the whole office/devotion slideshow (not a new photo per
-  // slide) — picked once on open and faded gently up. A still field is calmer to
-  // pray over than an image that swaps on every slide.
-  const officeBgPhoto = useMemo(
-    () => (EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[Math.floor(Math.random() * EARTH_PHOTOS.length)]! : null),
+  // A landscape behind the office that CHANGES with each new SECTION — every
+  // title slide (psalm / canticle / lesson titles, the office threshold, the
+  // intercessions portal). It cross-fades DOWN then UP between photos as the
+  // sections turn, so the same image holds steadily within a section. A per-mount
+  // random offset varies which photos a given day draws.
+  const bgOffset = useMemo(
+    () => (EARTH_PHOTOS.length > 0 ? Math.floor(Math.random() * EARTH_PHOTOS.length) : 0),
     [],
   );
+  const sectionIndex = useMemo(() => {
+    let n = 0;
+    for (let i = 0; i <= slideIdx && i < slides.length; i++) {
+      const ty = slides[i]?.type;
+      if (
+        ty === "office_intro" || ty === "intercessions_portal" || ty === "intercessions" ||
+        ty === "psalm_title" || ty === "canticle_title" || ty === "lesson_title"
+      ) n++;
+    }
+    return n;
+  }, [slideIdx, slides]);
+  const officeBgPhoto = EARTH_PHOTOS.length > 0
+    ? EARTH_PHOTOS[(bgOffset + sectionIndex) % EARTH_PHOTOS.length]!
+    : null;
   const mainRef = useRef<HTMLElement | null>(null);
   const swipeTouchStartXRef = useRef<number | null>(null);
   const swipeTouchStartYRef = useRef<number | null>(null);
@@ -1358,16 +1375,24 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         animation: "office-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) backwards",
       }}
     >
-      {/* ONE landscape behind the whole office/devotion slideshow, faded gently
-          up on open, under a smooth multi-stop dark wash for legibility. */}
+      {/* Landscape behind the slideshow that CHANGES per section, cross-fading
+          down then up as each new title slide arrives, under a multi-stop dark
+          wash for legibility. */}
       {officeBgPhoto ? (
         <>
-          <img
-            src={officeBgPhoto}
-            alt=""
-            aria-hidden
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1, animation: "office-bg-in 1.2s ease both" }}
-          />
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={officeBgPhoto}
+              src={officeBgPhoto}
+              alt=""
+              aria-hidden
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.6, ease: "easeInOut" }}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: -1 }}
+            />
+          </AnimatePresence>
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.55) 0%, rgba(8,22,15,0.66) 26%, rgba(8,22,15,0.76) 50%, rgba(8,22,15,0.84) 74%, rgba(8,22,15,0.90) 100%)" }} />
         </>
       ) : (
