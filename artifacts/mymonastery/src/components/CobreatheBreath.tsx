@@ -136,6 +136,8 @@ export function CobreatheBreath({
   todayCount,
   backgroundImage,
   photos,
+  coffeePhotos,
+  topic = "planet",
   followSeed,
   followStartEpochMs,
   onSession,
@@ -168,6 +170,11 @@ export function CobreatheBreath({
   // set is shuffled once per session and rotated through, one photo per breath.
   // No captions: the images speak for themselves.
   photos?: string[];
+  // The "Coffee" topic — instead of swapping the whole library, we KEEP the
+  // planet photos and sprinkle coffee in: every three breaths shows 1 coffee
+  // then 2 planet. These are the coffee-only images for that 1-in-3 slot.
+  coffeePhotos?: string[];
+  topic?: "planet" | "coffee";
   // ── Synchronized photos (optional) ────────────────────────────────────────
   // When breathing alongside a garden-mate, the /cobreathe page elects a leader
   // and passes the leader's photo seed + count origin so this session shows the
@@ -315,6 +322,14 @@ export function CobreatheBreath({
   if (canonicalRef.current === null && photoLibrary.length > 0) {
     canonicalRef.current = buildCanonical(photoLibrary);
   }
+  // "Coffee" topic: a separate canonical for the coffee-only images, plus a live
+  // mirror of the chosen topic, both read inside the rAF loop below.
+  const coffeeCanonicalRef = useRef<Canonical | null>(null);
+  if (coffeeCanonicalRef.current === null && coffeePhotos && coffeePhotos.length > 0) {
+    coffeeCanonicalRef.current = buildCanonical(coffeePhotos);
+  }
+  const topicRef = useRef(topic);
+  topicRef.current = topic;
   const hasPhotos = photoLibrary.length > 0;
   // Our own random seed — used when we're the leader or breathing solo.
   const ownSeedRef = useRef<number>(randomSeed());
@@ -454,6 +469,19 @@ export function CobreatheBreath({
         const idx = following
           ? (localIdx === 0 ? 0 : Math.max(1, Math.floor((now - (fStart as number)) / CYCLE_MS)))
           : localIdx;
+        // Photo for a given breath index. Planet topic: straight through the
+        // canonical sequence. Coffee topic: every third breath (i % 3 === 0) is a
+        // coffee image; the other two are planet — so each trio is 1 coffee + 2
+        // planet. Each source advances on its own ordinal so neither repeats early.
+        const coffeeCanon = coffeeCanonicalRef.current;
+        const useCoffee = topicRef.current === "coffee" && !!coffeeCanon && coffeeCanon.rest.length > 0;
+        const photoAt = (i: number): string => {
+          if (useCoffee && coffeeCanon) {
+            if (i % 3 === 0) return photoForGlobalIndex(coffeeCanon, seed, Math.floor(i / 3) + 1);
+            return photoForGlobalIndex(canonical, seed, i - Math.floor(i / 3));
+          }
+          return photoForGlobalIndex(canonical, seed, i);
+        };
         const a = photoARef.current;
         const b = photoBRef.current;
         // New breath: the incoming layer was preloaded last cycle; make sure it
@@ -462,7 +490,7 @@ export function CobreatheBreath({
         if (idx !== photoLastIdxRef.current) {
           photoLastIdxRef.current = idx;
           const incoming = (idx % 2 === 0) ? a : b;
-          const url = photoForGlobalIndex(canonical, seed, idx);
+          const url = photoAt(idx);
           if (incoming && incoming.getAttribute("src") !== url) incoming.src = url;
           photoPreloadedRef.current = -1;
         }
@@ -492,7 +520,7 @@ export function CobreatheBreath({
         // Preload the NEXT photo onto the now-hidden previous layer so it's
         // decoded before its turn (it becomes the active layer next breath).
         if (photoPreloadedRef.current !== idx && prevEl) {
-          const nextUrl = photoForGlobalIndex(canonical, seed, idx + 1);
+          const nextUrl = photoAt(idx + 1);
           if (prevEl.getAttribute("src") !== nextUrl) prevEl.src = nextUrl;
           photoPreloadedRef.current = idx;
         }

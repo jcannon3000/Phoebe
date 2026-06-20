@@ -776,9 +776,9 @@ export default function ContemplationPage() {
         </div>
       )}
 
-      {/* Cobreathe pill — set apart with a space, straight into today's
-          communal breath (?start=1). */}
-      <Link href="/cobreathe?start=1&from=contemplation" onClick={() => primeAudio()} className="block mt-6">
+      {/* Cobreathe pill — set apart with a space; opens Co-Breathe's intro slide
+          (the why + Topic/Length/Location), then Begin leads into the breath. */}
+      <Link href="/cobreathe?from=contemplation" onClick={() => primeAudio()} className="block mt-6">
         <div
           className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
           style={{

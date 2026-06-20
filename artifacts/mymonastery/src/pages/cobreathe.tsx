@@ -96,6 +96,18 @@ const SAGE = "#8FAF96";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 const SERIF = "Georgia, serif";
 
+// Shared look for the intro-slide setting dropdowns: a native <select> stripped
+// of its OS chrome and themed to the row (green value text + our own ▾ caret),
+// so it reads as part of the row but opens a real dropdown on tap.
+const SETTING_SELECT_WRAP: React.CSSProperties = { position: "relative", display: "flex", alignItems: "center" };
+const SETTING_SELECT: React.CSSProperties = {
+  appearance: "none", WebkitAppearance: "none", MozAppearance: "none",
+  background: "transparent", border: "none", outline: "none",
+  color: "#A8C5A0", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 500,
+  textAlign: "right", textAlignLast: "right", cursor: "pointer", paddingRight: 18,
+};
+const SETTING_SELECT_CARET: React.CSSProperties = { position: "absolute", right: 0, pointerEvents: "none", color: "#A8C5A0", opacity: 0.7, fontSize: 12 };
+
 // The week's intention — who this week's breath is held for. Rotates by
 // week-of-year so the whole community holds the same focus at the same time.
 const WEEKLY_FOCI: Array<{ emoji: string; key: string; title: string; line: string }> = [
@@ -421,11 +433,6 @@ export default function CobreathePage() {
   // behind the breath for a frame. (The breath's own opaque field covers the
   // screen from the first paint.)
   if (mode === "breathing") {
-    // Topic → which photos the breath cycles. "planet" = the bundled landscapes;
-    // "coffee" = the coffee set (falls back to the planet set if somehow empty).
-    const topicPhotos = topic === "coffee" && COFFEE_PHOTOS.length > 0
-      ? COFFEE_PHOTOS
-      : COBREATHE_PHOTOS;
     // Fade INTO the breath rather than hard-cutting from the intro — a gentle
     // half-second opacity rise as the practice takes over the screen. The
     // wrapper is a full-screen fixed layer so the fade reads cleanly over the
@@ -443,7 +450,9 @@ export default function CobreathePage() {
           totalBreaths={lengthBreaths}
           onReachTarget={handleReachTarget}
           onEnd={handleEnd}
-          photos={topicPhotos}
+          photos={COBREATHE_PHOTOS}
+          coffeePhotos={COFFEE_PHOTOS}
+          topic={topic}
           followSeed={breathSync.leader?.masterSeed}
           followStartEpochMs={breathSync.leader?.startEpochMs}
           onSession={(info) => breathSync.announceSession(info.startEpochMs, info.masterSeed)}
@@ -524,26 +533,45 @@ export default function CobreathePage() {
           <div className="w-full" style={{ maxWidth: 440 }}>
             <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginBottom: 14 }} />
 
-            {/* Setting rows — label left, current value right; tap a row to change
-                it (Topic leads, since it sets the imagery). */}
-            <button type="button" onClick={() => setTopic((tp) => (tp === "planet" ? "coffee" : "planet"))}
-              className="w-full flex items-center justify-between rounded-xl px-4 py-3.5 mb-2 transition-opacity active:opacity-80"
+            {/* Setting rows — label left, a real dropdown right (Topic leads,
+                since it sets the imagery). */}
+            <div className="w-full flex items-center justify-between rounded-xl px-4 py-3 mb-2"
               style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
               <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600 }}>{t("cobreathe.set_topic", { defaultValue: "Topic" })}</span>
-              <span style={{ color: "#A8C5A0", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 500 }}>{topic === "planet" ? t("cobreathe.topic_planet", { defaultValue: "The Planet" }) : t("cobreathe.topic_coffee", { defaultValue: "Coffee" })} <span aria-hidden style={{ opacity: 0.6 }}>›</span></span>
-            </button>
-            <button type="button" onClick={() => setLengthBreaths((n) => (n >= 36 ? 6 : n + 6))}
-              className="w-full flex items-center justify-between rounded-xl px-4 py-3.5 mb-2 transition-opacity active:opacity-80"
+              <div style={SETTING_SELECT_WRAP}>
+                <select value={topic} onChange={(e) => setTopic(e.target.value as "planet" | "coffee")} style={SETTING_SELECT} aria-label={t("cobreathe.set_topic", { defaultValue: "Topic" })}>
+                  <option value="planet">{t("cobreathe.topic_planet", { defaultValue: "The Planet" })}</option>
+                  <option value="coffee">{t("cobreathe.topic_coffee", { defaultValue: "Coffee" })}</option>
+                </select>
+                <span aria-hidden style={SETTING_SELECT_CARET}>▾</span>
+              </div>
+            </div>
+            <div className="w-full flex items-center justify-between rounded-xl px-4 py-3 mb-2"
               style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
               <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600 }}>{t("cobreathe.set_length", { defaultValue: "Length" })}</span>
-              <span style={{ color: "#A8C5A0", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 500 }}>{lengthBreaths} {t("cobreathe.breaths", { defaultValue: "breaths" })} <span aria-hidden style={{ opacity: 0.6 }}>›</span></span>
-            </button>
-            <button type="button" onClick={() => setLocationOn((v) => !v)}
-              className="w-full flex items-center justify-between rounded-xl px-4 py-3.5 transition-opacity active:opacity-80"
+              <div style={SETTING_SELECT_WRAP}>
+                <select value={lengthBreaths} onChange={(e) => setLengthBreaths(Number(e.target.value))} style={SETTING_SELECT} aria-label={t("cobreathe.set_length", { defaultValue: "Length" })}>
+                  {[6, 12, 18, 24, 30, 36].map((n) => (
+                    <option key={n} value={n}>{n} {t("cobreathe.breaths", { defaultValue: "breaths" })}</option>
+                  ))}
+                </select>
+                <span aria-hidden style={SETTING_SELECT_CARET}>▾</span>
+              </div>
+            </div>
+            <div className="w-full flex items-center justify-between rounded-xl px-4 py-3"
               style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.22)" }}>
-              <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600 }}>{t("cobreathe.set_location", { defaultValue: "Location" })}</span>
-              <span style={{ color: "#A8C5A0", fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 500 }}>{locationOn ? t("common.on", { defaultValue: "On" }) : t("common.off", { defaultValue: "Off" })} <span aria-hidden style={{ opacity: 0.6 }}>›</span></span>
-            </button>
+              <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600 }}>
+                {t("cobreathe.set_location", { defaultValue: "Location" })}
+                <span style={{ color: "rgba(240,237,230,0.45)", fontWeight: 500 }}> {t("cobreathe.optional", { defaultValue: "(optional)" })}</span>
+              </span>
+              <div style={SETTING_SELECT_WRAP}>
+                <select value={locationOn ? "on" : "off"} onChange={(e) => setLocationOn(e.target.value === "on")} style={SETTING_SELECT} aria-label={t("cobreathe.set_location", { defaultValue: "Location" })}>
+                  <option value="on">{t("common.on", { defaultValue: "On" })}</option>
+                  <option value="off">{t("common.off", { defaultValue: "Off" })}</option>
+                </select>
+                <span aria-hidden style={SETTING_SELECT_CARET}>▾</span>
+              </div>
+            </div>
 
             <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginTop: 14, marginBottom: 20 }} />
 
