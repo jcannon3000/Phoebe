@@ -390,6 +390,42 @@ export function pushCustomAnchors(): void {
   pushTimer = setTimeout(() => { pushTimer = null; doPush(); }, 800);
 }
 
+// Day-stamps are ISO YYYY-MM-DD, which sort lexically — so the later string is
+// the more recent day. Ties keep `a` (local).
+function laterStamp(a?: string, b?: string): string | undefined {
+  if (a && b) return a >= b ? a : b;
+  return a || b;
+}
+// readToday is "ymd|amount" — keep the later day; same day → the larger amount.
+function laterReadToday(a?: string, b?: string): string | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  const [ay, aAmt] = a.split("|");
+  const [by, bAmt] = b.split("|");
+  if (ay !== by) return ay > by ? a : b;
+  return (Number(aAmt) || 0) >= (Number(bAmt) || 0) ? a : b;
+}
+type LogEntry = { done?: string; skip?: string; readToday?: string; readTotal?: number };
+// Merge one anchor's per-day state field-by-field, keeping the MOST RECENT value
+// for each. Critical: a blind `{...local, ...server}` let a stale server entry
+// (e.g. one whose debounced push hadn't landed before an app update reloaded the
+// page) wipe a fresh local "done today" — the "I logged it, then an update
+// un-logged it" bug. Field-wise most-recent-wins is safe both for that same-
+// device race AND for genuine cross-device updates.
+function mergeLogEntry(l: LogEntry | undefined, s: LogEntry | undefined): LogEntry {
+  const e: LogEntry = {};
+  const done = laterStamp(l?.done, s?.done);
+  const skip = laterStamp(l?.skip, s?.skip);
+  if (done) e.done = done;
+  // done + skip are mutually exclusive on a given day — the positive "done" wins.
+  if (skip && skip !== done) e.skip = skip;
+  const rt = laterReadToday(l?.readToday, s?.readToday);
+  if (rt) e.readToday = rt;
+  const total = Math.max(l?.readTotal ?? 0, s?.readTotal ?? 0);
+  if (total > 0) e.readTotal = total;
+  return e;
+}
+
 /**
  * Reconcile with the server snapshot at login by UNION-MERGING definitions by
  * id — so a ritual never disappears, whether it was created on this device or
@@ -409,16 +445,29 @@ export function syncCustomAnchorsFromServer(server: CustomAnchorSnapshot | null 
   for (const d of localDefs) if (!byId.has(d.id)) byId.set(d.id, d);
   const mergedDefs = Array.from(byId.values());
 
-  // Merge per-day state: local first, server overriding shared ids.
+  // Merge per-day state field-by-field, keeping the most-recent value for each
+  // anchor (NOT a blind server-wins, which wiped freshly-logged local state).
   const localLog = exportCustomAnchorSnapshot().log;
   const serverLog = (server?.log && typeof server.log === "object" ? server.log : {}) as CustomAnchorSnapshot["log"];
-  const mergedLog = { ...localLog, ...serverLog };
+  const mergedLog: CustomAnchorSnapshot["log"] = {};
+  for (const id of new Set([...Object.keys(localLog), ...Object.keys(serverLog)])) {
+    mergedLog[id] = mergeLogEntry(localLog[id], serverLog[id]);
+  }
 
   importCustomAnchorSnapshot({ defs: mergedDefs, log: mergedLog, updatedAt: Date.now() });
 
-  // If the union added anything beyond what the server had, push it up so the
-  // server holds the complete set (covers the first-time migration too).
-  if (mergedDefs.length > serverDefs.length) doPush();
+  // Push the reconciled snapshot up whenever it differs from what the server
+  // had — covers the first-time migration, a ritual added on this device, AND
+  // recovering a freshly-logged local "done" the server's snapshot was missing
+  // (otherwise the next reload's sync would drop it again). Skip the push when
+  // nothing changed so two devices don't ping-pong identical writes.
+  let changedVsServer = mergedDefs.length !== serverDefs.length;
+  if (!changedVsServer) {
+    for (const id of Object.keys(mergedLog)) {
+      if (JSON.stringify(mergedLog[id]) !== JSON.stringify(serverLog[id])) { changedVsServer = true; break; }
+    }
+  }
+  if (changedVsServer) doPush();
 }
 
 // Any local change (list add/remove via saveDefs, or a check/skip/reading log)
