@@ -1088,7 +1088,7 @@ export function CobreatheBreath({
           <div ref={labelRef} className="flex-1 min-w-0" style={{ willChange: "transform, opacity" }}>
             <span
               style={{
-                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 19, fontWeight: 600,
+                color: WARM, fontFamily: SPACE_GROTESK, fontSize: 15.2, fontWeight: 600,
                 letterSpacing: "0.04em", textShadow: "0 2px 18px rgba(8,30,18,0.6)", whiteSpace: "nowrap",
               }}
             >
@@ -1097,7 +1097,7 @@ export function CobreatheBreath({
           </div>
           {/* RIGHT — just "n of 12" (no leading "Breath"), once counting. */}
           {counting && (
-            <p className="flex-1 text-right" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, fontSize: 19, fontWeight: 600, letterSpacing: "0.04em" }}>
+            <p className="flex-1 text-right" style={{ color: reachedNow ? "rgba(126,210,140,0.95)" : TEXT_DIM, fontFamily: SPACE_GROTESK, fontSize: 15.2, fontWeight: 600, letterSpacing: "0.04em" }}>
               {reachedNow
                 ? t("cobreathe.breath_counter_past", { current: breathNum, defaultValue: `🌿 ${breathNum}` })
                 : t("cobreathe.breath_counter", { current: breathNum, total: totalBreaths, defaultValue: `${breathNum} of ${totalBreaths}` })}
