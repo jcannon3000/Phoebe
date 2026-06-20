@@ -143,17 +143,18 @@ export default function ListeningPage() {
   // ——— Log (the main screen) — a simple two-field journal entry ———
   return (
     <Layout>
-      <div style={{ position: "relative", isolation: "isolate", flex: 1, display: "flex", flexDirection: "column", minHeight: "100%" }}>
-      {/* A still landscape behind the page, under a dark wash for legibility. */}
+      <div style={{ position: "relative", flex: 1, display: "flex", flexDirection: "column", minHeight: "100%" }}>
+      {/* A still landscape behind the WHOLE page (fixed = full-bleed, not boxed to
+          the content height), under a dark wash for legibility. */}
       {bgPhoto && (
         <>
           <img
             src={bgPhoto}
             alt=""
             aria-hidden
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.3, zIndex: -1 }}
+            style={{ position: "fixed", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.3, zIndex: -1 }}
           />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
+          <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.45) 0%, rgba(8,22,15,0.62) 38%, rgba(8,22,15,0.80) 100%)" }} />
         </>
       )}
       <div className="max-w-xl mx-auto w-full">
