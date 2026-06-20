@@ -38,7 +38,7 @@ const glassField = {
 type View = "log" | "done" | "history";
 
 // One account-wide log entry (server-backed; syncs across the account).
-type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: string; artworkUrl?: string; createdAt: string };
+type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: string; artworkUrl?: string; experience?: string; createdAt: string };
 
 export default function ListeningPage() {
   const [, navigate] = useLocation();
@@ -97,7 +97,7 @@ export default function ListeningPage() {
   });
   const entries = logData?.entries ?? [];
   const logMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl }),
+    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, experience }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
   });
 
@@ -294,6 +294,9 @@ function HistoryRow({ e }: { e: ServerEntry }) {
       <div className="flex-1 min-w-0">
         <p className="text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{label}</p>
         <p className="text-[11.5px] mt-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{MEDIUM_EMOJI[e.medium] ?? "🎧"} {day}</p>
+        {e.experience?.trim() ? (
+          <p className="text-[12.5px] mt-1.5 leading-snug" style={{ color: "rgba(240,237,230,0.78)", fontFamily: SERIF, fontStyle: "italic" }}>{e.experience.trim()}</p>
+        ) : null}
       </div>
     </div>
   );

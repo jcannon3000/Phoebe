@@ -3112,10 +3112,12 @@ export async function migrate() {
         medium TEXT NOT NULL,
         what TEXT NOT NULL DEFAULT '',
         artwork_url TEXT NOT NULL DEFAULT '',
+        experience TEXT NOT NULL DEFAULT '',
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
     `);
     await run(client, `ALTER TABLE listening_entries ADD COLUMN IF NOT EXISTS artwork_url TEXT NOT NULL DEFAULT ''`);
+    await run(client, `ALTER TABLE listening_entries ADD COLUMN IF NOT EXISTS experience TEXT NOT NULL DEFAULT ''`);
     await run(client, `CREATE INDEX IF NOT EXISTS listening_entries_user_idx ON listening_entries (user_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS listening_entries_user_day_idx ON listening_entries (user_id, day)`);
 

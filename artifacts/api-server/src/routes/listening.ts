@@ -33,7 +33,7 @@ router.get("/listening", async (req: Request, res: Response): Promise<void> => {
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
   try {
     const rows = await db
-      .select({ id: listeningEntriesTable.id, day: listeningEntriesTable.day, medium: listeningEntriesTable.medium, what: listeningEntriesTable.what, artworkUrl: listeningEntriesTable.artworkUrl, createdAt: listeningEntriesTable.createdAt })
+      .select({ id: listeningEntriesTable.id, day: listeningEntriesTable.day, medium: listeningEntriesTable.medium, what: listeningEntriesTable.what, artworkUrl: listeningEntriesTable.artworkUrl, experience: listeningEntriesTable.experience, createdAt: listeningEntriesTable.createdAt })
       .from(listeningEntriesTable)
       .where(eq(listeningEntriesTable.userId, userId))
       .orderBy(desc(listeningEntriesTable.createdAt))
@@ -48,18 +48,19 @@ router.get("/listening", async (req: Request, res: Response): Promise<void> => {
 router.post("/listening", perUserRateLimit("listening_log", { max: 30, windowMs: 60 * 1000 }), async (req: Request, res: Response): Promise<void> => {
   const userId = uid(req);
   if (userId === null) { res.status(401).json({ error: "not_authenticated" }); return; }
-  const body = req.body as { day?: unknown; medium?: unknown; what?: unknown; artworkUrl?: unknown };
+  const body = req.body as { day?: unknown; medium?: unknown; what?: unknown; artworkUrl?: unknown; experience?: unknown };
   const day = typeof body.day === "string" && isValidYmd(body.day)
     ? body.day
     : new Date().toISOString().slice(0, 10);
   const medium = typeof body.medium === "string" && MEDIA.has(body.medium) ? body.medium : "streaming";
   const what = typeof body.what === "string" ? body.what.trim().slice(0, 200) : "";
   const artworkUrl = typeof body.artworkUrl === "string" && /^https?:\/\//i.test(body.artworkUrl) ? body.artworkUrl.slice(0, 600) : "";
+  const experience = typeof body.experience === "string" ? body.experience.trim().slice(0, 500) : "";
   try {
     const [row] = await db
       .insert(listeningEntriesTable)
-      .values({ userId, day, medium, what, artworkUrl })
-      .returning({ id: listeningEntriesTable.id, day: listeningEntriesTable.day, medium: listeningEntriesTable.medium, what: listeningEntriesTable.what, artworkUrl: listeningEntriesTable.artworkUrl, createdAt: listeningEntriesTable.createdAt });
+      .values({ userId, day, medium, what, artworkUrl, experience })
+      .returning({ id: listeningEntriesTable.id, day: listeningEntriesTable.day, medium: listeningEntriesTable.medium, what: listeningEntriesTable.what, artworkUrl: listeningEntriesTable.artworkUrl, experience: listeningEntriesTable.experience, createdAt: listeningEntriesTable.createdAt });
     res.json({ ok: true, entry: row });
   } catch (err) {
     console.error("[/listening POST] failed:", err);

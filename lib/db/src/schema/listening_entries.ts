@@ -24,6 +24,8 @@ export const listeningEntriesTable = pgTable(
     // Album/track artwork URL from the Apple Music search autocomplete (https
     // mzstatic catalog URL, which loads in <img>). Empty when free-typed.
     artworkUrl: text("artwork_url").notNull().default(""),
+    // Optional reflection — "what did it stir in you?".
+    experience: text("experience").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
