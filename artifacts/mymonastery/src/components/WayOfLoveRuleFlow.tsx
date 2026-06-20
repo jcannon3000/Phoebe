@@ -14,11 +14,13 @@
  * the Daily progress "Customize" pill and returns there when done.
  */
 
-import { useState, useEffect, useRef, type ReactNode } from "react";
+import { useState, useEffect, useRef, type ReactNode, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Check } from "lucide-react";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { FROST, FROST_BLUR } from "@/lib/frost";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getJournalingSlot, setJournalingSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
@@ -42,7 +44,7 @@ const BG = "#091A10";
 const CREAM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SAGE_DIM = "rgba(143,175,150,0.6)";
-const CARD = "rgba(46,107,64,0.12)";
+const CARD = "rgba(9,26,16,0.3)";
 const CARD_ACTIVE = "rgba(46,107,64,0.34)";
 // Match the app-wide card border (rgba(46,107,64,0.4) — the dominant resting
 // border on dashboard/daily-progress surfaces) so the builder doesn't read as a
@@ -421,10 +423,16 @@ export default function WayOfLoveRuleFlow({
   // then the inner block re-adds the SAME small padding the home screen uses so
   // the cards sit at the same margin as the home cards — not inset twice (which
   // left it narrow), not jammed to the edge.
+  const leafBg = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
   const shell = (children: ReactNode) => (
-    <div className="-mx-4 sm:-mx-6 md:-mx-8" style={{ flex: 1, minHeight: 0, background: BG, position: "relative", display: "flex", flexDirection: "column" }}>
-      {/* No fadeTop: rendered under <Layout>'s opaque header. */}
+    <div className="-mx-4 sm:-mx-6 md:-mx-8" style={{ flex: 1, minHeight: 0, background: BG, position: "relative", isolation: "isolate", display: "flex", flexDirection: "column" }}>
       <AnimatedBackground base={BG} variant="subtle" />
+      {leafBg && (
+        <>
+          <img src={leafBg} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, zIndex: 0 }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(8,22,15,0.5) 0%, rgba(8,22,15,0.66) 45%, rgba(8,22,15,0.82) 100%)" }} />
+        </>
+      )}
       <div className="px-4 sm:px-6 md:px-8" style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", paddingTop: 24, paddingBottom: 40 }}>
         {/* Full width on mobile; capped + centered only on larger screens so the
             elements aren't squeezed into a narrow column on a phone. */}
@@ -495,6 +503,7 @@ export default function WayOfLoveRuleFlow({
       key={label}
       onClick={onClick}
       style={{
+        ...FROST_BLUR,
         background: on ? CARD_ACTIVE : CARD,
         border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
         color: CREAM, borderRadius: 14, padding: 0, overflow: "hidden", textAlign: "left",
@@ -532,7 +541,7 @@ export default function WayOfLoveRuleFlow({
             value={GOAL_OPTIONS.includes(goalMin) || goalMin === 0 ? String(goalMin) : "5"}
             onChange={(e) => chooseGoal(e.target.value)}
             aria-label={t("wol_rule.listen_goal_label", { defaultValue: "Minutes of silence a day" })}
-            style={{ width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+            style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
           >
             <option value="0">{t("wol_rule.goal_none", { defaultValue: "No goal" })}</option>
             {GOAL_OPTIONS.map((m) => (
@@ -618,7 +627,7 @@ export default function WayOfLoveRuleFlow({
                 value={String(contemplationLen)}
                 onChange={(e) => chooseContemplationLen(parseInt(e.target.value, 10))}
                 aria-label={t("wol_rule.contemplation_length_label", { defaultValue: "How long is each sit?" })}
-                style={{ width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+                style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
               >
                 {[5, 10, 15, 20, 30, 45, 60].map((m) => (
                   <option key={m} value={String(m)}>{t("wol_rule.minutes_each", { mins: m, defaultValue: `${m} minutes` })}</option>

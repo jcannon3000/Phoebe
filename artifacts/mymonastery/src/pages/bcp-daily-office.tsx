@@ -1453,7 +1453,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           <span
             className="rounded-full"
             style={{
-              background: "rgba(19,44,29,0.85)",
+              background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
               border: `1px solid ${BORDER}`,
               color: WARM_TEXT,
               fontSize: 12,
@@ -1472,7 +1472,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               type="button"
               onClick={onBack}
               aria-label="Close"
-              style={{ width: 32, height: 32, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(19,44,29,0.85)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}
+              style={{ width: 32, height: 32, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}
             >
               <X size={16} />
             </button>
@@ -1607,7 +1607,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     display: "inline-flex",
                     alignItems: "center",
                     gap: 7,
-                    background: "rgba(46,107,64,0.22)",
+                    background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
                     color: WARM_TEXT,
                     border: "1px solid rgba(46,107,64,0.50)",
                     borderRadius: 999,
@@ -2881,9 +2881,9 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           transition: "bottom 0.2s ease",
           transform: "translateX(-50%)",
           zIndex: 50,
-          background: "rgba(19,44,29,0.92)",
-          backdropFilter: "blur(12px)",
-          WebkitBackdropFilter: "blur(12px)",
+          background: "rgba(9,26,16,0.3)",
+          backdropFilter: "blur(14px)",
+          WebkitBackdropFilter: "blur(14px)",
           border: `1px solid ${BORDER}`,
           borderRadius: 999,
           padding: "8px 12px",
@@ -3398,7 +3398,7 @@ function PhysicalBookGuide(props: {
           <span
             className="rounded-full"
             style={{
-              background: "rgba(19,44,29,0.85)",
+              background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
               border: `1px solid ${BORDER}`,
               color: WARM_TEXT,
               fontSize: 12,
