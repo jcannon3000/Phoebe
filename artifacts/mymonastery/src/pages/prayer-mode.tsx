@@ -38,7 +38,7 @@ import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { ContemplationTimer } from "@/components/ContemplationTimer";
 import { CobreatheOverlay } from "@/components/CobreatheOverlay";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { EARTH_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { GratitudeNudge } from "@/components/GratitudeComposer";
 import { TodaysRhythm } from "@/components/TodaysRhythm";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
@@ -2277,7 +2277,7 @@ function OfficeCloseEventsSlide({ onDone, visible }: { onDone: () => void; visib
       >
         {t("prayer_mode.coming_up", { defaultValue: "Coming up" })}
       </motion.p>
-      <OfficeCloseEvents max={3} onEmpty={(
+      <OfficeCloseEvents max={3} onResolvedEmpty={onDone} onEmpty={(
         <motion.p
           initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.12 }}
           style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: "italic", fontSize: 19, color: "#F0EDE6", maxWidth: 320, lineHeight: 1.45 }}
@@ -4251,7 +4251,7 @@ export default function PrayerModePage() {
   // A DIFFERENT calm landscape rests behind each office slide/section (keyed by
   // the slide index, from the "life on earth" library), under a dark wash so the
   // prayer text stays legible. On the prayer slides — closing/blessing keep their look.
-  const officePhoto = EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[index % EARTH_PHOTOS.length] : null;
+  const officePhoto = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[index % LEAF_PHOTOS.length] : null;
 
   return (
     <div
@@ -4261,11 +4261,10 @@ export default function PrayerModePage() {
       // slide is up. The pulse is implemented as a CSS animation on
       // the .closing-pulse class (see index.css). Other phases keep
       // the static background.
-      className={phase === "closing" || phase === "blessing" ? "closing-pulse" : undefined}
       onTouchStart={handleSwipeTouchStart}
       onTouchEnd={handleSwipeTouchEnd}
       style={{
-        background: phase === "closing" || phase === "blessing" ? undefined : "#0C1F12",
+        background: "#0C1F12",
         minHeight: "100dvh",
         opacity: visible ? 1 : 0,
         transition: "opacity 0.5s ease",
@@ -4277,7 +4276,7 @@ export default function PrayerModePage() {
           strong dark wash (legible text), in place of the drifting gradient.
           The closing slide runs its own pulse; other phases keep the gradient.
           Both layers sit at z-index:-1 behind the content (host is isolated). */}
-      {phase === "prayer" && officePhoto ? (
+      {officePhoto ? (
         <>
           <OfficeBackdropPhoto key={officePhoto} src={officePhoto} slideVisible={slideVisible} />
           <div
@@ -4285,9 +4284,9 @@ export default function PrayerModePage() {
             style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }}
           />
         </>
-      ) : phase !== "closing" ? (
+      ) : (
         <AnimatedBackground base="#0C1F12" variant="subtle" fadeTop />
-      ) : null}
+      )}
       {/* Exit button — lands on the dashboard so leaving prayer is a clean
           return to the home view rather than dropping the user back into
           the prayer-list they were just trying to step away from. */}

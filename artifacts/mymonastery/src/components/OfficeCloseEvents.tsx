@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { apiRequest } from "@/lib/queryClient";
@@ -22,9 +22,13 @@ const SPACE_GROTESK = "'Space Grotesk', sans-serif";
 export function OfficeCloseEvents({
   max = 3,
   onEmpty = null,
+  onResolvedEmpty,
 }: {
   max?: number;
   onEmpty?: ReactNode;
+  // Fired once the sources have LOADED and there's nothing upcoming — lets the
+  // office close skip the events slide entirely instead of showing a barren one.
+  onResolvedEmpty?: () => void;
 }) {
   const { user } = useAuth();
   const uid = user?.id;
@@ -107,7 +111,16 @@ export function OfficeCloseEvents({
     return out.filter((e) => (seen.has(e.key) ? false : (seen.add(e.key), true))).slice(0, Math.max(1, max));
   }, [rituals, plansData, actionsData, feedsData, max]);
 
-  if (events.length === 0) return <>{onEmpty}</>;
+  // All four sources have answered (data defined, even if empty) — only then is
+  // "nothing upcoming" true. (enabled:!!uid, so a logged-out caller never settles.)
+  const settled = !!uid && rituals !== undefined && plansData !== undefined && actionsData !== undefined && feedsData !== undefined;
+  useEffect(() => {
+    if (settled && events.length === 0) onResolvedEmpty?.();
+  }, [settled, events.length, onResolvedEmpty]);
+
+  // While still loading, render nothing (avoid flashing the onEmpty fallback);
+  // once settled with no events, the effect above skips the slide.
+  if (events.length === 0) return settled ? <>{onEmpty}</> : null;
 
   return (
     <motion.div

@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { useMemo } from "react";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { playOpeningSwell } from "@/lib/amenFeedback";
@@ -51,8 +53,18 @@ export function MenuHub({
   headerSlot?: ReactNode;
 }) {
   const [, setLocation] = useLocation();
+  const bgPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
   return (
     <Layout>
+      {/* Leaf backdrop — absolute inside an isolation:isolate host (NOT fixed) so
+          it renders reliably behind the menu cards (the office/listening pattern). */}
+      <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
+      {bgPhoto && (
+        <>
+          <img src={bgPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.28, zIndex: -1 }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.52) 0%, rgba(8,22,15,0.72) 50%, rgba(8,22,15,0.86) 100%)" }} />
+        </>
+      )}
       <div style={{ maxWidth: 640, width: "100%", margin: "0 auto", color: WARM, fontFamily: FONT, paddingBottom: 48 }}>
         {backHref && (
           <button
@@ -112,6 +124,7 @@ export function MenuHub({
             </div>
           ))}
         </div>
+      </div>
       </div>
     </Layout>
   );
