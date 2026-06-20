@@ -3203,15 +3203,15 @@ function PrayedWithWeekRail() {
   return (
     <div className="mb-4">
       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SG }}>
-        🌿 {total} {total === 1 ? "person" : "people"} prayed with you this week
+        Who prayed with you this week
       </p>
       <div className="flex items-start gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}>
         {people.map((p) => (
           <div key={p.id} className="flex flex-col items-center shrink-0" style={{ width: 48 }}>
             {p.avatarUrl ? (
-              <img src={p.avatarUrl} alt={first(p.name)} className="rounded-full object-cover" style={{ width: 44, height: 44, border: "1.5px solid rgba(46,107,64,0.5)", backgroundColor: "#1A4A2E" }} />
+              <img src={p.avatarUrl} alt={first(p.name)} className="rounded-full object-cover" style={{ width: 44, height: 44, backgroundColor: "#1A4A2E" }} />
             ) : (
-              <div className="rounded-full flex items-center justify-center font-semibold" style={{ width: 44, height: 44, border: "1.5px solid rgba(46,107,64,0.5)", background: "#1A4A2E", color: "#A8C5A0", fontSize: 15, fontFamily: SG }}>
+              <div className="rounded-full flex items-center justify-center font-semibold" style={{ width: 44, height: 44, background: "#1A4A2E", color: "#A8C5A0", fontSize: 15, fontFamily: SG }}>
                 {(p.name ?? "?").trim()[0]?.toUpperCase() ?? "?"}
               </div>
             )}
@@ -6717,7 +6717,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
               anchors split into Next / Done plus the streak — in place of the
               standard home modules. */}
           {filter === null && (newHomeForEveryone || isBeta) && !eventsOnly && (
-            <div className="mt-3 mb-3">
+            <div className="mt-0 mb-3">
               {/* Faces of everyone who prayed with you this week, above "Next". */}
               <PrayedWithWeekRail />
               {allHabitsDone ? (() => {

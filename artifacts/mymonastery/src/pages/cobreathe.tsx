@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
+import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { apiRequest } from "@/lib/queryClient";
 import { CobreatheBreath, DEFAULT_TOTAL_BREATHS, CYCLE_MS } from "@/components/CobreatheBreath";
 import { CobreatheSummary } from "@/components/CobreatheSummary";
@@ -392,17 +393,16 @@ export default function CobreathePage() {
   if (mode === "options") {
     return (
       <Layout>
-        {/* A calm begin slide — like the start of a contemplation sit: a soft
-            light-green gradient field, the content resting in the centre. No
-            globe emoji here (the globe lives in the breath itself). */}
+        {/* The begin slide, made to match the Contemplation begin screen: the
+            same drifting green glow (AnimatedBackground "pronounced") over the
+            #0C1F12 base, content resting in the centre, the choice + Start
+            stacked together. No globe emoji here (the globe lives in the breath). */}
         <div
           className="flex flex-col w-full"
-          style={{
-            minHeight: "calc(100dvh - var(--safe-top) - 56px)",
-            background: "radial-gradient(130% 80% at 50% 14%, rgba(70,140,96,0.34) 0%, rgba(34,82,56,0.20) 40%, rgba(12,36,23,0.04) 66%, rgba(10,24,16,0) 80%)",
-          }}
+          style={{ minHeight: "calc(100dvh - var(--safe-top) - 56px)", background: "#0C1F12", position: "relative", isolation: "isolate" }}
         >
-          <div className="flex flex-col flex-1 w-full max-w-md mx-auto px-6 pt-5 pb-10">
+          <AnimatedBackground base="#0C1F12" variant="pronounced" />
+          <div className="flex flex-col flex-1 w-full max-w-md mx-auto px-6 pt-5 pb-10" style={{ position: "relative", zIndex: 1 }}>
             <button
               type="button"
               onClick={() => { if (cameFromContemplation()) setLocation("/contemplation"); else setMode("intro"); }}
@@ -412,7 +412,7 @@ export default function CobreathePage() {
               ← {t("common.back", { defaultValue: "Back" })}
             </button>
 
-            {/* Title + the one choice, resting in the centre of the field. */}
+            {/* Title, the one choice, and Start — all resting in the centre. */}
             <div className="flex-1 flex flex-col justify-center">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-center" style={{ color: "rgba(180,210,188,0.75)", fontFamily: SPACE_GROTESK }}>
                 {t("cobreathe.title", { defaultValue: "Cobreathe" })}
@@ -455,17 +455,18 @@ export default function CobreathePage() {
                   <span style={{ position: "absolute", top: 2, left: joinInPerson ? 20 : 2, width: 20, height: 20, borderRadius: 999, background: "#F0EDE6", transition: "left 0.16s ease" }} />
                 </span>
               </button>
-            </div>
 
-            {/* Start the breath — anchored at the foot of the field. */}
-            <button
-              type="button"
-              onClick={() => { setPeakNear({ count: 0, fellows: [] }); setCoBreathed(new Map()); setMode("breathing"); }}
-              className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-              style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(140,195,160,0.6)", fontFamily: SPACE_GROTESK, fontSize: 16.5, fontWeight: 700, cursor: "pointer", boxShadow: "0 6px 22px rgba(8,30,18,0.45)" }}
-            >
-              {t("cobreathe.start", { defaultValue: "Start" })}
-            </button>
+              {/* Start — directly below the choice, centred (mirrors "Start
+                  contemplation" sitting under the Length picker). */}
+              <button
+                type="button"
+                onClick={() => { setPeakNear({ count: 0, fellows: [] }); setCoBreathed(new Map()); setMode("breathing"); }}
+                className="w-full rounded-2xl py-4 mt-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
+                style={{ background: "#2D5E3F", color: WARM, border: "1px solid rgba(140,195,160,0.6)", fontFamily: SPACE_GROTESK, fontSize: 16.5, fontWeight: 700, cursor: "pointer", boxShadow: "0 6px 22px rgba(8,30,18,0.45)" }}
+              >
+                {t("cobreathe.start", { defaultValue: "Start" })}
+              </button>
+            </div>
           </div>
         </div>
       </Layout>
