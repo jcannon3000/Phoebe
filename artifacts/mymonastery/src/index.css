@@ -181,7 +181,7 @@
    its resting opacity on open (see bcp-daily-office). */
 @keyframes office-bg-in {
   from { opacity: 0; }
-  to   { opacity: 0.24; }
+  to   { opacity: 0.168; }
 }
 @keyframes card-breathe {
   0%, 100% { box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
