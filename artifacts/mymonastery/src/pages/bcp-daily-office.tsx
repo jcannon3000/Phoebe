@@ -3871,6 +3871,11 @@ export default function BcpDailyOfficePage() {
     () => (getSideLevel(__h >= 14 ? "evening" : "morning") === "office" ? "full" : "devotion"),
   );
   const [methodPick, setMethodPick] = useState<DefaultOfficeEntry>("read");
+  // A leaf behind the landing, matching the office slideshow's leaf field.
+  const landingLeaf = useMemo(
+    () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
+    [],
+  );
 
   // Time-of-day flags driving which card highlights "Available now".
   const hour = new Date().getHours();
@@ -4014,11 +4019,21 @@ export default function BcpDailyOfficePage() {
   // The "How" options valid for the chosen time + practice. read/book always;
   // Listen only for the full office; Watch only in the morning (Cathedral /
   // St John's stream). methodPick is clamped to a valid one for Begin.
+  // Mirror the office's opening slide exactly: On screen · Listen · Watch
+  // (morning weekdays only, when the Cathedral streams) · Physical BCP.
   const howOptions: DefaultOfficeEntry[] = [
-    "read", "book",
-    ...(practicePick === "full" ? (["listen"] as const) : []),
-    ...(todPick === "morning" ? (["watch"] as const) : []),
+    "read",
+    "listen",
+    ...(todPick === "morning" && weekday ? (["watch"] as const) : []),
+    "book",
   ];
+  // Match the first-slide labels ("On screen", not "Digital Slideshow").
+  const HOW_LABEL: Record<DefaultOfficeEntry, string> = {
+    read: "On screen",
+    listen: "Listen",
+    watch: "Watch",
+    book: "Physical BCP",
+  };
   const effMethod: DefaultOfficeEntry = howOptions.includes(methodPick) ? methodPick : "read";
   const beginOffice = () => {
     if (practicePick === "devotion") {
@@ -4034,7 +4049,8 @@ export default function BcpDailyOfficePage() {
   const officeRowSelect: CSSProperties = { appearance: "none", WebkitAppearance: "none", MozAppearance: "none", background: "transparent", border: "none", outline: "none", color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 500, textAlign: "right", textAlignLast: "right", cursor: "pointer" };
 
   return (
-    <Layout>
+    <Layout bgPhoto={landingLeaf}>
+      <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
       <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
         <Link href="/bcp" className="text-sm mb-3 inline-block" style={{ color: "#8FAF96" }}>
           ← Book of Common Prayer
@@ -4047,7 +4063,7 @@ export default function BcpDailyOfficePage() {
             Before you begin
           </p>
           <h1 style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: "clamp(40px, 11vw, 60px)", lineHeight: 1.05, letterSpacing: "-0.02em", marginBottom: 16 }}>
-            Daily Office
+            Daily Prayer
           </h1>
           <p style={{ color: "rgba(240,237,230,0.85)", fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, lineHeight: 1.55, maxWidth: 440, marginBottom: 24 }}>
             Morning and Evening Prayer, kept at the hinges of the day — the full office or the short devotion.
@@ -4066,14 +4082,14 @@ export default function BcpDailyOfficePage() {
               <span style={officeRowLabel}>Practice</span>
               <select value={practicePick} onChange={(e) => setPracticePick(e.target.value as "devotion" | "full")} style={officeRowSelect} aria-label="Practice">
                 <option value="devotion">Devotion (short)</option>
-                <option value="full">Full Prayer</option>
+                <option value="full">Full Office</option>
               </select>
             </div>
             <div style={officeRow}>
               <span style={officeRowLabel}>How</span>
               <select value={effMethod} onChange={(e) => setMethodPick(e.target.value as DefaultOfficeEntry)} style={officeRowSelect} aria-label="How">
                 {howOptions.map((m) => (
-                  <option key={m} value={m}>{OFFICE_METHOD_META[m].label}</option>
+                  <option key={m} value={m}>{HOW_LABEL[m]}</option>
                 ))}
               </select>
             </div>
@@ -4103,6 +4119,7 @@ export default function BcpDailyOfficePage() {
             )}
           </div>
         </div>
+      </div>
       </div>
     </Layout>
   );
