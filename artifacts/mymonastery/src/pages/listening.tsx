@@ -135,7 +135,7 @@ export default function ListeningPage() {
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Audio Divina</h1>
-            <p className="text-[13px] mt-0.5" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>Sacred listening — note what you let draw you toward God.</p>
+            <p className="text-[13px] mt-0.5" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>Sacred listening.</p>
           </div>
         </div>
 
