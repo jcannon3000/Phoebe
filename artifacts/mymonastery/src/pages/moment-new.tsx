@@ -1304,7 +1304,7 @@ export default function MomentNew() {
 
   return (
     <Layout>
-      <div style={{ position: "relative", minHeight: "100dvh" }}>
+      <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
       {/* A still leaves photo behind the creator, under a dark wash. */}
       {bgPhoto && (
         <>

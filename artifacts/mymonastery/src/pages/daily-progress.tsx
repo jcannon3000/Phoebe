@@ -28,7 +28,7 @@ export default function DailyProgressPage() {
   );
   return (
     <Layout>
-      <div style={{ position: "relative", minHeight: "100dvh" }}>
+      <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
       {/* A still leaves photo behind the page, under a dark wash. */}
       {bgPhoto && (
         <>

@@ -510,7 +510,7 @@ export default function CobreathePage() {
 
   return (
     <Layout>
-      <div style={{ position: "relative", isolation: "isolate", flex: 1, display: "flex", flexDirection: "column", minHeight: "100%" }}>
+      <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
       {/* A still leaves photo behind the intro, under a dark wash for legibility.
           position:absolute inside this flex:1 host (NOT fixed — fixed + z-index:-1
           flashes then vanishes in the iOS WebView; absolute matches the office). */}

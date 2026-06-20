@@ -141,7 +141,7 @@ export default function ListeningPage() {
   // ——— Log (the main screen) — a simple two-field journal entry ———
   return (
     <Layout>
-      <div style={{ position: "relative", isolation: "isolate", flex: 1, display: "flex", flexDirection: "column", minHeight: "100%" }}>
+      <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
       {/* A still landscape behind the page. MUST be position:absolute inside this
           isolation:isolate host (NOT position:fixed) — fixed + z-index:-1 gets
           painted behind the opaque page background in the iOS WebView, so the
