@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePeople } from "@/hooks/usePeople";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerSubmitFeedback } from "@/lib/amenFeedback";
-import { EARTH_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 // ── Visual language ─────────────────────────────────────────────────
 // A calm DARK-BLUE surface (the app's reflection blue, #6FAF85, family) —
@@ -106,7 +106,7 @@ export default function PrayerRequestNew() {
   // One calm landscape behind the page, picked once and faded gently up under a
   // dark wash (matching the office/Co-Breathe slides).
   const bgPhoto = useMemo(
-    () => (EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[Math.floor(Math.random() * EARTH_PHOTOS.length)]! : null),
+    () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
     [],
   );
   // How long the garden carries it — a 1–7 day dropdown, default 3.

@@ -12,6 +12,21 @@ export const EARTH_PHOTOS = Object.values(
   }),
 ) as string[];
 
+// A separate LEAVES library — closer, gentler foliage. Used as the background on
+// the reading/journaling surfaces (prayer requests, Audio Divina) and the Daily
+// Office slideshow. NOT used in Contemplation or Co-Breathe (those keep the wider
+// landscapes). Falls back to the landscapes if the leaves set is somehow empty.
+export const LEAF_PHOTOS = (() => {
+  const leaves = Object.values(
+    import.meta.glob("@/assets/leaves/*.{jpg,jpeg,png,avif,webp}", {
+      eager: true,
+      query: "?url",
+      import: "default",
+    }),
+  ) as string[];
+  return leaves.length > 0 ? leaves : EARTH_PHOTOS;
+})();
+
 // One photo per calendar day — stable through a whole office sit (and across a
 // morning→evening pair on the same day), rotating gently day to day. Pass a date
 // for testing; defaults to today.

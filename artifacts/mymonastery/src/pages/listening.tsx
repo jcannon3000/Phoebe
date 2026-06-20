@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { saveListeningEntry, listeningHistory, type ListeningMedium, type ListeningEntry } from "@/lib/listeningLog";
-import { EARTH_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrary";
 
 // Audio Divina — sacred listening, kept simple as a JOURNAL/TASK (like gratitude):
@@ -68,7 +68,7 @@ export default function ListeningPage() {
   }
   // A still landscape behind the page (the shared non-animal set), picked once.
   const bgPhoto = useMemo(
-    () => (EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[Math.floor(Math.random() * EARTH_PHOTOS.length)]! : null),
+    () => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null),
     [],
   );
   const [medium, setMedium] = useState<ListeningMedium>(() => {

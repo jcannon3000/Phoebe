@@ -9,7 +9,7 @@ import { openExternal } from "@/lib/openExternal";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
-import { EARTH_PHOTOS } from "@/lib/earthPhotos";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import i18n from "@/i18n";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -494,7 +494,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
   // OWN photo, so it switches to a different one on the first actual office slide.
   // A per-mount random offset varies which photos a given day draws.
   const bgOffset = useMemo(
-    () => (EARTH_PHOTOS.length > 0 ? Math.floor(Math.random() * EARTH_PHOTOS.length) : 0),
+    () => (LEAF_PHOTOS.length > 0 ? Math.floor(Math.random() * LEAF_PHOTOS.length) : 0),
     [],
   );
   const sectionIndex = useMemo(() => {
@@ -509,8 +509,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     }
     return n;
   }, [slideIdx, slides]);
-  const officeBgPhoto = EARTH_PHOTOS.length > 0
-    ? EARTH_PHOTOS[(bgOffset + sectionIndex) % EARTH_PHOTOS.length]!
+  const officeBgPhoto = LEAF_PHOTOS.length > 0
+    ? LEAF_PHOTOS[(bgOffset + sectionIndex) % LEAF_PHOTOS.length]!
     : null;
   const mainRef = useRef<HTMLElement | null>(null);
   const swipeTouchStartXRef = useRef<number | null>(null);
