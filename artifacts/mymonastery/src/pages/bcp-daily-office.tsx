@@ -8,6 +8,7 @@ import { openExternal } from "@/lib/openExternal";
 import { bibleUrl } from "@/lib/bibleGatewayUrl";
 import { fixQuoteDirection } from "@/lib/smartQuotes";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { EARTH_PHOTOS } from "@/lib/earthPhotos";
 import i18n from "@/i18n";
 import { apiRequest } from "@/lib/queryClient";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -1336,7 +1337,23 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         animation: "office-enter 0.42s cubic-bezier(0.22, 1, 0.36, 1) backwards",
       }}
     >
-      <AnimatedBackground base={BG} variant="subtle" fadeTop />
+      {/* Daily landscape photo behind EVERY office/devotion slide (per request) —
+          a per-slide landscape under a dark wash for legibility, matching the
+          intercession slides, instead of the drifting gradient. */}
+      {EARTH_PHOTOS.length > 0 ? (
+        <>
+          <img
+            key={EARTH_PHOTOS[slideIdx % EARTH_PHOTOS.length]}
+            src={EARTH_PHOTOS[slideIdx % EARTH_PHOTOS.length]}
+            alt=""
+            aria-hidden
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.22, transition: "opacity 0.5s ease", zIndex: -1 }}
+          />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.62) 0%, rgba(8,22,15,0.80) 52%, rgba(8,22,15,0.90) 100%)" }} />
+        </>
+      ) : (
+        <AnimatedBackground base={BG} variant="subtle" fadeTop />
+      )}
       {/* Top bar — Back / Menu / eyebrow+ref. Mirrors Lectio's header. */}
       <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, pointerEvents: "none" }}>
         <div
