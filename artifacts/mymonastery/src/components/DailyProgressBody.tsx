@@ -47,7 +47,7 @@ export function rhythmGradientRgb(i: number, n: number): string {
   // rests naturally on the dark forest background. No teal/violet drift.
   const hue = 146;                      // Phoebe forest green, held constant
   const sat = 0.36 - 0.08 * t;          // chroma eases gently toward the darker end
-  const light = 0.70 - 0.26 * t;        // GENTLE cascade: soft sage (top) → muted forest (bottom), low card-to-card variance
+  const light = 0.56 - 0.26 * t;        // GENTLE cascade, DARKER overall: muted sage (top) → deep forest (bottom), low card-to-card variance
   // HSL → RGB.
   const c = (1 - Math.abs(2 * light - 1)) * sat;
   const hp = hue / 60;
