@@ -302,6 +302,8 @@ export default function WayOfLoveRuleFlow({
   // into the rhythm at the right point. Kept across adds (often several land in
   // the same slot).
   const [customSlot, setCustomSlot] = useState<CustomSlot>("morning");
+  // Inline "add your own practice" field on the Morning/Evening prayer-way step.
+  const [sideCustomDraft, setSideCustomDraft] = useState("");
   // Journaling's time-of-day slot — when they add Journaling we ask when in the
   // day they keep it, so its card slots into the rhythm at that point. Seeded
   // from the saved choice; persisted on tap (localStorage, per-device).
@@ -716,7 +718,42 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, t("wol_rule.pray_offices_sub", { defaultValue: "The full liturgy with your community's prayers included." }), () => choosePrayBySide(side, "offices"))}
           {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle !== "cobreathe", `🕯️ ${cap} ${t("wol_rule.contemplation_word", { defaultValue: "Contemplation" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("silent"); })}
           {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle === "cobreathe", `🌍 ${t("wol_rule.style_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.style_cobreathe_sub", { defaultValue: "12 breaths as a prayer for climate justice." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("cobreathe"); })}
+          {/* The Examen — an evening reflective practice (toggle alongside the office). */}
+          {side === "evening" && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
         </div>
+
+        {/* Add your own practice for this part of the day — logged like a custom
+            anchor (tap to keep it each day). */}
+        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "20px 0 8px", fontFamily: FONT }}>
+          {t("wol_rule.side_custom_label", { defaultValue: "Add your own" })}
+        </p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            value={sideCustomDraft}
+            onChange={(e) => setSideCustomDraft(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && sideCustomDraft.trim()) { touchedRef.current = true; addCustomAnchor(sideCustomDraft.trim(), "🌿", side); setSideCustomDraft(""); setCustomList(getCustomAnchors()); } }}
+            placeholder={t("wol_rule.side_custom_placeholder", { side: cap.toLowerCase(), defaultValue: `e.g. a ${cap.toLowerCase()} walk` })}
+            style={{ flex: 1, minWidth: 0, ...FROST_BLUR, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", fontSize: 15, color: CREAM, fontFamily: FONT }}
+          />
+          <button
+            type="button"
+            disabled={!sideCustomDraft.trim()}
+            onClick={() => { touchedRef.current = true; addCustomAnchor(sideCustomDraft.trim(), "🌿", side); setSideCustomDraft(""); setCustomList(getCustomAnchors()); }}
+            style={{ flexShrink: 0, background: sideCustomDraft.trim() ? CTA : CARD, border: `1px solid ${sideCustomDraft.trim() ? CARD_B_ACTIVE : CARD_B}`, color: CREAM, borderRadius: 12, padding: "0 18px", fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: sideCustomDraft.trim() ? "pointer" : "default" }}
+          >
+            {t("common.add", { defaultValue: "Add" })}
+          </button>
+        </div>
+        {customList.filter((a) => a.slot === side).length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "10px 0 0" }}>
+            {customList.filter((a) => a.slot === side).map((a) => (
+              <span key={a.id} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 999, padding: "6px 10px", fontSize: 13, color: CREAM, fontFamily: FONT }}>
+                {a.emoji} {a.title}
+                <button type="button" onClick={() => { touchedRef.current = true; removeCustomAnchor(a.id); setCustomList(getCustomAnchors()); }} aria-label={t("common.remove", { defaultValue: "Remove" })} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", fontSize: 13, padding: 0 }}>✕</button>
+              </span>
+            ))}
+          </div>
+        )}
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,
     );
