@@ -268,6 +268,9 @@ export default function WayOfLoveRuleFlow({
   const [customIsReading, setCustomIsReading] = useState(false);
   const [customUnit, setCustomUnit] = useState<ReadingUnit>("chapter");
   const [customGoal, setCustomGoal] = useState("");
+  // When they already have practices, the add form moves to its own sub-slide;
+  // "Add new" flips this on, the form's Add / Back flips it off.
+  const [addingCustom, setAddingCustom] = useState(false);
   useEffect(() => {
     const refresh = () => setCustomList(getCustomAnchors());
     window.addEventListener(CUSTOM_ANCHORS_EVENT, refresh);
@@ -285,6 +288,7 @@ export default function WayOfLoveRuleFlow({
     setCustomEmoji("");
     setCustomGoal("");
     setCustomList(getCustomAnchors());
+    setAddingCustom(false);
   };
   const toggleExtra = (k: "gratitude" | "examen" | "listening" | "journaling") => {
     touchedRef.current = true;
@@ -814,14 +818,26 @@ export default function WayOfLoveRuleFlow({
   // ── Create-your-own — title + emoji → a custom Daily-progress anchor.
   // Reached from the "Create your own" card in the extras step. ───────────────
   if (step === "custom") {
+    const hasCustoms = customList.length > 0;
+    // Once they have at least one practice, the list leads with a wide "Add new"
+    // pill, and the add form moves to its own sub-slide (addingCustom). A
+    // first-timer with no practices yet sees the form directly.
+    const showList = hasCustoms && !addingCustom;
+    const showForm = !hasCustoms || addingCustom;
     return shell(
       <>
-        {backRow(goPrev)}
-        {stepHeader(t("wol_rule.custom_eyebrow", { defaultValue: "Add to your day" }), t("wol_rule.custom_title", { defaultValue: "Create your own" }))}
+        {backRow(addingCustom ? () => setAddingCustom(false) : goPrev)}
+        {stepHeader(
+          t("wol_rule.custom_eyebrow", { defaultValue: "Add to your day" }),
+          addingCustom
+            ? t("wol_rule.custom_add_title", { defaultValue: "Add a practice" })
+            : t("wol_rule.custom_title", { defaultValue: "Create your own" }),
+        )}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 0" }}>
           {t("wol_rule.custom_body", { defaultValue: "Keep anything you like — a walk, a stretch, a phone call. Name it, pick an emoji, and it becomes a card you check off each day." })}
         </p>
-        {customList.length > 0 && (
+
+        {showList && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "20px 0 0" }}>
             {customList.map((a) => (
               <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "11px 14px" }}>
@@ -836,86 +852,69 @@ export default function WayOfLoveRuleFlow({
                 <button type="button" onClick={() => { removeCustomAnchor(a.id); setCustomList(getCustomAnchors()); }} aria-label={t("common.remove", { defaultValue: "Remove" })} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", fontSize: 16, padding: "2px 6px" }}>✕</button>
               </div>
             ))}
+            {/* Add new — a full-width pill, as wide as the practice rows, that opens
+                the add form on its own sub-slide. */}
+            <button
+              type="button"
+              onClick={() => { touchedRef.current = true; setCustomTitle(""); setCustomEmoji(""); setAddingCustom(true); }}
+              style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: CARD, border: `1px dashed ${CARD_B_ACTIVE}`, borderRadius: 12, padding: "13px 14px", color: CREAM, fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}
+            >
+              ＋ {t("wol_rule.custom_add_new", { defaultValue: "Add new" })}
+            </button>
           </div>
         )}
-        {/* When in the day — so the card slots into the rhythm in the right
-            place (a morning walk near Morning Prayer, an evening stretch near
-            the evening office). */}
-        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 8px", fontFamily: FONT }}>
-          {t("wol_rule.custom_when", { defaultValue: "When in the day?" })}
-        </p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
-          {CUSTOM_SLOTS.map((s) => {
-            const on = customSlot === s;
-            const label = s === "morning" ? t("wol_rule.slot_morning", { defaultValue: "Morning" })
-              : s === "midday" ? t("wol_rule.slot_midday", { defaultValue: "Midday" })
-                : s === "afternoon" ? t("wol_rule.slot_afternoon", { defaultValue: "Afternoon" })
-                  : t("wol_rule.slot_evening", { defaultValue: "Evening" });
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() => { touchedRef.current = true; setCustomSlot(s); }}
-                style={{
-                  background: on ? CARD_ACTIVE : CARD,
-                  border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
-                  color: on ? CREAM : SAGE,
-                  borderRadius: 10, padding: "10px 4px", fontSize: 12.5, fontWeight: on ? 700 : 500,
-                  fontFamily: FONT, cursor: "pointer", textAlign: "center",
-                }}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
 
-        {/* Reading ritual — log a book/scripture by chapter, page, or time
-            instead of a plain check. Optional daily goal gives the log a target;
-            a running total remembers where you left off. */}
-        <button
-          type="button"
-          onClick={() => { touchedRef.current = true; setCustomIsReading((v) => !v); }}
-          style={{
-            width: "100%", display: "flex", alignItems: "center", gap: 10, margin: "16px 0 0",
-            background: customIsReading ? CARD_ACTIVE : CARD, border: `1px solid ${customIsReading ? CARD_B_ACTIVE : CARD_B}`,
-            borderRadius: 12, padding: "12px 14px", cursor: "pointer", textAlign: "left",
-          }}
-        >
-          <span style={{ fontSize: 18 }} aria-hidden>📖</span>
-          <span style={{ flex: 1, color: CREAM, fontSize: 14.5, fontWeight: 600, fontFamily: FONT }}>
-            {t("wol_rule.reading_toggle", { defaultValue: "This is a reading I'll log" })}
-          </span>
-          <span style={{
-            width: 40, height: 24, borderRadius: 999, flexShrink: 0, position: "relative",
-            background: customIsReading ? CTA : "rgba(143,175,150,0.25)", transition: "background 160ms",
-          }}>
-            <span style={{
-              position: "absolute", top: 2, left: customIsReading ? 18 : 2, width: 20, height: 20,
-              borderRadius: 999, background: CREAM, transition: "left 160ms",
-            }} />
-          </span>
-        </button>
-
-        {customIsReading && (
+        {showForm && (
           <>
-            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "16px 0 8px", fontFamily: FONT }}>
-              {t("wol_rule.reading_track_by", { defaultValue: "Track it by" })}
+            {/* Name first — emoji + name + Add. */}
+            <div style={{ display: "flex", gap: 8, margin: "20px 0 0" }}>
+              <input
+                value={customEmoji}
+                onChange={(e) => setCustomEmoji(e.target.value.slice(0, 2))}
+                aria-label={t("wol_rule.custom_emoji", { defaultValue: "Emoji" })}
+                placeholder="🌿"
+                style={{ width: 56, flexShrink: 0, textAlign: "center", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 0", fontSize: 18, color: CREAM, fontFamily: FONT }}
+              />
+              <input
+                value={customTitle}
+                onChange={(e) => setCustomTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") addCustom(); }}
+                aria-label={t("wol_rule.custom_name", { defaultValue: "Practice name" })}
+                placeholder={t("wol_rule.custom_placeholder", { defaultValue: "e.g. Morning walk" })}
+                style={{ flex: 1, minWidth: 0, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", fontSize: 15, color: CREAM, fontFamily: FONT }}
+              />
+              <button
+                type="button"
+                onClick={addCustom}
+                disabled={!customTitle.trim()}
+                style={{ flexShrink: 0, background: customTitle.trim() ? CTA : CARD, border: `1px solid ${customTitle.trim() ? CARD_B_ACTIVE : CARD_B}`, color: CREAM, borderRadius: 12, padding: "0 18px", fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: customTitle.trim() ? "pointer" : "default" }}
+              >
+                {t("common.add", { defaultValue: "Add" })}
+              </button>
+            </div>
+
+            {/* Then when in the day — so the card slots into the rhythm in the
+                right place (a morning walk near Morning Prayer, etc.). */}
+            <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "22px 0 8px", fontFamily: FONT }}>
+              {t("wol_rule.custom_when", { defaultValue: "When in the day?" })}
             </p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
-              {READING_UNITS.map((u) => {
-                const on = customUnit === u;
-                const label = u === "chapter" ? t("wol_rule.unit_chapter", { defaultValue: "Chapter" })
-                  : u === "page" ? t("wol_rule.unit_page", { defaultValue: "Page" })
-                    : t("wol_rule.unit_time", { defaultValue: "Time" });
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+              {CUSTOM_SLOTS.map((sl) => {
+                const on = customSlot === sl;
+                const label = sl === "morning" ? t("wol_rule.slot_morning", { defaultValue: "Morning" })
+                  : sl === "midday" ? t("wol_rule.slot_midday", { defaultValue: "Midday" })
+                    : sl === "afternoon" ? t("wol_rule.slot_afternoon", { defaultValue: "Afternoon" })
+                      : t("wol_rule.slot_evening", { defaultValue: "Evening" });
                 return (
                   <button
-                    key={u}
+                    key={sl}
                     type="button"
-                    onClick={() => { touchedRef.current = true; setCustomUnit(u); }}
+                    onClick={() => { touchedRef.current = true; setCustomSlot(sl); }}
                     style={{
-                      background: on ? CARD_ACTIVE : CARD, border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
-                      color: on ? CREAM : SAGE, borderRadius: 10, padding: "10px 4px", fontSize: 13, fontWeight: on ? 700 : 500,
+                      background: on ? CARD_ACTIVE : CARD,
+                      border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
+                      color: on ? CREAM : SAGE,
+                      borderRadius: 10, padding: "10px 4px", fontSize: 12.5, fontWeight: on ? 700 : 500,
                       fontFamily: FONT, cursor: "pointer", textAlign: "center",
                     }}
                   >
@@ -924,63 +923,26 @@ export default function WayOfLoveRuleFlow({
                 );
               })}
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "12px 0 0" }}>
-              <input
-                value={customGoal}
-                onChange={(e) => setCustomGoal(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
-                inputMode="numeric"
-                aria-label={t("wol_rule.reading_goal", { defaultValue: "Daily goal" })}
-                placeholder={customUnit === "minute" ? "20" : customUnit === "page" ? "10" : "1"}
-                style={{ width: 72, flexShrink: 0, textAlign: "center", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "12px 0", fontSize: 15, color: CREAM, fontFamily: FONT }}
-              />
-              <span style={{ color: SAGE, fontSize: 13.5, fontFamily: FONT }}>
-                {customUnit === "minute"
-                  ? t("wol_rule.reading_goal_min", { defaultValue: "minutes a day (optional goal)" })
-                  : customUnit === "page"
-                    ? t("wol_rule.reading_goal_pages", { defaultValue: "pages a day (optional goal)" })
-                    : t("wol_rule.reading_goal_ch", { defaultValue: "chapters a day (optional goal)" })}
-              </span>
-            </div>
           </>
         )}
 
-        <div style={{ display: "flex", gap: 8, margin: "16px 0 0" }}>
-          <input
-            value={customEmoji}
-            onChange={(e) => setCustomEmoji(e.target.value.slice(0, 2))}
-            aria-label={t("wol_rule.custom_emoji", { defaultValue: "Emoji" })}
-            placeholder="🌿"
-            style={{ width: 56, flexShrink: 0, textAlign: "center", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 0", fontSize: 18, color: CREAM, fontFamily: FONT }}
-          />
-          <input
-            value={customTitle}
-            onChange={(e) => setCustomTitle(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") addCustom(); }}
-            aria-label={t("wol_rule.custom_name", { defaultValue: "Practice name" })}
-            placeholder={customIsReading
-              ? t("wol_rule.reading_placeholder", { defaultValue: "e.g. The Imitation of Christ" })
-              : t("wol_rule.custom_placeholder", { defaultValue: "e.g. Morning walk" })}
-            style={{ flex: 1, minWidth: 0, background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 14px", fontSize: 15, color: CREAM, fontFamily: FONT }}
-          />
-          <button
-            type="button"
-            onClick={addCustom}
-            disabled={!customTitle.trim()}
-            style={{ flexShrink: 0, background: customTitle.trim() ? CTA : CARD, border: `1px solid ${customTitle.trim() ? CARD_B_ACTIVE : CARD_B}`, color: CREAM, borderRadius: 12, padding: "0 18px", fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: customTitle.trim() ? "pointer" : "default" }}
-          >
-            {t("common.add", { defaultValue: "Add" })}
-          </button>
-        </div>
-        {/* Save commits the whole rhythm; Back returns to the extras step where
-            the "Create your own" card lives. */}
-        <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-          <button onClick={commit} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-            {t("wol_rule.finish", { defaultValue: "Save my daily rhythm" })}
-          </button>
-          <button onClick={() => setStep("extras")} style={{ marginTop: 4, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
-            <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
-          </button>
-        </div>
+        {/* Bottom: the add sub-slide just returns to the list; otherwise Save. */}
+        {addingCustom ? (
+          <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <button onClick={() => setAddingCustom(false)} style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
+              <ChevronLeft size={16} /> {t("wol_rule.custom_back_to_list", { defaultValue: "Back to your practices" })}
+            </button>
+          </div>
+        ) : (
+          <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+            <button onClick={commit} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+              {t("wol_rule.finish", { defaultValue: "Save my daily rhythm" })}
+            </button>
+            <button onClick={() => setStep("extras")} style={{ marginTop: 4, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
+              <ChevronLeft size={16} /> {t("ruleOfLife.back", { defaultValue: "Back" })}
+            </button>
+          </div>
+        )}
       </>,
     );
   }
