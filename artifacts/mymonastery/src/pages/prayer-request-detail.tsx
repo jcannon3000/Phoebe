@@ -10,6 +10,7 @@ import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { usePeople, type PersonSummary } from "@/hooks/usePeople";
 import { sharePrayerRequest } from "@/lib/sharePrayerRequest";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 // Deep-link landing for "X is asking for your prayers" (and the
 // other prayer-request pushes — first amen, third amen, word of
@@ -173,6 +174,9 @@ export default function PrayerRequestDetailPage() {
   const fromAmenPush = useMemo(() => {
     return new URLSearchParams(search).get("amen") === "1";
   }, [search]);
+
+  // A stable leaf photo for this slide's backdrop (picked once per mount).
+  const leafPhoto = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   const { data, isLoading, error } = useQuery<PrayerRequestDetail>({
     queryKey: [`/api/prayer-requests/by-id/${id}`],
@@ -356,7 +360,15 @@ export default function PrayerRequestDetailPage() {
         justifyContent: "center",
       }}
     >
-      <AnimatedBackground base={SLIDE_GRADIENT} variant="subtle" />
+      {/* Frosted leaf backdrop — the slide's leaves, softened behind a deep
+          frosted-green wash so the centered request stays legible. Absolute
+          (not fixed) to avoid the iOS-WebView flash/vanish. */}
+      <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden" }}>
+        {leafPhoto && (
+          <img src={leafPhoto} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+        )}
+        <div style={{ position: "absolute", inset: 0, background: "rgba(9,26,16,0.45)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)" }} />
+      </div>
       {/* Always-visible close + share — fixed position so they never
           scroll off, and high enough above any iOS notch / safe area
           that the user can always reach them. Share sits to the left

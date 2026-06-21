@@ -7,6 +7,8 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { Layout } from "@/components/layout";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+import { FROST } from "@/lib/frost";
+import { rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
 import { PrayerKindPill } from "@/components/prayer-kind-pill";
 import { usePrayerSession } from "@/hooks/usePrayerSession";
@@ -78,6 +80,10 @@ type PrayerRequest = {
   amenPeopleCount?: number | null;
   // Author's framing — drives the optional pill in the card header.
   kind?: string | null;
+  // Per-viewer: have I prayed (amened) this request today? Drives the ✓.
+  myAmenedToday?: boolean;
+  // Recent faces of who prayed for THIS request (own-card face stack).
+  amenFaces?: Array<{ name?: string | null; avatarUrl?: string | null }>;
 };
 
 // Discriminated union for the detail popup — one modal component switches on
@@ -1467,12 +1473,6 @@ export default function PrayerListPage() {
           </Link>
         )}
 
-        {/* Compose bar — same input shape as the home-page prayer
-            section. Tapping 🙏🏽 opens a centered popup asking whether
-            the prayer is for the viewer (→ prayer request for yourself)
-            or for someone else (→ pray-for-new flow). */}
-        {focused === null && <PrayerListComposeBar />}
-
         {/* Back button when drilled into a single category */}
         {focused !== null && (
           <button
@@ -1486,33 +1486,112 @@ export default function PrayerListPage() {
           </button>
         )}
 
-        {/* Prayer Requests — active rows only. The faded "Past" backlog
-            sub-group was removed per request. */}
-        {hasAnyRequests && (focused === null || focused === "requests") && (
-          <SectionShell
-            id="requests"
-            label={t("prayer_list.section_requests")}
-            count={activeRequests.length}
-            focused={focused}
-            onFocus={setFocused}
-            maxRows={7}
-          >
-            {sortedActiveRequests.map((r) => (
-              <RequestCard
-                key={r.id}
-                req={r}
-                viewerAvatarUrl={user.avatarUrl ?? null}
-                viewerName={user.name ?? null}
-                // Tapping a request card now opens the full detail
-                // SLIDE (/prayer-requests/:id) rather than the in-page
-                // popup — the slide carries tagging, the amen roster,
-                // words of comfort, and (for the owner) Edit / Renew
-                // pills next to Back.
-                onOpen={() => setLocation(`/prayer-requests/${r.id}`)}
-              />
-            ))}
-          </SectionShell>
-        )}
+        {/* Prayer requests — mirrors the home prayer section: others' first
+            (tap to pray; a ✓ once you've prayed today), then your own, then the
+            New-request button. */}
+        {focused === null && (() => {
+          const others = sortedActiveRequests.filter((r) => !r.isOwnRequest);
+          const mine = sortedActiveRequests.filter((r) => r.isOwnRequest);
+          const sectionHead = (label: string) => (
+            <div className="flex items-center gap-3 mb-2 mt-6">
+              <h2 className="text-lg font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{label}</h2>
+              <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.15)" }} />
+            </div>
+          );
+          const facesInitials = (name: string | null) => (name ?? "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "?";
+          const otherCard = (req: PrayerRequest, i: number) => {
+            const rgb = rhythmGradientRgb(i, Math.max(1, (others.length - 1) * 5 + 1));
+            const displayName = req.isAnonymous ? t("prayer_list_carousel.anonymous", { defaultValue: "Anonymous" }) : (req.ownerName ?? t("find_friends.someone", { defaultValue: "Someone" }));
+            const displayAvatar = req.isAnonymous ? null : (req.ownerAvatarUrl ?? null);
+            const amened = !!req.myAmenedToday;
+            return (
+              <Link key={req.id} href={`/prayer-mode?focus=${req.id}`} className="block">
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99] ${amened ? "" : "animate-turn-pulse-practices"}`}
+                  style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+                >
+                  <div className={`w-1 flex-shrink-0 ${amened ? "" : "animate-bar-pulse-practices"}`} style={amened ? { background: `rgba(${rgb},0.72)` } : undefined} />
+                  <div className="flex-1 px-4 pt-3 pb-3">
+                    <div className="flex items-center gap-3">
+                      {displayAvatar ? (
+                        <img src={displayAvatar} alt={displayName} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0" }}>{initials(displayName)}</div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{t("prayer_list_carousel.from_name", { name: displayName, defaultValue: `From ${displayName}` })}</p>
+                        <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6" }}>{req.body}</p>
+                      </div>
+                      {amened ? (
+                        <span aria-label={t("prayer_card.amened", { defaultValue: "Prayed" })} className="flex-shrink-0 inline-flex items-center justify-center rounded-full font-semibold" style={{ height: 30, padding: "0 14px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", color: "rgba(240,237,230,0.85)", fontSize: 14, lineHeight: 1 }}>✓</span>
+                      ) : (
+                        <span aria-hidden className="flex-shrink-0 inline-flex items-center justify-center rounded-full" style={{ height: 30, padding: "0 13px", background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.45)", fontSize: 15, lineHeight: 1 }}>🙏🏽</span>
+                      )}
+                    </div>
+                  </div>
+                </motion.div>
+              </Link>
+            );
+          };
+          const ownCard = (req: PrayerRequest) => {
+            const reqFaces = (req.amenFaces ?? []).filter(Boolean);
+            const reqTotal = req.amenPeopleCount ?? reqFaces.length;
+            return (
+              <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
+                <div className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]" style={{ background: "rgba(96,141,209,0.12)", border: "1px solid rgba(96,141,209,0.3)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
+                  <div className="w-1 flex-shrink-0" style={{ background: "#608DD1" }} />
+                  <div className="flex-1 px-4 pt-3 pb-3">
+                    <div className="flex items-center gap-3">
+                      {user.avatarUrl ? (
+                        <img src={user.avatarUrl} alt={user.name ?? ""} className="w-9 h-9 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(96,141,209,0.4)" }} />
+                      ) : (
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0" style={{ background: "#1A2F4A", color: "#A8C0E0" }}>{facesInitials(user.name ?? null)}</div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] mb-0.5 truncate" style={{ color: "rgba(143,175,150,0.55)" }}>{t("prayer_list_carousel.your_request", { defaultValue: "Your request" })}</p>
+                        <p className="text-sm leading-snug line-clamp-2" style={{ color: "#F0EDE6" }}>{req.body}</p>
+                      </div>
+                      {reqFaces.length > 0 && (
+                        <div className="flex-shrink-0 flex items-center">
+                          <div className="flex -space-x-2">
+                            {reqFaces.map((fp, idx) => fp.avatarUrl ? (
+                              <img key={idx} src={fp.avatarUrl} alt={fp.name ?? ""} className="w-7 h-7 rounded-full object-cover" style={{ border: "1.5px solid #0C1F12" }} />
+                            ) : (
+                              <div key={idx} className="w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-semibold" style={{ background: "#1A2F4A", color: "#A8C0E0", border: "1.5px solid #0C1F12" }}>{facesInitials(fp.name ?? null)}</div>
+                            ))}
+                          </div>
+                          {reqTotal > reqFaces.length && (<span className="ml-1.5 text-[11px]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>+{reqTotal - reqFaces.length}</span>)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            );
+          };
+          return (
+            <>
+              {others.length > 0 && (
+                <section>
+                  {sectionHead(t("prayer_list.section_requests"))}
+                  <div className="flex flex-col gap-2">{others.map((r, i) => otherCard(r, i))}</div>
+                </section>
+              )}
+              <section>
+                {mine.length > 0 && sectionHead(t("dashboard.your_requests_title", { defaultValue: "Your prayer requests" }))}
+                {mine.length > 0 && <div className="flex flex-col gap-2">{mine.map(ownCard)}</div>}
+                {/* New prayer request — same button + destination as the home screen. */}
+                <Link href="/pray-request/new" className={`block ${mine.length > 0 ? "mt-3" : "mt-6"}`}>
+                  <div className="w-full rounded-xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]" style={{ padding: "12px 16px", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600 }}>
+                    ＋ {t("dashboard.new_prayer_request", { defaultValue: "New prayer request" })}
+                  </div>
+                </Link>
+              </section>
+            </>
+          );
+        })()}
 
         {/* Community intercessions — ongoing community practices (subscribed
             prayer feeds first, then individual intercessions). Restored per
@@ -1548,12 +1627,6 @@ export default function PrayerListPage() {
         {/* Heart to Heart (1:1 prayer exchange) is hidden for now — the
             PartnerExchange block was removed from the prayer list. */}
 
-        {/* Empty state — only when there's nothing in any section. */}
-        {!hasAnyRequests && intercessionsSorted.length === 0 && feedsToday.length === 0 && (
-          <p className="text-sm italic mt-10 text-center" style={{ color: "rgba(143,175,150,0.6)" }}>
-            Quiet today. Share a prayer above to start something.
-          </p>
-        )}
       </div>
 
       {/* Detail popup — tap on a non-intercession card opens this.
