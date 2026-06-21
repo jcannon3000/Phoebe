@@ -380,6 +380,9 @@ export default function WayOfLoveRuleFlow({
     // the real goal was 60).
     if (typeof prefs.contemplationGoalMinutes === "number" && prefs.contemplationGoalMinutes > 0) {
       setGoal(String(prefs.contemplationGoalMinutes));
+      // An existing silence goal means Contemplative Prayer is already part of the
+      // rhythm — pre-select it so this step opens reflecting what they have.
+      setContemplative((c) => ({ ...c, prayer: true }));
     }
     setTimeBySide((prev) => ({
       morning: typeof prefs.morningTime === "string" && /^\d{2}:\d{2}$/.test(prefs.morningTime) ? prefs.morningTime : prev.morning,
@@ -618,7 +621,7 @@ export default function WayOfLoveRuleFlow({
     const meta = step === "cobreathe-when"
       ? { label: t("wol_rule.cp_cobreathe", { defaultValue: "Co-Breathe" }), body: t("wol_rule.when_cobreathe_body", { defaultValue: "When in the day would you like to breathe?" }) }
       : step === "audio-when"
-        ? { label: t("wol_rule.cp_audio", { defaultValue: "Audio Divina" }), body: t("wol_rule.when_audio_body", { defaultValue: "When in the day would you like to listen?" }) }
+        ? { label: t("wol_rule.cp_audio", { defaultValue: "Audio Divina" }), body: t("wol_rule.when_audio_body", { defaultValue: "Take time to listen to music intentionally as a spiritual practice." }) }
         : { label: t("wol_rule.cp_examen", { defaultValue: "The Examen" }), body: t("wol_rule.when_examen_body", { defaultValue: "When in the day would you like to pray the Examen?" }) };
     return shell(
       <>
@@ -905,23 +908,39 @@ export default function WayOfLoveRuleFlow({
               </div>
             </div>
           )}
-          {/* Create your own — its own card; leads to the
-              create slide (a walk, a stretch, a call — anything you keep). */}
+          {/* Existing custom rituals — each its own card, with a ✕ to delete. */}
+          {customList.map((a) => (
+            <div
+              key={a.id}
+              style={{ background: CARD, ...FROST_BLUR, border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}
+            >
+              <span style={{ fontSize: 19, flexShrink: 0 }} aria-hidden>{a.emoji || "✅"}</span>
+              <span style={{ minWidth: 0, flex: 1 }}>
+                <span style={{ display: "block", fontSize: 15.5, fontWeight: 600, fontFamily: FONT, color: CREAM }}>{a.title}</span>
+                <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{SLOT_LABEL[a.slot]}</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => { touchedRef.current = true; removeCustomAnchor(a.id); setCustomList(getCustomAnchors()); }}
+                aria-label={t("common.remove", { defaultValue: "Remove" })}
+                style={{ background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", fontSize: 16, padding: "2px 6px", flexShrink: 0 }}
+              >✕</button>
+            </div>
+          ))}
+          {/* Create a new custom ritual — a walk, a stretch, a call — anything. */}
           <button
             type="button"
             onClick={() => { touchedRef.current = true; setStep("custom"); }}
             style={{
-              background: CARD, border: `1px dashed ${CARD_B_ACTIVE}`, color: CREAM,
+              background: CARD, ...FROST_BLUR, border: `1px dashed ${CARD_B_ACTIVE}`, color: CREAM,
               borderRadius: 14, padding: "14px 16px", textAlign: "left",
               display: "flex", alignItems: "center", gap: 12, cursor: "pointer",
             }}
           >
-            <span style={{ fontSize: 19, flexShrink: 0 }} aria-hidden>✏️</span>
+            <span style={{ fontSize: 19, flexShrink: 0 }} aria-hidden>➕</span>
             <span style={{ minWidth: 0, flex: 1 }}>
               <span style={{ display: "block", fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>
-                {customList.length > 0
-                  ? t("wol_rule.custom_card_some", { count: customList.length, defaultValue: `Your own practices · ${customList.length}` })
-                  : t("wol_rule.custom_card", { defaultValue: "Create your own" })}
+                {t("wol_rule.custom_card_new", { defaultValue: "Create new" })}
               </span>
               <span style={{ display: "block", color: SAGE, fontSize: 13, fontFamily: FONT, marginTop: 2, lineHeight: 1.4 }}>
                 {t("wol_rule.custom_card_sub", { defaultValue: "A walk, a stretch, a phone call — keep anything you like." })}
