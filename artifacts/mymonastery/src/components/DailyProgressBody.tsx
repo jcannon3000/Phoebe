@@ -670,7 +670,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         key: `reflect-${r.source}`, emoji: "📖", rgb: "96,141,209", done: r.done, href: "",
         title: PUBLICATION_NAME[r.source],
         // CAC: today's scraped title is a STATIC second line (no rotation).
-        blurb: r.done ? kept : ((r.source === "cac" && cacTitle) ? cacTitle : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" })),
+        // CAC always shows today's scraped meditation title as the second line —
+        // even once read — rather than flipping to a generic "read today".
+        blurb: (r.source === "cac" && cacTitle) ? cacTitle : (r.done ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" })),
         blurbCycle: undefined,
         // Mark read on tap, but fire the completion swell only on RETURN to the app.
         onClick: () => { mark(); openExternalThenMarkRead(url, swellHaptic); },
