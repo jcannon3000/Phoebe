@@ -3139,6 +3139,24 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS lectio_log_entries_user_idx ON lectio_log_entries (user_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS lectio_log_entries_user_day_idx ON lectio_log_entries (user_id, day)`);
 
+    // ── practice_log_entries (generic log: Reading + Podcasts) ──────────────
+    // One append log keyed by `kind` ("reading" | "podcasts"): what you read /
+    // listened to + optional notes, privately or shared with fellows.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS practice_log_entries (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL,
+        day TEXT NOT NULL,
+        what TEXT NOT NULL DEFAULT '',
+        notes TEXT NOT NULL DEFAULT '',
+        shared BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS practice_log_entries_user_kind_idx ON practice_log_entries (user_id, kind)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS practice_log_entries_shared_idx ON practice_log_entries (kind, shared)`);
+
     // ── reflection_reads (Forward Day by Day / SSJE read-state) ──────────────
     // CAC reads live in cac_reads (richer — community read presence); this
     // table carries the other daily-reflection sources so the daily-progress

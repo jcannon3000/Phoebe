@@ -1031,8 +1031,8 @@ export const en = {
   // Learn flow (WayOfLoveRuleFlow).
   wol_rule: {
     walk: "Building your daily habit of prayer",
-    listen_eyebrow: "Contemplation",
-    listen_title: "Contemplation",
+    listen_eyebrow: "Daily Reflection",
+    listen_title: "Daily Reflection",
     listen_body: "Take a few minutes a day to sit in silence before God — open to what God might be speaking, and to what's on your own heart. A daily return to God's love.",
     listen_goal_label: "Minutes of silence a day",
     listen_goal_note: "We'll gently remind you around 7pm on days you haven't reached it. Set 0 to keep the practice without a goal.",

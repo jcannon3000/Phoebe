@@ -71,12 +71,16 @@ export type RhythmState = {
   listeningActive: boolean;
   journalingActive: boolean;
   lectioActive: boolean;
+  readingActive: boolean;
+  podcastsActive: boolean;
   cobreatheActive: boolean;
   gratitudeDone: boolean;
   examenDone: boolean;
   listeningDone: boolean;
   journalingDone: boolean;
   lectioDone: boolean;
+  readingDone: boolean;
+  podcastsDone: boolean;
   cobreatheDone: boolean;
   /** User-defined custom practices (title + emoji + a per-day check) — each an
    *  extra anchor: shows as a Daily-progress card and counts as a dot. */
@@ -173,6 +177,8 @@ export function useRhythmState(): RhythmState {
     listening: hasPracticeDoneToday("listening"),
     journaling: hasPracticeDoneToday("journaling"),
     lectio: hasPracticeDoneToday("lectio"),
+    reading: hasPracticeDoneToday("reading"),
+    podcasts: hasPracticeDoneToday("podcasts"),
   }));
   useEffect(() => {
     const recheck = () => setPracticeLocal({
@@ -181,6 +187,8 @@ export function useRhythmState(): RhythmState {
       listening: hasPracticeDoneToday("listening"),
       journaling: hasPracticeDoneToday("journaling"),
       lectio: hasPracticeDoneToday("lectio"),
+      reading: hasPracticeDoneToday("reading"),
+      podcasts: hasPracticeDoneToday("podcasts"),
     });
     window.addEventListener(PRACTICE_DONE_EVENT, recheck);
     window.addEventListener("focus", recheck);
@@ -266,11 +274,15 @@ export function useRhythmState(): RhythmState {
   // Lectio Divina — sacred reading as a logging-first practice (same shape as
   // Audio Divina); appears only when selected in the customizer.
   const lectioActive = homeCardActive(user?.homeLayout, "lectio");
+  // Reading + Podcasts — logging-first practices added from the "Add to your
+  // day" step; each its own home card + dot.
+  const readingActive = homeCardActive(user?.homeLayout, "reading");
+  const podcastsActive = homeCardActive(user?.homeLayout, "podcasts");
   // Co-Breathe as a standalone anchor — added from the customizer's contemplative
   // step at a chosen time of day (separate from picking Co-Breathe as a side's
   // contemplation STYLE). Its done-state comes from /api/breath/today below.
   const cobreatheActive = homeCardActive(user?.homeLayout, "cobreathe");
-  const anyExtraActive = gratitudeActive || examenActive || listeningActive || journalingActive || lectioActive;
+  const anyExtraActive = gratitudeActive || examenActive || listeningActive || journalingActive || lectioActive || readingActive || podcastsActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
   // exact localDate below. (Passing today would drop the row on any non-Sunday.)
@@ -364,6 +376,8 @@ export function useRhythmState(): RhythmState {
   const listeningDone = listeningActive && (practiceLocal.listening || serverDone("listening"));
   const journalingDone = journalingActive && (practiceLocal.journaling || serverDone("journaling"));
   const lectioDone = lectioActive && (practiceLocal.lectio || serverDone("lectio"));
+  const readingDone = readingActive && (practiceLocal.reading || serverDone("reading"));
+  const podcastsDone = podcastsActive && (practiceLocal.podcasts || serverDone("podcasts"));
   // Co-Breathe is kept once a sit is completed today (server-tracked).
   const cobreatheDone = cobreatheActive && (cobreathe?.done ?? false);
 
@@ -417,6 +431,8 @@ export function useRhythmState(): RhythmState {
     ...(cobreatheActive ? [cobreatheDone] : []),
     ...(listeningActive ? [listeningDone] : []),
     ...(lectioActive ? [lectioDone] : []),
+    ...(readingActive ? [readingDone] : []),
+    ...(podcastsActive ? [podcastsDone] : []),
     ...(gratitudeActive ? [gratitudeDone] : []),
     ...(examenActive ? [examenDone] : []),
     ...(journalingActive ? [journalingDone] : []),
@@ -456,12 +472,16 @@ export function useRhythmState(): RhythmState {
     listeningActive,
     journalingActive,
     lectioActive,
+    readingActive,
+    podcastsActive,
     cobreatheActive,
     gratitudeDone,
     examenDone,
     listeningDone,
     journalingDone,
     lectioDone,
+    readingDone,
+    podcastsDone,
     cobreatheDone,
     customAnchors,
     totalAnchors,

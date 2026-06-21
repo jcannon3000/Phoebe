@@ -53,6 +53,7 @@ export * from "./contemplation_health_minutes";
 export * from "./breath_sessions";
 export * from "./listening_entries";
 export * from "./lectio_log_entries";
+export * from "./practice_log_entries";
 export * from "./daily_health_steps";
 export * from "./reflection_reads";
 export * from "./actions";

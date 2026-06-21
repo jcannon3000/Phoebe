@@ -228,11 +228,13 @@ export default function WayOfLoveRuleFlow({
   // Optional daily practices — adding one surfaces its home card AND an extra
   // Daily-progress checkmark. Seeded from whether the card is already on the
   // user's (current-version) home layout (in order, not hidden).
-  const [extras, setExtras] = useState<{ gratitude: boolean; examen: boolean; listening: boolean; journaling: boolean }>(() => ({
+  const [extras, setExtras] = useState<{ gratitude: boolean; examen: boolean; listening: boolean; journaling: boolean; reading: boolean; podcasts: boolean }>(() => ({
     gratitude: homeCardOn(user?.homeLayout, "gratitude"),
     examen: homeCardOn(user?.homeLayout, "examen"),
     listening: homeCardOn(user?.homeLayout, "listening"),
     journaling: homeCardOn(user?.homeLayout, "journaling"),
+    reading: homeCardOn(user?.homeLayout, "reading"),
+    podcasts: homeCardOn(user?.homeLayout, "podcasts"),
   }));
   // Re-seed once auth resolves — `user` is often null on the first render, so
   // the initializer above can miss an existing selection. Guard on touchedRef
@@ -246,6 +248,8 @@ export default function WayOfLoveRuleFlow({
       examen: homeCardOn(user.homeLayout, "examen"),
       listening: homeCardOn(user.homeLayout, "listening"),
       journaling: homeCardOn(user.homeLayout, "journaling"),
+      reading: homeCardOn(user.homeLayout, "reading"),
+      podcasts: homeCardOn(user.homeLayout, "podcasts"),
     });
     setContemplative((c) => touchedRef.current ? c : {
       prayer: prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation",
@@ -339,7 +343,7 @@ export default function WayOfLoveRuleFlow({
     setCustomList(getCustomAnchors());
     setAddingCustom(false);
   };
-  const toggleExtra = (k: "gratitude" | "examen" | "listening" | "journaling") => {
+  const toggleExtra = (k: "gratitude" | "examen" | "listening" | "journaling" | "reading" | "podcasts") => {
     touchedRef.current = true;
     setExtras((prev) => ({ ...prev, [k]: !prev[k] }));
   };
@@ -474,6 +478,8 @@ export default function WayOfLoveRuleFlow({
     const onKeys = [
       ...(extras.gratitude ? ["gratitude"] : []),
       ...(extras.journaling ? ["journaling"] : []),
+      ...(extras.reading ? ["reading"] : []),
+      ...(extras.podcasts ? ["podcasts"] : []),
       ...(contemplative.examen ? ["examen"] : []),
       ...(contemplative.audio ? ["listening"] : []),
       ...(contemplative.lectio ? ["lectio"] : []),
@@ -482,6 +488,8 @@ export default function WayOfLoveRuleFlow({
     const offKeys = [
       ...(extras.gratitude ? [] : ["gratitude"]),
       ...(extras.journaling ? [] : ["journaling"]),
+      ...(extras.reading ? [] : ["reading"]),
+      ...(extras.podcasts ? [] : ["podcasts"]),
       ...(contemplative.examen ? [] : ["examen"]),
       ...(contemplative.audio ? [] : ["listening"]),
       ...(contemplative.lectio ? [] : ["lectio"]),
@@ -544,6 +552,10 @@ export default function WayOfLoveRuleFlow({
   // position in the (dynamic) ordered list.
   const stepHeader = (eyebrow: string, title: string) => {
     const n = Math.max(1, orderedSteps.indexOf(step) + 1);
+    // Hide the eyebrow when it just restates the title (e.g. "EVENING" over
+    // "Evening", "ADD TO YOUR DAY" over "Add to your day") — otherwise the
+    // step header reads the same word twice.
+    const showEyebrow = eyebrow.trim().toLowerCase() !== title.trim().toLowerCase();
     return (
       <>
         <div style={{ height: 3, background: CARD_B, borderRadius: 2, overflow: "hidden", marginBottom: 16 }}>
@@ -552,8 +564,10 @@ export default function WayOfLoveRuleFlow({
         <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.2px", margin: 0, fontFamily: FONT }}>
           {t("wol_rule.walk", { defaultValue: "Your daily rhythm of prayer" })} · {n}/{totalSteps}
         </p>
-        <p style={{ color: SAGE, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.9px", margin: "16px 0 0", fontFamily: FONT }}>{eyebrow}</p>
-        <h1 style={{ color: CREAM, fontSize: 30, fontWeight: 700, fontFamily: FONT, margin: "6px 0 0" }}>{title}</h1>
+        {showEyebrow && (
+          <p style={{ color: SAGE, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.9px", margin: "16px 0 0", fontFamily: FONT }}>{eyebrow}</p>
+        )}
+        <h1 style={{ color: CREAM, fontSize: 30, fontWeight: 700, fontFamily: FONT, margin: showEyebrow ? "6px 0 0" : "16px 0 0" }}>{title}</h1>
       </>
     );
   };
@@ -724,7 +738,7 @@ export default function WayOfLoveRuleFlow({
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(prayBySide[side] === "devotion", `🌿 ${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`, t("wol_rule.pray_devotion_sub", { defaultValue: "A short liturgy with your community's prayers included." }), () => choosePrayBySide(side, "devotion"))}
           {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, t("wol_rule.pray_offices_sub", { defaultValue: "The full liturgy with your community's prayers included." }), () => choosePrayBySide(side, "offices"))}
-          {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle !== "cobreathe", `🕯️ ${cap} ${t("wol_rule.contemplation_word", { defaultValue: "Contemplation" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("silent"); })}
+          {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle !== "cobreathe", `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("silent"); })}
           {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle === "cobreathe", `🌍 ${t("wol_rule.style_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.style_cobreathe_sub", { defaultValue: "12 breaths as a prayer for climate justice." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("cobreathe"); })}
           {/* The Examen — an evening reflective practice (toggle alongside the office). */}
           {side === "evening" && choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
@@ -910,6 +924,8 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(extras.gratitude, `🙏 ${t("wol_rule.extra_gratitude", { defaultValue: "Gratitude" })}`, t("wol_rule.extra_gratitude_sub", { defaultValue: "Name one gift from the day." }), () => toggleExtra("gratitude"))}
           {/* Examen + Audio Divina now live in the Contemplation step. */}
           {choiceRow(extras.journaling, `📓 ${t("wol_rule.extra_journaling", { defaultValue: "Journaling" })}`, t("wol_rule.extra_journaling_sub", { defaultValue: "Keep a journal however you like — just log the day, no typing." }), () => toggleExtra("journaling"))}
+          {choiceRow(extras.reading, `📚 ${t("wol_rule.extra_reading", { defaultValue: "Reading" })}`, t("wol_rule.extra_reading_sub", { defaultValue: "Log what you read." }), () => toggleExtra("reading"))}
+          {choiceRow(extras.podcasts, `🎙️ ${t("wol_rule.extra_podcasts", { defaultValue: "Podcasts" })}`, t("wol_rule.extra_podcasts_sub", { defaultValue: "Log what you listened to." }), () => toggleExtra("podcasts"))}
           {/* When they journal — so the card slots into the rhythm at that time. */}
           {extras.journaling && (
             <div style={{ margin: "-4px 0 4px", padding: "0 2px" }}>

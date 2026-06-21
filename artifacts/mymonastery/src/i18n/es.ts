@@ -1025,8 +1025,8 @@ export const es: Translations = {
   // Ora → Contemplación → Aprende (WayOfLoveRuleFlow).
   wol_rule: {
     walk: "Construye tu hábito diario de oración",
-    listen_eyebrow: "Contemplación",
-    listen_title: "Contemplación",
+    listen_eyebrow: "Reflexión Diaria",
+    listen_title: "Reflexión Diaria",
     listen_body: "Dedica unos minutos al día a sentarte en silencio ante Dios — abierto a lo que Dios pueda estar diciendo y a lo que hay en tu propio corazón. Un regreso diario al amor de Dios.",
     listen_goal_label: "Minutos de silencio al día",
     listen_goal_note: "Te recordaremos con suavidad hacia las 7 p. m. los días que no lo alcances. Pon 0 para mantener la práctica sin una meta.",

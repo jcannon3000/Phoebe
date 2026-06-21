@@ -244,11 +244,11 @@ function StreakCard() {
 // to render mirrors the practice cards above (four core + active extras).
 export function WeeklyGridCard() {
   const { t } = useTranslation();
-  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, lectioActive, gratitudeActive, examenActive, journalingActive } = useRhythmState();
+  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, lectioActive, readingActive, podcastsActive, gratitudeActive, examenActive, journalingActive } = useRhythmState();
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   })();
-  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; listening: boolean; gratitude: boolean; examen: boolean; journaling: boolean; lectio: boolean };
+  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; listening: boolean; gratitude: boolean; examen: boolean; journaling: boolean; lectio: boolean; reading: boolean; podcasts: boolean };
   const { data } = useQuery<{ days: Day[] }>({
     queryKey: ["/api/me/practice-week", tz],
     queryFn: () => apiRequest("GET", "/api/me/practice-week"),
@@ -278,6 +278,8 @@ export function WeeklyGridCard() {
     ...(silenceActive ? [{ id: "contemplation", emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.contemplation }] : []),
     ...(listeningActive ? [{ id: "listening", emoji: "🎵", label: t("rhythm.row_listening", { defaultValue: "Audio Divina" }), rgb: "108,140,180", doneFor: (d: Day) => !!d.listening }] : []),
     ...(lectioActive ? [{ id: "lectio", emoji: "📖", label: t("rhythm.row_lectio", { defaultValue: "Lectio Divina" }), rgb: "120,150,170", doneFor: (d: Day) => !!d.lectio }] : []),
+    ...(readingActive ? [{ id: "reading", emoji: "📚", label: t("rhythm.row_reading", { defaultValue: "Reading" }), rgb: "150,140,110", doneFor: (d: Day) => !!d.reading }] : []),
+    ...(podcastsActive ? [{ id: "podcasts", emoji: "🎙️", label: t("rhythm.row_podcasts", { defaultValue: "Podcasts" }), rgb: "150,120,150", doneFor: (d: Day) => !!d.podcasts }] : []),
     ...(eveningActive ? [{ id: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "124,116,196", doneFor: (d: Day) => !!d.evening }] : []),
     ...(gratitudeActive ? [{ id: "gratitude", emoji: "🙏", label: t("rhythm.row_gratitude", { defaultValue: "Gratitude" }), rgb: "108,162,124", doneFor: (d: Day) => !!d.gratitude }] : []),
     ...(examenActive ? [{ id: "examen", emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180", doneFor: (d: Day) => !!d.examen }] : []),
@@ -530,7 +532,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, cobreatheActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, cobreatheDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, readingActive, podcastsActive, cobreatheActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, readingDone, podcastsDone, cobreatheDone, customAnchors } = useRhythmState();
   const hour = new Date().getHours();
   // The custom-practice "Log" popup — which anchor's popup is open (by id).
   const [logAnchorId, setLogAnchorId] = useState<string | null>(null);
@@ -708,6 +710,18 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       title: t("rhythm.card_gratitude", { defaultValue: "Gratitude" }),
       blurb: gratitudeDone ? kept : t("rhythm.blurb_gratitude", { defaultValue: "Name a gift from today" }),
       cta: t("rhythm.write", { defaultValue: "Write" }), later: false,
+    }] : []),
+    ...(readingActive ? [{
+      key: "reading", emoji: "📚", rgb: "150,140,110", done: readingDone, href: "/reading-log",
+      title: t("rhythm.card_reading", { defaultValue: "Reading" }),
+      blurb: readingDone ? kept : t("rhythm.blurb_reading", { defaultValue: "Log what you read" }),
+      cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
+    }] : []),
+    ...(podcastsActive ? [{
+      key: "podcasts", emoji: "🎙️", rgb: "150,120,150", done: podcastsDone, href: "/podcast-log",
+      title: t("rhythm.card_podcasts", { defaultValue: "Podcasts" }),
+      blurb: podcastsDone ? kept : t("rhythm.blurb_podcasts", { defaultValue: "Log what you listened to" }),
+      cta: t("rhythm.log", { defaultValue: "Log" }), later: false,
     }] : []),
     // Afternoon slotted practices sit after the day's optional practices.
     ...slottedForSlot("afternoon"),
