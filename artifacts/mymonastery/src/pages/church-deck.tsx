@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, X, MessageCircle, MapPin, Users } from "luci
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 // ─── Palette ─────────────────────────────────────────────────────────────────
 const C = {
@@ -1899,14 +1900,23 @@ export default function ChurchDeck() {
   const slide = slides[index];
   const isFirst = index === 0;
   const isLast = index === slides.length - 1;
+  // A leaf photo backdrop under the deck (matches the home / splash), washed dark
+  // so the slides stay legible.
+  const bgPhoto = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[index % LEAF_PHOTOS.length] : null;
 
   return (
     <div
       className="fixed inset-0 flex flex-col"
-      style={{ background: C.bg }}
+      style={{ background: C.bg, isolation: "isolate" }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      {bgPhoto && (
+        <>
+          <img src={bgPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.42, zIndex: -1 }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.5) 0%, rgba(8,18,12,0.64) 45%, rgba(8,18,12,0.82) 100%)" }} />
+        </>
+      )}
       {/* Top bar */}
       <div className="flex items-center justify-between gap-4 px-4 md:px-6 pt-4 md:pt-6 pb-2">
         <button

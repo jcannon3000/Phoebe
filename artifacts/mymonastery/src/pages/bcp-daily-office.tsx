@@ -125,6 +125,10 @@ interface OfficeViewerProps {
   // reachable via ?book=1 and the per-side "way to pray" pref — this
   // prop covers in-page navigation where no URL change happens.
   initialBook?: boolean;
+  // Fresh-start slide index. The Daily Prayer picker IS the office's "before you
+  // begin" slide, so it launches at 1 to skip the redundant welcome. A saved
+  // in-progress resume / ?slide= deep link still take priority.
+  initialSlide?: number;
 }
 
 interface OfficeDayInfo {
@@ -393,7 +397,7 @@ const MODE_CONFIG: Record<LiturgyMode, { endpoint: string; title: string }> = {
   "early-evening-devotion": { endpoint: "/api/devotion/early-evening", title: "Early Evening Devotion" },
 };
 
-export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker, initialBook }: OfficeViewerProps) {
+export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker, initialBook, initialSlide }: OfficeViewerProps) {
   const resolvedMode: LiturgyMode = mode ?? office ?? "morning";
   const { endpoint, title: officeTitle } = MODE_CONFIG[resolvedMode];
   const player = usePodcastPlayer();
@@ -697,12 +701,16 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         //      and the saved index is within bounds of the fresh slide
         //      list (defensive against a server-side liturgy change).
         //   4. 0 — fresh start.
-        let initialIdx = 0;
+        // Fresh-start index: the picker passes initialSlide=1 to skip the office's
+        // own "before you begin" welcome (the picker already served that role),
+        // clamped to a real slide. A ?slide= deep link or saved resume overrides.
+        const freshStart = (initialSlide != null && initialSlide > 0 && initialSlide < fetched.length) ? initialSlide : 0;
+        let initialIdx = freshStart;
         if (Number.isFinite(slideParam) && slideParam >= 0 && slideParam < fetched.length) {
           initialIdx = slideParam;
         } else if (resetFlow) {
           try { localStorage.removeItem(officeProgressKey(resolvedMode)); } catch { /* non-fatal */ }
-          initialIdx = 0;
+          initialIdx = freshStart;
         } else {
           const state = readOfficeProgress(resolvedMode);
           if (state.kind === "in-progress" && state.slideIdx < fetched.length) {
@@ -4060,9 +4068,13 @@ export default function BcpDailyOfficePage() {
   };
   // Frosted-glass rows — the leaf backdrop blurs through a faint dark tint, with a
   // soft light edge so each row reads as a pane of liquid glass.
-  const officeRow: CSSProperties = { display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 14, padding: "12px 16px", marginBottom: 8, background: "rgba(9,26,16,0.28)", ...FROST_BLUR, border: "1px solid rgba(200,225,210,0.16)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" };
+  // Liquid-glass rows — a lighter translucent fill + a strong backdrop blur so
+  // the leaf reads clearly through them, with a soft light edge + top sheen.
+  const officeRow: CSSProperties = { position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: 14, padding: "14px 16px", marginBottom: 8, background: "rgba(24,46,34,0.20)", backdropFilter: "blur(22px)", WebkitBackdropFilter: "blur(22px)", border: "1px solid rgba(200,225,210,0.24)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)" };
   const officeRowLabel: CSSProperties = { color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600 };
-  const officeRowSelect: CSSProperties = { appearance: "none", WebkitAppearance: "none", MozAppearance: "none", background: "transparent", border: "none", outline: "none", color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 500, textAlign: "right", textAlignLast: "right", cursor: "pointer" };
+  const officeRowValue: CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 500 };
+  // A transparent <select> covering the WHOLE row, so a tap anywhere opens it.
+  const officeRowSelect: CSSProperties = { position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, appearance: "none", WebkitAppearance: "none", MozAppearance: "none", border: "none", outline: "none", cursor: "pointer", background: "transparent" };
 
   return (
     <Layout bgPhoto={landingLeaf}>
@@ -4089,6 +4101,7 @@ export default function BcpDailyOfficePage() {
             <div style={{ height: 1, background: "rgba(200,212,192,0.14)", marginBottom: 14 }} />
             <div style={officeRow}>
               <span style={officeRowLabel}>Time of day</span>
+              <span style={officeRowValue}>{todPick === "morning" ? "Morning" : "Evening"} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
               <select value={todPick} onChange={(e) => setTodPick(e.target.value as OfficeSide)} style={officeRowSelect} aria-label="Time of day">
                 <option value="morning">Morning</option>
                 <option value="evening">Evening</option>
@@ -4096,6 +4109,7 @@ export default function BcpDailyOfficePage() {
             </div>
             <div style={officeRow}>
               <span style={officeRowLabel}>Practice</span>
+              <span style={officeRowValue}>{practicePick === "devotion" ? "Devotion (short)" : "Full Office"} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
               <select value={practicePick} onChange={(e) => setPracticePick(e.target.value as "devotion" | "full")} style={officeRowSelect} aria-label="Practice">
                 <option value="devotion">Devotion (short)</option>
                 <option value="full">Full Office</option>
@@ -4103,6 +4117,7 @@ export default function BcpDailyOfficePage() {
             </div>
             <div style={officeRow}>
               <span style={officeRowLabel}>How</span>
+              <span style={officeRowValue}>{HOW_LABEL[effMethod]} <span aria-hidden style={{ opacity: 0.7 }}>▾</span></span>
               <select value={effMethod} onChange={(e) => setMethodPick(e.target.value as DefaultOfficeEntry)} style={officeRowSelect} aria-label="How">
                 {howOptions.map((m) => (
                   <option key={m} value={m}>{HOW_LABEL[m]}</option>

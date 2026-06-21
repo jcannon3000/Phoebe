@@ -607,7 +607,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const listeningCard = {
     key: "listening", emoji: "🎵", rgb: "108,140,180", done: listeningDone, href: "/listening",
     title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }),
-    blurb: listeningDone ? kept : t("rhythm.blurb_listening", { defaultValue: "Music as a way of prayer" }),
+    blurb: listeningDone ? kept : t("rhythm.blurb_listening", { defaultValue: "Sacred listening" }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
   };
   const examenCard = {
@@ -618,7 +618,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   };
   const cobreatheSlot = getPracticeSlot("cobreathe");
   const listeningSlot = getPracticeSlot("listening");
-  const examenSlot = getPracticeSlot("examen");
+  // The Examen is always an evening practice (no time-of-day picker).
+  const examenSlot: CustomSlot = "evening";
   const cobreatheForSlot = (slot: CustomSlot) => (cobreatheActive && cobreatheSlot === slot) ? [cobreatheCard] : [];
   const listeningForSlot = (slot: CustomSlot) => (listeningActive && listeningSlot === slot) ? [listeningCard] : [];
   const examenForSlot = (slot: CustomSlot) => (examenActive && examenSlot === slot) ? [examenCard] : [];

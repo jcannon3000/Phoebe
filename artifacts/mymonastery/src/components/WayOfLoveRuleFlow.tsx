@@ -516,7 +516,7 @@ export default function WayOfLoveRuleFlow({
     ...(contemplative.prayer ? (["contemplation-goal"] as Step[]) : []),
     ...(contemplative.cobreathe && !cobreatheIsSideStyle ? (["cobreathe-when"] as Step[]) : []),
     ...(contemplative.audio ? (["audio-when"] as Step[]) : []),
-    ...(contemplative.examen ? (["examen-when"] as Step[]) : []),
+    // The Examen is always an evening practice — no time-of-day slide.
     "learn", "extras",
   ];
   const totalSteps = orderedSteps.length;
@@ -604,7 +604,7 @@ export default function WayOfLoveRuleFlow({
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(contemplative.prayer, `🕯️ ${t("wol_rule.cp_prayer", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.cp_prayer_sub", { defaultValue: "Sit in silence before God." }), () => toggleContemplative("prayer"))}
           {choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Twelve breaths, together — a prayer for justice." }), () => toggleContemplative("cobreathe"))}
-          {choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Music as a way of prayer." }), () => toggleContemplative("audio"))}
+          {choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }), () => toggleContemplative("audio"))}
           {choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
@@ -1090,8 +1090,8 @@ export default function WayOfLoveRuleFlow({
     })),
     ...(contemplative.prayer ? [{ emoji: "🕯️", label: "Contemplative Prayer", sub: goalMin > 0 ? `${goalMin} min of silence a day` : "No goal", step: "contemplation-goal" as Step }] : []),
     ...(contemplative.cobreathe ? [{ emoji: "🌍", label: "Co-Breathe", sub: cobreatheIsSideStyle ? "With your prayer" : SLOT_LABEL[slotByPractice.cobreathe], step: "contemplative" as Step }] : []),
-    ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: SLOT_LABEL[slotByPractice.listening], step: "audio-when" as Step }] : []),
-    ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: SLOT_LABEL[slotByPractice.examen], step: "examen-when" as Step }] : []),
+    // Audio Divina + the Examen are intentionally NOT listed on this review —
+    // they're set in the Contemplation step and don't need a review row.
     ...(newsletters.length
       ? [{ emoji: "📖", label: "Today's reflection", sub: newsletters.map((n) => NEWSLETTERS.find((x) => x.id === n)?.label ?? n).join(" · "), step: "learn" as Step }]
       : []),
@@ -1114,7 +1114,7 @@ export default function WayOfLoveRuleFlow({
           <button
             key={`${r.label}-${i}`}
             onClick={() => setStep(r.step)}
-            style={{ background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left" }}
+            style={{ background: CARD, ...FROST_BLUR, border: `1px solid ${CARD_B}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left" }}
           >
             <span style={{ fontSize: 22, flexShrink: 0 }} aria-hidden>{r.emoji}</span>
             <span style={{ flex: 1, minWidth: 0 }}>
@@ -1125,7 +1125,7 @@ export default function WayOfLoveRuleFlow({
           </button>
         ))}
       </div>
-      <button onClick={onDone} style={{ marginTop: 24, background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+      <button onClick={onDone} style={{ marginTop: 24, background: "rgba(46,107,64,0.55)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
         {t("wol_rule.done_cta", { defaultValue: "Go to Daily progress" })}
       </button>
     </>,

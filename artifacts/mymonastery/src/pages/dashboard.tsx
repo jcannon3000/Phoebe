@@ -6847,13 +6847,16 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   animate: { opacity: 1, y: 0 },
                   transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const, delay: Math.min(i * 0.06, 0.42) },
                 });
+                // The next THREE events, flattened across the day buckets (already
+                // chronological today→month) into a single "Next up" section.
+                const isEvt = (it: DashboardItem) => it.kind === "gathering" || it.kind === "service" || it.kind === "services" || it.kind === "action" || it.kind === "plan";
+                const nextThree = [...todayItems, ...tomorrowItems, ...weekItems, ...monthItems].filter(isEvt).slice(0, 3);
                 return (
                   <div>
                     <motion.div {...enterUp(0)}>{keptHeader}</motion.div>
-                    <motion.div {...enterUp(1)}><TimeSection label={t("dashboard.today_section")} items={todayItems} {...evtProps} /></motion.div>
-                    <motion.div {...enterUp(2)}><TimeSection label={t("dashboard.tomorrow_section")} items={tomorrowItems} {...evtProps} /></motion.div>
-                    <motion.div {...enterUp(3)}><TimeSection label={t("dashboard.this_week_section")} items={weekItems} {...evtProps} /></motion.div>
-                    <motion.div {...enterUp(4)}><TimeSection label={t("dashboard.upcoming_section")} items={monthItems} {...evtProps} /></motion.div>
+                    {nextThree.length > 0 && (
+                      <motion.div {...enterUp(1)}><TimeSection label={t("dashboard.next_up_section", { defaultValue: "Next up" })} items={nextThree} {...evtProps} /></motion.div>
+                    )}
                   </div>
                 );
               })() : (

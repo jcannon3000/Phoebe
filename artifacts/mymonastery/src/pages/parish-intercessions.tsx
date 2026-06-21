@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -55,6 +56,7 @@ const SLOT_LABEL: Record<number, string> = {
 
 export default function ParishIntercessionsPage() {
   const { user, isLoading } = useAuth();
+  const bgPhoto = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[0]! : null;
   const [, setLocation] = useLocation();
 
   const parishesQuery = useQuery<{ parishes: AdminParish[]; isStaffAdmin: boolean }>({
@@ -89,7 +91,7 @@ export default function ParishIntercessionsPage() {
   if (!user) { setLocation("/"); return null; }
 
   return (
-    <Layout>
+    <Layout bgPhoto={bgPhoto}>
       <div className="max-w-2xl mx-auto w-full px-5 pb-24">
         <Link
           href="/parish/admin"
@@ -232,7 +234,7 @@ function SlotComposer({
     <div
       className="rounded-xl px-4 py-4"
       style={{
-        background: "rgba(46,107,64,0.08)",
+        background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
         border: "1px solid rgba(46,107,64,0.22)",
       }}
     >
