@@ -315,6 +315,7 @@ const CustomizeHomeAddPage = lazy(() =>
 );
 const GratitudePage = lazy(() => import("./pages/gratitude"));
 const ListeningPage = lazy(() => import("./pages/listening"));
+const LectioDivinaPage = lazy(() => import("./pages/lectio-divina"));
 const FindYourRhythmPage = lazy(() => import("./pages/find-your-rhythm"));
 const SpotifyCallbackPage = lazy(() => import("./pages/spotify-callback"));
 const BcpIntercessionsPage = lazy(() => import("./pages/bcp-intercessions"));
@@ -960,6 +961,7 @@ function Router() {
       <Route path="/saints" component={SaintsIndex} />
       <Route path="/gratitude" component={GratitudePage} />
       <Route path="/listening" component={ListeningPage} />
+      <Route path="/lectio-divina" component={LectioDivinaPage} />
       <Route path="/find-your-rhythm" component={FindYourRhythmPage} />
       <Route path="/spotify-callback" component={SpotifyCallbackPage} />
       <Route path="/bcp" component={BcpPage} />

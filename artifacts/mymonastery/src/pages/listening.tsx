@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Trash2 } from "lucide-react";
-import { useLocation } from "wouter";
-import { Layout } from "@/components/layout";
+import { RiseSheet } from "@/components/RiseSheet";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
 import { type ListeningMedium } from "@/lib/listeningLog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,7 +16,15 @@ import { searchCatalog, KIND_EMOJI, type SearchResult } from "@/lib/sacredLibrar
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
-const SERIF = "Georgia, 'Times New Roman', serif";
+// Audio Divina uses Space Grotesk for ALL text (no serif).
+const SERIF = SPACE_GROTESK;
+// Frosted surface for the visibility pill + the Log button (not solid green).
+const FROST_CTA = {
+  background: "rgba(9,26,16,0.42)",
+  backdropFilter: "blur(14px)",
+  WebkitBackdropFilter: "blur(14px)",
+  border: "1px solid rgba(200,212,192,0.28)",
+} as const;
 
 const MEDIA: { id: ListeningMedium; label: string }[] = [
   { id: "streaming", label: "Streaming" },
@@ -53,7 +60,6 @@ type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: str
 type SharedEntry = { id: number; day: string; medium: ListeningMedium; what: string; artworkUrl?: string; experience?: string; createdAt: string; authorName: string; avatarUrl: string | null; isYou: boolean };
 
 export default function ListeningPage() {
-  const [, navigate] = useLocation();
   const [view, setView] = useState<View>("log");
   const [what, setWhat] = useState("");
   // Apple Music (→ Spotify) catalog suggestions for the "what" field: artists,
@@ -116,7 +122,6 @@ export default function ListeningPage() {
     queryKey: ["/api/listening/shared"],
     queryFn: () => apiRequest("GET", "/api/listening/shared"),
     staleTime: 60_000,
-    enabled: view === "history" && logTab === "fellows",
   });
   const sharedEntries = sharedData?.entries ?? [];
   const logMutation = useMutation({
@@ -144,8 +149,9 @@ export default function ListeningPage() {
   // ——— History (the log) ———
   if (view === "history") {
     return (
-      <Layout bgPhoto={bgPhoto}>
-        <motion.div className="max-w-xl mx-auto w-full" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}>
+      <RiseSheet bgPhoto={bgPhoto}>
+        {() => (
+        <motion.div className="w-full" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}>
           <button onClick={() => setView("log")} className="text-[14px] mb-5 inline-flex items-center gap-1.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
             ← <span>Audio Divina</span>
           </button>
@@ -186,24 +192,20 @@ export default function ListeningPage() {
             )
           )}
         </motion.div>
-      </Layout>
+        )}
+      </RiseSheet>
     );
   }
 
   // ——— Log (the main screen) — a simple two-field journal entry ———
   return (
-    <Layout bgPhoto={bgPhoto}>
-      <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-      <div className="max-w-xl mx-auto w-full">
-        {/* Header */}
-        <div className="flex items-start gap-3 mb-7">
-          <div className="text-3xl w-12 h-12 flex items-center justify-center rounded-2xl flex-shrink-0" style={{ background: "rgba(62,124,122,0.18)", border: "1px solid rgba(62,124,122,0.35)" }}>
-            🎧
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Audio Divina</h1>
-            <p className="text-[13px] mt-0.5" style={{ color: SAGE, fontFamily: SERIF, fontStyle: "italic" }}>Sacred listening.</p>
-          </div>
+    <RiseSheet bgPhoto={bgPhoto}>
+      {() => (
+      <div className="w-full">
+        {/* Header — title only, no emoji */}
+        <div className="mb-7">
+          <h1 className="text-xl font-bold leading-tight" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Audio Divina</h1>
+          <p className="text-[13px] mt-0.5" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>Sacred listening.</p>
         </div>
 
         {/* 1 — What did you listen to? */}
@@ -262,59 +264,83 @@ export default function ListeningPage() {
           ))}
         </select>
 
-        {/* 3 — How was your experience? (optional reflection) */}
-        <p className="text-[10.5px] uppercase tracking-[0.18em] mb-2" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-          How was your experience? <span style={{ opacity: 0.6, textTransform: "none", letterSpacing: 0 }}>(optional)</span>
-        </p>
-        <textarea
-          value={experience}
-          onChange={(e) => setExperience(e.target.value.slice(0, 500))}
-          rows={3}
-          placeholder="What did it stir in you?"
-          className="w-full rounded-2xl px-4 py-3.5 mb-7 text-[15px] outline-none resize-none"
-          style={{ ...glassField, fontFamily: SERIF, fontStyle: "italic", lineHeight: 1.6 }}
-        />
-
-        {/* Share with fellows — private by default (mirrors gratitude). */}
-        <div className="flex items-center justify-center gap-2 mb-5">
-          <button
-            type="button"
-            onClick={() => setShareOnLog(false)}
-            aria-pressed={!shareOnLog}
-            className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors"
-            style={{ background: !shareOnLog ? "rgba(46,107,64,0.85)" : "transparent", color: !shareOnLog ? WARM : SAGE, border: `1px solid ${!shareOnLog ? "rgba(168,197,160,0.45)" : "rgba(255,255,255,0.12)"}`, fontFamily: SPACE_GROTESK }}
-          >
-            🔒 Private
-          </button>
-          <button
-            type="button"
-            onClick={() => setShareOnLog(true)}
-            aria-pressed={shareOnLog}
-            className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors"
-            style={{ background: shareOnLog ? "rgba(46,107,64,0.85)" : "transparent", color: shareOnLog ? WARM : SAGE, border: `1px solid ${shareOnLog ? "rgba(168,197,160,0.45)" : "rgba(255,255,255,0.12)"}`, fontFamily: SPACE_GROTESK }}
-          >
-            🌿 Share with fellows
-          </button>
+        {/* 3 — Sharing — a wide frosted pill: label left, dropdown right
+            (like the office "how to pray" pills). */}
+        <div className="w-full rounded-2xl px-4 py-2.5 mb-4 flex items-center justify-between gap-3" style={FROST_CTA}>
+          <span className="text-[13px] font-semibold flex-shrink-0" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Sharing</span>
+          <div style={{ position: "relative" }}>
+            <select
+              value={shareOnLog ? "fellows" : "private"}
+              onChange={(e) => setShareOnLog(e.target.value === "fellows")}
+              aria-label="Sharing"
+              className="text-[14px] font-medium outline-none bg-transparent pr-5 text-right"
+              style={{ color: WARM, fontFamily: SPACE_GROTESK, colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+            >
+              <option value="private">🔒 Private</option>
+              <option value="fellows">🌿 Share with fellows</option>
+            </select>
+            <span aria-hidden style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 11, pointerEvents: "none" }}>▾</span>
+          </div>
         </div>
 
-        {/* Log it — like marking a task done, plus it saves to your log. */}
+        {/* Log it — frosted, like marking a task done, plus it saves to your log. */}
         <button
           onClick={logToday}
           className="w-full py-4 rounded-2xl text-[16px] font-semibold active:scale-[0.98] transition-transform"
-          style={{ background: "rgba(46,107,64,0.9)", color: WARM, fontFamily: SPACE_GROTESK }}
+          style={{ ...FROST_CTA, color: WARM, fontFamily: SPACE_GROTESK }}
         >
           Log today's listening
         </button>
 
-        <div className="flex items-center justify-between mt-5">
-          <button onClick={() => setView("history")} className="text-[13px] inline-flex items-center gap-1" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>
-            See your listening log <span aria-hidden>›</span>
-          </button>
-          <p className="text-[11px]" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>Synced to your account</p>
-        </div>
+        <p className="text-[11px] text-center mt-3" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>Synced to your account</p>
+
+        {/* ——— Listening log preview — a home-style section under the form:
+            section header + View all, then the first 7 cards (yours + fellows). */}
+        <LogPreviewSection entries={entries} shared={sharedEntries} onViewAll={() => setView("history")} />
       </div>
+      )}
+    </RiseSheet>
+  );
+}
+
+// ——— Inline log preview — a home-style section: header + View all, then the
+// first 7 cards. Merges your own entries with any fellows' shared cards,
+// newest first. Lives under the form on the main Audio Divina screen.
+function LogPreviewSection({ entries, shared, onViewAll }: { entries: ServerEntry[]; shared: SharedEntry[]; onViewAll: () => void }) {
+  // Merge: your own (always yours) + fellows' shared (skip your own, already in
+  // `entries`), sorted newest-first, capped at 7.
+  type Card = { id: string; what: string; medium: ListeningMedium; artworkUrl?: string; createdAt: string; who: string | null; avatarUrl: string | null };
+  const mine: Card[] = entries.map((e) => ({ id: `me-${e.id}`, what: e.what, medium: e.medium, artworkUrl: e.artworkUrl, createdAt: e.createdAt, who: null, avatarUrl: null }));
+  const theirs: Card[] = shared.filter((e) => !e.isYou).map((e) => ({ id: `fe-${e.id}`, what: e.what, medium: e.medium, artworkUrl: e.artworkUrl, createdAt: e.createdAt, who: e.authorName, avatarUrl: e.avatarUrl }));
+  const cards = [...mine, ...theirs].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).slice(0, 7);
+  if (cards.length === 0) return null;
+  return (
+    <div className="mt-9">
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="text-[15px] font-bold" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Listening log</h2>
+        <button onClick={onViewAll} className="text-[12.5px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>View all ›</button>
       </div>
-    </Layout>
+      <div className="flex flex-col gap-2">
+        {cards.map((c) => {
+          const d = new Date(c.createdAt);
+          const day = Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+          const label = c.what?.trim() || (c.medium === "streaming" ? "Streaming" : c.medium.toUpperCase());
+          return (
+            <div key={c.id} className="flex items-center gap-3 rounded-2xl px-4 py-3" style={glassRow}>
+              {c.artworkUrl ? (
+                <img src={c.artworkUrl} alt="" className="w-10 h-10 rounded-lg object-cover flex-shrink-0" style={{ backgroundColor: "rgba(46,107,64,0.3)" }} />
+              ) : (
+                <span className="w-10 h-10 rounded-lg flex items-center justify-center text-[18px] flex-shrink-0" style={{ background: "rgba(46,107,64,0.3)" }} aria-hidden>{MEDIUM_EMOJI[c.medium] ?? "🎧"}</span>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{label}</p>
+                <p className="text-[11.5px] mt-0.5 truncate" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{c.who ? `${c.who} · ` : ""}{day}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

@@ -602,7 +602,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       // Optional practices.
       db.execute<{ section: string; local_date: string }>(sql`
         SELECT DISTINCT section, local_date FROM practice_completion
-        WHERE user_id = ${sessionUserId} AND section IN ('gratitude', 'examen', 'listening', 'journaling') AND local_date >= ${oldestYmd}
+        WHERE user_id = ${sessionUserId} AND section IN ('gratitude', 'examen', 'listening', 'journaling', 'lectio') AND local_date >= ${oldestYmd}
       `),
     ]);
 
@@ -641,11 +641,13 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
     const examen = new Set<string>();
     const listening = new Set<string>();
     const journaling = new Set<string>();
+    const lectio = new Set<string>();
     for (const r of pcRows.rows) {
       if (r.section === "gratitude") gratitude.add(r.local_date);
       if (r.section === "examen") examen.add(r.local_date);
       if (r.section === "listening") listening.add(r.local_date);
       if (r.section === "journaling") journaling.add(r.local_date);
+      if (r.section === "lectio") lectio.add(r.local_date);
     }
     const days = ymds.map((ymd) => ({
       ymd,
@@ -657,6 +659,7 @@ router.get("/me/practice-week", async (req, res): Promise<void> => {
       gratitude: gratitude.has(ymd),
       examen: examen.has(ymd),
       journaling: journaling.has(ymd),
+      lectio: lectio.has(ymd),
     }));
     res.json({ days });
   } catch (err) {

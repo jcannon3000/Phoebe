@@ -22,7 +22,7 @@ const router: IRouter = Router();
 // "gratitude" and "examen" are the optional daily practices a user can add
 // from the Customize flow — completing one earns an extra Daily-progress
 // checkmark (see lib/practiceCompletion.ts on the client + useRhythmState).
-const SECTIONS = new Set(["turn", "learn_pray", "learn", "pray", "worship", "bless", "go", "rest", "weekly_review", "gratitude", "examen", "listening", "journaling"]);
+const SECTIONS = new Set(["turn", "learn_pray", "learn", "pray", "worship", "bless", "go", "rest", "weekly_review", "gratitude", "examen", "listening", "journaling", "lectio"]);
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
 function uid(req: Request): number | null {

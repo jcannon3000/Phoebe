@@ -3309,16 +3309,18 @@ function buildBookSections(slides: Slide[]): BookSection[] {
         sections.push({ key: s.id, label: "The Invitatory", detail: phHeadline, page: bookPageRef(s.bcpReference), readUrl: null });
         break;
       }
-      case "antiphon": {
+      default:
         // A standalone antiphon not absorbed by a psalm block — Compline's
         // antiphon bracketing the Nunc Dimittis ("Guide us waking…"). The
         // book prints it before and after the canticle; one card is enough
         // (the trailing repeat is collapsed by the dedup pass below).
-        const aText = s.title || s.content || null;
-        sections.push({ key: s.id, label: "The Antiphon", detail: aText, page: bookPageRef(s.bcpReference), readUrl: null });
-        break;
-      }
-      default:
+        // ("antiphon" isn't in the client SlideType union, so it's matched
+        // here as a string rather than a switch case.)
+        if ((s.type as string) === "antiphon") {
+          const aText = s.title || s.content || null;
+          sections.push({ key: s.id, label: "The Antiphon", detail: aText, page: bookPageRef(s.bcpReference), readUrl: null });
+          break;
+        }
         // office_intro, invitatory versicle, absolution, doxology,
         // intercessions (the guide has its own card), portals — all
         // either fold into a neighboring section's pages or have no

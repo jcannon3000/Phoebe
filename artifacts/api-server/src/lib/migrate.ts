@@ -3122,6 +3122,23 @@ export async function migrate() {
     await run(client, `CREATE INDEX IF NOT EXISTS listening_entries_user_idx ON listening_entries (user_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS listening_entries_user_day_idx ON listening_entries (user_id, day)`);
 
+    // ── lectio_log_entries (Lectio Divina log — account-wide, private) ──────
+    // Append log of "sacred reading" sittings (passage + what you felt drawn to
+    // / called to do), one row per log. Distinct from the lectionary feature
+    // (lectio_reflections). `day` is the caller's LOCAL calendar day.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS lectio_log_entries (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day TEXT NOT NULL,
+        passage TEXT NOT NULL DEFAULT '',
+        reflection TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE INDEX IF NOT EXISTS lectio_log_entries_user_idx ON lectio_log_entries (user_id)`);
+    await run(client, `CREATE INDEX IF NOT EXISTS lectio_log_entries_user_day_idx ON lectio_log_entries (user_id, day)`);
+
     // ── reflection_reads (Forward Day by Day / SSJE read-state) ──────────────
     // CAC reads live in cac_reads (richer — community read presence); this
     // table carries the other daily-reflection sources so the daily-progress
