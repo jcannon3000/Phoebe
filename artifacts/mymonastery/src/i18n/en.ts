@@ -1031,8 +1031,8 @@ export const en = {
   // Learn flow (WayOfLoveRuleFlow).
   wol_rule: {
     walk: "Building your daily habit of prayer",
-    listen_eyebrow: "Daily Reflection",
-    listen_title: "Daily Reflection",
+    listen_eyebrow: "Contemplative Prayer",
+    listen_title: "Contemplative Prayer",
     listen_body: "Take a few minutes a day to sit in silence before God — open to what God might be speaking, and to what's on your own heart. A daily return to God's love.",
     listen_goal_label: "Minutes of silence a day",
     listen_goal_note: "We'll gently remind you around 7pm on days you haven't reached it. Set 0 to keep the practice without a goal.",
@@ -1049,8 +1049,8 @@ export const en = {
     pray_offices_sub: "The full Daily Office — Morning & Evening Prayer.",
     pray_offices_sub_morning: "The full Morning Prayer office.",
     pray_offices_sub_evening: "The full Evening Prayer office.",
-    learn_eyebrow: "Learn",
-    learn_title: "Learn",
+    learn_eyebrow: "Daily Reflection",
+    learn_title: "Daily Reflection",
     learn_scripture_done: "Scripture — already covered by the office you pray.",
     learn_body: "Choose the daily reflections you'd like to read.",
     learn_multi_note: "Pick as many as you like — each gets its own card on your home.",
