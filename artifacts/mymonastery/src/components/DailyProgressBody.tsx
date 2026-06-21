@@ -366,7 +366,7 @@ export function WeeklyGridCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick, doneCta, pulse, tint = 0.4,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   /** Position in the routine card stack (0 = top/lightest → 1 = bottom/darkest),
@@ -390,6 +390,9 @@ function PracticeCard({
   /** Pulse the border color (like a today's-event card) to draw the eye to the
    *  next thing to do. The caller decides when (with its own guards). */
   pulse?: boolean;
+  /** Gate the one-shot outline load-pulse so it only runs after the splash has
+   *  faded (the cascade shouldn't fire behind the splash). */
+  pulseOnLoad?: boolean;
 }) {
   const waiting = !!later && !done;
   // Cycle the subtitle whenever a cycle is supplied — including on a DONE card
@@ -411,7 +414,7 @@ function PracticeCard({
     );
     const heroRow = (
       <div
-        className={`phoebe-card-outline-pulse relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
+        className={`${pulseOnLoad ? "phoebe-card-outline-pulse" : ""} relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
         style={{ background: cardTintBg(tint), backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1 }}
       >
         <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />
@@ -481,7 +484,7 @@ function PracticeCard({
   const restBorder = CARD_BORDER;
   const row = (
     <motion.div
-      className={`${pulse ? "" : "phoebe-card-outline-pulse"} relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
+      className={`${pulse || !pulseOnLoad ? "" : "phoebe-card-outline-pulse"} relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
       style={{ background: cardTintBg(tint), backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1 }}
       animate={pulse ? { borderColor: [restBorder, `rgba(${rgb},0.55)`, restBorder] } : undefined}
       transition={pulse ? { duration: 2.2, repeat: Infinity, ease: "easeInOut" } : undefined}
@@ -877,6 +880,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       onClick={"onClick" in c ? c.onClick : undefined}
       doneCta={(c as { doneCta?: string }).doneCta}
       pulse={pulse}
+      pulseOnLoad={splashCleared}
     />
   );
 

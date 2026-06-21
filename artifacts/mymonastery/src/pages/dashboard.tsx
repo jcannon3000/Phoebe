@@ -6425,9 +6425,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
     // but the plan itself lives in the calendar, not a separate list.
     for (const p of fellowPlans) {
       if (!p.startsAt) continue; // undated plans show only in the composer surface
-      // Don't surface YOUR OWN plan on the home — you made it, you know about it.
-      // It still appears on the Events page (where you manage/RSVP it).
-      if (p.isMine && !eventsOnly) continue;
+      // Own plans are kept too — they fill the "events when the prayer list is
+      // done" home slot (and the Events page), so an upcoming plan you made still
+      // shows up rather than leaving the spot empty.
       let eventDate: Date | null = null;
       try { eventDate = parseISO(p.startsAt); } catch { /* ignore */ }
       if (!eventDate || !Number.isFinite(eventDate.getTime())) continue;
