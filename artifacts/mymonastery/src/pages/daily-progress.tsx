@@ -29,8 +29,9 @@ export default function DailyProgressPage() {
   return (
     <Layout bgPhoto={bgPhoto}>
       <div style={{ position: "relative", isolation: "isolate", minHeight: "100dvh" }}>
-      {/* Capped on desktop, full-width on mobile. */}
-      <div className="flex flex-col w-full max-w-2xl mx-auto pb-24">
+      {/* Capped on desktop, full-width on mobile. max-w-4xl (56rem) matches the
+          home screen's .dash-shell so the rhythm cards are the same width on both. */}
+      <div className="flex flex-col w-full max-w-4xl mx-auto pb-24">
         <Link href="/dashboard" className="inline-flex items-center gap-1.5 text-sm mb-3" style={{ color: SAGE }}>
           <ChevronLeft size={14} /> {t("common.home", { defaultValue: "Home" })}
         </Link>
