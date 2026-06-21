@@ -216,16 +216,10 @@ function ChoiceCard({
   /** Fires on tap, before navigation (e.g. to prime audio for the breath). */
   onClick?: () => void;
 }) {
-  const bg = primary
-    ? "rgba(46,107,64,0.2)"
-    : muted
-      ? "rgba(9,26,16,0.18)"
-      : "rgba(9,26,16,0.27)";
-  const border = primary
-    ? "1px solid rgba(46,107,64,0.45)"
-    : muted
-      ? "1px solid rgba(200,212,192,0.15)"
-      : "1px solid rgba(46,107,64,0.25)";
+  // All cards read as the same frosted glass — no highlighted/primary card.
+  void primary; void muted;
+  const bg = "rgba(9,26,16,0.27)";
+  const border = "1px solid rgba(46,107,64,0.25)";
   // External links (e.g. the App Store) open in a new tab via a real anchor;
   // internal routes use wouter's client-side Link.
   const isExternal = /^https?:\/\//.test(href);
@@ -248,7 +242,7 @@ function ChoiceCard({
       </div>
       <span
         className="text-lg flex-shrink-0"
-        style={{ color: primary ? BRIGHT_SAGE : FAINT }}
+        style={{ color: FAINT }}
         aria-hidden="true"
       >
         →
