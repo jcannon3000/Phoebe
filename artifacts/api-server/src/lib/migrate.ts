@@ -3118,6 +3118,7 @@ export async function migrate() {
     `);
     await run(client, `ALTER TABLE listening_entries ADD COLUMN IF NOT EXISTS artwork_url TEXT NOT NULL DEFAULT ''`);
     await run(client, `ALTER TABLE listening_entries ADD COLUMN IF NOT EXISTS experience TEXT NOT NULL DEFAULT ''`);
+    await run(client, `ALTER TABLE listening_entries ADD COLUMN IF NOT EXISTS shared BOOLEAN NOT NULL DEFAULT FALSE`);
     await run(client, `CREATE INDEX IF NOT EXISTS listening_entries_user_idx ON listening_entries (user_id)`);
     await run(client, `CREATE INDEX IF NOT EXISTS listening_entries_user_day_idx ON listening_entries (user_id, day)`);
 

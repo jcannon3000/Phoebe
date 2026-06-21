@@ -39,7 +39,9 @@ const glassField = {
 type View = "log" | "history";
 
 // One account-wide log entry (server-backed; syncs across the account).
-type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: string; artworkUrl?: string; experience?: string; createdAt: string };
+type ServerEntry = { id: number; day: string; medium: ListeningMedium; what: string; artworkUrl?: string; experience?: string; shared?: boolean; createdAt: string };
+// A fellow's shared listening (the Fellows feed).
+type SharedEntry = { id: number; day: string; medium: ListeningMedium; what: string; artworkUrl?: string; experience?: string; createdAt: string; authorName: string; avatarUrl: string | null; isYou: boolean };
 
 export default function ListeningPage() {
   const [, navigate] = useLocation();
@@ -97,20 +99,36 @@ export default function ListeningPage() {
     staleTime: 60_000,
   });
   const entries = logData?.entries ?? [];
+  // Share-with-fellows toggle for a new entry (default private), mirroring gratitude.
+  const [shareOnLog, setShareOnLog] = useState(false);
+  // Which log you're viewing in the history screen: your own, or your fellows'.
+  const [logTab, setLogTab] = useState<"yours" | "fellows">("yours");
+  const { data: sharedData } = useQuery<{ entries: SharedEntry[] }>({
+    queryKey: ["/api/listening/shared"],
+    queryFn: () => apiRequest("GET", "/api/listening/shared"),
+    staleTime: 60_000,
+    enabled: view === "history" && logTab === "fellows",
+  });
+  const sharedEntries = sharedData?.entries ?? [];
   const logMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, experience }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
+    mutationFn: () => apiRequest("POST", "/api/listening", { day: new Date().toLocaleDateString("en-CA"), medium, what: what.trim(), artworkUrl, experience, shared: shareOnLog }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); qc.invalidateQueries({ queryKey: ["/api/listening/shared"] }); },
   });
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/listening/${id}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); qc.invalidateQueries({ queryKey: ["/api/listening/shared"] }); },
+  });
+  // Toggle an existing entry's visibility to fellows.
+  const shareMutation = useMutation({
+    mutationFn: ({ id, shared }: { id: number; shared: boolean }) => apiRequest("POST", `/api/listening/${id}/share`, { shared }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["/api/listening"] }); qc.invalidateQueries({ queryKey: ["/api/listening/shared"] }); },
   });
 
   // The whole log: note what + how, mark it done, then show the log. (No amount.)
   function logToday() {
     logMutation.mutate();
     markPracticeDoneToday("listening");
-    setWhat(""); setExperience(""); setArtworkUrl("");
+    setWhat(""); setExperience(""); setArtworkUrl(""); setShareOnLog(false);
     setView("history");
   }
 
@@ -123,15 +141,40 @@ export default function ListeningPage() {
             ← <span>Audio Divina</span>
           </button>
           <h1 className="text-xl font-bold leading-tight mb-1" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>Listening log</h1>
-          <p className="text-xs mb-5" style={{ color: SAGE }}>What you've sat with.</p>
-          {entries.length === 0 ? (
-            <p className="text-[14px] leading-relaxed mt-10 text-center" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SERIF, fontStyle: "italic" }}>
-              Nothing logged yet. Your sittings will gather here.
-            </p>
+          <p className="text-xs mb-4" style={{ color: SAGE }}>What you've sat with.</p>
+          {/* Yours / Fellows tabs — like the gratitude journal vs garden. */}
+          <div className="flex items-center gap-2 mb-5">
+            {(["yours", "fellows"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setLogTab(tab)}
+                className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors"
+                style={{ background: logTab === tab ? "rgba(46,107,64,0.85)" : "rgba(255,255,255,0.05)", color: logTab === tab ? WARM : SAGE, border: `1px solid ${logTab === tab ? "rgba(168,197,160,0.45)" : "rgba(255,255,255,0.10)"}`, fontFamily: SPACE_GROTESK }}
+              >
+                {tab === "yours" ? "Yours" : "Fellows"}
+              </button>
+            ))}
+          </div>
+          {logTab === "yours" ? (
+            entries.length === 0 ? (
+              <p className="text-[14px] leading-relaxed mt-10 text-center" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SERIF, fontStyle: "italic" }}>
+                Nothing logged yet. Your sittings will gather here.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {entries.map((e) => <HistoryRow key={e.id} e={e} onDelete={(id) => deleteMutation.mutate(id)} deleting={deleteMutation.isPending} onShare={(id, shared) => shareMutation.mutate({ id, shared })} />)}
+              </div>
+            )
           ) : (
-            <div className="flex flex-col gap-2">
-              {entries.map((e) => <HistoryRow key={e.id} e={e} onDelete={(id) => deleteMutation.mutate(id)} deleting={deleteMutation.isPending} />)}
-            </div>
+            sharedEntries.length === 0 ? (
+              <p className="text-[14px] leading-relaxed mt-10 text-center" style={{ color: "rgba(143,175,150,0.7)", fontFamily: SERIF, fontStyle: "italic" }}>
+                Nothing shared yet. When you or a fellow shares a sitting, it gathers here.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {sharedEntries.map((e) => <SharedRow key={e.id} e={e} />)}
+              </div>
+            )
           )}
         </motion.div>
       </Layout>
@@ -223,6 +266,28 @@ export default function ListeningPage() {
           style={{ ...glassField, fontFamily: SERIF, fontStyle: "italic", lineHeight: 1.6 }}
         />
 
+        {/* Share with fellows — private by default (mirrors gratitude). */}
+        <div className="flex items-center justify-center gap-2 mb-5">
+          <button
+            type="button"
+            onClick={() => setShareOnLog(false)}
+            aria-pressed={!shareOnLog}
+            className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors"
+            style={{ background: !shareOnLog ? "rgba(46,107,64,0.85)" : "transparent", color: !shareOnLog ? WARM : SAGE, border: `1px solid ${!shareOnLog ? "rgba(168,197,160,0.45)" : "rgba(255,255,255,0.12)"}`, fontFamily: SPACE_GROTESK }}
+          >
+            🔒 Private
+          </button>
+          <button
+            type="button"
+            onClick={() => setShareOnLog(true)}
+            aria-pressed={shareOnLog}
+            className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors"
+            style={{ background: shareOnLog ? "rgba(46,107,64,0.85)" : "transparent", color: shareOnLog ? WARM : SAGE, border: `1px solid ${shareOnLog ? "rgba(168,197,160,0.45)" : "rgba(255,255,255,0.12)"}`, fontFamily: SPACE_GROTESK }}
+          >
+            🌿 Share with fellows
+          </button>
+        </div>
+
         {/* Log it — like marking a task done, plus it saves to your log. */}
         <button
           onClick={logToday}
@@ -245,7 +310,7 @@ export default function ListeningPage() {
 }
 
 // ——— A log row — what you put on, how, and when ———
-function HistoryRow({ e, onDelete, deleting }: { e: ServerEntry; onDelete: (id: number) => void; deleting: boolean }) {
+function HistoryRow({ e, onDelete, deleting, onShare }: { e: ServerEntry; onDelete: (id: number) => void; deleting: boolean; onShare: (id: number, shared: boolean) => void }) {
   const d = new Date(e.day + "T12:00:00");
   const day = Number.isNaN(d.getTime()) ? e.day : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
   const label = e.what?.trim() || (e.medium === "streaming" ? "Streaming" : e.medium.toUpperCase());
@@ -262,16 +327,55 @@ function HistoryRow({ e, onDelete, deleting }: { e: ServerEntry; onDelete: (id: 
         {e.experience?.trim() ? (
           <p className="text-[12.5px] mt-1.5 leading-snug" style={{ color: "rgba(240,237,230,0.78)", fontFamily: SERIF, fontStyle: "italic" }}>{e.experience.trim()}</p>
         ) : null}
+        {/* Per-entry share toggle — make it visible to fellows, or pull it back. */}
+        <button
+          type="button"
+          onClick={() => onShare(e.id, !e.shared)}
+          className="text-[11px] mt-1.5 transition-opacity hover:opacity-80"
+          style={{ color: e.shared ? "#A8C5A0" : "rgba(143,175,150,0.65)", background: "none", border: "none", padding: 0, cursor: "pointer", fontFamily: SPACE_GROTESK }}
+        >
+          {e.shared ? "🌿 Shared with fellows · make private" : "Share with fellows"}
+        </button>
       </div>
       <button
         onClick={() => onDelete(e.id)}
         disabled={deleting}
         aria-label="Delete entry"
-        className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-100 disabled:opacity-40"
+        className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-100 disabled:opacity-40 self-start"
         style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(200,150,140,0.9)", opacity: 0.75 }}
       >
         <Trash2 size={15} />
       </button>
+    </div>
+  );
+}
+
+// ——— A fellow's shared listening — author face + what + reflection ———
+function SharedRow({ e }: { e: SharedEntry }) {
+  const d = new Date(e.day + "T12:00:00");
+  const day = Number.isNaN(d.getTime()) ? e.day : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+  const label = e.what?.trim() || (e.medium === "streaming" ? "Streaming" : e.medium.toUpperCase());
+  return (
+    <div className="flex items-start gap-3 rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+      {e.avatarUrl ? (
+        <img src={e.avatarUrl} alt={e.authorName} className="w-9 h-9 rounded-full object-cover flex-shrink-0" style={{ border: "1px solid rgba(46,107,64,0.4)" }} />
+      ) : (
+        <span className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-semibold flex-shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0", fontFamily: SPACE_GROTESK }}>{(e.authorName.trim()[0] ?? "?").toUpperCase()}</span>
+      )}
+      <div className="flex-1 min-w-0">
+        <p className="text-[11.5px]" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{e.isYou ? "You" : e.authorName} · {day}</p>
+        <div className="flex items-center gap-2 mt-1">
+          {e.artworkUrl ? (
+            <img src={e.artworkUrl} alt="" className="w-8 h-8 rounded-md object-cover flex-shrink-0" style={{ backgroundColor: "rgba(46,107,64,0.3)" }} />
+          ) : (
+            <span className="w-8 h-8 rounded-md flex items-center justify-center text-[15px] flex-shrink-0" style={{ background: "rgba(46,107,64,0.3)" }} aria-hidden>{MEDIUM_EMOJI[e.medium] ?? "🎧"}</span>
+          )}
+          <p className="text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{label}</p>
+        </div>
+        {e.experience?.trim() ? (
+          <p className="text-[12.5px] mt-1.5 leading-snug" style={{ color: "rgba(240,237,230,0.78)", fontFamily: SERIF, fontStyle: "italic" }}>{e.experience.trim()}</p>
+        ) : null}
+      </div>
     </div>
   );
 }

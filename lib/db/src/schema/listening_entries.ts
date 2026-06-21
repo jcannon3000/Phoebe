@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
 
 // Audio Divina log — the account-wide "sacred listening" journal (see
@@ -26,6 +26,9 @@ export const listeningEntriesTable = pgTable(
     artworkUrl: text("artwork_url").notNull().default(""),
     // Optional reflection — "what did it stir in you?".
     experience: text("experience").notNull().default(""),
+    // Private by default; when shared=true the entry appears on the viewer's
+    // Fellows feed (mirrors gratitude's `shared`, but scoped to fellows).
+    shared: boolean("shared").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({
