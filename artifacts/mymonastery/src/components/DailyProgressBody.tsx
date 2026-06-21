@@ -826,7 +826,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     cascadeHaptedRef.current = true;
     if (!isNativeShell()) return;
     const count = upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0);
-    const START_DELAY = 500;   // ms — hold the cascade so it doesn't fire early
+    const START_DELAY = 200;   // ms — small hold so it doesn't fire early
     const STEP = 110;          // ms between cards
     const BASE_PEAK = 0.42;    // first card's strength
     const BASE_MS = 110;       // each tick's length
