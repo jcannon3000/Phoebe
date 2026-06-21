@@ -220,7 +220,7 @@ function PersonCard({
         animate={{ opacity: 1, y: 0 }}
         className="relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow hover:shadow-lg"
         style={{
-          background: "#0F2818",
+          background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
           border: "1px solid rgba(92,138,95,0.28)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
@@ -679,7 +679,7 @@ export default function People() {
             aria-label={t("people.search_placeholder")}
             className="w-full"
             style={{
-              background: "#0F2818",
+              background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
               border: "1px solid rgba(46,107,64,0.35)",
               borderRadius: 999,
               color: "#F0EDE6",
@@ -735,14 +735,14 @@ export default function People() {
         {isLoading ? (
           <div className="space-y-2">
             {[1, 2, 3].map(i => (
-              <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: "#0F2818" }} />
+              <div key={i} className="h-16 rounded-xl animate-pulse" style={{ background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" }} />
             ))}
           </div>
         ) : !people || people.length === 0 ? (
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
             <div
               className="rounded-xl px-5 py-5 mb-6 flex items-center gap-4"
-              style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+              style={{ background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(46,107,64,0.35)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
             >
               <span style={{ fontSize: "32px" }}>🌱</span>
               <div>
@@ -759,7 +759,7 @@ export default function People() {
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
             <div
               className="rounded-xl px-5 py-5 mb-6 flex items-center gap-4"
-              style={{ background: "#0F2818", border: "1px solid rgba(46,107,64,0.35)" }}
+              style={{ background: "rgba(9,26,16,0.42)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(46,107,64,0.35)" }}
             >
               <span style={{ fontSize: "28px" }}>🔍</span>
               <div>

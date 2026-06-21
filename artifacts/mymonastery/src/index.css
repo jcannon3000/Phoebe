@@ -716,5 +716,5 @@ a:active,
   45%  { border-color: rgba(230,244,221,0.50); }
   100% { border-color: rgba(200,212,192,0.35); }
 }
-.phoebe-card-outline-pulse { animation: phoebeCardOutlinePulse 0.85s ease-out 1 both; }
+.phoebe-card-outline-pulse { animation: phoebeCardOutlinePulse 0.425s ease-out 1 both; }
 @media (prefers-reduced-motion: reduce) { .phoebe-card-outline-pulse { animation: none; } }

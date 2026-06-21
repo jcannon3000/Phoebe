@@ -7049,8 +7049,26 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       const bDone = !b.isOwnRequest && b.myAmenedToday ? 1 : 0;
                       return aDone - bDone;
                     });
-                  // Nothing of others' left to pray for today → no list at all.
-                  if (carouselRows.length === 0) return null;
+                  // Prayer list done for today (nothing of others' left to pray
+                  // for) → surface the upcoming EVENTS here instead, in the same
+                  // spot the prayer list would have been — even if routine cards
+                  // are still left to do. Events only (practices keep their own
+                  // cards above); nothing on the calendar → render nothing.
+                  if (carouselRows.length === 0) {
+                    const evToday = fToday.filter(isEventItem);
+                    const evTomorrow = fTomorrow.filter(isEventItem);
+                    const evWeek = fWeek.filter(isEventItem);
+                    const evMonth = fMonth.filter(isEventItem);
+                    if (evToday.length + evTomorrow.length + evWeek.length + evMonth.length === 0) return null;
+                    return (
+                      <div style={{ marginTop: 4 }}>
+                        <TimeSection label={t("dashboard.today_section")} items={evToday} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
+                        <TimeSection label={t("dashboard.tomorrow_section")} items={evTomorrow} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
+                        <TimeSection label={t("dashboard.this_week_section")} items={evWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
+                        <TimeSection label={t("dashboard.upcoming_section")} items={evMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
+                      </div>
+                    );
+                  }
                   return (
                     <div style={{ marginTop: -12 }}>
                       <PrayerListCarousel

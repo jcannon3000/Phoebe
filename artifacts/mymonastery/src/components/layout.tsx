@@ -411,8 +411,13 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                     </MenuSection>
                   );
                 })()}
-                {/* People (Fellows) turned off — the People menu row + page are
-                    hidden and fellow features paused. */}
+                {/* People (Fellows) — your 1:1 connections. Back on. */}
+                <MenuRow
+                  emoji="👥"
+                  label={t("menu.people", { defaultValue: "People" })}
+                  count={fellowRequestCount + newFromFriends}
+                  onClick={() => navigate("/people")}
+                />
                 {/* Prayer list — others' requests to pray through (off the
                     home once you've prayed everyone's, so it lives here). */}
                 <MenuRow
