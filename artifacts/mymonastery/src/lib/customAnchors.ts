@@ -12,6 +12,7 @@
 // when the LIST changes, one when a CHECK toggles.
 
 import { apiRequest } from "@/lib/queryClient";
+import { swellHaptic } from "@/lib/swellHaptic";
 
 // Where in the day this practice belongs — drives where its card slots into the
 // daily rhythm (a morning walk near Morning Prayer, an evening stretch near the
@@ -246,6 +247,7 @@ export function getCustomDoneDays(id: string): Set<string> {
 
 /** Log this practice as DONE today (clears any "not today"). */
 export function markCustomDoneToday(id: string): void {
+  const wasAlreadyDone = isCustomDoneToday(id);
   try {
     localStorage.setItem(DONE_PREFIX + id, todayISO());
     localStorage.removeItem(SKIP_PREFIX + id);
@@ -254,6 +256,8 @@ export function markCustomDoneToday(id: string): void {
   } catch {
     /* non-fatal */
   }
+  // A fresh completion of a custom routine practice → the swell haptic.
+  if (!wasAlreadyDone) swellHaptic();
 }
 
 /** Log this practice as "not today" — hides it + drops its dot for the day. */

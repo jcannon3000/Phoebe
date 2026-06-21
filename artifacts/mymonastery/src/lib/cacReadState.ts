@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/queryClient";
+import { swellHaptic } from "@/lib/swellHaptic";
 
 // Tracks whether the user has tapped a daily-reflection link today,
 // so surfaces that link to it (the dashboard module + the Morning
@@ -56,12 +57,15 @@ function makeDailyReadTracker(storageKey: string, eventName: string, syncRead: (
      *  the server so the read shows up on the user's other devices too. */
     markRead(): void {
       const ymd = todayLocalISO();
+      const wasAlreadyRead = this.hasReadToday();
       try {
         localStorage.setItem(storageKey, ymd);
         window.dispatchEvent(new Event(eventName));
       } catch {
         /* private mode / quota — non-fatal */
       }
+      // A fresh reflection read → the swell haptic.
+      if (!wasAlreadyRead) swellHaptic();
       // Fire-and-forget; an unauthenticated/offline call just no-ops.
       try { syncRead(ymd); } catch { /* best effort */ }
     },

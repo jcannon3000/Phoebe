@@ -1,4 +1,5 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { swellHaptic } from "@/lib/swellHaptic";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 import { Link, useLocation } from "wouter";
@@ -953,6 +954,8 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
     // attestation model as the National Cathedral tap) and the server's
     // one-hour cap applied client-side too.
     const durationSeconds = Math.min(Math.max(wallSeconds, 60), 3600);
+    // Office finished → the swell haptic (once, before the completed flag is set).
+    if (!completedRef.current) swellHaptic();
     suppressSessionPostRef.current = true;
     completedRef.current = true;
     apiRequest("POST", "/api/prayer-sessions", {

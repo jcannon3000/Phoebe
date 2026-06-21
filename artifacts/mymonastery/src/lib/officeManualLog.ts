@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/queryClient";
+import { swellHaptic } from "@/lib/swellHaptic";
 import type { PrayerSurface } from "@/hooks/usePrayerSession";
 
 // Manual "I prayed it" logging for the offices — for people praying Morning
@@ -35,10 +36,13 @@ export function isOfficeLoggedToday(side: "morning" | "evening"): boolean {
  *  nominal duration still credits office-history + the streak. */
 export function markOfficeBookComplete(side: "morning" | "evening"): void {
   const surface: PrayerSurface = side === "morning" ? "morning-prayer" : "evening-prayer";
+  const wasAlreadyLogged = isOfficeLoggedToday(side);
   try {
     localStorage.setItem(flagKey(side), "1");
     window.dispatchEvent(new Event(OFFICE_DONE_EVENT));
   } catch { /* private mode / quota — non-fatal */ }
+  // A fresh office log (from the book) → the swell haptic.
+  if (!wasAlreadyLogged) swellHaptic();
   const now = new Date();
   void apiRequest("POST", "/api/prayer-sessions", {
     surface,

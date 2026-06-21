@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/queryClient";
+import { swellHaptic } from "@/lib/swellHaptic";
 
 // Tracks whether the user has completed an *optional* daily practice today —
 // currently Gratitude and the Examen. These are the practices a user can add
@@ -53,12 +54,15 @@ export function hasPracticeDoneToday(section: OptionalPractice): boolean {
  *  repeat call a no-op. */
 export function markPracticeDoneToday(section: OptionalPractice): void {
   const localDate = todayLocalISO();
+  const wasAlreadyDone = hasPracticeDoneToday(section);
   try {
     localStorage.setItem(storageKey(section), localDate);
     window.dispatchEvent(new Event(PRACTICE_DONE_EVENT));
   } catch {
     /* private mode / quota — non-fatal */
   }
+  // A fresh completion of a daily-routine practice → the swell haptic.
+  if (!wasAlreadyDone) swellHaptic();
   // Fire-and-forget; an unauthenticated/offline call just no-ops.
   void apiRequest("POST", "/api/practice-completion", {
     section,
