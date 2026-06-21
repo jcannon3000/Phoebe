@@ -514,12 +514,12 @@ export default function CobreathePage() {
   return (
     <Layout bgPhoto={introBgPhoto}>
       <div style={{ position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", minHeight: "100dvh" }}>
-      <div className="max-w-xl mx-auto w-full flex flex-col flex-1 justify-center">
+      <div className="max-w-xl mx-auto w-full flex flex-col flex-1 justify-start">
         {/* "Before you begin" intro — same shape as a devotion's opening slide
             (centered eyebrow + big title + a few lines + setting rows + Begin).
             This screen only renders in intro mode (the breath + summary return
             earlier), so the centered title can lead. */}
-        <div className="flex flex-col items-center text-center pt-1">
+        <div className="flex flex-col items-center text-center pt-8">
           <p className="text-[11px] uppercase tracking-[0.22em] font-semibold mb-4" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE_GROTESK }}>
             {t("cobreathe.before_begin", { defaultValue: "Before you begin" })}
           </p>
