@@ -423,16 +423,11 @@ export default function WayOfLoveRuleFlow({
   // then the inner block re-adds the SAME small padding the home screen uses so
   // the cards sit at the same margin as the home cards — not inset twice (which
   // left it narrow), not jammed to the edge.
-  const leafBg = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
+  // The leaf backdrop is now owned by <Layout bgPhoto> (rule-of-life.tsx), so it
+  // covers the WHOLE screen including behind the header. The shell stays
+  // transparent and just lays out the content over it.
   const shell = (children: ReactNode) => (
-    <div style={{ flex: 1, minHeight: 0, background: BG, position: "relative", isolation: "isolate", display: "flex", flexDirection: "column", width: "100vw", marginLeft: "calc(50% - 50vw)", marginRight: "calc(50% - 50vw)" }}>
-      <AnimatedBackground base={BG} variant="subtle" />
-      {leafBg && (
-        <>
-          <img src={leafBg} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.4, zIndex: 0 }} />
-          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(8,22,15,0.5) 0%, rgba(8,22,15,0.66) 45%, rgba(8,22,15,0.82) 100%)" }} />
-        </>
-      )}
+    <div style={{ flex: 1, minHeight: 0, background: "transparent", position: "relative", isolation: "isolate", display: "flex", flexDirection: "column" }}>
       <div className="px-4 sm:px-6 md:px-8" style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", paddingTop: 24, paddingBottom: 40 }}>
         {/* Full width on mobile; capped + centered only on larger screens so the
             elements aren't squeezed into a narrow column on a phone. */}
@@ -487,7 +482,7 @@ export default function WayOfLoveRuleFlow({
     // column, so it sits in the same spot on every slide instead of riding up and
     // down with each step's content. paddingTop keeps a gap on the tall steps.
     <div style={{ marginTop: "auto", paddingTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-      <button onClick={onClick} style={{ width: "100%", background: CTA, border: `1px solid ${CARD_B_ACTIVE}`, color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+      <button onClick={onClick} style={{ width: "100%", background: "rgba(46,107,64,0.55)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
         {label}
       </button>
       <button onClick={goPrev} style={{ marginTop: 4, background: "none", border: "none", color: SAGE_DIM, cursor: "pointer", padding: "10px 12px", display: "inline-flex", alignItems: "center", gap: 4, fontSize: 14, fontFamily: FONT }}>
@@ -751,7 +746,7 @@ export default function WayOfLoveRuleFlow({
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(extras.gratitude, `🙏 ${t("wol_rule.extra_gratitude", { defaultValue: "Gratitude" })}`, t("wol_rule.extra_gratitude_sub", { defaultValue: "Name one gift from the day." }), () => toggleExtra("gratitude"))}
           {choiceRow(extras.examen, `🌗 ${t("wol_rule.extra_examen", { defaultValue: "The Examen" })}`, t("wol_rule.extra_examen_sub", { defaultValue: "St. Ignatius' end-of-day review of the day with God." }), () => toggleExtra("examen"))}
-          {choiceRow(extras.listening, `🎧 ${t("wol_rule.extra_listening", { defaultValue: "Audio Divina" })}`, t("wol_rule.extra_listening_sub", { defaultValue: "Pray with music — sacred listening, the contemplative way." }), () => toggleExtra("listening"))}
+          {choiceRow(extras.listening, `🎧 ${t("wol_rule.extra_listening", { defaultValue: "Audio Divina" })}`, t("wol_rule.extra_listening_sub", { defaultValue: "Sacred listening" }), () => toggleExtra("listening"))}
           {choiceRow(extras.journaling, `📓 ${t("wol_rule.extra_journaling", { defaultValue: "Journaling" })}`, t("wol_rule.extra_journaling_sub", { defaultValue: "Keep a journal however you like — just log the day, no typing." }), () => toggleExtra("journaling"))}
           {/* When they journal — so the card slots into the rhythm at that time. */}
           {extras.journaling && (

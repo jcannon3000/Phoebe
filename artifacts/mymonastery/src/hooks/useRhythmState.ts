@@ -252,13 +252,10 @@ export function useRhythmState(): RhythmState {
   // Only fetched/used for the practices the user has actually added.
   const gratitudeActive = homeCardActive(user?.homeLayout, "gratitude");
   const examenActive = homeCardActive(user?.homeLayout, "examen");
-  // Listening (music as a way of prayer) is NOT ready to ship — the streaming
-  // API integrations (Apple Music / Spotify) aren't wired up — so it stays OFF
-  // everywhere regardless of the saved layout, and is never auto-on. Flip
-  // LISTENING_READY to true once the audio integration lands; it will then
-  // appear ONLY when the user selects it in the customizer (homeCardActive).
-  const LISTENING_READY = false;
-  const listeningActive = LISTENING_READY && homeCardActive(user?.homeLayout, "listening");
+  // Audio Divina (listening as a way of prayer) is live as a logging-first
+  // practice — it appears ONLY when the user selects it in the customizer
+  // (homeCardActive reads the saved home layout).
+  const listeningActive = homeCardActive(user?.homeLayout, "listening");
   const journalingActive = homeCardActive(user?.homeLayout, "journaling");
   const anyExtraActive = gratitudeActive || examenActive || listeningActive || journalingActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
