@@ -50,6 +50,28 @@ function cardTintBg(tint: number): string {
   return `rgba(${r},${g},${b},${a})`;
 }
 
+// Weekly-grid row fill: ONE Phoebe-green family, stepping lightness across rows
+// so each practice reads as a distinct SHADE of green (lighter at top → deeper
+// toward the bottom). Returned at low opacity by the caller so the frosted leaf
+// backdrop bleeds through and varies each bar's brightness organically.
+function weeklyRowGreen(i: number, n: number): string {
+  const t = n <= 1 ? 0.5 : i / (n - 1);
+  const hue = 145, sat = 0.44, light = 0.58 - 0.28 * t;
+  const c = (1 - Math.abs(2 * light - 1)) * sat;
+  const hp = hue / 60;
+  const x = c * (1 - Math.abs((hp % 2) - 1));
+  let r = 0, g = 0, b = 0;
+  if (hp < 1) { r = c; g = x; }
+  else if (hp < 2) { r = x; g = c; }
+  else if (hp < 3) { g = c; b = x; }
+  else if (hp < 4) { g = x; b = c; }
+  else if (hp < 5) { r = x; b = c; }
+  else { r = c; b = x; }
+  const m = light - c / 2;
+  const to = (v: number) => Math.round((v + m) * 255);
+  return `${to(r)},${to(g)},${to(b)}`;
+}
+
 // Practice-card palette: a calm, LOW-CHROMA cool ramp that walks the hue from
 // the Phoebe forest green through teal/blue to a muted violet across the day's
 // cards, by order. Every hue is cool, so it stays in harmony with the dark green
@@ -302,7 +324,7 @@ export function WeeklyGridCard() {
               ))}
             </div>
             <div className="flex flex-col" style={{ gap: 13 }}>
-              {rows.map((row) => (
+              {rows.map((row, ri) => (
                 <div key={row.id} style={{ display: "grid", gridTemplateColumns: COLS, alignItems: "center" }}>
                   <div className="flex items-center gap-1.5" style={{ minWidth: 0 }}>
                     <span className="text-[13px] leading-none flex-shrink-0">{row.emoji}</span>
@@ -320,7 +342,7 @@ export function WeeklyGridCard() {
                             display: "block",
                             height: 8,
                             borderRadius: 999,
-                            background: done ? `rgba(${row.rgb},0.95)` : "rgba(143,175,150,0.13)",
+                            background: done ? `rgba(${weeklyRowGreen(ri, rows.length)},0.55)` : "rgba(143,175,150,0.1)",
                             border: isToday ? "1.5px solid rgba(240,237,230,0.6)" : "1px solid transparent",
                           }}
                         />
