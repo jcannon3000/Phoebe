@@ -112,6 +112,11 @@ export default function PrayerRequestNew() {
   // How long the garden carries it — a 1–7 day dropdown, default 3.
   const [days, setDays] = useState<number>(3);
   const [error, setError] = useState("");
+  // Sheet dismissal: this screen rises from the bottom on open and slides back
+  // DOWN on close/finish (like a podcast player closing — but it doesn't dock).
+  // `closing` holds the destination to navigate to once the slide-down finishes.
+  const [closing, setClosing] = useState<string | null>(null);
+  const close = (dest: string) => setClosing(dest);
   // This flow is community-only now (the "ask one person" path lives on the home
   // — tap a face). So no tagged users / directOnly here.
   const taggedUserIds: number[] = [];
@@ -147,7 +152,7 @@ export default function PrayerRequestNew() {
     onSuccess: () => {
       triggerSubmitFeedback();
       qc.invalidateQueries({ queryKey: ["/api/prayer-requests"] });
-      setLocation("/prayer-list");
+      close("/prayer-list");
     },
     onError: (err: any) => {
       setError(err?.message || t("prayer_request.couldnt_share"));
@@ -193,7 +198,7 @@ export default function PrayerRequestNew() {
   }
 
   function handleBack() {
-    setLocation("/prayer-list");
+    close("/prayer-list");
   }
 
   // Auth guard — same pattern as the other template pages
@@ -204,12 +209,14 @@ export default function PrayerRequestNew() {
 
   return (
     <motion.div
-      // Smooth fade + gentle rise as the screen pulls up into view (it's a
-      // full-screen route, so this is its entrance — no hard cut).
-      initial={{ opacity: 0, y: 26 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.44, ease: [0.22, 1, 0.36, 1] }}
-      style={{ position: "relative", isolation: "isolate", minHeight: "100dvh", background: BG, overflowX: "hidden" }}
+      // Rises from the bottom on open; slides back DOWN on close/finish (like a
+      // podcast player closing — but it doesn't stay docked). When the slide-down
+      // completes we navigate to wherever `closing` points.
+      initial={{ y: "100%" }}
+      animate={{ y: closing ? "100%" : 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+      onAnimationComplete={() => { if (closing) setLocation(closing); }}
+      style={{ position: "fixed", inset: 0, zIndex: 60, isolation: "isolate", minHeight: "100dvh", overflowY: "auto", background: BG, overflowX: "hidden" }}
     >
       {/* A still landscape behind the page, faded gently up under a dark wash. */}
       {bgPhoto && (
