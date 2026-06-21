@@ -1109,13 +1109,15 @@ export default function WayOfLoveRuleFlow({
     })),
     ...(contemplative.prayer ? [{ emoji: "🕯️", label: "Contemplative Prayer", sub: goalMin > 0 ? `${goalMin} min of silence a day` : "No goal", step: "contemplation-goal" as Step }] : []),
     ...(contemplative.cobreathe ? [{ emoji: "🌍", label: "Co-Breathe", sub: cobreatheIsSideStyle ? "With your prayer" : SLOT_LABEL[slotByPractice.cobreathe], step: "contemplative" as Step }] : []),
-    // Audio Divina + the Examen are intentionally NOT listed on this review —
-    // they're set in the Contemplation step and don't need a review row.
+    ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: SLOT_LABEL[slotByPractice.listening], step: "contemplative" as Step }] : []),
+    ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: SLOT_LABEL[slotByPractice.examen], step: "contemplative" as Step }] : []),
     ...(newsletters.length
       ? [{ emoji: "📖", label: "Today's reflection", sub: newsletters.map((n) => NEWSLETTERS.find((x) => x.id === n)?.label ?? n).join(" · "), step: "learn" as Step }]
       : []),
     ...(extras.gratitude ? [{ emoji: "🙏", label: "Gratitude", sub: "Name one gift from the day", step: "extras" as Step }] : []),
     ...(extras.journaling ? [{ emoji: "📓", label: "Journaling", sub: "Keep a journal — log the day", step: "extras" as Step }] : []),
+    // The user's own custom practices — each tappable back into "Create your own".
+    ...customList.map((a) => ({ emoji: a.emoji || "🌿", label: a.title, sub: SLOT_LABEL[a.slot], step: "custom" as Step })),
   ];
   return shell(
     <>
