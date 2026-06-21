@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect, useRef, type CSSProperties } from "react";
+import { ReactNode, useState, useEffect, useRef, useMemo, type CSSProperties } from "react";
 import { Link, useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight, ChevronDown, Menu as MenuIcon, Plus, Users } from "lucide-react";
 import { FROST, FROST_DARK } from "@/lib/frost";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -1567,6 +1568,72 @@ function CreateOptionButtons({ onPick }: { onPick: () => void }) {
   );
 }
 
+// A full-screen "Create" sheet — styled like an office's opening slide: a leaf
+// backdrop under a dark wash, a centered "Create" title, and the create options
+// as frosted cards. Fades up on open. Opened by the bottom-bar "+".
+function CreateSheet({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
+  const [, navigate] = useLocation();
+  const { data: groupsData } = useQuery<{ groups: Array<{ myRole: string }> }>({
+    queryKey: ["/api/groups"],
+    queryFn: () => apiRequest("GET", "/api/groups"),
+  });
+  const isAdminOfAny = (groupsData?.groups ?? []).some((g) => g.myRole === "admin" || g.myRole === "hidden_admin");
+  const leafBg = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
+  const go = (href: string) => { onClose(); navigate(href); };
+  const FONT = "'Space Grotesk', system-ui, sans-serif";
+  const card = (emoji: string, title: string, sub: string, onClick: () => void) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left rounded-2xl transition-opacity hover:opacity-90 active:scale-[0.99]"
+      style={{ ...FROST, border: "1px solid rgba(200,225,210,0.22)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", padding: "18px 20px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer" }}
+    >
+      <span style={{ fontSize: 30, lineHeight: 1, flexShrink: 0 }} aria-hidden>{emoji}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span className="block" style={{ color: "#F0EDE6", fontFamily: FONT, fontSize: 17, fontWeight: 600 }}>{title}</span>
+        <span className="block" style={{ color: "#8FAF96", fontFamily: FONT, fontSize: 13, marginTop: 2 }}>{sub}</span>
+      </span>
+      <span aria-hidden style={{ color: "#8FAF96" }}>→</span>
+    </button>
+  );
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      transition={{ duration: 0.25 }}
+      className="fixed inset-0"
+      style={{
+        zIndex: 80, backgroundColor: "#091A10", display: "flex", flexDirection: "column",
+        ...(leafBg ? { backgroundImage: `linear-gradient(rgba(8,22,15,0.62), rgba(8,22,15,0.82)), url(${leafBg})`, backgroundSize: "cover", backgroundPosition: "center" } : {}),
+      }}
+    >
+      {/* X close — top-right. */}
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label={t("common.close", { defaultValue: "Close" })}
+        style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 16px)", right: 16, width: 36, height: 36, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", ...FROST, border: "1px solid rgba(200,212,192,0.3)", color: "#F0EDE6", cursor: "pointer", zIndex: 1 }}
+      >
+        <X size={18} />
+      </button>
+      <motion.div
+        initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="flex-1 flex flex-col items-center justify-center px-6 text-center"
+      >
+        <h1 style={{ color: "#F0EDE6", fontFamily: FONT, fontWeight: 700, fontSize: "clamp(40px, 11vw, 56px)", lineHeight: 1.05, letterSpacing: "-0.02em", marginBottom: 28 }}>
+          {t("create_sheet.title", { defaultValue: "Create" })}
+        </h1>
+        <div className="w-full flex flex-col gap-3" style={{ maxWidth: 460 }}>
+          {card("🙏🏽", t("home_fab.prayer_request"), t("home_fab.prayer_request_sub"), () => go("/pray-request/new?kind=request"))}
+          {isAdminOfAny && card("🕯️", t("home_fab.community_intercession"), t("home_fab.community_intercession_sub"), () => go("/moment/new?template=intercession"))}
+          {isAdminOfAny && card("📅", t("home_fab.event", { defaultValue: "Event" }), t("home_fab.event_sub", { defaultValue: "Put a gathering on your community's calendar." }), () => go("/tradition/new"))}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ─── Bottom nav bar (mobile) ─────────────────────────────────────────────────
 // A simple frosted-glass tab bar fixed to the bottom: People (left), a central
 // "+" create button, and Menu (right). Matches the app's frosted surfaces + sage
@@ -1582,17 +1649,9 @@ function BottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
 
   return (
     <>
-      {/* Tap-catcher closes the create popover. */}
+      {/* The "+" opens a full-screen office-style "Create" sheet that fades up. */}
       <AnimatePresence>
-        {plusOpen && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            onClick={() => setPlusOpen(false)}
-            className="fixed inset-0"
-            style={{ zIndex: 29 }}
-          />
-        )}
+        {plusOpen && <CreateSheet onClose={() => setPlusOpen(false)} />}
       </AnimatePresence>
 
       <nav
@@ -1604,22 +1663,6 @@ function BottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
-        {/* Create options — rise above the centre "+". */}
-        <AnimatePresence>
-          {plusOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.96 }}
-              transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute left-1/2 flex flex-col gap-2"
-              style={{ bottom: "calc(100% + 14px)", transform: "translateX(-50%)", zIndex: 51 }}
-            >
-              <CreateOptionButtons onPick={() => setPlusOpen(false)} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         <div className="flex items-center justify-around" style={{ height: 58, maxWidth: 480, margin: "0 auto", paddingTop: 5, paddingBottom: 3, paddingLeft: 8, paddingRight: 8 }}>
           {/* People (left) */}
           <button
