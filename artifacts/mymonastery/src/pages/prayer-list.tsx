@@ -251,7 +251,7 @@ function SectionShell({
         {collapsed && count > maxRows && (
           <div
             className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
-            style={{ background: "linear-gradient(to bottom, transparent 20%, #091A10)" }}
+            style={{ background: "linear-gradient(to bottom, transparent 20%, rgba(9,26,16,0.72))" }}
           />
         )}
       </div>
