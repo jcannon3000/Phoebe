@@ -15,3 +15,12 @@ export const FROST_BLUR: CSSProperties = {
   backdropFilter: "blur(14px)",
   WebkitBackdropFilter: "blur(14px)",
 };
+
+// A DARKER frosted surface — same blur, a deeper/more opaque tint. For chrome
+// that should sit visually heavier than a card (the bottom nav bar, the
+// daily-progress pill) so it reads as a solid frame over the photo.
+export const FROST_DARK: CSSProperties = {
+  background: "rgba(5,14,9,0.66)",
+  backdropFilter: "blur(16px)",
+  WebkitBackdropFilter: "blur(16px)",
+};

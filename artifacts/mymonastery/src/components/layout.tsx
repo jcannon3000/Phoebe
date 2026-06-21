@@ -5,7 +5,7 @@ import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { X, LogOut, ChevronRight, ChevronDown, Menu as MenuIcon, Plus, Users } from "lucide-react";
-import { FROST } from "@/lib/frost";
+import { FROST, FROST_DARK } from "@/lib/frost";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
@@ -836,9 +836,9 @@ function DailyProgressPill() {
       style={{
         fontFamily: "'Space Grotesk', sans-serif",
         letterSpacing: "-0.01em",
-        background: "rgba(200,212,192,0.08)",
+        ...FROST_DARK,
         color: "#C8D4C0",
-        border: "1px solid rgba(46,107,64,0.3)",
+        border: "1px solid rgba(200,212,192,0.18)",
       }}
       aria-label={t("header.daily_progress", { defaultValue: "Daily Progress" })}
     >
@@ -1508,7 +1508,7 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: React
         className="flex-1 flex flex-col pt-2 pb-12 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full"
         // Leave room for the fixed bottom nav bar so the last cards aren't
         // hidden behind it (only when the bar is shown — signed in + mobile).
-        style={user && isMobile ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 106px)" } : undefined}
+        style={user && isMobile ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 84px)" } : undefined}
       >
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -1599,8 +1599,8 @@ function BottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
         className="fixed bottom-0 inset-x-0"
         style={{
           zIndex: 30,
-          ...FROST,
-          borderTop: "1px solid rgba(200,212,192,0.12)",
+          ...FROST_DARK,
+          borderTop: "1px solid rgba(200,212,192,0.1)",
           paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
@@ -1620,13 +1620,13 @@ function BottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
           )}
         </AnimatePresence>
 
-        <div className="flex items-center justify-around" style={{ height: 74, maxWidth: 480, margin: "0 auto", paddingTop: 8, paddingBottom: 8, paddingLeft: 8, paddingRight: 8 }}>
+        <div className="flex items-center justify-around" style={{ height: 58, maxWidth: 480, margin: "0 auto", paddingTop: 5, paddingBottom: 3, paddingLeft: 8, paddingRight: 8 }}>
           {/* People (left) */}
           <button
             type="button"
             onClick={() => { setPlusOpen(false); navigate("/people"); }}
             className="flex items-center justify-center transition-opacity active:opacity-60"
-            style={{ width: 64, height: 48, background: "none", border: "none", cursor: "pointer", color: peopleActive ? ICON_ACTIVE : ICON }}
+            style={{ width: 64, height: 44, background: "none", border: "none", cursor: "pointer", color: peopleActive ? ICON_ACTIVE : ICON }}
             aria-label={t("nav.people", { defaultValue: "People" })}
           >
             <Users size={24} strokeWidth={2} />
@@ -1637,11 +1637,11 @@ function BottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
             type="button"
             onClick={() => setPlusOpen((o) => !o)}
             className="flex items-center justify-center rounded-full transition-transform active:scale-95"
-            style={{ width: 52, height: 52, ...FROST, border: "1px solid rgba(200,212,192,0.35)", color: "#F0EDE6", cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}
+            style={{ width: 48, height: 48, ...FROST_DARK, border: "1px solid rgba(200,212,192,0.35)", color: "#F0EDE6", cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}
             aria-label={plusOpen ? t("home_fab.close_menu") : t("home_fab.new_prayer")}
           >
             <motion.div animate={{ rotate: plusOpen ? 45 : 0 }} transition={{ duration: 0.2 }}>
-              <Plus size={26} strokeWidth={2.2} />
+              <Plus size={24} strokeWidth={2.2} />
             </motion.div>
           </button>
 
@@ -1650,7 +1650,7 @@ function BottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
             type="button"
             onClick={() => { setPlusOpen(false); onOpenMenu(); }}
             className="flex items-center justify-center transition-opacity active:opacity-60"
-            style={{ width: 64, height: 48, background: "none", border: "none", cursor: "pointer", color: ICON }}
+            style={{ width: 64, height: 44, background: "none", border: "none", cursor: "pointer", color: ICON }}
             aria-label={t("header.menu")}
           >
             <MenuIcon size={24} strokeWidth={2} />
