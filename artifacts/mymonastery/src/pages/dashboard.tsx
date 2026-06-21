@@ -6860,10 +6860,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   </div>
                 );
               })() : (
-                /* A "prayer requests waiting" card leads when there's something
+                <>
+                {/* A "prayer requests waiting" card leads when there's something
                    to respond to; then the office hero (the same full
                    PrayerOfficeCard all users get) leads the Next list, above
-                   Contemplation. */
+                   Contemplation. */}
                 <DailyProgressBody
                   showStreak={false}
                   /* Done cards are NOT shown on the home — only what's still
@@ -6874,6 +6875,30 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   leadCard={null}
                   renderOfficeHero={(side) => <PrayerOfficeCard forceSide={side} />}
                 />
+                {/* Once the day's routine is nearly done (≤2 cards left), surface
+                    the single soonest upcoming event so the day begins handing
+                    off to what's coming. */}
+                {(() => {
+                  const remaining = Math.max(0, rhythm.totalAnchors - rhythm.doneCount);
+                  if (remaining > 2) return null;
+                  const isEvt = (it: DashboardItem) => it.kind === "gathering" || it.kind === "service" || it.kind === "services" || it.kind === "action" || it.kind === "plan";
+                  const nextEvt = [...todayItems, ...tomorrowItems, ...weekItems, ...monthItems].filter(isEvt)[0];
+                  if (!nextEvt) return null;
+                  return (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: 0.1 }} className="mt-4">
+                      <TimeSection
+                        label={t("dashboard.coming_up_section", { defaultValue: "Coming up" })}
+                        items={[nextEvt]}
+                        userEmail={userEmail}
+                        userName={userName}
+                        onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })}
+                        onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })}
+                        onOpenGathering={(r) => setOpenGathering(r)}
+                      />
+                    </motion.div>
+                  );
+                })()}
+                </>
               )}
             </div>
           )}

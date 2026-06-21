@@ -750,7 +750,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
-  const { ready, morningDone, silenceDone, eveningDone, morningActive, silenceActive, eveningActive, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, journalingActive, journalingDone, cobreatheActive, cobreatheDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, silenceDone, eveningDone, morningActive, silenceActive, eveningActive, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, lectioActive, lectioDone, journalingActive, journalingDone, cobreatheActive, cobreatheDone, customAnchors } = useRhythmState();
   // The core anchors the user keeps (morning/reflection/contemplation/evening —
   // each dropped when its pref is off), plus a dot for each optional practice
   // they added (gratitude, examen, the daily-steps goal) and each user-defined
@@ -773,6 +773,7 @@ function DailyProgressPill() {
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
     ...(cobreatheActive ? [{ key: "cobreathe", done: cobreatheDone }] : []),
     ...(listeningActive ? [{ key: "listening", done: listeningDone }] : []),
+    ...(lectioActive ? [{ key: "lectio", done: lectioDone }] : []),
     ...(journalingActive ? [{ key: "journaling", done: journalingDone }] : []),
     ...cDots("afternoon"),
     ...(eveningActive ? [{ key: "evening", done: eveningDone }] : []),
@@ -1117,6 +1118,13 @@ function OpeningSplash() {
   }, [data, walkData, phase, showFaces, showFellows]);
 
   // Web (or logged out) → no splash at all.
+  // Tell the home it can start its card cascade only AFTER the splash has faded
+  // down. Fires on every transition to "gone" (incl. never-shown — harmless,
+  // the home only waits when the splash actually showed).
+  useEffect(() => {
+    if (phase === "gone") window.dispatchEvent(new CustomEvent("phoebe:splash-done"));
+  }, [phase]);
+
   if (!native || !user || phase === "gone") return null;
 
   const greeting = hour < 12

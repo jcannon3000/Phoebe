@@ -244,11 +244,11 @@ function StreakCard() {
 // to render mirrors the practice cards above (four core + active extras).
 export function WeeklyGridCard() {
   const { t } = useTranslation();
-  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, gratitudeActive, examenActive, journalingActive } = useRhythmState();
+  const { morningActive, eveningActive, silenceActive, reflectActive, listeningActive, lectioActive, gratitudeActive, examenActive, journalingActive } = useRhythmState();
   const tz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   })();
-  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; listening: boolean; gratitude: boolean; examen: boolean; journaling: boolean };
+  type Day = { ymd: string; morning: boolean; evening: boolean; contemplation: boolean; reflection: boolean; listening: boolean; gratitude: boolean; examen: boolean; journaling: boolean; lectio: boolean };
   const { data } = useQuery<{ days: Day[] }>({
     queryKey: ["/api/me/practice-week", tz],
     queryFn: () => apiRequest("GET", "/api/me/practice-week"),
@@ -277,6 +277,7 @@ export function WeeklyGridCard() {
     ...(reflectActive ? [{ id: "reflection", emoji: "📖", label: t("rhythm.row_reflection", { defaultValue: "Reflection" }), rgb: "96,141,209", doneFor: (d: Day) => !!d.reflection }] : []),
     ...(silenceActive ? [{ id: "contemplation", emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.contemplation }] : []),
     ...(listeningActive ? [{ id: "listening", emoji: "🎵", label: t("rhythm.row_listening", { defaultValue: "Audio Divina" }), rgb: "108,140,180", doneFor: (d: Day) => !!d.listening }] : []),
+    ...(lectioActive ? [{ id: "lectio", emoji: "📖", label: t("rhythm.row_lectio", { defaultValue: "Lectio Divina" }), rgb: "120,150,170", doneFor: (d: Day) => !!d.lectio }] : []),
     ...(eveningActive ? [{ id: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "124,116,196", doneFor: (d: Day) => !!d.evening }] : []),
     ...(gratitudeActive ? [{ id: "gratitude", emoji: "🙏", label: t("rhythm.row_gratitude", { defaultValue: "Gratitude" }), rgb: "108,162,124", doneFor: (d: Day) => !!d.gratitude }] : []),
     ...(examenActive ? [{ id: "examen", emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180", doneFor: (d: Day) => !!d.examen }] : []),
@@ -529,7 +530,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, listeningActive, journalingActive, cobreatheActive, gratitudeDone, examenDone, listeningDone, journalingDone, cobreatheDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, cobreatheActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, cobreatheDone, customAnchors } = useRhythmState();
   const hour = new Date().getHours();
   // The custom-practice "Log" popup — which anchor's popup is open (by id).
   const [logAnchorId, setLogAnchorId] = useState<string | null>(null);
@@ -633,6 +634,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     blurb: listeningDone ? kept : t("rhythm.blurb_listening", { defaultValue: "Sacred listening" }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
   };
+  const lectioCard = {
+    key: "lectio", emoji: "📖", rgb: "120,150,170", done: lectioDone, href: "/lectio-divina",
+    title: t("rhythm.card_lectio", { defaultValue: "Lectio Divina" }),
+    blurb: lectioDone ? kept : t("rhythm.blurb_lectio", { defaultValue: "Sacred reading" }),
+    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+  };
   const examenCard = {
     key: "examen", emoji: "🌗", rgb: "150,120,180", done: examenDone, href: "/examen",
     title: t("rhythm.card_examen", { defaultValue: "The Examen" }),
@@ -641,14 +648,16 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   };
   const cobreatheSlot = getPracticeSlot("cobreathe");
   const listeningSlot = getPracticeSlot("listening");
+  const lectioSlot = getPracticeSlot("lectio");
   // The Examen is always an evening practice (no time-of-day picker).
   const examenSlot: CustomSlot = "evening";
   const cobreatheForSlot = (slot: CustomSlot) => (cobreatheActive && cobreatheSlot === slot) ? [cobreatheCard] : [];
   const listeningForSlot = (slot: CustomSlot) => (listeningActive && listeningSlot === slot) ? [listeningCard] : [];
+  const lectioForSlot = (slot: CustomSlot) => (lectioActive && lectioSlot === slot) ? [lectioCard] : [];
   const examenForSlot = (slot: CustomSlot) => (examenActive && examenSlot === slot) ? [examenCard] : [];
   // All the slotted optional practices for a given time of day, in a stable order.
   const slottedForSlot = (slot: CustomSlot) => [
-    ...cobreatheForSlot(slot), ...listeningForSlot(slot), ...examenForSlot(slot),
+    ...cobreatheForSlot(slot), ...listeningForSlot(slot), ...lectioForSlot(slot), ...examenForSlot(slot),
     ...journalingForSlot(slot), ...customsForSlot(slot),
   ];
 
@@ -755,11 +764,27 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const completedDisplay = visibleCards.filter((c) => c.done);
   const showDoneSection = (showStreak || showDone) && completedDisplay.length > 0;
 
+  // On the native first app-open the splash covers the home; hold the card
+  // cascade until the splash has faded DOWN so the user actually sees it rise
+  // (otherwise it runs behind the splash and is over before the reveal). On web,
+  // or once the splash has shown this session, cascade immediately.
+  const [splashCleared, setSplashCleared] = useState<boolean>(() => {
+    if (!isNativeShell()) return true;
+    try { return sessionStorage.getItem("phoebe:splash-shown") !== null; } catch { return true; }
+  });
+  useEffect(() => {
+    if (splashCleared) return;
+    const clear = () => setSplashCleared(true);
+    window.addEventListener("phoebe:splash-done", clear);
+    const id = window.setTimeout(clear, 2500); // fallback if the event is missed
+    return () => { window.removeEventListener("phoebe:splash-done", clear); window.clearTimeout(id); };
+  }, [splashCleared]);
+
   // A gentle light haptic ticks under each card as it cascades in (native only,
   // once per mount), synced to the enterUp stagger below.
   const cascadeHaptedRef = useRef(false);
   useEffect(() => {
-    if (!ready || cascadeHaptedRef.current) return;
+    if (!ready || !splashCleared || cascadeHaptedRef.current) return;
     cascadeHaptedRef.current = true;
     if (!isNativeShell()) return;
     const count = upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0);
@@ -770,7 +795,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       }, Math.min(i * 0.1, 0.7) * 1000));
     }
     return () => timers.forEach((id) => window.clearTimeout(id));
-  }, [ready, upcomingDisplay.length, completedDisplay.length]);
+  }, [ready, splashCleared, upcomingDisplay.length, completedDisplay.length]);
 
   // Matches the Prayer List title row — a larger mixed-case heading with a
   // divider line trailing off to the right.
@@ -822,7 +847,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // visibly load one after another rather than appearing all at once.
   const enterUp = (i: number) => ({
     initial: { opacity: 0, y: 8 },
-    animate: { opacity: 1, y: 0 },
+    animate: splashCleared ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 },
     transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 0.7) },
   });
 
