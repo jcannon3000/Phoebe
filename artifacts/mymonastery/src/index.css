@@ -708,3 +708,13 @@ a:active,
   border: 1px solid rgba(46, 107, 64, 0.6);
   cursor: pointer;
 }
+
+/* Home/daily-progress cards: a one-shot outline pulse on load — the sage border
+   brightens ~15% then eases back to its normal color. Color only, no resizing. */
+@keyframes phoebeCardOutlinePulse {
+  0%   { border-color: rgba(200,212,192,0.35); }
+  45%  { border-color: rgba(230,244,221,0.50); }
+  100% { border-color: rgba(200,212,192,0.35); }
+}
+.phoebe-card-outline-pulse { animation: phoebeCardOutlinePulse 0.85s ease-out 1 both; }
+@media (prefers-reduced-motion: reduce) { .phoebe-card-outline-pulse { animation: none; } }

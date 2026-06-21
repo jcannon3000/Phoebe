@@ -15,7 +15,6 @@ import { useFollowedShows, type FollowedShow } from "@/lib/podcastHome";
 import { LiturgicalDateHeader } from "@/components/LiturgicalDateHeader";
 import { DailyProgressBody, rhythmGradientRgb } from "@/components/DailyProgressBody";
 import { apiRequest } from "@/lib/queryClient";
-import { useDailySteps } from "@/lib/appleHealth";
 import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { getNcmpState, getSideLevel, setSideLevel, useEffectiveReflectionSource } from "@/lib/officePrefs";
 import { LETTERS_MESSAGES_ENABLED } from "@/lib/lettersFlag";
@@ -483,8 +482,8 @@ function BarCard({
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${pulse ? colors.pulseClass : ""}`}
         style={{
           background: bgColor || "rgba(9,26,16, 0.297)",
-          backdropFilter: "blur(12.6px)",
-          WebkitBackdropFilter: "blur(12.6px)",
+          backdropFilter: "blur(11.34px)",
+          WebkitBackdropFilter: "blur(11.34px)",
           border: `1px solid ${borderColor || colors.border}`,
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
@@ -1690,8 +1689,8 @@ export function GatheringCard({
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isToday_ ? colors.pulseClass : ""}`}
         style={{
           background: "rgba(9,26,16, 0.297)",
-          backdropFilter: "blur(12.6px)",
-          WebkitBackdropFilter: "blur(12.6px)",
+          backdropFilter: "blur(11.34px)",
+          WebkitBackdropFilter: "blur(11.34px)",
           border: "1px solid rgba(111,175,133,0.35)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
@@ -1779,8 +1778,8 @@ function ActionCard({ a, keyPrefix }: { a: ActionFeedItem; keyPrefix: string }) 
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isToday_ ? colors.pulseClass : ""}`}
         style={{
           background: "rgba(9,26,16, 0.297)",
-          backdropFilter: "blur(12.6px)",
-          WebkitBackdropFilter: "blur(12.6px)",
+          backdropFilter: "blur(11.34px)",
+          WebkitBackdropFilter: "blur(11.34px)",
           border: "1px solid rgba(111,175,133,0.35)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
@@ -1854,8 +1853,8 @@ function PlanEventCard({ p, keyPrefix }: { p: FellowPlanEvent; keyPrefix: string
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-transform active:scale-[0.99] ${isToday_ ? colors.pulseClass : ""}`}
         style={{
           background: "rgba(9,26,16, 0.297)",
-          backdropFilter: "blur(12.6px)",
-          WebkitBackdropFilter: "blur(12.6px)",
+          backdropFilter: "blur(11.34px)",
+          WebkitBackdropFilter: "blur(11.34px)",
           border: "1px solid rgba(111,175,133,0.35)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
@@ -2278,8 +2277,8 @@ export function ConsolidatedServiceCard({
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isOnDate ? colors.pulseClass : ""}`}
         style={{
           background: "rgba(9,26,16, 0.297)",
-          backdropFilter: "blur(12.6px)",
-          WebkitBackdropFilter: "blur(12.6px)",
+          backdropFilter: "blur(11.34px)",
+          WebkitBackdropFilter: "blur(11.34px)",
           border: "1px solid rgba(111,175,133,0.35)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
@@ -2617,76 +2616,8 @@ export function ContemplationHomeCard() {
   );
 }
 
-// ── StepsHomeCard — goal-oriented "daily steps" anchor (Apple Health) ──
-// Same shape as ContemplationHomeCard. Reads today's steps live from HealthKit
-// (useDailySteps, native-only) and the goal from office-prefs; shows progress
-// toward the goal. Taps through to /daily-steps to set the goal / connect Health.
-export function StepsHomeCard() {
-  const { data: prefs } = useQuery<{ dailyStepGoal?: number }>({
-    queryKey: ["/api/me/office-prefs"],
-    queryFn: () => apiRequest("GET", "/api/me/office-prefs") as Promise<{ dailyStepGoal?: number }>,
-    staleTime: 5 * 60_000,
-  });
-  const goal = prefs?.dailyStepGoal ?? 0;
-  // Live HealthKit read (also uploads to the server so the reached-push fires).
-  // Gated on an active goal so we never touch HealthKit when steps is off.
-  const { steps } = useDailySteps(goal > 0);
-  const met = steps >= goal;
-  const progressLabel = met
-    ? "Goal reached 🌿"
-    : `${steps.toLocaleString()} of ${goal.toLocaleString()} steps today`;
-
-  // No goal set → no card. Without a goal there's nothing to work toward, so the
-  // steps card only appears once the user has chosen a daily goal.
-  if (goal <= 0) return null;
-
-  return (
-    <Link href="/daily-steps" className="block">
-      <div
-        role="button"
-        tabIndex={0}
-        className="relative flex rounded-xl overflow-hidden cursor-pointer"
-        style={{ background: "rgba(82,140,222,0.12)", border: `1px solid rgba(82,140,222,0.35)` }}
-      >
-        <div className="w-1 flex-shrink-0" style={{ background: `rgba(82,140,222,0.85)` }} />
-        <div className="flex-1 px-4 py-[14px] flex items-center gap-3">
-          <span className="text-xl flex-shrink-0" aria-hidden>👟</span>
-          <div className="flex-1 min-w-0">
-            <p
-              className="font-semibold min-w-0 truncate"
-              style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2, fontSize: 16 }}
-            >
-              Daily steps
-            </p>
-            <p
-              className="truncate"
-              style={{ color: met ? "#A9C7EF" : "rgba(143,175,150,0.8)", fontFamily: "'Space Grotesk', sans-serif", margin: "2px 0 0", fontSize: 12 }}
-            >
-              {progressLabel}
-            </p>
-            {!met && (
-              <div className="mt-2 rounded-full overflow-hidden" style={{ height: 4, background: "rgba(143,175,150,0.16)" }}>
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${Math.min(100, Math.round((steps / goal) * 100))}%`, background: "rgba(82,140,222,0.85)", transition: "width 0.3s" }}
-                />
-              </div>
-            )}
-          </div>
-          <div
-            className="rounded-full text-center shrink-0"
-            style={{
-              background: "rgba(82,140,222,0.85)", color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif",
-              fontSize: 13, fontWeight: 500, padding: "6px 14px", border: "1px solid rgba(82,140,222,0.45)", whiteSpace: "nowrap",
-            }}
-          >
-            View <span aria-hidden>→</span>
-          </div>
-        </div>
-      </div>
-    </Link>
-  );
-}
+// (StepsHomeCard removed — the Daily steps / Apple Health step-goal feature is
+// turned off. No route, no home card, no rhythm dot.)
 
 // ── Compact home anchors for the other daily practices ───────────────
 // Same one-line tap-through shape as ContemplationHomeCard. Both default
@@ -3699,14 +3630,14 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
 
   return (
     <div
-      className="relative flex rounded-xl overflow-hidden"
+      className="relative flex rounded-3xl overflow-hidden"
       style={{
-        background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
-        // Match the border weight on the parish-weekly + count cards so the
-        // stacked cards read as a paired set. Always full strength now — the
-        // top progress indicator signals completion, so the card no longer
-        // dims itself to mark "not prayed yet".
-        border: "1px solid rgba(46,107,64,0.4)",
+        background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
+        // Match the cascade rhythm cards exactly — same sage outline + 3xl
+        // radius — so the hero reads as the same family, not a green-framed
+        // outlier. Always full strength; the top progress indicator signals
+        // completion, so the card no longer dims itself to mark "not prayed yet".
+        border: "1px solid rgba(200,212,192,0.35)",
       }}
       >
         <div className="w-1 flex-shrink-0" style={{ background: "rgba(46,107,64,0.9)" }} />
@@ -4344,7 +4275,7 @@ function PrayerListCarousel({
                   // requests waiting" card. Prayed ones rest calm.
                   className={`relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99] ${amened ? "" : "animate-turn-pulse-practices"}`}
                   style={{
-                    background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+                    background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
                     // Shared home-card outline — matches the "+" FAB ring.
                     border: "1px solid rgba(200,212,192,0.35)",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",

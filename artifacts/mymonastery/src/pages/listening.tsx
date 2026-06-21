@@ -21,8 +21,8 @@ const SERIF = SPACE_GROTESK;
 // Frosted surface for the visibility pill + the Log button (not solid green).
 const FROST_CTA = {
   background: "rgba(9,26,16, 0.462)",
-  backdropFilter: "blur(14px)",
-  WebkitBackdropFilter: "blur(14px)",
+  backdropFilter: "blur(12.6px)",
+  WebkitBackdropFilter: "blur(12.6px)",
   border: "1px solid rgba(200,212,192,0.28)",
 } as const;
 
@@ -38,8 +38,8 @@ const MEDIUM_EMOJI: Record<ListeningMedium, string> = { streaming: "🎧", cd: "
 // A glass field, matching the office close-slide composer look.
 const glassField = {
   background: "rgba(9,26,16, 0.297)",
-  backdropFilter: "blur(12.6px)",
-  WebkitBackdropFilter: "blur(12.6px)",
+  backdropFilter: "blur(11.34px)",
+  WebkitBackdropFilter: "blur(11.34px)",
   border: "1px solid rgba(200,212,192,0.18)",
   color: WARM,
   fontFamily: SPACE_GROTESK,
@@ -47,8 +47,8 @@ const glassField = {
 // A frosted-glass surface for the log rows (over the leaf backdrop).
 const glassRow = {
   background: "rgba(9,26,16, 0.297)",
-  backdropFilter: "blur(12.6px)",
-  WebkitBackdropFilter: "blur(12.6px)",
+  backdropFilter: "blur(11.34px)",
+  WebkitBackdropFilter: "blur(11.34px)",
   border: "1px solid rgba(200,212,192,0.18)",
 } as const;
 

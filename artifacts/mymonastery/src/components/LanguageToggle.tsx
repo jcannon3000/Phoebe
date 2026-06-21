@@ -54,7 +54,7 @@ export function LanguageToggle() {
   return (
     <div
       className="inline-flex rounded-full overflow-hidden"
-      style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(200,212,192,0.18)", opacity: save.isPending ? 0.6 : 1 }}
+      style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,212,192,0.18)", opacity: save.isPending ? 0.6 : 1 }}
     >
       {opt("es", "ES")}
       <span style={{ width: 1, background: "rgba(46,107,64,0.35)" }} />

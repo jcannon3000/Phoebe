@@ -55,8 +55,8 @@ export function FeedEventCard({ event, compact = false }: { event: FeedEvent; co
         // (only the background-color carries the transparency, not the
         // element's opacity).
         background: "rgba(9,26,16, 0.297)",
-        backdropFilter: "blur(12.6px)",
-        WebkitBackdropFilter: "blur(12.6px)",
+        backdropFilter: "blur(11.34px)",
+        WebkitBackdropFilter: "blur(11.34px)",
         border: "1px solid rgba(111,175,133,0.28)",
         opacity: cancelled ? 0.6 : 1,
       }}

@@ -67,7 +67,7 @@ function GridArtFallback({ hidden }: { hidden?: boolean }) {
         width: "100%",
         aspectRatio: "1 / 1",
         borderRadius: 16,
-        background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+        background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
         border: "1px solid rgba(46,107,64,0.3)",
         display: hidden ? "none" : "flex",
         alignItems: "center",

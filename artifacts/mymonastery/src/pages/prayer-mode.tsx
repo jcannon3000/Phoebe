@@ -1129,8 +1129,8 @@ function SlideContent({
           className="w-full rounded-2xl px-6 py-5 text-left mt-1 animate-turn-pulse-practices"
           style={{
             background: "rgba(9,26,16, 0.297)",
-            backdropFilter: "blur(12.6px)",
-            WebkitBackdropFilter: "blur(12.6px)",
+            backdropFilter: "blur(11.34px)",
+            WebkitBackdropFilter: "blur(11.34px)",
             border: "1px solid rgba(46,107,64,0.15)",
           }}
         >
@@ -1183,8 +1183,8 @@ function SlideContent({
           className="w-full rounded-2xl px-6 py-5 text-left mt-1 animate-turn-pulse-practices"
           style={{
             background: "rgba(9,26,16, 0.297)",
-            backdropFilter: "blur(12.6px)",
-            WebkitBackdropFilter: "blur(12.6px)",
+            backdropFilter: "blur(11.34px)",
+            WebkitBackdropFilter: "blur(11.34px)",
             border: "1px solid rgba(46,107,64,0.15)",
           }}
         >

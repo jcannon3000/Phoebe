@@ -256,11 +256,11 @@ function ChoiceCard({
       transition={{ duration: 0.4, delay }}
     >
       {isExternal ? (
-        <a href={href} target="_blank" rel="noopener noreferrer" onClick={onClick} className={cls} style={{ background: bg, backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border }}>
+        <a href={href} target="_blank" rel="noopener noreferrer" onClick={onClick} className={cls} style={{ background: bg, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border }}>
           {inner}
         </a>
       ) : (
-        <Link href={href} onClick={onClick} className={cls} style={{ background: bg, backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border }}>
+        <Link href={href} onClick={onClick} className={cls} style={{ background: bg, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border }}>
           {inner}
         </Link>
       )}

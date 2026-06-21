@@ -710,7 +710,7 @@ export default function ContemplationPage() {
             <select> overlays the pill so a tap opens the iOS picker. */}
         <div className="relative w-full">
           <div className="w-full rounded-full flex items-center justify-between"
-            style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.4)", padding: "15px 20px", gap: 12, pointerEvents: "none" }}>
+            style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(46,107,64,0.4)", padding: "15px 20px", gap: 12, pointerEvents: "none" }}>
             <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 600 }}>{t("contemplation.length_label", { defaultValue: "Length" })}</span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
               <span style={{ color: SAGE, fontFamily: SPACE_GROTESK, fontSize: 15, fontWeight: 500 }}>{t("contemplation.length_minutes", { count: chosenMin, defaultValue: `${chosenMin} minutes` })}</span>
@@ -737,7 +737,7 @@ export default function ContemplationPage() {
           onClick={() => start(chosenMin)}
           className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
           style={{
-            background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+            background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
             color: WARM,
             border: "1px solid rgba(168,197,160,0.45)",
             fontFamily: SPACE_GROTESK,
@@ -785,7 +785,7 @@ export default function ContemplationPage() {
         <div
           className="w-full rounded-full text-center transition-opacity hover:opacity-90 active:scale-[0.99] flex items-center justify-center gap-2"
           style={{
-            background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+            background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)",
             border: `1px solid rgba(62,124,122,${cobreathe?.done ? 0.5 : 0.4})`,
             color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600,
             padding: "15px", cursor: "pointer",

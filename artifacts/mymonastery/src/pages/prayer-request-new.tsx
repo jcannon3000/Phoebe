@@ -20,8 +20,10 @@ const SAGE = "#8FAF96";
 const SAGE_DIM = "rgba(143,175,150,0.6)";
 const SERIF = "Georgia, 'Times New Roman', serif";
 const SPACE = "'Space Grotesk', sans-serif";
-const GLASS = "rgba(8,22,15,0.6)";
-const GLASS_BORDER = "rgba(255,255,255,0.08)";
+// Canonical frosted-glass look (matches FROST elsewhere) so the request form
+// reads as frosted over the leaf backdrop, not a flat dark panel.
+const GLASS = "rgba(9,26,16,0.297)";
+const GLASS_BORDER = "rgba(200,212,192,0.16)";
 // Shared glass field styling (textarea + inputs). No box-shadow inline so
 // the global input :focus glow (index.css) still rings the field.
 const glassField = {
@@ -29,8 +31,8 @@ const glassField = {
   border: `1px solid ${GLASS_BORDER}`,
   borderRadius: 18,
   color: CREAM,
-  backdropFilter: "blur(8px)",
-  WebkitBackdropFilter: "blur(8px)",
+  backdropFilter: "blur(11.34px)",
+  WebkitBackdropFilter: "blur(11.34px)",
   outline: "none",
 } as const;
 
@@ -287,7 +289,7 @@ export default function PrayerRequestNew() {
             rows={4}
             placeholder={copy.placeholder}
             className="w-full rounded-2xl px-5 py-4 text-[15px] outline-none resize-none text-left"
-            style={{ background: "rgba(9,26,16, 0.308)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(200,225,210,0.16)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", color: CREAM, fontFamily: SPACE, fontStyle: "italic", lineHeight: 1.65, marginTop: 12 }}
+            style={{ background: "rgba(9,26,16, 0.308)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(200,225,210,0.16)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", color: CREAM, fontFamily: SPACE, fontStyle: "italic", lineHeight: 1.65, marginTop: 12 }}
           />
 
           {/* How long the garden carries it — a 1–7 day dropdown (default 3).
@@ -299,7 +301,7 @@ export default function PrayerRequestNew() {
               onChange={(e) => setDays(Number(e.target.value))}
               aria-label={t("prayer_request.duration_question", { defaultValue: "How long should we carry it?" })}
               style={{
-                width: "100%", background: "rgba(9,26,16, 0.330)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", color: CREAM,
+                width: "100%", background: "rgba(9,26,16, 0.330)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", color: CREAM,
                 border: "1px solid rgba(200,225,210,0.18)", borderRadius: 999,
                 padding: "12px 24px", fontSize: 14, fontWeight: 600, fontFamily: SPACE,
                 textAlignLast: "center", colorScheme: "dark", cursor: "pointer", outline: "none",
@@ -319,7 +321,7 @@ export default function PrayerRequestNew() {
               onClick={handleSubmit}
               disabled={body.trim().length === 0 || createMutation.isPending}
               className="px-6 py-3.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
-              style={{ background: "rgba(46,107,64,0.55)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", color: CREAM, fontFamily: SPACE, border: "1px solid rgba(168,197,160,0.5)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", cursor: "pointer" }}
+              style={{ background: "rgba(46,107,64,0.55)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", color: CREAM, fontFamily: SPACE, border: "1px solid rgba(168,197,160,0.5)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", cursor: "pointer" }}
             >
               {createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community")}
             </button>
