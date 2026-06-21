@@ -4,13 +4,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useLogout } from "@/hooks/useAuth";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { X, LogOut, ChevronRight, ChevronDown, Menu as MenuIcon, Plus, Users } from "lucide-react";
+import { X, LogOut, ChevronRight, ChevronDown, Plus } from "lucide-react";
 import { FROST, FROST_DARK } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { useBetaStatus } from "@/hooks/useDemo";
 import { useTranslation } from "react-i18next";
 import { isNativeShell } from "@/lib/isNativeShell";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import splashForestPath from "@/assets/splash/forest-path.jpg";
 import { triggerCategoryTransition } from "@/components/PageFadeOverlay";
@@ -1407,10 +1406,6 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: React
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { t } = useTranslation();
-  // Phone-width viewport (native app + mobile web) gets the bottom nav bar
-  // (People · ＋ · Menu). Desktop web keeps the classic chrome instead: a Menu
-  // button top-right + a create "+" FAB bottom-right (no bottom bar).
-  const isMobile = useIsMobile();
   // Beta testers get the "Way of Love" header pill (opens the progress
   // drawer) in place of the "Prayer list" pill; everyone else keeps Prayer
   // list. Gated on isBeta so previewing the regular experience (beta-view
@@ -1476,9 +1471,8 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: React
                 tapping opens /daily-progress. Hidden for the offices-only tier
                 to match the prior pill. */}
             {!officesOnly && !headerJardinShell && <DailyProgressPill />}
-            {/* Menu button — desktop web only. On mobile the Menu lives in the
-                bottom nav bar, so it's hidden up here. */}
-            {!isMobile && (
+            {/* Menu pill — opens the side drawer. */}
+            {(
               <button
                 onClick={() => { playOpeningSwell(0); setDrawerOpen(true); }}
                 className="flex items-center justify-center transition-colors"
@@ -1505,12 +1499,7 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: React
 
       <DrawerMenu open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
-      <main
-        className="flex-1 flex flex-col pt-2 pb-12 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full"
-        // Leave room for the fixed bottom nav bar so the last cards aren't
-        // hidden behind it (only when the bar is shown — signed in + mobile).
-        style={user && isMobile ? { paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 84px)" } : undefined}
-      >
+      <main className="flex-1 flex flex-col pt-2 pb-12 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1521,10 +1510,8 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: React
         </motion.div>
       </main>
 
-      {/* Mobile: bottom nav — people · ＋ · menu. Desktop web: just a create
-          "+" FAB bottom-right (Menu lives top-right in the header). */}
-      {user && isMobile && <BottomNav onOpenMenu={() => { playOpeningSwell(0); setDrawerOpen(true); }} />}
-      {user && !isMobile && <WebCreateFab />}
+      {/* Create "+" FAB, bottom-right (Menu lives top-right in the header). */}
+      {user && <CreateFab />}
     </div>
   );
 }
@@ -1634,80 +1621,11 @@ function CreateSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Bottom nav bar (mobile) ─────────────────────────────────────────────────
-// A simple frosted-glass tab bar fixed to the bottom: People (left), a central
-// "+" create button, and Menu (right). Matches the app's frosted surfaces + sage
-// palette. Mobile only — desktop web uses WebCreateFab + the header Menu instead.
-function BottomNav({ onOpenMenu }: { onOpenMenu: () => void }) {
-  const { t } = useTranslation();
-  const [location, navigate] = useLocation();
-  const [plusOpen, setPlusOpen] = useState(false);
-  const peopleActive = location.startsWith("/people") || location.startsWith("/fellows");
-
-  const ICON = "#8FAF96";
-  const ICON_ACTIVE = "#F0EDE6";
-
-  return (
-    <>
-      {/* The "+" opens a full-screen office-style "Create" sheet that fades up. */}
-      <AnimatePresence>
-        {plusOpen && <CreateSheet onClose={() => setPlusOpen(false)} />}
-      </AnimatePresence>
-
-      <nav
-        className="fixed bottom-0 inset-x-0"
-        style={{
-          zIndex: 30,
-          ...FROST_DARK,
-          borderTop: "1px solid rgba(200,212,192,0.1)",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        }}
-      >
-        <div className="flex items-center justify-around" style={{ height: 58, maxWidth: 480, margin: "0 auto", paddingTop: 5, paddingBottom: 3, paddingLeft: 8, paddingRight: 8 }}>
-          {/* People (left) */}
-          <button
-            type="button"
-            onClick={() => { setPlusOpen(false); navigate("/people"); }}
-            className="flex items-center justify-center transition-opacity active:opacity-60"
-            style={{ width: 64, height: 44, background: "none", border: "none", cursor: "pointer", color: peopleActive ? ICON_ACTIVE : ICON }}
-            aria-label={t("nav.people", { defaultValue: "People" })}
-          >
-            <Users size={24} strokeWidth={2} />
-          </button>
-
-          {/* Create (centre) — the moved "+" circle. */}
-          <button
-            type="button"
-            onClick={() => setPlusOpen((o) => !o)}
-            className="flex items-center justify-center rounded-full transition-transform active:scale-95"
-            style={{ width: 48, height: 48, ...FROST_DARK, border: "1px solid rgba(200,212,192,0.35)", color: "#F0EDE6", cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,0.4)" }}
-            aria-label={plusOpen ? t("home_fab.close_menu") : t("home_fab.new_prayer")}
-          >
-            <motion.div animate={{ rotate: plusOpen ? 45 : 0 }} transition={{ duration: 0.2 }}>
-              <Plus size={24} strokeWidth={2.2} />
-            </motion.div>
-          </button>
-
-          {/* Menu (right) */}
-          <button
-            type="button"
-            onClick={() => { setPlusOpen(false); onOpenMenu(); }}
-            className="flex items-center justify-center transition-opacity active:opacity-60"
-            style={{ width: 64, height: 44, background: "none", border: "none", cursor: "pointer", color: ICON }}
-            aria-label={t("header.menu")}
-          >
-            <MenuIcon size={24} strokeWidth={2} />
-          </button>
-        </div>
-      </nav>
-    </>
-  );
-}
-
-// ─── Create FAB (desktop web) ────────────────────────────────────────────────
-// The classic bottom-right "+" circle, frosted with an outline. Desktop web only
-// — phones use the bottom nav bar. Menu lives top-right in the header on web.
-function WebCreateFab() {
+// ─── Create FAB ──────────────────────────────────────────────────────────────
+// The bottom-right "+" circle, frosted with an outline, on every page. Opens the
+// create options (prayer request / — for admins — intercession + event). The
+// Menu pill lives top-right in the header.
+function CreateFab() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   return (
