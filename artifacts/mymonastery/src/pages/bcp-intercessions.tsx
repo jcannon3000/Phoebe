@@ -89,8 +89,8 @@ export default function BcpIntercessionsPage() {
             className="w-full text-sm px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/30 focus:border-[#8FAF96]/60 transition-all"
             style={{
               background: "rgba(9,26,16,0.3)",
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
+              backdropFilter: "blur(12.6px)",
+              WebkitBackdropFilter: "blur(12.6px)",
               borderColor: "rgba(46,107,64,0.3)",
               color: "#F0EDE6",
             }}
@@ -136,7 +136,7 @@ export default function BcpIntercessionsPage() {
                     key={prayer.title}
                     onClick={() => setSelectedPrayer(prayer)}
                     className="w-full text-left px-4 py-3 rounded-xl transition-all hover:bg-white/5 active:scale-[0.99]"
-                    style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(46,107,64,0.18)" }}
+                    style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.18)" }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
@@ -171,8 +171,8 @@ export default function BcpIntercessionsPage() {
                     className="w-full text-left p-4 rounded-xl transition-all"
                     style={{
                       background: isOpen ? "rgba(46,107,64,0.32)" : "rgba(9,26,16,0.3)",
-                      backdropFilter: "blur(14px)",
-                      WebkitBackdropFilter: "blur(14px)",
+                      backdropFilter: "blur(12.6px)",
+                      WebkitBackdropFilter: "blur(12.6px)",
                       border: `1px solid ${isOpen ? "rgba(46,107,64,0.45)" : "rgba(46,107,64,0.2)"}`,
                     }}
                   >

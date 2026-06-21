@@ -288,8 +288,8 @@ function BarCard({
       className={`relative flex rounded-xl overflow-hidden transition-shadow ${pulse ? "animate-turn-pulse-practices" : ""}`}
       style={{
         background: bg,
-        backdropFilter: "blur(14px)",
-        WebkitBackdropFilter: "blur(14px)",
+        backdropFilter: "blur(12.6px)",
+        WebkitBackdropFilter: "blur(12.6px)",
         border: `1px solid ${border ?? (pulse ? "rgba(46,107,64,0.15)" : "rgba(46,107,64,0.28)")}`,
         boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         cursor: onClick || href ? "pointer" : "default",
@@ -1453,8 +1453,8 @@ export default function PrayerListPage() {
             className="block mb-4 rounded-xl px-4 py-3 cursor-pointer"
             style={{
               background: "rgba(9,26,16,0.3)",
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
+              backdropFilter: "blur(12.6px)",
+              WebkitBackdropFilter: "blur(12.6px)",
               border: "1px solid rgba(46,107,64,0.4)",
               textAlign: "center",
               fontFamily: "'Space Grotesk', sans-serif",
@@ -1715,7 +1715,7 @@ export function PrayerListComposeBar() {
           placeholder={t("prayer_list_compose.placeholder")}
           maxLength={1000}
           className="flex-1 text-sm px-4 py-2.5 rounded-xl border placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-[#8FAF96]/40 focus:border-[#8FAF96] transition-all"
-          style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6" }}
+          style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", borderColor: "rgba(46,107,64,0.3)", color: "#F0EDE6" }}
         />
         <button
           type="button"

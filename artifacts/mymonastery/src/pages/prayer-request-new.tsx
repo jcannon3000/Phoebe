@@ -280,7 +280,7 @@ export default function PrayerRequestNew() {
             rows={4}
             placeholder={copy.placeholder}
             className="w-full rounded-2xl px-5 py-4 text-[15px] outline-none resize-none text-left"
-            style={{ background: "rgba(9,26,16,0.28)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(200,225,210,0.16)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", color: CREAM, fontFamily: SPACE, fontStyle: "italic", lineHeight: 1.65, marginTop: 12 }}
+            style={{ background: "rgba(9,26,16,0.28)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(200,225,210,0.16)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", color: CREAM, fontFamily: SPACE, fontStyle: "italic", lineHeight: 1.65, marginTop: 12 }}
           />
 
           {/* How long the garden carries it — a 1–7 day dropdown (default 3).
@@ -292,7 +292,7 @@ export default function PrayerRequestNew() {
               onChange={(e) => setDays(Number(e.target.value))}
               aria-label={t("prayer_request.duration_question", { defaultValue: "How long should we carry it?" })}
               style={{
-                width: "100%", background: "rgba(9,26,16,0.30)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", color: CREAM,
+                width: "100%", background: "rgba(9,26,16,0.30)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", color: CREAM,
                 border: "1px solid rgba(200,225,210,0.18)", borderRadius: 999,
                 padding: "12px 24px", fontSize: 14, fontWeight: 600, fontFamily: SPACE,
                 textAlignLast: "center", colorScheme: "dark", cursor: "pointer", outline: "none",
@@ -312,7 +312,7 @@ export default function PrayerRequestNew() {
               onClick={handleSubmit}
               disabled={body.trim().length === 0 || createMutation.isPending}
               className="px-6 py-3.5 rounded-full text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-40"
-              style={{ background: "rgba(46,107,64,0.55)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", color: CREAM, fontFamily: SPACE, border: "1px solid rgba(168,197,160,0.5)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", cursor: "pointer" }}
+              style={{ background: "rgba(46,107,64,0.55)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", color: CREAM, fontFamily: SPACE, border: "1px solid rgba(168,197,160,0.5)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", cursor: "pointer" }}
             >
               {createMutation.isPending ? t("prayer_request.sharing") : t("prayer_request.share_with_community")}
             </button>
@@ -327,7 +327,7 @@ export default function PrayerRequestNew() {
 
           {/* Renew-instead card — only when the user's last request is past. */}
           {renewableLastMine && (
-            <div className="mt-3 w-full max-w-xs rounded-xl p-4 text-left" style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(200,225,210,0.16)" }}>
+            <div className="mt-3 w-full max-w-xs rounded-xl p-4 text-left" style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(200,225,210,0.16)" }}>
               <p className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE }}>
                 {t("prayer_request.or_renew_last", { defaultValue: "Or renew your last one" })}
               </p>
@@ -338,7 +338,7 @@ export default function PrayerRequestNew() {
                 onClick={() => renewMutation.mutate(renewableLastMine.id)}
                 disabled={renewMutation.isPending}
                 className="text-xs font-semibold rounded-full px-4 py-2 disabled:opacity-50"
-                style={{ background: "rgba(46,107,64,0.50)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", color: CREAM, border: "1px solid rgba(168,197,160,0.4)", cursor: "pointer", fontFamily: SPACE }}
+                style={{ background: "rgba(46,107,64,0.50)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", color: CREAM, border: "1px solid rgba(168,197,160,0.4)", cursor: "pointer", fontFamily: SPACE }}
               >
                 {renewMutation.isPending ? t("prayer_request.renewing", { defaultValue: "Renewing…" }) : t("prayer_request.renew_7_days", { defaultValue: "Renew for 7 days" })}
               </button>

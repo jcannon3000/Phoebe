@@ -535,7 +535,7 @@ export default function CobreathePage() {
 
             {/* Setting rows — label left, a real dropdown right. */}
             <div className="w-full flex items-center justify-between rounded-xl px-4 py-3 mb-2"
-              style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(46,107,64,0.32)" }}>
+              style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.32)" }}>
               <span style={{ color: WARM, fontFamily: SPACE_GROTESK, fontSize: 16, fontWeight: 600 }}>{t("cobreathe.set_length", { defaultValue: "Length" })}</span>
               <div style={SETTING_SELECT_WRAP}>
                 <select value={lengthBreaths} onChange={(e) => setLengthBreaths(Number(e.target.value))} style={SETTING_SELECT} aria-label={t("cobreathe.set_length", { defaultValue: "Length" })}>
@@ -555,7 +555,7 @@ export default function CobreathePage() {
               type="button"
               onClick={() => setMode("breathing")}
               className="w-full rounded-2xl py-4 text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-              style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: "1px solid rgba(168,197,160,0.45)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700, cursor: "pointer" }}
+              style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(168,197,160,0.45)", color: WARM, fontFamily: SPACE_GROTESK, fontSize: 17, fontWeight: 700, cursor: "pointer" }}
             >
               {t("cobreathe.begin_short", { defaultValue: "Start Breathing" })}
             </button>

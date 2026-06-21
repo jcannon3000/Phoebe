@@ -3691,7 +3691,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
     <div
       className="relative flex rounded-xl overflow-hidden"
       style={{
-        background: "rgba(9,26,16,0.3)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+        background: "rgba(9,26,16,0.3)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
         // Match the border weight on the parish-weekly + count cards so the
         // stacked cards read as a paired set. Always full strength now — the
         // top progress indicator signals completion, so the card no longer
@@ -4334,7 +4334,7 @@ function PrayerListCarousel({
                   // requests waiting" card. Prayed ones rest calm.
                   className={`relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99] ${amened ? "" : "animate-turn-pulse-practices"}`}
                   style={{
-                    background: "rgba(22,46,32,0.34)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+                    background: "rgba(22,46,32,0.34)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
                     // Shared home-card outline — matches the "+" FAB ring.
                     border: "1px solid rgba(200,212,192,0.35)",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",

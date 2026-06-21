@@ -5,15 +5,15 @@ import type { CSSProperties } from "react";
 // shows through (blurred). Spread into a style object: style={{ ...FROST, ... }}.
 export const FROST: CSSProperties = {
   background: "rgba(9,26,16,0.3)",
-  backdropFilter: "blur(14px)",
-  WebkitBackdropFilter: "blur(14px)",
+  backdropFilter: "blur(12.6px)",
+  WebkitBackdropFilter: "blur(12.6px)",
 };
 
 // Just the blur — for surfaces whose background is dynamic (e.g. selected vs not);
 // spread this and set `background` yourself: style={{ ...FROST_BLUR, background: x }}.
 export const FROST_BLUR: CSSProperties = {
-  backdropFilter: "blur(14px)",
-  WebkitBackdropFilter: "blur(14px)",
+  backdropFilter: "blur(12.6px)",
+  WebkitBackdropFilter: "blur(12.6px)",
 };
 
 // A DARKER frosted surface — same blur, a deeper/more opaque tint. For chrome
