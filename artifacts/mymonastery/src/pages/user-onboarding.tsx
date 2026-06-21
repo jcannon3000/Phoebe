@@ -1603,6 +1603,17 @@ export default function UserOnboarding() {
     if (n.startsWith("/communities") || n.startsWith("/community")) return "/dashboard";
     return n;
   })();
+  // Where a FRESH onboarding completion lands (vs the already-completed
+  // redirect above, which keeps /dashboard). New users are dropped into the
+  // customizer (/rule-of-life) to actually build their daily rhythm right after
+  // the tour — unless a specific same-origin `next` was passed (e.g. the
+  // community-invite flow, which has its own destination).
+  const completeDestination = (() => {
+    if (rawNext && rawNext.startsWith("/") && !rawNext.startsWith("/communities") && !rawNext.startsWith("/community")) {
+      return rawNext;
+    }
+    return "/rule-of-life";
+  })();
   const { user, isLoading } = useAuth();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -1853,8 +1864,8 @@ export default function UserOnboarding() {
     } catch {
       // Best-effort — navigate regardless
     }
-    setLocation(nextDestination);
-  }, [isPreview, nextDestination, queryClient, setLocation]);
+    setLocation(completeDestination);
+  }, [isPreview, completeDestination, queryClient, setLocation]);
 
   const next = useCallback(
     () => setIndex(i => Math.min(i + 1, SLIDES.length - 1)),
