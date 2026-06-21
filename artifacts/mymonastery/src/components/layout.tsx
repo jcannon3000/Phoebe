@@ -413,6 +413,13 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                 })()}
                 {/* People (Fellows) turned off — the People menu row + page are
                     hidden and fellow features paused. */}
+                {/* Prayer list — others' requests to pray through (off the
+                    home once you've prayed everyone's, so it lives here). */}
+                <MenuRow
+                  emoji="🙏"
+                  label={t("menu.prayer_list", { defaultValue: "Prayer list" })}
+                  onClick={() => navigate("/prayer-list")}
+                />
                 {/* Events — the upcoming schedule (services, gatherings,
                     practices), its own page now that it's off the home. */}
                 <MenuRow
