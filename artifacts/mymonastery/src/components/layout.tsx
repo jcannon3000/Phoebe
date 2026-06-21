@@ -445,9 +445,7 @@ function DrawerMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
                   <MenuRow emoji="📖" label={t("menu.bcp", { defaultValue: "Book of Common Prayer" })} onClick={() => goCategory("/menu/bcp")} />
                   <MenuRow emoji="🕯️" label={t("menu.practices")} onClick={() => goCategory("/menu/practices")} />
                   <MenuRow emoji="🌅" label={t("menu.reflections", { defaultValue: "Reflections" })} onClick={() => goCategory("/menu/reflections")} />
-                  {/* Podcasts content browser retired from the app — the daily
-                      offices keep their audio; only the standalone Podcasts hub
-                      is hidden. (Jardín's Spanish podcast stays below.) */}
+                  <MenuRow emoji="🎙️" label={t("menu.podcasts", { defaultValue: "Podcasts" })} onClick={() => goCategory("/podcasts")} />
                 </>
               )}
               {/* El Jardín. For a SEALED Jardín account the drawer IS the El
@@ -750,7 +748,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
-  const { ready, morningDone, silenceDone, eveningDone, morningActive, silenceActive, eveningActive, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, lectioActive, lectioDone, journalingActive, journalingDone, cobreatheActive, cobreatheDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, silenceDone, eveningDone, morningActive, silenceActive, eveningActive, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, lectioActive, lectioDone, readingActive, readingDone, podcastsActive, podcastsDone, journalingActive, journalingDone, cobreatheActive, cobreatheDone, customAnchors } = useRhythmState();
   // The core anchors the user keeps (morning/reflection/contemplation/evening —
   // each dropped when its pref is off), plus a dot for each optional practice
   // they added (gratitude, examen, the daily-steps goal) and each user-defined
@@ -774,6 +772,8 @@ function DailyProgressPill() {
     ...(cobreatheActive ? [{ key: "cobreathe", done: cobreatheDone }] : []),
     ...(listeningActive ? [{ key: "listening", done: listeningDone }] : []),
     ...(lectioActive ? [{ key: "lectio", done: lectioDone }] : []),
+    ...(readingActive ? [{ key: "reading", done: readingDone }] : []),
+    ...(podcastsActive ? [{ key: "podcasts", done: podcastsDone }] : []),
     ...(journalingActive ? [{ key: "journaling", done: journalingDone }] : []),
     ...cDots("afternoon"),
     ...(eveningActive ? [{ key: "evening", done: eveningDone }] : []),
