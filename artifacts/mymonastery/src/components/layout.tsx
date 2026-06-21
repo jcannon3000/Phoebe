@@ -750,7 +750,7 @@ function WayOfLoveDrawer({ open, onClose }: { open: boolean; onClose: () => void
 function DailyProgressPill() {
   const { t } = useTranslation();
   const { rawIsBeta } = useBetaStatus();
-  const { ready, morningDone, silenceDone, eveningDone, morningActive, silenceActive, eveningActive, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, silenceDone, eveningDone, morningActive, silenceActive, eveningActive, reflections, gratitudeActive, examenActive, gratitudeDone, examenDone, listeningActive, listeningDone, customAnchors } = useRhythmState();
   // The core anchors the user keeps (morning/reflection/contemplation/evening —
   // each dropped when its pref is off), plus a dot for each optional practice
   // they added (gratitude, examen, the daily-steps goal) and each user-defined
@@ -769,6 +769,7 @@ function DailyProgressPill() {
     ...cDots("midday"),
     ...(gratitudeActive ? [{ key: "gratitude", done: gratitudeDone }] : []),
     ...(examenActive ? [{ key: "examen", done: examenDone }] : []),
+    ...(listeningActive ? [{ key: "listening", done: listeningDone }] : []),
     ...cDots("afternoon"),
     ...(eveningActive ? [{ key: "evening", done: eveningDone }] : []),
     ...cDots("evening"),
