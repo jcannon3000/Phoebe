@@ -9,7 +9,8 @@
  * non-beta fellow can still see and join a beta host's plan.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearch } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Plus, MapPin, X, Share as ShareIcon } from "lucide-react";
@@ -84,6 +85,11 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
   // Compose state — shared by "share a plan" (create) and editing an existing
   // plan (editingId set). A host taps their own card to edit it.
   const [composing, setComposing] = useState(false);
+  // Opened from the office-close "Add plan" pill (navigates here with ?plan=new).
+  const planSearch = useSearch();
+  useEffect(() => {
+    if (canManage && new URLSearchParams(planSearch).get("plan") === "new") setComposing(true);
+  }, [planSearch, canManage]);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [title, setTitle] = useState("");
   const [emoji, setEmoji] = useState<string | null>(null);

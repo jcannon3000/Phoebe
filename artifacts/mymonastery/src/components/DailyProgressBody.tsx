@@ -18,9 +18,10 @@ import { useRhythmState } from "@/hooks/useRhythmState";
 import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/officePrefs";
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead } from "@/lib/cacReadState";
-import { openExternal } from "@/lib/openExternal";
+import { openExternal, openExternalThenMarkRead } from "@/lib/openExternal";
 import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getJournalingSlot, getPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { swellHaptic } from "@/lib/swellHaptic";
 import { isNativeShell } from "@/lib/isNativeShell";
 
 const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
@@ -646,10 +647,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       return {
         key: `reflect-${r.source}`, emoji: "📖", rgb: "96,141,209", done: r.done, href: "",
         title: PUBLICATION_NAME[r.source],
-        blurb: r.done ? kept : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" }),
-        // CAC with a scraped title flips between the publication name + today's title.
-        blurbCycle: (r.source === "cac" && cacTitle) ? [PUBLICATION_NAME.cac, cacTitle] : undefined,
-        onClick: () => { mark(); openExternal(url); },
+        // CAC: today's scraped title is a STATIC second line (no rotation).
+        blurb: r.done ? kept : ((r.source === "cac" && cacTitle) ? cacTitle : t("rhythm.blurb_reflect", { defaultValue: "A few minutes with the day's word" })),
+        blurbCycle: undefined,
+        // Mark read on tap, but fire the completion swell only on RETURN to the app.
+        onClick: () => { mark(); openExternalThenMarkRead(url, swellHaptic); },
         cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
       };
     }),
