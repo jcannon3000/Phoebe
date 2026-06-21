@@ -1484,9 +1484,9 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: React
                   style={{
                     fontFamily: "'Space Grotesk', sans-serif",
                     letterSpacing: "-0.01em",
-                    background: "rgba(200,212,192,0.08)",
+                    ...FROST_DARK,
                     color: "#C8D4C0",
-                    border: "1px solid rgba(46,107,64,0.3)",
+                    border: "1px solid rgba(200,212,192,0.18)",
                   }}
                 >
                   {t("header.menu")}

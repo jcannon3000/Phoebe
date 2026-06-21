@@ -35,6 +35,19 @@ const FONT = "'Space Grotesk', system-ui, sans-serif";
 // home card reads with the same soft sage edge rather than per-practice tints.
 const CARD_BORDER = "rgba(200,212,192,0.35)";
 
+// Subtle per-card lightness ramp for the routine card stack: a touch lighter at
+// the top, easing a touch darker toward the bottom (tint 0 → 1). Stays in the
+// frosted-green family; tint 0.4 ≈ the prior flat fill, so a lone card is
+// unchanged. Keeps the frosted blur (applied separately by the card).
+function cardTintBg(tint: number): string {
+  const t = Math.max(0, Math.min(1, tint));
+  const r = Math.round(26 - 16 * t);
+  const g = Math.round(52 - 24 * t);
+  const b = Math.round(36 - 18 * t);
+  const a = (0.30 + 0.10 * t).toFixed(3);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
 // Practice-card palette: a calm, LOW-CHROMA cool ramp that walks the hue from
 // the Phoebe forest green through teal/blue to a muted violet across the day's
 // cards, by order. Every hue is cool, so it stays in harmony with the dark green
@@ -325,9 +338,12 @@ export function WeeklyGridCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick, doneCta, pulse,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick, doneCta, pulse, tint = 0.4,
 }: {
   href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
+  /** Position in the routine card stack (0 = top/lightest → 1 = bottom/darkest),
+   *  driving the subtle card-background lightness ramp. */
+  tint?: number;
   later?: boolean; laterLabel?: string;
   progress?: { current: number; goal: number };
   /** When a DONE card should still invite action (e.g. contemplation can keep
@@ -368,7 +384,7 @@ function PracticeCard({
     const heroRow = (
       <div
         className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-95 active:scale-[0.99]"}`}
-        style={{ background: "rgba(22,46,32,0.34)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1 }}
+        style={{ background: cardTintBg(tint), backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: `1px solid ${CARD_BORDER}`, opacity: waiting ? 0.8 : 1 }}
       >
         <div className="w-1.5 flex-shrink-0" style={{ background: `rgba(${rgb},${waiting ? 0.4 : 0.72})` }} />
         <div className="flex-1 px-5 py-5">
@@ -438,7 +454,7 @@ function PracticeCard({
   const row = (
     <motion.div
       className={`relative flex rounded-3xl overflow-hidden ${waiting ? "" : "transition-opacity hover:opacity-90 active:scale-[0.99]"}`}
-      style={{ background: "rgba(22,46,32,0.34)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1 }}
+      style={{ background: cardTintBg(tint), backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)", border: `1px solid ${restBorder}`, opacity: waiting ? 0.72 : 1 }}
       animate={pulse ? { borderColor: [restBorder, `rgba(${rgb},0.55)`, restBorder] } : undefined}
       transition={pulse ? { duration: 2.2, repeat: Infinity, ease: "easeInOut" } : undefined}
     >
@@ -712,7 +728,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     : true
   );
 
-  const renderCard = (c: (typeof cards)[number], pulse = false) => (
+  // A subtle lightness ramp across the WHOLE routine stack (Next then Done) —
+  // the top card sits a touch lighter, easing a touch darker toward the bottom.
+  const stackCount = upcomingDisplay.length + completedDisplay.length;
+  const tintFor = (globalIdx: number) => (stackCount <= 1 ? 0.4 : globalIdx / (stackCount - 1));
+
+  const renderCard = (c: (typeof cards)[number], pulse = false, tint = 0.4) => (
     <PracticeCard
       href={c.href}
       emoji={c.emoji}
@@ -721,6 +742,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta={c.cta}
       done={c.done}
       rgb={c.rgb}
+      tint={tint}
       later={c.later}
       laterLabel={t("rhythm.later", { defaultValue: "Later" })}
       progress={"progress" in c ? c.progress : undefined}
@@ -767,7 +789,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
             )}
             {upcomingDisplay.map((c, i) => (
               <motion.div key={c.key} {...enterUp(i + (officeHero ? 1 : 0))}>
-                {renderCard(c, i === 0 && leadPulse)}
+                {renderCard(c, i === 0 && leadPulse, tintFor(i))}
               </motion.div>
             ))}
           </div>
@@ -781,7 +803,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           <div className="flex flex-col gap-2">
             {completedDisplay.map((c, i) => (
               <motion.div key={c.key} {...enterUp(i)}>
-                {renderCard(c)}
+                {renderCard(c, false, tintFor(upcomingDisplay.length + i))}
               </motion.div>
             ))}
           </div>
