@@ -669,7 +669,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         if (cancelled) return;
-        const fetched: Slide[] = data.slides ?? [];
+        const fetched: Slide[] = reorderIntercessionsBeforeThanksgiving(data.slides ?? []);
         if (fetched.length === 0) throw new Error("No slides returned");
         // The daily reflection (FDD / SSJE / CAC) is no longer
         // appended as an in-office slide. It's surfaced instead as a
@@ -3084,6 +3084,27 @@ function bookPageRef(...refs: Array<string | null | undefined>): string | null {
 // card each. Slide types that are sub-parts of a section (verse chunks,
 // the Gloria, the absolution, title cards' bodies) fold into their
 // parent; purely on-screen types (intro, portal) are skipped.
+// The prayers of the people (the intercessions portal + any inline intercession
+// slides) belong just BEFORE the General Thanksgiving in the office (BCP). The
+// server feed has placed them earlier; move the whole intercessions block to sit
+// immediately before the first General Thanksgiving slide. No-op when there's no
+// Thanksgiving (e.g. the Devotions) or no intercessions.
+function reorderIntercessionsBeforeThanksgiving(slides: Slide[]): Slide[] {
+  const thanksIdx = slides.findIndex((s) => s.type === "general_thanksgiving");
+  if (thanksIdx < 0) return slides;
+  const isInter = (s: Slide) => s.type === "intercessions_portal" || (s.type as string) === "intercessions";
+  const interIdxs = slides.map((s, i) => (isInter(s) ? i : -1)).filter((i) => i >= 0);
+  if (interIdxs.length === 0) return slides;
+  // Already contiguous immediately before Thanksgiving → leave as-is.
+  const lastInter = interIdxs[interIdxs.length - 1];
+  if (lastInter === thanksIdx - 1 && interIdxs[0] === thanksIdx - interIdxs.length) return slides;
+  const interSet = new Set(interIdxs);
+  const interBlock = interIdxs.map((i) => slides[i]);
+  const rest = slides.filter((_, i) => !interSet.has(i));
+  const newThanksIdx = rest.findIndex((s) => s.type === "general_thanksgiving");
+  return [...rest.slice(0, newThanksIdx), ...interBlock, ...rest.slice(newThanksIdx)];
+}
+
 function buildBookSections(slides: Slide[]): BookSection[] {
   const sections: BookSection[] = [];
 
@@ -3112,26 +3133,47 @@ function buildBookSections(slides: Slide[]): BookSection[] {
             : bookTitleCase(s.eyebrow || "Psalm");
         let ref: string | null = s.bcpReference;
         let latin: string | null = s.title;
+        // Capture the antiphon (its own line below the psalm) instead of letting
+        // it fold silently into the psalm block.
+        let antiphonRef: string | null = null;
+        let antiphonText: string | null = null;
+        let sawAntiphon = false;
         let j = i + 1;
         while (
           j < slides.length &&
-          // "antiphon" exists in the server's SlideType but not (yet) the
-          // client union — compare as string so an antiphon slide folds
-          // into the psalm block instead of splitting it.
           (slides[j].type === "psalm" || slides[j].type === "invitatory_psalm" || slides[j].type === "psalm_gloria" || (slides[j].type as string) === "antiphon")
         ) {
-          if (!ref && slides[j].bcpReference) ref = slides[j].bcpReference;
-          if (!latin && slides[j].title) latin = slides[j].title;
+          if ((slides[j].type as string) === "antiphon") {
+            sawAntiphon = true;
+            if (!antiphonRef && slides[j].bcpReference) antiphonRef = slides[j].bcpReference;
+            if (!antiphonText && slides[j].title) antiphonText = slides[j].title;
+          } else {
+            if (!ref && slides[j].bcpReference) ref = slides[j].bcpReference;
+            if (!latin && slides[j].title) latin = slides[j].title;
+          }
           j++;
         }
         i = j - 1;
+        // Morning Prayer's Venite has the Jubilate (Ps 100) as its appointed
+        // alternative — note it so a reader can choose either at the book.
+        const invitatoryDetail = headline.includes("Venite") ? `${headline} · or the Jubilate` : headline;
         sections.push({
           key: s.id,
           label: isInvitatory ? "The Invitatory" : "The Psalms Appointed",
-          detail: isInvitatory ? headline : latin ? `${headline} · ${latin}` : headline,
+          detail: isInvitatory ? invitatoryDetail : latin ? `${headline} · ${latin}` : headline,
           page: bookPageRef(ref),
           readUrl: null,
         });
+        // The antiphon sits with the psalm — its own card so it isn't missed.
+        if (sawAntiphon) {
+          sections.push({
+            key: `${s.id}-antiphon`,
+            label: "The Antiphon",
+            detail: antiphonText,
+            page: bookPageRef(antiphonRef),
+            readUrl: null,
+          });
+        }
         break;
       }
       case "lesson_title":
@@ -3278,6 +3320,7 @@ const BCP_GUIDE_ES: Record<string, string> = {
   "The Confession": "La Confesión",
   "The Invitatory": "El Invitatorio",
   "The Psalms Appointed": "Los Salmos Señalados",
+  "The Antiphon": "La Antífona",
   "First Lesson": "Primera Lectura",
   "Second Lesson": "Segunda Lectura",
   "The Gospel": "El Evangelio",
@@ -3521,15 +3564,11 @@ function PhysicalBookGuide(props: {
           </div>
 
           {(() => {
-            // Weave the Intercessions card into liturgical order — right
-            // after the Suffrages, where free intercessions fall in the
-            // office itself — rather than trailing at the end of the page
-            // map. Falls back to the end if there's no Suffrages section
-            // (e.g. the Devotions).
-            const suffragesIdx = sections.findIndex((s) => s.label === "The Suffrages");
-            const interAfter = showIntercessions
-              ? (suffragesIdx >= 0 ? suffragesIdx : sections.length - 1)
-              : -2;
+            // Weave the Intercessions card into liturgical order — the prayers
+            // of the people fall just BEFORE the General Thanksgiving in the
+            // office (BCP). Falls back to the end if there's no Thanksgiving
+            // section (e.g. the Devotions).
+            const thanksIdx = sections.findIndex((s) => s.label === "The General Thanksgiving");
             const sectionCard = (sec: BookSection) => (
               <div key={sec.key} style={cardStyle}>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -3584,12 +3623,14 @@ function PhysicalBookGuide(props: {
               </button>
             );
             const out: React.ReactNode[] = [];
+            let placed = false;
             sections.forEach((sec, i) => {
+              // Intercessions come right before the General Thanksgiving.
+              if (showIntercessions && !placed && i === thanksIdx) { out.push(intercessionsCard); placed = true; }
               out.push(sectionCard(sec));
-              if (i === interAfter) out.push(intercessionsCard);
             });
-            // No sections but intercessions still wanted — show it alone.
-            if (interAfter === -1 && sections.length === 0) out.push(intercessionsCard);
+            // No Thanksgiving section (e.g. the Devotions) — append at the end.
+            if (showIntercessions && !placed) out.push(intercessionsCard);
             return out;
           })()}
 
