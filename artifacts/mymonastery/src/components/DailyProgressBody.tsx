@@ -797,18 +797,22 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const showDoneSection = (showStreak || showDone) && completedDisplay.length > 0;
 
   // On the native first app-open the splash covers the home; hold the card
-  // cascade until the splash has faded DOWN so the user actually sees it rise
-  // (otherwise it runs behind the splash and is over before the reveal). On web,
-  // or once the splash has shown this session, cascade immediately.
+  // cascade (fade-up + outline pulse + haptics) until the splash has faded DOWN
+  // so the user actually sees it rise. Gate on the "splash-done-once" flag —
+  // which is stamped only when the splash FADES (not "splash-shown", set at its
+  // start, which raced the home into starting early). On web, or once the splash
+  // has finished this session, cascade immediately.
   const [splashCleared, setSplashCleared] = useState<boolean>(() => {
     if (!isNativeShell()) return true;
-    try { return sessionStorage.getItem("phoebe:splash-shown") !== null; } catch { return true; }
+    try { return sessionStorage.getItem("phoebe:splash-done-once") !== null; } catch { return true; }
   });
   useEffect(() => {
     if (splashCleared) return;
     const clear = () => setSplashCleared(true);
     window.addEventListener("phoebe:splash-done", clear);
-    const id = window.setTimeout(clear, 2500); // fallback if the event is missed
+    // Fallback only if the event is somehow missed — must outlast the splash
+    // (~7.5s hold + ~1.4s fade), so it never un-gates the cascade mid-splash.
+    const id = window.setTimeout(clear, 12000);
     return () => { window.removeEventListener("phoebe:splash-done", clear); window.clearTimeout(id); };
   }, [splashCleared]);
 

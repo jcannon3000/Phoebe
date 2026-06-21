@@ -1135,7 +1135,14 @@ function OpeningSplash() {
   // down. Fires on every transition to "gone" (incl. never-shown — harmless,
   // the home only waits when the splash actually showed).
   useEffect(() => {
-    if (phase === "gone") window.dispatchEvent(new CustomEvent("phoebe:splash-done"));
+    if (phase === "gone") {
+      // Stamp a DONE flag (distinct from "splash-shown", which is set at the
+      // splash's START) so a home mounting later this session knows the splash
+      // has actually FADED — and starts its cascade immediately rather than
+      // re-waiting. The event covers the live first-load case.
+      try { sessionStorage.setItem("phoebe:splash-done-once", "1"); } catch { /* ignore */ }
+      window.dispatchEvent(new CustomEvent("phoebe:splash-done"));
+    }
   }, [phase]);
 
   if (!native || !user || phase === "gone") return null;
