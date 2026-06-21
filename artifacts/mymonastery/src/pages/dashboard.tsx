@@ -530,7 +530,7 @@ export function HomeAuthoringFAB() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="flex flex-col gap-2 mb-1"
+            className="flex flex-col gap-2 mb-1 items-stretch"
           >
             <button
               onClick={() => { setOpen(false); setLocation("/pray-request/new?kind=request"); }}
@@ -609,7 +609,7 @@ function FAB() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="flex flex-col gap-2 mb-1"
+            className="flex flex-col gap-2 mb-1 items-stretch"
           >
             {/* FAB menu shows the three practice templates directly so
                 people can jump straight into the sub-flow they want.
