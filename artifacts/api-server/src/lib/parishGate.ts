@@ -115,14 +115,17 @@ export async function getUserAccessTier(userId: number): Promise<UserAccess> {
   // offices-only account that later joins a community frictionlessly
   // upgrades to "full". A Fellow link is ALSO a full-app trigger —
   // the share-link flow lets two people connect outside any community
-  // and they should land in the same full app. Offices-only is
-  // checked before parish-only; in practice the two signals are
-  // mutually exclusive (the /pray signup never sets a parish_feed_id).
+  // and they should land in the same full app.
+  //
+  // The public "/pray" devotion signup sets users.offices_only = true, but
+  // per product direction those visitors now get the FULL app too — the whole
+  // daily rhythm (Daily progress + every practice), not the stripped office-
+  // only home. So offices_only no longer downgrades the tier; it's folded into
+  // the full-app trigger. (parish-only / unassigned are unchanged, so the
+  // Parish onboarding funnel still applies to genuinely-untiered accounts.)
   let tier: AccessTier;
-  if (isBeta || hasCommunityMembership || hasFellow) {
+  if (isBeta || hasCommunityMembership || hasFellow || user.officesOnly) {
     tier = "full";
-  } else if (user.officesOnly) {
-    tier = "offices-only";
   } else if (user.parishFeedId !== null) {
     tier = "parish-only";
   } else {
