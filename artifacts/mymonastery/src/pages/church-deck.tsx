@@ -1901,8 +1901,11 @@ export default function ChurchDeck() {
   const isFirst = index === 0;
   const isLast = index === slides.length - 1;
   // A leaf photo backdrop under the deck (matches the home / splash), washed dark
-  // so the slides stay legible.
-  const bgPhoto = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[index % LEAF_PHOTOS.length] : null;
+  // so the slides stay legible. Held stable for the whole deck (NOT keyed to the
+  // slide index) so it doesn't reload / hard-cut a new image on every advance.
+  const [bgPhoto] = useState<string | null>(() =>
+    LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null,
+  );
 
   return (
     <div
