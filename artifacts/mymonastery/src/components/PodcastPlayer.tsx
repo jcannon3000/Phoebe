@@ -9,6 +9,19 @@ import { useTranslation } from "react-i18next";
 import { AnimatedBackground } from "@/components/AnimatedBackground";
 import { useOfficePrefs, setOfficeAudioSource, type OfficeAudioSource } from "@/lib/officePrefs";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+
+// ≥2 minutes of actual listening to a (non-office) podcast counts the
+// "Podcasts" daily practice as kept — if the user has it as a practice.
+const PODCAST_PRACTICE_CREDIT_SECONDS = 120;
+// Is the Podcasts optional practice on the user's home layout? (Same rule as
+// useRhythmState's homeCardActive — inlined to avoid exporting it.)
+function podcastsPracticeActive(homeLayout: { order?: string[]; hidden?: string[] } | null | undefined): boolean {
+  if (!homeLayout) return false;
+  const order = homeLayout.order ?? [];
+  const hidden = new Set(homeLayout.hidden ?? []);
+  return order.includes("podcasts") && !hidden.has("podcasts");
+}
 
 // ── Global podcast player ────────────────────────────────────────────────
 //
@@ -357,6 +370,9 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
   // The episodeId of the office episode we've already credited this play, so the
   // ≥60% office credit fires exactly once per listen.
   const officeCreditedRef = useRef<string | null>(null);
+  // Whether THIS podcast play has already credited the Podcasts daily practice
+  // (so the ≥2-min credit fires once per episode play).
+  const podcastCreditedRef = useRef(false);
 
   const closeSeg = useCallback(() => {
     if (seg.current.start !== null) {
@@ -434,6 +450,7 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
         ? { surface: `${officeSide}-office-podcast`, creditMode: officeSide }
         : { surface: ep.sessionSurface ?? "podcast", creditMode: ep.creditMode };
       officeCreditedRef.current = null;
+      podcastCreditedRef.current = false;
       pendingSeekRef.current = loadPos(ep);
       setArtBroken(false);
       return ep;
@@ -712,6 +729,16 @@ export function PodcastPlayerProvider({ children }: { children: ReactNode }) {
       officeCreditedRef.current = current.episodeId;
       const played = seg.current.acc + (seg.current.start !== null ? (Date.now() - seg.current.start) / 1000 : 0);
       creditOfficePodcast(officeSide, played > 1 ? played : a.currentTime, seg.current.startedAt);
+    }
+    // Podcast practice credit: ≥2 min of ACTUAL listening (accumulated play
+    // time, so skipping ahead doesn't count) to a real podcast — not an office
+    // — counts the "Podcasts" daily practice as kept, when the user has it.
+    if (!officeSide && !podcastCreditedRef.current && podcastsPracticeActive(user?.homeLayout)) {
+      const playedPod = seg.current.acc + (seg.current.start !== null ? (Date.now() - seg.current.start) / 1000 : 0);
+      if (playedPod >= PODCAST_PRACTICE_CREDIT_SECONDS) {
+        podcastCreditedRef.current = true;
+        markPracticeDoneToday("podcasts");
+      }
     }
     const now = Date.now();
     if (now - lastSaveRef.current > 5000) { lastSaveRef.current = now; savePos(current, a.currentTime); }
