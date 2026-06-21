@@ -131,9 +131,11 @@ export default function WelcomePublicPage() {
           />
 
           {/* Card 1b — Cobreathe: anyone can try the shared breath without an
-              account, the way the climate feed used to be reachable here. */}
+              account, the way the climate feed used to be reachable here. Lands
+              on the intro screen first (the "before you begin" why + Start
+              Breathing) rather than dropping straight into the breath. */}
           <ChoiceCard
-            href="/cobreathe?start=1"
+            href="/cobreathe"
             emoji={<CobreatheGlobe size={28} />}
             title={t("welcome_public.cobreathe_title", { defaultValue: "Co-Breathe" })}
             blurb={t("welcome_public.cobreathe_blurb", { defaultValue: "12 breaths as a prayer for climate justice." })}
