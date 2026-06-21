@@ -60,7 +60,7 @@ export function JardinReadingCard() {
   const streak = data?.streak ?? 0;
 
   return (
-    <div className="rounded-2xl overflow-hidden flex" style={{ background: "rgba(46,107,64,0.10)", border: "1px solid rgba(46,107,64,0.24)" }}>
+    <div className="rounded-2xl overflow-hidden flex" style={{ background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(200,212,192,0.18)" }}>
       <div className="w-1 flex-shrink-0" style={{ background: "rgba(110,180,130,0.85)" }} />
       <div className="flex-1 p-4">
         <div className="flex items-start justify-between gap-3">

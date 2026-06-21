@@ -30,10 +30,19 @@ const MEDIUM_EMOJI: Record<ListeningMedium, string> = { streaming: "🎧", cd: "
 
 // A glass field, matching the office close-slide composer look.
 const glassField = {
-  background: "rgba(255,255,255,0.04)",
-  border: "1px solid rgba(255,255,255,0.10)",
+  background: "rgba(9,26,16,0.27)",
+  backdropFilter: "blur(12.6px)",
+  WebkitBackdropFilter: "blur(12.6px)",
+  border: "1px solid rgba(200,212,192,0.18)",
   color: WARM,
   fontFamily: SPACE_GROTESK,
+} as const;
+// A frosted-glass surface for the log rows (over the leaf backdrop).
+const glassRow = {
+  background: "rgba(9,26,16,0.27)",
+  backdropFilter: "blur(12.6px)",
+  WebkitBackdropFilter: "blur(12.6px)",
+  border: "1px solid rgba(200,212,192,0.18)",
 } as const;
 
 type View = "log" | "history";
@@ -315,7 +324,7 @@ function HistoryRow({ e, onDelete, deleting, onShare }: { e: ServerEntry; onDele
   const day = Number.isNaN(d.getTime()) ? e.day : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
   const label = e.what?.trim() || (e.medium === "streaming" ? "Streaming" : e.medium.toUpperCase());
   return (
-    <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+    <div className="flex items-center gap-3 rounded-2xl px-4 py-3" style={glassRow}>
       {e.artworkUrl ? (
         <img src={e.artworkUrl} alt="" className="w-11 h-11 rounded-lg object-cover flex-shrink-0" style={{ backgroundColor: "rgba(46,107,64,0.3)" }} />
       ) : (
@@ -356,7 +365,7 @@ function SharedRow({ e }: { e: SharedEntry }) {
   const day = Number.isNaN(d.getTime()) ? e.day : d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
   const label = e.what?.trim() || (e.medium === "streaming" ? "Streaming" : e.medium.toUpperCase());
   return (
-    <div className="flex items-start gap-3 rounded-2xl px-4 py-3" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)" }}>
+    <div className="flex items-start gap-3 rounded-2xl px-4 py-3" style={glassRow}>
       {e.avatarUrl ? (
         <img src={e.avatarUrl} alt={e.authorName} className="w-9 h-9 rounded-full object-cover flex-shrink-0" style={{ border: "1px solid rgba(46,107,64,0.4)" }} />
       ) : (
