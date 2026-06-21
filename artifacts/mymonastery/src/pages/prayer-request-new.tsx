@@ -286,7 +286,7 @@ export default function PrayerRequestNew() {
           {/* How long the garden carries it — a 1–7 day dropdown (default 3).
               Life events derive their lifetime from the event date instead. */}
           {!isLifeEvent && (
-            <div className="w-full max-w-xs">
+            <div className="w-full">
             <select
               value={days}
               onChange={(e) => setDays(Number(e.target.value))}
@@ -307,7 +307,7 @@ export default function PrayerRequestNew() {
 
           {error && <p className="text-sm" style={{ color: "#C47A65" }}>{error}</p>}
 
-          <div className="flex flex-col gap-3 w-full max-w-xs mt-1">
+          <div className="flex flex-col gap-3 w-full mt-1">
             <button
               onClick={handleSubmit}
               disabled={body.trim().length === 0 || createMutation.isPending}
