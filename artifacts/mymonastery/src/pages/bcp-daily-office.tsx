@@ -3146,7 +3146,9 @@ function buildBookSections(slides: Slide[]): BookSection[] {
           if ((slides[j].type as string) === "antiphon") {
             sawAntiphon = true;
             if (!antiphonRef && slides[j].bcpReference) antiphonRef = slides[j].bcpReference;
-            if (!antiphonText && slides[j].title) antiphonText = slides[j].title;
+            // Antiphon text ships in `content` (the slide() body arg), not
+            // `title` — read either so the card isn't a bare header.
+            if (!antiphonText && (slides[j].title || slides[j].content)) antiphonText = slides[j].title || slides[j].content;
           } else {
             if (!ref && slides[j].bcpReference) ref = slides[j].bcpReference;
             if (!latin && slides[j].title) latin = slides[j].title;
@@ -3160,7 +3162,15 @@ function buildBookSections(slides: Slide[]): BookSection[] {
         sections.push({
           key: s.id,
           label: isInvitatory ? "The Invitatory" : "The Psalms Appointed",
-          detail: isInvitatory ? invitatoryDetail : latin ? `${headline} · ${latin}` : headline,
+          // On multi-psalm days the server stamps both eyebrow and title to the
+          // same string ("PSALMS 75 & 76" / "Psalms 75 & 76"), which used to
+          // render "Psalms 75 & 76 · Psalms 75 & 76" — the psalms listed twice.
+          // Only append the Latin incipit when it actually adds information.
+          detail: isInvitatory
+            ? invitatoryDetail
+            : latin && bookTitleCase(latin) !== headline
+              ? `${headline} · ${latin}`
+              : headline,
           page: bookPageRef(ref),
           readUrl: null,
         });
@@ -3281,6 +3291,33 @@ function buildBookSections(slides: Slide[]): BookSection[] {
         sections.push({ key: s.id, label: "The Closing", detail: null, page: bookPageRef(s.bcpReference), readUrl: null });
         break;
       }
+      case "invitatory_psalm": {
+        // A LONE invitatory psalm with no preceding `psalm_title` — this is
+        // Evening Prayer / Evening Devotion's Phos hilaron ("O Gracious
+        // Light"), which the assembler emits as a bare invitatory_psalm. (In
+        // Morning Prayer the invitatory always has a psalm_title, so its
+        // verses are consumed by that run and never reach here.) Without this
+        // case, the Hymn of Light was silently dropped from the book guide.
+        const pmeta = s.metadata as { psalmHeadline?: unknown } | undefined;
+        const phHeadline =
+          typeof pmeta?.psalmHeadline === "string" && pmeta.psalmHeadline.length > 0
+            ? pmeta.psalmHeadline
+            : bookTitleCase(s.eyebrow || "The Invitatory");
+        let j = i + 1;
+        while (j < slides.length && (slides[j].type === "invitatory_psalm" || slides[j].type === "psalm_gloria")) j++;
+        i = j - 1;
+        sections.push({ key: s.id, label: "The Invitatory", detail: phHeadline, page: bookPageRef(s.bcpReference), readUrl: null });
+        break;
+      }
+      case "antiphon": {
+        // A standalone antiphon not absorbed by a psalm block — Compline's
+        // antiphon bracketing the Nunc Dimittis ("Guide us waking…"). The
+        // book prints it before and after the canticle; one card is enough
+        // (the trailing repeat is collapsed by the dedup pass below).
+        const aText = s.title || s.content || null;
+        sections.push({ key: s.id, label: "The Antiphon", detail: aText, page: bookPageRef(s.bcpReference), readUrl: null });
+        break;
+      }
       default:
         // office_intro, invitatory versicle, absolution, doxology,
         // intercessions (the guide has its own card), portals — all
@@ -3297,6 +3334,10 @@ function buildBookSections(slides: Slide[]): BookSection[] {
   for (const sec of sections) {
     const prev = deduped[deduped.length - 1];
     if (prev && prev.label === sec.label && (!sec.page || prev.page === sec.page)) continue;
+    // The Antiphon is printed before AND after Compline's Nunc Dimittis — same
+    // text and page, with the canticle card between. Keep only the first so the
+    // guide doesn't repeat it (the reader sees it's repeated at the book).
+    if (sec.label === "The Antiphon" && deduped.some((d) => d.label === "The Antiphon" && d.page === sec.page)) continue;
     deduped.push(sec);
   }
   return deduped;
