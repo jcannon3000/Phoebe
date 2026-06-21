@@ -1,10 +1,11 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { CobreatheGlobe } from "@/components/CobreatheGlobe";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { isNativeShell } from "@/lib/isNativeShell";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { primeAudio } from "@/lib/amenFeedback";
 
 // ── First-open chooser ───────────────────────────────────────────────────────
@@ -44,6 +45,8 @@ export default function WelcomePublicPage() {
   const { user, isLoading } = useAuth();
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
+  // One stable leaf backdrop for the welcome chooser, matching the app.
+  const [bgPhoto] = useState<string | null>(() => LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null);
 
   // Already-signed-in visitor goes straight to the dashboard. Same
   // pattern as the Onboarding page so a returning user with a valid
@@ -70,11 +73,18 @@ export default function WelcomePublicPage() {
       className="min-h-screen flex flex-col"
       style={{
         background: BG,
+        isolation: "isolate",
         fontFamily: SPACE_GROTESK,
         paddingTop: "var(--safe-top)",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
+      {bgPhoto && (
+        <>
+          <img src={bgPhoto} alt="" aria-hidden style={{ position: "fixed", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.42, zIndex: -1 }} />
+          <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.5) 0%, rgba(8,18,12,0.64) 45%, rgba(8,18,12,0.82) 100%)" }} />
+        </>
+      )}
       <header className="px-6 pt-6 pb-4 flex items-center justify-between">
         <span
           className="text-2xl font-bold"
@@ -205,10 +215,10 @@ function ChoiceCard({
   onClick?: () => void;
 }) {
   const bg = primary
-    ? "rgba(46,107,64,0.18)"
+    ? "rgba(46,107,64,0.2)"
     : muted
-      ? "rgba(200,212,192,0.04)"
-      : "rgba(46,107,64,0.10)";
+      ? "rgba(9,26,16,0.18)"
+      : "rgba(9,26,16,0.27)";
   const border = primary
     ? "1px solid rgba(46,107,64,0.45)"
     : muted
@@ -250,11 +260,11 @@ function ChoiceCard({
       transition={{ duration: 0.4, delay }}
     >
       {isExternal ? (
-        <a href={href} target="_blank" rel="noopener noreferrer" onClick={onClick} className={cls} style={{ background: bg, border }}>
+        <a href={href} target="_blank" rel="noopener noreferrer" onClick={onClick} className={cls} style={{ background: bg, backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border }}>
           {inner}
         </a>
       ) : (
-        <Link href={href} onClick={onClick} className={cls} style={{ background: bg, border }}>
+        <Link href={href} onClick={onClick} className={cls} style={{ background: bg, backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border }}>
           {inner}
         </Link>
       )}
