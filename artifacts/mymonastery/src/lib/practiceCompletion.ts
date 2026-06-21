@@ -14,7 +14,7 @@ import { swellHaptic } from "@/lib/swellHaptic";
 // "Today" is the user's LOCAL day (en-CA → ISO 2024-05-26), matching every
 // other rhythm surface.
 
-export type OptionalPractice = "gratitude" | "examen" | "listening" | "journaling" | "lectio" | "reading" | "podcasts";
+export type OptionalPractice = "gratitude" | "examen" | "listening" | "journaling" | "lectio" | "reading" | "podcasts" | "walk";
 
 function todayLocalISO(): string {
   return new Date().toLocaleDateString("en-CA");

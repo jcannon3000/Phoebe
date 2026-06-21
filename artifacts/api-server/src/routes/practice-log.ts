@@ -18,7 +18,7 @@ import { getFellowUserIds } from "../lib/garden";
 
 const router: IRouter = Router();
 
-const KINDS = new Set(["reading", "podcasts"]);
+const KINDS = new Set(["reading", "podcasts", "walk"]);
 
 function isValidYmd(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;

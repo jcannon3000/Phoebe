@@ -73,6 +73,7 @@ export type RhythmState = {
   lectioActive: boolean;
   readingActive: boolean;
   podcastsActive: boolean;
+  walkActive: boolean;
   cobreatheActive: boolean;
   gratitudeDone: boolean;
   examenDone: boolean;
@@ -81,6 +82,7 @@ export type RhythmState = {
   lectioDone: boolean;
   readingDone: boolean;
   podcastsDone: boolean;
+  walkDone: boolean;
   cobreatheDone: boolean;
   /** User-defined custom practices (title + emoji + a per-day check) — each an
    *  extra anchor: shows as a Daily-progress card and counts as a dot. */
@@ -179,6 +181,7 @@ export function useRhythmState(): RhythmState {
     lectio: hasPracticeDoneToday("lectio"),
     reading: hasPracticeDoneToday("reading"),
     podcasts: hasPracticeDoneToday("podcasts"),
+    walk: hasPracticeDoneToday("walk"),
   }));
   useEffect(() => {
     const recheck = () => setPracticeLocal({
@@ -189,6 +192,7 @@ export function useRhythmState(): RhythmState {
       lectio: hasPracticeDoneToday("lectio"),
       reading: hasPracticeDoneToday("reading"),
       podcasts: hasPracticeDoneToday("podcasts"),
+      walk: hasPracticeDoneToday("walk"),
     });
     window.addEventListener(PRACTICE_DONE_EVENT, recheck);
     window.addEventListener("focus", recheck);
@@ -278,11 +282,13 @@ export function useRhythmState(): RhythmState {
   // day" step; each its own home card + dot.
   const readingActive = homeCardActive(user?.homeLayout, "reading");
   const podcastsActive = homeCardActive(user?.homeLayout, "podcasts");
+  // Contemplative Walk — a slotted contemplative practice, logged like reading.
+  const walkActive = homeCardActive(user?.homeLayout, "walk");
   // Co-Breathe as a standalone anchor — added from the customizer's contemplative
   // step at a chosen time of day (separate from picking Co-Breathe as a side's
   // contemplation STYLE). Its done-state comes from /api/breath/today below.
   const cobreatheActive = homeCardActive(user?.homeLayout, "cobreathe");
-  const anyExtraActive = gratitudeActive || examenActive || listeningActive || journalingActive || lectioActive || readingActive || podcastsActive;
+  const anyExtraActive = gratitudeActive || examenActive || listeningActive || journalingActive || lectioActive || readingActive || podcastsActive || walkActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
   // exact localDate below. (Passing today would drop the row on any non-Sunday.)
@@ -378,6 +384,7 @@ export function useRhythmState(): RhythmState {
   const lectioDone = lectioActive && (practiceLocal.lectio || serverDone("lectio"));
   const readingDone = readingActive && (practiceLocal.reading || serverDone("reading"));
   const podcastsDone = podcastsActive && (practiceLocal.podcasts || serverDone("podcasts"));
+  const walkDone = walkActive && (practiceLocal.walk || serverDone("walk"));
   // Co-Breathe is kept once a sit is completed today (server-tracked).
   const cobreatheDone = cobreatheActive && (cobreathe?.done ?? false);
 
@@ -433,6 +440,7 @@ export function useRhythmState(): RhythmState {
     ...(lectioActive ? [lectioDone] : []),
     ...(readingActive ? [readingDone] : []),
     ...(podcastsActive ? [podcastsDone] : []),
+    ...(walkActive ? [walkDone] : []),
     ...(gratitudeActive ? [gratitudeDone] : []),
     ...(examenActive ? [examenDone] : []),
     ...(journalingActive ? [journalingDone] : []),
@@ -474,6 +482,7 @@ export function useRhythmState(): RhythmState {
     lectioActive,
     readingActive,
     podcastsActive,
+    walkActive,
     cobreatheActive,
     gratitudeDone,
     examenDone,
@@ -482,6 +491,7 @@ export function useRhythmState(): RhythmState {
     lectioDone,
     readingDone,
     podcastsDone,
+    walkDone,
     cobreatheDone,
     customAnchors,
     totalAnchors,
