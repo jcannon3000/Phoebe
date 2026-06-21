@@ -257,6 +257,10 @@ export function useRhythmState(): RhythmState {
   // (homeCardActive reads the saved home layout).
   const listeningActive = homeCardActive(user?.homeLayout, "listening");
   const journalingActive = homeCardActive(user?.homeLayout, "journaling");
+  // Co-Breathe as a standalone anchor — added from the customizer's contemplative
+  // step at a chosen time of day (separate from picking Co-Breathe as a side's
+  // contemplation STYLE). Its done-state comes from /api/breath/today below.
+  const cobreatheActive = homeCardActive(user?.homeLayout, "cobreathe");
   const anyExtraActive = gratitudeActive || examenActive || listeningActive || journalingActive;
   // Server filters rows on weekStart >= since, and today's row carries THIS
   // week's Sunday as weekStart — so we ask from the week start, then match the
@@ -350,6 +354,8 @@ export function useRhythmState(): RhythmState {
   const examenDone = examenActive && (practiceLocal.examen || serverDone("examen"));
   const listeningDone = listeningActive && (practiceLocal.listening || serverDone("listening"));
   const journalingDone = journalingActive && (practiceLocal.journaling || serverDone("journaling"));
+  // Co-Breathe is kept once a sit is completed today (server-tracked).
+  const cobreatheDone = cobreatheActive && (cobreathe?.done ?? false);
 
   // The four core anchors plus whichever optional practices the user added.
   // Evening is an OPT-IN anchor — off by default (evening office pref "none"),
@@ -398,6 +404,7 @@ export function useRhythmState(): RhythmState {
     ...(eveningActive ? [eveningDone] : []),
   ];
   const extraFlags = [
+    ...(cobreatheActive ? [cobreatheDone] : []),
     ...(listeningActive ? [listeningDone] : []),
     ...(gratitudeActive ? [gratitudeDone] : []),
     ...(examenActive ? [examenDone] : []),
@@ -437,10 +444,12 @@ export function useRhythmState(): RhythmState {
     examenActive,
     listeningActive,
     journalingActive,
+    cobreatheActive,
     gratitudeDone,
     examenDone,
     listeningDone,
     journalingDone,
+    cobreatheDone,
     customAnchors,
     totalAnchors,
     doneCount,

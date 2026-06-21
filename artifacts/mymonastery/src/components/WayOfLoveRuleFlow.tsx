@@ -23,7 +23,7 @@ import { FROST, FROST_BLUR } from "@/lib/frost";
 import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getJournalingSlot, setJournalingSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
+import { getCustomAnchors, addCustomAnchor, removeCustomAnchor, getJournalingSlot, setJournalingSlot, getPracticeSlot, setPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_SLOTS, READING_UNITS, type CustomAnchor, type CustomSlot, type ReadingUnit, type ReadingConfig } from "@/lib/customAnchors";
 import {
   setSideLevel,
   setSideReflection,
@@ -44,7 +44,7 @@ const BG = "#091A10";
 const CREAM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SAGE_DIM = "rgba(143,175,150,0.6)";
-const CARD = "rgba(9,26,16,0.3)";
+const CARD = "rgba(9,26,16,0.27)";
 const CARD_ACTIVE = "rgba(46,107,64,0.34)";
 // Match the app-wide card border (rgba(46,107,64,0.4) — the dominant resting
 // border on dashboard/daily-progress surfaces) so the builder doesn't read as a
@@ -64,7 +64,8 @@ type Step =
   | "when"
   | "morning-way" | "morning-config"
   | "evening-way" | "evening-config"
-  | "listen" | "learn" | "extras" | "custom" | "done";
+  | "contemplative" | "contemplation-goal" | "cobreathe-when" | "audio-when" | "examen-when"
+  | "learn" | "extras" | "custom" | "done";
 // Contemplation goal options — a single dropdown in 5-minute increments.
 const GOAL_OPTIONS = Array.from({ length: 18 }, (_, i) => (i + 1) * 5); // 5…90
 
@@ -246,7 +247,50 @@ export default function WayOfLoveRuleFlow({
       listening: homeCardOn(user.homeLayout, "listening"),
       journaling: homeCardOn(user.homeLayout, "journaling"),
     });
+    setContemplative((c) => touchedRef.current ? c : {
+      prayer: prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation",
+      cobreathe: homeCardOn(user.homeLayout, "cobreathe") || (contemplationStyle === "cobreathe" && (prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation")),
+      audio: homeCardOn(user.homeLayout, "listening"),
+      examen: homeCardOn(user.homeLayout, "examen"),
+    });
   }, [user]);
+
+  // ── Contemplative practices (the multi-select step) ────────────────────────
+  // Pick any of: Contemplative Prayer (sets a silence goal), Co-Breathe, Audio
+  // Divina, the Examen. The latter three slot into the day at a chosen time.
+  const [contemplative, setContemplative] = useState<{ prayer: boolean; cobreathe: boolean; audio: boolean; examen: boolean }>(() => ({
+    prayer: prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation",
+    cobreathe: homeCardOn(user?.homeLayout, "cobreathe") || (contemplationStyle === "cobreathe" && (prayBySide.morning === "contemplation" || prayBySide.evening === "contemplation")),
+    audio: homeCardOn(user?.homeLayout, "listening"),
+    examen: homeCardOn(user?.homeLayout, "examen"),
+  }));
+  const toggleContemplative = (k: "prayer" | "cobreathe" | "audio" | "examen") => {
+    touchedRef.current = true;
+    setContemplative((c) => ({ ...c, [k]: !c[k] }));
+  };
+  // Per-practice time-of-day slot for the three slotted practices.
+  const [slotByPractice, setSlotByPractice] = useState<Record<"cobreathe" | "listening" | "examen", CustomSlot>>(() => ({
+    cobreathe: getPracticeSlot("cobreathe"),
+    listening: getPracticeSlot("listening"),
+    examen: getPracticeSlot("examen"),
+  }));
+  const chooseSlot = (key: "cobreathe" | "listening" | "examen", slot: CustomSlot) => {
+    touchedRef.current = true;
+    setSlotByPractice((p) => ({ ...p, [key]: slot }));
+    setPracticeSlot(key, slot);
+  };
+  // Co-Breathe is already placed if a chosen side prays it as its contemplation
+  // STYLE — then we don't ask for a separate time-of-day or add a standalone card.
+  const cobreatheIsSideStyle = contemplationStyle === "cobreathe" && (
+    (sides.morning && prayBySide.morning === "contemplation") ||
+    (sides.evening && prayBySide.evening === "contemplation")
+  );
+  const SLOT_LABEL: Record<CustomSlot, string> = {
+    morning: t("wol_rule.slot_morning", { defaultValue: "Morning" }),
+    midday: t("wol_rule.slot_midday", { defaultValue: "Midday" }),
+    afternoon: t("wol_rule.slot_afternoon", { defaultValue: "Afternoon" }),
+    evening: t("wol_rule.slot_evening", { defaultValue: "Evening" }),
+  };
 
   // Custom practices — the user's own daily anchors (title + emoji). Created on
   // the "custom" slide below (reached from a card in the extras step), stored
@@ -364,12 +408,15 @@ export default function WayOfLoveRuleFlow({
     // "none" reflection → no newsletter card; otherwise the first picked source
     // is the per-side close-slide reflection.
     const primary: ReflectionSource = newsletters[0] ?? "none";
+    // Contemplative Prayer drives the silence goal; if it's unselected there's no
+    // goal (0) even if a number lingered in state.
+    const effGoalMin = contemplative.prayer ? goalMin : 0;
     for (const side of SIDES) {
       if (sides[side]) {
         setSideLevel(side, PRAY_LEVEL[prayBySide[side]]);
         setSideEntry(side, methodBySide[side]);
         setSideReflection(side, primary);
-        if (goalMin > 0) setSideMinutes(side, goalMin);
+        if (effGoalMin > 0) setSideMinutes(side, effGoalMin);
       } else {
         // Not part of their chosen rhythm — clear the level so it isn't a
         // programmed office for that side.
@@ -381,8 +428,8 @@ export default function WayOfLoveRuleFlow({
     const primarySide: OfficeSide = sides.morning ? "morning" : "evening";
     apiRequest("PUT", "/api/me/office-prefs", {
       defaultPrayerLevel: PRAY_LEVEL[prayBySide[primarySide]],
-      contemplationGoalMinutes: goalMin,
-      contemplationReminderEnabled: goalMin > 0,
+      contemplationGoalMinutes: effGoalMin,
+      contemplationReminderEnabled: effGoalMin > 0,
       // Each chosen side turns its reminder ON (a non-"none" pref is what makes
       // the server's daily office-reminder push fire) at its chosen time.
       // A side reminds only when it's part of the rhythm AND they didn't pick
@@ -411,11 +458,28 @@ export default function WayOfLoveRuleFlow({
     const others = (["cac", "fdd", "ssje"] as const).filter((n) => !newsletters.includes(n));
     // Added optional practices are surfaced (in order, not hidden); unselected
     // ones go to the hidden tail like the other opt-in modules.
-    const extrasOn = [...(extras.gratitude ? ["gratitude"] : []), ...(extras.examen ? ["examen"] : []), ...(extras.listening ? ["listening"] : []), ...(extras.journaling ? ["journaling"] : [])];
-    const extrasOff = [...(extras.gratitude ? [] : ["gratitude"]), ...(extras.examen ? [] : ["examen"]), ...(extras.listening ? [] : ["listening"]), ...(extras.journaling ? [] : ["journaling"])];
-    const order = ["requests", "office", "contemplation", ...newsletters, ...extrasOn, "feeds", "ncmp", "podcasts", ...extrasOff, ...others];
+    // Gratitude + journaling come from the "Add to your day" step; Examen, Audio
+    // Divina (listening), and Co-Breathe come from the contemplative step. A
+    // standalone Co-Breathe card is added only when it isn't already a side's
+    // contemplation style (then it's represented by that side's office instead).
+    const wantCobreathe = contemplative.cobreathe && !cobreatheIsSideStyle;
+    const onKeys = [
+      ...(extras.gratitude ? ["gratitude"] : []),
+      ...(extras.journaling ? ["journaling"] : []),
+      ...(contemplative.examen ? ["examen"] : []),
+      ...(contemplative.audio ? ["listening"] : []),
+      ...(wantCobreathe ? ["cobreathe"] : []),
+    ];
+    const offKeys = [
+      ...(extras.gratitude ? [] : ["gratitude"]),
+      ...(extras.journaling ? [] : ["journaling"]),
+      ...(contemplative.examen ? [] : ["examen"]),
+      ...(contemplative.audio ? [] : ["listening"]),
+      ...(wantCobreathe ? [] : ["cobreathe"]),
+    ];
+    const order = ["requests", "office", "contemplation", ...newsletters, ...onKeys, "feeds", "ncmp", "podcasts", ...offKeys, ...others];
     // "feeds" stays visible (self-hides until you subscribe to a prayer feed).
-    const hidden = ["ncmp", "podcasts", ...extrasOff, ...others];
+    const hidden = ["ncmp", "podcasts", ...offKeys, ...others];
     apiRequest("PUT", "/api/me/home-layout", { order, hidden, v: HOME_LAYOUT_VERSION })
       .then(() => qc.invalidateQueries({ queryKey: ["/api/auth/me"] }))
       .catch(() => {/* ignore */});
@@ -448,7 +512,12 @@ export default function WayOfLoveRuleFlow({
     "when",
     ...(sides.morning ? (["morning-way", "morning-config"] as Step[]) : []),
     ...(sides.evening ? (["evening-way", "evening-config"] as Step[]) : []),
-    "listen", "learn", "extras",
+    "contemplative",
+    ...(contemplative.prayer ? (["contemplation-goal"] as Step[]) : []),
+    ...(contemplative.cobreathe && !cobreatheIsSideStyle ? (["cobreathe-when"] as Step[]) : []),
+    ...(contemplative.audio ? (["audio-when"] as Step[]) : []),
+    ...(contemplative.examen ? (["examen-when"] as Step[]) : []),
+    "learn", "extras",
   ];
   const totalSteps = orderedSteps.length;
   const goNext = () => { const i = orderedSteps.indexOf(step); if (i >= 0 && i < orderedSteps.length - 1) setStep(orderedSteps[i + 1]); };
@@ -523,12 +592,64 @@ export default function WayOfLoveRuleFlow({
     </button>
   );
 
-  // ── Step 2 — Return (contemplation goal) ─────────────────────────────────
-  if (step === "listen") {
+  // ── Contemplative practices — multi-select (pick any) ─────────────────────
+  if (step === "contemplative") {
     return shell(
       <>
         {backRow(goPrev)}
-        {stepHeader(t("wol_rule.listen_eyebrow", { defaultValue: "Return" }), t("wol_rule.listen_title", { defaultValue: "Contemplation" }))}
+        {stepHeader(t("wol_rule.contemplative_eyebrow", { defaultValue: "Return" }), t("wol_rule.contemplative_title", { defaultValue: "Contemplation" }))}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 20px" }}>
+          {t("wol_rule.contemplative_body", { defaultValue: "Choose the contemplative practices for your day — pick as many as you like." })}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {choiceRow(contemplative.prayer, `🕯️ ${t("wol_rule.cp_prayer", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.cp_prayer_sub", { defaultValue: "Sit in silence before God." }), () => toggleContemplative("prayer"))}
+          {choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Twelve breaths, together — a prayer for justice." }), () => toggleContemplative("cobreathe"))}
+          {choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Music as a way of prayer." }), () => toggleContemplative("audio"))}
+          {choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
+        </div>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
+      </>,
+    );
+  }
+
+  // ── "What time of day?" — slot picker for Co-Breathe / Audio Divina / Examen ─
+  if (step === "cobreathe-when" || step === "audio-when" || step === "examen-when") {
+    const key = step === "cobreathe-when" ? "cobreathe" : step === "audio-when" ? "listening" : "examen";
+    const meta = step === "cobreathe-when"
+      ? { label: t("wol_rule.cp_cobreathe", { defaultValue: "Co-Breathe" }), body: t("wol_rule.when_cobreathe_body", { defaultValue: "When in the day would you like to breathe?" }) }
+      : step === "audio-when"
+        ? { label: t("wol_rule.cp_audio", { defaultValue: "Audio Divina" }), body: t("wol_rule.when_audio_body", { defaultValue: "When in the day would you like to listen?" }) }
+        : { label: t("wol_rule.cp_examen", { defaultValue: "The Examen" }), body: t("wol_rule.when_examen_body", { defaultValue: "When in the day would you like to pray the Examen?" }) };
+    return shell(
+      <>
+        {backRow(goPrev)}
+        {stepHeader(meta.label, meta.label)}
+        <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 0" }}>{meta.body}</p>
+        <p style={{ color: SAGE_DIM, fontSize: 12, textTransform: "uppercase", letterSpacing: "0.8px", margin: "26px 0 10px", fontFamily: FONT }}>
+          {t("wol_rule.when_label", { defaultValue: "What time of day?" })}
+        </p>
+        <div style={{ position: "relative" }}>
+          <select
+            value={slotByPractice[key]}
+            onChange={(e) => chooseSlot(key, e.target.value as CustomSlot)}
+            aria-label={t("wol_rule.when_label", { defaultValue: "What time of day?" })}
+            style={{ ...FROST_BLUR, width: "100%", background: CARD, border: `1px solid ${CARD_B}`, borderRadius: 12, padding: "13px 40px 13px 14px", color: CREAM, fontSize: 16, fontFamily: FONT, outline: "none", colorScheme: "dark", appearance: "none", WebkitAppearance: "none" }}
+          >
+            {CUSTOM_SLOTS.map((s) => (<option key={s} value={s}>{SLOT_LABEL[s]}</option>))}
+          </select>
+          <span aria-hidden style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", color: SAGE, fontSize: 12, pointerEvents: "none" }}>▾</span>
+        </div>
+        {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
+      </>,
+    );
+  }
+
+  // ── Contemplative Prayer — silence goal ──────────────────────────────────
+  if (step === "contemplation-goal") {
+    return shell(
+      <>
+        {backRow(goPrev)}
+        {stepHeader(t("wol_rule.listen_eyebrow", { defaultValue: "Return" }), t("wol_rule.listen_title", { defaultValue: "Contemplative Prayer" }))}
         <p style={{ color: SAGE, fontSize: 15, fontFamily: FONT, lineHeight: 1.6, margin: "14px 0 0" }}>
           {t("wol_rule.listen_body", { defaultValue: "St. Benedict's Rule calls us back to God — a daily return. Take a few minutes a day to sit in silence before God, open to what God might be speaking and to what's on your own heart. A return to God's love." })}
         </p>
@@ -749,8 +870,7 @@ export default function WayOfLoveRuleFlow({
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(extras.gratitude, `🙏 ${t("wol_rule.extra_gratitude", { defaultValue: "Gratitude" })}`, t("wol_rule.extra_gratitude_sub", { defaultValue: "Name one gift from the day." }), () => toggleExtra("gratitude"))}
-          {choiceRow(extras.examen, `🌗 ${t("wol_rule.extra_examen", { defaultValue: "The Examen" })}`, t("wol_rule.extra_examen_sub", { defaultValue: "St. Ignatius' end-of-day review of the day with God." }), () => toggleExtra("examen"))}
-          {choiceRow(extras.listening, `🎧 ${t("wol_rule.extra_listening", { defaultValue: "Audio Divina" })}`, t("wol_rule.extra_listening_sub", { defaultValue: "Sacred listening" }), () => toggleExtra("listening"))}
+          {/* Examen + Audio Divina now live in the Contemplation step. */}
           {choiceRow(extras.journaling, `📓 ${t("wol_rule.extra_journaling", { defaultValue: "Journaling" })}`, t("wol_rule.extra_journaling_sub", { defaultValue: "Keep a journal however you like — just log the day, no typing." }), () => toggleExtra("journaling"))}
           {/* When they journal — so the card slots into the rhythm at that time. */}
           {extras.journaling && (
@@ -968,13 +1088,14 @@ export default function WayOfLoveRuleFlow({
       sub: `${prayBySide[s] === "community" ? "On screen" : prayBySide[s] === "contemplation" ? "Silent sit" : methodLabel(methodBySide[s])} · ${timeBySide[s]}`,
       step: (s === "morning" ? "morning-way" : "evening-way") as Step,
     })),
-    { emoji: "🕯️", label: "Contemplation", sub: goalMin > 0 ? `${goalMin} min of silence a day` : "No goal", step: "listen" },
+    ...(contemplative.prayer ? [{ emoji: "🕯️", label: "Contemplative Prayer", sub: goalMin > 0 ? `${goalMin} min of silence a day` : "No goal", step: "contemplation-goal" as Step }] : []),
+    ...(contemplative.cobreathe ? [{ emoji: "🌍", label: "Co-Breathe", sub: cobreatheIsSideStyle ? "With your prayer" : SLOT_LABEL[slotByPractice.cobreathe], step: "contemplative" as Step }] : []),
+    ...(contemplative.audio ? [{ emoji: "🎵", label: "Audio Divina", sub: SLOT_LABEL[slotByPractice.listening], step: "audio-when" as Step }] : []),
+    ...(contemplative.examen ? [{ emoji: "🌗", label: "The Examen", sub: SLOT_LABEL[slotByPractice.examen], step: "examen-when" as Step }] : []),
     ...(newsletters.length
       ? [{ emoji: "📖", label: "Today's reflection", sub: newsletters.map((n) => NEWSLETTERS.find((x) => x.id === n)?.label ?? n).join(" · "), step: "learn" as Step }]
       : []),
     ...(extras.gratitude ? [{ emoji: "🙏", label: "Gratitude", sub: "Name one gift from the day", step: "extras" as Step }] : []),
-    ...(extras.examen ? [{ emoji: "🌗", label: "The Examen", sub: "Review the day with God", step: "extras" as Step }] : []),
-    ...(extras.listening ? [{ emoji: "🎧", label: "Audio Divina", sub: "Pray with music", step: "extras" as Step }] : []),
     ...(extras.journaling ? [{ emoji: "📓", label: "Journaling", sub: "Keep a journal — log the day", step: "extras" as Step }] : []),
   ];
   return shell(

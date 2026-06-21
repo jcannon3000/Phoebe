@@ -8,7 +8,7 @@
  * is just the cards + streak.
  */
 
-import { useState, useEffect, type CSSProperties, type ReactNode } from "react";
+import { useState, useEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -19,8 +19,9 @@ import { useEffectiveReflectionSource, type ReflectionSource } from "@/lib/offic
 import { BookOfficeLogRow } from "@/components/BookOfficeLogRow";
 import { CAC_TODAY_URL, markCacRead, FDD_TODAY_URL, markFddRead, SSJE_TODAY_URL, markSsjeRead } from "@/lib/cacReadState";
 import { openExternal } from "@/lib/openExternal";
-import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getJournalingSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
+import { markCustomDoneToday, setCustomNotToday, logReadingToday, getReadingToday, getReadingTotal, readingUnitLabel, getCustomAnchors, getCustomDoneDays, getJournalingSlot, getPracticeSlot, CUSTOM_ANCHORS_EVENT, CUSTOM_DONE_EVENT, type CustomSlot, type ReadingConfig } from "@/lib/customAnchors";
 import { markPracticeDoneToday } from "@/lib/practiceCompletion";
+import { isNativeShell } from "@/lib/isNativeShell";
 
 const PUBLICATION_NAME: Record<Exclude<ReflectionSource, "none">, string> = {
   fdd: "Forward Day by Day",
@@ -44,7 +45,7 @@ function cardTintBg(tint: number): string {
   const r = Math.round(26 - 16 * t);
   const g = Math.round(52 - 24 * t);
   const b = Math.round(36 - 18 * t);
-  const a = (0.30 + 0.10 * t).toFixed(3);
+  const a = (0.27 + 0.09 * t).toFixed(3);
   return `rgba(${r},${g},${b},${a})`;
 }
 
@@ -145,7 +146,7 @@ function StreakCard() {
   return (
     <div
       className="relative flex rounded-2xl overflow-hidden mt-6"
-      style={{ background: "rgba(22,46,32,0.34)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: `1px solid rgba(${GREEN},0.26)` }}
+      style={{ background: "rgba(22,46,32,0.3)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: `1px solid rgba(${GREEN},0.26)` }}
     >
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${GREEN_BRIGHT},0.7)` }} />
       <div className="flex-1 px-4 py-4">
@@ -252,7 +253,7 @@ export function WeeklyGridCard() {
     // day — and stays ahead of Contemplation, matching the card order below.
     ...(reflectActive ? [{ id: "reflection", emoji: "📖", label: t("rhythm.row_reflection", { defaultValue: "Reflection" }), rgb: "96,141,209", doneFor: (d: Day) => !!d.reflection }] : []),
     ...(silenceActive ? [{ id: "contemplation", emoji: "🕯️", label: t("rhythm.row_contemplation", { defaultValue: "Contemplation" }), rgb: "62,124,122", doneFor: (d: Day) => !!d.contemplation }] : []),
-    ...(listeningActive ? [{ id: "listening", emoji: "🎧", label: t("rhythm.row_listening", { defaultValue: "Audio Divina" }), rgb: "108,140,180", doneFor: (d: Day) => !!d.listening }] : []),
+    ...(listeningActive ? [{ id: "listening", emoji: "🎵", label: t("rhythm.row_listening", { defaultValue: "Audio Divina" }), rgb: "108,140,180", doneFor: (d: Day) => !!d.listening }] : []),
     ...(eveningActive ? [{ id: "evening", emoji: "🌙", label: t("rhythm.row_evening", { defaultValue: "Evening" }), rgb: "124,116,196", doneFor: (d: Day) => !!d.evening }] : []),
     ...(gratitudeActive ? [{ id: "gratitude", emoji: "🙏", label: t("rhythm.row_gratitude", { defaultValue: "Gratitude" }), rgb: "108,162,124", doneFor: (d: Day) => !!d.gratitude }] : []),
     ...(examenActive ? [{ id: "examen", emoji: "🌗", label: t("rhythm.row_examen", { defaultValue: "Examen" }), rgb: "150,120,180", doneFor: (d: Day) => !!d.examen }] : []),
@@ -505,7 +506,7 @@ function PracticeCard({
 
 export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode }) {
   const { t } = useTranslation();
-  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, listeningActive, journalingActive, gratitudeDone, examenDone, listeningDone, journalingDone, customAnchors } = useRhythmState();
+  const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, listeningActive, journalingActive, cobreatheActive, gratitudeDone, examenDone, listeningDone, journalingDone, cobreatheDone, customAnchors } = useRhythmState();
   const hour = new Date().getHours();
   // The custom-practice "Log" popup — which anchor's popup is open (by id).
   const [logAnchorId, setLogAnchorId] = useState<string | null>(null);
@@ -594,6 +595,39 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   };
   const journalingForSlot = (slot: CustomSlot) => (journalingActive && journalingSlot === slot) ? [journalingCard] : [];
 
+  // Co-Breathe, Audio Divina, and the Examen now slot into the rhythm at the
+  // time of day chosen in the customizer's contemplative step (getPracticeSlot),
+  // the same way journaling + custom anchors do.
+  const cobreatheCard = {
+    key: "cobreathe", emoji: "🌍", rgb: "62,124,122", done: cobreatheDone, href: "/cobreathe?start=1",
+    title: t("rhythm.card_cobreathe", { defaultValue: "Co-Breathe" }),
+    blurb: cobreatheDone ? kept : t("rhythm.blurb_cobreathe", { defaultValue: "Twelve breaths, together" }),
+    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+  };
+  const listeningCard = {
+    key: "listening", emoji: "🎵", rgb: "108,140,180", done: listeningDone, href: "/listening",
+    title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }),
+    blurb: listeningDone ? kept : t("rhythm.blurb_listening", { defaultValue: "Music as a way of prayer" }),
+    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+  };
+  const examenCard = {
+    key: "examen", emoji: "🌗", rgb: "150,120,180", done: examenDone, href: "/examen",
+    title: t("rhythm.card_examen", { defaultValue: "The Examen" }),
+    blurb: examenDone ? kept : t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }),
+    cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
+  };
+  const cobreatheSlot = getPracticeSlot("cobreathe");
+  const listeningSlot = getPracticeSlot("listening");
+  const examenSlot = getPracticeSlot("examen");
+  const cobreatheForSlot = (slot: CustomSlot) => (cobreatheActive && cobreatheSlot === slot) ? [cobreatheCard] : [];
+  const listeningForSlot = (slot: CustomSlot) => (listeningActive && listeningSlot === slot) ? [listeningCard] : [];
+  const examenForSlot = (slot: CustomSlot) => (examenActive && examenSlot === slot) ? [examenCard] : [];
+  // All the slotted optional practices for a given time of day, in a stable order.
+  const slottedForSlot = (slot: CustomSlot) => [
+    ...cobreatheForSlot(slot), ...listeningForSlot(slot), ...examenForSlot(slot),
+    ...journalingForSlot(slot), ...customsForSlot(slot),
+  ];
+
   const cards = [
     ...(morningActive ? [{
       key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer?side=morning",
@@ -602,8 +636,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurbCycle: morningDone ? undefined : [morningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
-    ...journalingForSlot("morning"),
-    ...customsForSlot("morning"),
+    ...slottedForSlot("morning"),
     // One card per reflection newsletter the user follows — each its own card +
     // dot, opening that source's reading directly (and marking it read).
     ...reflections.map((r) => {
@@ -631,29 +664,15 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // When done, show a plain ✓ like the other anchors — no "Sit again" pill.
       progress: { current: contemplationMin, goal: contemplationGoalMin },
     }] : []),
-    ...(listeningActive ? [{
-      key: "listening", emoji: "🎧", rgb: "108,140,180", done: listeningDone, href: "/listening",
-      title: t("rhythm.card_listening", { defaultValue: "Audio Divina" }),
-      blurb: listeningDone ? kept : t("rhythm.blurb_listening", { defaultValue: "Music as a way of prayer" }),
-      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-    }] : []),
-    ...journalingForSlot("midday"),
-    ...customsForSlot("midday"),
+    ...slottedForSlot("midday"),
     ...(gratitudeActive ? [{
       key: "gratitude", emoji: "🙏", rgb: "108,162,124", done: gratitudeDone, href: "/gratitude",
       title: t("rhythm.card_gratitude", { defaultValue: "Gratitude" }),
       blurb: gratitudeDone ? kept : t("rhythm.blurb_gratitude", { defaultValue: "Name a gift from today" }),
       cta: t("rhythm.write", { defaultValue: "Write" }), later: false,
     }] : []),
-    ...(examenActive ? [{
-      key: "examen", emoji: "🌗", rgb: "150,120,180", done: examenDone, href: "/examen",
-      title: t("rhythm.card_examen", { defaultValue: "The Examen" }),
-      blurb: examenDone ? kept : t("rhythm.blurb_examen", { defaultValue: "Review the day with God" }),
-      cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-    }] : []),
-    // Afternoon custom practices sit after the day's optional practices.
-    ...journalingForSlot("afternoon"),
-    ...customsForSlot("afternoon"),
+    // Afternoon slotted practices sit after the day's optional practices.
+    ...slottedForSlot("afternoon"),
     ...(eveningActive ? [{
       // Evening sits last and stays a quiet "later" card until 3 PM, so the
       // morning rhythm (reflection → contemplation) leads the day; from 3 PM on
@@ -670,8 +689,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       cta: t("rhythm.begin", { defaultValue: "Begin" }),
       later: hour < 15,
     }] : []),
-    ...journalingForSlot("evening"),
-    ...customsForSlot("evening"),
+    ...slottedForSlot("evening"),
   ];
 
   // When a dedicated office hero is supplied (the beta home), the office shows
@@ -707,6 +725,23 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // Done section quietly empty out as the day went on.)
   const completedDisplay = visibleCards.filter((c) => c.done);
   const showDoneSection = (showStreak || showDone) && completedDisplay.length > 0;
+
+  // A gentle light haptic ticks under each card as it cascades in (native only,
+  // once per mount), synced to the enterUp stagger below.
+  const cascadeHaptedRef = useRef(false);
+  useEffect(() => {
+    if (!ready || cascadeHaptedRef.current) return;
+    cascadeHaptedRef.current = true;
+    if (!isNativeShell()) return;
+    const count = upcomingDisplay.length + completedDisplay.length;
+    const timers: number[] = [];
+    for (let i = 0; i < count; i++) {
+      timers.push(window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "light" } }));
+      }, Math.min(i * 0.1, 0.7) * 1000));
+    }
+    return () => timers.forEach((id) => window.clearTimeout(id));
+  }, [ready, upcomingDisplay.length, completedDisplay.length]);
 
   // Matches the Prayer List title row — a larger mixed-case heading with a
   // divider line trailing off to the right.
@@ -757,9 +792,9 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // A clear cascade: a touch more travel + a longer per-card gap so the cards
   // visibly load one after another rather than appearing all at once.
   const enterUp = (i: number) => ({
-    initial: { opacity: 0, y: 14 },
+    initial: { opacity: 0, y: 8 },
     animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] as const, delay: Math.min(i * 0.18, 1.1) },
+    transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] as const, delay: Math.min(i * 0.1, 0.7) },
   });
 
   // Hold the first paint until the rhythm queries have settled (so cards don't
@@ -862,7 +897,7 @@ function LogSheet({
     >
       <div
         className="w-full"
-        style={{ maxWidth: 460, margin: "0 10px", background: "#0F2618", border: "1px solid rgba(111,175,133,0.25)", borderRadius: "20px 20px 0 0", padding: "20px 20px calc(env(safe-area-inset-bottom, 0px) + 18px)" }}
+        style={{ maxWidth: 460, margin: "0 10px", background: "rgba(6,18,11,0.62)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid rgba(111,175,133,0.25)", borderRadius: "20px 20px 0 0", padding: "20px 20px calc(env(safe-area-inset-bottom, 0px) + 18px)" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-3 mb-4">

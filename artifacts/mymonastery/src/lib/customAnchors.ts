@@ -37,6 +37,27 @@ export function setJournalingSlot(slot: CustomSlot): void {
   try { localStorage.setItem(JOURNALING_SLOT_KEY, slot); } catch { /* private mode */ }
 }
 
+// Other built-in practices that the customizer now places at a chosen time of day
+// (Co-Breathe, Audio Divina, the Examen) — each carries a per-device slot, same
+// idea as journaling. Sensible defaults if the user never picks one.
+export type SlottedPractice = "cobreathe" | "listening" | "examen";
+const PRACTICE_SLOT_DEFAULT: Record<SlottedPractice, CustomSlot> = {
+  cobreathe: "morning",
+  listening: "midday",
+  examen: "evening",
+};
+export function getPracticeSlot(key: SlottedPractice): CustomSlot {
+  try {
+    const v = localStorage.getItem(`phoebe:slot:${key}`) as CustomSlot | null;
+    return v && CUSTOM_SLOTS.includes(v) ? v : PRACTICE_SLOT_DEFAULT[key];
+  } catch {
+    return PRACTICE_SLOT_DEFAULT[key];
+  }
+}
+export function setPracticeSlot(key: SlottedPractice, slot: CustomSlot): void {
+  try { localStorage.setItem(`phoebe:slot:${key}`, slot); } catch { /* private mode */ }
+}
+
 // A reading ritual is a custom anchor you LOG by an amount rather than a plain
 // check. The unit is how you measure a sitting — by chapter, by page, or by
 // time (minutes). An optional per-day goal gives the log a target; logging any
