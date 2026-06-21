@@ -603,7 +603,7 @@ export default function WayOfLoveRuleFlow({
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {choiceRow(contemplative.prayer, `🕯️ ${t("wol_rule.cp_prayer", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.cp_prayer_sub", { defaultValue: "Sit in silence before God." }), () => toggleContemplative("prayer"))}
-          {choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "Twelve breaths, together — a prayer for justice." }), () => toggleContemplative("cobreathe"))}
+          {choiceRow(contemplative.cobreathe, `🌍 ${t("wol_rule.cp_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.cp_cobreathe_sub", { defaultValue: "12 breaths as a prayer for climate justice." }), () => toggleContemplative("cobreathe"))}
           {choiceRow(contemplative.audio, `🎵 ${t("wol_rule.cp_audio", { defaultValue: "Audio Divina" })}`, t("wol_rule.cp_audio_sub", { defaultValue: "Sacred listening." }), () => toggleContemplative("audio"))}
           {choiceRow(contemplative.examen, `🌗 ${t("wol_rule.cp_examen", { defaultValue: "The Examen" })}`, t("wol_rule.cp_examen_sub", { defaultValue: "Review the day with God." }), () => toggleContemplative("examen"))}
         </div>
@@ -712,7 +712,7 @@ export default function WayOfLoveRuleFlow({
           {choiceRow(prayBySide[side] === "devotion", `🌿 ${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`, t("wol_rule.pray_devotion_sub", { defaultValue: "A short liturgy with your community's prayers included." }), () => choosePrayBySide(side, "devotion"))}
           {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, t("wol_rule.pray_offices_sub", { defaultValue: "The full liturgy with your community's prayers included." }), () => choosePrayBySide(side, "offices"))}
           {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle !== "cobreathe", `🕯️ ${cap} ${t("wol_rule.contemplation_word", { defaultValue: "Contemplation" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("silent"); })}
-          {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle === "cobreathe", `🌍 ${t("wol_rule.style_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.style_cobreathe_sub", { defaultValue: "Twelve breaths, together — a prayer for justice." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("cobreathe"); })}
+          {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle === "cobreathe", `🌍 ${t("wol_rule.style_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.style_cobreathe_sub", { defaultValue: "12 breaths as a prayer for climate justice." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("cobreathe"); })}
         </div>
         {ctaButton(t("ruleOfLife.continue", { defaultValue: "Continue" }), goNext)}
       </>,

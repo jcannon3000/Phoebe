@@ -14,7 +14,7 @@ export default function MenuPracticesPage() {
       groups={[{
         items: [
           { emoji: "🕯️", label: "Contemplation", sub: "A timer for silent prayer", onClick: () => go("/contemplation") },
-          { emoji: "🌍", label: "Co-Breathe", sub: "Twelve breaths, together — a prayer for justice", onClick: () => go("/cobreathe") },
+          { emoji: "🌍", label: "Co-Breathe", sub: "12 breaths as a prayer for climate justice", onClick: () => go("/cobreathe") },
           { emoji: "🎧", label: "Audio Divina", sub: "Sacred listening", onClick: () => go("/listening") },
           { emoji: "🌾", label: "Gratitude", sub: "A daily thanksgiving journal", onClick: () => go("/gratitude") },
           { emoji: "🤔", label: "Examen", sub: "End-of-day reflective prayer", onClick: () => go("/examen") },

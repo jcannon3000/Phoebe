@@ -601,7 +601,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const cobreatheCard = {
     key: "cobreathe", emoji: "🌍", rgb: "62,124,122", done: cobreatheDone, href: "/cobreathe?start=1",
     title: t("rhythm.card_cobreathe", { defaultValue: "Co-Breathe" }),
-    blurb: cobreatheDone ? kept : t("rhythm.blurb_cobreathe", { defaultValue: "Twelve breaths, together" }),
+    blurb: cobreatheDone ? kept : t("rhythm.blurb_cobreathe", { defaultValue: "12 breaths as a prayer for climate justice" }),
     cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
   };
   const listeningCard = {

@@ -69,7 +69,7 @@ function cameFromContemplation(): boolean {
 }
 
 // Cobreathe — from "conspire", con + spirare, to breathe together.
-// A short daily guided breath held as embodied prayer for justice: not
+// A short daily guided breath held as embodied prayer for climate justice: not
 // synchronized in time, but everyone who keeps the practice on a given day
 // shares one count, and the closing screen tells you how many people you
 // breathed with — including the faces of people in your garden. Drawn from
