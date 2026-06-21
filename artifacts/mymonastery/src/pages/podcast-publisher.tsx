@@ -5,6 +5,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 // ── /podcasts/:publisher — a publisher's shows ──────────────────────────
 //
@@ -66,7 +67,7 @@ function GridArtFallback({ hidden }: { hidden?: boolean }) {
         width: "100%",
         aspectRatio: "1 / 1",
         borderRadius: 16,
-        background: "rgba(46,107,64,0.18)",
+        background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
         border: "1px solid rgba(46,107,64,0.3)",
         display: hidden ? "none" : "flex",
         alignItems: "center",
@@ -81,6 +82,7 @@ function GridArtFallback({ hidden }: { hidden?: boolean }) {
 }
 
 export default function PodcastPublisherPage() {
+  const podcastBg = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[0]! : null;
   const { publisher } = useParams<{ publisher: string }>();
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
@@ -100,7 +102,7 @@ export default function PodcastPublisherPage() {
   if (authLoading || !user) return null;
 
   return (
-    <Layout>
+    <Layout bgPhoto={podcastBg}>
       <div className="w-full max-w-2xl mx-auto" style={{ color: PALETTE.warm, fontFamily: FONT, paddingBottom: 40 }}>
         <div className="flex items-center gap-3 mb-1">
           <span style={{ fontSize: 26 }} aria-hidden>{data?.emoji ?? "🎧"}</span>

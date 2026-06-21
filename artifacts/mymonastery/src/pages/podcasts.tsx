@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlayer";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 // ── /podcasts — the Discover index ──────────────────────────────────────
 //
@@ -116,7 +117,7 @@ function Fallback({ hidden }: { hidden?: boolean }) {
     <div
       style={{
         width: "100%", aspectRatio: "1 / 1", borderRadius: 16,
-        background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.3)",
+        background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.3)",
         display: hidden ? "none" : "flex", alignItems: "center", justifyContent: "center",
         fontSize: 44,
       }}
@@ -211,7 +212,7 @@ function EpisodeRow({ ep, onOpen }: { ep: EpisodeHit; onOpen: () => void }) {
       onClick={onOpen}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
       className="w-full rounded-2xl p-3 cursor-pointer transition-opacity hover:opacity-90 flex items-start gap-3"
-      style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+      style={{ background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.22)" }}
     >
       <div style={{ width: 52, height: 52, flexShrink: 0 }}>
         <GridArt url={ep.show.artwork} alt={ep.show.title} />
@@ -287,7 +288,7 @@ function RecommendationRow({ rec, onOpen }: { rec: RecommendedEpisode; onOpen: (
       onClick={onOpen}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
       className="w-full rounded-2xl p-3.5 cursor-pointer transition-opacity hover:opacity-90"
-      style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+      style={{ background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.22)" }}
     >
       <div className="flex items-start gap-3">
         <div style={{ width: 56, height: 56, flexShrink: 0 }}>
@@ -339,7 +340,7 @@ function ListenListRow({
   return (
     <div
       className="w-full rounded-2xl p-3.5 flex items-center gap-3"
-      style={{ background: "rgba(46,107,64,0.08)", border: "1px solid rgba(46,107,64,0.22)" }}
+      style={{ background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.22)" }}
     >
       <div
         role="button"
@@ -378,6 +379,7 @@ function ListenListRow({
 }
 
 export default function PodcastsPage() {
+  const podcastBg = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[0]! : null;
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const [tab, setTab] = useState<"discover" | "listen-list" | "community">("discover");
@@ -449,7 +451,7 @@ export default function PodcastsPage() {
     setLocation(`/podcasts/show/${ep.show.slug}?ep=${encodeURIComponent(ep.id)}`);
 
   return (
-    <Layout>
+    <Layout bgPhoto={podcastBg}>
       <div className="w-full max-w-2xl mx-auto" style={{ color: PALETTE.warm, fontFamily: FONT, paddingBottom: player.current ? 112 : 48 }}>
         <h1 style={{ fontSize: 30, fontWeight: 800, margin: "0 0 16px", lineHeight: 1.1 }}>
           {t("podcasts.title")}

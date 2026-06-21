@@ -7,6 +7,7 @@ import { usePodcastPlayer, type PlayingEpisode } from "@/components/PodcastPlaye
 import { toggleShowFollowed, useIsShowFollowed } from "@/lib/podcastHome";
 import { useTranslation } from "react-i18next";
 import { Layout } from "@/components/layout";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
 
 // ── /podcasts/show/:slug — a show's episodes ────────────────────────────
 //
@@ -70,7 +71,7 @@ function HeroArt({ url, alt }: { url: string | null; alt: string }) {
     objectFit: "cover", display: "block", boxShadow: "0 12px 34px rgba(0,0,0,0.34)",
   };
   const fallback: CSSProperties = {
-    ...box, background: "rgba(46,107,64,0.18)", border: "1px solid rgba(46,107,64,0.3)",
+    ...box, background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.3)",
     alignItems: "center", justifyContent: "center", fontSize: 64,
   };
   if (url) {
@@ -95,6 +96,7 @@ function HeroArt({ url, alt }: { url: string | null; alt: string }) {
 }
 
 export default function PodcastShowPage() {
+  const podcastBg = LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[0]! : null;
   const { slug } = useParams<{ slug: string }>();
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
@@ -215,7 +217,7 @@ export default function PodcastShowPage() {
   const followed = useIsShowFollowed(slug);
 
   return (
-    <Layout>
+    <Layout bgPhoto={podcastBg}>
       <div className="w-full max-w-2xl mx-auto" style={{ color: PALETTE.warm, fontFamily: FONT, paddingBottom: player.current ? 96 : 40 }}>
         <div style={{ marginBottom: 12 }}>
           <button
