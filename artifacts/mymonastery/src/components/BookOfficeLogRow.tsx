@@ -22,7 +22,7 @@ export function BookOfficeLogRow({ side, done }: { side: "morning" | "evening"; 
     >
       <span className="text-[18px] flex-shrink-0" aria-hidden>📖</span>
       <p className="flex-1 min-w-0 text-[13px] leading-snug" style={{ color: "#8FAF96", fontFamily: "'Space Grotesk', sans-serif" }}>
-        {t("rhythm.book_log_prompt", { defaultValue: "Praying from your book? Just log it." })}
+        {t("rhythm.book_log_prompt", { defaultValue: "Praying from your BCP? Just log it." })}
       </p>
       <button
         onClick={() => { markOfficeBookComplete(side); setLogged(true); }}

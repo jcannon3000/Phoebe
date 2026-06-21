@@ -3303,6 +3303,7 @@ const BCP_GUIDE_ES: Record<string, string> = {
     "Ora por tu gente — una a una, y luego vuelve a tu libro",
   "The Psalter begins at p. 585. Lessons are read from your own Bible.":
     "El Salterio comienza en la p. 585. Las lecturas se hacen desde tu propia Biblia.",
+  "Log": "Registrar",
   "🙏 I prayed this office": "🙏 Recé este oficio",
   "✓ Already logged today — praying it again still counts toward your rhythm.":
     "✓ Ya registrado hoy — rezarlo de nuevo igual cuenta para tu ritmo.",
@@ -3341,13 +3342,18 @@ function PhysicalBookGuide(props: {
   const sections = useMemo(() => buildBookSections(slides), [slides]);
   const startPage = MODE_START_PAGE[mode];
   const isFullOffice = mode === "morning" || mode === "evening";
+  // A calm leaf behind the guide (like the office slideshow), picked once.
+  const leafBg = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
+  // Frosted-glass section cards — the leaf blurs through a faint dark tint.
   const cardStyle: CSSProperties = {
     display: "flex",
     alignItems: "center",
     gap: 14,
-    background: "rgba(46,107,64,0.10)",
-    border: `1px solid ${BORDER}`,
+    background: "rgba(9,26,16,0.27)",
+    backdropFilter: "blur(12.6px)",
+    WebkitBackdropFilter: "blur(12.6px)",
+    border: "1px solid rgba(200,212,192,0.16)",
     borderRadius: 16,
     padding: "14px 16px",
   };
@@ -3393,7 +3399,14 @@ function PhysicalBookGuide(props: {
         isolation: "isolate",
       }}
     >
-      <AnimatedBackground base={BG} variant="subtle" fadeTop />
+      {leafBg ? (
+        <>
+          <img src={leafBg} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.5, zIndex: -1 }} />
+          <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,22,15,0.55) 0%, rgba(8,22,15,0.7) 45%, rgba(8,22,15,0.84) 100%)" }} />
+        </>
+      ) : (
+        <AnimatedBackground base={BG} variant="subtle" fadeTop />
+      )}
       {/* Top bar mirrors the slide deck's chrome; Back returns to the
           slides (never exits the office — that lives on the intro slide). */}
       <header style={{ position: "fixed", top: 0, left: 0, right: 0, zIndex: 50, pointerEvents: "none" }}>
@@ -3429,7 +3442,22 @@ function PhysicalBookGuide(props: {
           >
             {officeTitle}
           </span>
-          <div />
+          {/* Quick log — same action as the big button at the bottom, up here so
+              you can mark it the moment you finish without scrolling. */}
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={onMarkPrayed}
+              style={{
+                background: "rgba(46,107,64,0.55)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+                border: "1px solid rgba(168,197,160,0.5)", color: WARM_TEXT,
+                borderRadius: 999, padding: "6px 16px", fontSize: 12, fontWeight: 700,
+                letterSpacing: "0.04em", cursor: "pointer", fontFamily: SPACE_GROTESK,
+              }}
+            >
+              ✓ {bcpGuideText("Log")}
+            </button>
+          </div>
         </div>
       </header>
 
