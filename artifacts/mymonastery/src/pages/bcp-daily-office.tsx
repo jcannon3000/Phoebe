@@ -3815,6 +3815,9 @@ export default function BcpDailyOfficePage() {
   // then drops its own "way to pray" dropdowns instead of asking again (the
   // user already chose). Mirrors the daily-devotions page.
   const [cameFromPicker, setCameFromPicker] = useState(false);
+  // When the picker's Begin launches a slide-deck office, skip the office's own
+  // welcome slide (the picker already served that role) by starting at slide 1.
+  const [startSlide, setStartSlide] = useState(0);
 
   useEffect(() => {
     if (!isLoading && !user) setLocation("/");
@@ -3916,8 +3919,9 @@ export default function BcpDailyOfficePage() {
       <OfficeViewer
         mode={showMode}
         initialBook={showBook}
+        initialSlide={startSlide}
         cameFromPicker={cameFromPicker}
-        onBack={() => { setShowMode(null); setShowBook(false); setCameFromPicker(false); setLocation("/dashboard"); }}
+        onBack={() => { setShowMode(null); setShowBook(false); setCameFromPicker(false); setStartSlide(0); setLocation("/dashboard"); }}
       />
     );
   }
@@ -3978,6 +3982,7 @@ export default function BcpDailyOfficePage() {
     if (method === "listen") { setLocation(`/podcast/${side}-office`); return; }
     if (method === "watch" && side === "morning") { setLocation("/ncmp/watch"); return; }
     setShowBook(method === "book");
+    setStartSlide(1); // skip the office's welcome — the picker already was it
     setShowMode(side === "morning" ? "morning" : "evening");
   };
 
@@ -3986,6 +3991,7 @@ export default function BcpDailyOfficePage() {
   const launchDevotion = (mode: "morning-devotion" | "early-evening-devotion", method: "read" | "book" | "watch") => {
     if (method === "watch" && mode === "morning-devotion") { setLocation("/devotion/watch"); return; }
     setShowBook(method === "book");
+    setStartSlide(1); // skip the devotion's welcome — the picker already was it
     setShowMode(mode);
   };
 
@@ -3997,7 +4003,7 @@ export default function BcpDailyOfficePage() {
           if (opt.navigateTo) { setLocation(opt.navigateTo); return; }
           // Devotions + Compline always open as the slide deck (the
           // full offices' book guide is reached via OfficeMethodCard).
-          if (opt.mode) { setShowBook(false); setShowMode(opt.mode); }
+          if (opt.mode) { setShowBook(false); setStartSlide(1); setShowMode(opt.mode); }
         }}
         className="w-full text-left rounded-2xl overflow-hidden flex transition-all hover:shadow-md active:scale-[0.99]"
         style={{

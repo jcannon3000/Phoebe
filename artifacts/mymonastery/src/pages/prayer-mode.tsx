@@ -4204,6 +4204,13 @@ export default function PrayerModePage() {
   // saw the first slide flash for a render, get replaced by the
   // spinner during the refetch, then come back identical.
   if (!frozenSlides || index < 0) {
+    // Seamless intercessions handoff from the office: the office held its
+    // "Intercessions" title and prefetched the data, so don't flash a loading
+    // orb here — just hold a plain dark field (matching the office) until the
+    // first intercession is ready and fades up. No "loading circle."
+    if (seamlessFlow) {
+      return <div style={{ background: "#0C1F12", minHeight: "100dvh" }} />;
+    }
     // A calm "gathering" screen while the community intercession slideshow is
     // assembled — a slow breathing glow + a reverent line, over the same
     // drifting green backdrop the prayer slides use. Replaces the old bare
