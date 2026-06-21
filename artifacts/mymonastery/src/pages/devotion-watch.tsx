@@ -179,7 +179,7 @@ export default function DevotionWatchPage() {
             padding: 0,
           }}
         >
-          <span aria-hidden style={{ position: "absolute", inset: 0, background: "rgba(9,26,16,0.35)" }} />
+          <span aria-hidden style={{ position: "absolute", inset: 0, background: "rgba(9,26,16, 0.385)" }} />
           <span aria-hidden style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <span style={{ width: 64, height: 64, borderRadius: "50%", background: "rgba(240,237,230,0.95)", color: "#091A10", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, paddingLeft: 4 }}>
               ▶

@@ -117,7 +117,7 @@ function Fallback({ hidden }: { hidden?: boolean }) {
     <div
       style={{
         width: "100%", aspectRatio: "1 / 1", borderRadius: 16,
-        background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.3)",
+        background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.3)",
         display: hidden ? "none" : "flex", alignItems: "center", justifyContent: "center",
         fontSize: 44,
       }}
@@ -212,7 +212,7 @@ function EpisodeRow({ ep, onOpen }: { ep: EpisodeHit; onOpen: () => void }) {
       onClick={onOpen}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
       className="w-full rounded-2xl p-3 cursor-pointer transition-opacity hover:opacity-90 flex items-start gap-3"
-      style={{ background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.22)" }}
+      style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.22)" }}
     >
       <div style={{ width: 52, height: 52, flexShrink: 0 }}>
         <GridArt url={ep.show.artwork} alt={ep.show.title} />
@@ -288,7 +288,7 @@ function RecommendationRow({ rec, onOpen }: { rec: RecommendedEpisode; onOpen: (
       onClick={onOpen}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
       className="w-full rounded-2xl p-3.5 cursor-pointer transition-opacity hover:opacity-90"
-      style={{ background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.22)" }}
+      style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.22)" }}
     >
       <div className="flex items-start gap-3">
         <div style={{ width: 56, height: 56, flexShrink: 0 }}>
@@ -340,7 +340,7 @@ function ListenListRow({
   return (
     <div
       className="w-full rounded-2xl p-3.5 flex items-center gap-3"
-      style={{ background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.22)" }}
+      style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.22)" }}
     >
       <div
         role="button"

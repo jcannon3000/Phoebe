@@ -44,7 +44,7 @@ const BG = "#091A10";
 const CREAM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const SAGE_DIM = "rgba(143,175,150,0.6)";
-const CARD = "rgba(9,26,16,0.27)";
+const CARD = "rgba(9,26,16, 0.297)";
 const CARD_ACTIVE = "rgba(46,107,64,0.34)";
 // Match the app-wide card border (rgba(46,107,64,0.4) — the dominant resting
 // border on dashboard/daily-progress surfaces) so the builder doesn't read as a

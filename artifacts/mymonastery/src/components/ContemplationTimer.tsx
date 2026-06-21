@@ -684,7 +684,7 @@ export function ContemplationTimer({
         {(phase === "running" || phase === "complete") && (
           <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none" }}>
             <img src={bgPhoto} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.5 }} />
-            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(9,26,16,0.5) 0%, rgba(9,26,16,0.72) 55%, rgba(9,26,16,0.86) 100%)" }} />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(9,26,16, 0.550) 0%, rgba(9,26,16, 0.792) 55%, rgba(9,26,16, 0.946) 100%)" }} />
           </div>
         )}
         {audioUrl && (

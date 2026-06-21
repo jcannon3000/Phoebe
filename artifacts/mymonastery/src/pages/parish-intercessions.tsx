@@ -234,7 +234,7 @@ function SlotComposer({
     <div
       className="rounded-xl px-4 py-4"
       style={{
-        background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+        background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
         border: "1px solid rgba(46,107,64,0.22)",
       }}
     >

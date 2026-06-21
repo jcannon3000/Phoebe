@@ -151,7 +151,7 @@ export function RequestWordField({
       <div
         className="w-full rounded-2xl px-5 py-3 text-left mt-2 relative"
         style={{
-          background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+          background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
           border: "1px solid rgba(46,107,64,0.18)",
           maxWidth: 560,
         }}
@@ -228,7 +228,7 @@ export function RequestWordField({
       <div
         className="w-full rounded-full px-4 py-1.5 flex items-center gap-2"
         style={{
-          background: "rgba(9,26,16,0.27)",
+          background: "rgba(9,26,16, 0.297)",
           backdropFilter: "blur(12.6px)",
           WebkitBackdropFilter: "blur(12.6px)",
           border: error

@@ -587,7 +587,7 @@ export default function RuleOfLifePage() {
         {customizerBgPhoto && (
           <>
             <img src={customizerBgPhoto} alt="" aria-hidden style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.18, zIndex: 0 }} />
-            <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(9,26,16,0.55) 0%, rgba(9,26,16,0.72) 50%, rgba(9,26,16,0.85) 100%)" }} />
+            <div aria-hidden style={{ position: "absolute", inset: 0, zIndex: 0, background: "linear-gradient(180deg, rgba(9,26,16, 0.605) 0%, rgba(9,26,16, 0.792) 50%, rgba(9,26,16, 0.935) 100%)" }} />
           </>
         )}
         <div style={{ position: "relative", zIndex: 1, flex: 1, display: "flex", flexDirection: "column", padding: "24px 20px 40px" }}>

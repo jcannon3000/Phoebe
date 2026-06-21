@@ -152,7 +152,7 @@ export function OfficeCloseEvents({
             variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" as const } } }}
             onClick={() => navigate("/events?plan=new")}
             className="w-full rounded-2xl text-center transition-opacity hover:opacity-90 active:scale-[0.99]"
-            style={{ background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(200,212,192,0.28)", color: "#F0EDE6", fontFamily: SPACE_GROTESK, fontSize: 14.5, fontWeight: 600, padding: "13px 16px", cursor: "pointer" }}
+            style={{ background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(200,212,192,0.28)", color: "#F0EDE6", fontFamily: SPACE_GROTESK, fontSize: 14.5, fontWeight: 600, padding: "13px 16px", cursor: "pointer" }}
           >
             ＋ {t("office_close.add_plan", { defaultValue: "Add plan" })}
           </motion.button>

@@ -17,15 +17,15 @@ const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
 
 const glassField = {
-  background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+  background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
   border: "1px solid rgba(200,212,192,0.18)", color: WARM, fontFamily: FONT,
 } as const;
 const glassRow = {
-  background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+  background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
   border: "1px solid rgba(200,212,192,0.18)",
 } as const;
 const FROST_CTA = {
-  background: "rgba(9,26,16,0.42)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
+  background: "rgba(9,26,16, 0.462)", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
   border: "1px solid rgba(200,212,192,0.28)",
 } as const;
 

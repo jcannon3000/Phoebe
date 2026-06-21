@@ -1418,7 +1418,7 @@ function OfficeFormatsMock() {
           {/* "How to pray" footer row with the select chip. */}
           <div
             className="flex items-center justify-between gap-3 px-4 py-2.5"
-            style={{ borderTop: "1px solid rgba(46,107,64,0.22)", background: "rgba(9,26,16,0.25)" }}
+            style={{ borderTop: "1px solid rgba(46,107,64,0.22)", background: "rgba(9,26,16, 0.275)" }}
           >
             <span
               className="text-[9px] font-semibold uppercase tracking-[0.12em]"

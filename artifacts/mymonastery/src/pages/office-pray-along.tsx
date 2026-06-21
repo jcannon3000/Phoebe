@@ -261,7 +261,7 @@ export default function OfficePrayAlongPage() {
       </main>
 
       {/* Podcast bar */}
-      <footer style={{ position: "relative", zIndex: 1, padding: "10px 20px max(1.1rem, calc(env(safe-area-inset-bottom) + 0.6rem))", borderTop: "1px solid rgba(46,107,64,0.25)", background: "rgba(9,26,16,0.55)", backdropFilter: "blur(6px)" }}>
+      <footer style={{ position: "relative", zIndex: 1, padding: "10px 20px max(1.1rem, calc(env(safe-area-inset-bottom) + 0.6rem))", borderTop: "1px solid rgba(46,107,64,0.25)", background: "rgba(9,26,16, 0.605)", backdropFilter: "blur(6px)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 11, color: FAINT, fontVariantNumeric: "tabular-nums", width: 38, textAlign: "right" }}>{fmt(current)}</span>
           <input

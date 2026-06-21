@@ -361,7 +361,7 @@ function CustomizeHomeInner({ user }: { user: AuthUser }) {
               {/* Community Prayers / Devotions / Office pill. */}
               <div
                 className="flex gap-1 rounded-full p-1 mt-3"
-                style={{ background: "rgba(9,26,16,0.45)", border: "1px solid rgba(46,107,64,0.22)" }}
+                style={{ background: "rgba(9,26,16, 0.495)", border: "1px solid rgba(46,107,64,0.22)" }}
               >
                 {PRAY_OPTIONS.map((opt) => {
                   const active = prayChoice === opt.id;

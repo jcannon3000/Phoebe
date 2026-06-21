@@ -190,7 +190,7 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
     } catch { /* best-effort */ }
   };
 
-  const inputStyle = { background: "rgba(9,26,16,0.45)", border: `1px solid ${CARD_B}`, color: WARM, fontFamily: FONT } as const;
+  const inputStyle = { background: "rgba(9,26,16, 0.495)", border: `1px solid ${CARD_B}`, color: WARM, fontFamily: FONT } as const;
 
   // On a surface that shouldn't show an empty shell (the Events page for a
   // non-beta viewer with nothing to compose), render nothing until there's a
@@ -227,7 +227,7 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
                   className="rounded-full text-[17px] leading-none transition-transform active:scale-95"
                   style={{
                     width: 34, height: 34,
-                    background: emoji === e ? "rgba(46,107,64,0.55)" : "rgba(9,26,16,0.4)",
+                    background: emoji === e ? "rgba(46,107,64,0.55)" : "rgba(9,26,16, 0.440)",
                     border: `1px solid ${emoji === e ? "rgba(143,175,150,0.6)" : CARD_B}`,
                   }}
                 >{e}</button>

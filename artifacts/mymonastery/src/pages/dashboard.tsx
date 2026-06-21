@@ -482,7 +482,7 @@ function BarCard({
         animate={{ opacity: 1, y: 0 }}
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${pulse ? colors.pulseClass : ""}`}
         style={{
-          background: bgColor || "rgba(9,26,16,0.27)",
+          background: bgColor || "rgba(9,26,16, 0.297)",
           backdropFilter: "blur(12.6px)",
           WebkitBackdropFilter: "blur(12.6px)",
           border: `1px solid ${borderColor || colors.border}`,
@@ -1689,7 +1689,7 @@ export function GatheringCard({
         animate={{ opacity: 1, y: 0 }}
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isToday_ ? colors.pulseClass : ""}`}
         style={{
-          background: "rgba(9,26,16,0.27)",
+          background: "rgba(9,26,16, 0.297)",
           backdropFilter: "blur(12.6px)",
           WebkitBackdropFilter: "blur(12.6px)",
           border: "1px solid rgba(111,175,133,0.35)",
@@ -1778,7 +1778,7 @@ function ActionCard({ a, keyPrefix }: { a: ActionFeedItem; keyPrefix: string }) 
         animate={{ opacity: 1, y: 0 }}
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isToday_ ? colors.pulseClass : ""}`}
         style={{
-          background: "rgba(9,26,16,0.27)",
+          background: "rgba(9,26,16, 0.297)",
           backdropFilter: "blur(12.6px)",
           WebkitBackdropFilter: "blur(12.6px)",
           border: "1px solid rgba(111,175,133,0.35)",
@@ -1853,7 +1853,7 @@ function PlanEventCard({ p, keyPrefix }: { p: FellowPlanEvent; keyPrefix: string
         animate={{ opacity: 1, y: 0 }}
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-transform active:scale-[0.99] ${isToday_ ? colors.pulseClass : ""}`}
         style={{
-          background: "rgba(9,26,16,0.27)",
+          background: "rgba(9,26,16, 0.297)",
           backdropFilter: "blur(12.6px)",
           WebkitBackdropFilter: "blur(12.6px)",
           border: "1px solid rgba(111,175,133,0.35)",
@@ -2277,7 +2277,7 @@ export function ConsolidatedServiceCard({
         animate={{ opacity: 1, y: 0 }}
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isOnDate ? colors.pulseClass : ""}`}
         style={{
-          background: "rgba(9,26,16,0.27)",
+          background: "rgba(9,26,16, 0.297)",
           backdropFilter: "blur(12.6px)",
           WebkitBackdropFilter: "blur(12.6px)",
           border: "1px solid rgba(111,175,133,0.35)",
@@ -3701,7 +3701,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
     <div
       className="relative flex rounded-xl overflow-hidden"
       style={{
-        background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+        background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
         // Match the border weight on the parish-weekly + count cards so the
         // stacked cards read as a paired set. Always full strength now — the
         // top progress indicator signals completion, so the card no longer
@@ -4344,7 +4344,7 @@ function PrayerListCarousel({
                   // requests waiting" card. Prayed ones rest calm.
                   className={`relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99] ${amened ? "" : "animate-turn-pulse-practices"}`}
                   style={{
-                    background: "rgba(22,46,32,0.3)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+                    background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
                     // Shared home-card outline — matches the "+" FAB ring.
                     border: "1px solid rgba(200,212,192,0.35)",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
@@ -7092,6 +7092,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       // section below the list — so the list is purely others to pray for.
                       if (r.isOwnRequest) return false;
                       if (r.expiresAt && new Date(r.expiresAt) <= new Date()) return false;
+                      // Once you've prayed (amened) a request today it's done —
+                      // drop it from the home list entirely.
+                      if (r.myAmenedToday) return false;
                       return true;
                     })
                     .map((r) => ({
@@ -7112,6 +7115,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                       const bDone = !b.isOwnRequest && b.myAmenedToday ? 1 : 0;
                       return aDone - bDone;
                     });
+                  // Nothing of others' left to pray for today → no list at all.
+                  if (carouselRows.length === 0) return null;
                   return (
                     <div style={{ marginTop: -12 }}>
                       <PrayerListCarousel
@@ -7132,6 +7137,14 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     only show when you HAVE an open request; the CTA always shows so
                     you can always start one. */}
                 {filter === null && !eventsOnly && (() => {
+                  // If you've prayed everyone else's request today (or there are
+                  // none), the whole prayer section leaves home — your own
+                  // requests AND the New-request CTA. The Prayer list lives in the
+                  // menu for when you want to come back to it.
+                  const unprayedOthers = (dashPrayerRequests ?? []).filter(
+                    (r) => !r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()) && !r.myAmenedToday,
+                  );
+                  if (unprayedOthers.length === 0) return null;
                   const ownReqs = (dashPrayerRequests ?? []).filter(
                     (r) => r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0,
                   );

@@ -176,7 +176,7 @@ function ReminderTimeField({ value, onChange }: { value: string; onChange: (v: s
           if (/^\d{2}:\d{2}$/.test(v)) onChange(v);
         }}
         className="text-[15px] rounded-lg px-2.5 py-1.5"
-        style={{ background: "rgba(9,26,16,0.7)", border: "1px solid rgba(46,107,64,0.45)", color: WARM, fontFamily: SPACE_GROTESK }}
+        style={{ background: "rgba(9,26,16, 0.770)", border: "1px solid rgba(46,107,64,0.45)", color: WARM, fontFamily: SPACE_GROTESK }}
       />
     </div>
   );

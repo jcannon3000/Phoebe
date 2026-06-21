@@ -1297,7 +1297,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           alignItems: "center",
           justifyContent: "space-between",
           gap: 12,
-          background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+          background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
           border: "1px solid rgba(46,107,64,0.32)",
           borderRadius: 999,
           padding: "14px 20px",
@@ -1386,7 +1386,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           style={{
             width: "100%",
             marginTop: 6,
-            background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+            background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
             border: "1px solid rgba(168,197,160,0.45)",
             borderRadius: 999,
             color: WARM_TEXT,
@@ -1473,7 +1473,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           <span
             className="rounded-full"
             style={{
-              background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+              background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
               border: `1px solid ${BORDER}`,
               color: WARM_TEXT,
               fontSize: 12,
@@ -1492,7 +1492,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
               type="button"
               onClick={onBack}
               aria-label="Close"
-              style={{ width: 32, height: 32, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}
+              style={{ width: 32, height: 32, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: `1px solid ${BORDER}`, color: WARM_TEXT, cursor: "pointer", padding: 0 }}
             >
               <X size={16} />
             </button>
@@ -1630,7 +1630,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                     display: "inline-flex",
                     alignItems: "center",
                     gap: 7,
-                    background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+                    background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
                     color: WARM_TEXT,
                     border: "1px solid rgba(46,107,64,0.50)",
                     borderRadius: 999,
@@ -2904,7 +2904,7 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
           transition: "bottom 0.2s ease",
           transform: "translateX(-50%)",
           zIndex: 50,
-          background: "rgba(9,26,16,0.27)",
+          background: "rgba(9,26,16, 0.297)",
           backdropFilter: "blur(12.6px)",
           WebkitBackdropFilter: "blur(12.6px)",
           border: `1px solid ${BORDER}`,
@@ -3439,7 +3439,7 @@ function PhysicalBookGuide(props: {
     display: "flex",
     alignItems: "center",
     gap: 14,
-    background: "rgba(9,26,16,0.27)",
+    background: "rgba(9,26,16, 0.297)",
     backdropFilter: "blur(12.6px)",
     WebkitBackdropFilter: "blur(12.6px)",
     border: "1px solid rgba(200,212,192,0.16)",
@@ -3520,7 +3520,7 @@ function PhysicalBookGuide(props: {
           <span
             className="rounded-full"
             style={{
-              background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+              background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
               border: `1px solid ${BORDER}`,
               color: WARM_TEXT,
               fontSize: 12,
@@ -3795,7 +3795,7 @@ function OfficeMethodCard(props: {
           preference too. */}
       <label
         className="flex items-center justify-between gap-3 px-5 py-3 cursor-pointer"
-        style={{ borderTop: "1px solid rgba(46,107,64,0.22)", background: "rgba(9,26,16,0.25)" }}
+        style={{ borderTop: "1px solid rgba(46,107,64,0.22)", background: "rgba(9,26,16, 0.275)" }}
       >
         <span className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
           How to pray
@@ -3893,7 +3893,7 @@ function DevotionMethodCard(props: {
         </button>
         <label
           className="flex items-center justify-between gap-3 px-5 py-3 cursor-pointer"
-          style={{ borderTop: "1px solid rgba(46,107,64,0.22)", background: "rgba(9,26,16,0.25)" }}
+          style={{ borderTop: "1px solid rgba(46,107,64,0.22)", background: "rgba(9,26,16, 0.275)" }}
         >
           <span className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
             How to pray
@@ -4122,7 +4122,7 @@ export default function BcpDailyOfficePage() {
         }}
         className="w-full text-left rounded-2xl overflow-hidden flex transition-all hover:shadow-md active:scale-[0.99]"
         style={{
-          background: opt.now ? "rgba(46,107,64,0.30)" : "rgba(9,26,16,0.28)",
+          background: opt.now ? "rgba(46,107,64,0.30)" : "rgba(9,26,16, 0.308)",
           ...FROST_BLUR,
           border: isDefault
             ? "2px solid #A8C5A0"
@@ -4258,7 +4258,7 @@ export default function BcpDailyOfficePage() {
               <Link
                 href="/rule-of-life"
                 className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 transition-opacity hover:opacity-90"
-                style={{ background: "rgba(9,26,16,0.27)", ...FROST_BLUR, border: "1px solid rgba(200,225,210,0.18)", color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}
+                style={{ background: "rgba(9,26,16, 0.297)", ...FROST_BLUR, border: "1px solid rgba(200,225,210,0.18)", color: "#A8C5A0", fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 600 }}
               >
                 ⚙️ Customize
               </Link>

@@ -157,9 +157,9 @@ export default function ContemplationSetupPage() {
               {t("contsetup.length", { defaultValue: "Length" })}
             </p>
             <div className="flex items-center justify-between rounded-2xl px-3 py-2.5" style={{ background: `rgba(${G},0.08)`, border: `1px solid rgba(${G},0.24)` }}>
-              <button type="button" aria-label={t("contsetup.less", { defaultValue: "Less" })} onClick={() => patch({ minutes: Math.max(MIN_SESSION_MIN, current.minutes - 5) })} disabled={current.minutes <= MIN_SESSION_MIN} className="w-11 h-11 rounded-full text-[22px] font-bold disabled:opacity-30" style={{ background: "rgba(9,26,16,0.5)", color: WARM, border: `1px solid rgba(${G},0.3)` }}>−</button>
+              <button type="button" aria-label={t("contsetup.less", { defaultValue: "Less" })} onClick={() => patch({ minutes: Math.max(MIN_SESSION_MIN, current.minutes - 5) })} disabled={current.minutes <= MIN_SESSION_MIN} className="w-11 h-11 rounded-full text-[22px] font-bold disabled:opacity-30" style={{ background: "rgba(9,26,16, 0.550)", color: WARM, border: `1px solid rgba(${G},0.3)` }}>−</button>
               <span className="text-[20px] font-bold" style={{ color: WARM, fontFamily: FONT }}>{t("contsetup.minutes", { min: current.minutes, defaultValue: `${current.minutes} min` })}</span>
-              <button type="button" aria-label={t("contsetup.more", { defaultValue: "More" })} onClick={() => patch({ minutes: Math.min(MAX_SESSION_MIN, current.minutes + 5) })} disabled={current.minutes >= MAX_SESSION_MIN} className="w-11 h-11 rounded-full text-[22px] font-bold disabled:opacity-30" style={{ background: "rgba(9,26,16,0.5)", color: WARM, border: `1px solid rgba(${G},0.3)` }}>+</button>
+              <button type="button" aria-label={t("contsetup.more", { defaultValue: "More" })} onClick={() => patch({ minutes: Math.min(MAX_SESSION_MIN, current.minutes + 5) })} disabled={current.minutes >= MAX_SESSION_MIN} className="w-11 h-11 rounded-full text-[22px] font-bold disabled:opacity-30" style={{ background: "rgba(9,26,16, 0.550)", color: WARM, border: `1px solid rgba(${G},0.3)` }}>+</button>
             </div>
 
             {/* Type */}

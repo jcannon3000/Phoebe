@@ -50,7 +50,7 @@ export function RiseSheet({
           width: 34,
           height: 34,
           borderRadius: 999,
-          background: "rgba(9,26,16,0.5)",
+          background: "rgba(9,26,16, 0.550)",
           backdropFilter: "blur(10px)",
           WebkitBackdropFilter: "blur(10px)",
           border: "1px solid rgba(200,212,192,0.25)",

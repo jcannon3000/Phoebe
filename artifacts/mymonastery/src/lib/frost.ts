@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 // over a photo backdrop: a dark green-black tint + a backdrop blur, so the photo
 // shows through (blurred). Spread into a style object: style={{ ...FROST, ... }}.
 export const FROST: CSSProperties = {
-  background: "rgba(9,26,16,0.27)",
+  background: "rgba(9,26,16, 0.297)",
   backdropFilter: "blur(12.6px)",
   WebkitBackdropFilter: "blur(12.6px)",
 };
@@ -20,7 +20,7 @@ export const FROST_BLUR: CSSProperties = {
 // that should sit visually heavier than a card (the bottom nav bar, the
 // daily-progress pill) so it reads as a solid frame over the photo.
 export const FROST_DARK: CSSProperties = {
-  background: "rgba(5,14,9,0.66)",
+  background: "rgba(5,14,9, 0.726)",
   backdropFilter: "blur(16px)",
   WebkitBackdropFilter: "blur(16px)",
 };

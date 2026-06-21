@@ -287,7 +287,7 @@ export default function PrayerRequestNew() {
             rows={4}
             placeholder={copy.placeholder}
             className="w-full rounded-2xl px-5 py-4 text-[15px] outline-none resize-none text-left"
-            style={{ background: "rgba(9,26,16,0.28)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(200,225,210,0.16)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", color: CREAM, fontFamily: SPACE, fontStyle: "italic", lineHeight: 1.65, marginTop: 12 }}
+            style={{ background: "rgba(9,26,16, 0.308)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(200,225,210,0.16)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)", color: CREAM, fontFamily: SPACE, fontStyle: "italic", lineHeight: 1.65, marginTop: 12 }}
           />
 
           {/* How long the garden carries it — a 1–7 day dropdown (default 3).
@@ -299,7 +299,7 @@ export default function PrayerRequestNew() {
               onChange={(e) => setDays(Number(e.target.value))}
               aria-label={t("prayer_request.duration_question", { defaultValue: "How long should we carry it?" })}
               style={{
-                width: "100%", background: "rgba(9,26,16,0.30)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", color: CREAM,
+                width: "100%", background: "rgba(9,26,16, 0.330)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", color: CREAM,
                 border: "1px solid rgba(200,225,210,0.18)", borderRadius: 999,
                 padding: "12px 24px", fontSize: 14, fontWeight: 600, fontFamily: SPACE,
                 textAlignLast: "center", colorScheme: "dark", cursor: "pointer", outline: "none",

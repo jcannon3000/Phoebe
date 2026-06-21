@@ -169,7 +169,7 @@ function StreakCard() {
   return (
     <div
       className="relative flex rounded-2xl overflow-hidden mt-6"
-      style={{ background: "rgba(22,46,32,0.3)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: `1px solid rgba(${GREEN},0.26)` }}
+      style={{ background: "rgba(22,46,32, 0.330)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: `1px solid rgba(${GREEN},0.26)` }}
     >
       <div className="w-1 flex-shrink-0" style={{ background: `rgba(${GREEN_BRIGHT},0.7)` }} />
       <div className="flex-1 px-4 py-4">

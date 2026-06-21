@@ -10,7 +10,7 @@ import { GratitudeComposer } from "@/components/GratitudeComposer";
 
 // Frosted-glass card surface — translucent dark tint + blur so the leaf
 // backdrop shows through, matching the rest of the app's photo surfaces.
-const FROST_CARD = { background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)" } as const;
+const FROST_CARD = { background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)" } as const;
 
 // Gratitude — a personal daily practice (private journal) with the option
 // to share an entry to the garden. Grounded in the BCP's General
@@ -152,7 +152,7 @@ export default function GratitudePage() {
                 onClick={() => setTab(tab2.key)}
                 className="flex items-center gap-1.5 rounded-full px-4 py-2 transition-opacity hover:opacity-90"
                 style={{
-                  background: active ? "rgba(46,107,64,0.32)" : "rgba(9,26,16,0.27)",
+                  background: active ? "rgba(46,107,64,0.32)" : "rgba(9,26,16, 0.297)",
                   backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
                   border: `1px solid ${active ? "rgba(46,107,64,0.5)" : "rgba(46,107,64,0.2)"}`,
                   color: active ? WARM : SAGE,

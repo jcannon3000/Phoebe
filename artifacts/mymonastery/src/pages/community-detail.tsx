@@ -1982,7 +1982,7 @@ export default function CommunityDetailPage() {
           return (
             <div
               className="fixed inset-0 z-50 flex items-center justify-center px-4"
-              style={{ background: "rgba(9,26,16,0.85)", backdropFilter: "blur(4px)" }}
+              style={{ background: "rgba(9,26,16, 0.935)", backdropFilter: "blur(4px)" }}
               onClick={dismiss}
             >
               <div
@@ -3616,7 +3616,7 @@ function MemberPicker({
             onClick={() => onPick({ name: p.name, email: p.email })}
             disabled={isPending}
             className="w-full flex items-center gap-2 px-2 py-2 rounded-lg text-left transition-colors disabled:opacity-40"
-            style={{ background: "rgba(9,26,16,0.6)", border: "1px solid rgba(46,107,64,0.25)" }}
+            style={{ background: "rgba(9,26,16, 0.660)", border: "1px solid rgba(46,107,64,0.25)" }}
           >
             {p.avatarUrl ? (
               <img src={p.avatarUrl} alt={p.name} className="w-7 h-7 rounded-full object-cover shrink-0" style={{ border: "1px solid rgba(46,107,64,0.3)" }} />
@@ -3641,7 +3641,7 @@ function MemberPicker({
       {showEmailFallback && (
         <div
           className="rounded-lg p-3 mt-2"
-          style={{ background: "rgba(9,26,16,0.4)", border: "1px dashed rgba(46,107,64,0.35)" }}
+          style={{ background: "rgba(9,26,16, 0.440)", border: "1px dashed rgba(46,107,64,0.35)" }}
         >
           <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: "rgba(143,175,150,0.55)" }}>
             {t("community_detail.not_in_fellowship")}

@@ -137,7 +137,7 @@ export default function ThisWeekPage() {
                     value={p.day === null ? "any" : String(p.day)}
                     onChange={(e) => setWeeklyDay(p.key, e.target.value === "any" ? null : Number(e.target.value))}
                     className="rounded-lg px-2 py-1 text-[12px]"
-                    style={{ background: "rgba(9,26,16,0.5)", border: `1px solid rgba(${p.rgb},0.3)`, color: WARM, fontFamily: FONT, colorScheme: "dark" }}
+                    style={{ background: "rgba(9,26,16, 0.550)", border: `1px solid rgba(${p.rgb},0.3)`, color: WARM, fontFamily: FONT, colorScheme: "dark" }}
                   >
                     <option value="any">{t("weekly.any_day", { defaultValue: "any day" })}</option>
                     {DAY_LABELS.map((d, i) => <option key={i} value={i}>{d}</option>)}

@@ -71,7 +71,7 @@ function HeroArt({ url, alt }: { url: string | null; alt: string }) {
     objectFit: "cover", display: "block", boxShadow: "0 12px 34px rgba(0,0,0,0.34)",
   };
   const fallback: CSSProperties = {
-    ...box, background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.3)",
+    ...box, background: "rgba(9,26,16, 0.297)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(46,107,64,0.3)",
     alignItems: "center", justifyContent: "center", fontSize: 64,
   };
   if (url) {
