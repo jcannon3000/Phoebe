@@ -6866,7 +6866,8 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                    Contemplation. */
                 <DailyProgressBody
                   showStreak={false}
-                  showDone
+                  /* Done cards are NOT shown on the home — only what's still
+                     "Next". The full Done list lives on /daily-progress. */
                   /* The "N prayer requests waiting" lead card was removed — new
                      requests now announce themselves with a glowing border in
                      the prayer list below instead of a separate top card. */

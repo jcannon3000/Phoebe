@@ -762,7 +762,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     if (!ready || cascadeHaptedRef.current) return;
     cascadeHaptedRef.current = true;
     if (!isNativeShell()) return;
-    const count = upcomingDisplay.length + completedDisplay.length;
+    const count = upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0);
     const timers: number[] = [];
     for (let i = 0; i < count; i++) {
       timers.push(window.setTimeout(() => {
