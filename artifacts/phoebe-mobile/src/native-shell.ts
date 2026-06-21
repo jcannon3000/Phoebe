@@ -698,10 +698,21 @@ function playBreathCompleteHaptic() {
 
 function wireHaptics() {
   window.addEventListener("phoebe:haptic", e => {
-    const detail = (e as CustomEvent).detail as { style?: string } | undefined;
+    const detail = (e as CustomEvent).detail as { style?: string; peak?: number; durationMs?: number } | undefined;
     const s = detail?.style ?? "light";
     try {
       switch (s) {
+        case "tick": {
+          // A single cascade tick — a short smooth swell whose strength (peak)
+          // and length (durationMs) the caller controls, so the card cascade can
+          // ramp intensity per card and stretch the last one. Web falls back to a
+          // discrete impact scaled to the peak.
+          const peak = typeof detail?.peak === "number" ? Math.max(0.05, Math.min(1, detail.peak)) : 0.5;
+          const durationMs = typeof detail?.durationMs === "number" ? detail.durationMs : 120;
+          void playSmoothSwell({ durationMs, peak, sharpness: 0.5 }, () =>
+            Haptics.impact({ style: peak >= 0.75 ? ImpactStyle.Heavy : peak >= 0.45 ? ImpactStyle.Medium : ImpactStyle.Light }));
+          break;
+        }
         case "celebration":
           // Slideshow / lesson close — the big finish. A long, full, smooth
           // swell (native Core Haptics) instead of the old impact-density
