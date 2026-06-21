@@ -816,8 +816,8 @@ export default function WayOfLoveRuleFlow({
                   <option value="read">📖 {t("wol_rule.method_screen", { defaultValue: "Digital Slideshow" })}</option>
                 ) : (
                   <>
-                    <option value="read">📖 {t("wol_rule.method_screen", { defaultValue: "Digital Slideshow" })}</option>
                     <option value="book">📕 {t("wol_rule.method_book", { defaultValue: "Physical BCP" })}</option>
+                    <option value="read">📖 {t("wol_rule.method_screen", { defaultValue: "Digital Slideshow" })}</option>
                     <option value="listen">🎧 {t("wol_rule.method_listen", { defaultValue: "Listen" })}</option>
                     {side === "morning" && <option value="watch">📺 {t("wol_rule.method_watch", { defaultValue: "Watch" })}</option>}
                   </>

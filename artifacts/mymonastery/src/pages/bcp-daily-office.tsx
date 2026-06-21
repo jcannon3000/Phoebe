@@ -1370,10 +1370,10 @@ export function OfficeViewer({ office, mode, onBack, onComplete, cameFromPicker,
                 <option value="screen">On screen</option>
               ) : (
                 <>
+                  <option value="book">Physical BCP</option>
                   <option value="screen">On screen</option>
                   <option value="listen">Listen</option>
                   {showWatch && <option value="watch">Watch</option>}
-                  <option value="book">Physical BCP</option>
                 </>
               )
             ))}
@@ -3697,8 +3697,8 @@ function OfficeMethodCard(props: {
   // Watch is Morning-only (the Cathedral streams morning prayer) and
   // weekday-only (no weekend broadcast). Everything else applies to both.
   const methods: DefaultOfficeEntry[] = [
-    "read",
     "book",
+    "read",
     "listen",
     ...(side === "morning" && weekday ? (["watch"] as const) : []),
   ];
@@ -4119,13 +4119,13 @@ export default function BcpDailyOfficePage() {
   // The "How" options valid for the chosen time + practice. read/book always;
   // Listen only for the full office; Watch only in the morning (Cathedral /
   // St John's stream). methodPick is clamped to a valid one for Begin.
-  // Mirror the office's opening slide exactly: On screen · Listen · Watch
-  // (morning weekdays only, when the Cathedral streams) · Physical BCP.
+  // Physical BCP leads the list, then On screen · Listen · Watch (morning
+  // weekdays only, when the Cathedral streams).
   const howOptions: DefaultOfficeEntry[] = [
+    "book",
     "read",
     "listen",
     ...(todPick === "morning" && weekday ? (["watch"] as const) : []),
-    "book",
   ];
   // Match the first-slide labels ("On screen", not "Digital Slideshow").
   const HOW_LABEL: Record<DefaultOfficeEntry, string> = {
