@@ -324,26 +324,6 @@ export default function PrayerRequestNew() {
               {t("common.skip", { defaultValue: "Skip" })}
             </button>
           </div>
-
-          {/* Renew-instead card — only when the user's last request is past. */}
-          {renewableLastMine && (
-            <div className="mt-3 w-full max-w-xs rounded-xl p-4 text-left" style={{ background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(200,225,210,0.16)" }}>
-              <p className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE }}>
-                {t("prayer_request.or_renew_last", { defaultValue: "Or renew your last one" })}
-              </p>
-              <p className="text-[13px] italic leading-snug mb-3" style={{ color: "rgba(232,217,176,0.85)", fontFamily: SERIF, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                {renewableLastMine.body}
-              </p>
-              <button
-                onClick={() => renewMutation.mutate(renewableLastMine.id)}
-                disabled={renewMutation.isPending}
-                className="text-xs font-semibold rounded-full px-4 py-2 disabled:opacity-50"
-                style={{ background: "rgba(46,107,64,0.50)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", color: CREAM, border: "1px solid rgba(168,197,160,0.4)", cursor: "pointer", fontFamily: SPACE }}
-              >
-                {renewMutation.isPending ? t("prayer_request.renewing", { defaultValue: "Renewing…" }) : t("prayer_request.renew_7_days", { defaultValue: "Renew for 7 days" })}
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </motion.div>
