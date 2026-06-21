@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { EARTH_PHOTOS } from "@/lib/earthPhotos";
+import { EARTH_PHOTOS, LEAF_PHOTOS } from "@/lib/earthPhotos";
 import { Link, useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
@@ -345,6 +345,9 @@ export default function RuleOfLifePage() {
   const currentSlide = SLIDES[slideIndex];
   // A single calm landscape at low opacity behind the customizer slideshow.
   const customizerBgPhoto = useMemo(() => (EARTH_PHOTOS.length > 0 ? EARTH_PHOTOS[Math.floor(Math.random() * EARTH_PHOTOS.length)]! : null), []);
+  // The builder flow's full-screen leaf backdrop (owned by Layout so it covers
+  // behind the header, all the way to the top).
+  const flowLeaf = useMemo(() => (LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null), []);
 
   const recommendMutation = useMutation({
     mutationFn: (payload: RuleOfLifeAnswers) =>
@@ -835,7 +838,7 @@ export default function RuleOfLifePage() {
     // personalizes; otherwise it runs on sensible defaults. Wrapped in Layout
     // so the Phoebe top bar (logo + nav pills) shows on this page.
     return (
-      <Layout>
+      <Layout bgPhoto={flowLeaf}>
         <WayOfLoveRuleFlow
           onBack={() => (result ? setPhase("result") : setLocation("/daily-progress"))}
           onDone={() => setLocation("/daily-progress")}
