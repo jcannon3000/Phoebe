@@ -737,6 +737,12 @@ export default function WayOfLoveRuleFlow({
   if (step === "morning-way" || step === "evening-way") {
     const side: OfficeSide = step === "morning-way" ? "morning" : "evening";
     const cap = side === "morning" ? "Morning" : "Evening";
+    const officeSub = side === "morning"
+      ? t("wol_rule.pray_offices_sub_morning", { defaultValue: "The full Morning Prayer office." })
+      : t("wol_rule.pray_offices_sub_evening", { defaultValue: "The full Evening Prayer office." });
+    const devotionSub = side === "morning"
+      ? t("wol_rule.pray_devotion_sub_morning", { defaultValue: "A short form of Morning Prayer." })
+      : t("wol_rule.pray_devotion_sub_evening", { defaultValue: "A short form of Evening Prayer." });
     return shell(
       <>
         {backRow(goPrev)}
@@ -745,8 +751,8 @@ export default function WayOfLoveRuleFlow({
           {t("wol_rule.side_way_body", { side: cap.toLowerCase(), defaultValue: `How will you pray in the ${cap.toLowerCase()}?` })}
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {choiceRow(prayBySide[side] === "devotion", `🌿 ${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`, t("wol_rule.pray_devotion_sub", { defaultValue: "A short liturgy with your community's prayers included." }), () => choosePrayBySide(side, "devotion"))}
-          {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, t("wol_rule.pray_offices_sub", { defaultValue: "The full liturgy with your community's prayers included." }), () => choosePrayBySide(side, "offices"))}
+          {choiceRow(prayBySide[side] === "devotion", `🌿 ${cap} ${t("wol_rule.devotion_word", { defaultValue: "Devotion" })}`, devotionSub, () => choosePrayBySide(side, "devotion"))}
+          {choiceRow(prayBySide[side] === "offices", `📖 ${cap} ${t("wol_rule.office_word", { defaultValue: "Office" })}`, officeSub, () => choosePrayBySide(side, "offices"))}
           {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle !== "cobreathe", `🕯️ ${t("wol_rule.contemplative_prayer_label", { defaultValue: "Contemplative Prayer" })}`, t("wol_rule.pray_contemplation_sub", { defaultValue: "Silent prayer — we'll just remind you to sit." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("silent"); })}
           {choiceRow(prayBySide[side] === "contemplation" && contemplationStyle === "cobreathe", `🌍 ${t("wol_rule.style_cobreathe", { defaultValue: "Co-Breathe" })}`, t("wol_rule.style_cobreathe_sub", { defaultValue: "12 breaths as a prayer for climate justice." }), () => { choosePrayBySide(side, "contemplation"); chooseContemplationStyle("cobreathe"); })}
           {/* The Examen — an evening reflective practice (toggle alongside the office). */}
