@@ -763,8 +763,10 @@ function DailyProgressPill() {
     customAnchors.filter((a) => a.slot === slot && !a.skipped).map((a) => ({ key: `custom-${a.id}`, done: a.done }));
   const dotDefs = [
     ...(morningActive ? [{ key: "morning", done: morningDone }] : []),
-    ...cDots("morning"),
+    // Reflection is the DEFAULT second dot (right after Morning) — ahead of any
+    // custom morning practice — unless the user reorders their rhythm.
     ...reflections.map((r) => ({ key: `reflect-${r.source}`, done: r.done })),
+    ...cDots("morning"),
     ...(silenceActive ? [{ key: "silence", done: silenceDone }] : []),
     ...cDots("midday"),
     ...(gratitudeActive ? [{ key: "gratitude", done: gratitudeDone }] : []),

@@ -660,7 +660,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurbCycle: morningDone ? undefined : [morningBlurb, ...officeCycle],
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
     }] : []),
-    ...slottedForSlot("morning"),
+    // Reflection cards lead (default second, right after Morning) — ahead of any
+    // custom morning practice, matching the daily-progress dots.
     // One card per reflection newsletter the user follows — each its own card +
     // dot, opening that source's reading directly (and marking it read).
     ...reflections.map((r) => {
@@ -679,6 +680,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
         cta: t("rhythm.read", { defaultValue: "Read" }), later: false,
       };
     }),
+    ...slottedForSlot("morning"),
     ...(silenceActive ? [{
       key: "silence", emoji: "🕯️", rgb: "62,124,122", done: silenceDone,
       // Always open the begin slide (length, Start contemplation, Cobreathe) —
