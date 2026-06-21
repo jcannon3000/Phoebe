@@ -482,7 +482,9 @@ function BarCard({
         animate={{ opacity: 1, y: 0 }}
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${pulse ? colors.pulseClass : ""}`}
         style={{
-          background: bgColor || colors.bg,
+          background: bgColor || "rgba(9,26,16,0.27)",
+          backdropFilter: "blur(12.6px)",
+          WebkitBackdropFilter: "blur(12.6px)",
           border: `1px solid ${borderColor || colors.border}`,
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
@@ -1687,7 +1689,9 @@ export function GatheringCard({
         animate={{ opacity: 1, y: 0 }}
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isToday_ ? colors.pulseClass : ""}`}
         style={{
-          background: colors.bg,
+          background: "rgba(9,26,16,0.27)",
+          backdropFilter: "blur(12.6px)",
+          WebkitBackdropFilter: "blur(12.6px)",
           border: "1px solid rgba(111,175,133,0.35)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
@@ -1774,7 +1778,9 @@ function ActionCard({ a, keyPrefix }: { a: ActionFeedItem; keyPrefix: string }) 
         animate={{ opacity: 1, y: 0 }}
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isToday_ ? colors.pulseClass : ""}`}
         style={{
-          background: colors.bg,
+          background: "rgba(9,26,16,0.27)",
+          backdropFilter: "blur(12.6px)",
+          WebkitBackdropFilter: "blur(12.6px)",
           border: "1px solid rgba(111,175,133,0.35)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
@@ -1847,7 +1853,9 @@ function PlanEventCard({ p, keyPrefix }: { p: FellowPlanEvent; keyPrefix: string
         animate={{ opacity: 1, y: 0 }}
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-transform active:scale-[0.99] ${isToday_ ? colors.pulseClass : ""}`}
         style={{
-          background: colors.bg,
+          background: "rgba(9,26,16,0.27)",
+          backdropFilter: "blur(12.6px)",
+          WebkitBackdropFilter: "blur(12.6px)",
           border: "1px solid rgba(111,175,133,0.35)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
@@ -2269,7 +2277,9 @@ export function ConsolidatedServiceCard({
         animate={{ opacity: 1, y: 0 }}
         className={`relative flex rounded-xl overflow-hidden cursor-pointer transition-shadow ${isOnDate ? colors.pulseClass : ""}`}
         style={{
-          background: colors.bg,
+          background: "rgba(9,26,16,0.27)",
+          backdropFilter: "blur(12.6px)",
+          WebkitBackdropFilter: "blur(12.6px)",
           border: "1px solid rgba(111,175,133,0.35)",
           boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
         }}
@@ -3691,7 +3701,7 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
     <div
       className="relative flex rounded-xl overflow-hidden"
       style={{
-        background: "rgba(9,26,16,0.3)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+        background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
         // Match the border weight on the parish-weekly + count cards so the
         // stacked cards read as a paired set. Always full strength now — the
         // top progress indicator signals completion, so the card no longer
@@ -4334,7 +4344,7 @@ function PrayerListCarousel({
                   // requests waiting" card. Prayed ones rest calm.
                   className={`relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99] ${amened ? "" : "animate-turn-pulse-practices"}`}
                   style={{
-                    background: "rgba(22,46,32,0.34)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
+                    background: "rgba(22,46,32,0.3)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)",
                     // Shared home-card outline — matches the "+" FAB ring.
                     border: "1px solid rgba(200,212,192,0.35)",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)",
@@ -6821,7 +6831,6 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   return (
                     <div>
                       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: 0 }}>{keptHeader}</motion.div>
-                      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1], delay: 0.06 }}>{contemplationAgainCard}</motion.div>
                     </div>
                   );
                 }
@@ -6841,11 +6850,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 return (
                   <div>
                     <motion.div {...enterUp(0)}>{keptHeader}</motion.div>
-                    <motion.div {...enterUp(1)}>{contemplationAgainCard}</motion.div>
-                    <motion.div {...enterUp(2)}><TimeSection label={t("dashboard.today_section")} items={todayItems} {...evtProps} /></motion.div>
-                    <motion.div {...enterUp(3)}><TimeSection label={t("dashboard.tomorrow_section")} items={tomorrowItems} {...evtProps} /></motion.div>
-                    <motion.div {...enterUp(4)}><TimeSection label={t("dashboard.this_week_section")} items={weekItems} {...evtProps} /></motion.div>
-                    <motion.div {...enterUp(5)}><TimeSection label={t("dashboard.upcoming_section")} items={monthItems} {...evtProps} /></motion.div>
+                    <motion.div {...enterUp(1)}><TimeSection label={t("dashboard.today_section")} items={todayItems} {...evtProps} /></motion.div>
+                    <motion.div {...enterUp(2)}><TimeSection label={t("dashboard.tomorrow_section")} items={tomorrowItems} {...evtProps} /></motion.div>
+                    <motion.div {...enterUp(3)}><TimeSection label={t("dashboard.this_week_section")} items={weekItems} {...evtProps} /></motion.div>
+                    <motion.div {...enterUp(4)}><TimeSection label={t("dashboard.upcoming_section")} items={monthItems} {...evtProps} /></motion.div>
                   </div>
                 );
               })() : (

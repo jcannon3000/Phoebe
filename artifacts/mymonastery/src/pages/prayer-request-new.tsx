@@ -327,7 +327,7 @@ export default function PrayerRequestNew() {
 
           {/* Renew-instead card — only when the user's last request is past. */}
           {renewableLastMine && (
-            <div className="mt-3 w-full max-w-xs rounded-xl p-4 text-left" style={{ background: "rgba(9,26,16,0.3)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(200,225,210,0.16)" }}>
+            <div className="mt-3 w-full max-w-xs rounded-xl p-4 text-left" style={{ background: "rgba(9,26,16,0.27)", backdropFilter: "blur(12.6px)", WebkitBackdropFilter: "blur(12.6px)", border: "1px solid rgba(200,225,210,0.16)" }}>
               <p className="text-[10px] uppercase tracking-[0.16em] font-semibold mb-2" style={{ color: "rgba(143,175,150,0.6)", fontFamily: SPACE }}>
                 {t("prayer_request.or_renew_last", { defaultValue: "Or renew your last one" })}
               </p>

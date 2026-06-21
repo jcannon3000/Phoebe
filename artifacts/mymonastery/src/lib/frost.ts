@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 // over a photo backdrop: a dark green-black tint + a backdrop blur, so the photo
 // shows through (blurred). Spread into a style object: style={{ ...FROST, ... }}.
 export const FROST: CSSProperties = {
-  background: "rgba(9,26,16,0.3)",
+  background: "rgba(9,26,16,0.27)",
   backdropFilter: "blur(12.6px)",
   WebkitBackdropFilter: "blur(12.6px)",
 };

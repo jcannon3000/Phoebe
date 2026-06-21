@@ -24,7 +24,7 @@ const CARD_BG = "rgba(46,107,64,0.12)";
 const CARD_B = "rgba(46,107,64,0.3)";
 // Frosted-glass card — the leaf backdrop blurs through, with a soft sage edge
 // (matches the home cards' "+" FAB ring).
-const CARD_STYLE = { background: "rgba(9,26,16,0.3)", ...FROST_BLUR, border: "1px solid rgba(200,212,192,0.22)" } as const;
+const CARD_STYLE = { background: "rgba(9,26,16,0.27)", ...FROST_BLUR, border: "1px solid rgba(200,212,192,0.22)" } as const;
 
 type Fellow = { userId: number; name: string | null; avatarUrl: string | null; streak: number };
 type Request = { id: number; userId: number; name: string | null; avatarUrl: string | null };
