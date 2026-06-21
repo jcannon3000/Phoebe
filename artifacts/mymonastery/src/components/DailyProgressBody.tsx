@@ -528,7 +528,7 @@ function PracticeCard({
   return <Link href={href} className="block">{row}</Link>;
 }
 
-export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode }) {
+export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHero, leadCard, maxUpcoming }: { showStreak?: boolean; showDone?: boolean; renderOfficeHero?: (side: "morning" | "evening") => ReactNode; leadCard?: ReactNode; maxUpcoming?: number }) {
   const { t } = useTranslation();
   const { ready, morningDone, reflectDone, silenceDone, eveningDone, eveningActive, morningActive, silenceActive, reflectActive, reflections, prayerKind, contemplationMin, contemplationGoalMin, gratitudeActive, examenActive, listeningActive, journalingActive, lectioActive, cobreatheActive, gratitudeDone, examenDone, listeningDone, journalingDone, lectioDone, cobreatheDone, customAnchors } = useRhythmState();
   const hour = new Date().getHours();
@@ -756,7 +756,13 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // stagger on mount. (The earlier "fly the card from Next into Done" replay —
   // built on framer-motion layout + popLayout — glitched, so it's gone: on
   // return the finished card simply renders in Done with the same clean fade.)
-  const upcomingDisplay = visibleCards.filter((c) => !c.done);
+  const upcomingDisplay = (() => {
+    const all = visibleCards.filter((c) => !c.done);
+    if (maxUpcoming == null) return all;
+    // Cap the Next section: never show more than `maxUpcoming` cards (the office
+    // hero counts as one). The rest stay on /daily-progress.
+    return all.slice(0, Math.max(0, maxUpcoming - (officeHero ? 1 : 0)));
+  })();
   // Everything kept today stays in the Done section all day — until the whole
   // day's rhythm is complete — so the home always reflects what's been prayed.
   // (We used to drop Morning Prayer + the reflection after noon; that made the

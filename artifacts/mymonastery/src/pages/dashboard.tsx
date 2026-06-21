@@ -6867,6 +6867,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                    Contemplation. */}
                 <DailyProgressBody
                   showStreak={false}
+                  /* Cap the Next list at 7 cards on the home; the rest live on
+                     /daily-progress. */
+                  maxUpcoming={7}
                   /* Done cards are NOT shown on the home — only what's still
                      "Next". The full Done list lives on /daily-progress. */
                   /* The "N prayer requests waiting" lead card was removed — new
