@@ -1527,9 +1527,12 @@ export function Layout({ children, bgPhoto, bgOpacity = 0.4 }: { children: React
 
       <main className="flex-1 flex flex-col pt-2 pb-12 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full">
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
+          // The page rises up over the backdrop on entry. Deliberately gentle —
+          // a slower, taller rise reads as the new page lifting into place over
+          // what was there, rather than a quick snap.
+          initial={{ opacity: 0, y: 28 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
           className="flex-1 flex flex-col w-full h-full"
         >
           {children}
