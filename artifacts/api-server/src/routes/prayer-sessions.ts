@@ -3,7 +3,7 @@ import { db, prayerSessionsTable, prayerSurfaces, appOpensTable, usersTable, con
 import { and, desc, eq, gte, gt, lt, inArray, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import { getGardenUserIds } from "../lib/garden";
-import { sendContemplationGoalReachedPush, sendDailyStepGoalReachedPush } from "../lib/pushSender";
+import { sendContemplationGoalReachedPush } from "../lib/pushSender";
 import { todayDateInTz, isValidTimeZone } from "../lib/tz";
 
 const router: IRouter = Router();
@@ -855,21 +855,10 @@ router.put("/me/daily-steps", async (req, res): Promise<void> => {
     return;
   }
 
-  // After responding: if today's steps reach the goal and we haven't already
-  // congratulated them today, push once and stamp the date (one per local day).
-  try {
-    const [u] = await db
-      .select({ goal: usersTable.dailyStepGoal, reached: usersTable.dailyStepReachedDate })
-      .from(usersTable)
-      .where(eq(usersTable.id, sessionUserId));
-    const goal = u?.goal ?? 0;
-    if (goal > 0 && steps >= goal && u?.reached !== day) {
-      await db.update(usersTable)
-        .set({ dailyStepReachedDate: day })
-        .where(eq(usersTable.id, sessionUserId));
-      void sendDailyStepGoalReachedPush(sessionUserId, { goalSteps: goal, steps }).catch(() => {});
-    }
-  } catch { /* best-effort — don't surface push errors to the client */ }
+  // Daily-steps feature is TURNED OFF for everyone — never fire the "step goal
+  // reached" push. (The home card, route, builder toggle, and client step upload
+  // are all gone; this is the server-side belt so no step notification can fire
+  // for any legacy user who still has a goal stored.)
 });
 
 // GET /api/me/daily-steps?day=YYYY-MM-DD — today's step count the iOS app synced

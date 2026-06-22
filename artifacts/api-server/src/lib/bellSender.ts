@@ -673,8 +673,14 @@ void ne;
 //
 // 20:00 owner-local mirrors the evening-nudge cadence: a single calm
 // end-of-day prompt, not a daytime interruption.
-const RENEWAL_NUDGE_HOUR = 20;
+// Quiet hours: never send the "your prayer is wrapping up" nudge between 8pm and
+// 6am (owner-local). It used to fire at/after 20:00, which landed it in the
+// night; now it fires in a calm early-evening window [6pm, 8pm) and is skipped
+// entirely once quiet hours begin.
+const RENEWAL_NUDGE_HOUR = 18;
 const RENEWAL_NUDGE_MINUTE = 0;
+const QUIET_HOURS_START = 20; // 8pm
+const QUIET_HOURS_END = 6;    // 6am
 export async function runPrayerRenewalNudgeSender(opts: { forceNow?: boolean } = {}): Promise<void> {
   // Pull every active, unstamped, not-yet-released request with an
   // expiresAt set. We project the expiry into each owner's local tz
@@ -710,11 +716,13 @@ export async function runPrayerRenewalNudgeSender(opts: { forceNow?: boolean } =
       const expiresAt = c.expiresAt;
       if (!expiresAt) continue;
 
-      // Time gate (skip if forced) — fire only at/after 20:00 local so
-      // the nudge lands as a calm end-of-day prompt, not midday.
+      // Time gate (skip if forced) — fire only in the early-evening window
+      // [6pm, 8pm) local: late enough to be a calm end-of-day prompt, but never
+      // during quiet hours (8pm–6am), so a prayer-wrap nudge can't arrive at night.
       if (!opts.forceNow) {
         const { hour: nowH, minute: nowM } = getCurrentTimeInTz(tz);
         if ((nowH * 60 + nowM) < (RENEWAL_NUDGE_HOUR * 60 + RENEWAL_NUDGE_MINUTE)) continue;
+        if (nowH >= QUIET_HOURS_START || nowH < QUIET_HOURS_END) continue;
       }
 
       // Calendar-day diff in the owner's tz. We extract YYYY-MM-DD
