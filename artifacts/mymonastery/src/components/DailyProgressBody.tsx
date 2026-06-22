@@ -817,17 +817,17 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   }, [splashCleared]);
 
   // A haptic ticks under EACH card as it cascades in (native only, once per
-  // mount). No initial delay — the first tick fires the instant the cascade is
-  // ready, and each tick is spaced to the visual stagger (i·100ms, matching the
-  // cards' enterUp delay) so the buzz lands with the card, not after it. Each
-  // tick is 10% more intense than the last; the final one is held 20% longer.
+  // mount). Started ~0.5s in (they read early synced to the visual stagger), and
+  // each subsequent tick is 10% more intense than the one before — with the
+  // final tick held 20% longer.
   const cascadeHaptedRef = useRef(false);
   useEffect(() => {
     if (!ready || !splashCleared || cascadeHaptedRef.current) return;
     cascadeHaptedRef.current = true;
     if (!isNativeShell()) return;
     const count = upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0);
-    const STEP = 100;          // ms between cards — matches the visual i·0.1s stagger
+    const START_DELAY = 200;   // ms — small hold so it doesn't fire early
+    const STEP = 110;          // ms between cards
     const BASE_PEAK = 0.42;    // first card's strength
     const BASE_MS = 110;       // each tick's length
     const timers: number[] = [];
@@ -837,7 +837,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       const durationMs = Math.round(BASE_MS * (isLast ? 1.2 : 1)); // last 20% longer
       timers.push(window.setTimeout(() => {
         window.dispatchEvent(new CustomEvent("phoebe:haptic", { detail: { style: "tick", peak, durationMs } }));
-      }, i * STEP));
+      }, START_DELAY + i * STEP));
     }
     return () => timers.forEach((id) => window.clearTimeout(id));
   }, [ready, splashCleared, upcomingDisplay.length, completedDisplay.length, showDoneSection]);
