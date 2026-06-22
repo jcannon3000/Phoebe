@@ -81,8 +81,8 @@ export const en = {
   dashboard: {
     prayer_list: "Prayer list",
     daily_prayer_list: "Daily Prayer List",
-    office_customize_short: "Customize",
-    office_customize: "Customize the Daily Office",
+    office_customize_short: "Shape your rhythm",
+    office_customize: "Shape your rule of life",
     pray_again: "Pray again →",
     view_list: "View list →",
     submit_prayer_request: "What are you carrying? 🌿",
@@ -121,7 +121,7 @@ export const en = {
     pray_for_community: "Pray for your community",
     continue_short: "Continue",
     pray_again_short: "Pray again",
-    customize: "Customize",
+    customize: "Shape your rhythm",
   },
   // PrayerSection component — surfaces the prayer-request list +
   // composer on the dashboard, /prayer-list, /my-prayer-requests.
@@ -1030,12 +1030,12 @@ export const en = {
   // Building your daily habit of prayer — the 3-step Pray → Contemplation →
   // Learn flow (WayOfLoveRuleFlow).
   wol_rule: {
-    walk: "Building your daily habit of prayer",
+    walk: "Your daily rhythm of prayer",
     listen_eyebrow: "Contemplative Prayer",
     listen_title: "Contemplative Prayer",
     listen_body: "Take a few minutes a day to sit in silence before God — open to what God might be speaking, and to what's on your own heart. A daily return to God's love.",
-    listen_goal_label: "Minutes of silence a day",
-    listen_goal_note: "We'll gently remind you around 7pm on days you haven't reached it. Set 0 to keep the practice without a goal.",
+    listen_goal_label: "How long would you like to sit?",
+    listen_goal_note: "A private intention for how long to sit — not a daily target measured against you. Set 0 to keep the practice without one.",
     pray_eyebrow: "Pray",
     pray_title: "Pray",
     pray_body: "How will you pray each day?",
@@ -1068,10 +1068,10 @@ export const en = {
     reminder_label: "Remind me to pray each morning",
     reminder_note: "We'll send a gentle notification. Change the time or turn it off anytime in Settings.",
     finish: "Save my daily rhythm",
-    done_title: "Your daily rhythm is set",
+    done_title: "This is the shape of your days",
     done_sub: "Your home and Daily progress now lead with your prayer, your contemplation, and your reflections. Come back any time to change it.",
     done_reminder_hint: "Not seeing reminders? Turn on notifications for Phoebe in your phone's Settings.",
-    done_cta: "Go to Daily progress",
+    done_cta: "Keep this rhythm",
   },
   // Way of Love practice picker / rule-of-life setup step (WayOfLoveStep).
   way_of_love: {
@@ -1187,7 +1187,7 @@ export const en = {
     go_creation: "Creation Care →",
     go_justice: "Racial Justice →",
     rest_carve: "Carve out a time →",
-    customize: "Customize your Way of Love",
+    customize: "Shape your rhythm",
     back: "Way of Love",
     your_commitment: "Your commitment",
     set_practice: "Set your {{title}} practice →",
