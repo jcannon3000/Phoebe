@@ -26,7 +26,7 @@ const CARD_B = "rgba(46,107,64,0.3)";
 // (matches the home cards' "+" FAB ring).
 const CARD_STYLE = { background: "rgba(9,26,16, 0.297)", ...FROST_BLUR, border: "1px solid rgba(200,212,192,0.22)" } as const;
 
-type Fellow = { userId: number; name: string | null; avatarUrl: string | null; streak: number };
+type Fellow = { userId: number; name: string | null; avatarUrl: string | null; streak: number; turned?: boolean; learned?: boolean; prayed?: boolean };
 type Request = { id: number; userId: number; name: string | null; avatarUrl: string | null };
 type SearchUser = { id: number; name: string | null; avatarUrl: string | null; status: "none" | "fellows" | "requested" | "incoming" };
 
@@ -55,12 +55,14 @@ type WalkCompanionLite = { userId: number; progress: { keptCount: number; totalC
 // full count of someone's practices. Bigger, calmer dots; three is the shared
 // goal regardless of how many anchors a person actually keeps.
 const SHARED_DOTS = 3;
-function Dots({ anchors }: { anchors: WalkAnchorLite[] }) {
-  const shown = anchors.slice(0, SHARED_DOTS);
+// The three coarse presence lights (Turn / Learn / Pray) for today — blue,
+// glowing when lit. Presence, not a scoreboard: no kept-counts, no lock.
+function FellowLights({ turned, learned, prayed }: { turned: boolean; learned: boolean; prayed: boolean }) {
+  const items: Array<[boolean, string]> = [[turned, "Turn"], [learned, "Learn"], [prayed, "Pray"]];
   return (
-    <span className="inline-flex items-center gap-[6px]" aria-hidden>
-      {shown.map((d) => (
-        <span key={d.key} style={{ width: 11, height: 11, borderRadius: 999, display: "inline-block", background: d.done ? DOT_ON : "transparent", border: d.done ? "none" : "1.5px solid rgba(143,175,150,0.55)" }} />
+    <span className="inline-flex items-center gap-[6px]" aria-label="Today's presence">
+      {items.map(([on, label]) => (
+        <span key={label} title={`${label}: ${on ? "today" : "quiet"}`} style={{ width: 9, height: 9, borderRadius: 999, display: "inline-block", background: on ? "#6CA8E0" : "transparent", border: on ? "none" : "1.5px solid rgba(108,168,224,0.45)", boxShadow: on ? "0 0 6px rgba(108,168,224,0.55)" : "none" }} />
       ))}
     </span>
   );
@@ -272,25 +274,15 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
   );
 
   const fellowRow = (f: Fellow) => {
-    // Walking-together state folded onto the card.
-    const w = walkByUser.get(f.userId);
-    const p = w?.progress ?? null;
-    const locked = !!w?.progressLocked;
-    // On a phone sabbath today → show a calm rest state, never "behind".
-    const onSabbath = !!w?.sabbath;
-    // Only the first three dots are shared. Encourage unlocks once those three
-    // dots are kept (all of the shown set) — not based on their full practice
-    // count, which we never reveal. No encouraging while they rest.
-    const shown = p?.anchors?.slice(0, SHARED_DOTS) ?? [];
-    const keptShown = shown.filter((a) => a.done).length;
-    const keptEnough = !onSabbath && shown.length > 0 && keptShown === shown.length;
-    // Second line: the three shared dots + a status line (never reveals totals).
-    const statusLine = !w ? null
-      : onSabbath ? t("fellows_c.walk_sabbath", { defaultValue: "🌙 On a phone sabbath" })
-      : locked ? t("fellows_c.walk_locked", { defaultValue: "💚 Pray 1:1 to see today" })
-      : shown.length === 0 ? t("fellows_c.walk_walking", { defaultValue: "Walking with you" })
-      : keptEnough ? t("fellows_c.walk_all_kept", { defaultValue: "Kept today 🌿" })
-      : t("fellows_c.walk_kept_count", { kept: keptShown, total: shown.length, defaultValue: `${keptShown} of ${shown.length} kept today` });
+    // Presence, not a scoreboard: the three coarse blue lights (Turn / Learn /
+    // Pray) for today — no kept-counts, no "pray 1:1 to see" lock. A phone
+    // sabbath still reads as a calm rest state rather than absence.
+    const onSabbath = !!walkByUser.get(f.userId)?.sabbath;
+    const lights = { turned: !!f.turned, learned: !!f.learned, prayed: !!f.prayed };
+    const allLit = lights.turned && lights.learned && lights.prayed;
+    // Encourage unlocks once they've kept the whole rhythm today (all three
+    // lights), never on a rest day — the same rule on both fellow surfaces.
+    const keptEnough = !onSabbath && allLit;
     return (
       <div key={`f-${f.userId}`} className="relative flex items-center gap-3 rounded-2xl px-4 py-3 mb-2" style={CARD_STYLE}>
         <Avatar name={f.name ?? "Someone"} url={f.avatarUrl} />
@@ -301,10 +293,16 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
             // "Cobreathed together…" line (when both exist), like the home cards.
             const lt = lastTogetherLabel(togetherByUser[f.userId]);
             const views: ReactNode[] = [];
-            if (statusLine) views.push(
+            views.push(
               <div className="flex items-center gap-2" key="status">
-                {!locked && !onSabbath && p && p.anchors.length > 0 && <Dots anchors={p.anchors} />}
-                <span className="text-[12px] truncate" style={{ color: SAGE, fontFamily: FONT }}>{statusLine}</span>
+                {onSabbath ? (
+                  <span className="text-[12px] truncate" style={{ color: SAGE, fontFamily: FONT }}>{t("fellows_c.walk_sabbath", { defaultValue: "🌙 On a phone sabbath" })}</span>
+                ) : (
+                  <>
+                    <FellowLights turned={lights.turned} learned={lights.learned} prayed={lights.prayed} />
+                    <span className="text-[12px] truncate" style={{ color: SAGE, fontFamily: FONT }}>{allLit ? t("fellows_c.walk_all_kept", { defaultValue: "Kept today 🌿" }) : t("fellows_c.walking_together", { defaultValue: "Walking together" })}</span>
+                  </>
+                )}
               </div>
             );
             if (lt) views.push(
@@ -436,9 +434,7 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
           {fellows.map((f) => {
             // Gate Encourage on the three shared dots being kept, same as the
             // People-page row — so the rule is consistent across both surfaces.
-            const p = walkByUser.get(f.userId)?.progress ?? null;
-            const shown = p?.anchors?.slice(0, SHARED_DOTS) ?? [];
-            const keptEnough = shown.length > 0 && shown.every((a) => a.done);
+            const keptEnough = !!f.turned && !!f.learned && !!f.prayed;
             return row(f.name ?? "Someone", f.avatarUrl,
               <div className="flex items-center gap-2.5 shrink-0">
                 {keptEnough && (encouraged.has(f.userId)
