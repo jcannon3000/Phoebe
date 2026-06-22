@@ -8,12 +8,12 @@ import { useTranslation } from "react-i18next";
 
 // Modes:
 //   signin   — existing accounts log in
-//   waitlist — visitors without a group invite link drop their name +
-//              email on the waitlist. Self-serve signup is reserved for
-//              community-invite onboarding (/communities/join/:slug/:token);
-//              the root page no longer offers it so casual visitors don't
-//              create empty accounts.
-type Mode = "signin" | "waitlist";
+//   signup   — open self-serve account creation (POST /api/auth/register, which
+//              is now open to anyone — see auth.ts "Open signup"). This is what
+//              the welcome card's "Create an account" promises; without it the
+//              page was a dead end for new users.
+//   waitlist — kept as a low-commitment "just keep me posted" option.
+type Mode = "signin" | "signup" | "waitlist";
 
 export default function Onboarding() {
   const [, setLocation] = useLocation();
@@ -21,7 +21,13 @@ export default function Onboarding() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
-  const [mode, setMode] = useState<Mode>("signin");
+  // The welcome card can deep-link straight to a tab (?mode=signup); default to
+  // sign-in otherwise.
+  const initialMode: Mode = (() => {
+    const m = new URLSearchParams(window.location.search).get("mode");
+    return m === "signup" || m === "waitlist" ? m : "signin";
+  })();
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -74,6 +80,45 @@ export default function Onboarding() {
         if (document.activeElement instanceof HTMLElement) {
           document.activeElement.blur();
         }
+        window.scrollTo(0, 0);
+        await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      } else {
+        setError(data.error ?? t("auth_landing.err_generic"));
+      }
+    } catch {
+      setError(t("auth_landing.err_generic"));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleSignup(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (website.trim().length > 0) { // honeypot
+      setError(t("auth_landing.err_generic")); return;
+    }
+    if (!name.trim()) {
+      setError(t("auth_landing.err_name")); return;
+    }
+    if (!email.trim() || !email.includes("@")) {
+      setError(t("auth_landing.err_email")); return;
+    }
+    if (!password || password.length < 6) {
+      setError(t("auth_landing.err_password")); return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: name.trim(), email: email.trim(), password, website }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        // register logs the user in (server req.login); refresh /auth/me and the
+        // redirect effect carries them into the app (the signup → customize flow).
+        if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
         window.scrollTo(0, 0);
         await queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       } else {
@@ -165,19 +210,23 @@ export default function Onboarding() {
           >
             {/* Mode toggle */}
             <div className="flex rounded-xl p-1 mb-4" style={{ background: "#0F2818" }}>
-              {(["signin", "waitlist"] as Mode[]).map((m) => (
+              {(["signin", "signup", "waitlist"] as Mode[]).map((m) => (
                 <button
                   key={m}
                   type="button"
                   onClick={() => switchMode(m)}
-                  className="flex-1 py-2 rounded-lg text-sm font-medium transition-all"
+                  className="flex-1 py-2 rounded-lg text-[13px] font-medium transition-all"
                   style={{
                     background: mode === m ? "#1A3D2B" : "transparent",
                     color: mode === m ? "#F0EDE6" : "#8FAF96",
                     boxShadow: mode === m ? "0 1px 4px rgba(0,0,0,0.3)" : "none",
                   }}
                 >
-                  {m === "signin" ? t("auth_landing.tab_signin") : t("auth_landing.tab_waitlist")}
+                  {m === "signin"
+                    ? t("auth_landing.tab_signin")
+                    : m === "signup"
+                      ? t("auth_landing.tab_signup", { defaultValue: "Sign up" })
+                      : t("auth_landing.tab_waitlist")}
                 </button>
               ))}
             </div>
@@ -249,6 +298,84 @@ export default function Onboarding() {
                       {t("auth_landing.forgot")}
                     </button>
                   </div>
+                </motion.form>
+              )}
+
+              {mode === "signup" && (
+                <motion.form
+                  key="signup"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.18 }}
+                  onSubmit={handleSignup}
+                  className="flex flex-col gap-3"
+                >
+                  <input
+                    type="text"
+                    placeholder={t("auth_landing.ph_name")}
+                    value={name}
+                    onChange={e => { setName(e.target.value); setError(""); }}
+                    className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
+                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                    autoComplete="name"
+                    disabled={submitting}
+                  />
+                  <input
+                    type="email"
+                    placeholder={t("auth_landing.ph_email")}
+                    value={email}
+                    onChange={e => { setEmail(e.target.value); setError(""); }}
+                    className="w-full px-4 py-3.5 rounded-xl text-sm focus:outline-none animate-input-pulse"
+                    style={{ background: "#091A10", color: "#F0EDE6" }}
+                    autoComplete="email"
+                    disabled={submitting}
+                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder={t("auth_landing.ph_password")}
+                      value={password}
+                      onChange={e => { setPassword(e.target.value); setError(""); }}
+                      className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none animate-input-pulse"
+                      style={{ background: "#091A10", color: "#F0EDE6" }}
+                      autoComplete="new-password"
+                      disabled={submitting}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
+                      style={{ color: "#8FAF96" }}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                  {/* Honeypot */}
+                  <input
+                    type="text"
+                    name="website"
+                    value={website}
+                    onChange={e => setWebsite(e.target.value)}
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                    style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
+                  />
+                  {error && <p className="text-sm px-1" style={{ color: "#C47A65" }}>{error}</p>}
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex items-center justify-center w-full px-6 py-3.5 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-60 mt-1 btn-sage"
+                  >
+                    {submitting ? (
+                      <div className="w-4 h-4 rounded-full border-2 border-[#F7F0E6] border-t-transparent animate-spin" />
+                    ) : t("auth_landing.tab_signup", { defaultValue: "Sign up" })}
+                  </button>
+                  <p className="text-xs text-center mt-1" style={{ color: "rgba(143,175,150,0.7)" }}>
+                    {t("auth_landing.signup_note", { defaultValue: "Free to start. We'll help you set up your daily rhythm next." })}
+                  </p>
                 </motion.form>
               )}
 

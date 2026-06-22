@@ -145,7 +145,7 @@ export default function WelcomePublicPage() {
 
           {/* Card 2 — sign up / sign in (the same form does both) */}
           <ChoiceCard
-            href="/signin"
+            href="/signin?mode=signup"
             emoji="🔑"
             title={t("welcome_public.sign_up_in", { defaultValue: "Sign up / Sign in" })}
             blurb={t("welcome_public.sign_up_in_blurb", { defaultValue: "Create an account, or sign in." })}
