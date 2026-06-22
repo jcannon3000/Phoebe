@@ -6519,7 +6519,9 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
-    if (!authLoading && user && !user.onboardingCompleted) setLocation("/onboarding");
+    // New users start with the customizer (build the rhythm), then the
+    // ?onboarding=1 marker carries them into the trimmed onboarding deck.
+    if (!authLoading && user && !user.onboardingCompleted) setLocation("/rule-of-life?onboarding=1");
   }, [user, authLoading, setLocation]);
 
   if (authLoading || !user) return null;

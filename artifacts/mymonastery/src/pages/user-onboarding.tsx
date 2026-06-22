@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, X, MessageCircle, MapPin, Users, Camera } fr
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
+import { isNativeShell } from "@/lib/isNativeShell";
 import { apiRequest } from "@/lib/queryClient";
 import { triggerAmenFeedback } from "@/lib/amenFeedback";
 import { findBcpPrayer } from "@/lib/bcp-prayers";
@@ -617,31 +618,16 @@ type Slide =
 // are resolved through t() in InfoSlideView at render time so the deck
 // translates with the active language.
 const BASE_SLIDES: Slide[] = [
-  { kind: "profile-picture" },
-  // Daily Office — same copy + mock as the about/church-deck slide.
-  {
-    kind: "info",
-    title: "user_onboarding.slides.daily_office_title",
-    body: "user_onboarding.slides.daily_office_body",
-    mock: "daily-office",
-  },
-  // Daily habit — same copy + mock as the about/church-deck slide.
+  // Lead slide — how Phoebe helps you keep a daily routine. Shown AFTER the
+  // customizer builds the rhythm; leaving it asks to turn on reminders (mobile).
   {
     kind: "info",
     title: "user_onboarding.slides.daily_habit_title",
     body: "user_onboarding.slides.daily_habit_body",
     mock: "prayer-rhythm",
   },
-  {
-    kind: "info",
-    title: "user_onboarding.slides.safe_space_title",
-    body: "user_onboarding.slides.safe_space_body",
-    mock: null,
-    calm: true,
-    footnote: "user_onboarding.slides.safe_space_footnote",
-  },
-  // The "share your first prayer request" slide was removed — we don't ask a
-  // brand-new user to post a request during onboarding.
+  // Then the profile picture, and on to the home screen.
+  { kind: "profile-picture" },
 ];
 
 const MOCK_COMPONENTS: Record<MockKey, () => React.ReactElement> = {
@@ -1612,7 +1598,7 @@ export default function UserOnboarding() {
     if (rawNext && rawNext.startsWith("/") && !rawNext.startsWith("/communities") && !rawNext.startsWith("/community")) {
       return rawNext;
     }
-    return "/rule-of-life";
+    return "/dashboard";
   })();
   const { user, isLoading } = useAuth();
   const { t } = useTranslation();
@@ -1868,8 +1854,15 @@ export default function UserOnboarding() {
   }, [isPreview, completeDestination, queryClient, setLocation]);
 
   const next = useCallback(
-    () => setIndex(i => Math.min(i + 1, SLIDES.length - 1)),
-    [SLIDES.length],
+    () => {
+      // Leaving the lead "daily routine" slide → ask to turn on reminders
+      // (mobile only; iOS shows the permission sheet at most once).
+      if (index === 0 && isNativeShell()) {
+        try { window.dispatchEvent(new Event("phoebe:request-push-permission")); } catch { /* non-fatal */ }
+      }
+      setIndex(i => Math.min(i + 1, SLIDES.length - 1));
+    },
+    [SLIDES.length, index],
   );
   const prev = useCallback(() => setIndex(i => Math.max(i - 1, 0)), []);
 
