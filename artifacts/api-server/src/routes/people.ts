@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, desc, or, sql, inArray, and, isNull, ne, gt } from "drizzle-orm";
 import { db, ritualsTable, meetupsTable, usersTable, sharedMomentsTable, momentUserTokensTable, momentWindowsTable, prayerRequestsTable, prayerRequestAmensTable, prayerWordsTable, userMutesTable, groupsTable, groupMembersTable, fellowsTable, walkPairingsTable } from "@workspace/db";
+import { getFellowLightsForToday, recordTurn } from "../lib/walkProgress";
 import { computeStreak } from "../lib/streak";
 import { getCorrespondentUserIds } from "../lib/correspondents";
 
@@ -856,8 +857,12 @@ router.get("/fellows", async (req, res): Promise<void> => {
     // A fellow's stored streak counts only when still live (prayed today /
     // yesterday) so we never surface a stale number.
     const yesterdayUtc = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    // The three coarse, today-only presence lights (Turn / Learn / Pray) for
+    // each fellow — derived server-side in THEIR tz, the only per-user data the
+    // fellows surface ever exposes. (~5–8 fellows → a handful of cheap queries.)
+    const lights = await Promise.all(rows.map(r => getFellowLightsForToday(r.fellowUserId)));
     res.json({
-      fellows: rows.map(r => ({
+      fellows: rows.map((r, i) => ({
         userId: r.fellowUserId,
         name: r.name,
         email: r.email,
@@ -865,10 +870,28 @@ router.get("/fellows", async (req, res): Promise<void> => {
         source: r.source,
         createdAt: r.createdAt?.toISOString() ?? null,
         streak: r.streakLast && r.streakLast >= yesterdayUtc ? (r.streakCount ?? 0) : 0,
+        turned: lights[i].turned,
+        learned: lights[i].learned,
+        prayed: lights[i].prayed,
       })),
     });
   } catch (err) {
     console.error("[fellows GET] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// Record the viewer's "Turn" 🔆 — a small presence act today (passive dwell
+// >=30s, fired once/day by the client). Lights the Turn dot fellows see.
+// Idempotent per local day; never notifies anyone (presence, not performance).
+router.post("/fellows/turn", async (req, res): Promise<void> => {
+  const sessionUserId = req.user ? (req.user as { id: number }).id : null;
+  if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    await recordTurn(sessionUserId);
+    res.json({ ok: true, turned: true });
+  } catch (err) {
+    console.error("[fellows turn] failed:", err);
     res.status(500).json({ error: "internal_error" });
   }
 });

@@ -178,3 +178,60 @@ export async function getWalkProgressForToday(userId: number): Promise<WalkProgr
   const totalCount = anchors.length;
   return { ymd, tz, anchors, keptCount, totalCount, allKept: totalCount > 0 && keptCount === totalCount };
 }
+
+export type FellowLights = { turned: boolean; learned: boolean; prayed: boolean };
+
+// The fellow-visible projection — three coarse, TODAY-ONLY, BINARY lights:
+// Turn = a presence act today; Learn = any reflection read; Pray = any office /
+// devotion / contemplative completion. It NEVER reveals which / how many / how
+// long — the monk who prays the full office and the person who managed one
+// devotion light the SAME dot. AUTHORIZATION IS THE CALLER'S JOB (same as
+// getWalkProgressForToday): only call for an accepted, mutual fellow.
+export async function getFellowLightsForToday(userId: number): Promise<FellowLights> {
+  const [u] = await db.select({ timezone: usersTable.timezone }).from(usersTable).where(eq(usersTable.id, userId));
+  if (!u) return { turned: false, learned: false, prayed: false };
+  const tz = u.timezone && TZ_RE.test(u.timezone) ? u.timezone : "UTC";
+  const ymd = ymdInTz(tz);
+
+  // Pray — any office/devotion completion OR a contemplation sit today.
+  const pray = await db.execute<{ one: number }>(sql`
+    SELECT 1 AS one FROM prayer_sessions
+    WHERE user_id = ${userId}
+      AND to_char((ended_at AT TIME ZONE ${tz})::date, 'YYYY-MM-DD') = ${ymd}
+      AND (
+        (surface IN ('morning-prayer','morning-devotion','evening-prayer','early-evening-devotion') AND completed = TRUE)
+        OR (surface = 'national-cathedral' AND duration_seconds >= 180)
+        OR (surface IN ('morning-office-podcast','evening-office-podcast') AND completed = TRUE)
+        OR (surface = 'contemplation' AND duration_seconds >= 30)
+      )
+    LIMIT 1
+  `);
+  const prayed = pray.rows.length > 0;
+
+  // Learn — any FDD/SSJE read OR a CAC read today.
+  const refl = await db
+    .select({ s: reflectionReadsTable.source })
+    .from(reflectionReadsTable)
+    .where(and(eq(reflectionReadsTable.userId, userId), eq(reflectionReadsTable.ymd, ymd)))
+    .limit(1);
+  let learned = refl.length > 0;
+  if (!learned) {
+    const cac = await db.execute<{ one: number }>(sql`SELECT 1 AS one FROM cac_reads WHERE user_id = ${userId} AND ymd = ${ymd} LIMIT 1`);
+    learned = cac.rows.length > 0;
+  }
+
+  // Turn — a presence act today (passive dwell, recorded by the client).
+  const turn = await db.execute<{ one: number }>(sql`SELECT 1 AS one FROM presence_turns WHERE user_id = ${userId} AND ymd = ${ymd} LIMIT 1`);
+  const turned = turn.rows.length > 0;
+
+  return { turned, learned, prayed };
+}
+
+// Record the viewer's "Turn" (presence) for today, in their own timezone.
+// Idempotent — one Turn per local day.
+export async function recordTurn(userId: number): Promise<void> {
+  const [u] = await db.select({ timezone: usersTable.timezone }).from(usersTable).where(eq(usersTable.id, userId));
+  const tz = u?.timezone && TZ_RE.test(u.timezone) ? u.timezone : "UTC";
+  const ymd = ymdInTz(tz);
+  await db.execute(sql`INSERT INTO presence_turns (user_id, ymd) VALUES (${userId}, ${ymd}) ON CONFLICT (user_id, ymd) DO NOTHING`);
+}

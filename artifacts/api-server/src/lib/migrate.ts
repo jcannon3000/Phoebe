@@ -3271,6 +3271,19 @@ export async function migrate() {
     `);
     await run(client, `CREATE INDEX IF NOT EXISTS idx_fellow_encouragements_to ON fellow_encouragements (to_user_id)`);
 
+    // Fellows "Turn" 🔆 — one presence act per user per LOCAL day. The first of
+    // the three coarse fellow lights (Turn / Learn / Pray); Learn + Pray are
+    // derived from existing reads/sessions, only Turn needs its own row.
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS presence_turns (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        ymd TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS presence_turns_user_ymd ON presence_turns (user_id, ymd)`);
+
     // Per-user static ECDH public key (E2E voice memos). Private key stays on device.
     await run(client, `
       CREATE TABLE IF NOT EXISTS user_public_keys (
