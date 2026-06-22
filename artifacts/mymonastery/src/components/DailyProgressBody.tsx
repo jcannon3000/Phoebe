@@ -366,9 +366,9 @@ export function WeeklyGridCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, sacred, rgb, later, laterLabel, progress, hero, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4,
+  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4,
 }: {
-  href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; sacred?: boolean; rgb: string;
+  href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
   /** Position in the routine card stack (0 = top/lightest → 1 = bottom/darkest),
    *  driving the subtle card-background lightness ramp. */
   tint?: number;
@@ -462,21 +462,13 @@ function PracticeCard({
         className="flex-shrink-0 inline-flex items-center gap-1 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center"
         style={{ background: `rgba(${rgb},0.85)`, color: WARM }}
       >
-        {doneCta} <span aria-hidden>→</span>
+        <span aria-hidden style={{ opacity: 0.85 }}>✓</span> {doneCta} <span aria-hidden>→</span>
       </span>
     ) : (
-      // "Kept" — the hour quietly filled with light, NOT a ticked box. The
-      // sacred spine (offices, contemplation, the daily word) lights weightier
-      // than the practices anchored to it, so a kept office never reads
-      // pixel-identically to a kept habit-tracker import.
       <span
-        aria-label="Kept today"
-        title="Kept today"
-        className="flex-shrink-0 inline-block rounded-full"
-        style={sacred
-          ? { width: 13, height: 13, background: `rgba(${rgb},0.95)`, boxShadow: `0 0 9px rgba(${rgb},0.6)` }
-          : { width: 9, height: 9, background: `rgba(${rgb},0.5)`, border: `1px solid rgba(${rgb},0.38)` }}
-      />
+        className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
+        style={{ background: `rgba(${rgb},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${rgb},0.45)` }}
+      >✓</span>
     )
   ) : waiting ? (
     <span
@@ -608,7 +600,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurb = t("rhythm.custom_blurb", { defaultValue: "Your daily practice" });
     }
     return {
-      key: `custom-${a.id}`, secular: true, emoji: a.emoji || (r ? "📖" : "✅"), rgb: "143,170,150", done: a.done, href: "",
+      key: `custom-${a.id}`, emoji: a.emoji || (r ? "📖" : "✅"), rgb: "143,170,150", done: a.done, href: "",
       // Tapping opens the Log popup (reading stepper, or Done / Not today).
       onClick: () => setLogAnchorId(a.id),
       title: a.title,
@@ -685,7 +677,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
 
   const cards = [
     ...(morningActive ? [{
-      key: "morning", sacred: true, emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer?side=morning",
+      key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer?side=morning",
       title: officeTitle("Morning"),
       blurb: morningDone ? prayed : morningBlurb,
       blurbCycle: morningDone ? undefined : [morningBlurb, ...officeCycle],
@@ -699,7 +691,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       const url = r.source === "cac" ? CAC_TODAY_URL : r.source === "fdd" ? FDD_TODAY_URL : SSJE_TODAY_URL;
       const mark = r.source === "cac" ? markCacRead : r.source === "fdd" ? markFddRead : markSsjeRead;
       return {
-        key: `reflect-${r.source}`, sacred: true, emoji: "📖", rgb: "96,141,209", done: r.done, href: "",
+        key: `reflect-${r.source}`, emoji: "📖", rgb: "96,141,209", done: r.done, href: "",
         title: PUBLICATION_NAME[r.source],
         // CAC: today's scraped title is a STATIC second line (no rotation).
         // CAC always shows today's scraped meditation title as the second line —
@@ -713,7 +705,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     }),
     ...slottedForSlot("morning"),
     ...(silenceActive ? [{
-      key: "silence", sacred: true, emoji: "🕯️", rgb: "62,124,122", done: silenceDone,
+      key: "silence", emoji: "🕯️", rgb: "62,124,122", done: silenceDone,
       // Always open the begin slide (length, Start contemplation, Cobreathe) —
       // never skip straight into Cobreathe, even when that's the saved style.
       // Choosing Cobreathe there leads to its own in-person options slide.
@@ -749,7 +741,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // morning rhythm (reflection → contemplation) leads the day; from 3 PM on
       // it becomes the office hero. Opt-in — off by default (evening pref
       // "none"), so an un-set-up user has three anchors, not four.
-      key: "evening", sacred: true, emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: "/begin-prayer?side=evening",
+      key: "evening", emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: "/begin-prayer?side=evening",
       title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
       // After 8 PM the title is "Close the day"; the second line names the actual
       // evening method (Evening Prayer / Evening Devotion / Pray together).
@@ -784,20 +776,13 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   const visibleCards = showOfficeHero
     ? coloredCards.filter((c) => c.key !== heroSide)
     : coloredCards;
-  // The rule's SPINE — offices, contemplation, the daily word, and the spiritual
-  // practices anchored to them — vs. imported/secular HABITS (user-defined custom
-  // anchors, e.g. a language streak). The spine fills Next / Earlier today; the
-  // habits ride alongside in a quieter "Also today" band, never flattened into
-  // the rule as equal peers of the offices.
-  const spineCards = visibleCards.filter((c) => !(c as { secular?: boolean }).secular);
-  const secularCards = visibleCards.filter((c) => (c as { secular?: boolean }).secular);
 
   // Split into Next (to-do) and Done, then fade each card up in a gentle
   // stagger on mount. (The earlier "fly the card from Next into Done" replay —
   // built on framer-motion layout + popLayout — glitched, so it's gone: on
   // return the finished card simply renders in Done with the same clean fade.)
   const upcomingDisplay = (() => {
-    const all = spineCards.filter((c) => !c.done);
+    const all = visibleCards.filter((c) => !c.done);
     if (maxUpcoming == null) return all;
     // Cap the Next section: never show more than `maxUpcoming` cards (the office
     // hero counts as one). The rest stay on /daily-progress.
@@ -807,15 +792,8 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // day's rhythm is complete — so the home always reflects what's been prayed.
   // (We used to drop Morning Prayer + the reflection after noon; that made the
   // Done section quietly empty out as the day went on.)
-  const completedDisplay = spineCards.filter((c) => c.done);
+  const completedDisplay = visibleCards.filter((c) => c.done);
   const showDoneSection = (showStreak || showDone) && completedDisplay.length > 0;
-  // "Also today" — the imported/secular habits. Not-done ones always show
-  // (actionable, like Next); kept ones show only where the kept list does.
-  const secularDisplay = [
-    ...secularCards.filter((c) => !c.done),
-    ...((showStreak || showDone) ? secularCards.filter((c) => c.done) : []),
-  ];
-  const showAlsoToday = secularDisplay.length > 0;
 
   // On the native first app-open the splash covers the home; hold the card
   // cascade (fade-up + outline pulse + haptics) until the splash has faded DOWN
@@ -846,7 +824,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     if (!ready || !splashCleared || cascadeHaptedRef.current) return;
     cascadeHaptedRef.current = true;
     if (!isNativeShell()) return;
-    const count = upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0) + secularDisplay.length;
+    const count = upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0);
     const START_DELAY = 200;   // ms — small hold so it doesn't fire early
     const STEP = 110;          // ms between cards
     const BASE_PEAK = 0.42;    // first card's strength
@@ -896,7 +874,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurb={c.blurb}
       cta={c.cta}
       done={c.done}
-      sacred={(c as { sacred?: boolean }).sacred}
       rgb={c.rgb}
       tint={tint}
       later={c.later}
@@ -963,29 +940,6 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
                 {renderCard(c, false, tintFor(upcomingDisplay.length + i))}
               </motion.div>
             ))}
-          </div>
-        </div>
-      )}
-      {/* "Also today" — imported/secular habits (a language streak, etc.) ride
-          ALONGSIDE the rule in a quieter, clearly-subordinate band, never as
-          equal peers of the offices. Still in the day, just not in the spine. */}
-      {showAlsoToday && (
-        <div className="mt-7" style={{ opacity: 0.82 }}>
-          <div className="flex items-center gap-3 mb-2">
-            <h3 className="text-[12.5px] font-semibold uppercase tracking-[0.1em]" style={{ color: "rgba(143,175,150,0.8)", fontFamily: FONT }}>
-              {t("daily_progress.also_today_heading", { defaultValue: "Also today" })}
-            </h3>
-            <div className="flex-1 h-px" style={{ background: "rgba(200,212,192,0.1)" }} />
-          </div>
-          <div className="flex flex-col gap-2">
-            {secularDisplay.map((c, i) => {
-              const idx = upcomingDisplay.length + (showDoneSection ? completedDisplay.length : 0) + i;
-              return (
-                <motion.div key={c.key} {...enterUp(idx)}>
-                  {renderCard(c, false, 0.5)}
-                </motion.div>
-              );
-            })}
           </div>
         </div>
       )}
