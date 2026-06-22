@@ -4894,6 +4894,8 @@ function TimeSection({
   onOpenConsolidatedServices,
   onOpenGathering,
   trailingCards,
+  cascade,
+  cascadeFrom = 0,
 }: {
   label: string;
   items: DashboardItem[];
@@ -4907,6 +4909,9 @@ function TimeSection({
   // tomorrow's). If there are no items and no trailingCards, the section
   // hides itself so empty days stay quiet.
   trailingCards?: React.ReactNode;
+  /** Stagger each card in (home event lists) instead of appearing at once. */
+  cascade?: boolean;
+  cascadeFrom?: number;
 }) {
   if (items.length === 0 && !trailingCards) return null;
 
@@ -5027,7 +5032,18 @@ function TimeSection({
 
   const cards = (
     <div className="space-y-3">
-      {renderedNodes}
+      {cascade
+        ? renderedNodes.map((node, idx) => (
+            <motion.div
+              key={React.isValidElement(node) && node.key != null ? node.key : idx}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: Math.min((cascadeFrom + idx) * 0.1, 0.7) }}
+            >
+              {node}
+            </motion.div>
+          ))
+        : renderedNodes}
       {trailingCards}
     </div>
   );
@@ -6799,7 +6815,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                   <div>
                     <motion.div {...enterUp(0)}>{keptHeader}</motion.div>
                     {nextThree.length > 0 && (
-                      <motion.div {...enterUp(1)}><TimeSection label={t("dashboard.next_up_section", { defaultValue: "Next up" })} items={nextThree} {...evtProps} /></motion.div>
+                      <TimeSection label={t("dashboard.next_up_section", { defaultValue: "Next up" })} items={nextThree} {...evtProps} cascade cascadeFrom={1} />
                     )}
                     {showSitAgain && (
                       <motion.div {...enterUp(nextThree.length + 1)}>{contemplationAgainCard}</motion.div>
@@ -7080,10 +7096,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                     if (evToday.length + evTomorrow.length + evWeek.length + evMonth.length === 0) return null;
                     return (
                       <div style={{ marginTop: 4 }}>
-                        <TimeSection label={t("dashboard.today_section")} items={evToday} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
-                        <TimeSection label={t("dashboard.tomorrow_section")} items={evTomorrow} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
-                        <TimeSection label={t("dashboard.this_week_section")} items={evWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
-                        <TimeSection label={t("dashboard.upcoming_section")} items={evMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} />
+                        <TimeSection label={t("dashboard.today_section")} items={evToday} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade />
+                        <TimeSection label={t("dashboard.tomorrow_section")} items={evTomorrow} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade />
+                        <TimeSection label={t("dashboard.this_week_section")} items={evWeek} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade />
+                        <TimeSection label={t("dashboard.upcoming_section")} items={evMonth} userEmail={userEmail} userName={userName} onOpenService={(schedule, nextDate) => setOpenService({ schedule, nextDate })} onOpenConsolidatedServices={(schedules, nextDate) => setOpenConsolidatedServices({ schedules, nextDate })} onOpenGathering={(r) => setOpenGathering(r)} cascade />
                       </div>
                     );
                   }

@@ -140,10 +140,11 @@ export function CobreatheOverlay({
 
   const handleEnd = useCallback((secondsKept: number, reached: boolean) => {
     const d = localDay();
-    // Log the sit on any end (>=30s, no-op if already logged at the target) —
-    // even an early exit, which previously returned here recording nothing.
-    logSit(secondsKept);
+    // A breath only COUNTS when the set is completed (the 12th breath
+    // reached). An early exit records nothing — no contemplation sit, nothing
+    // toward the daily goal or history.
     if (!reached) { onClose(); return; }
+    logSit(secondsKept);
     // The actual breaths taken (one per CYCLE_MS), floored at the 12 target —
     // same derivation the /cobreathe page uses, so both closes show the real count.
     const taken = Math.max(DEFAULT_TOTAL_BREATHS, Math.round(secondsKept / (CYCLE_MS / 1000)));

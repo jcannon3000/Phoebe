@@ -937,7 +937,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           {sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}
           <div className="flex flex-col gap-2">
             {completedDisplay.map((c, i) => (
-              <motion.div key={c.key} {...enterUp(i)}>
+              <motion.div key={c.key} {...enterUp(upcomingDisplay.length + i)}>
                 {renderCard(c, false, tintFor(upcomingDisplay.length + i))}
               </motion.div>
             ))}

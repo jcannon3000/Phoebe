@@ -21,6 +21,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { RequestWordField } from "@/components/RequestWordField";
 import { ExternalLinkPill } from "@/components/ExternalLinkPill";
 import { usePrayerSession, type PrayerSurface } from "@/hooks/usePrayerSession";
+import { useKeepAwake } from "@/hooks/useKeepAwake";
 import { getSideEntry, setSideEntry, getSideConfession, getSideLevel, type OfficeSide, type DefaultOfficeEntry } from "@/lib/officePrefs";
 import { usePodcastPlayer } from "@/components/PodcastPlayer";
 
@@ -3436,6 +3437,9 @@ function PhysicalBookGuide(props: {
   onMarkPrayed: () => void;
 }) {
   const { slides, officeTitle, mode, dayLabel, intercessionCount, playerDocked, showIntercessions, alreadyDoneToday, onClose, onPrayIntercessions, onMarkPrayed } = props;
+  // Keep the screen awake while reading the page-number guide — you pray
+  // from the open book with the phone set down, so it must not sleep.
+  useKeepAwake(true);
   const sections = useMemo(() => buildBookSections(slides), [slides]);
   const startPage = MODE_START_PAGE[mode];
   const isFullOffice = mode === "morning" || mode === "evening";
