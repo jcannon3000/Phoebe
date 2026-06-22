@@ -334,7 +334,7 @@ function LogPreviewSection({ entries, shared, onViewAll }: { entries: ServerEntr
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-[14px] font-medium truncate" style={{ color: WARM, fontFamily: SPACE_GROTESK }}>{label}</p>
-                <p className="text-[11.5px] mt-0.5 truncate" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{c.who ? `${c.who} · ` : ""}{day}</p>
+                <p className="text-[11.5px] mt-0.5 truncate" style={{ color: SAGE, fontFamily: SPACE_GROTESK }}>{c.who ? `${c.who} · ` : ""}{MEDIUM_EMOJI[c.medium] ?? "🎧"} {day}</p>
               </div>
             </div>
           );

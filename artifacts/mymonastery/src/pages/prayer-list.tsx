@@ -1540,7 +1540,7 @@ export default function PrayerListPage() {
             const reqTotal = req.amenPeopleCount ?? reqFaces.length;
             return (
               <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
-                <div className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]" style={{ background: "rgba(96,141,209,0.12)", border: "1px solid rgba(96,141,209,0.3)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
+                <div className="relative flex rounded-xl overflow-hidden transition-transform active:scale-[0.99]" style={{ background: "rgba(96,141,209,0.12)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(96,141,209,0.3)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}>
                   <div className="w-1 flex-shrink-0" style={{ background: "#608DD1" }} />
                   <div className="flex-1 px-4 pt-3 pb-3">
                     <div className="flex items-center gap-3">

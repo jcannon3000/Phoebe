@@ -7181,7 +7181,7 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                             <Link key={req.id} href={`/prayer-requests/${req.id}`} className="block">
                               <div
                                 className="relative flex rounded-xl overflow-hidden"
-                                style={{ background: "rgba(96,141,209,0.12)", border: "1px solid rgba(96,141,209,0.3)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
+                                style={{ background: "rgba(96,141,209,0.12)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(96,141,209,0.3)", boxShadow: "0 2px 8px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3)" }}
                               >
                                 {/* Blue accent — your own request (others' cards are sage). */}
                                 <div className="w-1 flex-shrink-0" style={{ background: "#608DD1" }} />

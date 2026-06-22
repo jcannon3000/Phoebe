@@ -1000,6 +1000,7 @@ export default function WayOfLoveRuleFlow({
                       type="button"
                       onClick={() => chooseJournalingSlot(s)}
                       style={{
+                        ...FROST_BLUR,
                         background: on ? CARD_ACTIVE : CARD,
                         border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
                         color: on ? CREAM : SAGE,
@@ -1116,6 +1117,7 @@ export default function WayOfLoveRuleFlow({
                     type="button"
                     onClick={() => { touchedRef.current = true; setCustomSlot(sl); }}
                     style={{
+                      ...FROST_BLUR,
                       background: on ? CARD_ACTIVE : CARD,
                       border: `1px solid ${on ? CARD_B_ACTIVE : CARD_B}`,
                       color: on ? CREAM : SAGE,
