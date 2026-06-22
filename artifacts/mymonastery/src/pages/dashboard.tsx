@@ -6818,6 +6818,11 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 {(() => {
                   const remaining = Math.max(0, rhythm.totalAnchors - rhythm.doneCount);
                   if (remaining > 2) return null;
+                  // Dedup: once you've prayed everyone else's request today, the
+                  // prayer-list slot below surfaces the FULL upcoming schedule, so
+                  // this single "Coming up" event would just repeat one of them.
+                  const hasUnprayedOthers = (dashPrayerRequests ?? []).some((r) => !r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()) && !r.myAmenedToday);
+                  if (!hasUnprayedOthers) return null;
                   const isEvt = (it: DashboardItem) => it.kind === "gathering" || it.kind === "service" || it.kind === "services" || it.kind === "action" || it.kind === "plan";
                   const nextEvt = [...todayItems, ...tomorrowItems, ...weekItems, ...monthItems].filter(isEvt)[0];
                   if (!nextEvt) return null;
