@@ -3,11 +3,22 @@ import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { LEAF_PHOTOS } from "@/lib/earthPhotos";
+
+// Frosted-glass field, matching the sign-in page + the rest of the app.
+const FROST_FIELD = {
+  background: "rgba(22,46,32,0.42)",
+  backdropFilter: "blur(11.34px)",
+  WebkitBackdropFilter: "blur(11.34px)",
+  border: "1px solid rgba(200,212,192,0.22)",
+  color: "#F0EDE6",
+} as const;
 
 export default function ResetPassword() {
   const [, setLocation] = useLocation();
   const { t } = useTranslation();
   const token = new URLSearchParams(window.location.search).get("token") ?? "";
+  const [bgPhoto] = useState<string | null>(() => LEAF_PHOTOS.length > 0 ? LEAF_PHOTOS[Math.floor(Math.random() * LEAF_PHOTOS.length)]! : null);
 
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -55,7 +66,22 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#091A10" }}>
+    <div
+      className="min-h-screen flex flex-col"
+      style={{
+        background: "#091A10",
+        isolation: "isolate",
+        fontFamily: "'Space Grotesk', sans-serif",
+        paddingTop: "var(--safe-top)",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      }}
+    >
+      {bgPhoto && (
+        <>
+          <img src={bgPhoto} alt="" aria-hidden style={{ position: "fixed", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.42, zIndex: -1 }} />
+          <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: -1, background: "linear-gradient(180deg, rgba(8,18,12,0.5) 0%, rgba(8,18,12,0.64) 45%, rgba(8,18,12,0.82) 100%)" }} />
+        </>
+      )}
       <header className="px-6 py-6">
         <span className="text-2xl font-bold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}>
           Phoebe
@@ -96,7 +122,7 @@ export default function ResetPassword() {
                     value={password}
                     onChange={e => { setPassword(e.target.value); setError(""); }}
                     className="w-full px-4 py-3.5 pr-11 rounded-xl text-sm focus:outline-none"
-                    style={{ background: "#091A10", border: "1px solid rgba(46,107,64,0.35)", color: "#F0EDE6" }}
+                    style={FROST_FIELD}
                     autoComplete="new-password"
                     disabled={submitting}
                   />
