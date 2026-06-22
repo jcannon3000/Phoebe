@@ -7,7 +7,7 @@
  * matching hashes client-side, same as find-friends.
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Search, Users, Plus, Link2 as LinkIcon, Settings2 } from "lucide-react";
@@ -63,6 +63,30 @@ function Dots({ anchors }: { anchors: WalkAnchorLite[] }) {
         <span key={d.key} style={{ width: 11, height: 11, borderRadius: 999, display: "inline-block", background: d.done ? DOT_ON : "transparent", border: d.done ? "none" : "1.5px solid rgba(143,175,150,0.55)" }} />
       ))}
     </span>
+  );
+}
+
+// A second line that crossfades between a few views (the kept-dots status and
+// the "Cobreathed together…" line), the same gentle opacity crossfade the home
+// cards' subtitle uses — fade the current view out, swap while hidden, fade the
+// next in. One view → static (no cycling).
+function CycleLine({ views }: { views: ReactNode[] }) {
+  const [idx, setIdx] = useState(0);
+  const [shown, setShown] = useState(true);
+  useEffect(() => {
+    if (views.length <= 1) return;
+    let swap: ReturnType<typeof setTimeout> | undefined;
+    const t = setInterval(() => {
+      setShown(false);
+      swap = setTimeout(() => { setIdx((i) => (i + 1) % views.length); setShown(true); }, 260);
+    }, 5000);
+    return () => { clearInterval(t); if (swap) clearTimeout(swap); };
+  }, [views.length]);
+  if (views.length === 0) return null;
+  return (
+    <div style={{ opacity: shown ? 1 : 0, transition: "opacity 0.26s ease", minHeight: 16 }}>
+      {views[idx % views.length]}
+    </div>
   );
 }
 
@@ -262,17 +286,21 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
         <Avatar name={f.name ?? "Someone"} url={f.avatarUrl} />
         <div className="flex-1 min-w-0">
           <p className="truncate text-[15px] font-medium" style={{ color: WARM, fontFamily: FONT }}>{f.name ?? "Someone"}</p>
-          {statusLine && (
-            <div className="flex items-center gap-2 mt-0.5">
-              {!locked && !onSabbath && p && p.anchors.length > 0 && <Dots anchors={p.anchors} />}
-              <span className="text-[12px] truncate" style={{ color: SAGE, fontFamily: FONT }}>{statusLine}</span>
-            </div>
-          )}
           {(() => {
+            // The second line crossfades between the kept-dots status and the
+            // "Cobreathed together…" line (when both exist), like the home cards.
             const lt = lastTogetherLabel(togetherByUser[f.userId]);
-            return lt ? (
-              <p className="text-[11.5px] truncate mt-0.5" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }}>🌍 {lt}</p>
-            ) : null;
+            const views: ReactNode[] = [];
+            if (statusLine) views.push(
+              <div className="flex items-center gap-2" key="status">
+                {!locked && !onSabbath && p && p.anchors.length > 0 && <Dots anchors={p.anchors} />}
+                <span className="text-[12px] truncate" style={{ color: SAGE, fontFamily: FONT }}>{statusLine}</span>
+              </div>
+            );
+            if (lt) views.push(
+              <span className="text-[11.5px] truncate block" style={{ color: "rgba(143,175,150,0.7)", fontFamily: FONT }} key="together">🌍 {lt}</span>
+            );
+            return views.length > 0 ? <div className="mt-0.5"><CycleLine views={views} /></div> : null;
           })()}
         </div>
         <div className="flex items-center gap-2.5 shrink-0">
