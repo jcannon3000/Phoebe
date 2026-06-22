@@ -480,7 +480,27 @@ router.delete("/fellow-plans/:id", async (req, res): Promise<void> => {
   const [plan] = await db.select().from(fellowPlansTable).where(eq(fellowPlansTable.id, planId));
   if (!plan) { res.status(404).json({ error: "Plan not found" }); return; }
   if (plan.userId !== me) { res.status(403).json({ error: "Not your plan." }); return; }
+  // Gather who said they're coming BEFORE deleting (the RSVP rows cascade away).
+  const coming = await db
+    .select({ userId: fellowPlanRsvpsTable.userId })
+    .from(fellowPlanRsvpsTable)
+    .where(and(eq(fellowPlanRsvpsTable.planId, planId), eq(fellowPlanRsvpsTable.status, "coming")));
   await db.delete(fellowPlansTable).where(eq(fellowPlansTable.id, planId));
+  // Let everyone who said "I'm going" know the plan was cancelled.
+  const recipients = [...new Set(coming.map((r) => r.userId).filter((uid) => uid !== me))];
+  if (recipients.length > 0) {
+    void (async () => {
+      try {
+        const [hostRow] = await db.select({ name: usersTable.name }).from(usersTable).where(eq(usersTable.id, me));
+        await sendPushToUsers(recipients, {
+          title: `${briefName(hostRow?.name ?? null)} cancelled a plan`,
+          body: `${plan.emoji ? plan.emoji + " " : ""}${plan.title}`.trim(),
+          path: "/people",
+          threadId: "fellow-plan-cancelled",
+        });
+      } catch { /* best-effort — the plan is already cancelled either way */ }
+    })();
+  }
   res.json({ ok: true });
 });
 
