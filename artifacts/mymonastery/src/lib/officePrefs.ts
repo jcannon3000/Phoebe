@@ -143,10 +143,10 @@ export function getExplicitReflectionSource(): ReflectionSource | null {
 // Backward-compatible reader: explicit pick, else the CAC default.
 // Does NOT consult the home screen (no access to the server user here);
 // React call sites that want the full precedence use
-// useEffectiveReflectionSource() below. Default is CAC (the un-set-up
-// reflection) per the default daily practice.
+// useEffectiveReflectionSource() below. Default is FDD — Forward Day by Day —
+// the un-set-up reflection in the starter rule.
 export function getReflectionSource(): ReflectionSource {
-  return getExplicitReflectionSource() ?? "cac";
+  return getExplicitReflectionSource() ?? "fdd";
 }
 
 // Home layout shape we care about (mirror of AuthUser.homeLayout).
@@ -170,13 +170,13 @@ function visibleHomeReflection(homeLayout: HomeLayoutLike): ReflectionSource | n
   return null;
 }
 
-// Full precedence: explicit settings pick → visible home card → CAC.
-// CAC is the default reflection for un-set-up users (per the default daily
-// practice); an explicit pick or a visible home reflection card still wins.
+// Full precedence: explicit settings pick → visible home card → FDD.
+// Forward Day by Day is the default reflection for un-set-up users (the starter
+// rule); an explicit pick or a visible home reflection card still wins.
 export function deriveReflectionSource(homeLayout: HomeLayoutLike): ReflectionSource {
   const explicit = getExplicitReflectionSource();
   if (explicit) return explicit;
-  return visibleHomeReflection(homeLayout) ?? "cac";
+  return visibleHomeReflection(homeLayout) ?? "fdd";
 }
 
 export function setReflectionSource(v: ReflectionSource): void {

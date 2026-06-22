@@ -411,7 +411,10 @@ export function useRhythmState(): RhythmState {
   // means the office is in the rhythm. null falls back to the server pref.
   const isActiveLevel = (l: typeof ml) => l != null && l !== "ask";
   const morningActive = isActiveLevel(ml) || (officePrefs?.morning ?? "devotion") !== "none";
-  const eveningActive = isActiveLevel(el) || (officePrefs?.evening ?? "none") !== "none";
+  // Starter rule = Morning Devotion · Forward Day by Day · Evening Devotion, so
+  // evening is part of the rhythm by default (un-set-up evening pref falls back to
+  // "devotion", not "none").
+  const eveningActive = isActiveLevel(el) || (officePrefs?.evening ?? "devotion") !== "none";
   const silenceActive = (officePrefs?.contemplationGoalMinutes ?? 0) > 0;
   // Each reflection newsletter the user follows is its OWN anchor (card + dot).
   // The selected set is the reflection home-modules that are on; an un-set-up

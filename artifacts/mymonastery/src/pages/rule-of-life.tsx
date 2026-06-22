@@ -841,12 +841,7 @@ export default function RuleOfLifePage() {
       <Layout bgPhoto={flowLeaf}>
         <WayOfLoveRuleFlow
           onBack={() => (result ? setPhase("result") : setLocation("/daily-progress"))}
-          onDone={() => {
-            // First-run signup (?onboarding=1) continues into the onboarding
-            // deck; a re-customize from settings returns to the rhythm page.
-            const onboarding = new URLSearchParams(window.location.search).get("onboarding") === "1";
-            setLocation(onboarding ? "/onboarding" : "/daily-progress");
-          }}
+          onDone={() => setLocation("/daily-progress")}
         />
       </Layout>
     );

@@ -6519,9 +6519,10 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
 
   useEffect(() => {
     if (!authLoading && !user) setLocation("/");
-    // New users start with the customizer (build the rhythm), then the
-    // ?onboarding=1 marker carries them into the trimmed onboarding deck.
-    if (!authLoading && user && !user.onboardingCompleted) setLocation("/rule-of-life?onboarding=1");
+    // New users land on a coherent GIVEN rhythm (Morning Devotion · Forward Day
+    // by Day · Evening Devotion) — not a config screen. Onboarding is just the
+    // intro + push + photo, then home; they grow into Customize later.
+    if (!authLoading && user && !user.onboardingCompleted) setLocation("/onboarding");
   }, [user, authLoading, setLocation]);
 
   if (authLoading || !user) return null;
