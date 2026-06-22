@@ -6786,7 +6786,13 @@ export default function Dashboard({ eventsOnly = false }: { eventsOnly?: boolean
                 // The next THREE events, flattened across the day buckets (already
                 // chronological today→month) into a single "Next up" section.
                 const isEvt = (it: DashboardItem) => it.kind === "gathering" || it.kind === "service" || it.kind === "services" || it.kind === "action" || it.kind === "plan";
-                const nextThree = [...todayItems, ...tomorrowItems, ...weekItems, ...monthItems].filter(isEvt).slice(0, 3);
+                // Dedup: when you've prayed everyone else's request today, the
+                // prayer-list slot BELOW surfaces the full upcoming schedule — so
+                // listing events here too would double them. Defer to that schedule.
+                const hasUnprayedOthers = (dashPrayerRequests ?? []).some((r) => !r.isOwnRequest && !r.isAnswered && !r.closedAt && typeof r.body === "string" && r.body.length > 0 && !(r.expiresAt && new Date(r.expiresAt) <= new Date()) && !r.myAmenedToday);
+                const nextThree = hasUnprayedOthers
+                  ? [...todayItems, ...tomorrowItems, ...weekItems, ...monthItems].filter(isEvt).slice(0, 3)
+                  : [];
                 return (
                   <div>
                     <motion.div {...enterUp(0)}>{keptHeader}</motion.div>
