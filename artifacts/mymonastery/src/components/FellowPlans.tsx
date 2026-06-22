@@ -20,8 +20,10 @@ import { isNativeShell } from "@/lib/isNativeShell";
 const WARM = "#F0EDE6";
 const SAGE = "#8FAF96";
 const FONT = "'Space Grotesk', system-ui, sans-serif";
-const CARD_BG = "rgba(46,107,64,0.12)";
+const CARD_BG = "rgba(9,26,16,0.42)";
 const CARD_B = "rgba(46,107,64,0.3)";
+// Frosted glass for the plan cards on the Events page (matches the app's frost).
+const FROST = { background: CARD_BG, backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)" } as const;
 
 const EMOJI_CHOICES = ["⛪", "☕", "🍽️", "🚶", "📖", "🎶", "🙏", "🕯️", "✨"];
 
@@ -205,7 +207,7 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
       {/* Compose (beta) */}
       {canManage && (
         composing ? (
-          <div className="rounded-2xl p-3.5 mb-3" style={{ background: CARD_BG, border: `1px solid ${CARD_B}` }}>
+          <div className="rounded-2xl p-3.5 mb-3" style={{ ...FROST, border: `1px solid ${CARD_B}` }}>
             <div className="flex items-center justify-between mb-2.5">
               <p className="text-[13.5px] font-semibold" style={{ color: WARM, fontFamily: FONT }}>{editingId ? t("plans.edit_title", { defaultValue: "Edit your plan" }) : t("plans.compose_title", { defaultValue: "What are you going to?" })}</p>
               <button type="button" onClick={resetCompose} aria-label="Close"><X size={17} color={SAGE} /></button>
@@ -294,7 +296,7 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
             type="button"
             onClick={() => setComposing(true)}
             className="w-full inline-flex items-center justify-center gap-2 rounded-2xl py-3 mb-3 text-[14px] font-semibold transition-opacity active:scale-[0.99]"
-            style={{ background: CARD_BG, border: `1px dashed ${CARD_B}`, color: "#A8C5A0", fontFamily: FONT }}
+            style={{ ...FROST, border: `1px dashed ${CARD_B}`, color: "#A8C5A0", fontFamily: FONT }}
           >
             <Plus size={16} /> {t("plans.share_a_plan", { defaultValue: "Share a plan" })}
           </button>
@@ -314,7 +316,7 @@ export function FellowPlans({ canManage = false, hideWhenEmpty = false }: { canM
         plans.map((p) => {
           const when = whenLabel(p);
           return (
-            <div key={p.id} className="rounded-2xl px-4 py-3.5 mb-2.5" style={{ background: CARD_BG, border: `1px solid ${CARD_B}` }}>
+            <div key={p.id} className="rounded-2xl px-4 py-3.5 mb-2.5" style={{ ...FROST, border: `1px solid ${CARD_B}` }}>
               {/* Host line */}
               <div className="flex items-center gap-2.5 mb-2">
                 <Avatar name={p.host.name} url={p.host.avatarUrl} size={28} />
