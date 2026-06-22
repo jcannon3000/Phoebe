@@ -1199,11 +1199,14 @@ export default function WayOfLoveRuleFlow({
     <>
       <div style={{ textAlign: "center", marginTop: 8 }}>
         <span style={{ fontSize: 40 }} aria-hidden>🕊️</span>
-        <h1 style={{ color: CREAM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: "12px 0 0" }}>
-          {t("wol_rule.done_title", { defaultValue: "Your daily rhythm is set" })}
+        <p style={{ color: SAGE_DIM, fontSize: 11, textTransform: "uppercase", letterSpacing: "1.4px", fontFamily: FONT, margin: "14px 0 6px" }}>
+          {t("wol_rule.done_eyebrow", { defaultValue: "Your rule of life" })}
+        </p>
+        <h1 style={{ color: CREAM, fontSize: 24, fontWeight: 700, fontFamily: FONT, margin: 0 }}>
+          {t("wol_rule.done_title", { defaultValue: "This is the shape of your days" })}
         </h1>
-        <p style={{ color: SAGE_DIM, fontSize: 13, fontFamily: FONT, lineHeight: 1.5, margin: "8px auto 0", maxWidth: 340 }}>
-          {t("wol_rule.done_review_sub", { defaultValue: "Tap any practice to change it." })}
+        <p style={{ color: SAGE, fontSize: 13.5, fontFamily: FONT, lineHeight: 1.55, margin: "10px auto 0", maxWidth: 332 }}>
+          {t("wol_rule.done_behold", { defaultValue: "The practices you're choosing to return to, morning through evening." })}
         </p>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 22 }}>
@@ -1218,12 +1221,15 @@ export default function WayOfLoveRuleFlow({
               <span style={{ display: "block", color: CREAM, fontSize: 15.5, fontWeight: 600, fontFamily: FONT }}>{r.label}</span>
               <span style={{ display: "block", color: SAGE, fontSize: 12.5, fontFamily: FONT, marginTop: 2 }}>{r.sub}</span>
             </span>
-            <span style={{ color: SAGE_DIM, fontSize: 18, flexShrink: 0 }} aria-hidden>›</span>
+            <span style={{ color: "rgba(143,175,150,0.4)", fontSize: 16, flexShrink: 0 }} aria-hidden>›</span>
           </button>
         ))}
       </div>
-      <button onClick={onDone} style={{ marginTop: 24, background: "rgba(46,107,64,0.55)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)", color: CREAM, borderRadius: 12, padding: "15px 20px", fontSize: 16, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
-        {t("wol_rule.done_cta", { defaultValue: "Go to Daily progress" })}
+      <p style={{ textAlign: "center", color: SAGE_DIM, fontSize: 12, fontFamily: FONT, margin: "16px 0 0" }}>
+        {t("wol_rule.done_edit_hint", { defaultValue: "Tap any practice to adjust it." })}
+      </p>
+      <button onClick={onDone} style={{ marginTop: 14, background: "rgba(46,107,64,0.72)", ...FROST_BLUR, border: `1px solid ${CARD_B_ACTIVE}`, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)", color: CREAM, borderRadius: 14, padding: "17px 20px", fontSize: 16.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
+        {t("wol_rule.done_cta", { defaultValue: "Keep this rhythm" })}
       </button>
     </>,
   );
