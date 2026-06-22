@@ -24,6 +24,9 @@ export function NetworkBanner() {
     typeof navigator === "undefined" ? true : navigator.onLine,
   );
   const [recentErrors, setRecentErrors] = useState(0);
+  // The banner is a brief NOTICE, not a persistent bar — it shows when trouble
+  // starts, then fades out on its own even if you're still offline.
+  const [autoHidden, setAutoHidden] = useState(false);
 
   // Listen to the OS online/offline events. These fire reliably for
   // hard disconnects (airplane mode, Wi-Fi off) but NOT for silent
@@ -85,7 +88,17 @@ export function NetworkBanner() {
   // less is probably a single legitimate 500 or an aborted navigation.
   const showFlaky = online && recentErrors >= 3;
 
-  if (!showOffline && !showFlaky) return null;
+  // Auto-dismiss after a few seconds so it doesn't sit on screen the whole time
+  // you're offline. A fresh offline/flaky transition re-arms it (the effect
+  // re-runs when showOffline/showFlaky flips), so a NEW drop still gets noticed.
+  useEffect(() => {
+    if (!showOffline && !showFlaky) { setAutoHidden(false); return; }
+    setAutoHidden(false);
+    const id = window.setTimeout(() => setAutoHidden(true), 4000);
+    return () => window.clearTimeout(id);
+  }, [showOffline, showFlaky]);
+
+  if ((!showOffline && !showFlaky) || autoHidden) return null;
 
   return (
     <div
