@@ -635,7 +635,7 @@ export default function MomentNew() {
       if (practiceDurationDays === null) setPracticeDurationDays(7);
     } else {
       if (practiceDurationDays === null || practiceDurationDays < 1 || practiceDurationDays > 14) {
-        setPracticeDurationDays(3);
+        setPracticeDurationDays(1);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1975,19 +1975,24 @@ export default function MomentNew() {
                       community. Sits under "How often" (time of day was
                       dropped; the intention runs all day on the calendar). */}
                   {templateId === "intercession" && (
-                    <div>
-                      <label className="block text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "#8FAF96" }}>
+                    <div className="w-full rounded-2xl px-4 py-3 flex items-center justify-between gap-3" style={{ background: "rgba(9,26,16,0.34)", backdropFilter: "blur(11.34px)", WebkitBackdropFilter: "blur(11.34px)", border: "1px solid rgba(46,107,64,0.4)" }}>
+                      <span className="text-[14px] font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>
                         {t("moment_new.duration.length_label", { defaultValue: "Length" })}
-                      </label>
-                      <select
-                        value={practiceDurationDays ?? 3}
-                        onChange={(e) => setPracticeDurationDays(Number(e.target.value))}
-                        style={{ width: "auto", background: "rgba(46,107,64,0.22)", color: "#F0EDE6", border: "1px solid rgba(46,107,64,0.50)", borderRadius: 999, padding: "12px 26px", fontSize: 15, fontWeight: 600, fontFamily: "'Space Grotesk', sans-serif", textAlignLast: "center", colorScheme: "dark", cursor: "pointer", outline: "none" }}
-                      >
-                        {Array.from({ length: 14 }, (_, i) => i + 1).map((d) => (
-                          <option key={d} value={d}>{d === 1 ? "1 day" : `${d} days`}</option>
-                        ))}
-                      </select>
+                      </span>
+                      <div style={{ position: "relative" }}>
+                        <select
+                          value={practiceDurationDays ?? 1}
+                          onChange={(e) => setPracticeDurationDays(Number(e.target.value))}
+                          aria-label={t("moment_new.duration.length_label", { defaultValue: "Length" })}
+                          className="text-[14px] font-medium outline-none bg-transparent pr-5 text-right"
+                          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", colorScheme: "dark", appearance: "none", WebkitAppearance: "none", cursor: "pointer" }}
+                        >
+                          {Array.from({ length: 14 }, (_, i) => i + 1).map((d) => (
+                            <option key={d} value={d}>{d === 1 ? "1 day" : `${d} days`}</option>
+                          ))}
+                        </select>
+                        <span aria-hidden style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", color: "#8FAF96", fontSize: 11, pointerEvents: "none" }}>▾</span>
+                      </div>
                     </div>
                   )}
                 </div>

@@ -143,12 +143,12 @@ export default function WelcomePublicPage() {
             onClick={() => primeAudio()}
           />
 
-          {/* Card 2 — sign in (or sign up via the same form) */}
+          {/* Card 2 — sign up / sign in (the same form does both) */}
           <ChoiceCard
             href="/signin"
             emoji="🔑"
-            title={t("welcome_public.sign_in")}
-            blurb={t("welcome_public.sign_in_blurb")}
+            title={t("welcome_public.sign_up_in", { defaultValue: "Sign up / Sign in" })}
+            blurb={t("welcome_public.sign_up_in_blurb", { defaultValue: "Create an account, or sign in." })}
             delay={0.12}
             muted
           />
