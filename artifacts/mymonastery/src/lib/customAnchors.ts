@@ -87,6 +87,11 @@ export function readingUnitLabel(unit: ReadingUnit, n: number): string {
 }
 
 const DEFS_KEY = "phoebe:custom-anchors";
+// Tombstones: ids the user has DELETED. A delete is the only thing that removes
+// an anchor on the server (the server unions everything else by id and never
+// drops on absence), so we must tell it which ids to retire. Kept locally until
+// the server acknowledges them (echoes them back in snapshot.tombstones).
+const DELETED_KEY = "phoebe:custom-anchors-deleted";
 const DONE_PREFIX = "phoebe:custom-done:";
 // Reading logs: today's amount (per local day) + an all-time running total.
 const READ_TODAY_PREFIX = "phoebe:custom-read:";   // value: `${ymd}|${amount}`
@@ -162,7 +167,34 @@ export function addCustomAnchor(
   saveDefs(list);
 }
 
+// Ids the user has explicitly deleted (tombstones), so the server retires them
+// rather than treating their absence as "nothing changed". Capped + persisted.
+function getDeletedIds(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DELETED_KEY) || "[]");
+    return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : [];
+  } catch { return []; }
+}
+function addDeletedId(id: string): void {
+  try {
+    const next = [...new Set([...getDeletedIds(), id])].slice(-200);
+    localStorage.setItem(DELETED_KEY, JSON.stringify(next));
+  } catch { /* ignore */ }
+}
+// Once the server has acknowledged a tombstone (it echoes it in snapshot.tombstones),
+// we can stop sending that id — bounds the deleted-ids list.
+function pruneDeletedIds(acknowledged: Set<string>): void {
+  if (acknowledged.size === 0) return;
+  try {
+    const remaining = getDeletedIds().filter((id) => !acknowledged.has(id));
+    localStorage.setItem(DELETED_KEY, JSON.stringify(remaining));
+  } catch { /* ignore */ }
+}
+
 export function removeCustomAnchor(id: string): void {
+  // Record the tombstone FIRST so the next push tells the server to retire it
+  // (absence alone never deletes — that's what makes accidental wipes impossible).
+  addDeletedId(id);
   saveDefs(getCustomAnchors().filter((a) => a.id !== id));
   // Drop today's completion flag + any reading logs so a re-added title doesn't
   // inherit them.
@@ -351,13 +383,24 @@ export type CustomAnchorSnapshot = {
   // reading log ("ymd|amount"), and the all-time reading total.
   log: Record<string, { done?: string; skip?: string; readToday?: string; readTotal?: number }>;
   updatedAt: number;
+  // Ids the user explicitly deleted — sent UP so the server tombstones them
+  // (absence never deletes). On the way DOWN the server echoes accumulated
+  // tombstones so this device can drop any locally-resurrected copy.
+  deletedIds?: string[];
+  tombstones?: Record<string, number>;
 };
 
 // True only while we're WRITING the server snapshot into localStorage, so the
 // change-events that fire during import don't immediately push it back up.
 let suppressPush = false;
+// Flips true once we've heard from the server (a sync-down landed). Until then
+// we refuse to push an EMPTY snapshot — a fresh/cleared/corrupted device must
+// not send "I have nothing" before it's learned what the server holds. (The
+// server merge already refuses to delete on absence; this is defence-in-depth
+// that also avoids needless churn + a cross-user-leak push right after login.)
+let serverSyncReceived = false;
 
-/** Build the full snapshot (defs + per-day state) from localStorage. */
+/** Build the full snapshot (defs + per-day state + pending deletes) from localStorage. */
 export function exportCustomAnchorSnapshot(): CustomAnchorSnapshot {
   const defs = getCustomAnchors();
   const log: CustomAnchorSnapshot["log"] = {};
@@ -372,7 +415,8 @@ export function exportCustomAnchorSnapshot(): CustomAnchorSnapshot {
     } catch { /* ignore */ }
     if (Object.keys(entry).length > 0) log[a.id] = entry;
   }
-  return { defs, log, updatedAt: Date.now() };
+  const deletedIds = getDeletedIds();
+  return { defs, log, updatedAt: Date.now(), ...(deletedIds.length > 0 ? { deletedIds } : {}) };
 }
 
 function setOrRemove(key: string, value: string | undefined): void {
@@ -391,22 +435,33 @@ function setOrRemove(key: string, value: string | undefined): void {
  *  the server catches up. */
 export function importCustomAnchorSnapshot(snap: CustomAnchorSnapshot | null | undefined): void {
   if (!snap || !Array.isArray(snap.defs)) return;
+  // We've now heard from the server — empty pushes are allowed again (a genuine
+  // "I deleted my last card" carries deletedIds; an empty-from-corruption is
+  // still harmless because the server merge won't delete on absence).
+  serverSyncReceived = true;
   let needsPush = false;
   suppressPush = true;
   try {
+    // Tombstones the server reports — ids the user deleted (here or elsewhere).
+    // Drop any local copy so a delete genuinely propagates across devices, and
+    // stop re-sending deletes the server has now acknowledged.
+    const tomb = new Set<string>(snap.tombstones && typeof snap.tombstones === "object" ? Object.keys(snap.tombstones) : []);
     const serverIds = new Set(snap.defs.map((d) => d.id));
-    // Local anchors the server hasn't seen yet — keep them rather than dropping.
-    const localOnly = getCustomAnchors().filter((a) => !serverIds.has(a.id));
-    saveDefs([...snap.defs, ...localOnly]);
+    // Local anchors the server hasn't seen yet — keep them rather than dropping
+    // (a not-yet-synced add survives), EXCEPT ones the server says are deleted.
+    const localOnly = getCustomAnchors().filter((a) => !serverIds.has(a.id) && !tomb.has(a.id));
+    const serverDefs = snap.defs.filter((d) => !tomb.has(d.id));
+    saveDefs([...serverDefs, ...localOnly]);
     // Re-stamp per-day state + reading total for the server's anchors. Local-only
     // anchors keep their existing localStorage state untouched.
-    for (const a of snap.defs) {
+    for (const a of serverDefs) {
       const e = snap.log?.[a.id] ?? {};
       setOrRemove(DONE_PREFIX + a.id, e.done);
       setOrRemove(SKIP_PREFIX + a.id, e.skip);
       setOrRemove(READ_TODAY_PREFIX + a.id, e.readToday);
       setOrRemove(READ_TOTAL_PREFIX + a.id, e.readTotal != null ? String(e.readTotal) : undefined);
     }
+    if (tomb.size > 0) pruneDeletedIds(tomb);
     needsPush = localOnly.length > 0;
     window.dispatchEvent(new Event(CUSTOM_ANCHORS_EVENT));
     window.dispatchEvent(new Event(CUSTOM_DONE_EVENT));
@@ -418,16 +473,32 @@ export function importCustomAnchorSnapshot(snap: CustomAnchorSnapshot | null | u
 }
 
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
-function doPush(): void {
+// The snapshot captured when the push was SCHEDULED, reused by the unload-time
+// flush. Capturing it up-front means a page-hide flush can't re-read a
+// localStorage that was cleared/corrupted in the meantime and send an empty set.
+let pendingSnapshot: CustomAnchorSnapshot | null = null;
+
+// Refuse to push a snapshot that would announce "I have nothing" before we've
+// heard from the server. A genuine "deleted my last card" carries deletedIds,
+// so it still goes through; an empty-from-corruption / pre-sync / cleared-cache
+// snapshot does not. (Belt: the server merge already never deletes on absence.)
+function safeToPush(snap: CustomAnchorSnapshot): boolean {
+  if (snap.defs.length === 0 && (!snap.deletedIds || snap.deletedIds.length === 0) && !serverSyncReceived) return false;
+  return true;
+}
+function doPush(snap?: CustomAnchorSnapshot): void {
+  const payload = snap ?? exportCustomAnchorSnapshot();
+  if (!safeToPush(payload)) return;
   try {
-    apiRequest("PUT", "/api/me/custom-anchors", exportCustomAnchorSnapshot()).catch(() => { /* best-effort */ });
+    apiRequest("PUT", "/api/me/custom-anchors", payload).catch(() => { /* best-effort */ });
   } catch { /* ignore */ }
 }
 /** Debounced push of the local snapshot up to the server. */
 export function pushCustomAnchors(): void {
   if (suppressPush) return;
+  pendingSnapshot = exportCustomAnchorSnapshot(); // capture now, flush-safe
   if (pushTimer) clearTimeout(pushTimer);
-  pushTimer = setTimeout(() => { pushTimer = null; doPush(); }, 800);
+  pushTimer = setTimeout(() => { pushTimer = null; const s = pendingSnapshot; pendingSnapshot = null; doPush(s ?? undefined); }, 800);
 }
 
 // Flush a PENDING push IMMEDIATELY, surviving an imminent page unload. The 800ms
@@ -439,15 +510,20 @@ function flushPendingPush(): void {
   if (!pushTimer || suppressPush) return;
   clearTimeout(pushTimer);
   pushTimer = null;
+  // Use the snapshot captured at schedule time — never re-read a possibly
+  // cleared localStorage on the way out.
+  const payload = pendingSnapshot ?? exportCustomAnchorSnapshot();
+  pendingSnapshot = null;
+  if (!safeToPush(payload)) return;
   try {
     fetch("/api/me/custom-anchors", {
       method: "PUT",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(exportCustomAnchorSnapshot()),
+      body: JSON.stringify(payload),
       keepalive: true,
     }).catch(() => { /* best-effort */ });
-  } catch { doPush(); }
+  } catch { doPush(payload); }
 }
 
 // Day-stamps are ISO YYYY-MM-DD, which sort lexically — so the later string is
@@ -497,14 +573,21 @@ function mergeLogEntry(l: LogEntry | undefined, s: LogEntry | undefined): LogEnt
  * rituals), the union is pushed up so the person's data ends up complete.
  */
 export function syncCustomAnchorsFromServer(server: CustomAnchorSnapshot | null | undefined): void {
+  // We've now heard from the server — release the empty-push guard either way.
+  serverSyncReceived = true;
   const localDefs = getCustomAnchors();
   const serverDefs = (Array.isArray(server?.defs) ? server!.defs : []) as CustomAnchor[];
+  // Tombstones the server reports — ids deleted here or on another device. They
+  // must drop from the union so a delete genuinely propagates (not resurrect).
+  const tombstones = (server?.tombstones && typeof server.tombstones === "object") ? server.tombstones : undefined;
+  const tomb = new Set<string>(tombstones ? Object.keys(tombstones) : []);
   if (serverDefs.length === 0 && localDefs.length === 0) return; // nothing anywhere
 
-  // Union by id: server defs first (authoritative order), then any local-only.
+  // Union by id: server defs first (authoritative order), then any local-only —
+  // excluding anything the server has tombstoned.
   const byId = new Map<string, CustomAnchor>();
-  for (const d of serverDefs) if (d && typeof d.id === "string") byId.set(d.id, d);
-  for (const d of localDefs) if (!byId.has(d.id)) byId.set(d.id, d);
+  for (const d of serverDefs) if (d && typeof d.id === "string" && !tomb.has(d.id)) byId.set(d.id, d);
+  for (const d of localDefs) if (!byId.has(d.id) && !tomb.has(d.id)) byId.set(d.id, d);
   const mergedDefs = Array.from(byId.values());
 
   // Merge per-day state field-by-field, keeping the most-recent value for each
@@ -516,7 +599,7 @@ export function syncCustomAnchorsFromServer(server: CustomAnchorSnapshot | null 
     mergedLog[id] = mergeLogEntry(localLog[id], serverLog[id]);
   }
 
-  importCustomAnchorSnapshot({ defs: mergedDefs, log: mergedLog, updatedAt: Date.now() });
+  importCustomAnchorSnapshot({ defs: mergedDefs, log: mergedLog, updatedAt: Date.now(), ...(tombstones ? { tombstones } : {}) });
 
   // Push the reconciled snapshot up whenever it differs from what the server
   // had — covers the first-time migration, a ritual added on this device, AND
@@ -530,6 +613,26 @@ export function syncCustomAnchorsFromServer(server: CustomAnchorSnapshot | null 
     }
   }
   if (changedVsServer) doPush();
+}
+
+/** Wipe ALL custom-anchor local state. Call on LOGOUT so the next person on
+ *  this device never inherits the previous user's rituals (which would then be
+ *  pushed up to the new user's row — a cross-user data leak). Also resets the
+ *  server-sync gate so the next session re-syncs before it can push. */
+export function clearCustomAnchorStorage(): void {
+  serverSyncReceived = false;
+  if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
+  pendingSnapshot = null;
+  try {
+    const toRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      // Every custom-anchor key (defs, done/skip/read/read-total/hist, deleted)
+      // shares the phoebe:custom- prefix.
+      if (k && k.startsWith("phoebe:custom-")) toRemove.push(k);
+    }
+    for (const k of toRemove) localStorage.removeItem(k);
+  } catch { /* ignore */ }
 }
 
 // Any local change (list add/remove via saveDefs, or a check/skip/reading log)

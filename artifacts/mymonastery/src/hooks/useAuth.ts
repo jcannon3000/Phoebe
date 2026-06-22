@@ -6,6 +6,7 @@ import {
   tryExchangePersistentToken,
 } from "@/lib/persistentAuth";
 import { clearIdbCache } from "@/lib/idbCache";
+import { clearCustomAnchorStorage } from "@/lib/customAnchors";
 
 // Phoebe Parish — derived server-side from beta_users + group_members
 // + users.parish_feed_id + users.offices_only. "full" sees everything
@@ -145,6 +146,10 @@ export function useLogout() {
     // Prayer-list snapshot caches other people's request BODIES (sensitive) —
     // wipe it so the next person to sign in on this device can't read them.
     try { window.localStorage.removeItem("phoebe:prayer-list-snapshot"); } catch { /* ignore */ }
+    // Custom-anchor cache (the user's rituals + per-day state) is local-first and
+    // syncs UP — if the next person inherited it, their first change would push
+    // the previous user's rituals to the new account. Wipe all of it on logout.
+    try { clearCustomAnchorStorage(); } catch { /* ignore */ }
     // Wipe the larger IndexedDB layer too (feeds + office text) so one
     // account's cached content never carries over to the next person.
     try { await clearIdbCache(); } catch { /* ignore */ }

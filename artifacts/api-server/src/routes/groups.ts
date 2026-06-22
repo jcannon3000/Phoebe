@@ -4288,11 +4288,14 @@ router.put("/groups/:slug/service-schedule", async (req, res): Promise<void> => 
       name: z.string().min(1).max(80).optional(),
       location: z.string().max(200).nullable().optional(),
       dayOfWeek: z.number().int().min(0).max(6).optional(),
+      // min(1): a service schedule must have at least one time. Without this an
+      // empty array from a stale/cleared admin form would wipe all service times
+      // via the upsert below (confirmed data-loss path).
       times: z.array(z.object({
         label: z.string().max(80).optional(),
         time: z.string().regex(/^\d{1,2}:\d{2}$/),
         location: z.string().max(120).optional(),
-      })).max(12),
+      })).min(1).max(12),
     });
     const parsed = schema.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: "Invalid input", details: parsed.error.issues }); return; }

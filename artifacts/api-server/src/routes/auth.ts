@@ -255,7 +255,7 @@ router.get("/auth/me", async (req, res) => {
     homeFeedId: number | null;
     feedFirstHome: boolean;
     homeLayout: { order: string[]; hidden: string[]; v?: number } | null;
-    customAnchors: { defs: unknown[]; log: Record<string, unknown>; updatedAt?: number } | null;
+    customAnchors: { defs: unknown[]; log: Record<string, unknown>; updatedAt?: number; tombstones?: Record<string, number> } | null;
     restDays: number[];
     pushEnabled: boolean;
     emailEnabled: boolean;

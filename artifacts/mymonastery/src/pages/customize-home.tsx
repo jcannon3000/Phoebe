@@ -26,7 +26,10 @@ const SPACE_GROTESK = "'Space Grotesk', system-ui, sans-serif";
 // HOME_MODULE_KEYS in api-server/src/routes/prayer.ts — keys not in
 // the server's allowlist are silently dropped from saved layouts.
 const HOME_MODULES = [
-  "office", "contemplation", "listening", "gratitude", "examen", "journaling",
+  // Must match HOME_MODULE_KEYS in api-server/src/routes/prayer.ts. "feeds" was
+  // missing here, so saving from this page silently stripped it and the server
+  // re-appended it at the end — quietly moving the user's feeds card. Keep in sync.
+  "office", "feeds", "contemplation", "listening", "gratitude", "examen", "journaling",
   "cac", "fdd", "ssje", "ncmp", "podcasts", "requests",
 ] as const;
 type HomeModule = typeof HOME_MODULES[number];

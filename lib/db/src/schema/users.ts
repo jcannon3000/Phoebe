@@ -256,7 +256,7 @@ export const usersTable = pgTable("users", {
   // opaque blob the client owns (lib/customAnchors CustomAnchorSnapshot). Stored
   // here so a person's rituals are their DATA and sync across devices (phone /
   // web), with localStorage as the offline cache. NULL = none synced yet.
-  customAnchors: jsonb("custom_anchors").$type<{ defs: unknown[]; log: Record<string, unknown>; updatedAt?: number }>(),
+  customAnchors: jsonb("custom_anchors").$type<{ defs: unknown[]; log: Record<string, unknown>; updatedAt?: number; tombstones?: Record<string, number> }>(),
   // Phone-sabbath: weekday numbers (0=Sun … 6=Sat) the user rests from their
   // phone. On those days fellows see a calm "on a sabbath" state instead of
   // "fell behind", so a quiet weekend doesn't read as concerning. [] = none.

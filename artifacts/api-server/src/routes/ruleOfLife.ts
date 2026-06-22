@@ -323,7 +323,11 @@ router.get("/wol", async (req, res): Promise<void> => {
   }
 });
 
-// PUT /api/rule-of-life/wol — upsert the whole selections map.
+// PUT /api/rule-of-life/wol — MERGE the incoming selection keys into the stored
+// map (read-merge-write), never a blind replace. The customizer saves only a
+// SUBSET (e.g. { pray, learn }), so a wholesale overwrite silently dropped every
+// other Way-of-Love selection. Merging by key means a partial save only updates
+// the keys it carries; absence is never a deletion.
 router.put("/wol", async (req, res): Promise<void> => {
   const user = getUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -332,14 +336,17 @@ router.put("/wol", async (req, res): Promise<void> => {
     res.status(400).json({ error: "selections must be an object" }); return;
   }
   try {
+    const { rows } = await pool.query(`SELECT selections FROM user_wol WHERE user_id = $1`, [user.id]);
+    const existing = (rows[0]?.selections && typeof rows[0].selections === "object") ? rows[0].selections as Record<string, unknown> : {};
+    const merged = { ...existing, ...selections };
     await pool.query(
       `INSERT INTO user_wol (user_id, selections, updated_at)
        VALUES ($1, $2, NOW())
        ON CONFLICT (user_id)
        DO UPDATE SET selections = $2, updated_at = NOW()`,
-      [user.id, JSON.stringify(selections)],
+      [user.id, JSON.stringify(merged)],
     );
-    res.json({ ok: true });
+    res.json({ ok: true, selections: merged });
   } catch (err) {
     console.error("[rule-of-life] PUT /wol failed:", err);
     res.status(500).json({ error: "Failed to save Way of Love" });

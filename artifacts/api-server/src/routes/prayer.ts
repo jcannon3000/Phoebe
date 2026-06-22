@@ -979,16 +979,25 @@ router.post("/prayer-requests", rateLimit({
   (async () => {
     try {
       const gardenIds = await getGardenUserIds(sessionUserId);
-      // Union garden + tagged users so a tagged person who isn't in
-      // any shared community still gets the "asking for your
-      // prayers" push. Self-tag was already filtered out above when
-      // we built validTaggedIds, but we also skip the author here
+      // For a directed ("to a fellow") request, push ONLY to the tagged
+      // recipients. Fanning out to the garden would leak the owner's
+      // name and the existence of a private request to people who hit a
+      // 403 the instant they tap the push — the by-id and list routes
+      // both hide directOnly from non-owner/non-tagged viewers, so the
+      // ping dead-ends. Mirror those visibility guards here.
+      //
+      // Otherwise union garden + tagged users so a tagged person who
+      // isn't in any shared community still gets the "asking for your
+      // prayers" push. Self-tag was already filtered out above when we
+      // built validTaggedIds, but we also skip the author here
       // (gardenIds includes them by design — they're the center of
       // their own garden — and we don't want them to push themselves).
-      const recipients = Array.from(new Set([
-        ...gardenIds.filter((id) => id !== sessionUserId),
-        ...validTaggedIds,
-      ]));
+      const recipients = directOnly
+        ? Array.from(new Set(validTaggedIds))
+        : Array.from(new Set([
+            ...gardenIds.filter((id) => id !== sessionUserId),
+            ...validTaggedIds,
+          ]));
       if (recipients.length === 0) return;
       // Drop anyone who has muted the author. userMutes(muter=R, muted=A)
       // → R does not receive A's pushes. Single SELECT, cheap.
@@ -2264,28 +2273,100 @@ router.put("/me/home-layout", async (req, res): Promise<void> => {
 
 // ── Custom rituals (user-defined daily anchors) ──────────────────────────────
 // Backs lib/customAnchors server sync so a person's rituals are their DATA and
-// show on every device, not just where they were created. Body is the client's
-// opaque snapshot { defs: [...], log: {...}, updatedAt }. We don't interpret it
-// (the client owns the shape) — we only sanity-cap the size and store it.
+// show on every device, not just where they were created.
+//
+// NON-DESTRUCTIVE MERGE (the invariant: a push can NEVER delete a user's cards).
+// The server is the durable source of truth and MERGES the incoming snapshot
+// with what's already stored — it never blind-replaces. Concretely:
+//   • defs union BY ID — an id present on the server is NEVER dropped just
+//     because the incoming push omits it (a cleared cache / private mode /
+//     stale device / cross-user-leak push exports an empty or partial list;
+//     none of those can shrink the stored set).
+//   • the ONLY way an anchor leaves is an explicit TOMBSTONE: the client sends
+//     `deletedIds` for anchors the user actually removed; we record a tombstone
+//     and exclude that id forever after (so a later union from another device
+//     can't resurrect it). Absence ≠ deletion.
+//   • per-day `log` state merges field-wise, most-recent-wins (never lets a
+//     stale server entry wipe a fresh local "done", and vice-versa).
+// Stored shape: { defs, log, tombstones: {id: ts}, updatedAt }.
+type CASnap = { defs?: unknown; log?: unknown; tombstones?: unknown; updatedAt?: unknown; deletedIds?: unknown };
+type CALog = { done?: string; skip?: string; readToday?: string; readTotal?: number };
+const caLaterStamp = (a?: string, b?: string): string | undefined => (a && b ? (a >= b ? a : b) : a || b);
+const caLaterReadToday = (a?: string, b?: string): string | undefined => {
+  if (!a) return b; if (!b) return a;
+  const ay = a.split("|")[0]; const by = b.split("|")[0];
+  return ay !== by ? (ay > by ? a : b) : a;
+};
+function caMergeLog(l: CALog | undefined, s: CALog | undefined): CALog {
+  const e: CALog = {};
+  const done = caLaterStamp(l?.done, s?.done);
+  const skip = caLaterStamp(l?.skip, s?.skip);
+  if (done) e.done = done;
+  if (skip && skip !== done) e.skip = skip;
+  const rt = caLaterReadToday(l?.readToday, s?.readToday);
+  if (rt) e.readToday = rt;
+  const total = Math.max(l?.readTotal ?? 0, s?.readTotal ?? 0);
+  if (total > 0) e.readTotal = total;
+  return e;
+}
+function mergeCustomAnchors(existing: CASnap | null | undefined, incoming: CASnap) {
+  const exDefs = Array.isArray(existing?.defs) ? (existing!.defs as Array<{ id?: unknown }>) : [];
+  const inDefs = Array.isArray(incoming.defs) ? (incoming.defs as Array<{ id?: unknown }>) : [];
+  const exLog = (existing?.log && typeof existing.log === "object") ? existing!.log as Record<string, CALog> : {};
+  const inLog = (incoming.log && typeof incoming.log === "object") ? incoming.log as Record<string, CALog> : {};
+  const now = Date.now();
+  // Tombstones: keep existing, add any the incoming push declares (deletedIds),
+  // plus re-assert any tombstones the incoming snapshot carries (a device that
+  // learned a delete echoes it).
+  const tombstones: Record<string, number> = {};
+  const exTomb = (existing?.tombstones && typeof existing.tombstones === "object") ? existing!.tombstones as Record<string, number> : {};
+  for (const [id, ts] of Object.entries(exTomb)) if (typeof ts === "number") tombstones[id] = ts;
+  if (incoming.tombstones && typeof incoming.tombstones === "object") {
+    for (const [id, ts] of Object.entries(incoming.tombstones as Record<string, unknown>)) if (typeof ts === "number" && !tombstones[id]) tombstones[id] = ts;
+  }
+  if (Array.isArray(incoming.deletedIds)) {
+    for (const id of incoming.deletedIds) if (typeof id === "string" && !tombstones[id]) tombstones[id] = now;
+  }
+  // defs: union by id (existing first, incoming overrides shared ids = latest
+  // edit), then drop anything tombstoned. Never drops on mere absence.
+  const byId = new Map<string, { id?: unknown }>();
+  for (const d of exDefs) { const id = (d as { id?: unknown }).id; if (typeof id === "string") byId.set(id, d); }
+  for (const d of inDefs) { const id = (d as { id?: unknown }).id; if (typeof id === "string") byId.set(id, d); }
+  let defs = Array.from(byId.values()).filter((d) => !tombstones[(d as { id?: unknown }).id as string]);
+  if (defs.length > 64) defs = defs.slice(0, 64);
+  const liveIds = new Set(defs.map((d) => (d as { id?: unknown }).id as string));
+  // log: field-wise most-recent-wins, pruned to live anchors (bounds growth).
+  const log: Record<string, CALog> = {};
+  for (const id of new Set([...Object.keys(exLog), ...Object.keys(inLog)])) {
+    if (!liveIds.has(id)) continue;
+    log[id] = caMergeLog(exLog[id], inLog[id]);
+  }
+  // Prune tombstones to the most recent (bounds growth); keep newest 256.
+  const tombEntries = Object.entries(tombstones).sort((a, b) => b[1] - a[1]).slice(0, 256);
+  const prunedTomb: Record<string, number> = {};
+  for (const [id, ts] of tombEntries) prunedTomb[id] = ts;
+  return {
+    defs,
+    log,
+    tombstones: prunedTomb,
+    updatedAt: typeof incoming.updatedAt === "number" ? incoming.updatedAt : now,
+  };
+}
 router.put("/me/custom-anchors", async (req, res): Promise<void> => {
   const sessionUserId = req.user ? (req.user as { id: number }).id : null;
   if (!sessionUserId) { res.status(401).json({ error: "Unauthorized" }); return; }
-  const body = req.body as { defs?: unknown; log?: unknown; updatedAt?: unknown };
+  const body = req.body as CASnap;
   if (!body || !Array.isArray(body.defs)) { res.status(400).json({ error: "defs must be an array" }); return; }
-  // Guardrails: cap the ritual count (the client caps at 8) and the serialized
-  // size so a runaway client can't bloat the row.
   if (body.defs.length > 64) { res.status(400).json({ error: "too many rituals" }); return; }
-  const snapshot = {
-    defs: body.defs,
-    log: (body.log && typeof body.log === "object") ? body.log as Record<string, unknown> : {},
-    ...(typeof body.updatedAt === "number" ? { updatedAt: body.updatedAt } : {}),
-  };
   try {
-    if (JSON.stringify(snapshot).length > 64_000) { res.status(413).json({ error: "snapshot too large" }); return; }
-  } catch { res.status(400).json({ error: "invalid snapshot" }); return; }
-  try {
-    await db.update(usersTable).set({ customAnchors: snapshot }).where(eq(usersTable.id, sessionUserId));
-    res.json({ ok: true });
+    // Read-merge-write: the stored row is authoritative; we union the incoming
+    // snapshot into it so a push can never delete a card (only a tombstone can).
+    const [row] = await db.select({ ca: usersTable.customAnchors }).from(usersTable).where(eq(usersTable.id, sessionUserId)).limit(1);
+    const merged = mergeCustomAnchors(row?.ca as CASnap | null | undefined, body);
+    if (JSON.stringify(merged).length > 96_000) { res.status(413).json({ error: "snapshot too large" }); return; }
+    await db.update(usersTable).set({ customAnchors: merged }).where(eq(usersTable.id, sessionUserId));
+    // Return the merged snapshot so the client can reconcile to server truth.
+    res.json({ ok: true, customAnchors: merged });
   } catch (err) {
     console.error("[/me/custom-anchors PUT] failed:", err);
     res.status(500).json({ error: "internal_error" });
