@@ -373,9 +373,12 @@ export function useRhythmState(): RhythmState {
   // met — if no goal is set, any silence counts.
   const contemplationMin = Math.floor((contStats?.todaySeconds ?? 0) / 60) + (contStats?.healthMinutesToday ?? 0);
   const contemplationGoalMin = officePrefs?.contemplationGoalMinutes ?? 0;
-  const silenceDone = contemplationGoalMin > 0
-    ? contemplationMin >= contemplationGoalMin
-    : contemplationMin > 0;
+  // Contemplation is kept the moment you've ENTERED the silence today (any sit,
+  // or external mindful minutes) — never when a daily TOTAL reaches a target.
+  // The chosen minutes are the suggested LENGTH of a sit, not a quota you're
+  // measured against (a single sit-length is non-additive). Matches the
+  // customizer's "How long would you like to sit?" framing.
+  const silenceDone = contemplationMin > 0;
 
   const gratitudeDone = gratitudeActive && (practiceLocal.gratitude || serverDone("gratitude"));
   const examenDone = examenActive && (practiceLocal.examen || serverDone("examen"));
