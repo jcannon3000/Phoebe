@@ -3701,10 +3701,12 @@ export function PrayerOfficeCard({ compact = false, forceSide }: { compact?: boo
                     className="text-2xl font-semibold"
                     style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", margin: 0, lineHeight: 1.2 }}
                   >
+                    {/* Hero card: no morning/evening emoji — the big title carries
+                        it on its own (compact cards keep the 🌅/🌙). */}
                     {programmedLevel === "devotion"
-                      ? (isMorning ? `${t("offices.morning_devotion", { defaultValue: "Morning Devotion" })} 🌅` : `${t("offices.evening_devotion", { defaultValue: "Evening Devotion" })} 🌙`)
+                      ? (isMorning ? t("offices.morning_devotion", { defaultValue: "Morning Devotion" }) : t("offices.evening_devotion", { defaultValue: "Evening Devotion" }))
                       : programmedLevel === "office"
-                        ? (isMorning ? `${t("offices.morning_prayer")} 🌅` : `${t("offices.evening_prayer")} 🌙`)
+                        ? (isMorning ? t("offices.morning_prayer") : t("offices.evening_prayer"))
                         : `${t("dashboard.pray_together", { defaultValue: "Pray Together" })} 🙏🏽`}
                   </p>
                   {countCopy && (
