@@ -366,9 +366,9 @@ export function WeeklyGridCard() {
 // One home-style practice card: a colored left accent bar, the practice, and
 // its state today (a "kept" check or a CTA to begin).
 function PracticeCard({
-  href, emoji, title, blurb, blurbCycle, cta, done, rgb, later, laterLabel, progress, hero, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4,
+  href, emoji, title, blurb, blurbCycle, cta, done, sacred, rgb, later, laterLabel, progress, hero, onClick, doneCta, pulse, pulseOnLoad = true, tint = 0.4,
 }: {
-  href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; rgb: string;
+  href: string; emoji: string; title: string; blurb: string; cta: string; done: boolean; sacred?: boolean; rgb: string;
   /** Position in the routine card stack (0 = top/lightest → 1 = bottom/darkest),
    *  driving the subtle card-background lightness ramp. */
   tint?: number;
@@ -462,13 +462,21 @@ function PracticeCard({
         className="flex-shrink-0 inline-flex items-center gap-1 rounded-full text-[12px] font-semibold px-3.5 py-1.5 text-center"
         style={{ background: `rgba(${rgb},0.85)`, color: WARM }}
       >
-        <span aria-hidden style={{ opacity: 0.85 }}>✓</span> {doneCta} <span aria-hidden>→</span>
+        {doneCta} <span aria-hidden>→</span>
       </span>
     ) : (
+      // "Kept" — the hour quietly filled with light, NOT a ticked box. The
+      // sacred spine (offices, contemplation, the daily word) lights weightier
+      // than the practices anchored to it, so a kept office never reads
+      // pixel-identically to a kept habit-tracker import.
       <span
-        className="flex-shrink-0 rounded-full text-[12px] font-semibold px-3.5 py-1.5"
-        style={{ background: `rgba(${rgb},0.18)`, color: "rgba(240,237,230,0.85)", border: `1px solid rgba(${rgb},0.45)` }}
-      >✓</span>
+        aria-label="Kept today"
+        title="Kept today"
+        className="flex-shrink-0 inline-block rounded-full"
+        style={sacred
+          ? { width: 13, height: 13, background: `rgba(${rgb},0.95)`, boxShadow: `0 0 9px rgba(${rgb},0.6)` }
+          : { width: 9, height: 9, background: `rgba(${rgb},0.5)`, border: `1px solid rgba(${rgb},0.38)` }}
+      />
     )
   ) : waiting ? (
     <span
@@ -567,11 +575,11 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
   // Whenever there's a minute goal, show progress toward it ("12 of 20 min
   // today") — even once it's met — so the card always reads as minutes-of-goal.
   // Only with no goal set does it fall back to "Kept today" / the blurb.
-  const contemplationBlurb = contemplationGoalMin > 0
-    ? t("rhythm.contemplation_progress", { current: contemplationMin, goal: contemplationGoalMin, defaultValue: `${contemplationMin} of ${contemplationGoalMin} min today` })
-    : silenceDone
-      ? kept
-      : t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" });
+  // Contemplation is NEVER framed as a quota: no "X of Y min", no deficit bar.
+  // It only marks that you entered the silence today — gently, after the fact.
+  const contemplationBlurb = silenceDone
+    ? t("rhythm.contemplation_kept", { defaultValue: "You rested in silence today" })
+    : t("rhythm.blurb_silence", { defaultValue: "Sit, or cobreathe for justice" });
 
   const officeTitle = (side: "Morning" | "Evening") =>
     prayerKind === "community"
@@ -677,7 +685,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
 
   const cards = [
     ...(morningActive ? [{
-      key: "morning", emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer?side=morning",
+      key: "morning", sacred: true, emoji: "🌅", rgb: "46,107,64", done: morningDone, href: "/begin-prayer?side=morning",
       title: officeTitle("Morning"),
       blurb: morningDone ? prayed : morningBlurb,
       blurbCycle: morningDone ? undefined : [morningBlurb, ...officeCycle],
@@ -691,7 +699,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       const url = r.source === "cac" ? CAC_TODAY_URL : r.source === "fdd" ? FDD_TODAY_URL : SSJE_TODAY_URL;
       const mark = r.source === "cac" ? markCacRead : r.source === "fdd" ? markFddRead : markSsjeRead;
       return {
-        key: `reflect-${r.source}`, emoji: "📖", rgb: "96,141,209", done: r.done, href: "",
+        key: `reflect-${r.source}`, sacred: true, emoji: "📖", rgb: "96,141,209", done: r.done, href: "",
         title: PUBLICATION_NAME[r.source],
         // CAC: today's scraped title is a STATIC second line (no rotation).
         // CAC always shows today's scraped meditation title as the second line —
@@ -705,7 +713,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
     }),
     ...slottedForSlot("morning"),
     ...(silenceActive ? [{
-      key: "silence", emoji: "🕯️", rgb: "62,124,122", done: silenceDone,
+      key: "silence", sacred: true, emoji: "🕯️", rgb: "62,124,122", done: silenceDone,
       // Always open the begin slide (length, Start contemplation, Cobreathe) —
       // never skip straight into Cobreathe, even when that's the saved style.
       // Choosing Cobreathe there leads to its own in-person options slide.
@@ -713,8 +721,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       title: t("rhythm.card_contemplation", { defaultValue: "Contemplation" }),
       blurb: contemplationBlurb,
       cta: t("rhythm.begin", { defaultValue: "Begin" }), later: false,
-      // When done, show a plain ✓ like the other anchors — no "Sit again" pill.
-      progress: { current: contemplationMin, goal: contemplationGoalMin },
+      // No quota bar on contemplation: silence is not a deficit to fill.
     }] : []),
     ...slottedForSlot("midday"),
     ...(gratitudeActive ? [{
@@ -742,7 +749,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       // morning rhythm (reflection → contemplation) leads the day; from 3 PM on
       // it becomes the office hero. Opt-in — off by default (evening pref
       // "none"), so an un-set-up user has three anchors, not four.
-      key: "evening", emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: "/begin-prayer?side=evening",
+      key: "evening", sacred: true, emoji: "🌙", rgb: "124,116,196", done: eveningDone, href: "/begin-prayer?side=evening",
       title: hour >= 20 ? t("rhythm.card_close", { defaultValue: "Close the day" }) : officeTitle("Evening"),
       // After 8 PM the title is "Close the day"; the second line names the actual
       // evening method (Evening Prayer / Evening Devotion / Pray together).
@@ -875,11 +882,12 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
       blurb={c.blurb}
       cta={c.cta}
       done={c.done}
+      sacred={(c as { sacred?: boolean }).sacred}
       rgb={c.rgb}
       tint={tint}
       later={c.later}
       laterLabel={t("rhythm.later", { defaultValue: "Later" })}
-      progress={"progress" in c ? c.progress : undefined}
+      progress={(c as { progress?: { current: number; goal: number } }).progress}
       blurbCycle={"blurbCycle" in c ? c.blurbCycle : undefined}
       onClick={"onClick" in c ? c.onClick : undefined}
       doneCta={(c as { doneCta?: string }).doneCta}
@@ -934,7 +942,7 @@ export function DailyProgressBody({ showStreak = true, showDone, renderOfficeHer
           home (showDone). */}
       {showDoneSection && (
         <div className={doneGapCls}>
-          {sectionHeader(t("daily_progress.done_heading", { defaultValue: "Done" }))}
+          {sectionHeader(t("daily_progress.done_heading", { defaultValue: "Earlier today" }))}
           <div className="flex flex-col gap-2">
             {completedDisplay.map((c, i) => (
               <motion.div key={c.key} {...enterUp(upcomingDisplay.length + i)}>

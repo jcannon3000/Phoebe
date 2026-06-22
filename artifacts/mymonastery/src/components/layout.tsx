@@ -798,6 +798,10 @@ function DailyProgressPill() {
   // Every practice for the day kept → ALL dots gently pulse colour (a staggered
   // "you held the whole day" wave).
   const allDone = dotDefs.length > 0 && dotDefs.every((d) => d.done);
+  // Where you are in the day — the first anchor not yet kept. Drives the
+  // "position, not score" reading of the pill: kept dots recede, this one is
+  // live, the rest are faint (no filled-vs-empty tally to complete toward).
+  const firstUndone = dotDefs.findIndex((d) => !d.done);
 
   // Per-dot "just completed" pulse: when an activity flips done, its dot pulses
   // for ~5 minutes. We stamp the completion time per local day in localStorage
@@ -869,6 +873,14 @@ function DailyProgressPill() {
         const sz = many ? 5 : 6;
         const renderDot = (d: { key: string; done: boolean }, i: number) => {
           const pulse = allDone || recentlyDone(d.key);
+          const isLive = !allDone && i === firstUndone; // the anchor you're at now
+          // Position, not a tally: kept anchors recede (settled), the current one
+          // glows live, the ones ahead stay faint — never a "filled vs empty" score.
+          const tone = d.done
+            ? { background: "rgba(110,180,130,0.5)", border: "none" as const }
+            : isLive
+              ? { background: "rgba(150,200,165,0.95)", border: "none" as const, boxShadow: "0 0 6px rgba(110,180,130,0.6)" }
+              : { background: "transparent", border: "1px solid rgba(143,175,150,0.28)" };
           return (
             <span
               key={d.key}
@@ -878,8 +890,7 @@ function DailyProgressPill() {
                 height: sz,
                 borderRadius: 999,
                 display: "inline-block",
-                background: d.done ? "rgba(110,180,130,0.95)" : "transparent",
-                border: d.done ? "none" : "1px solid rgba(143,175,150,0.5)",
+                ...tone,
                 animationDelay: allDone ? `${(i * 0.12).toFixed(2)}s` : undefined,
               }}
             />
