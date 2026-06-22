@@ -74,6 +74,26 @@ function PendingPrayerInviteRedirect() {
   return null;
 }
 
+// Same pattern for a Fellows invite link: a logged-out visitor who opened
+// /fellow/:token went through the explainer deck, stashed the token, and went
+// off to create an account. Once authenticated, send them back to /fellow/:token
+// — which auto-accepts the stashed invite + applies the fellows settings they
+// chose — so the fellowship actually forms.
+function PendingFellowInviteRedirect() {
+  const { user, isLoading } = useAuthForGate();
+  const [location, setLocation] = useLocation();
+  useEffect(() => {
+    if (isLoading || !user) return;
+    if (location.startsWith("/fellow/")) return;
+    let token: string | null = null;
+    try { token = localStorage.getItem("phoebe:pending-fellow-invite"); } catch { /* ignore */ }
+    if (token && /^[a-f0-9]{32}$/i.test(token)) {
+      setLocation(`/fellow/${token}`);
+    }
+  }, [user, isLoading, location, setLocation]);
+  return null;
+}
+
 // Sync the user's custom rituals from the server once they're logged in, so a
 // ritual created on one device shows on every device (the "I see it on the
 // phone but not the web" gap). localStorage stays the instant cache; this pulls
@@ -209,6 +229,7 @@ const RitualDetail = lazy(() => import("./pages/ritual-detail"));
 const RitualSchedule = lazy(() => import("./pages/ritual-schedule"));
 const GuestSchedule = lazy(() => import("./pages/guest-schedule"));
 const InvitePage = lazy(() => import("./pages/invite"));
+const FellowInvitePage = lazy(() => import("./pages/fellow-invite"));
 const People = lazy(() => import("./pages/people"));
 const FellowsPage = lazy(() => import("./pages/fellows"));
 const ThanksPage = lazy(() => import("./pages/thanks"));
@@ -898,6 +919,7 @@ function Router() {
       <Route path="/ritual/:id" component={RitualDetail} />
       <Route path="/schedule/:token" component={GuestSchedule} />
       <Route path="/invite/:token" component={InvitePage} />
+      <Route path="/fellow/:token" component={FellowInvitePage} />
       <Route path="/letter/:id" component={LetterSplash} />
       <Route path="/letters" component={LettersPage} />
       <Route path="/letters/new" component={LetterNew} />
@@ -1157,6 +1179,7 @@ function App() {
           <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
             <ScrollToTopOnNavigate />
             <PendingPrayerInviteRedirect />
+            <PendingFellowInviteRedirect />
             <CustomAnchorServerSync />
             <ReflectionReturnRedirect />
             <ReflectionPreheater />

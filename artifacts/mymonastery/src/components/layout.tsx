@@ -1003,25 +1003,37 @@ function OpeningSplash() {
       return n;
     } catch { return 0; }
   });
-  const splashVariant = splashOpenN % 2;     // 0 = faces, 1 = quote (fellows variant off)
   const hour = new Date().getHours();
-  const showFaces = splashVariant === 0;
-  // The quote shows IMMEDIATELY on its open — its content is a static line, ready
-  // on the first render, so the greeting never flashes ahead of it and nothing
-  // waits to "settle".
-  const showQuote = splashVariant === 1;
-  // Third in rotation: your fellows' progress for the day (faces + dots).
-  // Fellows turned off — never show the splash "fellows today" variant.
-  const showFellows = false;
-  // The quote advances each time the quote slide comes up (every third open).
-  const quote = SPLASH_QUOTES[Math.floor(splashOpenN / 3) % SPLASH_QUOTES.length]!;
-  // Fellows' today progress — only fetched on the fellows variant.
-  const { data: walkData } = useQuery<{ companions: Array<{ userId: number; name: string | null; avatarUrl: string | null; progress: { anchors: Array<{ key: string; done: boolean }>; keptCount: number; totalCount: number; allKept: boolean } | null; progressLocked?: boolean; sabbath?: boolean }> }>({
-    queryKey: ["/api/walk"],
-    queryFn: () => apiRequest("GET", "/api/walk"),
+  // The social splash now surfaces FELLOWS who have practiced today — any of the
+  // three coarse presence lights (Turn / Learn / Pray) lit — capped at four,
+  // with the viewer's OWN card beneath them. When no fellow has practiced (or
+  // the list hasn't resolved yet) it falls back to a contemplative quote. This
+  // replaces the old "prayed with you this month" faces / quote alternation.
+  const { data: fellowsResp } = useQuery<{ fellows: Array<{ userId: number; name: string | null; avatarUrl: string | null; turned?: boolean; learned?: boolean; prayed?: boolean }> }>({
+    queryKey: ["/api/fellows"],
+    queryFn: () => apiRequest("GET", "/api/fellows"),
     staleTime: 60_000,
-    enabled: phase !== "gone" && !!user && native && showFellows,
+    enabled: phase !== "gone" && !!user && native,
   });
+  const practicedFellows = useMemo(
+    () => (fellowsResp?.fellows ?? []).filter((f) => f.turned || f.learned || f.prayed).slice(0, 4),
+    [fellowsResp],
+  );
+  // My own three lights today — shown on the card beneath the fellows. Derived
+  // client-side from the rhythm state (+ the local Turn stamp) so it mirrors what
+  // fellows see of me without another round-trip.
+  const rhythm = useRhythmState();
+  const myTurned = (() => { try { return localStorage.getItem(`phoebe:turn:${new Date().toLocaleDateString("en-CA")}`) === "1"; } catch { return false; } })();
+  const myLights = { turned: myTurned, learned: rhythm.reflectDone, prayed: rhythm.morningDone || rhythm.eveningDone || rhythm.silenceDone || rhythm.cobreatheDone };
+  const fellowsResolved = fellowsResp !== undefined;
+  const showFellows = fellowsResolved && practicedFellows.length > 0;
+  // Quote = the fallback, shown only once we KNOW no fellow has practiced today.
+  const showQuote = fellowsResolved && practicedFellows.length === 0;
+  // The faces rail is retired; keep the flag (false) so its now-dormant render +
+  // cache effects still compile without ever running.
+  const showFaces = false;
+  // The quote advances each app open.
+  const quote = SPLASH_QUOTES[splashOpenN % SPLASH_QUOTES.length]!;
   useEffect(() => {
     if (data === undefined) return;
     let cancelled = false;
@@ -1123,12 +1135,10 @@ function OpeningSplash() {
     if (showFaces && phase === "in" && data !== undefined && (data.people?.length ?? 0) === 0) {
       advanceFromFaces();
     }
-    // Fellows variant with no walking companions → nothing to show, dismiss.
-    if (showFellows && phase === "in" && walkData !== undefined && (walkData.companions?.length ?? 0) === 0) {
-      advanceFromFaces();
-    }
+    // The fellows / quote variants always have content (the quote is the
+    // fallback when nobody has practiced), so an empty result never dismisses.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, walkData, phase, showFaces, showFellows]);
+  }, [data, phase, showFaces]);
 
   // Web (or logged out) → no splash at all.
   // Tell the home it can start its card cascade only AFTER the splash has faded
@@ -1227,16 +1237,15 @@ function OpeningSplash() {
         </motion.div>
       ) : (
       <>
-      {/* Greeting — on the faces variant only. The quote stands on its own (no
-          "Good evening" flashing ahead of it). */}
-      {!showQuote && (
-        <p
-          className="text-center px-8 mb-8 relative"
-          style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}
-        >
-          {firstName ? `${greeting}, ${firstName}` : greeting}
-        </p>
-      )}
+      {/* Greeting — shown on every variant now (fellows, the quote fallback, or
+          the brief loading hold), so the content fades up beneath it without the
+          greeting ever flashing in or out. */}
+      <p
+        className="text-center px-8 mb-8 relative"
+        style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif", fontSize: 24, fontWeight: 600, letterSpacing: "-0.01em" }}
+      >
+        {firstName ? `${greeting}, ${firstName}` : greeting}
+      </p>
       {showFaces && (() => {
         // Prefer the live set; fall back to last session's cached faces so the
         // rail paints instantly on a cold open (no network wait) — but ONLY when
@@ -1325,13 +1334,33 @@ function OpeningSplash() {
           </p>
         </motion.div>
       )}
-      {/* Fellows' progress for the day — up to 5, each with picture, name + dots.
-          Third in the splash rotation. */}
+      {/* Fellows who have practiced today — any of the three coarse presence
+          lights (Turn / Learn / Pray) lit — capped at four, with the viewer's
+          OWN card beneath. Presence, not a scoreboard: blue lights, no counts. */}
       {showFellows && (() => {
-        const companions = (walkData?.companions ?? []).slice(0, 5);
-        if (companions.length === 0) return null; // dismiss effect handles the empty case
         const fn = (n: string | null) => (n ?? "").trim().split(/\s+/)[0] || "Someone";
         const rowV = { hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" as const } } };
+        const LIGHTS: Array<{ key: "turned" | "learned" | "prayed"; label: string }> = [
+          { key: "turned", label: "Turn" }, { key: "learned", label: "Learn" }, { key: "prayed", label: "Pray" },
+        ];
+        const lightsTitle = (v: { turned?: boolean; learned?: boolean; prayed?: boolean }) => LIGHTS.map((l) => `${l.label}: ${v[l.key] ? "today" : "quiet"}`).join("  \u00b7  ");
+        const renderLights = (v: { turned?: boolean; learned?: boolean; prayed?: boolean }) => (
+          <span className="inline-flex items-center gap-[6px] shrink-0" aria-hidden title={lightsTitle(v)}>
+            {LIGHTS.map((l) => {
+              const on = !!v[l.key];
+              return <span key={l.key} style={{ width: 9, height: 9, borderRadius: 999, display: "inline-block", background: on ? "#6CA8E0" : "transparent", border: on ? "none" : "1.5px solid rgba(108,168,224,0.45)", boxShadow: on ? "0 0 6px rgba(108,168,224,0.55)" : "none" }} />;
+            })}
+          </span>
+        );
+        const renderAvatar = (url: string | null, name: string | null) => (
+          url ? (
+            <img src={url} alt={fn(name)} className="w-10 h-10 rounded-full object-cover shrink-0" style={{ border: "1.5px solid #0C1F12", backgroundColor: "#1A4A2E" }} />
+          ) : (
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-semibold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid #0C1F12" }}>
+              {(name ?? "?").trim().split(/\s+/).slice(0, 2).map((part) => part[0] ?? "").join("").toUpperCase() || "?"}
+            </div>
+          )
+        );
         return (
           <motion.div
             className="flex flex-col items-stretch w-full relative"
@@ -1341,35 +1370,22 @@ function OpeningSplash() {
             variants={{ hidden: {}, show: { transition: { staggerChildren: 0.09, delayChildren: 0.12 } } }}
           >
             <motion.p variants={rowV} className="text-center text-[12px] font-semibold uppercase tracking-[0.16em] mb-4" style={{ color: "rgba(143,175,150,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}>
-              {t("splash.fellows_today", { defaultValue: "Your fellows today" })}
+              {t("splash.fellows_practiced", { defaultValue: "Praying with you today" })}
             </motion.p>
-            {companions.map((c) => {
-              const p = c.progress;
-              return (
-                <motion.div key={c.userId} variants={rowV} className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 mb-2" style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.3)" }}>
-                  {c.avatarUrl ? (
-                    <img src={c.avatarUrl} alt={fn(c.name)} className="w-10 h-10 rounded-full object-cover shrink-0" style={{ border: "1.5px solid #0C1F12", backgroundColor: "#1A4A2E" }} />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-[13px] font-semibold shrink-0" style={{ background: "#1A4A2E", color: "#A8C5A0", border: "1.5px solid #0C1F12" }}>
-                      {(c.name ?? "?").trim().split(/\s+/).slice(0, 2).map((s) => s[0] ?? "").join("").toUpperCase() || "?"}
-                    </div>
-                  )}
-                  <span className="flex-1 min-w-0 truncate text-[15px] font-medium" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{fn(c.name)}</span>
-                  {c.sabbath ? (
-                    <span className="text-[16px] shrink-0" aria-hidden title="On a phone sabbath">🌙</span>
-                  ) : p && p.anchors.length > 0 ? (
-                    // Only the first three dots are shared — bigger, calmer.
-                    <span className="inline-flex items-center gap-[6px] shrink-0" aria-hidden>
-                      {p.anchors.slice(0, 3).map((a) => (
-                        <span key={a.key} style={{ width: 11, height: 11, borderRadius: 999, display: "inline-block", background: a.done ? "rgba(110,180,130,0.95)" : "transparent", border: a.done ? "none" : "1.5px solid rgba(143,175,150,0.55)" }} />
-                      ))}
-                    </span>
-                  ) : (
-                    <span className="text-[11px] shrink-0" style={{ color: "rgba(143,175,150,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}>—</span>
-                  )}
-                </motion.div>
-              );
-            })}
+            {practicedFellows.map((f) => (
+              <motion.div key={f.userId} variants={rowV} className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 mb-2" style={{ background: "rgba(46,107,64,0.14)", border: "1px solid rgba(46,107,64,0.3)" }}>
+                {renderAvatar(f.avatarUrl, f.name)}
+                <span className="flex-1 min-w-0 truncate text-[15px] font-medium" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{fn(f.name)}</span>
+                {renderLights(f)}
+              </motion.div>
+            ))}
+            {/* Your own card, beneath all the others — only when a fellow has
+                practiced (per the design: never your card on its own). */}
+            <motion.div variants={rowV} className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 mt-1" style={{ background: "rgba(46,107,64,0.20)", border: "1px solid rgba(108,168,224,0.30)" }}>
+              {renderAvatar(user.avatarUrl, user.name)}
+              <span className="flex-1 min-w-0 truncate text-[15px] font-semibold" style={{ color: "#F0EDE6", fontFamily: "'Space Grotesk', sans-serif" }}>{t("splash.you", { defaultValue: "You" })}</span>
+              {renderLights(myLights)}
+            </motion.div>
           </motion.div>
         );
       })()}

@@ -11,6 +11,7 @@ import { Router, type IRouter, type RequestHandler } from "express";
 import { eq, and, or, inArray, sql } from "drizzle-orm";
 import { db, fellowsTable, fellowInvitesTable, usersTable, betaUsersTable, userMutesTable } from "@workspace/db";
 import { z } from "zod/v4";
+import crypto from "node:crypto";
 import { sendPushToUser } from "../lib/pushSender";
 import { perUserRateLimit } from "../lib/rate-limit";
 
@@ -218,5 +219,99 @@ async function statusFor(me: number, ids: number[]): Promise<Record<number, "non
   }
   return out;
 }
+
+// ─── Fellows invite LINK — a stable shareable "be my fellow" link ────────────
+// Distinct from the directed request/accept flow above: a link any one person
+// can open to become a fellow with the sender. NOT beta-gated — invite links
+// are how fellows grow, and the act is reciprocal/consensual. Stored in
+// fellow_link_invites (raw SQL; no drizzle schema change), one stable token per
+// sender so the link never changes.
+
+const INVITE_BASE = () => process.env.PUBLIC_APP_ORIGIN || "https://withphoebe.app";
+
+async function tokenForSender(senderId: number): Promise<string> {
+  const existing = await db.execute<{ token: string }>(
+    sql`SELECT token FROM fellow_link_invites WHERE sender_id = ${senderId} LIMIT 1`,
+  );
+  if (existing.rows[0]?.token) return existing.rows[0].token;
+  const token = crypto.randomBytes(16).toString("hex");
+  // Unique(sender_id) makes a concurrent double-create collapse to one row; we
+  // then re-read so both callers return the SAME stable token.
+  await db.execute(
+    sql`INSERT INTO fellow_link_invites (sender_id, token) VALUES (${senderId}, ${token}) ON CONFLICT (sender_id) DO NOTHING`,
+  );
+  const again = await db.execute<{ token: string }>(
+    sql`SELECT token FROM fellow_link_invites WHERE sender_id = ${senderId} LIMIT 1`,
+  );
+  return again.rows[0]?.token ?? token;
+}
+async function senderForToken(token: string): Promise<number | null> {
+  const r = await db.execute<{ sender_id: number }>(
+    sql`SELECT sender_id FROM fellow_link_invites WHERE token = ${token} LIMIT 1`,
+  );
+  const id = r.rows[0]?.sender_id;
+  return typeof id === "number" ? id : id != null ? Number(id) : null;
+}
+
+// POST /api/fellows/invite-link — mint (or reuse) my shareable link.
+router.post("/fellows/invite-link", async (req, res): Promise<void> => {
+  const me = getUserId(req);
+  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const token = await tokenForSender(me);
+    res.json({ token, url: `${INVITE_BASE()}/fellow/${token}` });
+  } catch (err) {
+    console.error("[fellows invite-link POST] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// GET /api/fellows/invite-link/:token — PUBLIC (pre-auth) landing data: just
+// the inviter's name/avatar, plus whether the (maybe signed-in) viewer is the
+// sender themselves or already fellows. No emails, nothing private.
+router.get("/fellows/invite-link/:token", async (req, res): Promise<void> => {
+  const token = String(req.params.token || "");
+  if (!/^[a-f0-9]{32}$/i.test(token)) { res.status(404).json({ error: "Invalid link" }); return; }
+  try {
+    const senderId = await senderForToken(token);
+    if (!senderId) { res.status(404).json({ error: "Invalid link" }); return; }
+    const [u] = await db.select({ id: usersTable.id, name: usersTable.name, avatarUrl: usersTable.avatarUrl })
+      .from(usersTable).where(eq(usersTable.id, senderId));
+    if (!u) { res.status(404).json({ error: "Invalid link" }); return; }
+    const me = getUserId(req);
+    res.json({
+      inviter: { id: u.id, name: u.name, avatarUrl: u.avatarUrl },
+      isSelf: me === senderId,
+      alreadyFellows: me != null && me !== senderId ? await areFellows(me, senderId) : false,
+    });
+  } catch (err) {
+    console.error("[fellows invite-link GET] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
+// POST /api/fellows/invite-link/:token/accept — become fellows with the sender.
+router.post("/fellows/invite-link/:token/accept", async (req, res): Promise<void> => {
+  const me = getUserId(req);
+  if (!me) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const token = String(req.params.token || "");
+  if (!/^[a-f0-9]{32}$/i.test(token)) { res.status(404).json({ error: "Invalid link" }); return; }
+  try {
+    const senderId = await senderForToken(token);
+    if (!senderId) { res.status(404).json({ error: "Invalid link" }); return; }
+    if (senderId === me) { res.json({ ok: true, status: "self" }); return; }
+    if (await isBlockedBetween(me, senderId)) { res.status(403).json({ error: "Unavailable" }); return; }
+    const already = await areFellows(me, senderId);
+    if (!already) {
+      await createFellowPair(me, senderId);
+      const name = await userName(me);
+      void sendPushToUser(senderId, { title: "New fellow", body: `${name} accepted your invite to be fellows`, path: "/people", threadId: "fellow-accept" }).catch(() => undefined);
+    }
+    res.json({ ok: true, status: "fellows", fellowUserId: senderId, inviterName: await userName(senderId) });
+  } catch (err) {
+    console.error("[fellows invite-link accept] failed:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
 
 export default router;

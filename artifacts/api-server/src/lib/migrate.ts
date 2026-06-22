@@ -3284,6 +3284,21 @@ export async function migrate() {
     `);
     await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS presence_turns_user_ymd ON presence_turns (user_id, ymd)`);
 
+    // Fellows invite LINK — one stable shareable "be my fellow" token per
+    // sender. Anyone who opens /fellow/<token> and signs in becomes a fellow
+    // (createFellowPair). One row per sender (unique sender_id) so the link
+    // never changes. Distinct from fellow_invites (which is a directed,
+    // recipient-bound pending request).
+    await run(client, `
+      CREATE TABLE IF NOT EXISTS fellow_link_invites (
+        id SERIAL PRIMARY KEY,
+        sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT NOT NULL UNIQUE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
+    await run(client, `CREATE UNIQUE INDEX IF NOT EXISTS fellow_link_invites_sender ON fellow_link_invites (sender_id)`);
+
     // Per-user static ECDH public key (E2E voice memos). Private key stays on device.
     await run(client, `
       CREATE TABLE IF NOT EXISTS user_public_keys (

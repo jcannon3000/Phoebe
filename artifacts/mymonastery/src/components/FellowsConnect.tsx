@@ -189,14 +189,16 @@ export function FellowsConnect({ canManage = false, variant = "people" }: { canM
   const encourage = useMutation({ mutationFn: (userId: number) => apiRequest("POST", "/api/encouragements", { toUserId: userId }) });
   const sendEncourage = (id: number) => { encourage.mutate(id); setEncouraged((s) => new Set(s).add(id)); };
 
-  // Share a personal invite link — mint/fetch the caller's token, then open the
-  // best share surface (native sheet, Web Share, or clipboard). Whoever opens it
-  // and accepts becomes a Fellow (the link rides the Heart to Hearts join flow,
-  // and accepting a Heart to Heart creates the Fellow link).
+  // Share a personal invite link — mint/fetch the caller's stable token, then
+  // open the best share surface (native sheet, Web Share, or clipboard). Whoever
+  // opens it lands on /fellow/:token: a signed-in person gets a one-tap "become
+  // fellows" card; a brand-new visitor gets a short onboarding deck (what Phoebe
+  // is, the daily practice, the Fellows feature) + the fellows settings, then
+  // signs up and the fellowship forms.
   const [linkCopied, setLinkCopied] = useState(false);
   const shareInviteLink = async () => {
     try {
-      const { url } = await apiRequest<{ token: string; url: string }>("POST", "/api/prayer-partner/invite-link");
+      const { url } = await apiRequest<{ token: string; url: string }>("POST", "/api/fellows/invite-link");
       const detail = {
         title: t("fellows_c.invite_share_title", { defaultValue: "Connect with me on Phoebe" }),
         text: t("fellows_c.invite_share_text", { defaultValue: "Join me on Phoebe — we can pray together and hold each other in prayer. Tap to connect:" }),
