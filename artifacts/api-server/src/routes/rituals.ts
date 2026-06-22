@@ -651,7 +651,27 @@ router.put("/rituals/:id", async (req, res): Promise<void> => {
   if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
   if (parsed.data.frequency !== undefined) updateData.frequency = parsed.data.frequency;
   if (parsed.data.dayPreference !== undefined) updateData.dayPreference = parsed.data.dayPreference;
-  if (parsed.data.participants !== undefined) updateData.participants = parsed.data.participants;
+  if (parsed.data.participants !== undefined) {
+    // Additive MERGE, never a wholesale replace: a PATCH (often built from a
+    // stale/partial client form) could send an empty or shrunken participants
+    // array and silently erase attendees. Union the incoming list with the
+    // stored one so PATCH can only ADD — removals go through the dedicated
+    // DELETE /rituals/:id/participants/:email endpoint (which is safe).
+    const [existingRow] = await db.select({ p: ritualsTable.participants }).from(ritualsTable).where(eq(ritualsTable.id, params.data.id)).limit(1);
+    const existing = Array.isArray(existingRow?.p) ? (existingRow!.p as unknown[]) : [];
+    const incoming = Array.isArray(parsed.data.participants) ? (parsed.data.participants as unknown[]) : [];
+    const keyOf = (el: unknown): string =>
+      (el && typeof el === "object" && "email" in el) ? String((el as { email: unknown }).email).toLowerCase() : JSON.stringify(el);
+    const seen = new Set<string>();
+    const union: unknown[] = [];
+    for (const el of [...existing, ...incoming]) {
+      const k = keyOf(el);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      union.push(el);
+    }
+    updateData.participants = union as typeof updateData.participants;
+  }
   if (parsed.data.intention !== undefined) updateData.intention = parsed.data.intention;
   // allowMemberInvites bypasses zod since the generated UpdateRitualBody
   // doesn't include it yet — read directly from req.body.
